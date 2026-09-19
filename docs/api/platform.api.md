@@ -75,14 +75,14 @@ class AppConfigService {
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<AppConfigService>;
     }
 }
-type AppConfigSource = 'packaged-default' | 'deployed-file' | 'nuxeo-document';
+type AppConfigSource = 'deployed-file' | 'nuxeo-document' | 'packaged-default';
 interface AppIntegrationsConfig {
     readonly arender: AppARenderConfig | null;
     readonly knowledgeDiscoveryOperations: Readonly<Record<string, string>>;
     readonly knowledgeEnrichmentOperations: Readonly<Record<string, string>>;
     }
 }
-type AppManifestAttempt = 'not-attempted' | 'applied' | 'unavailable' | 'failed';
+type AppManifestAttempt = 'applied' | 'failed' | 'not-attempted' | 'unavailable';
 interface AppRuntimeManifest {
     readonly version: number;
     readonly navItems: readonly ManifestNavItem[];
@@ -536,13 +536,13 @@ interface AuthorizedApplication {
     authorizationDate: string;
     }
 }
-type AvatarColor = 'purple' | 'blue' | 'pink' | 'teal' | 'yellow' | 'green' | 'red' | 'orange';
+type AvatarColor = 'blue' | 'green' | 'orange' | 'pink' | 'purple' | 'red' | 'teal' | 'yellow';
 const BLOB_CLIENT_REASON_HEADER = "X-Client-Reason";
 const BLOB_CLIENT_REASON_PARAM = "clientReason";
 const BLOB_HOLDING_DOC_TYPES: ReadonlySet<string>;
 const BLOB_NOT_ATTACHED_ERROR = "File was not attached to the document";
 const BROWSE_RETURN_MODE_PARAM = "browseReturn";
-type BlobClientReason = 'view' | 'download';
+type BlobClientReason = 'download' | 'view';
 class BrowseContextService {
     readonly contextPath: i0.WritableSignal<string>;
     readonly treeRefreshTick: i0.WritableSignal<number>;
@@ -560,7 +560,7 @@ class BrowseContextService {
     static ɵprov: i0.ɵɵInjectableDeclaration<BrowseContextService>;
     }
 }
-type BrowseReturnMode = 'default' | 'adf-hx';
+type BrowseReturnMode = 'adf-hx' | 'default';
 class BrowseService {
     getByPath(nuxeoPath: string): Observable<NuxeoDocument>;
     getUserWorkspace(): Observable<NuxeoDocument>;
@@ -961,7 +961,7 @@ interface GlobalSearchSuggestion {
     text: string;
     matched: boolean;
     }>;
-    kind: 'document' | 'user' | 'group' | 'other';
+    kind: 'document' | 'group' | 'other' | 'user';
     documentUid?: string;
     path?: string;
     prefixedId?: string;
@@ -979,7 +979,7 @@ interface ImportFilesOptions {
     }
 }
 interface ImportProgress {
-    phase: 'uploading' | 'creating';
+    phase: 'creating' | 'uploading';
     percent: number;
     fileIndex?: number;
     fileCount?: number;
@@ -1068,7 +1068,7 @@ interface NuxeoAce {
     creator: string | null;
     begin: string | null;
     end: string | null;
-    status: 'effective' | 'pending' | 'archived';
+    status: 'archived' | 'effective' | 'pending';
     }
 }
 interface NuxeoAcl {
@@ -1653,7 +1653,7 @@ interface TrustedHtmlConfig {
 interface UserGroupSuggestion {
     id: string;
     displayLabel: string;
-    type: 'USER_TYPE' | 'GROUP_TYPE';
+    type: 'GROUP_TYPE' | 'USER_TYPE';
     prefixed_id: string;
     username?: string;
     groupname?: string;
@@ -1765,7 +1765,7 @@ function directoryUsesL10nLabel(directoryName: string): boolean;
 function docTypeIcon(type: string): string;
 function documentHasMainBlob(doc: NuxeoDocument): boolean;
 function documentHasPersistedMainBlob(doc: NuxeoDocument): boolean;
-function documentNavigationUrl(doc: Pick<NuxeoDocument, 'uid' | 'type' | 'path' | 'facets'>, docTypeHint?: string): string;
+function documentNavigationUrl(doc: Pick<NuxeoDocument, 'facets' | 'path' | 'type' | 'uid'>, docTypeHint?: string): string;
 function entryPropertiesIncludeParent(keys: readonly string[]): boolean;
 function escapeNxqlLiteral(value: string): string;
 function expandableNuxeoPathPrefixes(nuxeoPath: string): string[];
@@ -1790,13 +1790,13 @@ function isAdfHxBrowseRouterUrl(routerUrl: string): boolean;
 function isBlobHoldingDocType(docType: string): boolean;
 function isBrowsableNavNode(doc: NuxeoDocument | null): boolean;
 function isBrowseRouterUrl(routerUrl: string): boolean;
-function isCollectionDocument(doc: Pick<NuxeoDocument, 'type' | 'facets'> | null | undefined, docTypeHint?: string): boolean;
+function isCollectionDocument(doc: Pick<NuxeoDocument, 'facets' | 'type'> | null | undefined, docTypeHint?: string): boolean;
 function isCompareIconField(key: string): boolean;
 function isContentLakeIngestCurrent(doc: NuxeoDocument | null | undefined): boolean;
 function isDirectoryI18nKey(value: string | undefined | null): boolean;
 function isDomainParentType(parentType: string | null | undefined): boolean;
 function isExpiresFieldValid(expiresRawText: string, expires: Date | null): boolean;
-function isFolderishDocument(doc: Pick<NuxeoDocument, 'type' | 'facets'> | null): boolean;
+function isFolderishDocument(doc: Pick<NuxeoDocument, 'facets' | 'type'> | null): boolean;
 function isHtmlNoteFormat(mimeType: string): boolean;
 function isMailSendError(err: unknown): boolean;
 function isManagedDirectory(metadata: Pick<DirectoryMetadata, 'type'>): boolean;
@@ -1810,7 +1810,7 @@ function isRestrictedImportParentPath(path: string | null | undefined): boolean;
 function isSafeHttpUrl(url: string): boolean;
 function isUserWorkspacePath(nuxeoPath: string): boolean;
 function l10nEntryLabel(entry: L10nDirectoryEntry): string;
-function mailSendFailureMessage(context: 'add' | 'update' | 'send'): string;
+function mailSendFailureMessage(context: 'add' | 'send' | 'update'): string;
 function mediaTypeEssence(value: string | null | undefined): string;
 function mergeCreateDocumentBody(template: NuxeoCreateDocumentTemplate, docType: string, nameFallback: string, overrides: Record<string, unknown>): Record<string, unknown>;
 function mergeDocumentPermissionsContext(existing: NuxeoDocument, updated: NuxeoDocument, options?: MergeDocumentPermissionsContextOptions): NuxeoDocument;
@@ -1870,7 +1870,7 @@ function userWorkspaceBrowseRouterUrl(nuxeoPath: string): string | null;
 function userWorkspaceOwnerFromPath(nuxeoPath: string): string | null;
 function userWorkspaceRootFromPath(nuxeoPath: string): string | null;
 function vocabularyParentRequired(directoryName: string, metadata?: DirectoryMetadata): boolean;
-function vocabularySupportsParent(directoryName: string, metadata: DirectoryMetadata | undefined, entries: readonly Pick<ManagedDirectoryEntry, 'propertyKeys' | 'parent'>[]): boolean;
+function vocabularySupportsParent(directoryName: string, metadata: DirectoryMetadata | undefined, entries: readonly Pick<ManagedDirectoryEntry, 'parent' | 'propertyKeys'>[]): boolean;
 function vocabularyTableColumns(directoryName: string, metadata: DirectoryMetadata | undefined, entries: readonly ManagedDirectoryEntry[]): string[];
 function writeClipboardDocs(docs: ClipboardDoc[]): void;
 ```
@@ -1949,7 +1949,7 @@ class DocumentViewerComponent {
     readonly removeMainFileClicked: _angular_core.OutputEmitterRef<void>;
     readonly storyboardSeek: _angular_core.OutputEmitterRef<number>;
     readonly formatDownload: _angular_core.OutputEmitterRef<string>;
-    readonly contentType: _angular_core.Signal<"pdf" | "xml" | "image" | "audio" | "html" | "video" | "markdown" | "text" | "pdfRendition" | "preview" | "none">;
+    readonly contentType: _angular_core.Signal<"audio" | "html" | "image" | "markdown" | "none" | "pdf" | "pdfRendition" | "preview" | "text" | "video" | "xml">;
     readonly showARenderViewer: _angular_core.Signal<boolean>;
     readonly showImageToolbar: _angular_core.Signal<boolean>;
     readonly showVideoStoryboard: _angular_core.Signal<boolean>;
@@ -1966,7 +1966,7 @@ class DocumentViewerComponent {
     }[]>;
     readonly zoom: _angular_core.WritableSignal<number>;
     readonly rotation: _angular_core.WritableSignal<number>;
-    readonly fitMode: _angular_core.WritableSignal<"width" | "real">;
+    readonly fitMode: _angular_core.WritableSignal<"real" | "width">;
     readonly transform: _angular_core.Signal<string>;
     readonly videoRef: _angular_core.Signal<ElementRef<HTMLVideoElement> | undefined>;
     zoomIn(): void;
@@ -2053,7 +2053,7 @@ interface ExportDialogData {
     exportFn: (type: ExportType, uid: string) => rxjs.Observable<Blob>;
     }
 }
-type ExportType = 'thumbnail' | 'pdf' | 'zip' | 'xml';
+type ExportType = 'pdf' | 'thumbnail' | 'xml' | 'zip';
 interface IptcData {
     copyright?: string;
     rights?: string;

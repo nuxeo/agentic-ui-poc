@@ -44,7 +44,7 @@ import { applyHeaderFormatSelectionOnly, type QuillRange } from './note-quill-he
 import { NoteImagePickerDialogComponent } from './note-image-picker-dialog';
 import { buildNoteImagesInsertHtml } from './note-image-insert';
 import { notePictureInsertUrl } from './note-image-url';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-note-editor',
@@ -65,6 +65,7 @@ import { TranslatePipe } from '@ngx-translate/core';
   styleUrl: './note-editor.scss',
 })
 export class NoteEditorComponent {
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly sanitizer = inject(DomSanitizer);
@@ -401,7 +402,7 @@ export class NoteEditorComponent {
           },
         },
       },
-      placeholder: 'Type here...',
+      placeholder: this.translate.instant('document-detail.note-editor.placeholder'),
     });
 
     this.quill.on('text-change', () => {

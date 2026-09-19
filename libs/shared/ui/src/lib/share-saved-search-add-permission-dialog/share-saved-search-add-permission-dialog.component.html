@@ -58,7 +58,9 @@
     }}</mat-label>
     <mat-select [(ngModel)]="right">
       @for (opt of rightOptions; track opt.value) {
-        <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        <mat-option [value]="opt.value">{{
+          opt.labelKey ? (opt.labelKey | translate) : opt.label
+        }}</mat-option>
       }
     </mat-select>
   </mat-form-field>

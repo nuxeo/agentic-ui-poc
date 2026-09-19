@@ -33,7 +33,7 @@ import {
   type NuxeoDocument,
   type NuxeoDocumentList,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export type ViewMode = 'grid' | 'table' | 'list';
 type SortDirection = 'asc' | 'desc';
@@ -94,6 +94,7 @@ const SORTABLE_COLUMNS = new Set(['title', 'modified', 'contributor', 'created',
   styleUrl: './trash.component.scss',
 })
 export class TrashComponent {
+  private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly snackBar = inject(MatSnackBar);
@@ -221,7 +222,7 @@ export class TrashComponent {
       ...SAVED_SEARCH_DIALOG_OPTIONS,
       data: {
         title: 'Saved Search',
-        placeholder: 'Enter a name for your saved search',
+        placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
       },
     });
 
@@ -283,7 +284,7 @@ export class TrashComponent {
         ...SAVED_SEARCH_DIALOG_OPTIONS,
         data: {
           title: 'Edit Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: title.trim(),
         },
       })

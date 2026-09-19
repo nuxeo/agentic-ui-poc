@@ -101,6 +101,7 @@ export class AppShellComponent implements OnDestroy {
 
   private readonly settingsDrawerItem: AppNavItem = {
     id: 'app.navbar.settings',
+    labelKey: 'nav.item.settings',
     label: 'Settings',
     path: '/settings',
     icon: 'settings',

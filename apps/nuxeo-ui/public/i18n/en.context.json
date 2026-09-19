@@ -1427,5 +1427,13 @@
   "search.filter.option.more-than-100-mb": "One selectable value inside a search filter group. A size or date RANGE, or a state name. Units (KB, MB, px) are symbols and must NOT be translated, and the number order must be preserved.",
   "search.filter.option.no-containers": "One selectable value inside a search filter group. A size or date RANGE, or a state name. Units (KB, MB, px) are symbols and must NOT be translated, and the number order must be preserved.",
   "search.filter.option.most-recent": "One selectable value inside a search filter group. A size or date RANGE, or a state name. Units (KB, MB, px) are symbols and must NOT be translated, and the number order must be preserved.",
-  "search.filter.option.validated": "One selectable value inside a search filter group. A size or date RANGE, or a state name. Units (KB, MB, px) are symbols and must NOT be translated, and the number order must be preserved."
+  "search.filter.option.validated": "One selectable value inside a search filter group. A size or date RANGE, or a state name. Units (KB, MB, px) are symbols and must NOT be translated, and the number order must be preserved.",
+  "drawer.settings-themes": "Link in a side drawer. A NOUN naming the page it opens. Route `/settings/themes`.",
+  "nav.item.settings": "Top-level navigation item, and the accessible name of its drawer toggle. A NOUN naming the section.",
+  "browse.breadcrumb.root": "First crumb of the browse breadcrumb trail, standing for the repository root. A NOUN.",
+  "search.quick-filter.no-containers": "Quick filter toggle in search. A NOUN phrase naming what the filter excludes.",
+  "search.quick-filter.most-recent": "Quick filter toggle in search. A NOUN phrase naming what the filter selects.",
+  "search.quick-filter.validated": "Quick filter toggle in search. An ADJECTIVE describing the document state kept.",
+  "saved-search.dialog.name-placeholder": "Placeholder inside the text field of the Save search dialog. An IMPERATIVE instruction. One key for all eight call sites: it is the same field in the same dialog, which is the sharing INFO-144 permits.",
+  "document-detail.note-editor.placeholder": "Placeholder inside the empty note body editor. An IMPERATIVE instruction. The ellipsis is part of the string."
 }

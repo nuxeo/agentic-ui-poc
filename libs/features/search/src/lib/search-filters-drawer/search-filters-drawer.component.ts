@@ -21,7 +21,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { SearchQueueComponent } from '../search-queue/search-queue.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 interface CountOption {
   key: string;
@@ -58,6 +58,7 @@ type DrawerViewMode = 'filter' | 'queue';
   styleUrl: './search-filters-drawer.component.scss',
 })
 export class SearchFiltersDrawerComponent {
+  private readonly translate = inject(TranslateService);
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly searchService = inject(SearchService);
   private readonly router = inject(Router);
@@ -439,7 +440,7 @@ export class SearchFiltersDrawerComponent {
       .open(SavedSearchDialogComponent, {
         data: {
           title: 'Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
       .afterClosed()

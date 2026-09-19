@@ -27,7 +27,7 @@ import {
   ConfirmDialogComponent,
   type ConfirmDialogData,
 } from '@nuxeo-satori/platform/ui';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -303,6 +303,7 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
   styleUrl: './asset-search-results.component.scss',
 })
 export class AssetSearchResultsComponent {
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -726,7 +727,7 @@ export class AssetSearchResultsComponent {
       .open(SavedSearchDialogComponent, {
         data: {
           title: 'Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
       .afterClosed()
@@ -795,7 +796,7 @@ export class AssetSearchResultsComponent {
       .open(SavedSearchDialogComponent, {
         data: {
           title: 'Edit Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: this.selectedSavedSearchTitle(),
         },
       })

@@ -147,7 +147,7 @@
             [class.active]="isQuickFilterSelected(filter.value)"
             (click)="toggleQuickFilter(filter.value)"
           >
-            {{ filter.label }}
+            {{ filter.labelKey ? (filter.labelKey | translate) : filter.label }}
           </button>
         }
       </div>

@@ -63,7 +63,7 @@ export const SETTINGS_DRAWER_ITEMS: DrawerLinkItem[] = [
     label: 'Cloud Services',
     path: '/settings/cloud-services',
   },
-  { label: 'Themes', path: THEMES_SETTINGS_PATH },
+  { labelKey: 'drawer.settings-themes', label: 'Themes', path: THEMES_SETTINGS_PATH },
 ];
 
 /** Settings drawer links visible for the current theming feature flag. */

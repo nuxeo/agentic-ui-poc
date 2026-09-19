@@ -661,6 +661,9 @@
       "coverage": "Coverage",
       "subjects": "Subjects",
       "flags": "Flags"
+    },
+    "breadcrumb": {
+      "root": "Root"
     }
   },
   "collections": {
@@ -927,7 +930,8 @@
       "text-color": "Text color",
       "text-style": "Text style",
       "underline": "Underline",
-      "uploading-image": "Uploading image…"
+      "uploading-image": "Uploading image…",
+      "placeholder": "Type here..."
     },
     "note-image-picker-dialog": {
       "cancel": "Cancel",
@@ -1160,7 +1164,8 @@
       "recently-viewed": "Recently viewed",
       "search-filters": "Search filters",
       "tasks": "Tasks",
-      "trash": "Trash"
+      "trash": "Trash",
+      "settings": "Settings"
     },
     "loading": "Loading",
     "recent": {
@@ -1311,6 +1316,11 @@
         "most-recent": "Most Recent",
         "validated": "Validated"
       }
+    },
+    "quick-filter": {
+      "no-containers": "No Containers",
+      "most-recent": "Most Recent",
+      "validated": "Validated"
     }
   },
   "settings": {
@@ -1669,7 +1679,8 @@
     "administration-vocabularies": "Vocabularies",
     "administration-audit": "Audit",
     "administration-cloud-services": "Cloud Services",
-    "administration-nxql-search": "NXQL Search"
+    "administration-nxql-search": "NXQL Search",
+    "settings-themes": "Themes"
   },
   "permission": {
     "read": "Read",
@@ -1690,5 +1701,10 @@
     "xml-export": "XML Export",
     "zip": "ZIP Export",
     "xml": "XML Export"
+  },
+  "saved-search": {
+    "dialog": {
+      "name-placeholder": "Enter a name for your saved search"
+    }
   }
 }

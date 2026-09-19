@@ -144,7 +144,7 @@ import {
   EditMetadataDialogData,
 } from '../edit-metadata-dialog/edit-metadata-dialog';
 import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 /**
  * The packaged column set as descriptors, for an injector where Layer 1
@@ -196,6 +196,7 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
   styleUrl: './browse.scss',
 })
 export class BrowseComponent {
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   @ViewChild('columnPanel')
   private columnPanel?: ElementRef<HTMLElement>;
@@ -564,7 +565,9 @@ export class BrowseComponent {
 
   readonly breadcrumbs = computed<SatBreadcrumbsItem[]>(() => {
     const doc = this.currentDoc();
-    const crumbs: SatBreadcrumbsItem[] = [{ label: 'Root', href: '/browse' }];
+    const crumbs: SatBreadcrumbsItem[] = [
+      { label: this.translate.instant('browse.breadcrumb.root'), href: '/browse' },
+    ];
     if (!doc || doc.path === '/') return crumbs;
     const parts = doc.path.split('/').filter(Boolean);
     let accumulated = '';

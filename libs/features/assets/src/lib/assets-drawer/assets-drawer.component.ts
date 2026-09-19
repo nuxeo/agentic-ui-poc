@@ -18,7 +18,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { AssetsQueueComponent } from '../assets-queue/assets-queue.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface FilterOption {
   label: string;
@@ -87,6 +87,7 @@ function toMimeType(value: string): string {
   styleUrl: './assets-drawer.component.scss',
 })
 export class AssetsDrawerComponent {
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
@@ -438,7 +439,7 @@ export class AssetsDrawerComponent {
       .open(SavedSearchDialogComponent, {
         data: {
           title: 'Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
       .afterClosed()

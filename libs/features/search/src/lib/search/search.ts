@@ -47,7 +47,7 @@ import {
   AiFeatureFlagService,
   aiErrorMessage,
 } from '@agentic-ui/shared/ai-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -62,6 +62,8 @@ interface ColumnDef {
 
 interface QuickFilterOption {
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   value: string;
 }
 
@@ -86,9 +88,9 @@ const ALL_COLUMNS: ColumnDef[] = [
 ];
 
 const QUICK_FILTER_OPTIONS: QuickFilterOption[] = [
-  { label: 'No Containers', value: 'noFolder' },
-  { label: 'Most Recent', value: 'mostRecent' },
-  { label: 'Validated', value: 'onlyValidated' },
+  { labelKey: 'search.quick-filter.no-containers', label: 'No Containers', value: 'noFolder' },
+  { labelKey: 'search.quick-filter.most-recent', label: 'Most Recent', value: 'mostRecent' },
+  { labelKey: 'search.quick-filter.validated', label: 'Validated', value: 'onlyValidated' },
 ];
 
 // Map display column keys to API field names
@@ -173,6 +175,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
   styleUrl: './search.scss',
 })
 export class SearchComponent {
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -803,7 +806,7 @@ export class SearchComponent {
       .open(SavedSearchDialogComponent, {
         data: {
           title: 'Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
       .afterClosed()
@@ -874,7 +877,7 @@ export class SearchComponent {
       .open(SavedSearchDialogComponent, {
         data: {
           title: 'Edit Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: this.selectedSavedSearchTitle(),
         },
       })

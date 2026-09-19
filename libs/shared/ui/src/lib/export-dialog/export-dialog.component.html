@@ -4,7 +4,9 @@
   @for (option of options; track option.type) {
     <button class="export-option" [disabled]="exporting()" (click)="onExport(option.type)">
       <mat-icon class="export-option-icon">{{ option.icon }}</mat-icon>
-      <span class="export-option-label">{{ option.label }}</span>
+      <span class="export-option-label">{{
+        option.labelKey ? (option.labelKey | translate) : option.label
+      }}</span>
       @if (exporting() === option.type) {
         <mat-spinner diameter="18" class="export-spinner" />
       }
