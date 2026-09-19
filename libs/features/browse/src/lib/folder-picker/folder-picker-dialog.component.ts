@@ -9,6 +9,7 @@ import {
   isFolderishDocument,
   type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface FolderPickerDialogData {
   /** Folder path to start from (e.g. current import target). */
@@ -36,7 +37,13 @@ function parentPath(path: string): string | null {
 @Component({
   selector: 'lib-folder-picker-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [
+    TranslatePipe,
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+  ],
   templateUrl: './folder-picker-dialog.component.html',
   styleUrl: './folder-picker-dialog.component.scss',
 })

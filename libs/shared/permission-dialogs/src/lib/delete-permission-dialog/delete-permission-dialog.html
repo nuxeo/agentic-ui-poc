@@ -1,0 +1,38 @@
+<h2 mat-dialog-title>
+  {{ 'permissions.delete-permission-dialog.the-following-permission-will-be-deleted' | translate }}
+</h2>
+
+<mat-dialog-content>
+  <table class="confirm-table">
+    <thead>
+      <tr>
+        <th>{{ 'permissions.delete-permission-dialog.user-group' | translate }}</th>
+        <th>{{ 'permissions.delete-permission-dialog.right' | translate }}</th>
+        <th>{{ 'permissions.delete-permission-dialog.time-frame' | translate }}</th>
+        <th>{{ 'permissions.delete-permission-dialog.granted-by' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ data.ace.username }}</td>
+        <td>{{ data.permissionLabel }}</td>
+        <td>{{ data.timeFrameLabel }}</td>
+        <td>{{ data.ace.creator ?? '—' }}</td>
+      </tr>
+    </tbody>
+  </table>
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-stroked-button mat-dialog-close>
+    {{ 'permissions.delete-permission-dialog.cancel' | translate }}
+  </button>
+  <span class="spacer"></span>
+  <button mat-stroked-button color="warn" [disabled]="deleting()" (click)="confirmDelete()">
+    @if (deleting()) {
+      <mat-spinner diameter="18" />
+    } @else {
+      Delete
+    }
+  </button>
+</mat-dialog-actions>

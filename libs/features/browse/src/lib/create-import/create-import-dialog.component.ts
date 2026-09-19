@@ -61,6 +61,7 @@ import {
   documentNavigationUrl,
   isCollectionDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */
@@ -107,6 +108,23 @@ export interface DocTypeDef {
   icon: string;
 }
 
+const DOC_TYPE_LABEL_KEYS: Record<string, string> = {
+  Audio: 'doc-type.audio',
+  Collection: 'doc-type.collection',
+  File: 'doc-type.file',
+  Folder: 'doc-type.folder',
+  Note: 'doc-type.note',
+  OrderedFolder: 'doc-type.ordered-folder',
+  Picture: 'doc-type.picture',
+  Video: 'doc-type.video',
+  Workspace: 'doc-type.workspace',
+  Section: 'doc-type.section',
+  SectionRoot: 'doc-type.section-root',
+  TemplateRoot: 'doc-type.template-root',
+  Domain: 'doc-type.domain',
+  WorkspaceRoot: 'doc-type.workspace-root',
+};
+
 const DOC_TYPE_LABELS: Record<string, string> = {
   Audio: 'Audio',
   Collection: 'Collection',
@@ -124,7 +142,12 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   WorkspaceRoot: 'Workspace Root',
 };
 
-function docTypeLabel(type: string): string {
+function docTypeLabel(type: string, translate: (key: string) => string): string {
+  const key = DOC_TYPE_LABEL_KEYS[type];
+  if (key) return translate(key);
+  // A type a customer has added that no catalogue knows about. Splitting the camel case is a
+  // better guess than showing `OrderedFolder`, and it cannot be translated because nothing
+  // knew the type existed at build time.
   return DOC_TYPE_LABELS[type] ?? type.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
@@ -161,10 +184,10 @@ function applyImportPropertiesTemplate(
   return state;
 }
 
-function toDocTypeDefs(types: string[]): DocTypeDef[] {
+function toDocTypeDefs(types: string[], translate: (key: string) => string): DocTypeDef[] {
   return types.map((type) => ({
     type,
-    label: docTypeLabel(type),
+    label: docTypeLabel(type, translate),
     icon: docTypeIcon(type),
   }));
 }
@@ -178,6 +201,7 @@ const DIALOG_SIZE = {
   selector: 'lib-create-import-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
@@ -199,6 +223,7 @@ const DIALOG_SIZE = {
   styleUrl: './create-import-dialog.component.scss',
 })
 export class CreateImportDialogComponent implements OnInit {
+  private readonly translate = inject(TranslateService);
   @ViewChild('mainFileInput') mainFileInput?: ElementRef<HTMLInputElement>;
   @ViewChild('importFileInput') importFileInput?: ElementRef<HTMLInputElement>;
   @ViewChild('expiresInput') expiresNgModel?: NgModel;
@@ -443,7 +468,9 @@ export class CreateImportDialogComponent implements OnInit {
             return;
           }
           this.parentFolderType.set(doc.type);
-          this.creatableTypes.set(toDocTypeDefs(resolveCreatableSubtypes(doc)));
+          this.creatableTypes.set(
+            toDocTypeDefs(resolveCreatableSubtypes(doc), (key) => this.translate.instant(key)),
+          );
           this.loadingContext.set(false);
         },
         error: () => {
@@ -452,7 +479,7 @@ export class CreateImportDialogComponent implements OnInit {
           }
           this.parentFolderType.set(null);
           this.creatableTypes.set([]);
-          this.typesLoadError.set('Could not load creatable document types for this folder.');
+          this.typesLoadError.set(this.translate.instant('browse.create-import.types-load-failed'));
           this.loadingContext.set(false);
         },
       });

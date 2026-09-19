@@ -26,11 +26,13 @@ import {
   NuxeoApiBase,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-task-detail',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     FormsModule,
     MatIconModule,

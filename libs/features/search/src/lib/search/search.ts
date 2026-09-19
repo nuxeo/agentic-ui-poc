@@ -47,6 +47,7 @@ import {
   AiFeatureFlagService,
   aiErrorMessage,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -54,33 +55,42 @@ export type ViewMode = 'grid' | 'table' | 'list';
 interface ColumnDef {
   key: string;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   width: string;
 }
 
 interface QuickFilterOption {
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   value: string;
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'name', label: 'Title', width: '2fr' },
-  { key: 'type', label: 'Type', width: '1fr' },
-  { key: 'modified', label: 'Modified', width: '1fr' },
-  { key: 'contributor', label: 'Last contributor', width: '1.2fr' },
-  { key: 'state', label: 'State', width: '1fr' },
-  { key: 'version', label: 'Version', width: '0.8fr' },
-  { key: 'created', label: 'Created', width: '1fr' },
-  { key: 'author', label: 'Author', width: '1fr' },
-  { key: 'nature', label: 'Nature', width: '1fr' },
-  { key: 'coverage', label: 'Coverage', width: '1fr' },
-  { key: 'subjects', label: 'Subjects', width: '1fr' },
-  { key: 'flags', label: 'Flags', width: '1fr' },
+  { key: 'name', labelKey: 'search.column.name', label: 'Title', width: '2fr' },
+  { key: 'type', labelKey: 'search.column.type', label: 'Type', width: '1fr' },
+  { key: 'modified', labelKey: 'search.column.modified', label: 'Modified', width: '1fr' },
+  {
+    key: 'contributor',
+    labelKey: 'search.column.contributor',
+    label: 'Last contributor',
+    width: '1.2fr',
+  },
+  { key: 'state', labelKey: 'search.column.state', label: 'State', width: '1fr' },
+  { key: 'version', labelKey: 'search.column.version', label: 'Version', width: '0.8fr' },
+  { key: 'created', labelKey: 'search.column.created', label: 'Created', width: '1fr' },
+  { key: 'author', labelKey: 'search.column.author', label: 'Author', width: '1fr' },
+  { key: 'nature', labelKey: 'search.column.nature', label: 'Nature', width: '1fr' },
+  { key: 'coverage', labelKey: 'search.column.coverage', label: 'Coverage', width: '1fr' },
+  { key: 'subjects', labelKey: 'search.column.subjects', label: 'Subjects', width: '1fr' },
+  { key: 'flags', labelKey: 'search.column.flags', label: 'Flags', width: '1fr' },
 ];
 
 const QUICK_FILTER_OPTIONS: QuickFilterOption[] = [
-  { label: 'No Containers', value: 'noFolder' },
-  { label: 'Most Recent', value: 'mostRecent' },
-  { label: 'Validated', value: 'onlyValidated' },
+  { labelKey: 'search.quick-filter.no-containers', label: 'No Containers', value: 'noFolder' },
+  { labelKey: 'search.quick-filter.most-recent', label: 'Most Recent', value: 'mostRecent' },
+  { labelKey: 'search.quick-filter.validated', label: 'Validated', value: 'onlyValidated' },
 ];
 
 // Map display column keys to API field names
@@ -149,6 +159,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
   selector: 'lib-search',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
@@ -164,6 +175,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
   styleUrl: './search.scss',
 })
 export class SearchComponent {
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -794,7 +806,7 @@ export class SearchComponent {
       .open(SavedSearchDialogComponent, {
         data: {
           title: 'Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
       .afterClosed()
@@ -865,7 +877,7 @@ export class SearchComponent {
       .open(SavedSearchDialogComponent, {
         data: {
           title: 'Edit Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: this.selectedSavedSearchTitle(),
         },
       })

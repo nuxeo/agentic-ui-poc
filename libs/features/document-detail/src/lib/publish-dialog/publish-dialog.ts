@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { NuxeoDocument, DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface PublishDialogData {
   documentUid: string;
@@ -25,6 +26,7 @@ interface FlatSection {
   selector: 'lib-publish-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatButtonModule,
@@ -32,93 +34,7 @@ interface FlatSection {
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
-  template: `
-    <div class="pub-dialog">
-      <div class="pub-header">Internal Publication</div>
-      <div class="pub-divider"></div>
-
-      <div class="pub-body">
-        @if (sectionsLoading()) {
-          <div class="pub-loading">
-            <mat-spinner diameter="28" />
-          </div>
-        } @else {
-          <!-- Location -->
-          <div class="field-group">
-            <label class="field-label" for="publish-dialog-location"
-              >Location <span class="required">*</span></label
-            >
-            <div class="select-wrapper">
-              <select
-                id="publish-dialog-location"
-                class="native-select"
-                [(ngModel)]="selectedSectionId"
-              >
-                <option value="" disabled selected>Choose where to publish</option>
-                @for (s of flatSections(); track s.uid) {
-                  <option [value]="s.uid">{{ sectionIndent(s.depth) }}{{ s.title }}</option>
-                }
-              </select>
-            </div>
-          </div>
-
-          <!-- Options row -->
-          <div class="options-row">
-            <label class="checkbox-label">
-              <input type="checkbox" [(ngModel)]="showRenditions" />
-              Show renditions
-            </label>
-
-            @if (showRenditions) {
-              <div class="inline-group">
-                <span class="inline-label">Renditions</span>
-                <select class="inline-select rendition-select" [(ngModel)]="selectedRendition">
-                  <option value="">None</option>
-                  <option value="__default__">Default rendition</option>
-                  @for (r of data.renditions; track r.name) {
-                    <option [value]="r.name">{{ r.label }}</option>
-                  }
-                </select>
-              </div>
-            }
-
-            <div class="inline-group">
-              <span class="inline-label">Version</span>
-              <select class="inline-select version-select" [(ngModel)]="selectedVersion">
-                <option [value]="data.versionLabel">{{ data.versionLabel }}</option>
-                @for (v of data.versions; track v.uid) {
-                  <option [value]="versionStr(v)">{{ versionStr(v) }}</option>
-                }
-              </select>
-            </div>
-
-            <div class="inline-group">
-              <span class="inline-label">Options</span>
-              <label class="checkbox-label">
-                <input type="checkbox" [(ngModel)]="overrideExisting" />
-                Override existing publications.
-              </label>
-            </div>
-          </div>
-        }
-      </div>
-
-      <div class="pub-actions">
-        <button class="btn btn-cancel" (click)="close()">Cancel</button>
-        <button
-          class="btn btn-publish"
-          [disabled]="!selectedSectionId || publishing()"
-          (click)="publish()"
-        >
-          @if (publishing()) {
-            <mat-spinner diameter="16" />
-          } @else {
-            Publish
-          }
-        </button>
-      </div>
-    </div>
-  `,
+  templateUrl: './publish-dialog.html',
   styles: [
     `
       .pub-dialog {

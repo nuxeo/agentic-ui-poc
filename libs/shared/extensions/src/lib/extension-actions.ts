@@ -19,6 +19,14 @@ import type { ExtensionElement } from './extension-slots';
 export interface ExtensionActionDescriptor extends ExtensionElement {
   /** Text shown in a menu, and the accessible name of an icon-only control. */
   readonly label: string;
+  /**
+   * A translation key for the text, preferred over `label` when it resolves.
+   *
+   * `label` stays a literal and stays what a manifest's `overrides[id].label` replaces. See
+   * `NavItemDescriptor.labelKey` for why this is a second field rather than a reinterpretation
+   * of a published one, and `ExtensionSlotRegistry.applyOverride` for why an override clears it.
+   */
+  readonly labelKey?: string;
   /** Icon name understood by the host's icon set. */
   readonly icon?: string;
   /** Hover text. Falls back to `label`. */
@@ -51,6 +59,14 @@ export interface ExtensionActionDescriptor extends ExtensionElement {
 /** A column of a document list, addressable so a customer can change the set. */
 export interface ExtensionColumnDescriptor extends ExtensionElement {
   readonly label: string;
+  /**
+   * A translation key for the text, preferred over `label` when it resolves.
+   *
+   * `label` stays a literal and stays what a manifest's `overrides[id].label` replaces. See
+   * `NavItemDescriptor.labelKey` for why this is a second field rather than a reinterpretation
+   * of a published one, and `ExtensionSlotRegistry.applyOverride` for why an override clears it.
+   */
+  readonly labelKey?: string;
   /** Property key the host reads off a document, e.g. `dc:title`. */
   readonly field: string;
   readonly sortable?: boolean;
@@ -78,6 +94,14 @@ export interface ExtensionColumnDescriptor extends ExtensionElement {
  */
 export interface ExtensionTabDescriptor extends ExtensionElement {
   readonly label: string;
+  /**
+   * A translation key for the text, preferred over `label` when it resolves.
+   *
+   * `label` stays a literal and stays what a manifest's `overrides[id].label` replaces. See
+   * `NavItemDescriptor.labelKey` for why this is a second field rather than a reinterpretation
+   * of a published one, and `ExtensionSlotRegistry.applyOverride` for why an override clears it.
+   */
+  readonly labelKey?: string;
   /** Icon rendered before the label. Absent renders a text-only tab. */
   readonly icon?: string;
   readonly rule?: ExtensionRule;
@@ -238,4 +262,28 @@ export class ExtensionActionRegistry {
   private resolve(id: string): ExtensionActionHandler | undefined {
     return this.overrides.get(id)?.at(-1) ?? this.packaged.get(id)?.at(-1);
   }
+}
+
+/**
+ * The text of a descriptor, preferring its translation key over its literal label.
+ *
+ * For the consumers a template pipe cannot reach — a page heading built in TypeScript, a
+ * composed accessible name, and adf-core's `DataColumn.title`, which upstream's own DataTable
+ * renders where we have no template at all.
+ *
+ * Takes a resolver rather than `TranslateService` so this library keeps no dependency on
+ * ngx-translate: Layer 1 descriptors are data, and which translation library renders them is
+ * the host's business. Callers pass `(key) => translate.instant(key)`.
+ *
+ * Falls back to the literal when a key does not resolve, because ngx-translate passes an
+ * unknown key straight through and a column header reading `column.last-contributor` is worse
+ * than the English it replaced.
+ */
+export function descriptorLabel(
+  descriptor: { readonly label: string; readonly labelKey?: string },
+  translate: (key: string) => string,
+): string {
+  if (!descriptor.labelKey) return descriptor.label;
+  const resolved = translate(descriptor.labelKey);
+  return resolved === descriptor.labelKey ? descriptor.label : resolved;
 }

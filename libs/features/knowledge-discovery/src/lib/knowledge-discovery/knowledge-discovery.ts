@@ -28,6 +28,7 @@ import {
   type KdModelInfo,
   type KdQuestionHistoryItem,
 } from '@agentic-ui/shared/kd-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 /**
  * Structured snapshot of a failed KD HTTP call, surfaced inline on the page
@@ -58,6 +59,7 @@ export interface KdDebugError {
   selector: 'lib-knowledge-discovery',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     FormsModule,
     JsonPipe,

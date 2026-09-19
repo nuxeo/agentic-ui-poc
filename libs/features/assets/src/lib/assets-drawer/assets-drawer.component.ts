@@ -18,9 +18,12 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { AssetsQueueComponent } from '../assets-queue/assets-queue.component';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface FilterOption {
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   value: string;
   selected: boolean;
   aggKey?: string;
@@ -29,6 +32,8 @@ export interface FilterOption {
 export interface FilterGroup {
   id: string;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   options: FilterOption[];
 }
 
@@ -68,6 +73,7 @@ function toMimeType(value: string): string {
   selector: 'lib-assets-drawer',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatIconModule,
     MatButtonModule,
     MatCheckboxModule,
@@ -81,6 +87,7 @@ function toMimeType(value: string): string {
   styleUrl: './assets-drawer.component.scss',
 })
 export class AssetsDrawerComponent {
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
@@ -141,26 +148,41 @@ export class AssetsDrawerComponent {
   readonly expandedFilters = signal<Set<string>>(new Set());
 
   readonly filterGroups = signal<FilterGroup[]>([
-    { id: 'asset-type', label: 'Asset Type', options: [] },
-    { id: 'asset-format', label: 'Asset Format', options: [] },
+    { id: 'asset-type', labelKey: 'assets.filter.asset-type', label: 'Asset Type', options: [] },
+    {
+      id: 'asset-format',
+      labelKey: 'assets.filter.asset-format',
+      label: 'Asset Format',
+      options: [],
+    },
     {
       id: 'asset-width',
+      labelKey: 'assets.filter.asset-width',
       label: 'Asset Width',
       options: [
-        { label: 'Less than 500 px', value: 'to_500_px', selected: false, aggKey: 'to_500_px' },
         {
+          labelKey: 'assets.filter.option.less-than-500-px',
+          label: 'Less than 500 px',
+          value: 'to_500_px',
+          selected: false,
+          aggKey: 'to_500_px',
+        },
+        {
+          labelKey: 'assets.filter.option.between-500-px-and-1500-px',
           label: 'Between 500 px and 1500 px',
           value: 'from_500_to_1500_px',
           selected: false,
           aggKey: 'from_500_to_1500_px',
         },
         {
+          labelKey: 'assets.filter.option.between-1500-px-and-2000-px',
           label: 'Between 1500 px and 2000 px',
           value: 'from_1500_to_2000_px',
           selected: false,
           aggKey: 'from_1500_to_2000_px',
         },
         {
+          labelKey: 'assets.filter.option.more-than-2000-px',
           label: 'More than 2000 px',
           value: 'from_2000_px',
           selected: false,
@@ -170,22 +192,32 @@ export class AssetsDrawerComponent {
     },
     {
       id: 'asset-height',
+      labelKey: 'assets.filter.asset-height',
       label: 'Asset Height',
       options: [
-        { label: 'Less than 500 px', value: 'to_500_px', selected: false, aggKey: 'to_500_px' },
         {
+          labelKey: 'assets.filter.option.less-than-500-px',
+          label: 'Less than 500 px',
+          value: 'to_500_px',
+          selected: false,
+          aggKey: 'to_500_px',
+        },
+        {
+          labelKey: 'assets.filter.option.between-500-px-and-1500-px',
           label: 'Between 500 px and 1500 px',
           value: 'from_500_to_1500_px',
           selected: false,
           aggKey: 'from_500_to_1500_px',
         },
         {
+          labelKey: 'assets.filter.option.between-1500-px-and-2000-px',
           label: 'Between 1500 px and 2000 px',
           value: 'from_1500_to_2000_px',
           selected: false,
           aggKey: 'from_1500_to_2000_px',
         },
         {
+          labelKey: 'assets.filter.option.more-than-2000-px',
           label: 'More than 2000 px',
           value: 'from_2000_px',
           selected: false,
@@ -193,32 +225,58 @@ export class AssetsDrawerComponent {
         },
       ],
     },
-    { id: 'color-profile', label: 'Color Profile', options: [] },
-    { id: 'color-depth', label: 'Color Depth per Channel', options: [] },
+    {
+      id: 'color-profile',
+      labelKey: 'assets.filter.color-profile',
+      label: 'Color Profile',
+      options: [],
+    },
+    {
+      id: 'color-depth',
+      labelKey: 'assets.filter.color-depth',
+      label: 'Color Depth per Channel',
+      options: [],
+    },
     {
       id: 'video-duration',
+      labelKey: 'assets.filter.video-duration',
       label: 'Video Duration',
       options: [
-        { label: 'Less than 30 s', value: 'to_30_s', selected: false, aggKey: 'to_30_s' },
         {
+          labelKey: 'assets.filter.option.less-than-30-s',
+          label: 'Less than 30 s',
+          value: 'to_30_s',
+          selected: false,
+          aggKey: 'to_30_s',
+        },
+        {
+          labelKey: 'assets.filter.option.between-30-s-and-180-s',
           label: 'Between 30 s and 180 s',
           value: 'from_30_to_180_s',
           selected: false,
           aggKey: 'from_30_to_180_s',
         },
         {
+          labelKey: 'assets.filter.option.between-180-s-and-600-s',
           label: 'Between 180 s and 600 s',
           value: 'from_180_to_600_s',
           selected: false,
           aggKey: 'from_180_to_600_s',
         },
         {
+          labelKey: 'assets.filter.option.between-600-s-and-1800-s',
           label: 'Between 600 s and 1800 s',
           value: 'from_600_to_1800_s',
           selected: false,
           aggKey: 'from_600_to_1800_s',
         },
-        { label: 'More than 1800 s', value: 'from_1800_s', selected: false, aggKey: 'from_1800_s' },
+        {
+          labelKey: 'assets.filter.option.more-than-1800-s',
+          label: 'More than 1800 s',
+          value: 'from_1800_s',
+          selected: false,
+          aggKey: 'from_1800_s',
+        },
       ],
     },
   ]);
@@ -381,7 +439,7 @@ export class AssetsDrawerComponent {
       .open(SavedSearchDialogComponent, {
         data: {
           title: 'Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
       .afterClosed()

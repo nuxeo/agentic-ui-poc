@@ -1,16 +1,22 @@
 <div class="admin-page">
   <header class="admin-page__header">
-    <div class="admin-page__title" role="heading" aria-level="1">Analytics</div>
-    <button type="button" mat-icon-button aria-label="Search (placeholder)">
+    <div class="admin-page__title" role="heading" aria-level="1">
+      {{ 'admin.admin-analytics-page.analytics' | translate }}
+    </div>
+    <button
+      type="button"
+      mat-icon-button
+      [attr.aria-label]="'admin.admin-analytics-page.search-placeholder' | translate"
+    >
       <mat-icon>search</mat-icon>
     </button>
   </header>
 
   <mat-tab-group animationDuration="0ms" class="admin-tabs">
-    <mat-tab label="Document Distribution">
+    <mat-tab [label]="'admin.analytics.tab.document-distribution' | translate">
       <div class="tab-pad">
         <mat-form-field appearance="outline" class="path-field" subscriptSizing="dynamic">
-          <mat-label>Path</mat-label>
+          <mat-label>{{ 'admin.admin-analytics-page.path' | translate }}</mat-label>
           <input
             matInput
             name="distPath"
@@ -23,37 +29,50 @@
 
         @if (distributionWarning()) {
           <div class="callout callout--warn" role="status">
-            Distribution analytics is disabled because the current query would impact the quality of
-            the service. Please select another path (deeper than the domain root).
+            {{
+              'admin.admin-analytics-page.distribution-analytics-is-disabled-because-the'
+                | translate
+            }}
           </div>
         } @else if (distLoading()) {
-          <div class="center"><mat-spinner diameter="36" aria-label="Loading" /></div>
+          <div class="center">
+            <mat-spinner
+              diameter="36"
+              [attr.aria-label]="'admin.admin-analytics-page.loading' | translate"
+            />
+          </div>
         } @else {
           <p class="muted">
-            Total documents under this path:
+            {{ 'admin.admin-analytics-page.total-documents-under-this-path' | translate }}
             <strong>{{ totalUnderPath() ?? '—' }}</strong>
           </p>
           <table mat-table [dataSource]="typeRows()" class="mini-table mat-elevation-z0">
             <ng-container matColumnDef="type">
-              <th mat-header-cell *matHeaderCellDef>Primary type</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'admin.admin-analytics-page.primary-type' | translate }}
+              </th>
               <td mat-cell *matCellDef="let row">{{ row.type }}</td>
             </ng-container>
             <ng-container matColumnDef="count">
-              <th mat-header-cell *matHeaderCellDef>Count</th>
+              <th mat-header-cell *matHeaderCellDef>
+                {{ 'admin.admin-analytics-page.count' | translate }}
+              </th>
               <td mat-cell *matCellDef="let row">{{ row.count }}</td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="['type', 'count']"></tr>
             <tr mat-row *matRowDef="let row; columns: ['type', 'count']"></tr>
           </table>
-          <button type="button" mat-stroked-button (click)="refreshDistribution()">Refresh</button>
+          <button type="button" mat-stroked-button (click)="refreshDistribution()">
+            {{ 'admin.admin-analytics-page.refresh' | translate }}
+          </button>
         }
       </div>
     </mat-tab>
 
-    <mat-tab label="Repository Content">
+    <mat-tab [label]="'admin.analytics.tab.repository-content' | translate">
       <div class="tab-pad">
         <mat-form-field appearance="outline" class="path-field" subscriptSizing="dynamic">
-          <mat-label>Path prefix</mat-label>
+          <mat-label>{{ 'admin.admin-analytics-page.path-prefix' | translate }}</mat-label>
           <input
             matInput
             name="repoPath"
@@ -64,7 +83,12 @@
           />
         </mat-form-field>
         @if (repoLoading()) {
-          <div class="center"><mat-spinner diameter="36" aria-label="Loading" /></div>
+          <div class="center">
+            <mat-spinner
+              diameter="36"
+              [attr.aria-label]="'admin.admin-analytics-page.loading' | translate"
+            />
+          </div>
         } @else {
           <p class="muted">
             Showing {{ repoDocs().length }} of {{ repoTotal() }} (most recently modified).
@@ -72,15 +96,21 @@
           <div class="table-scroll mat-elevation-z1">
             <table mat-table [dataSource]="repoDocs()" class="mini-table">
               <ng-container matColumnDef="path">
-                <th mat-header-cell *matHeaderCellDef>Path</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-analytics-page.path' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let doc">{{ doc.path }}</td>
               </ng-container>
               <ng-container matColumnDef="type">
-                <th mat-header-cell *matHeaderCellDef>Type</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-analytics-page.type' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let doc">{{ doc.type }}</td>
               </ng-container>
               <ng-container matColumnDef="modified">
-                <th mat-header-cell *matHeaderCellDef>Modified</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-analytics-page.modified' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let doc">{{ doc.lastModified | date: 'medium' }}</td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="repoColumns"></tr>
@@ -91,30 +121,42 @@
       </div>
     </mat-tab>
 
-    <mat-tab label="Search">
+    <mat-tab [label]="'admin.analytics.tab.search' | translate">
       <div class="tab-pad">
         <p class="muted">
-          Indexed documents (non-hidden, non-proxy, non-version, not trashed):
+          {{ 'admin.admin-analytics-page.indexed-documents-non-hidden-non-proxy' | translate }}
           <strong>{{ searchMetricTotal() ?? '—' }}</strong>
         </p>
         <p class="body">
-          This metric mirrors a typical full-repository search scope. Use
-          <strong>NXQL Search</strong> in the left menu for ad-hoc queries.
+          {{ 'admin.admin-analytics-page.this-metric-mirrors-a-typical-full' | translate }}
+          <strong>{{ 'admin.admin-analytics-page.nxql-search' | translate }}</strong> in the left
+          menu for ad-hoc queries.
         </p>
-        <button type="button" mat-stroked-button (click)="refreshSearchMetric()">Refresh</button>
+        <button type="button" mat-stroked-button (click)="refreshSearchMetric()">
+          {{ 'admin.admin-analytics-page.refresh' | translate }}
+        </button>
       </div>
     </mat-tab>
 
-    <mat-tab label="Workflow">
+    <mat-tab [label]="'admin.analytics.tab.workflow' | translate">
       <div class="tab-pad">
         @if (wfLoading()) {
-          <div class="center"><mat-spinner diameter="36" aria-label="Loading" /></div>
+          <div class="center">
+            <mat-spinner
+              diameter="36"
+              [attr.aria-label]="'admin.admin-analytics-page.loading' | translate"
+            />
+          </div>
         } @else {
           <p class="muted">
-            Documents with workflow-related primary types (Route / DocumentRoute / RoutingTask):
+            {{
+              'admin.admin-analytics-page.documents-with-workflow-related-primary-types' | translate
+            }}
             <strong>{{ wfTotal() ?? '—' }}</strong>
           </p>
-          <button type="button" mat-stroked-button (click)="refreshWorkflow()">Refresh</button>
+          <button type="button" mat-stroked-button (click)="refreshWorkflow()">
+            {{ 'admin.admin-analytics-page.refresh' | translate }}
+          </button>
         }
       </div>
     </mat-tab>
@@ -122,20 +164,26 @@
       <mat-tab>
         <ng-template mat-tab-label>
           <mat-icon class="ai-tab-icon">auto_awesome</mat-icon>
-          AI Audit Anomalies
+          {{ 'admin.admin-analytics-page.ai-audit-anomalies' | translate }}
         </ng-template>
         <div class="tab-pad">
           <div class="anomaly-controls">
             <mat-form-field appearance="outline" class="time-range-field" subscriptSizing="dynamic">
-              <mat-label>Time Range</mat-label>
+              <mat-label>{{ 'admin.admin-analytics-page.time-range' | translate }}</mat-label>
               <select
                 matNativeControl
                 [ngModel]="aiAnomalyTimeRange()"
                 (ngModelChange)="aiAnomalyTimeRange.set($event)"
               >
-                <option value="24h">Last 24 hours</option>
-                <option value="7d">Last 7 days</option>
-                <option value="30d">Last 30 days</option>
+                <option value="24h">
+                  {{ 'admin.admin-analytics-page.last-24-hours' | translate }}
+                </option>
+                <option value="7d">
+                  {{ 'admin.admin-analytics-page.last-7-days' | translate }}
+                </option>
+                <option value="30d">
+                  {{ 'admin.admin-analytics-page.last-30-days' | translate }}
+                </option>
               </select>
             </mat-form-field>
             <button
@@ -146,7 +194,10 @@
               (click)="runAnomalyDetection()"
             >
               @if (aiAnomalyLoading()) {
-                <mat-spinner diameter="18" aria-label="Loading"></mat-spinner>
+                <mat-spinner
+                  diameter="18"
+                  [attr.aria-label]="'admin.admin-analytics-page.loading' | translate"
+                ></mat-spinner>
               } @else {
                 <mat-icon>auto_awesome</mat-icon>
               }
@@ -155,7 +206,12 @@
           </div>
 
           @if (aiAnomalyLoading()) {
-            <div class="center"><mat-spinner diameter="36" aria-label="Loading" /></div>
+            <div class="center">
+              <mat-spinner
+                diameter="36"
+                [attr.aria-label]="'admin.admin-analytics-page.loading' | translate"
+              />
+            </div>
           } @else if (aiAnomalySummary()) {
             <div class="anomaly-summary">
               <mat-icon>info</mat-icon>
@@ -183,10 +239,16 @@
                 }
               </div>
             } @else {
-              <p class="muted">No anomalies detected. Your system looks healthy.</p>
+              <p class="muted">
+                {{
+                  'admin.admin-analytics-page.no-anomalies-detected-your-system-looks' | translate
+                }}
+              </p>
             }
           } @else {
-            <p class="muted">Click "Scan for Anomalies" to run AI-powered audit analysis.</p>
+            <p class="muted">
+              {{ 'admin.admin-analytics-page.click-scan-for-anomalies-to-run' | translate }}
+            </p>
           }
         </div>
       </mat-tab>

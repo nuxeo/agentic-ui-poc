@@ -16,6 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 // Shared rather than local: this normalisation guards three separate served-type checks, and a
 // divergence between them would be a bypass.
 import { mediaTypeEssence } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface VideoSource {
   /**
@@ -98,7 +99,13 @@ export interface VideoInfo {
 @Component({
   selector: 'lib-document-viewer',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatProgressSpinnerModule],
+  imports: [
+    TranslatePipe,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    MatProgressSpinnerModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './document-viewer.component.html',
   styleUrl: './document-viewer.component.scss',

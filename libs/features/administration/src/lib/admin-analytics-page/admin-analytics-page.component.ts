@@ -15,6 +15,7 @@ import {
   AiFeatureFlagService,
   type AuditAnomaly,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe } from '@ngx-translate/core';
 function escapeNxqlLiteral(s: string): string {
   return s.replace(/'/g, "''");
 }
@@ -23,6 +24,7 @@ function escapeNxqlLiteral(s: string): string {
   selector: 'lib-admin-analytics-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     UpperCasePipe,
     FormsModule,

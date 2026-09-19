@@ -11,6 +11,7 @@ import {
   isPermissionDeniedError,
   PERMISSION_DENIED_MESSAGE,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface CreateVersionDialogData {
   documentUid: string;
@@ -23,6 +24,7 @@ export interface CreateVersionDialogData {
   selector: 'lib-create-version-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatRadioModule,
@@ -30,44 +32,7 @@ export interface CreateVersionDialogData {
     MatSnackBarModule,
     FormsModule,
   ],
-  template: `
-    <h2 mat-dialog-title>
-      Create Version for {{ data.documentTitle }} - Version {{ data.currentMajor }}.{{
-        data.currentMinor
-      }}
-    </h2>
-
-    <mat-dialog-content>
-      <mat-radio-group [(ngModel)]="increment" class="version-options">
-        <mat-radio-button value="Minor" class="version-option">
-          <span class="version-badge">{{ data.currentMajor }}.{{ data.currentMinor + 1 }}</span>
-          Minor version
-        </mat-radio-button>
-        <mat-radio-button value="Major" class="version-option">
-          <span class="version-badge">{{ data.currentMajor + 1 }}.0</span>
-          Major version
-        </mat-radio-button>
-      </mat-radio-group>
-    </mat-dialog-content>
-
-    <mat-dialog-actions>
-      <button mat-stroked-button mat-dialog-close type="button">Cancel</button>
-      <span class="spacer"></span>
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        (click)="create()"
-        [disabled]="saving()"
-      >
-        @if (saving()) {
-          <mat-spinner diameter="18" />
-        } @else {
-          Create Version
-        }
-      </button>
-    </mat-dialog-actions>
-  `,
+  templateUrl: './create-version-dialog.html',
   styles: [
     `
       h2[mat-dialog-title] {

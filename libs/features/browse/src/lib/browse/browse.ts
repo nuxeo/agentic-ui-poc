@@ -88,6 +88,7 @@ import {
   shouldShowUserWorkspaceBreadcrumbs,
   postTrashBrowseRouterUrl,
   isCollectionDocument,
+  formatRelativeTime,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -144,6 +145,7 @@ import {
   EditMetadataDialogData,
 } from '../edit-metadata-dialog/edit-metadata-dialog';
 import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 /**
  * The packaged column set as descriptors, for an injector where Layer 1
@@ -164,6 +166,7 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
   selector: 'lib-browse',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     NgClass,
     FormsModule,
@@ -194,6 +197,7 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
   styleUrl: './browse.scss',
 })
 export class BrowseComponent {
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   @ViewChild('columnPanel')
   private columnPanel?: ElementRef<HTMLElement>;
@@ -437,6 +441,9 @@ export class BrowseComponent {
     return this.columnDescriptors().map((descriptor) => ({
       key: descriptor.field,
       label: descriptor.label,
+      // Carried through so the template can prefer the key; `ColumnDef` is a view model, and
+      // resolving here would mean the header stopped following a language change.
+      labelKey: descriptor.labelKey,
       visible: chosen ? chosen.includes(descriptor.field) : !descriptor.hiddenByDefault,
     }));
   });
@@ -559,7 +566,9 @@ export class BrowseComponent {
 
   readonly breadcrumbs = computed<SatBreadcrumbsItem[]>(() => {
     const doc = this.currentDoc();
-    const crumbs: SatBreadcrumbsItem[] = [{ label: 'Root', href: '/browse' }];
+    const crumbs: SatBreadcrumbsItem[] = [
+      { label: this.translate.instant('browse.breadcrumb.root'), href: '/browse' },
+    ];
     if (!doc || doc.path === '/') return crumbs;
     const parts = doc.path.split('/').filter(Boolean);
     let accumulated = '';
@@ -1798,7 +1807,7 @@ export class BrowseComponent {
   }
 
   selectionAriaLabel(doc: NuxeoDocument): string {
-    return `Select ${doc.title}`;
+    return this.translate.instant('common.select-item', { name: doc.title });
   }
 
   toggleSelection(id: string): void {
@@ -1819,15 +1828,12 @@ export class BrowseComponent {
     }
   }
 
+  /**
+   * Localised by `Intl.RelativeTimeFormat` rather than by a catalogue — see
+   * `formatRelativeTime` for why a key per unit cannot express Polish or Arabic plurals.
+   */
   relativeTime(dateStr: string): string {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const minutes = Math.floor(diff / 60_000);
-    const hours = Math.floor(diff / 3_600_000);
-    const days = Math.floor(diff / 86_400_000);
-    if (days >= 1) return days === 1 ? 'a day ago' : `${days} days ago`;
-    if (hours >= 1) return hours === 1 ? 'an hour ago' : `${hours} hours ago`;
-    return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
+    return formatRelativeTime(dateStr, this.translate.currentLang);
   }
 
   permissionIcon(permission: string): string {
@@ -1861,7 +1867,7 @@ export class BrowseComponent {
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    if (!ace.begin && !ace.end) return 'Permanent';
+    if (!ace.begin && !ace.end) return this.translate.instant('permissions.time-frame.permanent');
     const fmt = (iso: string) =>
       new Date(iso).toLocaleDateString('en-US', {
         day: '2-digit',

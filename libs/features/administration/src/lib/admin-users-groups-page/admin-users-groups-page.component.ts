@@ -37,6 +37,7 @@ import {
   UserFormDialogData,
   UserFormDialogResult,
 } from '../user-form-dialog/user-form-dialog.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface RecentUserGroupRow {
   kind: 'user' | 'group';
@@ -49,6 +50,7 @@ export interface RecentUserGroupRow {
   selector: 'lib-admin-users-groups-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatButtonModule,
     MatIconModule,

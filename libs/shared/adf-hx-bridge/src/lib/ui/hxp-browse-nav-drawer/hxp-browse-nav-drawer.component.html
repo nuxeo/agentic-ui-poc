@@ -1,7 +1,12 @@
 <div class="hxp-browse-nav-drawer">
   <div class="drawer-header">
     <div class="drawer-title" role="heading" aria-level="2">{{ title() }}</div>
-    <button type="button" class="refresh-btn" title="Refresh" (click)="refreshTree()">
+    <button
+      type="button"
+      class="refresh-btn"
+      [title]="'hxp.hxp-browse-nav-drawer.refresh' | translate"
+      (click)="refreshTree()"
+    >
       <hxp-icon name="refresh" size="sm" [decorative]="true" />
     </button>
   </div>

@@ -5,7 +5,11 @@
         {{ loadState() === 'not-found' ? 'search_off' : 'error_outline' }}
       </mat-icon>
       <div class="unavailable-title" role="heading" aria-level="1">
-        {{ loadState() === 'not-found' ? 'Collection not found' : 'Collection unavailable' }}
+        {{
+          loadState() === 'not-found'
+            ? ('collections.collection-not-found' | translate)
+            : ('collections.collection-unavailable' | translate)
+        }}
       </div>
       <div class="unavailable-detail">
         @if (loadState() === 'not-found') {
@@ -16,9 +20,13 @@
       </div>
       <div class="unavailable-actions">
         @if (loadState() === 'error') {
-          <button mat-stroked-button (click)="retryLoad()">Try again</button>
+          <button mat-stroked-button (click)="retryLoad()">
+            {{ 'collections.collection-detail.try-again' | translate }}
+          </button>
         }
-        <button mat-stroked-button (click)="goToCollections()">Back to collections</button>
+        <button mat-stroked-button (click)="goToCollections()">
+          {{ 'collections.collection-detail.back-to-collections' | translate }}
+        </button>
       </div>
     </div>
   } @else {
@@ -28,7 +36,7 @@
         <mat-icon class="header-icon">collections_bookmark</mat-icon>
         <div class="header-info">
           <div class="header-title" role="heading" aria-level="1">
-            {{ collection()?.title ?? 'Collection' }}
+            {{ collection()?.title ?? ('collections.collection' | translate) }}
           </div>
           @if (showBreadcrumbs() && breadcrumbItems().length) {
             <div class="header-path-row">
@@ -42,11 +50,21 @@
       </div>
 
       <div class="header-actions">
-        <button mat-icon-button matTooltip="Refresh" aria-label="Refresh" (click)="loadMembers()">
+        <button
+          mat-icon-button
+          [matTooltip]="'collections.collection-detail.refresh' | translate"
+          [attr.aria-label]="'collections.collection-detail.refresh' | translate"
+          (click)="loadMembers()"
+        >
           <mat-icon>sync</mat-icon>
         </button>
         @if (canEditCollection()) {
-          <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="editCollection()">
+          <button
+            mat-icon-button
+            [matTooltip]="'collections.collection-detail.edit' | translate"
+            [attr.aria-label]="'collections.collection-detail.edit' | translate"
+            (click)="editCollection()"
+          >
             <mat-icon>edit</mat-icon>
           </button>
         }
@@ -55,8 +73,8 @@
             mat-icon-button
             (click)="deleteCollection()"
             [disabled]="actionInProgress() === 'trash'"
-            matTooltip="Delete"
-            aria-label="Delete"
+            [matTooltip]="'collections.collection-detail.delete' | translate"
+            [attr.aria-label]="'collections.collection-detail.delete' | translate"
           >
             <mat-icon>delete</mat-icon>
           </button>
@@ -65,20 +83,24 @@
           mat-icon-button
           (click)="exportCollection()"
           [disabled]="actionInProgress() === 'export'"
-          matTooltip="Export"
-          aria-label="Export"
+          [matTooltip]="'collections.collection-detail.export' | translate"
+          [attr.aria-label]="'collections.collection-detail.export' | translate"
         >
           <mat-icon>download</mat-icon>
         </button>
         <button
           mat-icon-button
           [matMenuTriggerFor]="moreMenu"
-          matTooltip="More actions"
-          aria-label="More actions"
+          [matTooltip]="'collections.collection-detail.more-actions' | translate"
+          [attr.aria-label]="'collections.collection-detail.more-actions' | translate"
         >
           <mat-icon>more_vert</mat-icon>
         </button>
-        <button mat-icon-button matTooltip="Search" aria-label="Search">
+        <button
+          mat-icon-button
+          [matTooltip]="'collections.collection-detail.search' | translate"
+          [attr.aria-label]="'collections.collection-detail.search' | translate"
+        >
           <mat-icon>search</mat-icon>
         </button>
       </div>
@@ -86,7 +108,7 @@
       <mat-menu #moreMenu="matMenu">
         <button mat-menu-item (click)="shareCollection()">
           <mat-icon>share</mat-icon>
-          <span>Share</span>
+          <span>{{ 'collections.collection-detail.share' | translate }}</span>
         </button>
         <button
           mat-menu-item
@@ -94,15 +116,25 @@
           [disabled]="actionInProgress() === 'subscribe'"
         >
           <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
-          <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
+          <span>{{
+            isSubscribed()
+              ? ('collections.unsubscribe' | translate)
+              : ('collections.notify-me' | translate)
+          }}</span>
         </button>
         <button mat-menu-item (click)="toggleClipboard()">
           <mat-icon>{{ isInClipboard() ? 'content_paste_off' : 'content_paste' }}</mat-icon>
-          <span>{{ isInClipboard() ? 'Remove from Clipboard' : 'Add to Clipboard' }}</span>
+          <span>{{
+            isInClipboard()
+              ? ('collections.remove-from-clipboard' | translate)
+              : ('collections.add-to-clipboard' | translate)
+          }}</span>
         </button>
         <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
           <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
-          <span>{{ isLocked() ? 'Unlock' : 'Lock' }}</span>
+          <span>{{
+            isLocked() ? ('collections.unlock' | translate) : ('collections.lock' | translate)
+          }}</span>
         </button>
         <button
           mat-menu-item
@@ -110,7 +142,7 @@
           [disabled]="actionInProgress() === 'export'"
         >
           <mat-icon>download</mat-icon>
-          <span>Export</span>
+          <span>{{ 'collections.collection-detail.export' | translate }}</span>
         </button>
       </mat-menu>
     </div>
@@ -122,24 +154,27 @@
       mat-stretch-tabs="false"
       (selectedIndexChange)="onTabChange($event)"
     >
-      <mat-tab label="View">
+      <mat-tab [label]="'collections.tab.view' | translate">
         <div class="tab-content">
           @if (loading()) {
             <div class="tab-loading">
-              <mat-spinner diameter="36" aria-label="Loading" />
+              <mat-spinner
+                diameter="36"
+                [attr.aria-label]="'collections.collection-detail.loading' | translate"
+              />
             </div>
           } @else if (error()) {
             <div class="tab-error">
               <mat-icon class="error-icon">error_outline</mat-icon>
               <p>{{ error() }}</p>
               <button mat-stroked-button (click)="loadMembers()">
-                <mat-icon>refresh</mat-icon> Retry
+                <mat-icon>refresh</mat-icon> {{ 'collections.collection-detail.retry' | translate }}
               </button>
             </div>
           } @else if (members().length === 0) {
             <div class="tab-empty">
               <mat-icon class="empty-icon">collections_bookmark</mat-icon>
-              <p>This collection is empty</p>
+              <p>{{ 'collections.collection-detail.this-collection-is-empty' | translate }}</p>
             </div>
           } @else {
             <div class="result-count">{{ totalSize() }} result(s)</div>
@@ -147,9 +182,15 @@
               <table class="members-table">
                 <thead>
                   <tr>
-                    <th class="col-title">Title</th>
-                    <th class="col-modified">Modified</th>
-                    <th class="col-contributor">Last Contributor</th>
+                    <th class="col-title">
+                      {{ 'collections.collection-detail.title' | translate }}
+                    </th>
+                    <th class="col-modified">
+                      {{ 'collections.collection-detail.modified' | translate }}
+                    </th>
+                    <th class="col-contributor">
+                      {{ 'collections.collection-detail.last-contributor' | translate }}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -177,28 +218,30 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="Permissions">
+      <mat-tab [label]="'collections.tab.permissions' | translate">
         <div class="permissions-container">
           <!-- Permissions defined locally -->
           <section class="perm-section">
             <div class="perm-section-header">
               <div class="perm-section-title" role="heading" aria-level="3">
-                Permissions defined locally
+                {{ 'collections.collection-detail.permissions-defined-locally' | translate }}
               </div>
               <button mat-button color="primary" class="perm-action-btn" (click)="addPermission()">
-                New
+                {{ 'collections.collection-detail.new' | translate }}
               </button>
             </div>
             @if (localAces().length === 0) {
-              <div class="perm-empty">There are no local permissions.</div>
+              <div class="perm-empty">
+                {{ 'collections.collection-detail.there-are-no-local-permissions' | translate }}
+              </div>
             } @else {
               <table class="perm-table">
                 <thead>
                   <tr>
-                    <th>User / Group</th>
-                    <th>Right</th>
-                    <th>Time Frame</th>
-                    <th>Granted by</th>
+                    <th>{{ 'collections.collection-detail.user-group' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.right' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.time-frame' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.granted-by' | translate }}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -212,16 +255,20 @@
                       <td class="perm-row-actions">
                         <button
                           mat-icon-button
-                          matTooltip="Edit"
-                          aria-label="Edit permission"
+                          [matTooltip]="'collections.collection-detail.edit' | translate"
+                          [attr.aria-label]="
+                            'collections.collection-detail.edit-permission' | translate
+                          "
                           (click)="editPermission(ace)"
                         >
                           <mat-icon>edit</mat-icon>
                         </button>
                         <button
                           mat-icon-button
-                          matTooltip="Delete"
-                          aria-label="Delete permission"
+                          [matTooltip]="'collections.collection-detail.delete' | translate"
+                          [attr.aria-label]="
+                            'collections.collection-detail.delete-permission' | translate
+                          "
                           (click)="deletePermission(ace)"
                         >
                           <mat-icon>delete</mat-icon>
@@ -238,7 +285,10 @@
           <section class="perm-section">
             <div class="perm-section-header">
               <div class="perm-section-title" role="heading" aria-level="3">
-                Permissions inherited from upper levels
+                {{
+                  'collections.collection-detail.permissions-inherited-from-upper-levels'
+                    | translate
+                }}
               </div>
               <button
                 mat-button
@@ -247,32 +297,39 @@
                 (click)="toggleInheritance()"
                 [disabled]="actionInProgress() === 'inheritance'"
               >
-                {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+                {{
+                  isInheritanceBlocked()
+                    ? ('collections.unblock' | translate)
+                    : ('collections.block' | translate)
+                }}
               </button>
             </div>
             @if (!isInheritanceBlocked()) {
               <div class="perm-info-bar">
                 <span class="perm-info-accent"></span>
                 <p>
-                  If you want to explicitly control the access to this document you can block the
-                  permissions inheritance. Any change made on parent document will not affect the
-                  access conditions to this document. You and the administrators will be added to
-                  local permissions.
+                  {{
+                    'collections.collection-detail.if-you-want-to-explicitly-control' | translate
+                  }}
                 </p>
               </div>
             }
             @if (isInheritanceBlocked()) {
-              <div class="perm-empty">Permissions inheritance is blocked.</div>
+              <div class="perm-empty">
+                {{ 'collections.collection-detail.permissions-inheritance-is-blocked' | translate }}
+              </div>
             } @else if (inheritedAces().length === 0) {
-              <div class="perm-empty">No inherited permissions.</div>
+              <div class="perm-empty">
+                {{ 'collections.collection-detail.no-inherited-permissions' | translate }}
+              </div>
             } @else {
               <table class="perm-table">
                 <thead>
                   <tr>
-                    <th>User / Group</th>
-                    <th>Right</th>
-                    <th>Time Frame</th>
-                    <th>Granted by</th>
+                    <th>{{ 'collections.collection-detail.user-group' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.right' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.time-frame' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.granted-by' | translate }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -293,7 +350,9 @@
           <section class="perm-section">
             <div class="perm-section-header">
               <div class="perm-section-title" role="heading" aria-level="3">
-                Permissions Assigned to External Users
+                {{
+                  'collections.collection-detail.permissions-assigned-to-external-users' | translate
+                }}
               </div>
               <button
                 mat-button
@@ -301,27 +360,28 @@
                 class="perm-action-btn"
                 (click)="shareWithExternal()"
               >
-                New
+                {{ 'collections.collection-detail.new' | translate }}
               </button>
             </div>
             <div class="perm-info-bar">
               <span class="perm-info-accent"></span>
               <p>
-                Sharing to external users does not create new user accounts. External users are
-                provided a link to access this document.
+                {{ 'collections.collection-detail.sharing-to-external-users-does-not' | translate }}
               </p>
             </div>
             @if (externalAces().length === 0) {
-              <div class="perm-empty">The document is not shared with any external user.</div>
+              <div class="perm-empty">
+                {{ 'collections.collection-detail.the-document-is-not-shared-with' | translate }}
+              </div>
             } @else {
               <table class="perm-table">
                 <thead>
                   <tr>
-                    <th>User</th>
-                    <th>Right</th>
-                    <th>Time Frame</th>
-                    <th>Granted by</th>
-                    <th>Actions</th>
+                    <th>{{ 'collections.collection-detail.user' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.right' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.time-frame' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.granted-by' | translate }}</th>
+                    <th>{{ 'collections.collection-detail.actions' | translate }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -334,16 +394,22 @@
                       <td class="perm-row-actions">
                         <button
                           mat-icon-button
-                          matTooltip="Edit"
-                          aria-label="Edit permission"
+                          [matTooltip]="'collections.collection-detail.edit' | translate"
+                          [attr.aria-label]="
+                            'collections.collection-detail.edit-permission' | translate
+                          "
                           (click)="editExternalPermission(ace)"
                         >
                           <mat-icon>edit</mat-icon>
                         </button>
                         <button
                           mat-icon-button
-                          matTooltip="Send notification email"
-                          aria-label="Send notification"
+                          [matTooltip]="
+                            'collections.collection-detail.send-notification-email' | translate
+                          "
+                          [attr.aria-label]="
+                            'collections.collection-detail.send-notification' | translate
+                          "
                           [disabled]="actionInProgress() === 'notify-' + ace.id"
                           (click)="sendNotificationEmail(ace)"
                         >
@@ -351,8 +417,10 @@
                         </button>
                         <button
                           mat-icon-button
-                          matTooltip="Delete"
-                          aria-label="Delete permission"
+                          [matTooltip]="'collections.collection-detail.delete' | translate"
+                          [attr.aria-label]="
+                            'collections.collection-detail.delete-permission' | translate
+                          "
                           (click)="deletePermission(ace)"
                         >
                           <mat-icon>delete</mat-icon>
@@ -367,7 +435,7 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="History">
+      <mat-tab [label]="'collections.tab.history' | translate">
         <div class="history-container">
           <!-- Filters -->
           <div class="history-filters">
@@ -377,10 +445,10 @@
                 subscriptSizing="dynamic"
                 class="filter-field filter-field--wide"
               >
-                <mat-label>Username</mat-label>
+                <mat-label>{{ 'collections.collection-detail.username' | translate }}</mat-label>
                 <input
                   matInput
-                  placeholder="Filter by username"
+                  [placeholder]="'collections.collection-detail.filter-by-username' | translate"
                   [ngModel]="filterUsername()"
                   (ngModelChange)="filterUsername.set($event)"
                 />
@@ -389,7 +457,7 @@
 
             <div class="filter-row">
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                <mat-label>From</mat-label>
+                <mat-label>{{ 'collections.collection-detail.from' | translate }}</mat-label>
                 <input
                   matInput
                   [matDatepicker]="fromPicker"
@@ -402,7 +470,7 @@
               </mat-form-field>
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                <mat-label>To</mat-label>
+                <mat-label>{{ 'collections.collection-detail.to' | translate }}</mat-label>
                 <input
                   matInput
                   [matDatepicker]="toPicker"
@@ -417,9 +485,13 @@
 
             <div class="filter-row">
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                <mat-label>Performed Actions</mat-label>
+                <mat-label>{{
+                  'collections.collection-detail.performed-actions' | translate
+                }}</mat-label>
                 <mat-select [ngModel]="filterAction()" (ngModelChange)="filterAction.set($event)">
-                  <mat-option value="">Select event actions</mat-option>
+                  <mat-option value="">{{
+                    'collections.collection-detail.select-event-actions' | translate
+                  }}</mat-option>
                   @for (action of availableActions(); track action.id) {
                     <mat-option [value]="action.id">{{ action.displayLabel }}</mat-option>
                   }
@@ -427,12 +499,16 @@
               </mat-form-field>
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                <mat-label>Event Category</mat-label>
+                <mat-label>{{
+                  'collections.collection-detail.event-category' | translate
+                }}</mat-label>
                 <mat-select
                   [ngModel]="filterCategory()"
                   (ngModelChange)="filterCategory.set($event)"
                 >
-                  <mat-option value="">Select event category</mat-option>
+                  <mat-option value="">{{
+                    'collections.collection-detail.select-event-category' | translate
+                  }}</mat-option>
                   @for (cat of availableCategories(); track cat.id) {
                     <mat-option [value]="cat.id">{{ cat.displayLabel }}</mat-option>
                   }
@@ -444,12 +520,15 @@
           <!-- Table -->
           @if (auditLoading()) {
             <div class="history-loading">
-              <mat-spinner diameter="32" aria-label="Loading" />
+              <mat-spinner
+                diameter="32"
+                [attr.aria-label]="'collections.collection-detail.loading' | translate"
+              />
             </div>
           } @else if (filteredAuditEntries().length === 0) {
             <div class="history-empty">
               <mat-icon>event_busy</mat-icon>
-              <p>No history entries found.</p>
+              <p>{{ 'collections.collection-detail.no-history-entries-found' | translate }}</p>
             </div>
           } @else {
             <div class="history-table-wrapper">
@@ -461,19 +540,25 @@
                 class="history-table"
               >
                 <ng-container matColumnDef="eventId">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header>Performed Action</th>
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                    {{ 'collections.collection-detail.performed-action' | translate }}
+                  </th>
                   <td mat-cell *matCellDef="let entry">{{ eventLabel(entry.eventId) }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="eventDate">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                    {{ 'collections.collection-detail.date' | translate }}
+                  </th>
                   <td mat-cell *matCellDef="let entry">
-                    {{ entry.eventDate | date: 'MMMM d, yyyy' }}
+                    {{ entry.eventDate | date: ('collections.mmmm-d-yyyy' | translate) }}
                   </td>
                 </ng-container>
 
                 <ng-container matColumnDef="principalName">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                    {{ 'collections.collection-detail.username' | translate }}
+                  </th>
                   <td mat-cell *matCellDef="let entry">
                     <div class="user-cell">
                       <sat-avatar
@@ -489,17 +574,23 @@
                 </ng-container>
 
                 <ng-container matColumnDef="category">
-                  <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                    {{ 'collections.collection-detail.category' | translate }}
+                  </th>
                   <td mat-cell *matCellDef="let entry">{{ categoryLabel(entry.category) }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="comment">
-                  <th mat-header-cell *matHeaderCellDef>Comment</th>
+                  <th mat-header-cell *matHeaderCellDef>
+                    {{ 'collections.collection-detail.comment' | translate }}
+                  </th>
                   <td mat-cell *matCellDef="let entry" class="comment-cell">{{ entry.comment }}</td>
                 </ng-container>
 
                 <ng-container matColumnDef="docLifeCycle">
-                  <th mat-header-cell *matHeaderCellDef>State</th>
+                  <th mat-header-cell *matHeaderCellDef>
+                    {{ 'collections.collection-detail.state' | translate }}
+                  </th>
                   <td mat-cell *matCellDef="let entry">
                     <sat-status-tag status="info" [hideIcon]="true">{{
                       entry.docLifeCycle

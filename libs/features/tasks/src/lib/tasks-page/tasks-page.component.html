@@ -4,11 +4,16 @@
     @if (!hasSelection()) {
       <div class="empty-detail">
         <mat-icon>assignment</mat-icon>
-        <p>Select a task from the <strong>Tasks</strong> panel on the left</p>
+        <p>
+          {{ 'tasks.tasks-page.select-a-task' | translate }}
+        </p>
       </div>
     } @else if (taskLoading()) {
       <div class="loading-detail">
-        <mat-spinner diameter="36" aria-label="Loading" /><span>Loading…</span>
+        <mat-spinner
+          diameter="36"
+          [attr.aria-label]="'tasks.tasks-page.loading' | translate"
+        /><span>{{ 'tasks.tasks-page.loading-2' | translate }}</span>
       </div>
     } @else {
       <!-- Document Header Bar (title + breadcrumb) — spans full width -->
@@ -26,7 +31,7 @@
               ></sat-breadcrumbs>
             } @else {
               <div class="doc-main-title" role="heading" aria-level="1">
-                {{ selectedTask()!.targetDocTitle || 'Document' }}
+                {{ selectedTask()!.targetDocTitle || ('tasks.document' | translate) }}
               </div>
             }
           </div>
@@ -45,36 +50,37 @@
               </div>
               <div class="task-header-actions">
                 <button type="button" class="delegate-link" (click)="openDelegatePanel()">
-                  Delegate
+                  {{ 'tasks.tasks-page.delegate' | translate }}
                 </button>
                 <button type="button" class="reassign-link" (click)="openReassignPanel()">
-                  Reassign
+                  {{ 'tasks.tasks-page.reassign' | translate }}
                 </button>
               </div>
             </div>
 
             <!-- View Graph link -->
             <button type="button" class="view-graph-link" (click)="openGraphPanel()">
-              View Graph
+              {{ 'tasks.tasks-page.view-graph' | translate }}
             </button>
 
             <!-- ═══ Delegate Panel (inline) ═══ -->
             @if (showDelegatePanel()) {
               <div class="action-panel delegate-panel">
                 <div class="action-panel-header">
-                  <div class="action-panel-title" role="heading" aria-level="4">Delegate Task</div>
+                  <div class="action-panel-title" role="heading" aria-level="4">
+                    {{ 'tasks.tasks-page.delegate-task' | translate }}
+                  </div>
                   <button
                     mat-icon-button
                     (click)="closeDelegatePanel()"
-                    matTooltip="Close"
-                    aria-label="Close"
+                    [matTooltip]="'tasks.tasks-page.close' | translate"
+                    [attr.aria-label]="'tasks.tasks-page.close' | translate"
                   >
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
                 <p class="action-panel-hint">
-                  Add users or groups to delegate this task to. The original assignees will keep the
-                  task.
+                  {{ 'tasks.tasks-page.add-users-or-groups-to-delegate' | translate }}
                 </p>
 
                 <div class="action-panel-chips">
@@ -92,12 +98,12 @@
                 </div>
 
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Search users or groups</mat-label>
+                  <mat-label>{{ 'tasks.tasks-page.search-users-or-groups' | translate }}</mat-label>
                   <input
                     matInput
                     [(ngModel)]="delegateInput"
                     (input)="searchDelegateUsers()"
-                    placeholder="Type to search…"
+                    [placeholder]="'tasks.tasks-page.type-to-search' | translate"
                   />
                 </mat-form-field>
 
@@ -129,20 +135,20 @@
                 }
 
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Comment (optional)</mat-label>
+                  <mat-label>{{ 'tasks.tasks-page.comment-optional' | translate }}</mat-label>
                   <textarea matInput [(ngModel)]="delegateComment" rows="3"></textarea>
                 </mat-form-field>
 
                 <div class="action-panel-buttons">
                   <button class="nuxeo-action-btn outline" (click)="closeDelegatePanel()">
-                    Cancel
+                    {{ 'tasks.tasks-page.cancel' | translate }}
                   </button>
                   <button
                     class="nuxeo-action-btn primary"
                     [disabled]="delegateActors.length === 0 || submitting()"
                     (click)="confirmDelegate()"
                   >
-                    Delegate
+                    {{ 'tasks.tasks-page.delegate' | translate }}
                   </button>
                 </div>
               </div>
@@ -152,18 +158,20 @@
             @if (showReassignPanel()) {
               <div class="action-panel reassign-panel">
                 <div class="action-panel-header">
-                  <div class="action-panel-title" role="heading" aria-level="4">Reassign Task</div>
+                  <div class="action-panel-title" role="heading" aria-level="4">
+                    {{ 'tasks.tasks-page.reassign-task' | translate }}
+                  </div>
                   <button
                     mat-icon-button
                     (click)="closeReassignPanel()"
-                    matTooltip="Close"
-                    aria-label="Close"
+                    [matTooltip]="'tasks.tasks-page.close' | translate"
+                    [attr.aria-label]="'tasks.tasks-page.close' | translate"
                   >
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
                 <p class="action-panel-hint">
-                  Select new assignees. The current assignees will be removed from this task.
+                  {{ 'tasks.tasks-page.select-new-assignees-the-current-assignees' | translate }}
                 </p>
 
                 <div class="action-panel-chips">
@@ -181,12 +189,12 @@
                 </div>
 
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Search users or groups</mat-label>
+                  <mat-label>{{ 'tasks.tasks-page.search-users-or-groups' | translate }}</mat-label>
                   <input
                     matInput
                     [(ngModel)]="reassignInput"
                     (input)="searchReassignUsers()"
-                    placeholder="Type to search…"
+                    [placeholder]="'tasks.tasks-page.type-to-search' | translate"
                   />
                 </mat-form-field>
 
@@ -218,20 +226,20 @@
                 }
 
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Comment (optional)</mat-label>
+                  <mat-label>{{ 'tasks.tasks-page.comment-optional' | translate }}</mat-label>
                   <textarea matInput [(ngModel)]="reassignComment" rows="3"></textarea>
                 </mat-form-field>
 
                 <div class="action-panel-buttons">
                   <button class="nuxeo-action-btn outline" (click)="closeReassignPanel()">
-                    Cancel
+                    {{ 'tasks.tasks-page.cancel' | translate }}
                   </button>
                   <button
                     class="nuxeo-action-btn primary"
                     [disabled]="reassignActors.length === 0 || submitting()"
                     (click)="confirmReassign()"
                   >
-                    Reassign
+                    {{ 'tasks.tasks-page.reassign' | translate }}
                   </button>
                 </div>
               </div>
@@ -241,12 +249,14 @@
             @if (showGraphPanel()) {
               <div class="action-panel graph-panel">
                 <div class="action-panel-header">
-                  <div class="action-panel-title" role="heading" aria-level="4">Workflow Graph</div>
+                  <div class="action-panel-title" role="heading" aria-level="4">
+                    {{ 'tasks.tasks-page.workflow-graph' | translate }}
+                  </div>
                   <button
                     mat-icon-button
                     (click)="closeGraphPanel()"
-                    matTooltip="Close"
-                    aria-label="Close"
+                    [matTooltip]="'tasks.tasks-page.close' | translate"
+                    [attr.aria-label]="'tasks.tasks-page.close' | translate"
                   >
                     <mat-icon>close</mat-icon>
                   </button>
@@ -254,7 +264,10 @@
 
                 @if (graphLoading()) {
                   <div class="graph-loading">
-                    <mat-spinner diameter="24" aria-label="Loading" />
+                    <mat-spinner
+                      diameter="24"
+                      [attr.aria-label]="'tasks.tasks-page.loading' | translate"
+                    />
                   </div>
                 } @else if (graphNodes().length > 0) {
                   <div class="graph-nodes">
@@ -283,7 +296,7 @@
                 } @else {
                   <div class="graph-empty">
                     <mat-icon>account_tree</mat-icon>
-                    <span>No graph data available</span>
+                    <span>{{ 'tasks.tasks-page.no-graph-data-available' | translate }}</span>
                   </div>
                 }
               </div>
@@ -291,7 +304,9 @@
 
             <!-- Actors in this task -->
             <div class="task-form-section">
-              <span class="section-label">Actors in this task:</span>
+              <span class="section-label">{{
+                'tasks.tasks-page.actors-in-this-task' | translate
+              }}</span>
               <div class="actor-chips">
                 @for (actor of taskActors(); track actor) {
                   <span class="actor-chip">
@@ -305,7 +320,7 @@
             <!-- Delegated actors (if any) -->
             @if (delegatedActorsList.length > 0) {
               <div class="task-form-section">
-                <span class="section-label">Delegated to:</span>
+                <span class="section-label">{{ 'tasks.tasks-page.delegated-to' | translate }}</span>
                 <div class="actor-chips">
                   @for (actor of delegatedActorsList; track actor) {
                     <span class="actor-chip delegated">
@@ -321,7 +336,7 @@
 
             <!-- Due date display -->
             <div class="task-form-section">
-              <span class="section-label">Due</span>
+              <span class="section-label">{{ 'tasks.tasks-page.due' | translate }}</span>
               <span class="due-value" [class.overdue]="isOverdue(selectedTask()!)">
                 {{ dueLabel(selectedTask()!) }}
               </span>
@@ -330,7 +345,9 @@
             @if (isChooseParticipants) {
               <!-- Participants field -->
               <div class="task-form-section">
-                <span class="section-label required">Participants</span>
+                <span class="section-label required">{{
+                  'tasks.tasks-page.participants' | translate
+                }}</span>
 
                 <div class="participant-chips">
                   @for (p of participants; track p) {
@@ -347,12 +364,12 @@
                 </div>
 
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Search users or groups</mat-label>
+                  <mat-label>{{ 'tasks.tasks-page.search-users-or-groups' | translate }}</mat-label>
                   <input
                     matInput
                     [(ngModel)]="participantInput"
                     (input)="searchUsers()"
-                    placeholder="Type to search…"
+                    [placeholder]="'tasks.tasks-page.type-to-search' | translate"
                   />
                   @if (searching()) {
                     <mat-icon matSuffix>hourglass_empty</mat-icon>
@@ -390,10 +407,14 @@
               <!-- Review Type -->
               <div class="task-form-section">
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Review Type</mat-label>
+                  <mat-label>{{ 'tasks.tasks-page.review-type' | translate }}</mat-label>
                   <mat-select [(ngModel)]="validationOrReview">
-                    <mat-option value="simpleReview">Simple Review</mat-option>
-                    <mat-option value="validation">Validation</mat-option>
+                    <mat-option value="simpleReview">{{
+                      'tasks.tasks-page.simple-review' | translate
+                    }}</mat-option>
+                    <mat-option value="validation">{{
+                      'tasks.tasks-page.validation' | translate
+                    }}</mat-option>
                   </mat-select>
                 </mat-form-field>
               </div>
@@ -401,7 +422,9 @@
 
             <!-- Comment -->
             <div class="task-form-section">
-              <label class="section-label" for="tasks-page-comment-input">Comment</label>
+              <label class="section-label" for="tasks-page-comment-input">{{
+                'tasks.tasks-page.comment' | translate
+              }}</label>
               <mat-form-field appearance="outline" class="full-width">
                 <input
                   id="tasks-page-comment-input"
@@ -426,7 +449,10 @@
                 </button>
               }
               @if (submitting()) {
-                <mat-spinner diameter="20" aria-label="Loading" />
+                <mat-spinner
+                  diameter="20"
+                  [attr.aria-label]="'tasks.tasks-page.loading' | translate"
+                />
               }
             </div>
 
@@ -439,7 +465,7 @@
                   [disabled]="submitting()"
                   (click)="abandonWorkflow()"
                 >
-                  <mat-icon>cancel</mat-icon> Abandon Workflow
+                  <mat-icon>cancel</mat-icon> {{ 'tasks.tasks-page.abandon-workflow' | translate }}
                 </button>
               </div>
             }
@@ -448,7 +474,7 @@
             @if (taskComments.length > 0) {
               <div class="task-form-section comments-section">
                 <mat-divider />
-                <span class="section-label">Comments</span>
+                <span class="section-label">{{ 'tasks.tasks-page.comments' | translate }}</span>
                 <div class="comments-list">
                   @for (c of taskComments; track $index) {
                     <div class="comment-item">
@@ -475,7 +501,11 @@
 
           <!-- Collapse handle -->
           <div class="panel-collapse-handle">
-            <button mat-icon-button matTooltip="Collapse" aria-label="Collapse">
+            <button
+              mat-icon-button
+              [matTooltip]="'tasks.tasks-page.collapse' | translate"
+              [attr.aria-label]="'tasks.tasks-page.collapse' | translate"
+            >
               <mat-icon>chevron_left</mat-icon>
             </button>
           </div>
@@ -497,7 +527,7 @@
           } @else {
             <div class="preview-placeholder">
               <mat-icon>insert_drive_file</mat-icon>
-              <span>{{ docLoading() ? 'Loading...' : 'No document' }}</span>
+              <span>{{ docLoading() ? 'Loading...' : ('tasks.no-document' | translate) }}</span>
             </div>
           }
         </section>

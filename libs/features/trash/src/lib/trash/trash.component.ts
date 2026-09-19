@@ -33,6 +33,7 @@ import {
   type NuxeoDocument,
   type NuxeoDocumentList,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export type ViewMode = 'grid' | 'table' | 'list';
 type SortDirection = 'asc' | 'desc';
@@ -40,17 +41,24 @@ type SortDirection = 'asc' | 'desc';
 interface ColumnDef {
   key: string;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   width: string;
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'title', label: 'Title', width: '2fr' },
-  { key: 'type', label: 'Type', width: '1fr' },
-  { key: 'modified', label: 'Modified', width: '1fr' },
-  { key: 'contributor', label: 'Last contributor', width: '1.2fr' },
-  { key: 'created', label: 'Created', width: '1fr' },
-  { key: 'author', label: 'Author', width: '1fr' },
-  { key: 'state', label: 'State', width: '1fr' },
+  { key: 'title', labelKey: 'trash.column.title', label: 'Title', width: '2fr' },
+  { key: 'type', labelKey: 'trash.column.type', label: 'Type', width: '1fr' },
+  { key: 'modified', labelKey: 'trash.column.modified', label: 'Modified', width: '1fr' },
+  {
+    key: 'contributor',
+    labelKey: 'trash.column.contributor',
+    label: 'Last contributor',
+    width: '1.2fr',
+  },
+  { key: 'created', labelKey: 'trash.column.created', label: 'Created', width: '1fr' },
+  { key: 'author', labelKey: 'trash.column.author', label: 'Author', width: '1fr' },
+  { key: 'state', labelKey: 'trash.column.state', label: 'State', width: '1fr' },
 ];
 
 const SORT_FIELD_MAP: Record<string, string> = {
@@ -69,6 +77,7 @@ const SORTABLE_COLUMNS = new Set(['title', 'modified', 'contributor', 'created',
   selector: 'lib-trash',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     MatButtonModule,
     MatIconModule,
@@ -85,6 +94,7 @@ const SORTABLE_COLUMNS = new Set(['title', 'modified', 'contributor', 'created',
   styleUrl: './trash.component.scss',
 })
 export class TrashComponent {
+  private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly snackBar = inject(MatSnackBar);
@@ -212,7 +222,7 @@ export class TrashComponent {
       ...SAVED_SEARCH_DIALOG_OPTIONS,
       data: {
         title: 'Saved Search',
-        placeholder: 'Enter a name for your saved search',
+        placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
       },
     });
 
@@ -274,7 +284,7 @@ export class TrashComponent {
         ...SAVED_SEARCH_DIALOG_OPTIONS,
         data: {
           title: 'Edit Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: title.trim(),
         },
       })

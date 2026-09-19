@@ -20,12 +20,14 @@ import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
+import { TranslatePipe } from '@ngx-translate/core';
 
 const LAST_USER_KEY = 'agentic_ui_last_username';
 
 @Component({
   selector: 'app-login-page',
   imports: [
+    TranslatePipe,
     RouterLink,
     ReactiveFormsModule,
     MatButtonModule,

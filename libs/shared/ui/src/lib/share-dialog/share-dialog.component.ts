@@ -3,6 +3,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ShareDialogData {
   title: string;
@@ -12,24 +13,8 @@ export interface ShareDialogData {
 @Component({
   selector: 'lib-share-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatSnackBarModule],
-  template: `
-    <h2 mat-dialog-title>Share the Document</h2>
-
-    <mat-dialog-content>
-      <p class="share-subtitle">Internal Access link to {{ data.title }}.</p>
-      <div class="share-link-row">
-        <input class="share-link-input" readonly [value]="data.url" #linkInput />
-        <button mat-icon-button class="copy-btn" (click)="copyLink()" aria-label="Copy link">
-          <mat-icon>link</mat-icon>
-        </button>
-      </div>
-    </mat-dialog-content>
-
-    <mat-dialog-actions>
-      <button mat-flat-button color="primary" mat-dialog-close>Close</button>
-    </mat-dialog-actions>
-  `,
+  imports: [TranslatePipe, MatDialogModule, MatButtonModule, MatIconModule, MatSnackBarModule],
+  templateUrl: './share-dialog.component.html',
   styles: [
     `
       :host {

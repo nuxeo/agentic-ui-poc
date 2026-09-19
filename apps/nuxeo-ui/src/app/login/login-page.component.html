@@ -1,7 +1,11 @@
 <div class="login-page">
   <div class="login-panel">
     <div class="login-panel-inner">
-      <a routerLink="/login" class="login-brand" aria-label="Hyland">
+      <a
+        routerLink="/login"
+        class="login-brand"
+        [attr.aria-label]="'app.login-page.hyland' | translate"
+      >
         <sat-logo direction="horizontal">
           <sat-h-mark-logo />
           <sat-word-mark-logo />
@@ -10,7 +14,7 @@
 
       <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
         <mat-form-field appearance="outline" class="login-field-full">
-          <mat-label>Username</mat-label>
+          <mat-label>{{ 'app.login-page.username' | translate }}</mat-label>
           <input
             matInput
             formControlName="username"
@@ -20,12 +24,12 @@
             (animationstart)="onAutofillAnimation($event)"
           />
           @if (form.controls.username.hasError('required') && form.controls.username.touched) {
-            <mat-error>Username is required</mat-error>
+            <mat-error>{{ 'app.login-page.username-is-required' | translate }}</mat-error>
           }
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="login-field-full">
-          <mat-label>Password</mat-label>
+          <mat-label>{{ 'app.login-page.password' | translate }}</mat-label>
           <input
             matInput
             type="password"
@@ -36,7 +40,7 @@
             (animationstart)="onAutofillAnimation($event)"
           />
           @if (form.controls.password.hasError('required') && form.controls.password.touched) {
-            <mat-error>Password is required</mat-error>
+            <mat-error>{{ 'app.login-page.password-is-required' | translate }}</mat-error>
           }
         </mat-form-field>
 
@@ -60,7 +64,7 @@
       @if (samlEndpoints().length > 0) {
         <div class="login-or">
           <span class="login-or-line"></span>
-          <span class="login-or-text">OR</span>
+          <span class="login-or-text">{{ 'app.login-page.or' | translate }}</span>
           <span class="login-or-line"></span>
         </div>
 
@@ -79,7 +83,9 @@
       }
     </div>
 
-    <p class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</p>
+    <p class="login-footer">
+      {{ 'app.login-page.copyright-c-1992-2026-hyland-software' | translate }}
+    </p>
   </div>
 
   <div

@@ -1,0 +1,18 @@
+<h2 mat-dialog-title>{{ 'browse.column-settings-dialog.columns-settings' | translate }}</h2>
+
+<mat-dialog-content>
+  @for (col of columns; track col.key) {
+    <mat-checkbox [(ngModel)]="col.visible" [disabled]="col.key === 'title'">
+      {{ col.labelKey ? (col.labelKey | translate) : col.label }}
+    </mat-checkbox>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="reset()">
+    {{ 'browse.column-settings-dialog.reset' | translate }}
+  </button>
+  <button mat-flat-button color="primary" (click)="done()">
+    {{ 'browse.column-settings-dialog.done' | translate }}
+  </button>
+</mat-dialog-actions>

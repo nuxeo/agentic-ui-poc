@@ -7,7 +7,7 @@
         role="heading"
         aria-level="2"
       >
-        {{ item.label }}
+        {{ item.labelKey ? (item.labelKey | translate) : item.label }}
       </div>
       @if (isTasksPanel) {
         <button
@@ -79,7 +79,7 @@
         @if (browseTreeShowRootBack()) {
           <button class="tree-back" type="button" (click)="navigateToBrowseRoot()">
             <mat-icon>chevron_left</mat-icon>
-            Root
+            {{ 'app.nav-drawer.root' | translate }}
           </button>
         }
         <div class="tree-list">
@@ -90,7 +90,10 @@
       }
     </div>
   } @else if (isBrowseAdfHx) {
-    <hxp-browse-nav-drawer [title]="item.label" (navigatePath)="onAdfHxBrowseNavigate($event)" />
+    <hxp-browse-nav-drawer
+      [title]="item.labelKey ? (item.labelKey | translate) : item.label"
+      (navigatePath)="onAdfHxBrowseNavigate($event)"
+    />
   } @else if (isPersonalSpace) {
     <div class="folder-tree">
       @if (personalSpaceLoading()) {
@@ -101,7 +104,7 @@
         <div class="tree-empty error">
           <span>{{ personalSpaceError() }}</span>
           <button mat-stroked-button type="button" (click)="refreshPersonalSpaceTree()">
-            Retry
+            {{ 'app.nav-drawer.retry' | translate }}
           </button>
         </div>
       } @else if (personalSpaceNodes().length === 0) {
@@ -263,7 +266,9 @@
                     @if (task.dueDate) {
                       <div class="task-due-line">
                         <span class="task-due-prefix">{{
-                          isOverdue(task) ? 'Overdue' : 'Due'
+                          isOverdue(task)
+                            ? ('shell.overdue' | translate)
+                            : ('shell.due' | translate)
                         }}</span>
                         <span
                           class="task-due-value"
@@ -380,7 +385,7 @@
               (click)="copyClipboard()"
             >
               <mat-icon>content_copy</mat-icon>
-              Copy
+              {{ 'app.nav-drawer.copy' | translate }}
             </button>
             <button
               mat-stroked-button
@@ -390,7 +395,7 @@
               (click)="moveClipboard()"
             >
               <mat-icon>drive_file_move</mat-icon>
-              Move
+              {{ 'app.nav-drawer.move' | translate }}
             </button>
           </div>
         </div>
@@ -406,7 +411,7 @@
           routerLinkActive="settings-item--active"
           [routerLinkActiveOptions]="{ exact: true }"
         >
-          {{ settingsItem.label }}
+          {{ settingsItem.labelKey ? (settingsItem.labelKey | translate) : settingsItem.label }}
         </button>
       }
       <button type="button" class="settings-item" (click)="onSettingsSignOut()">
@@ -422,7 +427,7 @@
           [class.settings-item--active]="isAdminDrawerPathActive(adminItem.path)"
           (click)="onAdministrationItemClick(adminItem.path)"
         >
-          {{ adminItem.label }}
+          {{ adminItem.labelKey ? (adminItem.labelKey | translate) : adminItem.label }}
         </button>
       }
     </div>
@@ -436,7 +441,10 @@
     <lib-extension-outlet [componentId]="sidebarId" />
   } @else {
     <div class="drawer-empty">
-      <p>Content for "{{ item.label }}" will appear here.</p>
+      <p>
+        Content for "{{ item.labelKey ? (item.labelKey | translate) : item.label }}" will appear
+        here.
+      </p>
     </div>
   }
 }

@@ -1,19 +1,19 @@
 <div class="hxp-search-page">
   <!-- Header -->
   <header class="hxp-search-page__header">
-    <h1>Search</h1>
+    <h1>{{ 'browse.search-adf-hx.search' | translate }}</h1>
   </header>
 
   <!-- Search input -->
   <div class="hxp-search-page__filters">
     <mat-form-field appearance="outline" class="hxp-search-page__search-field">
-      <mat-label>Search documents</mat-label>
+      <mat-label>{{ 'browse.search-adf-hx.search-documents' | translate }}</mat-label>
       <input
         matInput
         type="text"
         [(ngModel)]="searchTerm"
         (ngModelChange)="onSearchTermChange()"
-        placeholder="Enter search term..."
+        [placeholder]="'browse.search-adf-hx.enter-search-term' | translate"
       />
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
@@ -22,8 +22,8 @@
   <!-- Loading state -->
   @if (loading()) {
     <div class="hxp-search-page__loading">
-      <mat-spinner diameter="48" aria-label="Loading" />
-      <p>Searching...</p>
+      <mat-spinner diameter="48" [attr.aria-label]="'browse.search-adf-hx.loading' | translate" />
+      <p>{{ 'browse.search-adf-hx.searching' | translate }}</p>
     </div>
   }
 
@@ -56,7 +56,7 @@
             mat-icon-button
             [disabled]="!hasPreviousPage()"
             (click)="previousPage()"
-            aria-label="Previous page"
+            [attr.aria-label]="'browse.search-adf-hx.previous-page' | translate"
           >
             <mat-icon>chevron_left</mat-icon>
           </button>
@@ -74,7 +74,7 @@
             mat-icon-button
             [disabled]="!hasNextPage()"
             (click)="nextPage()"
-            aria-label="Next page"
+            [attr.aria-label]="'browse.search-adf-hx.next-page' | translate"
           >
             <mat-icon>chevron_right</mat-icon>
           </button>
@@ -83,9 +83,11 @@
     } @else {
       <div class="hxp-search-page__no-results">
         <mat-icon>search_off</mat-icon>
-        <p>No results found</p>
+        <p>{{ 'browse.search-adf-hx.no-results-found' | translate }}</p>
         @if (searchTerm()) {
-          <p class="hxp-search-page__no-results-hint">Try a different search term</p>
+          <p class="hxp-search-page__no-results-hint">
+            {{ 'browse.search-adf-hx.try-a-different-search-term' | translate }}
+          </p>
         }
       </div>
     }

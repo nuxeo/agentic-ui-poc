@@ -17,22 +17,24 @@ import {
   isMailSendError,
   permissionCreateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ShareExternalDialogData {
   documentUid: string;
 }
 
 const PERMISSION_OPTIONS = [
-  { value: 'Read', label: 'Read' },
-  { value: 'ReadWrite', label: 'Edit' },
-  { value: 'Everything', label: 'Manage everything' },
-  { value: 'ReadCanCollect', label: 'Can collect' },
+  { value: 'Read', labelKey: 'permission.read', label: 'Read' },
+  { value: 'ReadWrite', labelKey: 'permission.read-write', label: 'Edit' },
+  { value: 'Everything', labelKey: 'permission.everything', label: 'Manage everything' },
+  { value: 'ReadCanCollect', labelKey: 'permission.read-can-collect', label: 'Can collect' },
 ];
 
 @Component({
   selector: 'lib-share-external-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -44,87 +46,7 @@ const PERMISSION_OPTIONS = [
     MatSnackBarModule,
   ],
   providers: [provideNativeDateAdapter()],
-  template: `
-    <h2 mat-dialog-title>Share With External User</h2>
-
-    <mat-dialog-content>
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Email</mat-label>
-        <input matInput type="email" placeholder="name@company.com" [(ngModel)]="email" required />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Right</mat-label>
-        <mat-select [(ngModel)]="permission">
-          @for (opt of permissionOptions; track opt.value) {
-            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-
-      <div class="date-fields">
-        <mat-form-field appearance="outline">
-          <mat-label>From</mat-label>
-          <input matInput [matDatepicker]="fromPicker" [(ngModel)]="beginDate" />
-          <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
-          <mat-datepicker #fromPicker />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>To</mat-label>
-          <input matInput [matDatepicker]="toPicker" [(ngModel)]="endDate" required />
-          <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
-          <mat-datepicker #toPicker />
-        </mat-form-field>
-      </div>
-
-      <p class="mail-hint">{{ mailHint }}</p>
-
-      <div class="notify-section">
-        <label class="field-label">Notification email</label>
-        <mat-form-field appearance="outline" class="full-width">
-          <textarea
-            matInput
-            [(ngModel)]="notifyComment"
-            rows="2"
-            placeholder="Hi! Could you comment on this document and..."
-          ></textarea>
-        </mat-form-field>
-      </div>
-    </mat-dialog-content>
-
-    <mat-dialog-actions>
-      <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
-      <span class="spacer"></span>
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        class="create-another-btn"
-        [disabled]="!isValid() || saving()"
-        (click)="create(true)"
-      >
-        @if (saving() && addAnother) {
-          <mat-spinner diameter="18" />
-        } @else {
-          Create And Add Another
-        }
-      </button>
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        [disabled]="!isValid() || saving()"
-        (click)="create(false)"
-      >
-        @if (saving() && !addAnother) {
-          <mat-spinner diameter="18" />
-        } @else {
-          Create
-        }
-      </button>
-    </mat-dialog-actions>
-  `,
+  templateUrl: './share-external-dialog.html',
   styles: [
     `
       :host {

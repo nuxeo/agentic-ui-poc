@@ -18,6 +18,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged, finalize, Subject, switchMap } from 'rxjs';
 
 import { NuxeoUser, UserService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface UserFormDialogData {
   mode: 'create' | 'edit';
@@ -43,6 +44,7 @@ export interface UserFormDialogResult {
   selector: 'lib-user-form-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatButtonModule,

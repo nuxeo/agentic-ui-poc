@@ -5,11 +5,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { NuxeoTask, TaskService, CURRENT_USERNAME } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-task-list',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule],
+  imports: [TranslatePipe, MatIconModule, MatButtonModule, MatProgressSpinnerModule],
   templateUrl: './task-list.component.html',
   styleUrl: './task-list.component.scss',
 })

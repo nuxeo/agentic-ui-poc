@@ -169,6 +169,32 @@ function expectRed(label, guardrail, files, mutate, expected) {
   });
 }
 
+/**
+ * Asserts the guardrail stays green but *warns*, naming the reason.
+ *
+ * Needed once missing-locale-key parity became a warning rather than a failure: a missing key
+ * falls back to English and is handled, so failing would force whoever runs the extraction to
+ * also invent the translations. Green-and-silent and green-with-a-warning are different
+ * outcomes, and a control that only checks the exit code cannot tell them apart — which is how
+ * a demoted check quietly becomes no check at all.
+ */
+function expectWarn(label, guardrail, files, mutate, expected) {
+  negative += 1;
+  withFixture(files, mutate, (runGuardrail) => {
+    const { code, out } = runGuardrail(guardrail);
+    if (code !== 0) {
+      failures.push(`${label}: ${guardrail} failed, but this should only warn.\n    ${out.trim()}`);
+      return;
+    }
+    if (!expected.test(out)) {
+      failures.push(
+        `${label}: ${guardrail} was green but did not warn about it.\n` +
+          `    expected /${expected.source}/\n    got: ${out.trim()}`,
+      );
+    }
+  });
+}
+
 /** Asserts a correct tree is green — the control that stops a guardrail failing on everything. */
 function expectGreen(label, guardrail, files) {
   positive += 1;
@@ -214,8 +240,8 @@ expectRed(
   /has no trailing newline/,
 );
 
-expectRed(
-  'locale missing a key the reference has',
+expectWarn(
+  'locale missing a key the reference has — warns, because English is the fallback',
   'checkTranslationCatalogues',
   APP,
   (write) =>
@@ -527,6 +553,128 @@ expectRed(
     ),
   /introduces `label: 'Knowledge Discovery'` — a user-facing string in a descriptor/,
 );
+
+const SHELL = (title) =>
+  `<!doctype html>\n<html lang="en">\n  <head>\n    <title>${title}</title>\n  </head>\n` +
+  `  <body><app-root></app-root></body>\n</html>\n`;
+
+expectRed(
+  'an Angular interpolation in the document shell',
+  'checkNoTemplateSyntaxInDocumentShell',
+  { 'apps/nuxeo-ui/src/index.html': SHELL("{{ 'app.title' | translate }}") },
+  null,
+  /document shell/,
+);
+
+expectGreen('a static document title', 'checkNoTemplateSyntaxInDocumentShell', {
+  'apps/nuxeo-ui/src/index.html': SHELL('Nuxeo Platform'),
+});
+
+// The comment in index.html that explains this rule quotes the syntax it forbids. The first
+// run of the check failed on that comment, so the exemption is a control rather than a note.
+expectGreen('the syntax quoted inside an HTML comment', 'checkNoTemplateSyntaxInDocumentShell', {
+  'apps/nuxeo-ui/src/index.html':
+    `<!doctype html>\n<html lang="en">\n  <head>\n` +
+    `    <!-- Static on purpose: {{ 'x' | translate }} would render literally here. -->\n` +
+    `    <title>Nuxeo Platform</title>\n  </head>\n  <body><app-root></app-root></body>\n</html>\n`,
+});
+
+// A gate that finds no file to read must say so rather than pass.
+expectRed(
+  'no document shell to check at all',
+  'checkNoTemplateSyntaxInDocumentShell',
+  { 'apps/nuxeo-ui/src/main.ts': 'export const x = 1;\n' },
+  null,
+  /asserted nothing/,
+);
+
+expectRed(
+  'prose in a plain attribute on a component',
+  'checkNoProseInComponentInputs',
+  { 'libs/features/x/src/lib/x.html': '<mat-tab label="Permissions"></mat-tab>\n' },
+  null,
+  /component input holding user-facing text/,
+);
+
+expectGreen('a bound and translated component input', 'checkNoProseInComponentInputs', {
+  'libs/features/x/src/lib/x.html': `<mat-tab [label]="'x.tab.permissions' | translate"></mat-tab>\n`,
+});
+
+// The element pattern deliberately matches components, not HTML. `title` on a <button> is an
+// HTML attribute and belongs to checkNoHardcodedUiText, which is diff-scoped; reporting it
+// here as well would make every pre-existing one a blocker.
+expectGreen('a plain attribute on an HTML element', 'checkNoProseInComponentInputs', {
+  'libs/features/x/src/lib/x.html': '<button title="Save">x</button>\n',
+});
+
+// A non-text input that happens to start with a capital must not be flagged.
+expectGreen('a non-text input with a capitalised value', 'checkNoProseInComponentInputs', {
+  'libs/features/x/src/lib/x.html': '<mat-icon fontSet="Material Icons">home</mat-icon>\n',
+});
+
+const BOOTSTRAP = (defaultLanguage, available = ['en', 'fr']) =>
+  `${JSON.stringify({ defaultLanguage, availableLanguages: available }, null, 2)}\n`;
+const CATALOGUES = {
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+  'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+};
+
+expectRed(
+  'the generated pseudo-locale shipped as the default',
+  'checkShippedDefaultLanguage',
+  {
+    ...CATALOGUES,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('zz', ['en', 'fr']),
+  },
+  null,
+  /GENERATED pseudo-locale/,
+);
+
+expectRed(
+  'a default language with no catalogue behind it',
+  'checkShippedDefaultLanguage',
+  {
+    ...CATALOGUES,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('de', ['en', 'fr', 'de']),
+  },
+  null,
+  /no catalogue exists for it/,
+);
+
+expectRed(
+  'a default absent from availableLanguages',
+  'checkShippedDefaultLanguage',
+  {
+    ...CATALOGUES,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('fr', ['en']),
+  },
+  null,
+  /absent from/,
+);
+
+expectGreen('a real shipped default', 'checkShippedDefaultLanguage', {
+  ...CATALOGUES,
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('en', ['en', 'fr']),
+});
+
+// A gate that cannot find the file it checks must say so, not pass.
+expectRed(
+  'no packaged bootstrap.json at all',
+  'checkShippedDefaultLanguage',
+  { ...CATALOGUES },
+  null,
+  /asserted nothing/,
+);
+
+expectGreen('a label paired with a labelKey', 'checkNoHardcodedDescriptorText', {
+  ...WITH_DESCRIPTORS,
+  'libs/shared/extensions/src/lib/nav-items.ts':
+    `${GOOD_DESCRIPTORS}export const PAIRED = [
+` +
+    `  { id: 'x', labelKey: 'nav.browse', label: 'Browse' },
+];
+`,
+});
 
 expectRed(
   'a hard-coded descriptor placeholder',

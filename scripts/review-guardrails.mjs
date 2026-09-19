@@ -1132,9 +1132,21 @@ function checkNoHardcodedDescriptorText() {
     if (!/^(libs|apps)\/.+\.ts$/.test(file)) continue;
     if (/\.spec\.ts$/.test(file)) continue;
 
+    // A `label` paired with a `labelKey` is the **fixed** shape, not a violation. The key is
+    // what renders and the literal is the fallback, which is the whole point of the two-field
+    // contract — see `NavItemDescriptor.labelKey`. Read from the file rather than the diff
+    // because the two lines are separate additions and a line-at-a-time check cannot see the
+    // pair.
+    const body = fileExists(file) ? read(file).split('\n') : [];
+    const pairedWithKey = (lineNumber) => {
+      const near = body.slice(Math.max(0, lineNumber - 3), lineNumber + 2).join('\n');
+      return /\blabelKey\s*:/.test(near);
+    };
+
     for (const { line, text } of lines) {
       const trimmed = text.trim();
       if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('*')) continue;
+      if (pairedWithKey(line)) continue;
 
       for (const [, property, value] of trimmed.matchAll(DESCRIPTOR_TEXT)) {
         if ((value.match(/[A-Za-z]/g) ?? []).length < 2) continue;
@@ -1186,8 +1198,22 @@ function checkNoHardcodedDescriptorText() {
  * `review-guardrails.selftest.mjs` exercises parity against fixtures regardless of what the
  * repository currently ships.
  */
+/**
+ * `zz` is the generated pseudo-locale, not a shipped one.
+ *
+ * `tools/i18n/pseudo-locale.mjs` derives it from `en.json` on demand and `.gitignore` keeps it
+ * out of the tree; it exists only while someone is auditing for strings no catalogue supplies.
+ * Every locale check would otherwise treat it as a customer-facing language — demanding key
+ * parity with a file that is regenerated from `en.json` anyway, and demanding Angular locale
+ * data for a locale Angular has never heard of.
+ */
+const GENERATED_LOCALES = new Set(['zz']);
+const isGeneratedLocale = (path) =>
+  GENERATED_LOCALES.has(/(^|\/)i18n\/([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[2] ?? '');
+
 function checkTranslationCatalogues() {
-  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
   const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
 
   if (catalogues.length === 0) {
@@ -1279,12 +1305,24 @@ function checkTranslationCatalogues() {
       const extra = [...keys.keys()].filter((key) => !referenceKeys.has(key));
 
       if (missing.length) {
-        fail(
+        // A WARNING, not a failure, and the asymmetry with `extra` below is deliberate.
+        //
+        // A missing key is **handled**: `setFallbackLang('en')` means it renders the English
+        // string, so the application is correct and merely untranslated. Failing on it would
+        // mean every English string extracted has to be translated in the same commit — 1224
+        // of them at the last count — by whoever ran the codemod. That is not who translates
+        // this product. Crowdin and the translation crew own every non-English catalogue, per
+        // the HXP standard, and inventing the content here to satisfy a gate would put
+        // unreviewed machine translation in front of customers while *looking* finished.
+        //
+        // An extra key stays a hard failure: nothing renders it, nobody is paying attention to
+        // it, and the translation crew is still being charged to maintain it.
+        warn(
           `${catalogue} is missing ${missing.length} key(s) present in ${reference}: ` +
             `${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ', …' : ''}\n` +
-            '    Those strings silently render in English for this locale. Never hand-edit a ' +
-            'non-English catalogue — Crowdin owns them and overwrites edits on the next pull — so ' +
-            'the fix is a Crowdin sync, not a local patch.',
+            '    Those strings render in English for this locale, which is the fallback working ' +
+            'as designed. Never hand-edit a non-English catalogue — Crowdin owns them and ' +
+            'overwrites edits on the next pull — so the fix is a Crowdin sync, not a local patch.',
         );
       }
       if (extra.length) {
@@ -1455,7 +1493,8 @@ function checkLocaleDataRegistered() {
     return;
   }
 
-  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
   const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
   const shipped = new Set(
     catalogues
@@ -1644,6 +1683,192 @@ function checkAccessibleNameFallbacks() {
  * authoritative set is one thing to read. `verify-gate.mjs` does the same and for the same
  * reason: its usage line went stale twice while gates were being added.
  */
+
+/**
+ * No Angular template syntax in a document shell.
+ *
+ * `index.html` is served as-is and Angular never compiles it, so `{{ 'key' | translate }}` in
+ * the `<title>` renders those braces as literal text in the browser tab. The i18n extraction
+ * codemod did exactly that: it globbed `*.html` and could not tell a component template from
+ * the shell that hosts the application.
+ *
+ * Nothing else caught it. Lint does not parse `index.html` as a template, the build copies it
+ * verbatim, and no test opens a browser and reads `document.title` before bootstrap. It was
+ * found by loading the page and looking at the tab.
+ *
+ * The window is short — `AppShellComponent` replaces the title from Layer 0 branding once it
+ * boots — but it is the first thing a user sees, and on a slow load it is the only thing.
+ */
+function checkNoTemplateSyntaxInDocumentShell() {
+  const shells = [...walk('apps', (path) => /(^|\/)src\/index\.html$/.test(path))];
+
+  if (shells.length === 0) {
+    fail(
+      'No `src/index.html` was found under apps/, so this gate asserted nothing. Check the ' +
+        'glob before trusting a pass.',
+    );
+    return;
+  }
+
+  for (const shell of shells) {
+    // Comments are blanked, not dropped, so the reported line number still points at the file
+    // as written. The comment in `index.html` explaining this rule quotes the syntax it
+    // forbids, and the first run of this check failed on that comment.
+    const body = read(shell).replace(/<!--[\s\S]*?-->/g, (block) => block.replace(/[^\n]/g, ' '));
+    for (const [index, line] of body.split('\n').entries()) {
+      const match = /\{\{[^}]*\}\}|\*ngIf|\[[\w.]+\]="/.exec(line);
+      if (!match) continue;
+      fail(
+        `${shell}:${index + 1} contains Angular template syntax \`${match[0].trim()}\`. ` +
+          'This file is the document shell, not a component template — Angular never compiles ' +
+          'it, so the braces render as literal text. Put the string in the component that owns ' +
+          'the element, or set it at runtime as `branding.documentTitle` does.',
+      );
+    }
+  }
+}
+
+/**
+ * No prose in a plain attribute on a component — it is an `@Input`, not HTML.
+ *
+ * `checkNoHardcodedUiText` knows the HTML attributes that hold text: `title`, `aria-label`,
+ * `placeholder`, `alt`. It cannot know that `label` on `<mat-tab>` is one too, because that is
+ * a component input and there is no list of every input in every library.
+ *
+ * Fourteen tab labels sat in that gap — the four across the top of the browse page among them —
+ * through a full extraction, a repo-wide residue scan and a pseudo-locale audit of nine routes.
+ * The audit did see them; I read its output as upstream noise because Material rendered them.
+ *
+ * The heuristic is the element name: a hyphenated custom element or a PascalCase one is a
+ * component, and a capitalised attribute value on it is prose. Known non-text inputs are
+ * exempt, and that list is the part to extend when this reports a false positive — not the
+ * element pattern.
+ */
+function checkNoProseInComponentInputs() {
+  const NON_TEXT = new Set([
+    'class',
+    'style',
+    'id',
+    'type',
+    'name',
+    'role',
+    'color',
+    'appearance',
+    'mode',
+    'value',
+    'href',
+    'src',
+    'target',
+    'rel',
+    'align',
+    'fxLayout',
+    'matTooltipPosition',
+    'position',
+    'animationDuration',
+    'diameter',
+    'strokeWidth',
+    'fontSet',
+    'svgIcon',
+  ]);
+  const ELEMENT = /<((?:mat|hxp|app|sat|adf|nx)-[\w-]+|[A-Z][\w-]*)\b([^>]*)>/gs;
+  const ATTRIBUTE = /(?<![[(\w.-])([a-zA-Z][\w-]*)="([A-Z][^"<>{}]*)"/g;
+
+  const templates = [
+    ...walk('apps', (path) => path.endsWith('.html')),
+    ...walk('libs', (path) => path.endsWith('.html')),
+  ].filter((path) => !path.startsWith('apps/nuxeo-satori-template/'));
+
+  if (templates.length === 0) {
+    fail('No templates were found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+
+  for (const template of templates) {
+    const body = read(template);
+    for (const element of body.matchAll(ELEMENT)) {
+      for (const [, attribute, value] of element[2].matchAll(ATTRIBUTE)) {
+        if (NON_TEXT.has(attribute)) continue;
+        if (value.replace(/[^A-Za-z]/g, '').length < 3) continue;
+        fail(
+          `${template} sets \`${attribute}="${value}"\` on \`<${element[1]}>\`. That is a ` +
+            'component input holding user-facing text, not an HTML attribute, so no pipe runs ' +
+            `and the English is hard-coded. Bind it: \`[${attribute}]="'some.key' | translate"\`. ` +
+            `If \`${attribute}\` never holds text, add it to NON_TEXT in this check.`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * The shipped Layer 0 default must be a locale that ships.
+ *
+ * `zz` is generated by `tools/i18n/pseudo-locale.mjs` for auditing, and selecting it means
+ * pointing the packaged `bootstrap.json` at it — which is a tracked file that installs into a
+ * customer's Nuxeo. It was committed that way once in this branch. Nothing else would have
+ * caught it: the build is happy, every test is happy, and the application renders perfectly.
+ * In accented gibberish.
+ *
+ * Also rejects a default that is not in `availableLanguages`, and any `availableLanguages`
+ * entry with no catalogue behind it — advertising a language the app cannot render.
+ */
+function checkShippedDefaultLanguage() {
+  const config = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+  if (!fileExists(config)) {
+    fail(`${config} was not found, so this gate asserted nothing. Check the path.`);
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(read(config));
+  } catch (error) {
+    fail(`${config} is not valid JSON: ${error.message}`);
+    return;
+  }
+
+  const shipped = new Set(
+    [...walk('apps', (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path))]
+      .map((path) => /([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[1])
+      .filter((locale) => locale && !GENERATED_LOCALES.has(locale)),
+  );
+
+  const fallback = parsed['defaultLanguage'];
+  const available = parsed['availableLanguages'];
+
+  if (typeof fallback === 'string' && GENERATED_LOCALES.has(fallback)) {
+    fail(
+      `${config} ships \`defaultLanguage: "${fallback}"\`, which is the GENERATED pseudo-locale. ` +
+        'It is produced on demand for auditing and is gitignored, so a customer install would ' +
+        'render every string as accented placeholder text. Set it back to a real locale.',
+    );
+  } else if (typeof fallback === 'string' && shipped.size > 0 && !shipped.has(fallback)) {
+    fail(
+      `${config} ships \`defaultLanguage: "${fallback}"\` but no catalogue exists for it. ` +
+        `Catalogues found: ${[...shipped].sort().join(', ')}.`,
+    );
+  }
+
+  if (Array.isArray(available)) {
+    for (const locale of available) {
+      if (GENERATED_LOCALES.has(locale)) {
+        fail(`${config} lists the generated pseudo-locale "${locale}" in availableLanguages.`);
+      } else if (shipped.size > 0 && !shipped.has(locale)) {
+        fail(
+          `${config} advertises "${locale}" in availableLanguages but ships no catalogue for ` +
+            'it, so choosing it would render the raw English fallback throughout.',
+        );
+      }
+    }
+    if (typeof fallback === 'string' && !available.includes(fallback)) {
+      fail(
+        `${config} ships \`defaultLanguage: "${fallback}"\` which is absent from ` +
+          'availableLanguages, so the default is a language a user cannot switch back to.',
+      );
+    }
+  }
+}
+
 const GUARDRAILS = [
   checkThemeTokens,
   checkDocsNumbering,
@@ -1659,6 +1884,9 @@ const GUARDRAILS = [
   checkNoAdfHxInPublicApi,
   checkNoHardcodedUiText,
   checkNoHardcodedDescriptorText,
+  checkNoTemplateSyntaxInDocumentShell,
+  checkNoProseInComponentInputs,
+  checkShippedDefaultLanguage,
   checkTranslationCatalogues,
   checkTranslationContext,
   checkAccessibleNameFallbacks,

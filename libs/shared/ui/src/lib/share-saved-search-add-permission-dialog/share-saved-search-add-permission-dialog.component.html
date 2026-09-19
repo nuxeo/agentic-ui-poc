@@ -1,13 +1,18 @@
-<h2 mat-dialog-title>{{ data.title || 'Add a Permission' }}</h2>
+<h2 mat-dialog-title>{{ data.title || ('ui.add-a-permission' | translate) }}</h2>
 
 <mat-dialog-content>
   @if (!isEditMode) {
-    <label class="field-label" for="principal-input">User / Group *</label>
+    <label class="field-label" for="principal-input">{{
+      'shared-ui.share-saved-search-add-permission-dialog.user-group' | translate
+    }}</label>
     <mat-form-field appearance="outline" class="full-width">
       <input
         id="principal-input"
         matInput
-        placeholder="Search for users and groups"
+        [placeholder]="
+          'shared-ui.share-saved-search-add-permission-dialog.search-for-users-and-groups'
+            | translate
+        "
         [ngModel]="searchText"
         (ngModelChange)="onSearchChange($event)"
         [matAutocomplete]="principalAuto"
@@ -19,7 +24,10 @@
         [displayWith]="displaySuggestion"
       >
         @if (searchText.trim().length < 3) {
-          <mat-option disabled>Please enter 3 or more characters</mat-option>
+          <mat-option disabled>{{
+            'shared-ui.share-saved-search-add-permission-dialog.please-enter-3-or-more-characters'
+              | translate
+          }}</mat-option>
         } @else {
           @for (suggestion of suggestions(); track suggestion.id) {
             <mat-option [value]="suggestion">
@@ -30,36 +38,52 @@
               <span class="suggestion-id">{{ suggestion.id }}</span>
             </mat-option>
           } @empty {
-            <mat-option disabled>No users/groups found</mat-option>
+            <mat-option disabled>{{
+              'shared-ui.share-saved-search-add-permission-dialog.no-users-groups-found' | translate
+            }}</mat-option>
           }
         }
       </mat-autocomplete>
     </mat-form-field>
   } @else {
-    <div class="field-label">User / Group</div>
+    <div class="field-label">
+      {{ 'shared-ui.share-saved-search-add-permission-dialog.user-group-2' | translate }}
+    </div>
     <div class="user-group-display">{{ searchText }}</div>
   }
 
   <mat-form-field appearance="outline" class="full-width">
-    <mat-label>Right</mat-label>
+    <mat-label>{{
+      'shared-ui.share-saved-search-add-permission-dialog.right' | translate
+    }}</mat-label>
     <mat-select [(ngModel)]="right">
       @for (opt of rightOptions; track opt.value) {
-        <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        <mat-option [value]="opt.value">{{
+          opt.labelKey ? (opt.labelKey | translate) : opt.label
+        }}</mat-option>
       }
     </mat-select>
   </mat-form-field>
 
   <div class="time-frame-row">
-    <span class="field-label no-margin">Time Frame</span>
+    <span class="field-label no-margin">{{
+      'shared-ui.share-saved-search-add-permission-dialog.time-frame' | translate
+    }}</span>
     <mat-radio-group [(ngModel)]="timeFrameMode" class="time-frame-radios">
-      <mat-radio-button value="permanent">Permanent</mat-radio-button>
-      <mat-radio-button value="date-based">Date-based</mat-radio-button>
+      <mat-radio-button value="permanent">{{
+        'shared-ui.share-saved-search-add-permission-dialog.permanent' | translate
+      }}</mat-radio-button>
+      <mat-radio-button value="date-based">{{
+        'shared-ui.share-saved-search-add-permission-dialog.date-based' | translate
+      }}</mat-radio-button>
     </mat-radio-group>
   </div>
 
   <div class="date-fields">
     <mat-form-field appearance="outline">
-      <mat-label>From</mat-label>
+      <mat-label>{{
+        'shared-ui.share-saved-search-add-permission-dialog.from' | translate
+      }}</mat-label>
       <input
         matInput
         [matDatepicker]="fromPicker"
@@ -71,7 +95,9 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline">
-      <mat-label>To</mat-label>
+      <mat-label>{{
+        'shared-ui.share-saved-search-add-permission-dialog.to' | translate
+      }}</mat-label>
       <input
         matInput
         [matDatepicker]="toPicker"
@@ -83,18 +109,25 @@
     </mat-form-field>
   </div>
 
-  <mat-checkbox [(ngModel)]="sendNotify">Send an email to notify user</mat-checkbox>
+  <mat-checkbox [(ngModel)]="sendNotify">{{
+    'shared-ui.share-saved-search-add-permission-dialog.send-an-email-to-notify-user' | translate
+  }}</mat-checkbox>
 
   @if (sendNotify) {
     <div class="notify-section">
-      <label class="field-label" for="notify">Notification email</label>
+      <label class="field-label" for="notify">{{
+        'shared-ui.share-saved-search-add-permission-dialog.notification-email' | translate
+      }}</label>
       <mat-form-field appearance="outline" class="full-width">
         <textarea
           id="notify"
           matInput
           rows="2"
           [(ngModel)]="notifyComment"
-          placeholder="Hi! Could you comment on this document and..."
+          [placeholder]="
+            'shared-ui.share-saved-search-add-permission-dialog.hi-could-you-comment-on-this'
+              | translate
+          "
         ></textarea>
       </mat-form-field>
     </div>
@@ -102,18 +135,20 @@
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-stroked-button type="button" (click)="cancel()">
+    {{ 'shared-ui.share-saved-search-add-permission-dialog.cancel' | translate }}
+  </button>
   <span class="spacer"></span>
   @if (isEditMode) {
     <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(false)">
-      Update
+      {{ 'shared-ui.share-saved-search-add-permission-dialog.update' | translate }}
     </button>
   } @else {
     <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(true)">
-      Create And Add Another
+      {{ 'shared-ui.share-saved-search-add-permission-dialog.create-and-add-another' | translate }}
     </button>
     <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(false)">
-      Create
+      {{ 'shared-ui.share-saved-search-add-permission-dialog.create' | translate }}
     </button>
   }
 </mat-dialog-actions>

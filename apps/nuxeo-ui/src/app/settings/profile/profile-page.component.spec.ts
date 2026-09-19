@@ -12,6 +12,7 @@ import {
 
 import { AuthService } from '../../auth/auth.service';
 import { ProfilePageComponent } from './profile-page.component';
+import { testTranslateModule } from '../../i18n/translate-testing';
 
 describe('ProfilePageComponent', () => {
   const mockUser: NuxeoUser = {
@@ -88,7 +89,7 @@ describe('ProfilePageComponent', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [ProfilePageComponent],
+      imports: [testTranslateModule(), ProfilePageComponent],
       providers: [
         { provide: AuthService, useValue: { username: signal('poweruser02') } },
         { provide: UserService, useValue: userService },

@@ -1,6 +1,6 @@
 import type { DataColumn } from '@alfresco/adf-core';
 
-import type { ExtensionColumnDescriptor } from '@nuxeo-satori/platform/extensions';
+import { descriptorLabel, type ExtensionColumnDescriptor } from '@nuxeo-satori/platform/extensions';
 
 /**
  * Translating Layer 1 column descriptors into adf-core's `DataColumn`.
@@ -64,13 +64,18 @@ const DATE_COLUMNS = new Set(['modified', 'created']);
  * offer it. `version` has no single-key mapping, so it resolves to its own field name
  * and renders blank — that is a recorded gap, not something this function hides.
  */
-export function toDataColumns(descriptors: readonly ExtensionColumnDescriptor[]): DataColumn[] {
+export function toDataColumns(
+  descriptors: readonly ExtensionColumnDescriptor[],
+  // Upstream's DataTable renders `title`, so there is no template of ours to put a pipe in.
+  // The resolver is passed rather than injected to keep this a pure function.
+  translate: (key: string) => string = (key) => key,
+): DataColumn[] {
   return descriptors.map((descriptor) => ({
     ...(DATE_COLUMNS.has(descriptor.field)
       ? { type: 'date' as const, format: 'mediumDate' }
       : { type: 'text' as const }),
     key: HXP_FIELD_BY_COLUMN[descriptor.field] ?? descriptor.field,
-    title: descriptor.label,
+    title: descriptorLabel(descriptor, translate),
     sortable: descriptor.sortable ?? false,
   }));
 }

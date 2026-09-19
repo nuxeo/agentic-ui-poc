@@ -27,6 +27,7 @@ import {
   mediaTypeEssence,
   type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface KdCitationDialogData {
   answer: KdAnswerResponse;
@@ -39,6 +40,7 @@ type PreviewMode = 'pdf' | 'image' | 'text' | 'unsupported';
   selector: 'lib-kd-citation-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatButtonModule,
     MatDialogModule,
     MatIconModule,

@@ -1,16 +1,15 @@
-export function hxpRelativeTime(dateStr: string | null | undefined): string {
-  if (!dateStr) {
-    return '';
-  }
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60_000);
-  const hours = Math.floor(diff / 3_600_000);
-  const days = Math.floor(diff / 86_400_000);
-  if (days >= 1) {
-    return days === 1 ? 'a day ago' : `${days} days ago`;
-  }
-  if (hours >= 1) {
-    return hours === 1 ? 'an hour ago' : `${hours} hours ago`;
-  }
-  return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
+import { formatRelativeTime } from '@nuxeo-satori/platform/nuxeo-client';
+
+/**
+ * Relative timestamp for adf-hx surfaces.
+ *
+ * Delegates to `formatRelativeTime`, which uses `Intl.RelativeTimeFormat`. The hand-rolled
+ * version this replaced built the phrase by concatenation and so was English-only, and could
+ * not have been fixed with a catalogue key — see that function for why.
+ *
+ * The locale is a parameter because this is a free function with no injector, and it has to
+ * follow the app's Layer 0 `defaultLanguage` rather than the browser's.
+ */
+export function hxpRelativeTime(dateStr: string | null | undefined, locale = 'en'): string {
+  return formatRelativeTime(dateStr, locale);
 }

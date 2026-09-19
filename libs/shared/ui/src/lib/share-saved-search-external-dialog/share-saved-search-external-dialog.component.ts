@@ -10,6 +10,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { catchError, of } from 'rxjs';
 
 import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ShareSavedSearchExternalDialogData {
   savedSearchId: string;
@@ -23,16 +24,17 @@ export interface ShareSavedSearchExternalDialogData {
 }
 
 const RIGHT_OPTIONS = [
-  { value: 'Read', label: 'Read' },
-  { value: 'ReadWrite', label: 'Edit' },
-  { value: 'Everything', label: 'Manage everything' },
-  { value: 'ReadCanCollect', label: 'Can collect' },
+  { value: 'Read', labelKey: 'permission.read', label: 'Read' },
+  { value: 'ReadWrite', labelKey: 'permission.read-write', label: 'Edit' },
+  { value: 'Everything', labelKey: 'permission.everything', label: 'Manage everything' },
+  { value: 'ReadCanCollect', labelKey: 'permission.read-can-collect', label: 'Can collect' },
 ];
 
 @Component({
   selector: 'lib-share-saved-search-external-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,

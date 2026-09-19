@@ -15,6 +15,7 @@ import {
   AiFeatureFlagService,
   aiErrorMessage,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 const DEFAULT_NXQL =
   "SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 " +
@@ -24,6 +25,7 @@ const DEFAULT_NXQL =
   selector: 'lib-admin-nxql-search-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     FormsModule,
     MatButtonModule,

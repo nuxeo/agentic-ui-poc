@@ -5,6 +5,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 
 import { BrowseService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 /**
  * Resolves the current user's personal workspace and opens it in browse view,
@@ -12,7 +13,7 @@ import { BrowseService } from '@nuxeo-satori/platform/nuxeo-client';
  */
 @Component({
   standalone: true,
-  imports: [MatProgressSpinnerModule, MatButtonModule],
+  imports: [TranslatePipe, MatProgressSpinnerModule, MatButtonModule],
   templateUrl: './personal-space-page.component.html',
   styleUrl: './personal-space-page.component.scss',
 })

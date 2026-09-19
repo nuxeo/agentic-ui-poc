@@ -20,6 +20,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { CreateImportDialogComponent } from './create-import-dialog.component';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 const PARENT_PATH = '/default-domain/workspaces/ws';
 
@@ -105,7 +106,7 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent],
+      imports: [CreateImportDialogComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -407,7 +408,7 @@ describe('CreateImportDialogComponent import with properties (NXSAT-185)', () =>
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent],
+      imports: [CreateImportDialogComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -619,7 +620,7 @@ describe('CreateImportDialogComponent CSV', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent, NoopAnimationsModule],
+      imports: [CreateImportDialogComponent, testTranslateModule(), NoopAnimationsModule],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: data },
@@ -832,7 +833,7 @@ describe('CreateImportDialogComponent domain create (NXSAT-199)', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent, NoopAnimationsModule],
+      imports: [CreateImportDialogComponent, testTranslateModule(), NoopAnimationsModule],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: {} },
@@ -1048,7 +1049,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
     tweak(m);
 
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent],
+      imports: [CreateImportDialogComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: data },

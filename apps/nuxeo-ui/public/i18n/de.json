@@ -42,6 +42,23 @@
     "folders": {
       "empty": "Keine Ordner gefunden"
     },
+    "item": {
+      "administration": "Administration",
+      "assets": "Assets",
+      "browse": "Durchsuchen",
+      "browse-adf-hx": "Durchsuchen (adf-hx-PoC)",
+      "clipboard": "Zwischenablage",
+      "collections": "Sammlungen",
+      "dashboard": "Dashboard",
+      "expired-queue": "Warteschlange abgelaufener Dokumente",
+      "favorites": "Favoriten",
+      "knowledge-discovery": "Knowledge Discovery",
+      "personal-space": "Persönlicher Bereich",
+      "recently-viewed": "Zuletzt angesehen",
+      "search-filters": "Suchfilter",
+      "tasks": "Aufgaben",
+      "trash": "Papierkorb"
+    },
     "loading": "Wird geladen",
     "recent": {
       "empty": "Keine kürzlich angesehenen Dokumente"

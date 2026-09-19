@@ -113,6 +113,7 @@ import {
   trustObjectUrl,
   type BrowseReturnMode,
   type ClipboardDoc,
+  formatRelativeTime,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -188,6 +189,7 @@ import {
   UpdatePermissionDialogComponent,
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -250,6 +252,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   selector: 'lib-document-detail',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     NgTemplateOutlet,
     FormsModule,
@@ -283,6 +286,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   styleUrl: './document-detail.scss',
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly extensionRuleContext = inject(ExtensionRuleContextService);
   private readonly extensions = inject(AppExtensionsService);
@@ -875,7 +879,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    if (!ace.begin && !ace.end) return 'Permanent';
+    if (!ace.begin && !ace.end) return this.translate.instant('permissions.time-frame.permanent');
     const parts: string[] = [];
     if (ace.begin) parts.push(`from ${new Date(ace.begin).toLocaleDateString()}`);
     if (ace.end) parts.push(`to ${new Date(ace.end).toLocaleDateString()}`);
@@ -3779,17 +3783,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return !!comment.modificationDate && comment.modificationDate !== comment.creationDate;
   }
 
+  /**
+   * Localised by `Intl.RelativeTimeFormat` rather than by a catalogue — see
+   * `formatRelativeTime` for why a key per unit cannot express Polish or Arabic plurals.
+   */
   relativeTime(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const seconds = Math.floor(diff / 1000);
-    if (seconds < 60) return 'a few seconds ago';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
-    return new Date(dateStr).toLocaleDateString();
+    return formatRelativeTime(dateStr, this.translate.currentLang);
   }
 
   // ── Panel Activity ──

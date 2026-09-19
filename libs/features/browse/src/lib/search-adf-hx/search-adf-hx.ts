@@ -15,11 +15,13 @@ import { escapeHxqlLiteral } from '@agentic-ui/shared/adf-hx-bridge';
 import { PACKAGED_BROWSE_COLUMNS } from '@nuxeo-satori/platform/extensions';
 
 import { toDataColumns } from '../adf-hx-columns';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-search-adf-hx',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatProgressSpinnerModule,
     MatButtonModule,

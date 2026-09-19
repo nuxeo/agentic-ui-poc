@@ -17,6 +17,7 @@ import {
   type CompareRow,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { CompareIconImageComponent } from './compare-icon-image.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface DocumentCompareDialogData {
   items: Array<{ id: string; name: string }>;
@@ -26,6 +27,7 @@ export interface DocumentCompareDialogData {
   selector: 'lib-document-compare-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatCheckboxModule,
