@@ -2,7 +2,13 @@
   <main class="login-panel" aria-label="Log in">
     <div class="login-panel-inner">
       <a routerLink="/login" class="login-brand" aria-label="Hyland">
-        <sat-logo direction="horizontal">
+        <!--
+          The lockup is decorative: this link already carries the name "Hyland". Each mark is a
+          vendor component whose <svg> we cannot label from here, so the whole lockup is hidden
+          from assistive technology instead — otherwise both SVGs are announced as unnamed
+          images (WCAG 1.1.1, NXENG-743 / NXENG-746).
+        -->
+        <sat-logo direction="horizontal" aria-hidden="true">
           <sat-h-mark-logo />
           <sat-word-mark-logo />
         </sat-logo>
