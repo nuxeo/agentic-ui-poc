@@ -35,6 +35,6 @@
 
   "$themes": "Merged over the packaged themes by id. 'tokens' are CSS custom properties applied to <html> while the theme is active, so a rebrand needs no rebuild. Add an entry with a new id to add a whole theme.",
 
-  "defaultLanguage": "fr",
-  "availableLanguages": ["en", "fr", "de"]
+  "defaultLanguage": "zz",
+  "availableLanguages": ["en", "fr", "de", "zz"]
 }

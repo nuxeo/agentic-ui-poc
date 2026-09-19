@@ -116,7 +116,7 @@
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isAssetSelected(asset.id)"
-                [aria-label]="'Select ' + asset.name"
+                [attr.aria-label]="'common.select-item' | translate: { name: asset.name }"
                 (click)="$event.stopPropagation()"
                 (change)="toggleAssetSelection(asset.id)"
               ></mat-checkbox>
@@ -229,7 +229,7 @@
               <span class="col-checkbox">
                 <mat-checkbox
                   [checked]="isAssetSelected(asset.id)"
-                  [aria-label]="'Select ' + asset.name"
+                  [attr.aria-label]="'common.select-item' | translate: { name: asset.name }"
                   (click)="$event.stopPropagation()"
                   (change)="toggleAssetSelection(asset.id)"
                 ></mat-checkbox>

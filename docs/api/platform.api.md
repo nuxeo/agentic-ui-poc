@@ -408,7 +408,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-302 exported symbol(s).
+303 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1778,6 +1778,7 @@ function formatCompareValue(value: unknown): string;
 function formatDirectoryEntryId(id: string): string;
 function formatHierarchicalL10nLabel(id: string | null | undefined, entries: L10nDirectoryEntry[]): string;
 function formatNoteHtmlForSourceView(html: string): string;
+function formatRelativeTime(value: string | number | Date | null | undefined, locale: string, now?: number): string;
 const fullAdministratorGuard: CanActivateFn;
 function getDirectoryMetadata(catalog: Map<string, DirectoryMetadata>, directoryName: string): DirectoryMetadata | undefined;
 function groupL10nChildrenByParent(entries: L10nDirectoryEntry[], query?: string): L10nOptionGroup[];
@@ -1836,7 +1837,7 @@ function permissionCreateMailFailureMessage(): string;
 function permissionNotificationAceNotFoundMessage(context: 'add' | 'update'): string;
 function permissionUpdateMailFailureMessage(): string;
 function postTrashBrowseRouterUrl(deletedDocPath: string): string;
-function principalPermissionTimeFrameLabel(row: PrincipalPermissionRow): string;
+function principalPermissionTimeFrameLabel(row: PrincipalPermissionRow, translate?: (key: string) => string): string;
 function principalPermissionToLocalRow(row: PrincipalPermissionRow): LocalPermissionRow;
 function readBlobDigest(doc: NuxeoDocument): string | null;
 function readClipboardDocs(): ClipboardDoc[];

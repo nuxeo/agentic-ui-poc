@@ -370,3 +370,4 @@ export {
   EXPIRED_DOCUMENTS_QUERY,
   FAVORITES_COLLECTION_QUERY,
 } from './lib/queries/nxql-queries';
+export { formatRelativeTime } from './lib/utils/relative-time.utils';

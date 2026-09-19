@@ -172,7 +172,7 @@
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
-                [aria-label]="'Select ' + doc.title"
+                [attr.aria-label]="'common.select-item' | translate: { name: doc.title }"
                 (change)="toggleSelection(doc.uid)"
                 (click)="$event.stopPropagation()"
               ></mat-checkbox>
@@ -285,7 +285,7 @@
             <span class="col-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
-                [aria-label]="'Select ' + doc.title"
+                [attr.aria-label]="'common.select-item' | translate: { name: doc.title }"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(doc.uid)"
               ></mat-checkbox>
@@ -397,7 +397,7 @@
             <span class="simple-list-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
-                [aria-label]="'Select ' + doc.title"
+                [attr.aria-label]="'common.select-item' | translate: { name: doc.title }"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(doc.uid)"
               ></mat-checkbox>

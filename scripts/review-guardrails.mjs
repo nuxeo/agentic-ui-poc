@@ -1683,6 +1683,123 @@ function checkAccessibleNameFallbacks() {
  * authoritative set is one thing to read. `verify-gate.mjs` does the same and for the same
  * reason: its usage line went stale twice while gates were being added.
  */
+
+/**
+ * No Angular template syntax in a document shell.
+ *
+ * `index.html` is served as-is and Angular never compiles it, so `{{ 'key' | translate }}` in
+ * the `<title>` renders those braces as literal text in the browser tab. The i18n extraction
+ * codemod did exactly that: it globbed `*.html` and could not tell a component template from
+ * the shell that hosts the application.
+ *
+ * Nothing else caught it. Lint does not parse `index.html` as a template, the build copies it
+ * verbatim, and no test opens a browser and reads `document.title` before bootstrap. It was
+ * found by loading the page and looking at the tab.
+ *
+ * The window is short — `AppShellComponent` replaces the title from Layer 0 branding once it
+ * boots — but it is the first thing a user sees, and on a slow load it is the only thing.
+ */
+function checkNoTemplateSyntaxInDocumentShell() {
+  const shells = [...walk('apps', (path) => /(^|\/)src\/index\.html$/.test(path))];
+
+  if (shells.length === 0) {
+    fail(
+      'No `src/index.html` was found under apps/, so this gate asserted nothing. Check the ' +
+        'glob before trusting a pass.',
+    );
+    return;
+  }
+
+  for (const shell of shells) {
+    // Comments are blanked, not dropped, so the reported line number still points at the file
+    // as written. The comment in `index.html` explaining this rule quotes the syntax it
+    // forbids, and the first run of this check failed on that comment.
+    const body = read(shell).replace(/<!--[\s\S]*?-->/g, (block) => block.replace(/[^\n]/g, ' '));
+    for (const [index, line] of body.split('\n').entries()) {
+      const match = /\{\{[^}]*\}\}|\*ngIf|\[[\w.]+\]="/.exec(line);
+      if (!match) continue;
+      fail(
+        `${shell}:${index + 1} contains Angular template syntax \`${match[0].trim()}\`. ` +
+          'This file is the document shell, not a component template — Angular never compiles ' +
+          'it, so the braces render as literal text. Put the string in the component that owns ' +
+          'the element, or set it at runtime as `branding.documentTitle` does.',
+      );
+    }
+  }
+}
+
+/**
+ * No prose in a plain attribute on a component — it is an `@Input`, not HTML.
+ *
+ * `checkNoHardcodedUiText` knows the HTML attributes that hold text: `title`, `aria-label`,
+ * `placeholder`, `alt`. It cannot know that `label` on `<mat-tab>` is one too, because that is
+ * a component input and there is no list of every input in every library.
+ *
+ * Fourteen tab labels sat in that gap — the four across the top of the browse page among them —
+ * through a full extraction, a repo-wide residue scan and a pseudo-locale audit of nine routes.
+ * The audit did see them; I read its output as upstream noise because Material rendered them.
+ *
+ * The heuristic is the element name: a hyphenated custom element or a PascalCase one is a
+ * component, and a capitalised attribute value on it is prose. Known non-text inputs are
+ * exempt, and that list is the part to extend when this reports a false positive — not the
+ * element pattern.
+ */
+function checkNoProseInComponentInputs() {
+  const NON_TEXT = new Set([
+    'class',
+    'style',
+    'id',
+    'type',
+    'name',
+    'role',
+    'color',
+    'appearance',
+    'mode',
+    'value',
+    'href',
+    'src',
+    'target',
+    'rel',
+    'align',
+    'fxLayout',
+    'matTooltipPosition',
+    'position',
+    'animationDuration',
+    'diameter',
+    'strokeWidth',
+    'fontSet',
+    'svgIcon',
+  ]);
+  const ELEMENT = /<((?:mat|hxp|app|sat|adf|nx)-[\w-]+|[A-Z][\w-]*)\b([^>]*)>/gs;
+  const ATTRIBUTE = /(?<![[(\w.-])([a-zA-Z][\w-]*)="([A-Z][^"<>{}]*)"/g;
+
+  const templates = [
+    ...walk('apps', (path) => path.endsWith('.html')),
+    ...walk('libs', (path) => path.endsWith('.html')),
+  ].filter((path) => !path.startsWith('apps/nuxeo-satori-template/'));
+
+  if (templates.length === 0) {
+    fail('No templates were found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+
+  for (const template of templates) {
+    const body = read(template);
+    for (const element of body.matchAll(ELEMENT)) {
+      for (const [, attribute, value] of element[2].matchAll(ATTRIBUTE)) {
+        if (NON_TEXT.has(attribute)) continue;
+        if (value.replace(/[^A-Za-z]/g, '').length < 3) continue;
+        fail(
+          `${template} sets \`${attribute}="${value}"\` on \`<${element[1]}>\`. That is a ` +
+            'component input holding user-facing text, not an HTML attribute, so no pipe runs ' +
+            `and the English is hard-coded. Bind it: \`[${attribute}]="'some.key' | translate"\`. ` +
+            `If \`${attribute}\` never holds text, add it to NON_TEXT in this check.`,
+        );
+      }
+    }
+  }
+}
+
 const GUARDRAILS = [
   checkThemeTokens,
   checkDocsNumbering,
@@ -1698,6 +1815,8 @@ const GUARDRAILS = [
   checkNoAdfHxInPublicApi,
   checkNoHardcodedUiText,
   checkNoHardcodedDescriptorText,
+  checkNoTemplateSyntaxInDocumentShell,
+  checkNoProseInComponentInputs,
   checkTranslationCatalogues,
   checkTranslationContext,
   checkAccessibleNameFallbacks,

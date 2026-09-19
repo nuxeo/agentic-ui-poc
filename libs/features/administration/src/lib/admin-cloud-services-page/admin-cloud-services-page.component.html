@@ -6,7 +6,7 @@
   </header>
 
   <mat-tab-group animationDuration="0ms">
-    <mat-tab label="Providers">
+    <mat-tab [label]="'admin.cloud-services.tab.providers' | translate">
       <div class="tab-inner">
         <div class="subhead">
           <span>{{ 'admin.admin-cloud-services-page.oauth-2-service-providers' | translate }}</span>
@@ -56,14 +56,14 @@
         }
       </div>
     </mat-tab>
-    <mat-tab label="Tokens">
+    <mat-tab [label]="'admin.cloud-services.tab.tokens' | translate">
       <div class="tab-inner">
         <p class="muted">
           {{ 'admin.admin-cloud-services-page.oauth-token-management-is-not-exposed' | translate }}
         </p>
       </div>
     </mat-tab>
-    <mat-tab label="Consumers">
+    <mat-tab [label]="'admin.cloud-services.tab.consumers' | translate">
       <div class="tab-inner">
         <p class="muted">
           {{

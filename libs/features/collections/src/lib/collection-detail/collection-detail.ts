@@ -77,7 +77,7 @@ import {
   UpdatePermissionDialogComponent,
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-collection-detail',
@@ -110,6 +110,7 @@ import { TranslatePipe } from '@ngx-translate/core';
   styleUrl: './collection-detail.scss',
 })
 export class CollectionDetailComponent {
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly collectionService = inject(CollectionService);
@@ -612,7 +613,7 @@ export class CollectionDetailComponent {
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    if (!ace.begin && !ace.end) return 'Permanent';
+    if (!ace.begin && !ace.end) return this.translate.instant('permissions.time-frame.permanent');
     const fmt = (iso: string) =>
       new Date(iso).toLocaleDateString('en-US', {
         day: '2-digit',

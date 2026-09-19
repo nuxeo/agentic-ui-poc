@@ -13,7 +13,7 @@
   </header>
 
   <mat-tab-group animationDuration="0ms" class="admin-tabs">
-    <mat-tab label="Document Distribution">
+    <mat-tab [label]="'admin.analytics.tab.document-distribution' | translate">
       <div class="tab-pad">
         <mat-form-field appearance="outline" class="path-field" subscriptSizing="dynamic">
           <mat-label>{{ 'admin.admin-analytics-page.path' | translate }}</mat-label>
@@ -69,7 +69,7 @@
       </div>
     </mat-tab>
 
-    <mat-tab label="Repository Content">
+    <mat-tab [label]="'admin.analytics.tab.repository-content' | translate">
       <div class="tab-pad">
         <mat-form-field appearance="outline" class="path-field" subscriptSizing="dynamic">
           <mat-label>{{ 'admin.admin-analytics-page.path-prefix' | translate }}</mat-label>
@@ -121,7 +121,7 @@
       </div>
     </mat-tab>
 
-    <mat-tab label="Search">
+    <mat-tab [label]="'admin.analytics.tab.search' | translate">
       <div class="tab-pad">
         <p class="muted">
           {{ 'admin.admin-analytics-page.indexed-documents-non-hidden-non-proxy' | translate }}
@@ -138,7 +138,7 @@
       </div>
     </mat-tab>
 
-    <mat-tab label="Workflow">
+    <mat-tab [label]="'admin.analytics.tab.workflow' | translate">
       <div class="tab-pad">
         @if (wfLoading()) {
           <div class="center">

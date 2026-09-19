@@ -154,7 +154,7 @@
       mat-stretch-tabs="false"
       (selectedIndexChange)="onTabChange($event)"
     >
-      <mat-tab label="View">
+      <mat-tab [label]="'collections.tab.view' | translate">
         <div class="tab-content">
           @if (loading()) {
             <div class="tab-loading">
@@ -218,7 +218,7 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="Permissions">
+      <mat-tab [label]="'collections.tab.permissions' | translate">
         <div class="permissions-container">
           <!-- Permissions defined locally -->
           <section class="perm-section">
@@ -435,7 +435,7 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="History">
+      <mat-tab [label]="'collections.tab.history' | translate">
         <div class="history-container">
           <!-- Filters -->
           <div class="history-filters">

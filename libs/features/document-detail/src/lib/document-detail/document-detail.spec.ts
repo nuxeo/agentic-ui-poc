@@ -34,6 +34,7 @@ import {
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
 import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 const STUB_DOC: NuxeoDocument = {
   uid: 'doc-uid-1',
@@ -622,7 +623,8 @@ describe('DocumentDetailComponent', () => {
       await TestBed.resetTestingModule();
       snackBarOpenSpy = vi.fn();
       await TestBed.configureTestingModule({
-        imports: [DocumentDetailComponent],
+        // The reset above discards what test-setup.ts provides globally.
+        imports: [DocumentDetailComponent, testTranslateModule()],
         providers: [
           provideZonelessChangeDetection(),
           provideRouter([], withDisabledInitialNavigation()),

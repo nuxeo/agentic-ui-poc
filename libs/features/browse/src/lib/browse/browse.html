@@ -108,7 +108,7 @@
           (selectedIndexChange)="onTabChange($event)"
         >
           <!-- ═══════ VIEW TAB ═══════ -->
-          <mat-tab label="View">
+          <mat-tab [label]="'browse.tab.view' | translate">
             <!-- Toolbar: result count + filters + view toggle + column settings + export CSV -->
             <div class="view-toolbar">
               <span class="result-count">{{ filteredEntries().length }} result(s)</span>
@@ -477,7 +477,7 @@
           </mat-tab>
 
           <!-- ═══════ PERMISSIONS TAB ═══════ -->
-          <mat-tab label="Permissions">
+          <mat-tab [label]="'browse.tab.permissions' | translate">
             <div class="permissions-container">
               @if (permissionsLoading()) {
                 <div class="browse-loading">
@@ -733,7 +733,7 @@
           </mat-tab>
 
           <!-- ═══════ HISTORY TAB ═══════ -->
-          <mat-tab label="History">
+          <mat-tab [label]="'browse.tab.history' | translate">
             <div class="history-container">
               <div class="history-filters">
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
@@ -907,7 +907,7 @@
           </mat-tab>
 
           <!-- ═══════ TRASH TAB ═══════ -->
-          <mat-tab label="Trash">
+          <mat-tab [label]="'browse.tab.trash' | translate">
             <div class="trash-container">
               @if (trashLoading()) {
                 <div class="browse-loading">

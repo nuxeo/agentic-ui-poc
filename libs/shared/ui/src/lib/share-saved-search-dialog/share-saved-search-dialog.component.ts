@@ -22,7 +22,7 @@ import {
   type ShareSavedSearchAddPermissionResult,
 } from '../share-saved-search-add-permission-dialog/share-saved-search-add-permission-dialog.component';
 import { ShareSavedSearchExternalDialogComponent } from '../share-saved-search-external-dialog/share-saved-search-external-dialog.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface PermissionEntry {
   id: string;
@@ -77,6 +77,7 @@ export interface ShareSavedSearchDialogData {
   styleUrl: './share-saved-search-dialog.component.scss',
 })
 export class ShareSavedSearchDialogComponent implements OnInit {
+  private readonly translate = inject(TranslateService);
   readonly dialogRef = inject(
     MatDialogRef<ShareSavedSearchDialogComponent, PermissionEntry[] | null>,
   );
@@ -553,7 +554,7 @@ export class ShareSavedSearchDialogComponent implements OnInit {
     begin: string | null | undefined,
     end: string | null | undefined,
   ): string {
-    if (!begin && !end) return 'Permanent';
+    if (!begin && !end) return this.translate.instant('permissions.time-frame.permanent');
     if (!begin && end) return `Until ${end}`;
     if (begin && !end) return `From ${begin}`;
     return `${begin} - ${end}`;

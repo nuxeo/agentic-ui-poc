@@ -88,6 +88,7 @@ import {
   shouldShowUserWorkspaceBreadcrumbs,
   postTrashBrowseRouterUrl,
   isCollectionDocument,
+  formatRelativeTime,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -1806,7 +1807,7 @@ export class BrowseComponent {
   }
 
   selectionAriaLabel(doc: NuxeoDocument): string {
-    return `Select ${doc.title}`;
+    return this.translate.instant('common.select-item', { name: doc.title });
   }
 
   toggleSelection(id: string): void {
@@ -1827,15 +1828,12 @@ export class BrowseComponent {
     }
   }
 
+  /**
+   * Localised by `Intl.RelativeTimeFormat` rather than by a catalogue — see
+   * `formatRelativeTime` for why a key per unit cannot express Polish or Arabic plurals.
+   */
   relativeTime(dateStr: string): string {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const minutes = Math.floor(diff / 60_000);
-    const hours = Math.floor(diff / 3_600_000);
-    const days = Math.floor(diff / 86_400_000);
-    if (days >= 1) return days === 1 ? 'a day ago' : `${days} days ago`;
-    if (hours >= 1) return hours === 1 ? 'an hour ago' : `${hours} hours ago`;
-    return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
+    return formatRelativeTime(dateStr, this.translate.currentLang);
   }
 
   permissionIcon(permission: string): string {
@@ -1869,7 +1867,7 @@ export class BrowseComponent {
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    if (!ace.begin && !ace.end) return 'Permanent';
+    if (!ace.begin && !ace.end) return this.translate.instant('permissions.time-frame.permanent');
     const fmt = (iso: string) =>
       new Date(iso).toLocaleDateString('en-US', {
         day: '2-digit',

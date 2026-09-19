@@ -213,6 +213,21 @@
       "parent": "Parent",
       "save": "Save",
       "select-a-parent": "Select a Parent"
+    },
+    "analytics": {
+      "tab": {
+        "document-distribution": "Document Distribution",
+        "repository-content": "Repository Content",
+        "search": "Search",
+        "workflow": "Workflow"
+      }
+    },
+    "cloud-services": {
+      "tab": {
+        "providers": "Providers",
+        "tokens": "Tokens",
+        "consumers": "Consumers"
+      }
     }
   },
   "app": {
@@ -674,7 +689,16 @@
     "unblock": "Unblock",
     "block": "Block",
     "hide-details": "Hide details",
-    "show-details": "Show details"
+    "show-details": "Show details",
+    "create-import": {
+      "types-load-failed": "Could not load creatable document types for this folder."
+    },
+    "tab": {
+      "view": "View",
+      "permissions": "Permissions",
+      "history": "History",
+      "trash": "Trash"
+    }
   },
   "collections": {
     "collection-detail": {
@@ -739,7 +763,12 @@
     "lock": "Lock",
     "unblock": "Unblock",
     "block": "Block",
-    "mmmm-d-yyyy": "MMMM d, yyyy"
+    "mmmm-d-yyyy": "MMMM d, yyyy",
+    "tab": {
+      "view": "View",
+      "permissions": "Permissions",
+      "history": "History"
+    }
   },
   "document-detail": {
     "add-to-collection-dialog": {
@@ -1261,6 +1290,9 @@
       "time-frame": "Time Frame",
       "to": "To",
       "update-permission": "Update Permission"
+    },
+    "time-frame": {
+      "permanent": "Permanent"
     }
   },
   "search": {
@@ -1380,7 +1412,18 @@
     },
     "hide-password": "Hide password",
     "show-password": "Show password",
-    "save-changes": "Save changes"
+    "save-changes": "Save changes",
+    "cloud-services": {
+      "load-failed": "Failed to load connected accounts.",
+      "title": "Connected accounts"
+    },
+    "authorized-applications": {
+      "load-failed": "Failed to load authorized applications."
+    },
+    "profile": {
+      "local-permissions": "Local permissions",
+      "no-local-permissions": "No local permissions found."
+    }
   },
   "shared-ui": {
     "confirm-dialog": {
@@ -1613,7 +1656,8 @@
       "type-to-search": "Type to search…",
       "validation": "Validation",
       "view-graph": "View Graph",
-      "workflow-graph": "Workflow Graph"
+      "workflow-graph": "Workflow Graph",
+      "select-a-task": "Select a task from the Tasks panel on the left"
     },
     "document": "Document",
     "no-document": "No document"
@@ -1808,5 +1852,24 @@
     "block": "Block",
     "update": "Update",
     "create": "Create"
+  },
+  "doc-type": {
+    "audio": "Audio",
+    "collection": "Collection",
+    "file": "File",
+    "folder": "Folder",
+    "note": "Note",
+    "ordered-folder": "Ordered Folder",
+    "picture": "Picture",
+    "video": "Video",
+    "workspace": "Workspace",
+    "section": "Section",
+    "section-root": "Section Root",
+    "template-root": "Template Root",
+    "domain": "Domain",
+    "workspace-root": "Workspace Root"
+  },
+  "common": {
+    "select-item": "Select {{ name }}"
   }
 }

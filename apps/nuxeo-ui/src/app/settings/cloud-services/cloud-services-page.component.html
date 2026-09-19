@@ -1,6 +1,8 @@
 <section class="connected-accounts-page">
   <div class="connected-accounts-page__card">
-    <div class="connected-accounts-page__title" role="heading" aria-level="2">{{ title }}</div>
+    <div class="connected-accounts-page__title" role="heading" aria-level="2">
+      {{ titleKey | translate }}
+    </div>
 
     @if (loading()) {
       <div class="connected-accounts-page__state">

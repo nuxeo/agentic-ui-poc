@@ -16,7 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 
@@ -53,6 +53,7 @@ import {
   readClipboardDocs,
   writeClipboardDocs,
   type ClipboardDoc,
+  formatRelativeTime,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import {
   HxpBrowseNavDrawerComponent,
@@ -106,6 +107,7 @@ export interface FolderNode {
   styleUrl: './nav-drawer.component.scss',
 })
 export class NavDrawerComponent {
+  private readonly translate = inject(TranslateService);
   private readonly browseService = inject(BrowseService);
   private readonly browseContext = inject(BrowseContextService);
   private readonly clipboardTargetService = inject(ClipboardTargetService);
@@ -558,25 +560,13 @@ export class NavDrawerComponent {
     return docTypeIcon(doc.type);
   }
 
+  /**
+   * Localised by `Intl.RelativeTimeFormat`, which also covers the future case this used to
+   * spell as `in ${label}` — a positive offset produces "in 3 days" in each language's own
+   * word order. See `formatRelativeTime`.
+   */
   relativeTime(dateStr: string): string {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const absDiff = Math.abs(diff);
-    const minutes = Math.floor(absDiff / 60_000);
-    const hours = Math.floor(absDiff / 3_600_000);
-    const days = Math.floor(absDiff / 86_400_000);
-    const months = Math.floor(days / 30);
-    const years = Math.floor(days / 365);
-
-    let label: string;
-    if (years >= 1) label = years === 1 ? 'a year' : `${years} years`;
-    else if (months >= 1) label = months === 1 ? 'a month' : `${months} months`;
-    else if (days >= 1) label = days === 1 ? 'a day' : `${days} days`;
-    else if (hours >= 1) label = hours === 1 ? 'an hour' : `${hours} hours`;
-    else label = minutes <= 1 ? 'just now' : `${minutes} minutes`;
-
-    if (label === 'just now') return label;
-    return diff > 0 ? `${label} ago` : `in ${label}`;
+    return formatRelativeTime(dateStr, this.translate.currentLang);
   }
 
   // ── Collections ──

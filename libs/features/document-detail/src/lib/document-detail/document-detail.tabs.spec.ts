@@ -1229,7 +1229,9 @@ describe('DocumentDetailComponent — tab surfaces', () => {
         ],
       });
 
-      expect(component.lastReplyTime('c1')).toBe('a few seconds ago');
+      // `Intl.RelativeTimeFormat` says "now" below a minute, where the hand-rolled
+      // formatter said "a few seconds ago". See `formatRelativeTime`.
+      expect(component.lastReplyTime('c1')).toBe('now');
       expect(component.lastReplyTime('none')).toBe('');
       expect(component.replyCount('none')).toBe(0);
     });
@@ -1255,15 +1257,18 @@ describe('DocumentDetailComponent — tab surfaces', () => {
       const ago = (ms: number): string =>
         component.relativeTime(new Date(Date.now() - ms).toISOString());
 
-      expect(ago(5_000)).toBe('a few seconds ago');
+      expect(ago(5_000)).toBe('now');
       expect(ago(60_000)).toBe('1 minute ago');
       expect(ago(120_000)).toBe('2 minutes ago');
       expect(ago(3_600_000)).toBe('1 hour ago');
       expect(ago(7_200_000)).toBe('2 hours ago');
-      expect(ago(86_400_000)).toBe('1 day ago');
+      expect(ago(86_400_000)).toBe('yesterday');
       expect(ago(2 * 86_400_000)).toBe('2 days ago');
-      // Past a month it becomes a date rather than an ever-growing day count.
-      expect(ago(60 * 86_400_000)).not.toContain('ago');
+      // The old formatter switched to an absolute date past a month, to avoid "60 days ago".
+      // `Intl.RelativeTimeFormat` serves that intent by coarsening the unit instead, which
+      // stays relative and stays translatable.
+      expect(ago(60 * 86_400_000)).toBe('2 months ago');
+      expect(ago(400 * 86_400_000)).toBe('last year');
     });
   });
 

@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { SettingsService, type AuthorizedApplication } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   standalone: true,
@@ -11,6 +11,7 @@ import { TranslatePipe } from '@ngx-translate/core';
   styleUrl: './authorized-applications-page.component.scss',
 })
 export class AuthorizedApplicationsPageComponent {
+  private readonly translate = inject(TranslateService);
   private readonly settingsService = inject(SettingsService);
 
   readonly applications = signal<AuthorizedApplication[]>([]);
@@ -27,7 +28,7 @@ export class AuthorizedApplicationsPageComponent {
           this.loading.set(false);
         },
         error: () => {
-          this.error.set('Failed to load authorized applications.');
+          this.error.set(this.translate.instant('settings.authorized-applications.load-failed'));
           this.loading.set(false);
         },
       });
