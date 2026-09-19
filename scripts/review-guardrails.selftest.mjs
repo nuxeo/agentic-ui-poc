@@ -612,6 +612,60 @@ expectGreen('a non-text input with a capitalised value', 'checkNoProseInComponen
   'libs/features/x/src/lib/x.html': '<mat-icon fontSet="Material Icons">home</mat-icon>\n',
 });
 
+const BOOTSTRAP = (defaultLanguage, available = ['en', 'fr']) =>
+  `${JSON.stringify({ defaultLanguage, availableLanguages: available }, null, 2)}\n`;
+const CATALOGUES = {
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+  'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+};
+
+expectRed(
+  'the generated pseudo-locale shipped as the default',
+  'checkShippedDefaultLanguage',
+  {
+    ...CATALOGUES,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('zz', ['en', 'fr']),
+  },
+  null,
+  /GENERATED pseudo-locale/,
+);
+
+expectRed(
+  'a default language with no catalogue behind it',
+  'checkShippedDefaultLanguage',
+  {
+    ...CATALOGUES,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('de', ['en', 'fr', 'de']),
+  },
+  null,
+  /no catalogue exists for it/,
+);
+
+expectRed(
+  'a default absent from availableLanguages',
+  'checkShippedDefaultLanguage',
+  {
+    ...CATALOGUES,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('fr', ['en']),
+  },
+  null,
+  /absent from/,
+);
+
+expectGreen('a real shipped default', 'checkShippedDefaultLanguage', {
+  ...CATALOGUES,
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('en', ['en', 'fr']),
+});
+
+// A gate that cannot find the file it checks must say so, not pass.
+expectRed(
+  'no packaged bootstrap.json at all',
+  'checkShippedDefaultLanguage',
+  { ...CATALOGUES },
+  null,
+  /asserted nothing/,
+);
+
 expectGreen('a label paired with a labelKey', 'checkNoHardcodedDescriptorText', {
   ...WITH_DESCRIPTORS,
   'libs/shared/extensions/src/lib/nav-items.ts':
