@@ -8,6 +8,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 export interface ColumnDef {
   key: string;
   label: string;
+  /** Translation key for `label`, carried from the descriptor so templates can prefer it. */
+  labelKey?: string;
   visible: boolean;
 }
 

@@ -1132,9 +1132,21 @@ function checkNoHardcodedDescriptorText() {
     if (!/^(libs|apps)\/.+\.ts$/.test(file)) continue;
     if (/\.spec\.ts$/.test(file)) continue;
 
+    // A `label` paired with a `labelKey` is the **fixed** shape, not a violation. The key is
+    // what renders and the literal is the fallback, which is the whole point of the two-field
+    // contract — see `NavItemDescriptor.labelKey`. Read from the file rather than the diff
+    // because the two lines are separate additions and a line-at-a-time check cannot see the
+    // pair.
+    const body = fileExists(file) ? read(file).split('\n') : [];
+    const pairedWithKey = (lineNumber) => {
+      const near = body.slice(Math.max(0, lineNumber - 3), lineNumber + 2).join('\n');
+      return /\blabelKey\s*:/.test(near);
+    };
+
     for (const { line, text } of lines) {
       const trimmed = text.trim();
       if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('*')) continue;
+      if (pairedWithKey(line)) continue;
 
       for (const [, property, value] of trimmed.matchAll(DESCRIPTOR_TEXT)) {
         if ((value.match(/[A-Za-z]/g) ?? []).length < 2) continue;

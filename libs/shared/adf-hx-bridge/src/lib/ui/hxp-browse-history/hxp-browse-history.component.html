@@ -36,7 +36,9 @@
       >
         <option value="">{{ 'hxp.hxp-browse-history.all' | translate }}</option>
         @for (action of availableActions(); track action.id) {
-          <option [value]="action.id">{{ action.label }}</option>
+          <option [value]="action.id">
+            {{ action.label }}
+          </option>
         }
       </select>
     </label>

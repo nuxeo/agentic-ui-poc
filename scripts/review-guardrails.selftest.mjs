@@ -554,6 +554,16 @@ expectRed(
   /introduces `label: 'Knowledge Discovery'` — a user-facing string in a descriptor/,
 );
 
+expectGreen('a label paired with a labelKey', 'checkNoHardcodedDescriptorText', {
+  ...WITH_DESCRIPTORS,
+  'libs/shared/extensions/src/lib/nav-items.ts':
+    `${GOOD_DESCRIPTORS}export const PAIRED = [
+` +
+    `  { id: 'x', labelKey: 'nav.browse', label: 'Browse' },
+];
+`,
+});
+
 expectRed(
   'a hard-coded descriptor placeholder',
   'checkNoHardcodedDescriptorText',

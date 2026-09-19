@@ -14,6 +14,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 export interface HxpPickableColumn {
   readonly key: string;
   readonly label: string;
+  /** Translation key for `label`, carried from the Layer 1 descriptor when there is one. */
+  readonly labelKey?: string;
   readonly visible: boolean;
 }
 

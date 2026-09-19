@@ -156,7 +156,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/extensions
 
-54 exported symbol(s).
+55 exported symbol(s).
 
 ```ts
 const APP_NAV_ITEMS: InjectionToken<Signal<readonly NavItemDescriptor[]>>;
@@ -189,6 +189,7 @@ const EXTENSION_SLOTS: {
 };
 interface ExtensionActionDescriptor extends ExtensionElement {
     readonly label: string;
+    readonly labelKey?: string;
     readonly icon?: string;
     readonly tooltip?: string;
     readonly rule?: ExtensionRule;
@@ -217,6 +218,7 @@ class ExtensionActionRegistry {
 }
 interface ExtensionColumnDescriptor extends ExtensionElement {
     readonly label: string;
+    readonly labelKey?: string;
     readonly field: string;
     readonly sortable?: boolean;
     readonly rule?: ExtensionRule;
@@ -340,6 +342,7 @@ class ExtensionSlotRegistry {
 }
 interface ExtensionTabDescriptor extends ExtensionElement {
     readonly label: string;
+    readonly labelKey?: string;
     readonly icon?: string;
     readonly rule?: ExtensionRule;
     readonly componentId?: string;
@@ -388,6 +391,11 @@ interface SatoriExtensionContributions {
     }
 }
 type SatoriExtensionContributor = SatoriExtensionContributions | (() => SatoriExtensionContributions);
+function descriptorLabel(descriptor: {
+    readonly label: string;
+    readonly labelKey?: string;
+    }, translate: (key: string) => string): string;
+}
 function extensionRoutePathRejection(path: unknown): string | null;
 function extensionRoutes(descriptors: readonly ExtensionRouteDescriptor[]): Routes;
 function mergeExtensionConfigs(...layers: readonly ExtensionConfig[]): ExtensionConfig;

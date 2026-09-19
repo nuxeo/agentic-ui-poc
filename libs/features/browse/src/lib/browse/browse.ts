@@ -439,6 +439,9 @@ export class BrowseComponent {
     return this.columnDescriptors().map((descriptor) => ({
       key: descriptor.field,
       label: descriptor.label,
+      // Carried through so the template can prefer the key; `ColumnDef` is a view model, and
+      // resolving here would mean the header stopped following a language change.
+      labelKey: descriptor.labelKey,
       visible: chosen ? chosen.includes(descriptor.field) : !descriptor.hiddenByDefault,
     }));
   });

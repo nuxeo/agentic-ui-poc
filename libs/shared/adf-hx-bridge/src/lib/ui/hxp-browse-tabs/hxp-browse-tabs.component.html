@@ -12,7 +12,7 @@
       [attr.aria-selected]="activeTab() === tab.id"
       (click)="selectTab(tab.id)"
     >
-      {{ tab.label }}
+      {{ tab.labelKey ? (tab.labelKey | translate) : tab.label }}
     </button>
   }
 </div>

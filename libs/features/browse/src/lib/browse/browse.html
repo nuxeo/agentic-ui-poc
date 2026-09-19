@@ -79,7 +79,7 @@
             @if (action.icon) {
               <mat-icon>{{ action.icon }}</mat-icon>
             }
-            <span>{{ action.label }}</span>
+            <span>{{ action.labelKey ? (action.labelKey | translate) : action.label }}</span>
           </button>
         }
       </mat-menu>
@@ -278,7 +278,7 @@
                           [checked]="isPendingColumn(col.key)"
                           [disabled]="col.key === 'title'"
                           (change)="togglePendingColumn(col.key)"
-                          >{{ col.label }}</mat-checkbox
+                          >{{ col.labelKey ? (col.labelKey | translate) : col.label }}</mat-checkbox
                         >
                       }
                     </div>
@@ -299,7 +299,9 @@
                         <th class="col-checkbox"></th>
                         @for (col of visibleColumns(); track col.key) {
                           <th class="sortable-th" (click)="toggleBrowseSort(col.key)">
-                            <span class="th-label">{{ col.label }}</span>
+                            <span class="th-label">{{
+                              col.labelKey ? (col.labelKey | translate) : col.label
+                            }}</span>
                             @if (browseSortKey() === col.key) {
                               <mat-icon class="sort-arrow">
                                 {{ browseSortDir() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}

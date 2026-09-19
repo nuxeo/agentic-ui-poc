@@ -31,6 +31,7 @@ export {
 export { DOCUMENT_RULE_EVALUATORS } from './lib/document-rules';
 export { SURFACE_RULE_EVALUATORS } from './lib/surface-rules';
 export {
+  descriptorLabel,
   ExtensionActionRegistry,
   type ExtensionActionDescriptor,
   type ExtensionActionHandler,

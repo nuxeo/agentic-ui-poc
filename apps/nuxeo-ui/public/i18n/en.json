@@ -1005,6 +1005,14 @@
       "more-actions": "More actions",
       "share": "Share",
       "upload-with-nuxeo-drive": "Upload with Nuxeo Drive"
+    },
+    "tab": {
+      "view": "View",
+      "permissions": "Permissions",
+      "properties": "Properties",
+      "versions": "Versions",
+      "history": "History",
+      "trash": "Trash"
     }
   },
   "kd": {
@@ -1512,5 +1520,67 @@
       "size": "Size",
       "trash-is-empty": "Trash is empty."
     }
+  },
+  "action": {
+    "bulk-actions-download-zip": "Download All as Zip",
+    "bulk-actions-add-to-collection": "Add to Collection",
+    "bulk-actions-compare": "Compare",
+    "bulk-actions-add-to-clipboard": "Add to Clipboard",
+    "bulk-actions-publish": "Publish Document",
+    "bulk-actions-delete": "Delete selected",
+    "toolbar-edit": "Edit",
+    "toolbar-edit-properties": "Edit properties",
+    "toolbar-add-to-collection": "Add to collection",
+    "toolbar-delete": "Delete",
+    "toolbar-lock": "Lock",
+    "toolbar-unlock": "Unlock",
+    "toolbar-add-to-favorites": "Add to Favorites",
+    "toolbar-remove-from-favorites": "Remove from Favorites",
+    "toolbar-share": "Share",
+    "toolbar-publish": "Publish document",
+    "toolbar-subscribe": "Notify Me",
+    "toolbar-unsubscribe": "Unsubscribe",
+    "toolbar-add-to-clipboard": "Add to Clipboard",
+    "toolbar-remove-from-clipboard": "Remove from Clipboard",
+    "toolbar-export": "Export",
+    "toolbar-start-process": "Start Process",
+    "context-menu-share": "Share",
+    "context-menu-subscribe": "Notify Me",
+    "context-menu-unsubscribe": "Unsubscribe",
+    "context-menu-export": "Export"
+  },
+  "column": {
+    "document-list-title": "Title",
+    "document-list-type": "Type",
+    "document-list-modified": "Modified",
+    "document-list-last-contributor": "Last Contributor",
+    "document-list-state": "State",
+    "document-list-version": "Version",
+    "document-list-created": "Created",
+    "document-list-author": "Author",
+    "document-list-nature": "Nature",
+    "document-list-coverage": "Coverage",
+    "document-list-subjects": "Subjects",
+    "document-list-flags": "Flags"
+  },
+  "tab": {
+    "tabs-view": "View",
+    "tabs-annotations": "Annotations",
+    "tabs-permissions": "Permissions",
+    "tabs-history": "History",
+    "tabs-publishing": "Publishing",
+    "tabs-ai-insights": "AI Insights"
+  },
+  "drawer": {
+    "settings-nuxeo-drive": "Nuxeo Drive",
+    "settings-profile": "Profile",
+    "settings-authorized-applications": "Authorized Applications",
+    "settings-cloud-services": "Cloud Services",
+    "administration-analytics": "Analytics",
+    "administration-users-groups": "Users & Groups",
+    "administration-vocabularies": "Vocabularies",
+    "administration-audit": "Audit",
+    "administration-cloud-services": "Cloud Services",
+    "administration-nxql-search": "NXQL Search"
   }
 }

@@ -159,7 +159,7 @@
           type="button"
           [attr.data-action-id]="action.id"
           [matTooltip]="action.tooltip ?? action.label"
-          [attr.aria-label]="action.label"
+          [attr.aria-label]="action.labelKey ? (action.labelKey | translate) : action.label"
           [disabled]="!isToolbarActionEnabled(action)"
           (click)="runToolbarAction(action)"
         >
@@ -188,7 +188,7 @@
           @if (action.icon) {
             <mat-icon>{{ action.icon }}</mat-icon>
           }
-          <span>{{ action.label }}</span>
+          <span>{{ action.labelKey ? (action.labelKey | translate) : action.label }}</span>
         </button>
       }
     </mat-menu>
@@ -355,7 +355,7 @@
                 @if (tab.icon) {
                   <mat-icon class="detail-tab-icon">{{ tab.icon }}</mat-icon>
                 }
-                {{ tab.label }}
+                {{ tab.labelKey ? (tab.labelKey | translate) : tab.label }}
               </ng-template>
               @switch (tab.id) {
                 @case ('app.tabs.view') {
