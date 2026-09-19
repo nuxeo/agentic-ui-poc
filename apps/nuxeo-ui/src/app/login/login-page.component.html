@@ -95,10 +95,8 @@
     <footer class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</footer>
   </main>
 
-  <div
-    class="login-hero"
-    role="presentation"
-    aria-hidden="true"
-    [style.background-image]="heroBackgroundImage()"
-  ></div>
+  <div class="login-hero" role="presentation" aria-hidden="true">
+    <!-- Decorative hero: img avoids CSS background-image for HC review; SCSS hides it in forced-colors (NXENG-751). -->
+    <img class="login-hero-image" [src]="heroImagePath" alt="" />
+  </div>
 </div>

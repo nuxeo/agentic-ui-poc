@@ -70,6 +70,31 @@ describe('LoginPageComponent', () => {
     expect(heading?.textContent?.trim()).toBe('Log in');
   });
 
+  it('uses a decorative img for hero art instead of CSS background-image (NXENG-751)', () => {
+    const hero = fixture.nativeElement.querySelector('.login-hero');
+    expect(hero).withContext('hero region').not.toBeNull();
+    if (!hero) {
+      return;
+    }
+    expect(hero.getAttribute('style')).toBeNull();
+    expect(getComputedStyle(hero).backgroundImage).toBe('none');
+
+    const img = hero.querySelector('img.login-hero-image');
+    expect(img).withContext('hero image element').not.toBeNull();
+    if (!img) {
+      return;
+    }
+    expect(img.getAttribute('alt')).toBe('');
+    expect(img.getAttribute('src')).toContain('/images/Login-background.svg');
+  });
+
+  it('fills the hero box without expanding it from intrinsic image size (NXENG-751)', () => {
+    const hero = fixture.nativeElement.querySelector('.login-hero') as HTMLElement;
+    const img = hero.querySelector('.login-hero-image') as HTMLElement;
+    expect(getComputedStyle(hero).position).toBe('relative');
+    expect(getComputedStyle(img).position).toBe('absolute');
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
