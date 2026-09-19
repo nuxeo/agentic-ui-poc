@@ -10,7 +10,11 @@
           (click)="toggleAiSearch()"
         >
           <mat-icon class="ai-sparkle-icon">auto_awesome</mat-icon>
-          {{ aiSearchMode() ? 'AI Search Active' : 'AI Search' }}
+          {{
+            aiSearchMode()
+              ? ('search.ai-search-active' | translate)
+              : ('search.ai-search' | translate)
+          }}
         </button>
         @if (aiSearchMode() && aiGeneratedNxql()) {
           <button
@@ -19,7 +23,11 @@
             (click)="showNxqlPanel.set(!showNxqlPanel())"
           >
             <mat-icon>code</mat-icon>
-            {{ showNxqlPanel() ? 'Hide Query' : 'View Query' }}
+            {{
+              showNxqlPanel()
+                ? ('search.hide-query' | translate)
+                : ('search.view-query' | translate)
+            }}
           </button>
         }
       </div>
@@ -173,7 +181,7 @@
       <button
         mat-icon-button
         [class.active]="viewMode() === 'grid'"
-        [matTooltip]="viewMode() !== 'grid' ? 'Switch to Grid View' : ''"
+        [matTooltip]="viewMode() !== 'grid' ? ('search.switch-to-grid-view' | translate) : ''"
         [attr.aria-label]="'search.search.grid-view' | translate"
         [attr.aria-pressed]="viewMode() === 'grid'"
         (click)="setViewMode('grid')"
@@ -185,7 +193,7 @@
       <button
         mat-icon-button
         [class.active]="viewMode() === 'table'"
-        [matTooltip]="viewMode() !== 'table' ? 'Switch to Table View' : ''"
+        [matTooltip]="viewMode() !== 'table' ? ('search.switch-to-table-view' | translate) : ''"
         [attr.aria-label]="'search.search.table-view' | translate"
         [attr.aria-pressed]="viewMode() === 'table'"
         (click)="setViewMode('table')"
@@ -198,7 +206,7 @@
         mat-icon-button
         class="toolbar-btn list-view-btn"
         [class.active]="viewMode() === 'list'"
-        [matTooltip]="viewMode() !== 'list' ? 'Switch to List view' : ''"
+        [matTooltip]="viewMode() !== 'list' ? ('search.switch-to-list-view' | translate) : ''"
         [attr.aria-label]="'search.search.list-view' | translate"
         [attr.aria-pressed]="viewMode() === 'list'"
         (click)="setViewMode('list')"

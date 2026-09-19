@@ -112,7 +112,7 @@
           [disabled]="saving()"
           (click)="togglePermissionInheritance()"
         >
-          {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+          {{ isInheritanceBlocked() ? ('ui.unblock' | translate) : ('ui.block' | translate) }}
         </button>
       </div>
       @if (!isInheritanceBlocked()) {

@@ -103,13 +103,13 @@
             class="content-lake-ingest-loader"
             [matTooltip]="
               contentLakeIngestInFlight()
-                ? 'Ingesting into Content Lake...'
-                : 'Checking Content Lake status...'
+                ? ('document-detail.ingesting-into-content-lake' | translate)
+                : ('document-detail.checking-content-lake-status' | translate)
             "
             [attr.aria-label]="
               contentLakeIngestInFlight()
-                ? 'Ingesting into Content Lake'
-                : 'Checking Content Lake status'
+                ? ('document-detail.ingesting-into-content-lake' | translate)
+                : ('document-detail.checking-content-lake-status' | translate)
             "
             aria-busy="true"
           >
@@ -578,7 +578,11 @@
                     [disabled]="actionInProgress() === 'block-inheritance'"
                     (click)="toggleInheritanceBlock()"
                   >
-                    {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+                    {{
+                      isInheritanceBlocked()
+                        ? ('document-detail.unblock' | translate)
+                        : ('document-detail.block' | translate)
+                    }}
                   </button>
                 }
               </div>
@@ -854,7 +858,7 @@
                       {{ 'document-detail.document-detail.date' | translate }}
                     </th>
                     <td mat-cell *matCellDef="let entry">
-                      {{ entry.eventDate | date: 'MMMM d, yyyy' }}
+                      {{ entry.eventDate | date: ('document-detail.mmmm-d-yyyy' | translate) }}
                     </td>
                   </ng-container>
 
@@ -1139,7 +1143,11 @@
                       (click)="generateSummary()"
                     >
                       <mat-icon>auto_awesome</mat-icon>
-                      {{ aiSummary() ? 'Regenerate' : 'Generate' }}
+                      {{
+                        aiSummary()
+                          ? ('document-detail.regenerate' | translate)
+                          : ('document-detail.generate' | translate)
+                      }}
                     </button>
                   }
                 </div>
@@ -1446,7 +1454,11 @@
           mat-icon-button
           class="panel-toggle-btn"
           (click)="propertiesPanelOpen.set(!propertiesPanelOpen())"
-          [matTooltip]="propertiesPanelOpen() ? 'Hide details' : 'Show details'"
+          [matTooltip]="
+            propertiesPanelOpen()
+              ? ('document-detail.hide-details' | translate)
+              : ('document-detail.show-details' | translate)
+          "
           [attr.aria-label]="'document-detail.document-detail.toggle-details-panel' | translate"
         >
           <mat-icon>{{ propertiesPanelOpen() ? 'info' : 'info_outline' }}</mat-icon>
@@ -1574,7 +1586,10 @@
                                   <span class="version-dropdown-label">{{ versionString(v) }}</span>
                                   <span class="version-dropdown-meta"
                                     >Modified {{ relativeTime(v.lastModified) }} by
-                                    {{ v.properties['dc:lastContributor'] ?? 'Unknown' }}</span
+                                    {{
+                                      v.properties['dc:lastContributor'] ??
+                                        ('document-detail.unknown' | translate)
+                                    }}</span
                                   >
                                 </button>
                               } @else {
@@ -1582,7 +1597,10 @@
                                   <span class="version-dropdown-label">{{ versionString(v) }}</span>
                                   <span class="version-dropdown-meta"
                                     >Modified {{ relativeTime(v.lastModified) }} by
-                                    {{ v.properties['dc:lastContributor'] ?? 'Unknown' }}</span
+                                    {{
+                                      v.properties['dc:lastContributor'] ??
+                                        ('document-detail.unknown' | translate)
+                                    }}</span
                                   >
                                 </div>
                               }
@@ -2061,7 +2079,12 @@
                   @if (replyCount(comment.id) > 0) {
                     <div class="reply-summary">
                       {{ replyCount(comment.id) }}
-                      {{ replyCount(comment.id) === 1 ? 'Reply' : 'Replies' }} · Last reply
+                      {{
+                        replyCount(comment.id) === 1
+                          ? ('document-detail.reply' | translate)
+                          : ('document-detail.replies' | translate)
+                      }}
+                      · Last reply
                       {{ lastReplyTime(comment.id) }}
                     </div>
                     <div class="replies-section">

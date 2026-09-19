@@ -266,7 +266,9 @@
                     @if (task.dueDate) {
                       <div class="task-due-line">
                         <span class="task-due-prefix">{{
-                          isOverdue(task) ? 'Overdue' : 'Due'
+                          isOverdue(task)
+                            ? ('shell.overdue' | translate)
+                            : ('shell.due' | translate)
                         }}</span>
                         <span
                           class="task-due-value"

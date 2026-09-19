@@ -131,3 +131,5 @@ playwright-report/
 # for summaries that go stale silently and are believed anyway. Ignored rather than merely
 # untracked so a stray `git add -A` cannot put it back.
 /docs/security-next-steps.md
+apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json
+apps/nuxeo-ui/public/i18n/zz.json

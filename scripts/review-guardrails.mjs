@@ -1198,8 +1198,22 @@ function checkNoHardcodedDescriptorText() {
  * `review-guardrails.selftest.mjs` exercises parity against fixtures regardless of what the
  * repository currently ships.
  */
+/**
+ * `zz` is the generated pseudo-locale, not a shipped one.
+ *
+ * `tools/i18n/pseudo-locale.mjs` derives it from `en.json` on demand and `.gitignore` keeps it
+ * out of the tree; it exists only while someone is auditing for strings no catalogue supplies.
+ * Every locale check would otherwise treat it as a customer-facing language — demanding key
+ * parity with a file that is regenerated from `en.json` anyway, and demanding Angular locale
+ * data for a locale Angular has never heard of.
+ */
+const GENERATED_LOCALES = new Set(['zz']);
+const isGeneratedLocale = (path) =>
+  GENERATED_LOCALES.has(/(^|\/)i18n\/([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[2] ?? '');
+
 function checkTranslationCatalogues() {
-  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
   const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
 
   if (catalogues.length === 0) {
@@ -1479,7 +1493,8 @@ function checkLocaleDataRegistered() {
     return;
   }
 
-  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
   const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
   const shipped = new Set(
     catalogues

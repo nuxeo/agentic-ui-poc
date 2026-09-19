@@ -64,7 +64,7 @@
 
       <button
         mat-icon-button
-        [matTooltip]="viewMode() === 'list' ? 'Switch to Grid View' : ''"
+        [matTooltip]="viewMode() === 'list' ? ('assets.switch-to-grid-view' | translate) : ''"
         [attr.aria-label]="'assets.asset-search-results.grid-view' | translate"
         [attr.aria-pressed]="viewMode() === 'grid'"
         [class.active]="viewMode() === 'grid'"
@@ -76,7 +76,7 @@
 
       <button
         mat-icon-button
-        [matTooltip]="viewMode() === 'grid' ? 'Switch to Table View' : ''"
+        [matTooltip]="viewMode() === 'grid' ? ('assets.switch-to-table-view' | translate) : ''"
         [attr.aria-label]="'assets.asset-search-results.table-view' | translate"
         [attr.aria-pressed]="viewMode() === 'list'"
         [class.active]="viewMode() === 'list'"

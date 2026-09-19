@@ -185,6 +185,48 @@ one-character change; the second is what makes the label translatable at all.
 
 ---
 
+### 1.4 `SatSkipToContent` hard-codes its own text, so the accessibility skip link cannot be translated
+
+**Package:** `@hylandsoftware/satori-ui`
+**File:** `fesm2022/hylandsoftware-satori-ui-platform-nav.mjs`, the `SatSkipToContent` template
+**Rule:** WCAG 2.4.1 Bypass Blocks, read together with 3.1.1 Language of Page
+
+The skip link's text is a literal in the template rather than a catalogue lookup:
+
+```html
+<a class="sat-skip-to-content-button" (focus)="display()" (blur)="hide()"> Skip to main content </a>
+```
+
+Every other string in the package goes through `i18n/en.json`; this one does not, and the
+catalogue has no key for it. A host cannot override it, because there is no key to override.
+
+The consequence is narrow and unusually bad. The skip link is the **first** thing a keyboard or
+screen-reader user reaches on every page, and it is the one control whose entire purpose is to
+serve users who need it most. In a French or German deployment that user meets an English
+instruction before anything else on the page, and the page declares itself as French — so a
+screen reader set to French will attempt to pronounce English words with French phonemes.
+
+**Reproduce**
+
+Generate a pseudo-locale and run the app in it. Every catalogue-sourced string renders
+accented; this one stays plain English on all nine routes:
+
+```bash
+node tools/i18n/pseudo-locale.mjs
+node tools/i18n/pseudo-locale-audit.mjs   # reports "Skip to main content" x9
+```
+
+**What we would like**
+
+`SatSkipToContent` to read its text from a key — `SAT.SKIP_TO_CONTENT` or similar — shipped in
+`i18n/en.json` alongside the other `sat.*` strings, so a host's catalogue can translate it.
+
+**Workaround**
+
+None that is not worse than the defect. The text lives inside a compiled template we do not
+own; reaching it would mean either patching `node_modules` or replacing the component, and
+replacing a skip link with our own risks having two or none. Recorded rather than worked around.
+
 ## Severity 2 — dependency and contract problems that break a clean install
 
 ### 2.1 All sixteen `@alfresco/adf-core` peer dependencies are declared as unbounded `>=`

@@ -32,7 +32,7 @@
               ></sat-breadcrumbs>
             } @else {
               <div class="doc-main-title" role="heading" aria-level="1">
-                {{ selectedTask()!.targetDocTitle || 'Document' }}
+                {{ selectedTask()!.targetDocTitle || ('tasks.document' | translate) }}
               </div>
             }
           </div>
@@ -528,7 +528,7 @@
           } @else {
             <div class="preview-placeholder">
               <mat-icon>insert_drive_file</mat-icon>
-              <span>{{ docLoading() ? 'Loading...' : 'No document' }}</span>
+              <span>{{ docLoading() ? 'Loading...' : ('tasks.no-document' | translate) }}</span>
             </div>
           }
         </section>

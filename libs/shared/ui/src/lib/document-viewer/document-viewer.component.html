@@ -123,7 +123,9 @@
       </button>
       <button
         mat-icon-button
-        [matTooltip]="fitMode() === 'width' ? 'Actual size' : 'Fit to viewer'"
+        [matTooltip]="
+          fitMode() === 'width' ? ('ui.actual-size' | translate) : ('ui.fit-to-viewer' | translate)
+        "
         [attr.aria-label]="'shared-ui.document-viewer.toggle-fit' | translate"
         (click)="toggleFit()"
       >

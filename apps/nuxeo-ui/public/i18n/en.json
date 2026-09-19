@@ -450,7 +450,13 @@
       "color-profile": "Color Profile",
       "color-depth": "Color Depth per Channel",
       "video-duration": "Video Duration"
-    }
+    },
+    "switch-to-grid-view": "Switch to Grid View",
+    "switch-to-table-view": "Switch to Table View",
+    "saved-searches": "Saved Searches",
+    "search-filters": "Search Filters",
+    "switch-to-queue-view": "Switch to Queue view",
+    "switch-to-filter-view": "Switch to Filter view"
   },
   "browse": {
     "browse": {
@@ -664,7 +670,11 @@
     },
     "breadcrumb": {
       "root": "Root"
-    }
+    },
+    "unblock": "Unblock",
+    "block": "Block",
+    "hide-details": "Hide details",
+    "show-details": "Show details"
   },
   "collections": {
     "collection-detail": {
@@ -717,7 +727,19 @@
       "user": "User",
       "user-group": "User / Group",
       "username": "Username"
-    }
+    },
+    "collection-not-found": "Collection not found",
+    "collection-unavailable": "Collection unavailable",
+    "collection": "Collection",
+    "unsubscribe": "Unsubscribe",
+    "notify-me": "Notify Me",
+    "remove-from-clipboard": "Remove from Clipboard",
+    "add-to-clipboard": "Add to Clipboard",
+    "unlock": "Unlock",
+    "lock": "Lock",
+    "unblock": "Unblock",
+    "block": "Block",
+    "mmmm-d-yyyy": "MMMM d, yyyy"
   },
   "document-detail": {
     "add-to-collection-dialog": {
@@ -969,7 +991,21 @@
       "replace": "Replace",
       "replace-file": "Replace File",
       "upload-main-file": "Upload main file"
-    }
+    },
+    "ingesting-into-content-lake": "Ingesting into Content Lake",
+    "checking-content-lake-status": "Checking Content Lake status",
+    "unblock": "Unblock",
+    "block": "Block",
+    "mmmm-d-yyyy": "MMMM d, yyyy",
+    "regenerate": "Regenerate",
+    "generate": "Generate",
+    "hide-details": "Hide details",
+    "show-details": "Show details",
+    "unknown": "Unknown",
+    "reply": "Reply",
+    "replies": "Replies",
+    "visual-editor": "Visual editor",
+    "html-source": "HTML source"
   },
   "hxp": {
     "hxp-browse-details-panel": {
@@ -1315,13 +1351,25 @@
         "no-containers": "No Containers",
         "most-recent": "Most Recent",
         "validated": "Validated"
-      }
+      },
+      "tag-placeholder": "e.g. events, boston"
     },
     "quick-filter": {
       "no-containers": "No Containers",
       "most-recent": "Most Recent",
       "validated": "Validated"
-    }
+    },
+    "saved-searches": "Saved Searches",
+    "search-filters": "Search Filters",
+    "switch-to-queue-view": "Switch to Queue view",
+    "switch-to-filter-view": "Switch to Filter view",
+    "ai-search-active": "AI Search Active",
+    "ai-search": "AI Search",
+    "hide-query": "Hide Query",
+    "view-query": "View Query",
+    "switch-to-grid-view": "Switch to Grid View",
+    "switch-to-table-view": "Switch to Table View",
+    "switch-to-list-view": "Switch to List view"
   },
   "settings": {
     "themes": {
@@ -1329,7 +1377,10 @@
       "current": "Current",
       "search": "Search themes",
       "title": "Themes"
-    }
+    },
+    "hide-password": "Hide password",
+    "show-password": "Show password",
+    "save-changes": "Save changes"
   },
   "shared-ui": {
     "confirm-dialog": {
@@ -1491,7 +1542,11 @@
     },
     "settings": {
       "menu": "Settings menu"
-    }
+    },
+    "off": "Off",
+    "file": "File",
+    "overdue": "Overdue",
+    "due": "Due"
   },
   "tasks": {
     "task-detail": {
@@ -1559,7 +1614,9 @@
       "validation": "Validation",
       "view-graph": "View Graph",
       "workflow-graph": "Workflow Graph"
-    }
+    },
+    "document": "Document",
+    "no-document": "No document"
   },
   "trash": {
     "trash": {
@@ -1617,7 +1674,10 @@
       "created": "Created",
       "author": "Author",
       "state": "State"
-    }
+    },
+    "search-filters": "Search Filters",
+    "show-results": "Show results",
+    "show-filters": "Show filters"
   },
   "action": {
     "bulk-actions-download-zip": "Download All as Zip",
@@ -1706,5 +1766,47 @@
     "dialog": {
       "name-placeholder": "Enter a name for your saved search"
     }
+  },
+  "dashboard": {
+    "recently-edited": "Recently Edited",
+    "tasks": "Tasks",
+    "recently-viewed": "Recently Viewed",
+    "favorite-items": "Favorite Items"
+  },
+  "administration": {
+    "yes": "Yes",
+    "create-group": "Create group",
+    "edit-group": "Edit group",
+    "create-user": "Create user",
+    "edit-user": "Edit user",
+    "create": "Create",
+    "save": "Save",
+    "add-entry": "Add Entry",
+    "edit-entry": "Edit Entry",
+    "label-en": "Label (en)",
+    "label": "Label"
+  },
+  "knowledge-discovery": {
+    "submitted": "Submitted",
+    "complete": "Complete",
+    "error": "Error",
+    "blocked": "Blocked",
+    "unknown": "Unknown"
+  },
+  "adf-hx-bridge": {
+    "unsubscribe": "Unsubscribe",
+    "notify-me": "Notify Me"
+  },
+  "ui": {
+    "confirm": "Confirm",
+    "actual-size": "Actual size",
+    "fit-to-viewer": "Fit to viewer",
+    "saved-search": "Saved Search",
+    "enter-a-name-for-your-saved": "Enter a name for your saved search",
+    "add-a-permission": "Add a Permission",
+    "unblock": "Unblock",
+    "block": "Block",
+    "update": "Update",
+    "create": "Create"
   }
 }

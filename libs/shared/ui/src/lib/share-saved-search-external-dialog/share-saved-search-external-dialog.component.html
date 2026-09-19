@@ -83,6 +83,6 @@
     [disabled]="!isValid() || saving()"
     (click)="create(false)"
   >
-    {{ isEditMode ? 'Update' : 'Create' }}
+    {{ isEditMode ? ('ui.update' | translate) : ('ui.create' | translate) }}
   </button>
 </mat-dialog-actions>

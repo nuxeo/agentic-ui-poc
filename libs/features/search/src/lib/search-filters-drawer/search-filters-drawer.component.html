@@ -5,10 +5,12 @@
         class="saved-filters-trigger"
         type="button"
         [attr.aria-expanded]="savedSearchOpen()"
-        [attr.aria-label]="savedSearchInput() || 'Saved Searches'"
+        [attr.aria-label]="savedSearchInput() || ('search.saved-searches' | translate)"
         (click)="onSavedSearchToggle()"
       >
-        <span class="saved-filters-label">{{ savedSearchInput() || 'Search Filters' }}</span>
+        <span class="saved-filters-label">{{
+          savedSearchInput() || ('search.search-filters' | translate)
+        }}</span>
         <mat-icon class="saved-filters-arrow">arrow_drop_down</mat-icon>
       </button>
 
@@ -55,8 +57,16 @@
 
     <button
       mat-icon-button
-      [matTooltip]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
-      [attr.aria-label]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
+      [matTooltip]="
+        viewMode() === 'filter'
+          ? ('search.switch-to-queue-view' | translate)
+          : ('search.switch-to-filter-view' | translate)
+      "
+      [attr.aria-label]="
+        viewMode() === 'filter'
+          ? ('search.switch-to-queue-view' | translate)
+          : ('search.switch-to-filter-view' | translate)
+      "
       (click)="viewMode() === 'filter' ? switchToQueueView() : switchToFilterView()"
       type="button"
       class="queue-toggle-btn"
@@ -204,7 +214,7 @@
           <input
             class="typeahead-input"
             type="text"
-            placeholder="e.g. events, boston"
+            [placeholder]="'search.filter.tag-placeholder' | translate"
             [value]="tagInput()"
             (input)="onTagInput($any($event.target).value)"
             (focus)="tagOpen.set(true)"

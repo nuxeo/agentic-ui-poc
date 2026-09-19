@@ -162,7 +162,7 @@
         <mat-icon [style.color]="featureFlags.aiEnabled() ? '#4caf50' : '#9e9e9e'">{{
           featureFlags.aiEnabled() ? 'toggle_on' : 'toggle_off'
         }}</mat-icon>
-        AI Features {{ featureFlags.aiEnabled() ? 'On' : 'Off' }}
+        AI Features {{ featureFlags.aiEnabled() ? 'On' : ('shell.off' | translate) }}
       </button>
       <button mat-menu-item type="button">
         <mat-icon>help_outline</mat-icon>
@@ -281,7 +281,7 @@
                           (click)="openAiSource(source.uid, source.type, source.path)"
                         >
                           <mat-icon class="ai-source-card-icon">{{
-                            docTypeIcon(source.type ?? 'File')
+                            docTypeIcon(source.type ?? ('shell.file' | translate))
                           }}</mat-icon>
                           <span class="ai-source-card-info">
                             <span class="ai-source-card-title">{{ source.title }}</span>

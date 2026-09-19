@@ -5,7 +5,11 @@
     </div>
   }
   <div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
-    {{ data.mode === 'create' ? 'Create user' : 'Edit user' }}
+    {{
+      data.mode === 'create'
+        ? ('administration.create-user' | translate)
+        : ('administration.edit-user' | translate)
+    }}
   </div>
   <mat-dialog-content class="form">
     @if (loadingGroups) {
@@ -154,7 +158,11 @@
       (click)="submit(false)"
       [disabled]="!canSave"
     >
-      {{ data.mode === 'create' ? 'Create' : 'Save' }}
+      {{
+        data.mode === 'create'
+          ? ('administration.create' | translate)
+          : ('administration.save' | translate)
+      }}
     </button>
   </mat-dialog-actions>
 </div>

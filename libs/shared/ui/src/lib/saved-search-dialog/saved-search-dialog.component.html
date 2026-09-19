@@ -1,12 +1,12 @@
-<h2 mat-dialog-title>{{ data.title || 'Saved Search' }}</h2>
+<h2 mat-dialog-title>{{ data.title || ('ui.saved-search' | translate) }}</h2>
 
 <mat-dialog-content>
   <input
     class="saved-search-input"
     type="text"
-    [attr.aria-label]="data.title || 'Saved Search'"
+    [attr.aria-label]="data.title || ('ui.saved-search' | translate)"
     [value]="name()"
-    [placeholder]="data.placeholder || 'Enter a name for your saved search'"
+    [placeholder]="data.placeholder || ('ui.enter-a-name-for-your-saved' | translate)"
     (input)="onInput($any($event.target).value)"
     (keydown.enter)="save()"
   />

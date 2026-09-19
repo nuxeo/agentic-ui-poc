@@ -1,5 +1,10 @@
 <div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
-  {{ data.mode === 'create' ? 'Add Entry' : 'Edit Entry' }} — {{ data.directoryName }}
+  {{
+    data.mode === 'create'
+      ? ('administration.add-entry' | translate)
+      : ('administration.edit-entry' | translate)
+  }}
+  — {{ data.directoryName }}
 </div>
 <mat-dialog-content class="form">
   @if (showParentField) {
@@ -44,7 +49,9 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline" class="full">
-    <mat-label>{{ usesL10nLabel ? 'Label (en)' : 'Label' }}</mat-label>
+    <mat-label>{{
+      usesL10nLabel ? ('administration.label-en' | translate) : ('administration.label' | translate)
+    }}</mat-label>
     <input
       matInput
       name="entryLabel"

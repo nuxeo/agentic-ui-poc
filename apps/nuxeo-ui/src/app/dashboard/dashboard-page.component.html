@@ -63,7 +63,7 @@
 
   <lib-widget-grid [columns]="2">
     <lib-widget-container
-      [title]="'Recently Edited'"
+      [title]="'dashboard.recently-edited' | translate"
       icon="edit"
       iconColor="var(--mat-sys-primary)"
     >
@@ -117,7 +117,11 @@
       }
     </lib-widget-container>
 
-    <lib-widget-container [title]="'Tasks'" icon="assignment" iconColor="var(--mat-sys-error)">
+    <lib-widget-container
+      [title]="'dashboard.tasks' | translate"
+      icon="assignment"
+      iconColor="var(--mat-sys-error)"
+    >
       @if (tasksLoading()) {
         <div class="widget-loading">
           <mat-spinner diameter="28" [attr.aria-label]="'app.dashboard-page.loading' | translate" />
@@ -146,7 +150,7 @@
     </lib-widget-container>
 
     <lib-widget-container
-      [title]="'Recently Viewed'"
+      [title]="'dashboard.recently-viewed' | translate"
       icon="visibility"
       iconColor="var(--mat-sys-secondary)"
     >
@@ -194,7 +198,7 @@
     </lib-widget-container>
 
     <lib-widget-container
-      [title]="'Favorite Items'"
+      [title]="'dashboard.favorite-items' | translate"
       icon="star"
       iconColor="var(--mat-sys-tertiary)"
     >

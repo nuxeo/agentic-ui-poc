@@ -5,11 +5,13 @@
         class="saved-filters-trigger"
         type="button"
         [attr.aria-expanded]="filterSearchOpen()"
-        [attr.aria-label]="filterSearchInput() || 'Saved Searches'"
+        [attr.aria-label]="filterSearchInput() || ('assets.saved-searches' | translate)"
         (click)="onFilterSearchFocus()"
         (focus)="onFilterSearchFocus()"
       >
-        <span class="saved-filters-label">{{ filterSearchInput() || 'Search Filters' }}</span>
+        <span class="saved-filters-label">{{
+          filterSearchInput() || ('assets.search-filters' | translate)
+        }}</span>
         <mat-icon class="saved-filters-arrow">arrow_drop_down</mat-icon>
       </button>
 
@@ -56,8 +58,16 @@
 
     <button
       mat-icon-button
-      [matTooltip]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
-      [attr.aria-label]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
+      [matTooltip]="
+        viewMode() === 'filter'
+          ? ('assets.switch-to-queue-view' | translate)
+          : ('assets.switch-to-filter-view' | translate)
+      "
+      [attr.aria-label]="
+        viewMode() === 'filter'
+          ? ('assets.switch-to-queue-view' | translate)
+          : ('assets.switch-to-filter-view' | translate)
+      "
       (click)="viewMode() === 'filter' ? switchToQueueView() : switchToFilterView()"
       type="button"
       class="queue-toggle-btn"

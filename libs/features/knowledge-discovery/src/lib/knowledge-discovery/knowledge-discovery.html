@@ -220,10 +220,18 @@
           @if (answer(); as currentAnswer) {
             <span
               class="kd-status-chip"
-              [class.kd-status-chip--submitted]="currentAnswer.status === 'Submitted'"
-              [class.kd-status-chip--complete]="currentAnswer.status === 'Complete'"
-              [class.kd-status-chip--error]="currentAnswer.status === 'Error'"
-              [class.kd-status-chip--blocked]="currentAnswer.status === 'Blocked'"
+              [class.kd-status-chip--submitted]="
+                currentAnswer.status === ('knowledge-discovery.submitted' | translate)
+              "
+              [class.kd-status-chip--complete]="
+                currentAnswer.status === ('knowledge-discovery.complete' | translate)
+              "
+              [class.kd-status-chip--error]="
+                currentAnswer.status === ('knowledge-discovery.error' | translate)
+              "
+              [class.kd-status-chip--blocked]="
+                currentAnswer.status === ('knowledge-discovery.blocked' | translate)
+              "
             >
               {{ currentAnswer.status }}
             </span>
@@ -278,7 +286,10 @@
             <div class="kd-feedback">
               <button
                 mat-stroked-button
-                [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
+                [disabled]="
+                  feedbackInFlight() !== null ||
+                  currentAnswer.status !== ('knowledge-discovery.complete' | translate)
+                "
                 (click)="submitFeedback('Good')"
               >
                 <mat-icon>thumb_up</mat-icon>
@@ -286,7 +297,10 @@
               </button>
               <button
                 mat-stroked-button
-                [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
+                [disabled]="
+                  feedbackInFlight() !== null ||
+                  currentAnswer.status !== ('knowledge-discovery.complete' | translate)
+                "
                 (click)="submitFeedback('Bad')"
               >
                 <mat-icon>thumb_down</mat-icon>
@@ -294,7 +308,10 @@
               </button>
               <button
                 mat-stroked-button
-                [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
+                [disabled]="
+                  feedbackInFlight() !== null ||
+                  currentAnswer.status !== ('knowledge-discovery.complete' | translate)
+                "
                 (click)="submitFeedback('Retry')"
               >
                 <mat-icon>refresh</mat-icon>
@@ -439,7 +456,9 @@
             @for (model of models(); track model.modelName) {
               <li class="kd-reference__item">
                 <span>{{ model.displayName || model.modelName }}</span>
-                <span class="kd-reference__meta">{{ model.status || 'Unknown' }}</span>
+                <span class="kd-reference__meta">{{
+                  model.status || ('knowledge-discovery.unknown' | translate)
+                }}</span>
               </li>
             }
           </ul>

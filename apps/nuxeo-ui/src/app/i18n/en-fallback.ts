@@ -48,6 +48,10 @@
  * and fails when one of them is missing from this map or blank in it.
  */
 export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'dashboard.recently-edited': 'Recently Edited',
+  'dashboard.tasks': 'Tasks',
+  'dashboard.recently-viewed': 'Recently Viewed',
+  'dashboard.favorite-items': 'Favorite Items',
   'sat.platform-nav.expand': 'Expand navigation',
   'sat.platform-nav.collapse': 'Collapse navigation',
   'app.title': 'Hyland Nuxeo',

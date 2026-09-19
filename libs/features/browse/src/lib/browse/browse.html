@@ -582,7 +582,11 @@
                         (click)="toggleInheritance()"
                         [disabled]="actionInProgress() === 'inheritance'"
                       >
-                        {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+                        {{
+                          isInheritanceBlocked()
+                            ? ('browse.unblock' | translate)
+                            : ('browse.block' | translate)
+                        }}
                       </button>
                     }
                   </div>
@@ -968,7 +972,9 @@
           mat-icon-button
           class="panel-toggle-btn"
           (click)="togglePanel()"
-          [matTooltip]="panelOpen() ? 'Hide details' : 'Show details'"
+          [matTooltip]="
+            panelOpen() ? ('browse.hide-details' | translate) : ('browse.show-details' | translate)
+          "
           [attr.aria-label]="'browse.browse.toggle-details-panel' | translate"
         >
           <mat-icon>{{ panelOpen() ? 'info' : 'info_outline' }}</mat-icon>

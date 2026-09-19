@@ -334,8 +334,16 @@
           mat-icon-button
           class="source-toggle"
           [class.source-toggle--active]="sourceMode()"
-          [matTooltip]="sourceMode() ? 'Visual editor' : 'HTML source'"
-          [attr.aria-label]="sourceMode() ? 'Visual editor' : 'HTML source'"
+          [matTooltip]="
+            sourceMode()
+              ? ('document-detail.visual-editor' | translate)
+              : ('document-detail.html-source' | translate)
+          "
+          [attr.aria-label]="
+            sourceMode()
+              ? ('document-detail.visual-editor' | translate)
+              : ('document-detail.html-source' | translate)
+          "
           (click)="toggleSourceMode()"
         >
           <mat-icon>{{ sourceMode() ? 'edit' : 'code' }}</mat-icon>

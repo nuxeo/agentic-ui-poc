@@ -1,5 +1,9 @@
 <div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
-  {{ data.mode === 'create' ? 'Create group' : 'Edit group' }}
+  {{
+    data.mode === 'create'
+      ? ('administration.create-group' | translate)
+      : ('administration.edit-group' | translate)
+  }}
 </div>
 <mat-dialog-content class="form">
   <mat-form-field appearance="outline" class="full first-field">

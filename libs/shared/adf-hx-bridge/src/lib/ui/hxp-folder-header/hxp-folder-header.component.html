@@ -107,7 +107,11 @@
                 size="sm"
                 [decorative]="true"
               />
-              {{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}
+              {{
+                isSubscribed()
+                  ? ('adf-hx-bridge.unsubscribe' | translate)
+                  : ('adf-hx-bridge.notify-me' | translate)
+              }}
             </button>
             <button
               type="button"
