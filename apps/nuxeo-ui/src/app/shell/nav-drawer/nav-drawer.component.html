@@ -7,7 +7,7 @@
         role="heading"
         aria-level="2"
       >
-        {{ item.label }}
+        {{ item.labelKey ? (item.labelKey | translate) : item.label }}
       </div>
       @if (isTasksPanel) {
         <button
@@ -90,7 +90,10 @@
       }
     </div>
   } @else if (isBrowseAdfHx) {
-    <hxp-browse-nav-drawer [title]="item.label" (navigatePath)="onAdfHxBrowseNavigate($event)" />
+    <hxp-browse-nav-drawer
+      [title]="item.labelKey ? (item.labelKey | translate) : item.label"
+      (navigatePath)="onAdfHxBrowseNavigate($event)"
+    />
   } @else if (isPersonalSpace) {
     <div class="folder-tree">
       @if (personalSpaceLoading()) {

@@ -42,6 +42,23 @@
     "folders": {
       "empty": "Aucun dossier trouvé"
     },
+    "item": {
+      "administration": "Administration",
+      "assets": "Ressources",
+      "browse": "Parcourir",
+      "browse-adf-hx": "Parcourir (PoC adf-hx)",
+      "clipboard": "Presse-papiers",
+      "collections": "Collections",
+      "dashboard": "Tableau de bord",
+      "expired-queue": "File des documents expirés",
+      "favorites": "Favoris",
+      "knowledge-discovery": "Knowledge Discovery",
+      "personal-space": "Espace personnel",
+      "recently-viewed": "Consultés récemment",
+      "search-filters": "Filtres de recherche",
+      "tasks": "Tâches",
+      "trash": "Corbeille"
+    },
     "loading": "Chargement",
     "recent": {
       "empty": "Aucun document consulté récemment"

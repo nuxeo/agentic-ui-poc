@@ -42,6 +42,23 @@
     "folders": {
       "empty": "No folders found"
     },
+    "item": {
+      "administration": "Administration",
+      "assets": "Assets",
+      "browse": "Browse",
+      "browse-adf-hx": "Browse (adf-hx POC)",
+      "clipboard": "Clipboard",
+      "collections": "Collections",
+      "dashboard": "Dashboard",
+      "expired-queue": "Expired Queue",
+      "favorites": "Favorites",
+      "knowledge-discovery": "Knowledge Discovery",
+      "personal-space": "Personal Space",
+      "recently-viewed": "Recently viewed",
+      "search-filters": "Search filters",
+      "tasks": "Tasks",
+      "trash": "Trash"
+    },
     "loading": "Loading",
     "recent": {
       "empty": "No recently viewed documents"

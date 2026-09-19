@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import {
   Subject,
@@ -20,6 +20,7 @@ import {
   distinctUntilChanged,
   filter,
   finalize,
+  map,
   of,
   switchMap,
   Subscription,
@@ -60,7 +61,7 @@ import { SelectionTopbarComponent } from '@nuxeo-satori/platform/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS } from '@nuxeo-satori/platform/extensions';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { AuthService } from '../auth/auth.service';
 import { SessionTimeoutService } from '../auth/session-timeout.service';
@@ -119,6 +120,18 @@ export class AppShellComponent implements OnDestroy {
   private readonly adfHxBrowseContext = inject(AdfHxBrowseContextService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly appConfig = inject(AppConfigService);
+  private readonly translate = inject(TranslateService);
+  /**
+   * The active language, as a signal.
+   *
+   * `TranslateService.currentLang` is a plain getter and `instant()` is not reactive, so a
+   * `computed()` that reads either would never recompute on a language change. `onLangChange`
+   * is the only reactive surface ngx-translate offers for this.
+   */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.currentLang },
+  );
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
   readonly themingFlags = inject(ThemingFeatureFlagService);
@@ -200,8 +213,38 @@ export class AppShellComponent implements OnDestroy {
     ];
     const match = candidates.find((item) => url === item.path || url.startsWith(item.path + '/'));
     // Layer 0: the product name on an unmatched route is branding, not a literal.
-    return match?.label ?? this.appConfig.bootstrap().branding.applicationTitle;
+    return match ? this.navText(match) : this.appConfig.bootstrap().branding.applicationTitle;
   });
+
+  /**
+   * The text of a nav entry, preferring its translation key over its literal label.
+   *
+   * ## Why this exists instead of a pipe
+   *
+   * The nav descriptor's text reaches the user through three paths, and only one of them is a
+   * template binding. This heading is built in TypeScript, so is the clipboard entry's composed
+   * accessible name below, and so is the adf-core `DataColumn.title` in the browse feature —
+   * that last one is rendered by upstream's own DataTable, where we have no template at all.
+   * "Apply the pipe at the render site" has no render site in any of the three.
+   *
+   * `instant()` is a synchronous read of the already-loaded catalogue, which is correct here
+   * because `APP_INITIALIZER` awaits `translate.use(...)` before the shell renders.
+   *
+   * ## Why it depends on `currentLang`
+   *
+   * `instant()` is not reactive. Read inside a `computed()` with nothing else changing, the
+   * heading would keep the language it was first evaluated in. Touching the language signal
+   * makes the dependency explicit, so a language change recomputes the heading rather than
+   * leaving one stale string in the middle of a translated page.
+   */
+  private navText(item: { readonly label: string; readonly labelKey?: string }): string {
+    this.currentLang();
+    if (!item.labelKey) return item.label;
+    const translated = this.translate.instant(item.labelKey);
+    // ngx-translate passes an unresolved key straight through. Rendering `nav.browse` as a
+    // page heading would be worse than the English it replaced, so fall back deliberately.
+    return translated === item.labelKey ? item.label : translated;
+  }
 
   private storageListener = (e: StorageEvent) => {
     if (e.key === 'nuxeo_clipboard') {
@@ -311,7 +354,13 @@ export class AppShellComponent implements OnDestroy {
     }
     const count = this.clipboardCount();
     const noun = count === 1 ? 'item' : 'items';
-    return `${item.label}, ${count} ${noun}`;
+    // NOTE(i18n): this is a concatenated string, which INFO-144 forbids because no translator
+    // can reorder it, and the singular/plural branch is English grammar hardcoded in a
+    // conditional. Translating the entry's name is a strict improvement and is what this
+    // change is for, but the sentence around it still needs an ICU message with a `plural`
+    // arm. Tracked in NXSAT-284; not fixed here because it needs
+    // `ngx-translate-messageformat-compiler`, which the repo does not yet carry.
+    return `${this.navText(item)}, ${count} ${noun}`;
   }
 
   isActive(path: string): boolean {

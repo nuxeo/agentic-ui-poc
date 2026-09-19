@@ -10,6 +10,15 @@ import type { SatNavigationItemWithIcon } from '@hylandsoftware/satori-ui/platfo
  */
 export interface AppNavItem extends SatNavigationItemWithIcon {
   readonly id: string;
+  /**
+   * Translation key for the entry's text, carried through from the descriptor.
+   *
+   * `label` stays populated with the English literal, because Satori's own nav type requires
+   * it and because it is the fallback when no key resolves. Render sites prefer the key; see
+   * `NavItemDescriptor.labelKey` for why this is a second field rather than a reinterpretation
+   * of `label`.
+   */
+  readonly labelKey?: string;
   /** When true, clicking opens the side drawer instead of navigating directly. */
   readonly hasDrawer?: boolean;
 }
@@ -30,6 +39,7 @@ export function toAppNavItem(descriptor: NavItemDescriptor): AppNavItem {
   return {
     id: descriptor.id,
     label: descriptor.label,
+    labelKey: descriptor.labelKey,
     path: descriptor.path,
     icon: descriptor.icon,
     hasDrawer: descriptor.hasDrawer,

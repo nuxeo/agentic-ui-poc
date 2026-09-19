@@ -160,12 +160,33 @@ populated) honour four more:
 `extensions.overrides` is keyed by **descriptor ID, never by slot**, so a slot invented after Beta
 ships is hideable, reorderable, relabellable and gateable with no schema change.
 
-| Key       | Effect                                                                         |
-| --------- | ------------------------------------------------------------------------------ |
-| `visible` | `false` removes the entry.                                                     |
-| `order`   | Replaces the packaged order.                                                   |
-| `label`   | Replaces the packaged label. For translated strings prefer `labels` (Layer 0). |
-| `rule`    | Replaces the packaged rule. **`null` clears it**, ungating the entry.          |
+| Key       | Effect                                                                                |
+| --------- | ------------------------------------------------------------------------------------- |
+| `visible` | `false` removes the entry.                                                            |
+| `order`   | Replaces the packaged order.                                                          |
+| `label`   | Replaces the packaged text with a **literal**, in every language. See the note below. |
+| `rule`    | Replaces the packaged rule. **`null` clears it**, ungating the entry.                 |
+
+#### Relabelling: two mechanisms, and which one you want
+
+Packaged entries carry both a `label` (the English literal) and a `labelKey` (a translation key).
+The renderer prefers the key when it resolves. That gives you two ways to change the text, and
+they are not interchangeable.
+
+| You want                       | Set                                    | Result                                                                    |
+| ------------------------------ | -------------------------------------- | ------------------------------------------------------------------------- |
+| One wording, every language    | `overrides["app.navbar.browse"].label` | Your literal, verbatim, in all locales. Translation is bypassed entirely. |
+| Different wording per language | `labels["nav.item.browse"]` (Layer 0)  | Your text wherever that key resolves, per catalogue.                      |
+
+**Setting `label` disables the key for that entry**, deliberately and by design: a manifest
+literal is an instruction to show exactly that string, so it must win. If you set both, `label`
+wins and your `labels` entry does nothing — that is defined behaviour, not a bug, but it is the
+most likely way to confuse yourself.
+
+Your `label` is **never** treated as a translation key. It is rendered as written, so a literal
+containing dots — `"v2.0 Archive"` — is safe.
+
+Find an entry's `labelKey` in `PACKAGED_NAV_ITEMS`; they follow `nav.item.<slug>`.
 
 ```json
 {

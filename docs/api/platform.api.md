@@ -348,6 +348,7 @@ interface ExtensionTabDescriptor extends ExtensionElement {
 const NO_EXTENSION_SLOT_OVERRIDES: ExtensionSlotOverrides;
 interface NavItemDescriptor extends ExtensionElement {
     readonly label: string;
+    readonly labelKey?: string;
     readonly path: string;
     readonly icon: string;
     readonly hasDrawer?: boolean;
