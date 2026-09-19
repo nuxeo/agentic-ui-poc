@@ -39,6 +39,17 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
+  it('groups username and password in a credentials fieldset (NXENG-752)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const fieldset = el.querySelector('fieldset.login-credentials');
+    expect(fieldset).toBeTruthy();
+    const legend = fieldset?.querySelector('legend');
+    expect(legend?.textContent?.trim()).toBe('Sign in credentials');
+    expect(fieldset?.contains(el.querySelector('input[formcontrolname="username"]'))).toBe(true);
+    expect(fieldset?.contains(el.querySelector('input[formcontrolname="password"]'))).toBe(true);
+    expect(fieldset?.contains(el.querySelector('button.login-submit'))).toBe(false);
+  });
+
   it('shows username required error after empty submit (NXENG-748)', () => {
     component.form.setValue({ username: '', password: '' });
     component.submit();
