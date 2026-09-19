@@ -67,6 +67,13 @@ jobs:
       - name: Run review guardrails
         run: npm run review:guardrails -- --base=$NX_BASE --head=$NX_HEAD
 
+      # The guardrails' own negative controls. Without this step CI enforces the guardrails but
+      # never checks they are capable of failing, which is how a guardrail regresses into an
+      # always-green implementation with the required check still reported as passing.
+      # Builds throwaway git repositories under the runner's temp dir; touches nothing tracked.
+      - name: Run i18n guardrail negative controls
+        run: npm run review:guardrails-selftest
+
       # Static checks that `beta:gate` has run locally since Phase 5 and that had
       # never run here. They are seconds each and they close a specific hole: the local
       # gate and CI were two different gates, so "green locally" and "green in CI" made

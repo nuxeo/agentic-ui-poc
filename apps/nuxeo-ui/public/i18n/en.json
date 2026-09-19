@@ -21,12 +21,64 @@
       "export": "Export"
     }
   },
+  "nav": {
+    "clipboard": {
+      "empty": "Clipboard is empty",
+      "hint": "Use \"Add to Clipboard\" on documents or collections to add items here.",
+      "remove": "Remove from clipboard",
+      "tip": "Browse to a container to paste or move clipboard content."
+    },
+    "collections": {
+      "empty": "No collections found"
+    },
+    "expired": {
+      "empty": "No expired documents"
+    },
+    "favorites": {
+      "empty": "No favorites yet",
+      "hint": "Use the star icon on documents to add them to your favorites.",
+      "remove": "Remove from favorites"
+    },
+    "folders": {
+      "empty": "No folders found"
+    },
+    "loading": "Loading",
+    "recent": {
+      "empty": "No recently viewed documents"
+    },
+    "refresh": "Refresh",
+    "sign-out": "Sign Out",
+    "tasks": {
+      "dashboard": "View Tasks Dashboard",
+      "empty": "No pending tasks",
+      "retry": "Retry"
+    }
+  },
   "settings": {
     "themes": {
       "title": "Themes",
-      "search": "Search (placeholder)",
+      "search": "Search themes",
       "current": "Current",
       "apply": "Apply"
+    }
+  },
+  "shell": {
+    "ai": {
+      "clear": "Clear chat",
+      "close": "Close chat",
+      "heading": "Nuxeo AI Assistant",
+      "input-placeholder": "Ask anything about your documents...",
+      "open": "AI Assistant",
+      "send": "Send message",
+      "title": "AI Assistant"
+    },
+    "search": {
+      "no-results": "No results found",
+      "placeholder": "Search documents, users or groups",
+      "searching": "Searching…"
+    },
+    "settings": {
+      "menu": "Settings menu"
     }
   }
 }

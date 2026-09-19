@@ -1,0 +1,59 @@
+{
+  "$schema-note": "Translator context for en.json, keyed by the same dotted key. Required by INFO-144: every string must carry enough context to be translated without asking a developer, acronyms must be expanded, and product names must be flagged as do-not-translate. Keys here must match en.json exactly; `checkTranslationContext` in scripts/review-guardrails.mjs enforces that. This file is developer documentation, not a catalogue: it is excluded from the build assets and is never fetched at runtime.",
+
+  "app.title": "The application name, shown in the browser tab and the header. PRODUCT NAME — do not translate 'Hyland' or 'Nuxeo'.",
+  "app.nav.toggle": "Accessible name and tooltip for the button that opens and closes the left navigation rail. 'Toggle' here is a verb meaning show-or-hide, not a noun.",
+
+  "browse.details.show": "Button that opens the metadata panel beside a document list. 'Details' means the document's metadata, not a level of detail.",
+  "browse.details.hide": "Button that closes the metadata panel. Pairs with browse.details.show.",
+  "browse.details.toggle": "Accessible name for the single button that both opens and closes the metadata panel. 'Toggle' is a verb.",
+
+  "browse.scope.create-import": "Menu heading grouping the 'create a document' and 'import a file' actions. The slash separates two alternatives.",
+  "browse.scope.drive": "PRODUCT NAME — 'Nuxeo Drive' is the desktop sync client. Do not translate either word.",
+  "browse.scope.edit": "Action that opens the metadata editing form. 'Metadata' means the document's properties.",
+  "browse.scope.delete": "Action that moves the selected documents to the trash. It is recoverable, not a permanent delete.",
+  "browse.scope.share": "Action that creates a shareable link to the document.",
+  "browse.scope.notify": "Action that subscribes the user to notifications about this document. A verb.",
+  "browse.scope.export": "Action that downloads the selected documents' metadata as a file. A verb.",
+
+  "nav.refresh": "Accessible name and tooltip on a small icon button that reloads one panel of the navigation drawer. A verb, imperative.",
+  "nav.loading": "Accessible name on a progress spinner, announced to screen readers while a navigation panel fetches data. A present participle describing an in-progress state.",
+  "nav.sign-out": "Button that ends the user's session. A verb, imperative. Note this is 'sign out', not 'log out' — keep the product's wording consistent with the sign-in screen.",
+
+  "nav.folders.empty": "Shown in place of the folder tree when the repository has no folders the user may see. Note it may mean 'none exist' or 'none visible to you'; prefer neutral phrasing.",
+  "nav.collections.empty": "Shown when the user has no collections. A 'collection' is a user-curated set of documents, a Nuxeo domain term.",
+  "nav.recent.empty": "Shown when the user has not viewed any documents yet. 'Recently viewed' is a history of documents this user opened.",
+  "nav.expired.empty": "Shown when no documents have passed their expiry date. 'Expired' refers to a document retention/expiry date, not a session.",
+
+  "nav.tasks.empty": "Shown when the user has no workflow tasks awaiting action. 'Pending' means awaiting the user's action.",
+  "nav.tasks.retry": "Button shown after the task list fails to load, which re-attempts the request. A verb, imperative.",
+  "nav.tasks.dashboard": "Link to the full tasks page. 'Dashboard' is the name of that page. A verb phrase: 'view the tasks dashboard'.",
+
+  "nav.favorites.empty": "Shown when the user has marked no documents as favorites. 'Yet' implies the list can be filled, and is worth preserving.",
+  "nav.favorites.hint": "Instruction shown beneath nav.favorites.empty explaining how to add one. 'Star icon' refers to a ★ button on each document row.",
+  "nav.favorites.remove": "Accessible name and tooltip on the button that unmarks one document as a favorite. A verb phrase.",
+
+  "nav.clipboard.empty": "Shown when the clipboard holds no items. The clipboard is an in-application staging area for copy/move, not the operating system clipboard.",
+  "nav.clipboard.hint": "Instruction shown beneath nav.clipboard.empty. The quoted phrase \"Add to Clipboard\" is a menu item label the user will look for, so it must match the translation of that menu item exactly, and keep the quotation marks.",
+  "nav.clipboard.remove": "Accessible name and tooltip on the button that takes one item out of the clipboard. A verb phrase.",
+  "nav.clipboard.tip": "Guidance shown when the clipboard has items. 'Container' means a folder or other document that can hold children. 'Paste or move' are two distinct operations.",
+
+  "settings.themes.title": "Page heading for the theme picker, under Settings. A 'theme' is a colour scheme.",
+  "settings.themes.search": "Accessible name for the search button on the themes page. A verb phrase: 'search the themes'.",
+  "settings.themes.current": "Label on the disabled button marking the theme already in use. An adjective, not a verb.",
+  "settings.themes.apply": "Button that switches to the chosen theme. A verb, imperative.",
+
+  "shell.search.placeholder": "Placeholder text inside the global search box in the header. Lists the three kinds of thing the search covers; the commas and 'or' separate a list of alternatives.",
+  "shell.search.searching": "Transient status shown in the search results dropdown while a query runs. The trailing ellipsis character (…) indicates work in progress and should be kept.",
+  "shell.search.no-results": "Shown in the search results dropdown when a query matched nothing.",
+
+  "shell.settings.menu": "Accessible name for the header button that opens the settings menu. A noun phrase naming the menu, not an instruction.",
+
+  "shell.ai.open": "Accessible name for the header button that opens the assistant panel. ACRONYM: 'AI' means Artificial Intelligence. Expand or transliterate it according to the target language's convention for that term.",
+  "shell.ai.title": "Title in the assistant panel's header bar. ACRONYM: 'AI' means Artificial Intelligence. Same term as shell.ai.open; keep the two consistent.",
+  "shell.ai.heading": "Heading in the assistant panel's empty state. PRODUCT NAME — do not translate 'Nuxeo'. ACRONYM: 'AI' means Artificial Intelligence.",
+  "shell.ai.input-placeholder": "Placeholder in the assistant's message box, inviting a free-text question. 'Your documents' means the documents this user can see. The trailing '...' is deliberate and informal.",
+  "shell.ai.send": "Accessible name for the button that submits the typed message to the assistant. A verb phrase, imperative.",
+  "shell.ai.clear": "Accessible name for the button that empties the conversation history. A verb phrase: 'clear the chat'. It discards the conversation; it does not close the panel.",
+  "shell.ai.close": "Accessible name for the button that closes the assistant panel. A verb phrase. It keeps the conversation; contrast with shell.ai.clear."
+}

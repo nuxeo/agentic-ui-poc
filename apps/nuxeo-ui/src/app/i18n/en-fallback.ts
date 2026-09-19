@@ -30,6 +30,22 @@
  * folder (see `SEEDED_FOLDERS` in `app-translate-loader.ts`). They are duplicated here because
  * this map is the fallback for a **failed fetch**, and a failed fetch must not silently restore
  * the empty name.
+ *
+ * ## Every key bound to an accessible name must be here
+ *
+ * That is the rule, and it is narrower than "every key in the catalogue" on purpose — this map
+ * is deliberately partial, and visible text degrading to a raw key is ugly where an accessible
+ * name degrading to one is a WCAG failure.
+ *
+ * `settings.themes.search` was missing, and it is the `[attr.aria-label]` of the themes
+ * toolbar's search button. A failed fetch therefore named that control `settings.themes.search`
+ * — the same class of defect as the empty `sat.platform-nav.*` names above, differing only in
+ * whether the wrong name is blank or is a raw key. Neither is detectable by axe: one has no
+ * name, which axe catches, and one has a name that is simply not words, which it cannot.
+ *
+ * `checkAccessibleNameFallbacks` in `scripts/review-guardrails.mjs` enforces exactly that rule:
+ * it reads the keys our templates bind to `aria-label` and `title` through the translate pipe,
+ * and fails when one of them is missing from this map or blank in it.
  */
 export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'sat.platform-nav.expand': 'Expand navigation',
@@ -40,6 +56,19 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'browse.details.hide': 'Hide details',
   'browse.details.toggle': 'Toggle details panel',
   'settings.themes.title': 'Themes',
+  'settings.themes.search': 'Search themes',
   'settings.themes.current': 'Current',
   'settings.themes.apply': 'Apply',
+  // Shell chrome accessible names. Not the visible text from the same templates: this map is for
+  // the names that would become raw keys on a control, and `checkAccessibleNameFallbacks` is the
+  // list of what that means in practice.
+  'shell.ai.open': 'AI Assistant',
+  'shell.ai.clear': 'Clear chat',
+  'shell.ai.close': 'Close chat',
+  'shell.ai.send': 'Send message',
+  'shell.settings.menu': 'Settings menu',
+  'nav.refresh': 'Refresh',
+  'nav.loading': 'Loading',
+  'nav.favorites.remove': 'Remove from favorites',
+  'nav.clipboard.remove': 'Remove from clipboard',
 };

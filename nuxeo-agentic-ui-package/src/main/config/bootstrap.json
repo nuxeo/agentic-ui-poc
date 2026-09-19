@@ -13,14 +13,28 @@
   "manifestDocumentProperty": "note:note",
 
   "branding": {
-    "applicationTitle": "Hyland Nuxeo",
-    "documentTitle": "Nuxeo Platform"
+    "applicationTitle": "Acme Content Cloud",
+    "documentTitle": "Acme Content Cloud"
   },
+  "defaultThemeId": "acme",
+  "themes": [
+    {
+      "id": "acme",
+      "label": "Acme Brand",
+      "base": "light",
+      "preview": {
+        "sidebar": "#2d0b4e",
+        "surface": "#f6f2fb",
+        "header": "#e6dcf5",
+        "accent": "#7b2ff7",
+        "tile": "#d9c9f0"
+      },
+      "tokens": { "--mat-sys-primary": "rgb(123, 47, 247)", "--agentic-pill-radius": "4px" }
+    }
+  ],
 
   "$themes": "Merged over the packaged themes by id. 'tokens' are CSS custom properties applied to <html> while the theme is active, so a rebrand needs no rebuild. Add an entry with a new id to add a whole theme.",
-  "defaultThemeId": "nuxeo",
-  "themes": [],
 
   "defaultLanguage": "en",
-  "availableLanguages": ["en"]
+  "availableLanguages": ["en", "fr", "de"]
 }
