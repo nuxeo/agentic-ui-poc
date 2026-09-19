@@ -477,17 +477,21 @@ S6 has an external dependency — project creation is manual and goes through IN
 
 ### 227b — GA slices
 
-One slice per project, largest first, each its own PR. Prerequisite slice B0 first.
+One slice per project, largest first, each its own PR. **B0 is not a prerequisite** — see the
+correction in `docs/i18n-status.md`. Translating an `aria-label` leaves the English DOM
+byte-identical, so a literal selector still matches; `phase-1-tag-styles` passes 21/21 today
+against a piped label. The constraint that does bind is that the English catalogue value must
+match the literal it replaces.
 
-| Slice  | Scope                                                                                                                                            |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **B0** | Migrate the nine literal `aria-label` selectors in `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` to `data-testid`. Blocks everything after it. |
-| **B1** | `libs/features/document-detail` — 92 text nodes, 85 `aria-label`, 24 `title`. The heaviest.                                                      |
-| **B2** | `libs/features/administration` — 111 text nodes, 46 `aria-label`.                                                                                |
-| **B3** | `libs/features/browse` — 96 text nodes, 51 `aria-label`.                                                                                         |
-| **B4** | `libs/shared/ui` — 68 text nodes, 24 `aria-label`. Shared, so it reaches all eight feature modules; run the blast-radius check.                  |
-| **B5** | `libs/features/search`, `collections`, `tasks`, `trash`, `assets`, `knowledge-discovery` — smaller, batchable.                                   |
-| **B6** | Per-library catalogue layout per D3, plus flip `checkNoHardcodedUiText` to repo-wide over the core slice.                                        |
+| Slice  | Scope                                                                                                                                                                                                                                                              |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **B0** | Migrate the nine literal `aria-label` selectors in `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` to `data-testid`. **Not a blocker** — worth doing because the harnesses stay locale-coupled and would break if run in `fr`, but extraction does not wait on it. |
+| **B1** | `libs/features/document-detail` — 92 text nodes, 85 `aria-label`, 24 `title`. The heaviest.                                                                                                                                                                        |
+| **B2** | `libs/features/administration` — 111 text nodes, 46 `aria-label`.                                                                                                                                                                                                  |
+| **B3** | `libs/features/browse` — 96 text nodes, 51 `aria-label`.                                                                                                                                                                                                           |
+| **B4** | `libs/shared/ui` — 68 text nodes, 24 `aria-label`. Shared, so it reaches all eight feature modules; run the blast-radius check.                                                                                                                                    |
+| **B5** | `libs/features/search`, `collections`, `tasks`, `trash`, `assets`, `knowledge-discovery` — smaller, batchable.                                                                                                                                                     |
+| **B6** | Per-library catalogue layout per D3, plus flip `checkNoHardcodedUiText` to repo-wide over the core slice.                                                                                                                                                          |
 
 Strings in `.ts` files — snackbar messages, dialog titles, error text — are **not** in those
 counts and were never surveyed. Budget a discovery pass in B1 before committing to B2–B5

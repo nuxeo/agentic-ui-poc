@@ -359,10 +359,27 @@ Worth recording, because it is the argument for writing controls at all:
 
 ### NXSAT-284 — GA extraction: 1350 template strings, 257 descriptor strings, plus an unknown number passed imperatively
 
-6. **B0 first, and it blocks everything after it.** `phase-6-a11y.mjs` and
-   `phase-1-tag-styles.mjs` select on nine literal English `aria-label` values, all in `libs/`.
-   Translate those before migrating the selectors to `data-testid` and both evidence harnesses go
-   red for reasons unrelated to the product.
+6. **~~B0 first, and it blocks everything after it.~~ Corrected 19 Sep 2026 — it is not a
+   blocker.** The claim was that translating the nine literal English `aria-label` values that
+   `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` select on would turn both harnesses red, so
+   the selectors had to move to `data-testid` first.
+
+   That is wrong, and a live counter-example was already in the repository.
+   `browse.details.toggle` has been bound through the pipe in `browse-adf-hx-poc.html` since
+   before this work, and `phase-1-tag-styles.mjs` selects it as
+   `button[aria-label="Toggle details panel"]`. That harness **passes 21/21**. Angular resolves
+   the pipe and sets the attribute to the resolved string, so in English the DOM is byte-identical
+   to the literal it replaced, and a literal selector still matches.
+
+   The real constraint is narrower and belongs to the extraction rather than to a prerequisite
+   slice: **the English catalogue value must be byte-identical to the literal it replaces.**
+   Change the wording while extracting and the selector breaks — not because it was translated,
+   but because the string changed.
+
+   Migrating the selectors to `data-testid` is still worth doing, because the harnesses remain
+   locale-coupled and would break if ever run in `fr`. It is cleanup with a real payoff, not a
+   gate. **Per-project extraction can start immediately.**
+
 7. Then one PR per project, largest first: document-detail (236, and the `.ts` discovery pass),
    administration (191), browse (184), `shared/ui` (116, shared so run the blast-radius check),
    then the smaller features.
