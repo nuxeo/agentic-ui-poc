@@ -192,8 +192,7 @@ sat-app-header h2.sat-app-header-title {
 
 sat-app-header .sat-app-header-trailing-container,
 sat-app-header .sat-app-header-actions,
-sat-app-header sat-word-mark-logo.sat-app-header-logo,
-sat-app-header .sat-app-header-logo sat-word-mark-logo {
+sat-app-header sat-word-mark-logo[satAppHeaderLogo] {
   flex-shrink: 0;
 }
 
