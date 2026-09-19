@@ -73,39 +73,8 @@ export function saveColumnSettings(columns: ColumnDef[]): void {
   selector: 'lib-column-settings-dialog',
   standalone: true,
   imports: [FormsModule, MatDialogModule, MatButtonModule, MatCheckboxModule],
-  template: `
-    <h2 mat-dialog-title>Columns Settings</h2>
-
-    <mat-dialog-content>
-      @for (col of columns; track col.key) {
-        <mat-checkbox [(ngModel)]="col.visible" [disabled]="col.key === 'title'">
-          {{ col.label }}
-        </mat-checkbox>
-      }
-    </mat-dialog-content>
-
-    <mat-dialog-actions align="end">
-      <button mat-stroked-button (click)="reset()">Reset</button>
-      <button mat-flat-button color="primary" (click)="done()">Done</button>
-    </mat-dialog-actions>
-  `,
-  styles: [
-    `
-      :host {
-        display: block;
-        min-width: 300px;
-      }
-      mat-dialog-content {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 16px 24px !important;
-      }
-      mat-dialog-actions {
-        padding: 8px 24px 16px;
-      }
-    `,
-  ],
+  templateUrl: './column-settings-dialog.html',
+  styleUrl: './column-settings-dialog.scss',
 })
 export class ColumnSettingsDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ColumnSettingsDialogComponent>);

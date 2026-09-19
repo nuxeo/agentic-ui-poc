@@ -3,17 +3,7 @@ import { Component } from '@angular/core';
 /** PoC placeholder for routes not yet backed by feature libraries. */
 @Component({
   standalone: true,
-  template: `
-    <div class="placeholder">
-      <p>Coming soon</p>
-    </div>
-  `,
-  styles: [
-    `
-      .placeholder {
-        padding: 1.5rem;
-      }
-    `,
-  ],
+  templateUrl: './placeholder-page.component.html',
+  styleUrl: './placeholder-page.component.scss',
 })
 export class PlaceholderPageComponent {}

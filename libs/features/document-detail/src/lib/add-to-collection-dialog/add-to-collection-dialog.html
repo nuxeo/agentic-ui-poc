@@ -1,0 +1,56 @@
+<h2 mat-dialog-title>Add to Collection</h2>
+
+<mat-dialog-content>
+  @if (loading()) {
+    <div class="dialog-loading">
+      <mat-spinner diameter="24" />
+      <span>Loading collections...</span>
+    </div>
+  } @else {
+    <mat-form-field appearance="outline" class="collection-field">
+      <mat-label>Collections</mat-label>
+      <mat-select [(ngModel)]="selectedCollectionId" placeholder="Select a Collection..." required>
+        @for (col of filteredCollections(); track col.uid) {
+          <mat-option [value]="col.uid">{{ col.title }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+      <input
+        matInput
+        placeholder="Search or create collection..."
+        [ngModel]="searchTerm()"
+        (ngModelChange)="searchTerm.set($event)"
+        autocomplete="off"
+      />
+    </mat-form-field>
+
+    @if (showCreateOption()) {
+      <button class="create-collection-btn" (click)="createNewCollection()" [disabled]="creating()">
+        @if (creating()) {
+          <mat-spinner diameter="16" />
+        } @else {
+          <mat-icon>add_circle</mat-icon>
+        }
+        <span>Create "{{ searchTerm() }}"</span>
+      </button>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>Cancel</button>
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="!selectedCollectionId || adding()"
+    (click)="add()"
+  >
+    @if (adding()) {
+      <mat-spinner diameter="18" />
+    } @else {
+      Add
+    }
+  </button>
+</mat-dialog-actions>

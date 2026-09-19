@@ -1,0 +1,14 @@
+<h2 mat-dialog-title>Columns Settings</h2>
+
+<mat-dialog-content>
+  @for (col of columns; track col.key) {
+    <mat-checkbox [(ngModel)]="col.visible" [disabled]="col.key === 'title'">
+      {{ col.label }}
+    </mat-checkbox>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="reset()">Reset</button>
+  <button mat-flat-button color="primary" (click)="done()">Done</button>
+</mat-dialog-actions>
