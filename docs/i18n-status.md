@@ -67,6 +67,12 @@ git grep -c "| translate" HEAD        -- '*.html' | awk -F: '{s+=$3} END {print 
 | `\| translate` call sites | **7**   | **55**  |
 | Templates using it        | 3 of 92 | 4 of 92 |
 
+| Still hard-coded                 | Count         |
+| -------------------------------- | ------------- |
+| Template strings                 | **1350**      |
+| Descriptor strings in TypeScript | **257**       |
+| Passed imperatively in `.ts`     | never counted |
+
 Four of ninety-two is the honest headline. It went up by one template because the work was
 deliberately deep rather than wide: the two shell templates that were extracted are now at
 **zero** remaining hard-coded strings, which no template in this repository was before.
@@ -103,10 +109,56 @@ rest, in descending size: `contracts-page` (24), `dashboard-page` (20), `profile
 `nuxeo-drive-page` (15), `change-password-dialog` (8), `cloud-services-page` (7), `login-page`
 (7), three smaller pages and `index.html`.
 
+### Descriptors — a whole category the template count missed
+
+**257 more user-facing strings live in TypeScript descriptors**, not templates. Nav entries,
+packaged actions, column definitions and drawer links are data:
+
+```ts
+{ id: 'app.navbar.browse', label: 'Browse', icon: 'folder' }
+```
+
+rendered as `{{ item.label }}`.
+
+| Project                         | Descriptor strings |
+| ------------------------------- | ------------------ |
+| `libs/shared/extensions`        | 59                 |
+| `libs/features/assets`          | 35                 |
+| `libs/features/search`          | 31                 |
+| `apps/nuxeo-satori-template`    | 26                 |
+| `libs/features/document-detail` | 25                 |
+| `apps/nuxeo-ui`                 | 19                 |
+| others (10 projects)            | 62                 |
+| **Total**                       | **257**            |
+
+Three things follow, and the first two are why this was invisible until someone looked at a
+screenshot and asked whether the application was really in French.
+
+**No amount of template extraction reaches them.** The translate pipe cannot be applied at a
+descriptor definition, because the descriptor is Layer 1 data rather than markup.
+
+**`checkNoHardcodedUiText` is structurally blind to them.** It reads added lines in `.html` and
+sees `{{ item.label }}`, which is exactly the shape it asks for. `checkNoHardcodedDescriptorText`
+now covers the gap, diff-scoped, over `label`, `placeholder`, `ariaLabel` and `tooltip`. `title`
+and `description` are deliberately excluded — they name Nuxeo document properties and schema
+documentation as often as UI chrome, and a check that argues with the reviewer gets disabled.
+
+**This is the most visible text in the product.** The entire left navigation is in this category.
+A demo of the application in French shows a French search box beside a wholly English nav, which
+is the single biggest reason the French screenshots read worse than the mechanism deserves.
+
+The fix is not a sweep: the descriptor must carry a translation **key** and the pipe must move to
+the render site — `{ label: 'nav.browse' }` with `{{ item.label | translate }}`. That keeps the
+descriptor manifest-addressable _and_ makes the string translatable, which the current shape
+allows only one of. It is a change to the Layer 1 descriptor contract, so it wants doing
+deliberately and early in NXSAT-284 rather than being folded into a per-project sweep.
+
 ### The number nobody has measured
 
-**Strings in `.ts` files are not in the 1350 and have never been counted** — snackbar messages,
-dialog titles, error text, confirmation prompts. The 1350 is templates only. A discovery pass is
+**The remaining `.ts` strings are still not counted.** The 257 descriptor strings above are
+object-literal `label`/`placeholder`/`ariaLabel`/`tooltip` properties. Strings passed
+imperatively — snackbar messages, dialog titles opened in code, error text, confirmation
+prompts — are in neither figure. A discovery pass is
 scoped as the first thing in NXSAT-284, precisely so the estimate for the rest is not built on
 an unknown.
 
@@ -305,7 +357,7 @@ Worth recording, because it is the argument for writing controls at all:
    Satori's strings into our project and bill the translation crew for work another team already
    paid for. Scope to `apps/` and `libs/`, and verify with a dry run.
 
-### NXSAT-284 — GA extraction, 1350 strings plus an unknown number in `.ts`
+### NXSAT-284 — GA extraction: 1350 template strings, 257 descriptor strings, plus an unknown number passed imperatively
 
 6. **B0 first, and it blocks everything after it.** `phase-6-a11y.mjs` and
    `phase-1-tag-styles.mjs` select on nine literal English `aria-label` values, all in `libs/`.
@@ -345,10 +397,12 @@ Worth recording, because it is the argument for writing controls at all:
 
 1. **The machinery is done and has been since Phase 1.** Everything that looks unfinished is
    content, and content was descoped from Beta on 21 August.
-2. **4 of 92 templates use the translate pipe, and 1350 template strings remain** — plus an
-   uncounted number in `.ts` files. That is GA-sized work, tracked as NXSAT-284.
+2. **4 of 92 templates use the translate pipe. 1350 template strings and 257 descriptor
+   strings remain**, plus an uncounted number passed imperatively in `.ts`. That is GA-sized
+   work, tracked as NXSAT-284.
 3. **The French screenshot proves the mechanism, not a localised product.** Say that when you
-   show it, before someone else points at the English nav.
+   show it, before someone else points at the English nav — and note the nav is English for a
+   structural reason, not because it was skipped: those labels are descriptors, not templates.
 4. **Never hand-edit a non-English catalogue.** Crowdin owns them and overwrites edits on the
    next pull. And never change the meaning of an existing key — change the key, because
    `update_without_changes` will otherwise keep the old translation and it will be wrong in every

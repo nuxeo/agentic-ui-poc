@@ -1088,6 +1088,72 @@ function checkNoHardcodedUiText() {
 }
 
 /**
+ * A newly added hard-coded user-facing string in a **descriptor**, not a template.
+ *
+ * ## The category the template guardrail structurally cannot see
+ *
+ * Nav entries, packaged actions, column definitions and drawer links are data, not markup:
+ *
+ *     { id: 'app.navbar.browse', label: 'Browse', icon: 'folder' }
+ *
+ * rendered as `{{ item.label }}`. `checkNoHardcodedUiText` looks at added lines in `.html` and
+ * sees an interpolation, which is the shape it is asking for — so every one of these passes it,
+ * and no amount of template extraction ever reaches them.
+ *
+ * They were also absent from the extraction estimate, which counted template literals only.
+ * Measured when this check was written: **294** across sixteen projects, against roughly 1350
+ * in templates. The single most visible text in the product — the left navigation — is in this
+ * category, which is how a screenshot of the application in French came to show one French
+ * string and an entirely English nav.
+ *
+ * ## Scope and the properties chosen
+ *
+ * Diff-scoped, for the same reason as the template check: repo-wide would be red on arrival.
+ *
+ * `label`, `placeholder`, `ariaLabel` and `tooltip` only. These are unambiguously UI chrome in
+ * every use in this repository. `title` and `description` are deliberately **excluded** despite
+ * catching real strings, because they are also the names of Nuxeo document properties and of
+ * schema documentation, so flagging them would mean judgement calls in review — and a check
+ * that argues with you is a check that gets disabled.
+ *
+ * ## Fixing one
+ *
+ * A descriptor is Layer 1 data, so the fix is not to wrap it in a pipe at the definition. Put a
+ * translation **key** in the descriptor and apply the pipe where it renders
+ * (`{{ item.label | translate }}`). That keeps the descriptor addressable from a manifest and
+ * makes the string translatable, which the current shape allows only one of.
+ */
+function checkNoHardcodedDescriptorText() {
+  // `label: 'Browse'` and friends. Single-quoted only: this repo's formatter produces single
+  // quotes, and a template literal usually means interpolation, which is not a fixed string.
+  const DESCRIPTOR_TEXT = /\b(label|placeholder|ariaLabel|tooltip)\s*:\s*'([A-Z][^']*)'/g;
+
+  for (const [file, lines] of addedLinesByFile) {
+    if (!/^(libs|apps)\/.+\.ts$/.test(file)) continue;
+    if (/\.spec\.ts$/.test(file)) continue;
+
+    for (const { line, text } of lines) {
+      const trimmed = text.trim();
+      if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('*')) continue;
+
+      for (const [, property, value] of trimmed.matchAll(DESCRIPTOR_TEXT)) {
+        if ((value.match(/[A-Za-z]/g) ?? []).length < 2) continue;
+        fail(
+          `${file}:${line} introduces \`${property}: '${value}'\` — a user-facing string in a ` +
+            'descriptor.\n' +
+            '    Templates are not the only place these live, and the translate pipe cannot ' +
+            'reach a descriptor. Put a key here and apply the pipe where it renders:\n' +
+            `      { …, ${property}: 'nav.browse' }   →   {{ item.${property} | translate }}\n` +
+            '    That keeps the descriptor manifest-addressable and makes the string ' +
+            'translatable; the literal form allows only the first.',
+        );
+        break; // one report per line is enough
+      }
+    }
+  }
+}
+
+/**
  * Our own translation catalogues: valid JSON, no blank values, and the same keys in every locale.
  *
  * ## Why each check is here
@@ -1592,6 +1658,7 @@ const GUARDRAILS = [
   checkAdfHxWorkaroundIds,
   checkNoAdfHxInPublicApi,
   checkNoHardcodedUiText,
+  checkNoHardcodedDescriptorText,
   checkTranslationCatalogues,
   checkTranslationContext,
   checkAccessibleNameFallbacks,

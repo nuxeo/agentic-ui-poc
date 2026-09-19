@@ -42,6 +42,14 @@ const GUARDRAILS = join(ROOT, 'scripts', 'review-guardrails.mjs');
 
 let negative = 0;
 let positive = 0;
+/**
+ * Positive controls that specifically assert a NON-violation is not flagged.
+ *
+ * Counted separately because it drifted once already: the summary hardcoded "eight" while the
+ * list held nine, and then said "9" while a second set of seven had been added elsewhere. A
+ * number in prose next to a list it does not come from is a number that goes wrong.
+ */
+let falsePositiveControls = 0;
 const failures = [];
 
 /** A minimal but valid app catalogue. */
@@ -476,6 +484,7 @@ const NOT_PROSE = [
 
 for (const [label, line] of NOT_PROSE) {
   positive += 1;
+  falsePositiveControls += 1;
   withFixture(
     APP,
     (write) =>
@@ -491,13 +500,98 @@ for (const [label, line] of NOT_PROSE) {
   );
 }
 
+/* ---------------- checkNoHardcodedDescriptorText ---------------- */
+
+/** A descriptor file doing it right: the label is a translation key, not English. */
+const GOOD_DESCRIPTORS = `export const NAV_ITEMS = [
+  { id: 'app.navbar.browse', label: 'nav.browse', icon: 'folder' },
+  { id: 'app.navbar.trash', label: 'nav.trash', icon: 'delete' },
+];
+`;
+
+const WITH_DESCRIPTORS = {
+  ...APP,
+  'libs/shared/extensions/src/lib/nav-items.ts': GOOD_DESCRIPTORS,
+};
+
+expectGreen('descriptor labels that are keys', 'checkNoHardcodedDescriptorText', WITH_DESCRIPTORS);
+
+expectRed(
+  'a hard-coded descriptor label',
+  'checkNoHardcodedDescriptorText',
+  WITH_DESCRIPTORS,
+  (write) =>
+    write(
+      'libs/shared/extensions/src/lib/nav-items.ts',
+      `${GOOD_DESCRIPTORS}export const EXTRA = [{ id: 'x', label: 'Knowledge Discovery' }];\n`,
+    ),
+  /introduces `label: 'Knowledge Discovery'` — a user-facing string in a descriptor/,
+);
+
+expectRed(
+  'a hard-coded descriptor placeholder',
+  'checkNoHardcodedDescriptorText',
+  WITH_DESCRIPTORS,
+  (write) =>
+    write(
+      'libs/shared/extensions/src/lib/nav-items.ts',
+      `${GOOD_DESCRIPTORS}export const F = { placeholder: 'Enter a name for your saved search' };\n`,
+    ),
+  /introduces `placeholder: 'Enter a name for your saved search'`/,
+);
+
+/**
+ * The shapes that must NOT be flagged. `title` and `description` are excluded deliberately —
+ * they name Nuxeo document properties and schema documentation as often as UI chrome, so
+ * flagging them would mean arguing with the reviewer, and a check that argues gets disabled.
+ */
+for (const [label, line] of [
+  ['a label that is already a key', `export const A = { label: 'nav.browse' };`],
+  ['a lowercase value', `export const B = { label: 'folder' };`],
+  ['an interpolated label', 'export const C = { label: `${prefix} items` };'],
+  ['a title property', `export const D = { title: 'Saved Search' };`],
+  ['a description property', `export const E = { description: 'Repository path of the doc.' };`],
+  ['a commented-out label', `// label: 'Knowledge Discovery'`],
+  ['a docblock mentioning one', ` * label: 'Knowledge Discovery'`],
+]) {
+  positive += 1;
+  falsePositiveControls += 1;
+  withFixture(
+    WITH_DESCRIPTORS,
+    (write) => write('libs/shared/extensions/src/lib/nav-items.ts', `${GOOD_DESCRIPTORS}${line}\n`),
+    (runGuardrail) => {
+      const { code, out } = runGuardrail('checkNoHardcodedDescriptorText');
+      if (code !== 0) {
+        failures.push(`false positive — ${label} was flagged.\n    ${out.trim()}`);
+      }
+    },
+  );
+}
+
+expectRed(
+  'a spec file is out of scope, but a real descriptor beside it is not',
+  'checkNoHardcodedDescriptorText',
+  WITH_DESCRIPTORS,
+  (write) => {
+    write(
+      'libs/shared/extensions/src/lib/nav-items.spec.ts',
+      `it('x', () => { const a = { label: 'Ignored In Specs' }; });\n`,
+    );
+    write(
+      'libs/shared/extensions/src/lib/nav-items.ts',
+      `${GOOD_DESCRIPTORS}export const G = { label: 'Real Descriptor' };\n`,
+    );
+  },
+  /nav-items\.ts.*label: 'Real Descriptor'/s,
+);
+
 /* ---------------- report ---------------- */
 
 const total = negative + positive;
 console.log(
   `review-guardrails selftest: ${total} controls — ${negative} negative (a broken tree must go ` +
-    `red, for the stated reason) and ${positive} positive (a correct tree must stay green, ` +
-    `including ${NOT_PROSE.length} shapes that sit where prose sits and are not prose).`,
+    `red, for the stated reason) and ${positive} positive (a correct tree must stay green), ` +
+    `of which ${falsePositiveControls} assert that a specific non-violation is NOT flagged.`,
 );
 
 if (failures.length) {
