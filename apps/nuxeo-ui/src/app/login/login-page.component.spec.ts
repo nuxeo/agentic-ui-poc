@@ -39,6 +39,33 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
+  it('provides a skip link to the sign-in landmark (WCAG 2.4.1)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const skip = el.querySelector('a.login-skip-link');
+    expect(skip).toBeTruthy();
+    expect(skip?.getAttribute('href')).toBe('#login-main');
+    expect(skip?.textContent?.trim()).toContain('Skip to sign in');
+
+    const landmark = el.querySelector('#login-main');
+    expect(landmark).toBeTruthy();
+    expect(landmark?.getAttribute('tabindex')).toBe('-1');
+    expect(landmark?.getAttribute('aria-label')).toBe('Log in');
+  });
+
+  it('focuses the username field and cancels navigation when the skip link is activated', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const usernameInput = el.querySelector('input[formcontrolname="username"]') as HTMLInputElement;
+    const event = new MouseEvent('click', { cancelable: true, bubbles: true });
+    const preventSpy = spyOn(event, 'preventDefault').and.callThrough();
+
+    component.skipToSignIn(event);
+    fixture.detectChanges();
+
+    expect(preventSpy).toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(usernameInput);
+  });
+
   it('shows username required error after empty submit (NXENG-748)', () => {
     component.form.setValue({ username: '', password: '' });
     component.submit();
@@ -206,6 +233,7 @@ describe('LoginPageComponent', () => {
       const root = fixture.nativeElement as HTMLElement;
       const main = root.querySelector('main.login-panel');
       expect(main).not.toBeNull();
+      expect(main?.getAttribute('id')).toBe('login-main');
       expect(main?.getAttribute('aria-label')).toBe('Log in');
       expect(main?.querySelector('form.login-form')).not.toBeNull();
       expect(main?.querySelector('footer.login-footer')).not.toBeNull();

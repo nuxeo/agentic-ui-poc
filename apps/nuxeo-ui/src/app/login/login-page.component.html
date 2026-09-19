@@ -1,5 +1,8 @@
 <div class="login-page">
-  <main class="login-panel" aria-label="Log in">
+  <a class="login-skip-link" mat-raised-button href="#login-main" (click)="skipToSignIn($event)"
+    >Skip to sign in</a
+  >
+  <main id="login-main" tabindex="-1" class="login-panel" aria-label="Log in">
     <div class="login-panel-inner">
       <a routerLink="/login" class="login-brand" aria-label="Hyland">
         <sat-logo direction="horizontal">
@@ -8,9 +11,14 @@
         </sat-logo>
       </a>
 
-      <h1 class="login-title">Log in</h1>
+      <h1 id="login-page-heading" class="login-title">Log in</h1>
 
-      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+      <form
+        class="login-form"
+        aria-labelledby="login-page-heading"
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+      >
         <mat-form-field
           appearance="outline"
           subscriptSizing="dynamic"

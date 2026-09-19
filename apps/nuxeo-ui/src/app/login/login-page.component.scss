@@ -5,9 +5,26 @@
 }
 
 .login-page {
+  position: relative;
   display: flex;
   min-height: 100vh;
   width: 100%;
+}
+
+/* WCAG 2.4.1 — same off-screen-until-focused pattern as sat-skip-to-content (NXENG-745). */
+.login-skip-link {
+  position: absolute;
+  top: -100%;
+  left: -100%;
+  z-index: 2000;
+  opacity: 0;
+
+  &:focus-visible {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    opacity: 1;
+  }
 }
 
 .login-panel {
