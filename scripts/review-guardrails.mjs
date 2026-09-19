@@ -54,10 +54,47 @@ function walk(dir, predicate, acc = []) {
   return acc;
 }
 
+/**
+ * The commit the branch diverged from, or `base` itself if that cannot be resolved.
+ *
+ * `git diff a...b` already means "from the merge base of a and b, to b". The dirty-tree path
+ * below cannot use three-dot form — there is no committed `b` to name — so it has to compute
+ * the same starting point explicitly, or the two paths mean different things.
+ */
+function mergeBaseOrBase() {
+  try {
+    return git(['merge-base', base, head]).trim() || base;
+  } catch {
+    // A fixture repository without the base ref, or a shallow clone. Falling back to `base` is
+    // the previous behaviour, which is noisy rather than wrong.
+    return base;
+  }
+}
+
+/**
+ * Added lines, keyed by file.
+ *
+ * ## The two paths have to mean the same thing, and once did not
+ *
+ * Clean tree: `git diff base...head` — **merge base** to head, so commits that landed on `base`
+ * after this branch forked are excluded.
+ *
+ * Dirty tree: it used `git diff base`, which is two-dot — working tree against the **current
+ * tip** of base. Those differ the moment `base` moves on, and the difference is not subtle: a
+ * line that `main` changed *after* the fork shows up as this branch having added the old
+ * version of it. Measured on this branch with `origin/main` a few commits ahead: four
+ * guardrail failures, all of them lines nobody here had touched, all of them vanishing when
+ * the tree was made clean. A gate that cries wolf whenever `main` moves is a gate people learn
+ * to run with their eyes closed.
+ *
+ * So the dirty path now starts from the merge base too. Both paths answer the same question —
+ * "what has this branch introduced" — and the only difference left is whether uncommitted work
+ * counts, which is the distinction that was intended.
+ */
 function parseDiff() {
   const hasLocalChanges = head === 'HEAD' && git(['status', '--porcelain']).trim().length > 0;
   const diffArgs = hasLocalChanges
-    ? ['diff', '--unified=0', '--diff-filter=ACMR', base]
+    ? ['diff', '--unified=0', '--diff-filter=ACMR', mergeBaseOrBase()]
     : ['diff', '--unified=0', '--diff-filter=ACMR', `${base}...${head}`];
   const diff = git(diffArgs);
   const files = new Map();
@@ -1308,6 +1345,79 @@ function checkTranslationContext() {
 }
 
 /**
+ * Every locale we ship a catalogue for has Angular locale data registered.
+ *
+ * Translating strings and formatting dates are separate mechanisms. `DatePipe`, `DecimalPipe`
+ * and `CurrencyPipe` read Angular's per-locale data, which ships in `@angular/common/locales`
+ * and must be registered explicitly; only `en-US` is built in. Asked to format in an
+ * unregistered locale a pipe does not degrade — it throws `NG0701`, surfacing as
+ * `NG02100: InvalidPipeArgument` wherever a date renders.
+ *
+ * This is gated because the symptom appears nowhere near the cause. Adding `es.json` is an
+ * obviously-complete-looking change; the failure arrives later, as a pipe error on a document
+ * list, for a reason that has nothing to do with the file that was added.
+ *
+ * It is also how the defect was found rather than shipped: adf-core was forcing the app back to
+ * `en` on every adf-hx surface (`W14`), so no pipe was ever handed `fr` and the missing data was
+ * invisible. Fixing that produced thirty-six console errors on the first French run. **The i18n
+ * bug was hiding the l10n bug**, which is the argument for checking the pair rather than either
+ * half.
+ *
+ * `en` is exempt: Angular bundles it.
+ */
+function checkLocaleDataRegistered() {
+  const registration = 'apps/nuxeo-ui/src/app/i18n/register-locale-data.ts';
+  if (!fileExists(registration)) {
+    fail(
+      `${registration} does not exist, but every non-English catalogue needs Angular locale ` +
+        'data registered there or its dates throw NG0701 at runtime.',
+    );
+    return;
+  }
+
+  // `['fr', localeFr],` — the locale is the quoted first element of each tuple.
+  const registered = new Set(
+    [...read(registration).matchAll(/\[\s*'([a-z]{2}(?:-[A-Za-z]{2,4})?)'\s*,/g)].map(
+      ([, locale]) => locale,
+    ),
+  );
+  if (registered.size === 0) {
+    fail(
+      `${registration} yielded no registered locales, so this gate asserted nothing. Its ` +
+        'literal shape must have changed — update the parser here before trusting a pass.',
+    );
+    return;
+  }
+
+  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
+  const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
+  const shipped = new Set(
+    catalogues
+      .map((path) => path.slice(path.lastIndexOf('/') + 1).replace(/\.json$/, ''))
+      .filter((locale) => locale !== 'en'),
+  );
+
+  for (const locale of shipped) {
+    if (registered.has(locale)) continue;
+    fail(
+      `A catalogue ships for "${locale}" but ${registration} registers no Angular locale data ` +
+        `for it.\n    Dates, numbers and currency will throw NG0701 the moment anything ` +
+        'formats in that locale — and because that happens wherever a date renders, the error ' +
+        `will not look like it came from adding ${locale}.json.\n    Import ` +
+        `\`@angular/common/locales/${locale}\` and add it to LOCALE_DATA.`,
+    );
+  }
+
+  for (const locale of registered) {
+    if (shipped.has(locale)) continue;
+    warn(
+      `${registration} registers locale data for "${locale}" but no catalogue ships for it. ` +
+        'Harmless, but it is dead weight in the bundle.',
+    );
+  }
+}
+
+/**
  * Every key our templates bind to an accessible name must survive a failed catalogue fetch.
  *
  * `AppTranslateLoader` falls back to `EN_FALLBACK_TRANSLATIONS` when it cannot fetch the app
@@ -1485,6 +1595,7 @@ const GUARDRAILS = [
   checkTranslationCatalogues,
   checkTranslationContext,
   checkAccessibleNameFallbacks,
+  checkLocaleDataRegistered,
 ];
 
 /**

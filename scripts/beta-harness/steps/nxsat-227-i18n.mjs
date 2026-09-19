@@ -342,6 +342,45 @@ export default async function run(page, h) {
   await h.screenshot('fr-shell-french-chrome');
 
   // ---------------------------------------------------------------------------
+  h.step('French survives an adf-hx surface, which is where it used to silently revert');
+  // The regression test for W14, and the gap this capture originally had.
+  //
+  // adf-core's `TranslationService` reads the locale from its own `UserPreferencesService` and
+  // calls `translate.use(...)` on the shared ngx-translate instance when it constructs. So the
+  // language chosen from `defaultLanguage` held on the seven ordinary shell routes and reverted
+  // to English the moment any adf-hx surface rendered — the `/#/browse-adf-hx` route or the
+  // adf-hx nav drawer — with no page reload involved.
+  //
+  // The earlier version of this file asserted French **only after navigating to `/#/browse`**,
+  // which is precisely the navigation that avoids the defect. It passed 25/25 with the bug
+  // live. That is why this step drives the adf-hx surfaces explicitly rather than trusting the
+  // shell.
+  await h.goTo('/#/browse-adf-hx');
+  await page.waitForTimeout(3000);
+  await h.expectVisible('the adf-hx POC route rendered', 'lib-browse-adf-hx-poc');
+
+  const adfHxRoutePlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
+  h.check(
+    'the adf-hx route keeps the configured language',
+    adfHxRoutePlaceholder === frenchPlaceholder,
+    `shell was "${frenchPlaceholder}", adf-hx route is "${adfHxRoutePlaceholder}"`,
+  );
+
+  // Upstream's own catalogue should now resolve in French too — it ships `fr`, and before the
+  // fix it was being fetched as `en`. The tree root is upstream's `DOCUMENT_TREE.ROOT`.
+  const treeRoot = await page
+    .locator('hxp-document-tree')
+    .first()
+    .innerText()
+    .catch(() => '');
+  h.check(
+    'upstream adf-hx strings resolve in the configured language, not English',
+    treeRoot.includes('Accueil'),
+    `tree text was ${JSON.stringify(treeRoot.slice(0, 80))} — expected upstream's French root`,
+  );
+  await h.screenshot('fr-adf-hx-surface-keeps-french');
+
+  // ---------------------------------------------------------------------------
   h.step('German is a second locale, so the switch is not a one-off fixture');
   bootstrapBody = bootstrapWithLanguage('de');
   await reloadApp(page);
@@ -379,6 +418,25 @@ export default async function run(page, h) {
     'an unshipped locale falls back to the English string',
     fallbackPlaceholder === 'Search documents, users or groups',
     `placeholder was "${fallbackPlaceholder}"`,
+  );
+
+  // Strings degrading is only half of tolerant. Angular's date, number and currency pipes throw
+  // `NG0701` for a locale with no registered data rather than degrading, so an unshipped locale
+  // used to give English text and a broken date in every list — eleven `InvalidPipeArgument`
+  // errors on one pass. Strings were fine throughout, which is what made it easy to miss.
+  //
+  // Asserted here rather than left to the console-error step because that step's suppression
+  // list would have been the tempting place to put it, and suppressing it would have hidden a
+  // real product defect behind a capture that reported PASS.
+  const dateCell = await page
+    .locator('lib-browse, lib-browse-adf-hx-poc')
+    .first()
+    .innerText()
+    .catch(() => '');
+  h.check(
+    'an unshipped locale still renders dates rather than throwing',
+    !dateCell.includes('InvalidPipeArgument'),
+    `page text contained a pipe error: ${JSON.stringify(dateCell.slice(0, 120))}`,
   );
   await h.screenshot('xx-shell-falls-back-to-english');
 

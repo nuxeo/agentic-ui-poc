@@ -213,6 +213,44 @@ degrading to English rather than to keys. Every language switch goes through a r
 `page.reload()`, because `withHashLocation()` makes `goto()` same-document and without it
 `APP_INITIALIZER` never re-runs.
 
+### Two defects found by running the application, which the controls did not catch
+
+Recorded prominently because they are the more interesting failure: a capture that reported
+**25/25 PASS** was live at the time, and both of these were present.
+
+**`W14` — adf-hx surfaces silently reverted the language to English.** adf-core's
+`TranslationService` reads the locale from its own `UserPreferencesService` and calls
+`translate.use(...)` on the shared ngx-translate instance when it constructs. So
+`defaultLanguage: 'fr'` held on the seven ordinary shell routes and reverted the moment the
+`/#/browse-adf-hx` route or the adf-hx nav drawer rendered — no page reload involved,
+`performance.getEntriesByType('navigation')` stayed at one entry, and all five catalogues were
+re-fetched for `en`.
+
+The capture missed it because step 5 navigated to `/#/browse` before asserting French — a `goTo`
+added to get away from a drawer an earlier step had opened, which happens to be exactly the
+navigation that avoids the bug. **The evidence was true and incomplete.** Fixed by re-asserting
+our Layer 0 language into adf-core's preference on every boot, with a regression step that drives
+the adf-hx surfaces explicitly.
+
+A side effect worth knowing: upstream's own catalogues now resolve too. The document tree root
+renders `Accueil` rather than `Home`, because adf-hx ships `fr` and was previously being fetched
+as `en`.
+
+**Missing Angular locale data — and the first bug was hiding it.** Once the locale actually
+applied, `DatePipe` was handed `fr` for the first time and threw `NG0701: Missing locale data`,
+thirty-six times on one pass. Translating strings and formatting dates are separate mechanisms;
+only `en-US` locale data is built into Angular. Fixed by registering `fr` and `de`, gated by
+`checkLocaleDataRegistered` so a catalogue cannot be added without its data — the symptom
+otherwise appears as a pipe error on an unrelated page.
+
+Then the same run showed eleven more for the deliberately-unshipped `xx` locale: strings degraded
+to English correctly, dates threw. A customer mistyping `defaultLanguage` would get readable text
+and a broken date in every list. Fixed by only handing adf-core a locale we have data for, so the
+string language and the formatting locale are allowed to differ.
+
+**The order matters and is the lesson: the i18n bug was hiding the l10n bug.** A half-applied
+locale looks like a working one right up until it works.
+
 ### Defects found by the controls, not by review
 
 Worth recording, because it is the argument for writing controls at all:
@@ -285,8 +323,11 @@ Worth recording, because it is the argument for writing controls at all:
 
 9. **A language picker.** `availableLanguages` is validated, unit-tested and read by nothing.
    adf-core ships `LanguagePickerComponent`.
-10. **`LOCALE_ID` and locale data.** Not wired, so a French UI renders English-formatted dates.
-    The most commonly forgotten half of i18n.
+10. **`LOCALE_ID`.** Locale _data_ is now registered for `fr` and `de`, and adf-core's
+    formatting locale follows the configuration — so dates format per locale instead of
+    throwing. What is still missing is providing `LOCALE_ID` itself from configuration, so
+    anything relying on Angular's default locale rather than adf-core's explicit one is still
+    `en-US`. Narrower than it was, not closed.
 11. **RTL** — DS-2277. Satori needs 4–6 weeks of its own work before an app can start, and the
     target should be the "good enough" level from its spectrum, agreed explicitly.
 12. **Pluralisation** — no ICU usage anywhere; needs `ngx-translate-messageformat-compiler`.
