@@ -17,6 +17,50 @@ silently and gets believed anyway.
 
 ---
 
+## Where extraction stands — measured by rendering, not by grepping
+
+Last measured 2026-09-19 on branch `feature/nxsat-284-descriptor-labels`.
+
+|                                                                |          |
+| -------------------------------------------------------------- | -------- |
+| Catalogue keys, each with translator context                   | **1528** |
+| Descriptor labels carrying a `labelKey`                        | **182**  |
+| Visible English strings under the `zz` pseudo-locale, 9 routes | **41**   |
+
+The third number is the only one that means "finished", and it is the only one
+that was not available until recently. Key and call-site counts measure what was
+extracted; they cannot see what was missed, because a hard-coded string is
+invisible to a catalogue by definition. Rendering the application in a locale
+where every catalogue-sourced string comes back accented is what makes a missed
+one show up — `npm run i18n:audit`.
+
+That instrument has been wrong twice, both times under-reporting:
+
+- `<mat-icon>` text is a ligature NAME, so `settings` reads as English and is not.
+  60 phantom findings, burying the real ones.
+- Upstream ships only `en`, `fr` and `de`, so every adf-core and satori-ui string
+  read as a miss until the generator produced a `zz` for those catalogues too — 22 more.
+- The prose test required letters only, so anything with a number was skipped in
+  silence: the five size buckets, every date range, `2 result(s)`.
+
+### What the remaining 41 are
+
+| Count | What                                                                    | Action                                                                                       |
+| ----: | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+|     9 | `Skip to main content`, hard-coded inside satori-ui's compiled template | Upstream finding 1.4 — no host-side fix exists                                               |
+|    ~6 | `Select <document title>` and three empty-state sentences               | Concatenations. INFO-144 forbids the shape; each needs rewriting as one parameterised string |
+|     5 | Theme names — Nuxeo, Dark, Kawaii, Light, Acme Brand                    | Layer 0 customer data, correctly a literal                                                   |
+|    ~6 | AI insight severities and generated sentences                           | Written by the server                                                                        |
+|  rest | Angular Material internals (`Open calendar`), adf-hx tab labels         | Their own i18n mechanisms                                                                    |
+
+None of these is an unexamined residue. The two worth acting on are the
+concatenations, which need an author rather than a script, and upstream 1.4.
+
+### Still deliberately out of scope
+
+`apps/nuxeo-satori-template` — 105 template strings and 26 descriptors. It is the
+customer starter template, deferred by an explicit earlier decision.
+
 ## How to read this page
 
 Three distinctions do most of the work here, and conflating any of them produces a wrong answer
