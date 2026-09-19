@@ -173,7 +173,9 @@
               (change)="toggleSize(option.value)"
               class="filter-checkbox"
             >
-              {{ option.label }} ({{ option.count }})
+              {{ option.labelKey ? (option.labelKey | translate) : option.label }} ({{
+                option.count
+              }})
             </mat-checkbox>
           }
         </div>

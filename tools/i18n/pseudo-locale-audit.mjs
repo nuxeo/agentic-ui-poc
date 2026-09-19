@@ -75,7 +75,21 @@ const INSTANCE_DATA = new Set([
   'My Favorites',
 ]);
 
-const ASCII_PROSE = /^[A-Za-z][A-Za-z ,.'&()/-]{2,}$/;
+// Digits are allowed in the BODY. Requiring letters-only hid every string that carries a
+// number — `Last 24h (0)`, `Between 1 MB and 10 MB`, `2 result(s)` — which is most of a filter
+// panel. The audit reported 36 findings while a screenshot of the same page showed six more it
+// had skipped. A leading digit is still rejected, because that is a count rendered from data.
+/**
+ * A date the Angular `DatePipe` produced, e.g. `Jul 3, 2026`.
+ *
+ * Angular has no locale data for `zz` and formats it as English, which is right — a synthetic
+ * locale has no calendar. The date is not a hard-coded string and there is no key that could
+ * translate it; whether dates localise is settled by `registerLocaleData`, which `fr` and `de`
+ * already have and a real gate already checks.
+ */
+const FORMATTED_DATE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/;
+
+const ASCII_PROSE = /^[A-Za-z][A-Za-z0-9 ,.'&()/-]{2,}$/;
 
 mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
@@ -118,7 +132,9 @@ for (const [name, route] of ROUTES) {
     return out;
   }, DATA_CONTAINERS);
 
-  const real = english.filter((e) => ASCII_PROSE.test(e.text) && !INSTANCE_DATA.has(e.text));
+  const real = english.filter(
+    (e) => ASCII_PROSE.test(e.text) && !INSTANCE_DATA.has(e.text) && !FORMATTED_DATE.test(e.text),
+  );
   findings.push({ route: name, count: real.length, items: real.slice(0, 40) });
   console.log(`${real.length === 0 ? 'clean' : `${real.length} English`}  ${name}`);
 }

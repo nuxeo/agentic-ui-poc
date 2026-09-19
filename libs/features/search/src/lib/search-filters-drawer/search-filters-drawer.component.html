@@ -123,7 +123,8 @@
                 (change)="toggleModificationDate(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.label }}{{ getCountText(option.count) }}
+                {{ option.labelKey ? (option.labelKey | translate) : option.label
+                }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }

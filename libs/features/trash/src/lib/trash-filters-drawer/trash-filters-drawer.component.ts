@@ -24,6 +24,8 @@ interface SizeOption {
   key: string;
   value: string;
   label: string;
+  /** Translation key for `label`; the five buckets are shared with the search drawer. */
+  labelKey?: string;
   count: number;
 }
 
@@ -32,6 +34,14 @@ interface AuthorOption {
   label: string;
   count: number;
 }
+
+const SIZE_LABEL_KEYS: Record<string, string> = {
+  tiny: 'search.filter.option.less-than-100-kb',
+  small: 'search.filter.option.between-100-kb-and-1-mb',
+  medium: 'search.filter.option.between-1-mb-and-10-mb',
+  large: 'search.filter.option.between-10-mb-and-100-mb',
+  huge: 'search.filter.option.more-than-100-mb',
+};
 
 const SIZE_LABELS: Record<string, string> = {
   tiny: 'Less than 100 KB',
@@ -169,6 +179,7 @@ export class TrashFiltersDrawerComponent implements OnInit {
       Object.entries(SIZE_LABELS).map(([key, label]) => ({
         key,
         value: key,
+        labelKey: SIZE_LABEL_KEYS[key],
         label,
         count: counts[key] ?? 0,
       })),

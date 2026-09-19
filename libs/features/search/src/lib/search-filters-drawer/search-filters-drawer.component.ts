@@ -26,7 +26,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 interface CountOption {
   key: string;
   label: string;
-  /** Translation key for `label`, preferred by the template when it resolves. */
+  /** Set only when the label came from a static definition in this file, never from an aggregation. */
   labelKey?: string;
   value: string;
   count: number;
@@ -948,6 +948,7 @@ export class SearchFiltersDrawerComponent {
     return MODIFIED_DATE_OPTION_DEFS.map((option) => ({
       key: option.id,
       value: option.id,
+      labelKey: option.labelKey,
       label: option.label,
       count: counts[option.id],
     }));
@@ -1143,6 +1144,7 @@ export class SearchFiltersDrawerComponent {
     return SIZE_OPTION_DEFS.map((def) => ({
       key: def.value,
       value: def.value,
+      labelKey: def.labelKey,
       label: def.label,
       count: counts[def.value],
     }));
