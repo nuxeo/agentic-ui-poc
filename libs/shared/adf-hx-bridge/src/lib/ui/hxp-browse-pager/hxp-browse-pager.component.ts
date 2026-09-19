@@ -1,4 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 /**
  * MISSING(adf-hx): M7 — upstream's document list has no pager, so a folder larger than one page
@@ -17,6 +18,7 @@ import { Component, computed, input, output } from '@angular/core';
  */
 @Component({
   selector: 'hxp-browse-pager',
+  imports: [TranslatePipe],
   standalone: true,
   templateUrl: './hxp-browse-pager.component.html',
   styleUrl: './hxp-browse-pager.component.scss',

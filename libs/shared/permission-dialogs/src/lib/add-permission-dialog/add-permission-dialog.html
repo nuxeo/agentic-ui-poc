@@ -1,11 +1,11 @@
-<h2 mat-dialog-title>Add a Permission</h2>
+<h2 mat-dialog-title>{{ 'permissions.add-permission-dialog.add-a-permission' | translate }}</h2>
 
 <mat-dialog-content>
   <mat-form-field appearance="outline" class="full-width">
-    <mat-label>User / Group</mat-label>
+    <mat-label>{{ 'permissions.add-permission-dialog.user-group' | translate }}</mat-label>
     <input
       matInput
-      placeholder="Search for users and groups"
+      [placeholder]="'permissions.add-permission-dialog.search-for-users-and-groups' | translate"
       [ngModel]="searchText"
       (ngModelChange)="onSearchChange($event)"
       [matAutocomplete]="userAuto"
@@ -29,7 +29,7 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline" class="full-width">
-    <mat-label>Right</mat-label>
+    <mat-label>{{ 'permissions.add-permission-dialog.right' | translate }}</mat-label>
     <mat-select [(ngModel)]="permission">
       @for (opt of permissionOptions; track opt.value) {
         <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
@@ -38,16 +38,22 @@
   </mat-form-field>
 
   <div class="time-frame-section">
-    <label class="field-label">Time Frame</label>
+    <label class="field-label">{{
+      'permissions.add-permission-dialog.time-frame' | translate
+    }}</label>
     <mat-radio-group [(ngModel)]="timeFrame" class="time-frame-radios">
-      <mat-radio-button value="permanent">Permanent</mat-radio-button>
-      <mat-radio-button value="date-based">Date-based</mat-radio-button>
+      <mat-radio-button value="permanent">{{
+        'permissions.add-permission-dialog.permanent' | translate
+      }}</mat-radio-button>
+      <mat-radio-button value="date-based">{{
+        'permissions.add-permission-dialog.date-based' | translate
+      }}</mat-radio-button>
     </mat-radio-group>
   </div>
 
   <div class="date-fields">
     <mat-form-field appearance="outline">
-      <mat-label>From</mat-label>
+      <mat-label>{{ 'permissions.add-permission-dialog.from' | translate }}</mat-label>
       <input
         matInput
         [matDatepicker]="fromPicker"
@@ -59,7 +65,7 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline">
-      <mat-label>To</mat-label>
+      <mat-label>{{ 'permissions.add-permission-dialog.to' | translate }}</mat-label>
       <input
         matInput
         [matDatepicker]="toPicker"
@@ -72,19 +78,23 @@
   </div>
 
   <mat-checkbox [(ngModel)]="sendNotify" class="notify-checkbox">
-    Send an email to notify user
+    {{ 'permissions.add-permission-dialog.send-an-email-to-notify-user' | translate }}
   </mat-checkbox>
 
   @if (sendNotify) {
     <p class="mail-hint">{{ mailHint }}</p>
     <div class="notify-section">
-      <label class="field-label">Notification email</label>
+      <label class="field-label">{{
+        'permissions.add-permission-dialog.notification-email' | translate
+      }}</label>
       <mat-form-field appearance="outline" class="full-width">
         <textarea
           matInput
           [(ngModel)]="notifyComment"
           rows="2"
-          placeholder="Hi! Could you comment on this document and..."
+          [placeholder]="
+            'permissions.add-permission-dialog.hi-could-you-comment-on-this' | translate
+          "
         ></textarea>
       </mat-form-field>
     </div>
@@ -92,7 +102,9 @@
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-stroked-button mat-dialog-close>Cancel</button>
+  <button mat-stroked-button mat-dialog-close>
+    {{ 'permissions.add-permission-dialog.cancel' | translate }}
+  </button>
   <span class="spacer"></span>
   <button
     mat-flat-button

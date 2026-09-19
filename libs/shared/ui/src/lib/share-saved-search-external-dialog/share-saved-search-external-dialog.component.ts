@@ -10,6 +10,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { catchError, of } from 'rxjs';
 
 import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ShareSavedSearchExternalDialogData {
   savedSearchId: string;
@@ -33,6 +34,7 @@ const RIGHT_OPTIONS = [
   selector: 'lib-share-saved-search-external-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,

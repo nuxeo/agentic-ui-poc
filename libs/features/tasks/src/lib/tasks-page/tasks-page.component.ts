@@ -33,11 +33,13 @@ import {
 
 import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-tasks-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatIconModule,
     MatButtonModule,

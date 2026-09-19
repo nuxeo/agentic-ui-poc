@@ -12,6 +12,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { SettingsService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 function passwordsMatch(control: AbstractControl): ValidationErrors | null {
   const newPwd = control.get('newPassword')?.value;
@@ -23,6 +24,7 @@ function passwordsMatch(control: AbstractControl): ValidationErrors | null {
   selector: 'app-change-password-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,

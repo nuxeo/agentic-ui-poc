@@ -18,6 +18,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { AssetsQueueComponent } from '../assets-queue/assets-queue.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface FilterOption {
   label: string;
@@ -68,6 +69,7 @@ function toMimeType(value: string): string {
   selector: 'lib-assets-drawer',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatIconModule,
     MatButtonModule,
     MatCheckboxModule,

@@ -1,15 +1,23 @@
-<h2 mat-dialog-title>Add to Collection</h2>
+<h2 mat-dialog-title>
+  {{ 'document-detail.add-to-collection-dialog.add-to-collection' | translate }}
+</h2>
 
 <mat-dialog-content>
   @if (loading()) {
     <div class="dialog-loading">
       <mat-spinner diameter="24" />
-      <span>Loading collections...</span>
+      <span>{{ 'document-detail.add-to-collection-dialog.loading-collections' | translate }}</span>
     </div>
   } @else {
     <mat-form-field appearance="outline" class="collection-field">
-      <mat-label>Collections</mat-label>
-      <mat-select [(ngModel)]="selectedCollectionId" placeholder="Select a Collection..." required>
+      <mat-label>{{
+        'document-detail.add-to-collection-dialog.collections' | translate
+      }}</mat-label>
+      <mat-select
+        [(ngModel)]="selectedCollectionId"
+        [placeholder]="'document-detail.add-to-collection-dialog.select-a-collection' | translate"
+        required
+      >
         @for (col of filteredCollections(); track col.uid) {
           <mat-option [value]="col.uid">{{ col.title }}</mat-option>
         }
@@ -19,7 +27,9 @@
     <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
       <input
         matInput
-        placeholder="Search or create collection..."
+        [placeholder]="
+          'document-detail.add-to-collection-dialog.search-or-create-collection' | translate
+        "
         [ngModel]="searchTerm()"
         (ngModelChange)="searchTerm.set($event)"
         autocomplete="off"
@@ -40,7 +50,9 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button mat-dialog-close>Cancel</button>
+  <button mat-button mat-dialog-close>
+    {{ 'document-detail.add-to-collection-dialog.cancel' | translate }}
+  </button>
   <button
     mat-flat-button
     color="primary"

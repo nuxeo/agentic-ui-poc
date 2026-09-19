@@ -169,6 +169,32 @@ function expectRed(label, guardrail, files, mutate, expected) {
   });
 }
 
+/**
+ * Asserts the guardrail stays green but *warns*, naming the reason.
+ *
+ * Needed once missing-locale-key parity became a warning rather than a failure: a missing key
+ * falls back to English and is handled, so failing would force whoever runs the extraction to
+ * also invent the translations. Green-and-silent and green-with-a-warning are different
+ * outcomes, and a control that only checks the exit code cannot tell them apart — which is how
+ * a demoted check quietly becomes no check at all.
+ */
+function expectWarn(label, guardrail, files, mutate, expected) {
+  negative += 1;
+  withFixture(files, mutate, (runGuardrail) => {
+    const { code, out } = runGuardrail(guardrail);
+    if (code !== 0) {
+      failures.push(`${label}: ${guardrail} failed, but this should only warn.\n    ${out.trim()}`);
+      return;
+    }
+    if (!expected.test(out)) {
+      failures.push(
+        `${label}: ${guardrail} was green but did not warn about it.\n` +
+          `    expected /${expected.source}/\n    got: ${out.trim()}`,
+      );
+    }
+  });
+}
+
 /** Asserts a correct tree is green — the control that stops a guardrail failing on everything. */
 function expectGreen(label, guardrail, files) {
   positive += 1;
@@ -214,8 +240,8 @@ expectRed(
   /has no trailing newline/,
 );
 
-expectRed(
-  'locale missing a key the reference has',
+expectWarn(
+  'locale missing a key the reference has — warns, because English is the fallback',
   'checkTranslationCatalogues',
   APP,
   (write) =>

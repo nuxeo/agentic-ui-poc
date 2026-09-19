@@ -188,6 +188,7 @@ import {
   UpdatePermissionDialogComponent,
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -250,6 +251,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   selector: 'lib-document-detail',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     NgTemplateOutlet,
     FormsModule,

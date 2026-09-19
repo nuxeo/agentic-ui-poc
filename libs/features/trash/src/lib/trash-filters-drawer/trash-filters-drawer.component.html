@@ -13,7 +13,7 @@
           <input
             class="saved-filters-search-input"
             type="text"
-            placeholder="Search..."
+            [placeholder]="'trash.trash-filters-drawer.search' | translate"
             [value]="savedFilterSearch()"
             (input)="savedFilterSearch.set($any($event.target).value)"
           />
@@ -57,12 +57,12 @@
 @if (trashFilterService.layoutMode() === 'filters') {
   <div class="filters-section">
     <div class="filter-group">
-      <p class="filter-title">Full Text</p>
+      <p class="filter-title">{{ 'trash.trash-filters-drawer.full-text' | translate }}</p>
       <div class="filter-input-wrap">
         <input
           class="filter-input"
           type="text"
-          placeholder="Search for something..."
+          [placeholder]="'trash.trash-filters-drawer.search-for-something' | translate"
           [value]="fullText()"
           (input)="onFullTextChange($any($event.target).value)"
         />
@@ -75,7 +75,7 @@
     </div>
 
     <div class="filter-group">
-      <p class="filter-title">Path</p>
+      <p class="filter-title">{{ 'trash.trash-filters-drawer.path' | translate }}</p>
       <div class="typeahead-field">
         <div class="typeahead-input-wrap">
           <input
@@ -92,9 +92,13 @@
         @if (pathOpen()) {
           <div class="typeahead-panel">
             @if (pathLoading()) {
-              <div class="typeahead-hint">Loading...</div>
+              <div class="typeahead-hint">
+                {{ 'trash.trash-filters-drawer.loading' | translate }}
+              </div>
             } @else if (pathSuggestions().length === 0) {
-              <div class="typeahead-hint">No folders found</div>
+              <div class="typeahead-hint">
+                {{ 'trash.trash-filters-drawer.no-folders-found' | translate }}
+              </div>
             } @else {
               @for (doc of pathSuggestions(); track doc.uid) {
                 <button class="typeahead-option" type="button" (mousedown)="selectPath(doc)">
@@ -108,13 +112,13 @@
     </div>
 
     <div class="filter-group">
-      <p class="filter-title">Authors</p>
+      <p class="filter-title">{{ 'trash.trash-filters-drawer.authors' | translate }}</p>
       <div class="typeahead-field">
         <div class="typeahead-input-wrap">
           <input
             class="typeahead-input"
             type="text"
-            placeholder="Search for authors..."
+            [placeholder]="'trash.trash-filters-drawer.search-for-authors' | translate"
             [value]="authorInput()"
             (input)="onAuthorInput($any($event.target).value)"
             (focus)="onAuthorFocus()"
@@ -137,9 +141,13 @@
                 </button>
               }
             } @else if (authorInput().length === 0) {
-              <div class="typeahead-hint">No authors found</div>
+              <div class="typeahead-hint">
+                {{ 'trash.trash-filters-drawer.no-authors-found' | translate }}
+              </div>
             } @else {
-              <div class="typeahead-hint">No matching authors</div>
+              <div class="typeahead-hint">
+                {{ 'trash.trash-filters-drawer.no-matching-authors' | translate }}
+              </div>
             }
           </div>
         }
@@ -148,7 +156,7 @@
 
     <div class="filter-group">
       <button class="filter-btn" type="button" (click)="toggleSizeExpanded()">
-        <span class="filter-btn-label">Size</span>
+        <span class="filter-btn-label">{{ 'trash.trash-filters-drawer.size' | translate }}</span>
         <mat-icon class="filter-btn-icon">
           {{ sizeExpanded() ? 'expand_less' : 'expand_more' }}
         </mat-icon>
@@ -180,7 +188,7 @@
         [disabled]="!hasActiveFilters()"
         (click)="resetFilters()"
       >
-        Reset
+        {{ 'trash.trash-filters-drawer.reset' | translate }}
       </button>
     </div>
   </div>
@@ -193,9 +201,11 @@
   </div>
 
   @if (trashFilterService.resultsLoading()) {
-    <div class="drawer-results-loading">Loading...</div>
+    <div class="drawer-results-loading">{{ 'trash.trash-filters-drawer.loading' | translate }}</div>
   } @else if (trashFilterService.results().length === 0) {
-    <div class="drawer-results-empty">Trash is empty.</div>
+    <div class="drawer-results-empty">
+      {{ 'trash.trash-filters-drawer.trash-is-empty' | translate }}
+    </div>
   } @else {
     <div class="drawer-results-list">
       @for (item of trashFilterService.results(); track item.uid) {

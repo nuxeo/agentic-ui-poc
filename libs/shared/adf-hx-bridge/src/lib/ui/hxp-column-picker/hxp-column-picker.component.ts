@@ -8,6 +8,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 /** One row in the picker: a stable key, a label, and whether it is currently shown. */
 export interface HxpPickableColumn {
@@ -34,6 +35,7 @@ export interface HxpPickableColumn {
  */
 @Component({
   selector: 'hxp-column-picker',
+  imports: [TranslatePipe],
   standalone: true,
   templateUrl: './hxp-column-picker.component.html',
   styleUrl: './hxp-column-picker.component.scss',

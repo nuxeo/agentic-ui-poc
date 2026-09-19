@@ -47,6 +47,7 @@ import {
   AiFeatureFlagService,
   aiErrorMessage,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -149,6 +150,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
   selector: 'lib-search',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,

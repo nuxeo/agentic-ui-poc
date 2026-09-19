@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ColumnDef {
   key: string;
@@ -72,9 +73,25 @@ export function saveColumnSettings(columns: ColumnDef[]): void {
 @Component({
   selector: 'lib-column-settings-dialog',
   standalone: true,
-  imports: [FormsModule, MatDialogModule, MatButtonModule, MatCheckboxModule],
+  imports: [TranslatePipe, FormsModule, MatDialogModule, MatButtonModule, MatCheckboxModule],
   templateUrl: './column-settings-dialog.html',
-  styleUrl: './column-settings-dialog.scss',
+  styles: [
+    `
+      :host {
+        display: block;
+        min-width: 300px;
+      }
+      mat-dialog-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 16px 24px !important;
+      }
+      mat-dialog-actions {
+        padding: 8px 24px 16px;
+      }
+    `,
+  ],
 })
 export class ColumnSettingsDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ColumnSettingsDialogComponent>);

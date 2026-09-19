@@ -20,11 +20,13 @@ import {
   type ExportDialogData,
   type SavedSearchDialogData,
 } from '@nuxeo-satori/platform/ui';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-contracts-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     CommonModule,
     MatButtonModule,
     MatCardModule,

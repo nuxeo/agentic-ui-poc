@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ChangePasswordDialogData {
   username: string;
@@ -12,9 +13,38 @@ export interface ChangePasswordDialogData {
 @Component({
   selector: 'lib-change-password-dialog',
   standalone: true,
-  imports: [FormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [
+    TranslatePipe,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
   templateUrl: './change-password-dialog.component.html',
-  styleUrl: './change-password-dialog.component.scss',
+  styles: [
+    `
+      .pwd-form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 320px;
+        padding-top: 0.25rem;
+      }
+      .full {
+        width: 100%;
+      }
+      .pwd-hint {
+        margin: 0 0 0.25rem;
+        font-size: 0.9rem;
+        color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.65));
+      }
+      .pwd-actions {
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem 1.25rem;
+      }
+    `,
+  ],
 })
 export class ChangePasswordDialogComponent {
   private readonly dialogRef = inject(

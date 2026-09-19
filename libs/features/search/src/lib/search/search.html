@@ -30,19 +30,23 @@
           <input
             class="ai-search-input"
             type="text"
-            placeholder="Ask in natural language... e.g. 'PDFs uploaded last week by Administrator'"
+            [placeholder]="'search.search.ask-in-natural-language-e-g' | translate"
             [ngModel]="aiQuery()"
             (ngModelChange)="onAiQueryInput($event)"
             (keydown.enter)="executeAiSearch()"
             [matAutocomplete]="aiAutoComplete"
           />
           @if (aiLoading()) {
-            <mat-spinner diameter="20" class="ai-search-spinner" aria-label="Loading"></mat-spinner>
+            <mat-spinner
+              diameter="20"
+              class="ai-search-spinner"
+              [attr.aria-label]="'search.search.loading' | translate"
+            ></mat-spinner>
           } @else {
             <button
               mat-icon-button
               class="ai-search-go"
-              aria-label="Run AI search"
+              [attr.aria-label]="'search.search.run-ai-search' | translate"
               (click)="executeAiSearch()"
               [disabled]="!aiQuery().trim()"
             >
@@ -92,7 +96,7 @@
         (click)="openSaveAsDialog()"
       >
         <mat-icon>bookmark_add</mat-icon>
-        Save As
+        {{ 'search.search.save-as' | translate }}
       </button>
     }
     @if (hasSelectedSavedSearch()) {
@@ -102,7 +106,7 @@
         type="button"
         (click)="onSaveSelectedSavedSearch()"
       >
-        Save
+        {{ 'search.search.save' | translate }}
       </button>
     }
     @if (hasSelectedSavedSearch()) {
@@ -110,14 +114,20 @@
         mat-icon-button
         type="button"
         [matMenuTriggerFor]="resultsActionsMenu"
-        aria-label="Results actions"
+        [attr.aria-label]="'search.search.results-actions' | translate"
       >
         <mat-icon>more_vert</mat-icon>
       </button>
       <mat-menu #resultsActionsMenu="matMenu">
-        <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
-        <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
-        <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">Delete</button>
+        <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">
+          {{ 'search.search.edit' | translate }}
+        </button>
+        <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">
+          {{ 'search.search.share' | translate }}
+        </button>
+        <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">
+          {{ 'search.search.delete' | translate }}
+        </button>
       </mat-menu>
     }
   </div>
@@ -146,8 +156,8 @@
     <div class="toolbar-actions">
       <button
         mat-icon-button
-        matTooltip="Export CSV"
-        aria-label="Export CSV"
+        [matTooltip]="'search.search.export-csv' | translate"
+        [attr.aria-label]="'search.search.export-csv' | translate"
         (click)="exportCsv()"
         class="toolbar-btn"
       >
@@ -164,7 +174,7 @@
         mat-icon-button
         [class.active]="viewMode() === 'grid'"
         [matTooltip]="viewMode() !== 'grid' ? 'Switch to Grid View' : ''"
-        aria-label="Grid view"
+        [attr.aria-label]="'search.search.grid-view' | translate"
         [attr.aria-pressed]="viewMode() === 'grid'"
         (click)="setViewMode('grid')"
         class="toolbar-btn"
@@ -176,7 +186,7 @@
         mat-icon-button
         [class.active]="viewMode() === 'table'"
         [matTooltip]="viewMode() !== 'table' ? 'Switch to Table View' : ''"
-        aria-label="Table view"
+        [attr.aria-label]="'search.search.table-view' | translate"
         [attr.aria-pressed]="viewMode() === 'table'"
         (click)="setViewMode('table')"
         class="toolbar-btn"
@@ -189,7 +199,7 @@
         class="toolbar-btn list-view-btn"
         [class.active]="viewMode() === 'list'"
         [matTooltip]="viewMode() !== 'list' ? 'Switch to List view' : ''"
-        aria-label="List view"
+        [attr.aria-label]="'search.search.list-view' | translate"
         [attr.aria-pressed]="viewMode() === 'list'"
         (click)="setViewMode('list')"
       >
@@ -200,7 +210,7 @@
 
   @if (busy()) {
     <div class="results-loading">
-      <mat-spinner diameter="32" aria-label="Loading" />
+      <mat-spinner diameter="32" [attr.aria-label]="'search.search.loading' | translate" />
     </div>
   }
 
@@ -213,19 +223,21 @@
             (selectionChange)="setGridGroupBy($event.value)"
             class="grid-select"
           >
-            <mat-option value="title">Title</mat-option>
-            <mat-option value="created">Created</mat-option>
-            <mat-option value="modified">Modified</mat-option>
-            <mat-option value="contributor">Last contributor</mat-option>
-            <mat-option value="state">State</mat-option>
-            <mat-option value="nature">Nature</mat-option>
-            <mat-option value="coverage">Coverage</mat-option>
+            <mat-option value="title">{{ 'search.search.title' | translate }}</mat-option>
+            <mat-option value="created">{{ 'search.search.created' | translate }}</mat-option>
+            <mat-option value="modified">{{ 'search.search.modified' | translate }}</mat-option>
+            <mat-option value="contributor">{{
+              'search.search.last-contributor' | translate
+            }}</mat-option>
+            <mat-option value="state">{{ 'search.search.state' | translate }}</mat-option>
+            <mat-option value="nature">{{ 'search.search.nature' | translate }}</mat-option>
+            <mat-option value="coverage">{{ 'search.search.coverage' | translate }}</mat-option>
           </mat-select>
 
           <button
             mat-icon-button
-            matTooltip="Revert sort order"
-            aria-label="Revert sort order"
+            [matTooltip]="'search.search.revert-sort-order' | translate"
+            [attr.aria-label]="'search.search.revert-sort-order' | translate"
             (click)="setGridSortOrder(gridSortOrder() === 'asc' ? 'desc' : 'asc')"
             class="action-btn"
           >
@@ -267,8 +279,8 @@
               <div class="grid-card-actions col-hover-actions">
                 <button
                   mat-icon-button
-                  matTooltip="Add to favorites"
-                  aria-label="Add to favorites"
+                  [matTooltip]="'search.search.add-to-favorites' | translate"
+                  [attr.aria-label]="'search.search.add-to-favorites' | translate"
                   class="action-btn"
                   [disabled]="favoritePendingIds().has(row.id)"
                   (click)="toggleFavorite(row.id, $event)"
@@ -280,8 +292,8 @@
                 @if (isDownloadableType(row.type)) {
                   <button
                     mat-icon-button
-                    matTooltip="Download"
-                    aria-label="Download"
+                    [matTooltip]="'search.search.download' | translate"
+                    [attr.aria-label]="'search.search.download' | translate"
                     class="action-btn"
                     (click)="downloadDocument(row.id, row.name, $event)"
                   >
@@ -295,7 +307,7 @@
 
         @if (resultCount() === 0) {
           <div class="results-empty results-empty--grid">
-            No documents match the search criteria.
+            {{ 'search.search.no-documents-match-the-search-criteria' | translate }}
           </div>
         }
       </div>
@@ -308,12 +320,12 @@
         <button
           type="button"
           class="col-panel-backdrop"
-          aria-label="Close column picker"
+          [attr.aria-label]="'search.search.close-column-picker' | translate"
           (click)="closeColumnPanel()"
           (keydown.escape)="closeColumnPanel()"
         ></button>
         <div class="col-panel">
-          <p class="col-panel-title">Column Settings</p>
+          <p class="col-panel-title">{{ 'search.search.column-settings' | translate }}</p>
           <div class="col-panel-list">
             @for (col of columnsForPanel; track col.key) {
               <mat-checkbox
@@ -325,8 +337,12 @@
             }
           </div>
           <div class="col-panel-actions">
-            <button mat-button (click)="resetColumns()">Reset</button>
-            <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+            <button mat-button (click)="resetColumns()">
+              {{ 'search.search.reset' | translate }}
+            </button>
+            <button mat-flat-button color="primary" (click)="applyColumns()">
+              {{ 'search.search.done' | translate }}
+            </button>
           </div>
         </div>
       }
@@ -359,8 +375,8 @@
             <button
               mat-icon-button
               class="gear-btn"
-              matTooltip="Manage columns"
-              aria-label="Manage columns"
+              [matTooltip]="'search.search.manage-columns' | translate"
+              [attr.aria-label]="'search.search.manage-columns' | translate"
               (click)="openColumnPanel()"
             >
               <mat-icon>tune</mat-icon>
@@ -408,7 +424,9 @@
         }
 
         @if (resultCount() === 0) {
-          <div class="results-empty">No documents match the search criteria.</div>
+          <div class="results-empty">
+            {{ 'search.search.no-documents-match-the-search-criteria' | translate }}
+          </div>
         }
       </div>
     </div>
@@ -422,19 +440,21 @@
           (selectionChange)="setGridGroupBy($event.value)"
           class="list-select"
         >
-          <mat-option value="title">Title</mat-option>
-          <mat-option value="created">Created</mat-option>
-          <mat-option value="modified">Modified</mat-option>
-          <mat-option value="contributor">Last contributor</mat-option>
-          <mat-option value="state">State</mat-option>
-          <mat-option value="nature">Nature</mat-option>
-          <mat-option value="coverage">Coverage</mat-option>
+          <mat-option value="title">{{ 'search.search.title' | translate }}</mat-option>
+          <mat-option value="created">{{ 'search.search.created' | translate }}</mat-option>
+          <mat-option value="modified">{{ 'search.search.modified' | translate }}</mat-option>
+          <mat-option value="contributor">{{
+            'search.search.last-contributor' | translate
+          }}</mat-option>
+          <mat-option value="state">{{ 'search.search.state' | translate }}</mat-option>
+          <mat-option value="nature">{{ 'search.search.nature' | translate }}</mat-option>
+          <mat-option value="coverage">{{ 'search.search.coverage' | translate }}</mat-option>
         </mat-select>
 
         <button
           mat-icon-button
-          matTooltip="Revert sort order"
-          aria-label="Revert sort order"
+          [matTooltip]="'search.search.revert-sort-order' | translate"
+          [attr.aria-label]="'search.search.revert-sort-order' | translate"
           (click)="setGridSortOrder(gridSortOrder() === 'asc' ? 'desc' : 'asc')"
           class="action-btn"
         >
@@ -476,8 +496,8 @@
             <div class="simple-list-actions col-hover-actions">
               <button
                 mat-icon-button
-                matTooltip="Add to favorites"
-                aria-label="Add to favorites"
+                [matTooltip]="'search.search.add-to-favorites' | translate"
+                [attr.aria-label]="'search.search.add-to-favorites' | translate"
                 class="action-btn"
                 [disabled]="favoritePendingIds().has(row.id)"
                 (click)="toggleFavorite(row.id, $event)"
@@ -489,8 +509,8 @@
               @if (isDownloadableType(row.type)) {
                 <button
                   mat-icon-button
-                  matTooltip="Download"
-                  aria-label="Download"
+                  [matTooltip]="'search.search.download' | translate"
+                  [attr.aria-label]="'search.search.download' | translate"
                   class="action-btn"
                   (click)="downloadDocument(row.id, row.name, $event)"
                 >
@@ -503,7 +523,9 @@
       }
 
       @if (resultCount() === 0) {
-        <div class="results-empty">No documents match the search criteria.</div>
+        <div class="results-empty">
+          {{ 'search.search.no-documents-match-the-search-criteria' | translate }}
+        </div>
       }
     </div>
   }

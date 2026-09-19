@@ -2,9 +2,11 @@ import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { SettingsService, type ConnectedAccount } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   standalone: true,
+  imports: [TranslatePipe],
   templateUrl: './cloud-services-page.component.html',
   styleUrl: './cloud-services-page.component.scss',
 })

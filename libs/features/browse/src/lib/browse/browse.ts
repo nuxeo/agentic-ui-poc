@@ -144,6 +144,7 @@ import {
   EditMetadataDialogData,
 } from '../edit-metadata-dialog/edit-metadata-dialog';
 import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 /**
  * The packaged column set as descriptors, for an injector where Layer 1
@@ -164,6 +165,7 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
   selector: 'lib-browse',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     NgClass,
     FormsModule,

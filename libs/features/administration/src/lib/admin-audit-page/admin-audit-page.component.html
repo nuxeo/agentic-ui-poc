@@ -1,7 +1,13 @@
 <div class="audit-page">
   <header class="audit-page__header">
-    <div class="audit-page__title" role="heading" aria-level="1">Audit</div>
-    <button type="button" mat-icon-button aria-label="Settings (placeholder)">
+    <div class="audit-page__title" role="heading" aria-level="1">
+      {{ 'admin.admin-audit-page.audit' | translate }}
+    </div>
+    <button
+      type="button"
+      mat-icon-button
+      [attr.aria-label]="'admin.admin-audit-page.settings-placeholder' | translate"
+    >
       <mat-icon>settings</mat-icon>
     </button>
   </header>
@@ -12,7 +18,9 @@
       <div class="ai-anomaly-banner__header">
         <div class="ai-anomaly-banner__title-row">
           <mat-icon class="ai-sparkle-icon">auto_awesome</mat-icon>
-          <span class="ai-anomaly-banner__title">AI Anomaly Detection</span>
+          <span class="ai-anomaly-banner__title">{{
+            'admin.admin-audit-page.ai-anomaly-detection' | translate
+          }}</span>
           @if (highSeverityCount() > 0) {
             <span class="ai-anomaly-badge ai-anomaly-badge--high"
               >{{ highSeverityCount() }} critical</span
@@ -23,8 +31,8 @@
           <button
             type="button"
             mat-icon-button
-            matTooltip="Refresh"
-            aria-label="Refresh"
+            [matTooltip]="'admin.admin-audit-page.refresh' | translate"
+            [attr.aria-label]="'admin.admin-audit-page.refresh' | translate"
             (click)="loadAnomalies()"
             [disabled]="anomalyLoading()"
           >
@@ -33,8 +41,8 @@
           <button
             type="button"
             mat-icon-button
-            matTooltip="Dismiss"
-            aria-label="Dismiss"
+            [matTooltip]="'admin.admin-audit-page.dismiss' | translate"
+            [attr.aria-label]="'admin.admin-audit-page.dismiss' | translate"
             (click)="dismissAnomalies()"
           >
             <mat-icon>close</mat-icon>
@@ -54,7 +62,7 @@
       } @else if (anomalies().length === 0) {
         <div class="ai-anomaly-banner__empty">
           <mat-icon>verified</mat-icon>
-          <span>No anomalies detected in the last 24 hours — all clear!</span>
+          <span>{{ 'admin.admin-audit-page.no-anomalies-detected-in-the-last' | translate }}</span>
         </div>
       } @else {
         <p class="ai-anomaly-banner__summary">{{ anomalySummary() }}</p>
@@ -93,15 +101,19 @@
           [disabled]="nlLoading()"
         />
         @if (nlLoading()) {
-          <mat-spinner diameter="20" class="ai-nl-search__spinner" aria-label="Loading" />
+          <mat-spinner
+            diameter="20"
+            class="ai-nl-search__spinner"
+            [attr.aria-label]="'admin.admin-audit-page.loading' | translate"
+          />
         } @else {
           <button
             type="button"
             mat-icon-button
             (click)="onNlSearch()"
             [disabled]="!nlQuery.trim()"
-            matTooltip="Search with AI"
-            aria-label="Search with AI"
+            [matTooltip]="'admin.admin-audit-page.search-with-ai' | translate"
+            [attr.aria-label]="'admin.admin-audit-page.search-with-ai' | translate"
           >
             <mat-icon>search</mat-icon>
           </button>
@@ -111,8 +123,8 @@
             type="button"
             mat-icon-button
             (click)="clearNlSearch()"
-            matTooltip="Clear AI filters"
-            aria-label="Clear AI filters"
+            [matTooltip]="'admin.admin-audit-page.clear-ai-filters' | translate"
+            [attr.aria-label]="'admin.admin-audit-page.clear-ai-filters' | translate"
           >
             <mat-icon>clear</mat-icon>
           </button>
@@ -130,40 +142,42 @@
   <!-- ═══════ Standard Filters ═══════ -->
   <div class="audit-filters mat-elevation-z0">
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Filter by username</mat-label>
+      <mat-label>{{ 'admin.admin-audit-page.filter-by-username' | translate }}</mat-label>
       <input matInput [(ngModel)]="principalName" name="principalName" />
     </mat-form-field>
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>From</mat-label>
+      <mat-label>{{ 'admin.admin-audit-page.from' | translate }}</mat-label>
       <input matInput [matDatepicker]="fromPicker" [(ngModel)]="fromDate" name="fromDate" />
       <mat-datepicker-toggle matSuffix [for]="fromPicker" />
       <mat-datepicker #fromPicker />
     </mat-form-field>
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>To</mat-label>
+      <mat-label>{{ 'admin.admin-audit-page.to' | translate }}</mat-label>
       <input matInput [matDatepicker]="toPicker" [(ngModel)]="toDate" name="toDate" />
       <mat-datepicker-toggle matSuffix [for]="toPicker" />
       <mat-datepicker #toPicker />
     </mat-form-field>
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Performed actions</mat-label>
+      <mat-label>{{ 'admin.admin-audit-page.performed-actions' | translate }}</mat-label>
       <mat-select [(ngModel)]="eventAction" name="eventAction">
-        <mat-option value="">All actions</mat-option>
+        <mat-option value="">{{ 'admin.admin-audit-page.all-actions' | translate }}</mat-option>
         @for (t of eventTypes(); track t.id) {
           <mat-option [value]="t.id">{{ t.displayLabel || t.id }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
-      <mat-label>Event category</mat-label>
+      <mat-label>{{ 'admin.admin-audit-page.event-category' | translate }}</mat-label>
       <mat-select [(ngModel)]="eventCategory" name="eventCategory">
-        <mat-option value="">All categories</mat-option>
+        <mat-option value="">{{ 'admin.admin-audit-page.all-categories' | translate }}</mat-option>
         @for (c of eventCategories(); track c.id) {
           <mat-option [value]="c.id">{{ c.displayLabel || c.id }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
-    <button type="button" mat-flat-button color="primary" (click)="applyFilters()">Apply</button>
+    <button type="button" mat-flat-button color="primary" (click)="applyFilters()">
+      {{ 'admin.admin-audit-page.apply' | translate }}
+    </button>
   </div>
 
   <!-- ═══════ Results Toolbar ═══════ -->
@@ -177,10 +191,12 @@
           class="ai-summarize-btn"
           (click)="summarizeEntries()"
           [disabled]="summaryLoading() || entries().length === 0"
-          matTooltip="AI summarizes the currently visible entries"
+          [matTooltip]="
+            'admin.admin-audit-page.ai-summarizes-the-currently-visible-entries' | translate
+          "
         >
           <mat-icon>auto_awesome</mat-icon>
-          Summarize with AI
+          {{ 'admin.admin-audit-page.summarize-with-ai' | translate }}
         </button>
       }
     </div>
@@ -191,11 +207,11 @@
     <section class="ai-summary-panel">
       <div class="ai-summary-panel__header">
         <mat-icon class="ai-sparkle-icon">auto_awesome</mat-icon>
-        <span>AI Summary</span>
+        <span>{{ 'admin.admin-audit-page.ai-summary' | translate }}</span>
         <button
           type="button"
           mat-icon-button
-          aria-label="Close AI summary"
+          [attr.aria-label]="'admin.admin-audit-page.close-ai-summary' | translate"
           (click)="closeSummary()"
         >
           <mat-icon>close</mat-icon>
@@ -203,7 +219,10 @@
       </div>
       @if (summaryLoading()) {
         <div class="ai-summary-panel__loading">
-          <mat-spinner diameter="28" aria-label="Loading" />
+          <mat-spinner
+            diameter="28"
+            [attr.aria-label]="'admin.admin-audit-page.loading' | translate"
+          />
           <span>Analyzing {{ entries().length }} entries…</span>
         </div>
       } @else if (auditSummary()) {
@@ -225,7 +244,7 @@
 
         @if (auditSummary()!.topUsers.length) {
           <div class="ai-summary-section">
-            <h4>Most Active Users</h4>
+            <h4>{{ 'admin.admin-audit-page.most-active-users' | translate }}</h4>
             <div class="ai-summary-users">
               @for (u of auditSummary()!.topUsers; track u.name) {
                 <span class="ai-summary-user-chip">
@@ -239,7 +258,7 @@
 
         @if (auditSummary()!.highlights.length) {
           <div class="ai-summary-section">
-            <h4>Highlights</h4>
+            <h4>{{ 'admin.admin-audit-page.highlights' | translate }}</h4>
             <ul class="ai-summary-highlights">
               @for (h of auditSummary()!.highlights; track h) {
                 <li>{{ h }}</li>
@@ -253,32 +272,44 @@
 
   <!-- ═══════ Audit Table ═══════ -->
   @if (loading()) {
-    <div class="audit-center"><mat-spinner diameter="40" aria-label="Loading" /></div>
+    <div class="audit-center">
+      <mat-spinner diameter="40" [attr.aria-label]="'admin.admin-audit-page.loading' | translate" />
+    </div>
   } @else {
     <div class="audit-table-wrap mat-elevation-z1">
       <table mat-table [dataSource]="entries()" class="audit-table">
         <ng-container matColumnDef="action">
-          <th mat-header-cell *matHeaderCellDef>Performed Action</th>
+          <th mat-header-cell *matHeaderCellDef>
+            {{ 'admin.admin-audit-page.performed-action' | translate }}
+          </th>
           <td mat-cell *matCellDef="let e">{{ actionLabel(e) }}</td>
         </ng-container>
         <ng-container matColumnDef="date">
-          <th mat-header-cell *matHeaderCellDef>Date</th>
+          <th mat-header-cell *matHeaderCellDef>{{ 'admin.admin-audit-page.date' | translate }}</th>
           <td mat-cell *matCellDef="let e">{{ e.eventDate | date: 'medium' }}</td>
         </ng-container>
         <ng-container matColumnDef="username">
-          <th mat-header-cell *matHeaderCellDef>Username</th>
+          <th mat-header-cell *matHeaderCellDef>
+            {{ 'admin.admin-audit-page.username' | translate }}
+          </th>
           <td mat-cell *matCellDef="let e">{{ e.principalName }}</td>
         </ng-container>
         <ng-container matColumnDef="category">
-          <th mat-header-cell *matHeaderCellDef>Category</th>
+          <th mat-header-cell *matHeaderCellDef>
+            {{ 'admin.admin-audit-page.category' | translate }}
+          </th>
           <td mat-cell *matCellDef="let e">{{ e.category }}</td>
         </ng-container>
         <ng-container matColumnDef="document">
-          <th mat-header-cell *matHeaderCellDef>Document</th>
+          <th mat-header-cell *matHeaderCellDef>
+            {{ 'admin.admin-audit-page.document' | translate }}
+          </th>
           <td mat-cell *matCellDef="let e">{{ e.docPath || '—' }}</td>
         </ng-container>
         <ng-container matColumnDef="comment">
-          <th mat-header-cell *matHeaderCellDef>Comment</th>
+          <th mat-header-cell *matHeaderCellDef>
+            {{ 'admin.admin-audit-page.comment' | translate }}
+          </th>
           <td mat-cell *matCellDef="let e">{{ e.comment || '—' }}</td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="columns"></tr>
@@ -287,7 +318,7 @@
     </div>
     <div class="audit-pager">
       <button type="button" mat-button (click)="prevPage()" [disabled]="pageIndex() === 0">
-        Previous
+        {{ 'admin.admin-audit-page.previous' | translate }}
       </button>
       <span>Page {{ pageIndex() + 1 }}</span>
       <button
@@ -296,7 +327,7 @@
         (click)="nextPage()"
         [disabled]="(pageIndex() + 1) * 50 >= totalSize()"
       >
-        Next
+        {{ 'admin.admin-audit-page.next' | translate }}
       </button>
     </div>
   }

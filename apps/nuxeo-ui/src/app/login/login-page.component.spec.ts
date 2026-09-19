@@ -8,6 +8,7 @@ import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client
 
 import { AuthService } from '../auth/auth.service';
 import { LoginPageComponent } from './login-page.component';
+import { testTranslateModule } from '../i18n/translate-testing';
 
 describe('LoginPageComponent', () => {
   let fixture: ComponentFixture<LoginPageComponent>;
@@ -27,7 +28,7 @@ describe('LoginPageComponent', () => {
     });
 
     await TestBed.configureTestingModule({
-      imports: [LoginPageComponent],
+      imports: [testTranslateModule(), LoginPageComponent],
       providers: [
         provideRouter([{ path: 'dashboard', component: LoginPageComponent }]),
         { provide: AuthService, useValue: auth },

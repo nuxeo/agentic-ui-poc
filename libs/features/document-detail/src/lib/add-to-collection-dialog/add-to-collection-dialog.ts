@@ -9,11 +9,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { NuxeoDocument, DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-add-to-collection-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -24,7 +26,70 @@ import { NuxeoDocument, DocumentDetailService } from '@nuxeo-satori/platform/nux
     MatProgressSpinnerModule,
   ],
   templateUrl: './add-to-collection-dialog.html',
-  styleUrl: './add-to-collection-dialog.scss',
+  styles: [
+    `
+      :host {
+        display: block;
+        min-width: 400px;
+      }
+
+      mat-dialog-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-top: 8px !important;
+      }
+
+      .collection-field,
+      .search-field {
+        width: 100%;
+      }
+
+      .dialog-loading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 0;
+        color: var(--mat-sys-on-surface-variant);
+        font-size: 13px;
+      }
+
+      .create-collection-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border: 1px dashed var(--mat-sys-primary);
+        border-radius: 6px;
+        background: var(--mat-sys-primary-container);
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--mat-sys-on-primary-container);
+        font-weight: 500;
+        transition: background 0.15s;
+
+        &:hover:not(:disabled) {
+          background: color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: default;
+        }
+
+        .mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+          color: var(--mat-sys-on-primary-container);
+        }
+      }
+
+      mat-dialog-actions {
+        padding: 8px 24px 16px;
+      }
+    `,
+  ],
 })
 export class AddToCollectionDialogComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<AddToCollectionDialogComponent>);

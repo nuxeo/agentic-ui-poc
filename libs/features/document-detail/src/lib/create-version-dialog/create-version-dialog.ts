@@ -11,6 +11,7 @@ import {
   isPermissionDeniedError,
   PERMISSION_DENIED_MESSAGE,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface CreateVersionDialogData {
   documentUid: string;
@@ -23,6 +24,7 @@ export interface CreateVersionDialogData {
   selector: 'lib-create-version-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatRadioModule,
@@ -31,7 +33,69 @@ export interface CreateVersionDialogData {
     FormsModule,
   ],
   templateUrl: './create-version-dialog.html',
-  styleUrl: './create-version-dialog.scss',
+  styles: [
+    `
+      h2[mat-dialog-title] {
+        font-size: 20px;
+        font-weight: 500;
+        line-height: 1.4;
+        margin: 0;
+        padding: 24px 24px 0;
+        word-break: break-word;
+      }
+
+      :host {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+      }
+
+      mat-dialog-content {
+        overflow: visible;
+        max-height: none;
+        padding: 16px 24px !important;
+      }
+
+      .version-options {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .version-option {
+        display: flex;
+        align-items: center;
+        min-height: 48px;
+      }
+
+      .version-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        padding: 4px 10px;
+        border-radius: 4px;
+        background: var(--mat-sys-primary);
+        color: var(--mat-sys-on-primary);
+        font-size: 14px;
+        font-weight: 600;
+        margin-right: 12px;
+      }
+
+      mat-dialog-actions {
+        display: flex;
+        align-items: center;
+        padding: 8px 24px 24px;
+        gap: 12px;
+        margin: 0;
+        min-height: auto;
+      }
+
+      .spacer {
+        flex: 1;
+      }
+    `,
+  ],
 })
 export class CreateVersionDialogComponent {
   readonly data = inject<CreateVersionDialogData>(MAT_DIALOG_DATA);

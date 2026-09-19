@@ -3,7 +3,7 @@
 </div>
 <mat-dialog-content class="form">
   <mat-form-field appearance="outline" class="full first-field">
-    <mat-label>Group name</mat-label>
+    <mat-label>{{ 'admin.group-form-dialog.group-name' | translate }}</mat-label>
     <input
       matInput
       name="groupname"
@@ -13,11 +13,11 @@
     />
   </mat-form-field>
   <mat-form-field appearance="outline" class="full">
-    <mat-label>Label</mat-label>
+    <mat-label>{{ 'admin.group-form-dialog.label' | translate }}</mat-label>
     <input matInput name="grouplabel" [(ngModel)]="grouplabel" />
   </mat-form-field>
   <mat-form-field appearance="outline" class="full">
-    <mat-label>Member usernames</mat-label>
+    <mat-label>{{ 'admin.group-form-dialog.member-usernames' | translate }}</mat-label>
     <mat-chip-grid #chipGrid>
       @for (id of memberUsernames; track id) {
         <mat-chip-row (removed)="removeMember(id)">
@@ -40,7 +40,7 @@
         (matChipInputTokenEnd)="addMemberFromInput($event)"
       />
     </mat-chip-grid>
-    <mat-hint>Pick from search or enter a username and press Enter</mat-hint>
+    <mat-hint>{{ 'admin.group-form-dialog.pick-from-search-or-enter-a' | translate }}</mat-hint>
   </mat-form-field>
   <mat-autocomplete
     #userAuto="matAutocomplete"
@@ -60,7 +60,9 @@
   </mat-autocomplete>
 </mat-dialog-content>
 <mat-dialog-actions align="end" class="dialog-actions">
-  <button type="button" mat-button mat-dialog-close>Cancel</button>
+  <button type="button" mat-button mat-dialog-close>
+    {{ 'admin.group-form-dialog.cancel' | translate }}
+  </button>
   @if (data.mode === 'create') {
     <button
       type="button"
@@ -69,7 +71,7 @@
       (click)="submit(true)"
       [disabled]="!groupname.trim()"
     >
-      Create another
+      {{ 'admin.group-form-dialog.create-another' | translate }}
     </button>
   }
   <button
@@ -79,6 +81,6 @@
     (click)="submit(false)"
     [disabled]="data.mode === 'create' ? !groupname.trim() : !data.group"
   >
-    Save
+    {{ 'admin.group-form-dialog.save' | translate }}
   </button>
 </mat-dialog-actions>

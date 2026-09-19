@@ -1,13 +1,15 @@
-<h2 mat-dialog-title>The following permission will be deleted.</h2>
+<h2 mat-dialog-title>
+  {{ 'permissions.delete-permission-dialog.the-following-permission-will-be-deleted' | translate }}
+</h2>
 
 <mat-dialog-content>
   <table class="confirm-table">
     <thead>
       <tr>
-        <th>User / Group</th>
-        <th>Right</th>
-        <th>Time Frame</th>
-        <th>Granted by</th>
+        <th>{{ 'permissions.delete-permission-dialog.user-group' | translate }}</th>
+        <th>{{ 'permissions.delete-permission-dialog.right' | translate }}</th>
+        <th>{{ 'permissions.delete-permission-dialog.time-frame' | translate }}</th>
+        <th>{{ 'permissions.delete-permission-dialog.granted-by' | translate }}</th>
       </tr>
     </thead>
     <tbody>
@@ -22,7 +24,9 @@
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-stroked-button mat-dialog-close>Cancel</button>
+  <button mat-stroked-button mat-dialog-close>
+    {{ 'permissions.delete-permission-dialog.cancel' | translate }}
+  </button>
   <span class="spacer"></span>
   <button mat-stroked-button color="warn" [disabled]="deleting()" (click)="confirmDelete()">
     @if (deleting()) {

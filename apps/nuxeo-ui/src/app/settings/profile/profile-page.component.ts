@@ -28,12 +28,19 @@ import {
 import { AuthService } from '../../auth/auth.service';
 import { ChangePasswordDialogComponent } from './change-password-dialog/change-password-dialog.component';
 import { GroupPermLazyLoadDirective } from './group-perm-lazy-load.directive';
+import { TranslatePipe } from '@ngx-translate/core';
 
 const GROUP_PERM_PAGE_SIZE = 25;
 
 @Component({
   standalone: true,
-  imports: [NgTemplateOutlet, MatIconModule, MatButtonModule, GroupPermLazyLoadDirective],
+  imports: [
+    TranslatePipe,
+    NgTemplateOutlet,
+    MatIconModule,
+    MatButtonModule,
+    GroupPermLazyLoadDirective,
+  ],
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.scss',
 })

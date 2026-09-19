@@ -22,6 +22,7 @@ import {
   type ShareSavedSearchAddPermissionResult,
 } from '../share-saved-search-add-permission-dialog/share-saved-search-add-permission-dialog.component';
 import { ShareSavedSearchExternalDialogComponent } from '../share-saved-search-external-dialog/share-saved-search-external-dialog.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface PermissionEntry {
   id: string;
@@ -65,6 +66,7 @@ export interface ShareSavedSearchDialogData {
   selector: 'lib-share-saved-search-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,

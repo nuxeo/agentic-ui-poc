@@ -6,6 +6,7 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface SavedSearchDialogData {
   title?: string;
@@ -20,9 +21,45 @@ export const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig> = {
 @Component({
   selector: 'lib-saved-search-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule],
+  imports: [TranslatePipe, MatDialogModule, MatButtonModule],
   templateUrl: './saved-search-dialog.component.html',
-  styleUrl: './saved-search-dialog.component.scss',
+  styles: [
+    `
+      :host {
+        display: block;
+        width: min(95vw, clamp(320px, 50vw, 520px));
+        max-width: 95vw;
+      }
+
+      mat-dialog-content {
+        padding: 8px clamp(12px, 4vw, 24px) 16px !important;
+        overflow: visible !important;
+      }
+
+      .saved-search-input {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        border: 1px solid #d0d5dd;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font: inherit;
+        color: #101828;
+        outline: none;
+        box-sizing: border-box;
+
+        &:focus {
+          border-color: #5c6bc0;
+        }
+      }
+
+      mat-dialog-actions {
+        padding: 16px 24px 20px;
+        flex-wrap: wrap;
+        row-gap: 8px;
+      }
+    `,
+  ],
 })
 export class SavedSearchDialogComponent {
   readonly dialogRef = inject(MatDialogRef<SavedSearchDialogComponent, string | undefined>);

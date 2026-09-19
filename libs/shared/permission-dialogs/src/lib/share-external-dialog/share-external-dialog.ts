@@ -17,6 +17,7 @@ import {
   isMailSendError,
   permissionCreateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ShareExternalDialogData {
   documentUid: string;
@@ -33,6 +34,7 @@ const PERMISSION_OPTIONS = [
   selector: 'lib-share-external-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -45,7 +47,67 @@ const PERMISSION_OPTIONS = [
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './share-external-dialog.html',
-  styleUrl: './share-external-dialog.scss',
+  styles: [
+    `
+      :host {
+        display: block;
+        min-width: 480px;
+      }
+
+      mat-dialog-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-top: 8px !important;
+      }
+
+      .full-width {
+        width: 100%;
+      }
+
+      .field-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 6px;
+      }
+
+      .date-fields {
+        display: flex;
+        gap: 16px;
+
+        mat-form-field {
+          flex: 1;
+        }
+      }
+
+      .notify-section {
+        margin-top: 4px;
+      }
+
+      .mail-hint {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+        line-height: 1.4;
+      }
+
+      mat-dialog-actions {
+        display: flex;
+        gap: 8px;
+        padding: 8px 24px 16px;
+      }
+
+      .spacer {
+        flex: 1;
+      }
+
+      .create-another-btn {
+        background: #3f51b5 !important;
+      }
+    `,
+  ],
 })
 export class ShareExternalDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ShareExternalDialogComponent, boolean>);

@@ -26,11 +26,13 @@ import {
   GroupFormDialogData,
   GroupFormDialogResult,
 } from '../group-form-dialog/group-form-dialog.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-admin-group-details-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     RouterLink,
     MatButtonModule,
     MatIconModule,

@@ -2,15 +2,17 @@
   @if (checking()) {
     <div class="launching-state">
       <mat-spinner diameter="32" />
-      <p class="launching-text">Checking Nuxeo Drive...</p>
+      <p class="launching-text">
+        {{ 'document-detail.drive-dialog.checking-nuxeo-drive' | translate }}
+      </p>
     </div>
   } @else {
-    <h2>Download Nuxeo Drive Client</h2>
+    <h2>{{ 'document-detail.drive-dialog.download-nuxeo-drive-client' | translate }}</h2>
     <table class="drive-table">
       <thead>
         <tr>
-          <th>Platform</th>
-          <th>Package to Install</th>
+          <th>{{ 'document-detail.drive-dialog.platform' | translate }}</th>
+          <th>{{ 'document-detail.drive-dialog.package-to-install' | translate }}</th>
         </tr>
       </thead>
       <tbody>
@@ -28,6 +30,8 @@
         }
       </tbody>
     </table>
-    <button type="button" class="close-link" (click)="close()">Close</button>
+    <button type="button" class="close-link" (click)="close()">
+      {{ 'document-detail.drive-dialog.close' | translate }}
+    </button>
   }
 </div>

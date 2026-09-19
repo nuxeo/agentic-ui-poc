@@ -4,15 +4,20 @@
 <mat-dialog-content class="form">
   @if (showParentField) {
     @if (loadingParents()) {
-      <div class="parent-loading"><mat-spinner diameter="28" aria-label="Loading" /></div>
+      <div class="parent-loading">
+        <mat-spinner
+          diameter="28"
+          [attr.aria-label]="'admin.vocabulary-entry-form-dialog.loading' | translate"
+        />
+      </div>
     } @else {
       <mat-form-field appearance="outline" class="full first-field">
-        <mat-label>Parent</mat-label>
+        <mat-label>{{ 'admin.vocabulary-entry-form-dialog.parent' | translate }}</mat-label>
         <mat-select
           name="entryParent"
           [(ngModel)]="parent"
           [required]="parentRequired"
-          placeholder="Select a Parent"
+          [placeholder]="'admin.vocabulary-entry-form-dialog.select-a-parent' | translate"
         >
           @if (!parentRequired) {
             <mat-option [value]="">—</mat-option>
@@ -26,7 +31,7 @@
   }
 
   <mat-form-field appearance="outline" class="full" [class.first-field]="!showParentField">
-    <mat-label>ID</mat-label>
+    <mat-label>{{ 'admin.vocabulary-entry-form-dialog.id' | translate }}</mat-label>
     <input
       matInput
       name="entryId"
@@ -50,16 +55,20 @@
   </mat-form-field>
 
   <div class="obsolete-row">
-    <mat-slide-toggle name="entryObsolete" [(ngModel)]="obsolete">Obsolete</mat-slide-toggle>
+    <mat-slide-toggle name="entryObsolete" [(ngModel)]="obsolete">{{
+      'admin.vocabulary-entry-form-dialog.obsolete' | translate
+    }}</mat-slide-toggle>
   </div>
 
   <mat-form-field appearance="outline" class="full">
-    <mat-label>Ordering</mat-label>
+    <mat-label>{{ 'admin.vocabulary-entry-form-dialog.ordering' | translate }}</mat-label>
     <input matInput name="entryOrdering" type="number" [(ngModel)]="ordering" required />
   </mat-form-field>
 </mat-dialog-content>
 <mat-dialog-actions align="end" class="dialog-actions">
-  <button type="button" mat-button mat-dialog-close>Cancel</button>
+  <button type="button" mat-button mat-dialog-close>
+    {{ 'admin.vocabulary-entry-form-dialog.cancel' | translate }}
+  </button>
   <button
     type="button"
     mat-flat-button
@@ -67,6 +76,6 @@
     (click)="submit()"
     [disabled]="!canSubmit() || loadingParents()"
   >
-    Save
+    {{ 'admin.vocabulary-entry-form-dialog.save' | translate }}
   </button>
 </mat-dialog-actions>

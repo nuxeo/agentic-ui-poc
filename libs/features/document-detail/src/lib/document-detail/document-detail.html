@@ -1,17 +1,26 @@
 @if (loading()) {
   <div class="detail-loading">
-    <mat-spinner diameter="40" aria-label="Loading" />
+    <mat-spinner
+      diameter="40"
+      [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+    />
   </div>
 } @else if (error()) {
   <div class="detail-error">
     <mat-icon class="error-icon">error_outline</mat-icon>
     <p>{{ error() }}</p>
-    <button mat-stroked-button (click)="goBack()"><mat-icon>arrow_back</mat-icon> Go Back</button>
+    <button mat-stroked-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon> {{ 'document-detail.document-detail.go-back-2' | translate }}
+    </button>
   </div>
 } @else if (doc()) {
   <!-- Header -->
   <div class="detail-header">
-    <button mat-icon-button (click)="goBack()" aria-label="Go back">
+    <button
+      mat-icon-button
+      (click)="goBack()"
+      [attr.aria-label]="'document-detail.document-detail.go-back' | translate"
+    >
       <mat-icon>arrow_back</mat-icon>
     </button>
     <div class="header-info">
@@ -104,7 +113,10 @@
             "
             aria-busy="true"
           >
-            <mat-spinner diameter="24" aria-label="Loading" />
+            <mat-spinner
+              diameter="24"
+              [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+            />
           </span>
         } @else if (showsContentLakeIngested()) {
           <span
@@ -112,14 +124,18 @@
             [matTooltip]="contentLakeIngestedTooltip"
             matTooltipClass="mat-tooltip-multiline"
             matTooltipPosition="below"
-            aria-label="Already in Content Lake"
+            [attr.aria-label]="
+              'document-detail.document-detail.already-in-content-lake' | translate
+            "
           >
             <button
               mat-icon-button
               type="button"
               disabled
               tabindex="-1"
-              aria-label="Already ingested to Content Lake"
+              [attr.aria-label]="
+                'document-detail.document-detail.already-ingested-to-content-lake' | translate
+              "
             >
               <mat-icon>cloud_done</mat-icon>
             </button>
@@ -127,8 +143,8 @@
         } @else {
           <button
             mat-icon-button
-            matTooltip="Ingest to Content Lake"
-            aria-label="Ingest to Content Lake"
+            [matTooltip]="'document-detail.document-detail.ingest-to-content-lake' | translate"
+            [attr.aria-label]="'document-detail.document-detail.ingest-to-content-lake' | translate"
             [disabled]="keActionInFlight() !== null"
             (click)="ingestToContentLake()"
           >
@@ -153,8 +169,8 @@
       <button
         mat-icon-button
         [matMenuTriggerFor]="moreMenu"
-        matTooltip="More actions"
-        aria-label="More actions"
+        [matTooltip]="'document-detail.document-detail.more-actions' | translate"
+        [attr.aria-label]="'document-detail.document-detail.more-actions' | translate"
       >
         <mat-icon>more_vert</mat-icon>
       </button>
@@ -195,7 +211,9 @@
   @if (isTrashed()) {
     <div class="trashed-banner">
       <mat-icon class="trashed-banner-icon">info</mat-icon>
-      <span class="trashed-banner-text">You are viewing a trashed document.</span>
+      <span class="trashed-banner-text">{{
+        'document-detail.document-detail.you-are-viewing-a-trashed-document' | translate
+      }}</span>
       <span class="trashed-banner-spacer"></span>
       @if (canWriteDoc()) {
         <button
@@ -204,7 +222,8 @@
           (click)="restoreFromTrash()"
           [disabled]="actionInProgress() === 'restore'"
         >
-          <mat-icon>restore_from_trash</mat-icon> Restore
+          <mat-icon>restore_from_trash</mat-icon>
+          {{ 'document-detail.document-detail.restore' | translate }}
         </button>
       }
       @if (canRemoveDoc()) {
@@ -214,7 +233,8 @@
           (click)="permanentlyDelete()"
           [disabled]="actionInProgress() === 'permanentDelete'"
         >
-          <mat-icon>delete_forever</mat-icon> Delete Permanently
+          <mat-icon>delete_forever</mat-icon>
+          {{ 'document-detail.document-detail.delete-permanently' | translate }}
         </button>
       }
     </div>
@@ -225,7 +245,8 @@
     <div class="workflow-banner">
       <mat-icon class="workflow-banner-icon">warning</mat-icon>
       <span class="workflow-banner-text">
-        You started a <strong>{{ workflowDisplayName(wf) }}</strong> workflow on this document.
+        {{ 'document-detail.document-detail.you-started-a' | translate }}
+        <strong>{{ workflowDisplayName(wf) }}</strong> workflow on this document.
       </span>
       <span class="workflow-banner-spacer"></span>
       <button
@@ -234,7 +255,7 @@
         [disabled]="abandoningWorkflow()"
         (click)="abandonWorkflow(wf)"
       >
-        Abandon
+        {{ 'document-detail.document-detail.abandon' | translate }}
       </button>
     </div>
   }
@@ -250,7 +271,9 @@
         }
       </span>
       <span class="task-action-spacer"></span>
-      <button mat-flat-button class="task-action-btn" (click)="goToTask(task)">Process</button>
+      <button mat-flat-button class="task-action-btn" (click)="goToTask(task)">
+        {{ 'document-detail.document-detail.process' | translate }}
+      </button>
     </div>
   }
 
@@ -260,20 +283,29 @@
       type="button"
       class="start-process-backdrop"
       (click)="closeStartProcess()"
-      aria-label="Close start process dialog"
+      [attr.aria-label]="'document-detail.document-detail.close-start-process-dialog' | translate"
     ></button>
     <div class="start-process-dialog">
-      <div class="start-process-title" role="heading" aria-level="2">Start Process</div>
+      <div class="start-process-title" role="heading" aria-level="2">
+        {{ 'document-detail.document-detail.start-process' | translate }}
+      </div>
 
       @if (workflowsLoading()) {
         <div class="start-process-loading">
-          <mat-spinner diameter="28" aria-label="Loading" />
+          <mat-spinner
+            diameter="28"
+            [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+          />
         </div>
       } @else if (availableWorkflows().length === 0) {
-        <p class="start-process-empty">No workflow models available.</p>
+        <p class="start-process-empty">
+          {{ 'document-detail.document-detail.no-workflow-models-available' | translate }}
+        </p>
       } @else {
         <mat-form-field appearance="outline" class="start-process-field">
-          <mat-label class="start-process-label">Choose process</mat-label>
+          <mat-label class="start-process-label">{{
+            'document-detail.document-detail.choose-process' | translate
+          }}</mat-label>
           <mat-select
             [value]="selectedWorkflowModel()"
             (selectionChange)="selectedWorkflowModel.set($event.value)"
@@ -293,7 +325,11 @@
             (click)="startProcess()"
           >
             @if (startingWorkflow()) {
-              <mat-spinner diameter="18" class="inline-spinner" aria-label="Loading" />
+              <mat-spinner
+                diameter="18"
+                class="inline-spinner"
+                [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+              />
             }
             Start
           </button>
@@ -441,13 +477,18 @@
         <ng-template #permissionsTabContent>
           <div class="permissions-container">
             @if (permissionsLoading()) {
-              <div class="perm-loading"><mat-spinner diameter="28" aria-label="Loading" /></div>
+              <div class="perm-loading">
+                <mat-spinner
+                  diameter="28"
+                  [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                />
+              </div>
             }
             <!-- Permissions defined locally -->
             <section class="perm-section perm-section--local">
               <div class="perm-section-header">
                 <div class="perm-section-title" role="heading" aria-level="3">
-                  Permissions defined locally
+                  {{ 'document-detail.document-detail.permissions-defined-locally' | translate }}
                 </div>
                 @if (canManagePermissions()) {
                   <button
@@ -457,21 +498,23 @@
                     class="perm-action-btn"
                     (click)="openAddPermissionDialog()"
                   >
-                    New
+                    {{ 'document-detail.document-detail.new' | translate }}
                   </button>
                 }
               </div>
               @if (localAces().length === 0) {
-                <div class="perm-empty perm-empty--local">There are no local permissions.</div>
+                <div class="perm-empty perm-empty--local">
+                  {{ 'document-detail.document-detail.there-are-no-local-permissions' | translate }}
+                </div>
               } @else {
                 <div class="perm-table-wrap">
                   <table class="perm-table">
                     <thead>
                       <tr>
-                        <th>User / Group</th>
-                        <th>Right</th>
-                        <th>Time Frame</th>
-                        <th>Granted by</th>
+                        <th>{{ 'document-detail.document-detail.user-group' | translate }}</th>
+                        <th>{{ 'document-detail.document-detail.right' | translate }}</th>
+                        <th>{{ 'document-detail.document-detail.time-frame' | translate }}</th>
+                        <th>{{ 'document-detail.document-detail.granted-by' | translate }}</th>
                         @if (canManagePermissions()) {
                           <th></th>
                         }
@@ -488,8 +531,10 @@
                             <td class="perm-row-actions">
                               <button
                                 mat-icon-button
-                                matTooltip="Edit"
-                                aria-label="Edit permission"
+                                [matTooltip]="'document-detail.document-detail.edit' | translate"
+                                [attr.aria-label]="
+                                  'document-detail.document-detail.edit-permission' | translate
+                                "
                                 type="button"
                                 (click)="editPermission(ace)"
                               >
@@ -497,8 +542,10 @@
                               </button>
                               <button
                                 mat-icon-button
-                                matTooltip="Delete"
-                                aria-label="Delete permission"
+                                [matTooltip]="'document-detail.document-detail.delete' | translate"
+                                [attr.aria-label]="
+                                  'document-detail.document-detail.delete-permission' | translate
+                                "
                                 type="button"
                                 (click)="deletePermission(ace)"
                               >
@@ -518,7 +565,10 @@
             <section class="perm-section">
               <div class="perm-section-header">
                 <div class="perm-section-title" role="heading" aria-level="3">
-                  Permissions inherited from upper levels
+                  {{
+                    'document-detail.document-detail.permissions-inherited-from-upper-levels'
+                      | translate
+                  }}
                 </div>
                 @if (canManagePermissions()) {
                   <button
@@ -536,26 +586,32 @@
                 <div class="perm-info-bar">
                   <span class="perm-info-accent"></span>
                   <p>
-                    If you want to explicitly control the access to this document you can block the
-                    permissions inheritance. Any change made on parent document will not affect the
-                    access conditions to this document. You and the administrators will be added to
-                    local permissions.
+                    {{
+                      'document-detail.document-detail.if-you-want-to-explicitly-control'
+                        | translate
+                    }}
                   </p>
                 </div>
               }
               @if (isInheritanceBlocked()) {
-                <div class="perm-empty">Permissions inheritance is blocked.</div>
+                <div class="perm-empty">
+                  {{
+                    'document-detail.document-detail.permissions-inheritance-is-blocked' | translate
+                  }}
+                </div>
               } @else if (inheritedAces().length === 0) {
-                <div class="perm-empty">No inherited permissions.</div>
+                <div class="perm-empty">
+                  {{ 'document-detail.document-detail.no-inherited-permissions' | translate }}
+                </div>
               } @else {
                 <div class="perm-table-wrap">
                   <table class="perm-table">
                     <thead>
                       <tr>
-                        <th>User / Group</th>
-                        <th>Right</th>
-                        <th>Time Frame</th>
-                        <th>Granted by</th>
+                        <th>{{ 'document-detail.document-detail.user-group' | translate }}</th>
+                        <th>{{ 'document-detail.document-detail.right' | translate }}</th>
+                        <th>{{ 'document-detail.document-detail.time-frame' | translate }}</th>
+                        <th>{{ 'document-detail.document-detail.granted-by' | translate }}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -577,7 +633,10 @@
             <section class="perm-section">
               <div class="perm-section-header">
                 <div class="perm-section-title" role="heading" aria-level="3">
-                  Permissions Assigned to External Users
+                  {{
+                    'document-detail.document-detail.permissions-assigned-to-external-users'
+                      | translate
+                  }}
                 </div>
                 @if (canManagePermissions()) {
                   <button
@@ -587,28 +646,33 @@
                     class="perm-action-btn"
                     (click)="openExternalPermissionDialog()"
                   >
-                    New
+                    {{ 'document-detail.document-detail.new' | translate }}
                   </button>
                 }
               </div>
               <div class="perm-info-bar">
                 <span class="perm-info-accent"></span>
                 <p>
-                  Sharing to external users does not create new user accounts. External users are
-                  provided a link to access this document.
+                  {{
+                    'document-detail.document-detail.sharing-to-external-users-does-not' | translate
+                  }}
                 </p>
               </div>
               @if (externalAces().length === 0) {
-                <div class="perm-empty">The document is not shared with any external user.</div>
+                <div class="perm-empty">
+                  {{
+                    'document-detail.document-detail.the-document-is-not-shared-with' | translate
+                  }}
+                </div>
               } @else {
                 <div class="perm-table-wrap">
                   <table class="perm-table">
                     <thead>
                       <tr>
-                        <th>User</th>
-                        <th>Right</th>
-                        <th>Time Frame</th>
-                        <th>Granted by</th>
+                        <th>{{ 'document-detail.document-detail.user' | translate }}</th>
+                        <th>{{ 'document-detail.document-detail.right' | translate }}</th>
+                        <th>{{ 'document-detail.document-detail.time-frame' | translate }}</th>
+                        <th>{{ 'document-detail.document-detail.granted-by' | translate }}</th>
                         @if (canManagePermissions()) {
                           <th></th>
                         }
@@ -625,8 +689,10 @@
                             <td class="perm-row-actions">
                               <button
                                 mat-icon-button
-                                matTooltip="Edit"
-                                aria-label="Edit permission"
+                                [matTooltip]="'document-detail.document-detail.edit' | translate"
+                                [attr.aria-label]="
+                                  'document-detail.document-detail.edit-permission' | translate
+                                "
                                 type="button"
                                 (click)="editExternalPermission(ace)"
                               >
@@ -634,8 +700,13 @@
                               </button>
                               <button
                                 mat-icon-button
-                                matTooltip="Send notification email"
-                                aria-label="Send notification"
+                                [matTooltip]="
+                                  'document-detail.document-detail.send-notification-email'
+                                    | translate
+                                "
+                                [attr.aria-label]="
+                                  'document-detail.document-detail.send-notification' | translate
+                                "
                                 type="button"
                                 [disabled]="actionInProgress() === 'notify-' + ace.id"
                                 (click)="sendPermissionNotification(ace)"
@@ -644,8 +715,10 @@
                               </button>
                               <button
                                 mat-icon-button
-                                matTooltip="Delete"
-                                aria-label="Delete permission"
+                                [matTooltip]="'document-detail.document-detail.delete' | translate"
+                                [attr.aria-label]="
+                                  'document-detail.document-detail.delete-permission' | translate
+                                "
                                 type="button"
                                 (click)="deletePermission(ace)"
                               >
@@ -673,10 +746,12 @@
                   subscriptSizing="dynamic"
                   class="filter-field filter-field--wide"
                 >
-                  <mat-label>Username</mat-label>
+                  <mat-label>{{
+                    'document-detail.document-detail.username' | translate
+                  }}</mat-label>
                   <input
                     matInput
-                    placeholder="Filter by username"
+                    [placeholder]="'document-detail.document-detail.filter-by-username' | translate"
                     [ngModel]="filterUsername()"
                     (ngModelChange)="filterUsername.set($event)"
                   />
@@ -685,7 +760,7 @@
 
               <div class="filter-row">
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                  <mat-label>From</mat-label>
+                  <mat-label>{{ 'document-detail.document-detail.from' | translate }}</mat-label>
                   <input
                     matInput
                     [matDatepicker]="fromPicker"
@@ -698,7 +773,7 @@
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                  <mat-label>To</mat-label>
+                  <mat-label>{{ 'document-detail.document-detail.to' | translate }}</mat-label>
                   <input
                     matInput
                     [matDatepicker]="toPicker"
@@ -713,9 +788,13 @@
 
               <div class="filter-row">
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                  <mat-label>Performed Actions</mat-label>
+                  <mat-label>{{
+                    'document-detail.document-detail.performed-actions' | translate
+                  }}</mat-label>
                   <mat-select [ngModel]="filterAction()" (ngModelChange)="filterAction.set($event)">
-                    <mat-option value="">Select event actions</mat-option>
+                    <mat-option value="">{{
+                      'document-detail.document-detail.select-event-actions' | translate
+                    }}</mat-option>
                     @for (action of availableActions(); track action.id) {
                       <mat-option [value]="action.id">{{ action.displayLabel }}</mat-option>
                     }
@@ -723,12 +802,16 @@
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                  <mat-label>Event Category</mat-label>
+                  <mat-label>{{
+                    'document-detail.document-detail.event-category' | translate
+                  }}</mat-label>
                   <mat-select
                     [ngModel]="filterCategory()"
                     (ngModelChange)="filterCategory.set($event)"
                   >
-                    <mat-option value="">Select event category</mat-option>
+                    <mat-option value="">{{
+                      'document-detail.document-detail.select-event-category' | translate
+                    }}</mat-option>
                     @for (cat of availableCategories(); track cat.id) {
                       <mat-option [value]="cat.id">{{ cat.displayLabel }}</mat-option>
                     }
@@ -740,12 +823,15 @@
             <!-- Table -->
             @if (auditLoading()) {
               <div class="history-loading">
-                <mat-spinner diameter="32" aria-label="Loading" />
+                <mat-spinner
+                  diameter="32"
+                  [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                />
               </div>
             } @else if (filteredAuditEntries().length === 0) {
               <div class="history-empty">
                 <mat-icon>event_busy</mat-icon>
-                <p>No history entries found.</p>
+                <p>{{ 'document-detail.document-detail.no-history-entries-found' | translate }}</p>
               </div>
             } @else {
               <div class="history-table-wrapper">
@@ -757,19 +843,25 @@
                   class="history-table"
                 >
                   <ng-container matColumnDef="eventId">
-                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Performed Action</th>
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                      {{ 'document-detail.document-detail.performed-action' | translate }}
+                    </th>
                     <td mat-cell *matCellDef="let entry">{{ eventLabel(entry.eventId) }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="eventDate">
-                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                      {{ 'document-detail.document-detail.date' | translate }}
+                    </th>
                     <td mat-cell *matCellDef="let entry">
                       {{ entry.eventDate | date: 'MMMM d, yyyy' }}
                     </td>
                   </ng-container>
 
                   <ng-container matColumnDef="principalName">
-                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                      {{ 'document-detail.document-detail.username' | translate }}
+                    </th>
                     <td mat-cell *matCellDef="let entry">
                       <div class="user-cell">
                         <sat-avatar
@@ -785,19 +877,25 @@
                   </ng-container>
 
                   <ng-container matColumnDef="category">
-                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                      {{ 'document-detail.document-detail.category' | translate }}
+                    </th>
                     <td mat-cell *matCellDef="let entry">{{ categoryLabel(entry.category) }}</td>
                   </ng-container>
 
                   <ng-container matColumnDef="comment">
-                    <th mat-header-cell *matHeaderCellDef>Comment</th>
+                    <th mat-header-cell *matHeaderCellDef>
+                      {{ 'document-detail.document-detail.comment' | translate }}
+                    </th>
                     <td mat-cell *matCellDef="let entry" class="comment-cell">
                       {{ entry.comment }}
                     </td>
                   </ng-container>
 
                   <ng-container matColumnDef="docLifeCycle">
-                    <th mat-header-cell *matHeaderCellDef>State</th>
+                    <th mat-header-cell *matHeaderCellDef>
+                      {{ 'document-detail.document-detail.state' | translate }}
+                    </th>
                     <td mat-cell *matCellDef="let entry">
                       <sat-status-tag status="info" [hideIcon]="true">{{
                         entry.docLifeCycle
@@ -828,7 +926,7 @@
             <section class="publish-section">
               <div class="publish-section-header">
                 <div class="publish-section-title" role="heading" aria-level="3">
-                  Publication details
+                  {{ 'document-detail.document-detail.publication-details' | translate }}
                 </div>
                 @if (publishedDocs().length > 0) {
                   <button
@@ -838,7 +936,10 @@
                     (click)="unpublishAll()"
                   >
                     @if (actionInProgress() === 'unpublish-all') {
-                      <mat-spinner diameter="16" aria-label="Loading" />
+                      <mat-spinner
+                        diameter="16"
+                        [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                      />
                     } @else {
                       Unpublish All
                     }
@@ -847,22 +948,30 @@
               </div>
               @if (publishLoading()) {
                 <div class="publish-loading">
-                  <mat-spinner diameter="24" aria-label="Loading" />
+                  <mat-spinner
+                    diameter="24"
+                    [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                  />
                 </div>
               } @else if (publishedDocs().length === 0) {
                 <div class="publish-empty">
                   <mat-icon>cloud_off</mat-icon>
-                  <p>This document has not been published yet.</p>
+                  <p>
+                    {{
+                      'document-detail.document-detail.this-document-has-not-been-published'
+                        | translate
+                    }}
+                  </p>
                 </div>
               } @else {
                 <table class="publish-table">
                   <thead>
                     <tr>
-                      <th>Path</th>
-                      <th>Version</th>
-                      <th>Rendition</th>
-                      <th>Publisher</th>
-                      <th>Publish Date</th>
+                      <th>{{ 'document-detail.document-detail.path' | translate }}</th>
+                      <th>{{ 'document-detail.document-detail.version' | translate }}</th>
+                      <th>{{ 'document-detail.document-detail.rendition' | translate }}</th>
+                      <th>{{ 'document-detail.document-detail.publisher' | translate }}</th>
+                      <th>{{ 'document-detail.document-detail.publish-date' | translate }}</th>
                       <th class="pub-actions-col"></th>
                     </tr>
                   </thead>
@@ -897,7 +1006,7 @@
                             [disabled]="actionInProgress() === 'unpublish'"
                             (click)="unpublishDocument(pub)"
                           >
-                            Unpublish
+                            {{ 'document-detail.document-detail.unpublish' | translate }}
                           </button>
                           @if (isOlderVersion(pub)) {
                             <button
@@ -907,7 +1016,7 @@
                               [disabled]="actionInProgress() === 'republish'"
                               (click)="republishDocument(pub)"
                             >
-                              Republish
+                              {{ 'document-detail.document-detail.republish' | translate }}
                             </button>
                           }
                         </td>
@@ -922,7 +1031,7 @@
             <section class="publish-section">
               <div class="publish-section-header">
                 <div class="publish-section-title" role="heading" aria-level="3">
-                  Publish to a Section
+                  {{ 'document-detail.document-detail.publish-to-a-section' | translate }}
                 </div>
                 <button
                   mat-flat-button
@@ -932,11 +1041,14 @@
                   (click)="publishToSection()"
                 >
                   @if (publishing()) {
-                    <mat-spinner diameter="18" aria-label="Loading" />
+                    <mat-spinner
+                      diameter="18"
+                      [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                    />
                   } @else {
                     <ng-container>
                       <mat-icon>publish</mat-icon>
-                      Publish
+                      {{ 'document-detail.document-detail.publish' | translate }}
                     </ng-container>
                   }
                 </button>
@@ -945,19 +1057,28 @@
               <div class="publish-info-bar">
                 <span class="publish-info-accent"></span>
                 <p>
-                  Select a section below to publish this document. Published documents will appear
-                  in the selected section and will be accessible to users with read access.
+                  {{
+                    'document-detail.document-detail.select-a-section-below-to-publish' | translate
+                  }}
                 </p>
               </div>
 
               @if (sectionsLoading()) {
                 <div class="publish-loading">
-                  <mat-spinner diameter="24" aria-label="Loading" />
+                  <mat-spinner
+                    diameter="24"
+                    [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                  />
                 </div>
               } @else if (sectionTree().length === 0) {
                 <div class="publish-empty">
                   <mat-icon>folder_off</mat-icon>
-                  <p>No sections available for publishing.</p>
+                  <p>
+                    {{
+                      'document-detail.document-detail.no-sections-available-for-publishing'
+                        | translate
+                    }}
+                  </p>
                 </div>
               } @else {
                 <div class="section-tree">
@@ -977,15 +1098,19 @@
             <!-- Hero Header -->
             <div class="ai-insights-hero">
               <div class="ai-insights-hero-text">
-                <div class="ai-insights-title">AI Insights</div>
+                <div class="ai-insights-title">
+                  {{ 'document-detail.document-detail.ai-insights' | translate }}
+                </div>
                 <p class="ai-insights-subtitle">
-                  Augment your editorial workflow with cognitive processing. Generate summaries,
-                  classify complex data, and discover hidden relationships.
+                  {{
+                    'document-detail.document-detail.augment-your-editorial-workflow-with-cognitive'
+                      | translate
+                  }}
                 </p>
               </div>
               <button mat-flat-button class="ai-btn-primary" (click)="openAiAssistant()">
                 <mat-icon>auto_awesome</mat-icon>
-                AI Assistant
+                {{ 'document-detail.document-detail.ai-assistant' | translate }}
               </button>
             </div>
 
@@ -997,10 +1122,15 @@
                   <span class="ai-card-icon ai-card-icon--purple">
                     <mat-icon>auto_awesome</mat-icon>
                   </span>
-                  <div class="ai-card-title">Document Summary</div>
+                  <div class="ai-card-title">
+                    {{ 'document-detail.document-detail.document-summary' | translate }}
+                  </div>
                   @if (aiSummaryLoading()) {
                     <button mat-flat-button class="ai-btn-primary ai-btn-sm" disabled>
-                      <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
+                      <mat-spinner
+                        diameter="16"
+                        [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                      ></mat-spinner>
                     </button>
                   } @else {
                     <button
@@ -1014,9 +1144,10 @@
                   }
                 </div>
                 <p class="ai-card-desc">
-                  Utilize large language models to distill complex editorial pieces into concise,
-                  high-impact executive summaries. Ideal for rapid review and cross-departmental
-                  updates.
+                  {{
+                    'document-detail.document-detail.utilize-large-language-models-to-distill'
+                      | translate
+                  }}
                 </p>
                 <div class="ai-card-body">
                   @if (aiSummaryLoading()) {
@@ -1031,7 +1162,9 @@
                       <p class="ai-summary-text">{{ aiSummary()!.summary }}</p>
                       @if (aiSummary()!.keyPoints.length) {
                         <div class="ai-key-points">
-                          <strong>Key Points:</strong>
+                          <strong>{{
+                            'document-detail.document-detail.key-points' | translate
+                          }}</strong>
                           <ul>
                             @for (point of aiSummary()!.keyPoints; track point) {
                               <li>{{ point }}</li>
@@ -1057,11 +1190,15 @@
                   <span class="ai-card-icon ai-card-icon--indigo">
                     <mat-icon>sell</mat-icon>
                   </span>
-                  <div class="ai-card-title">Suggested Tags</div>
+                  <div class="ai-card-title">
+                    {{ 'document-detail.document-detail.suggested-tags' | translate }}
+                  </div>
                 </div>
                 <p class="ai-card-desc">
-                  Automatic taxonomy mapping based on entity extraction and sentiment analysis of
-                  the current document text.
+                  {{
+                    'document-detail.document-detail.automatic-taxonomy-mapping-based-on-entity'
+                      | translate
+                  }}
                 </p>
                 <div class="ai-card-body">
                   @if (aiTagsLoading()) {
@@ -1091,13 +1228,16 @@
                 <div class="ai-card-actions">
                   @if (aiTagsLoading()) {
                     <button mat-stroked-button class="ai-btn-outline" disabled>
-                      <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
-                      Suggest Tags
+                      <mat-spinner
+                        diameter="16"
+                        [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                      ></mat-spinner>
+                      {{ 'document-detail.document-detail.suggest-tags' | translate }}
                     </button>
                   } @else {
                     <button mat-stroked-button class="ai-btn-outline" (click)="suggestTags()">
                       <mat-icon>auto_awesome</mat-icon>
-                      Suggest Tags
+                      {{ 'document-detail.document-detail.suggest-tags' | translate }}
                     </button>
                   }
                 </div>
@@ -1109,11 +1249,15 @@
                   <span class="ai-card-icon ai-card-icon--purple">
                     <mat-icon>tune</mat-icon>
                   </span>
-                  <div class="ai-card-title">Classification &amp; Metadata</div>
+                  <div class="ai-card-title">
+                    {{ 'document-detail.document-detail.classification-amp-metadata' | translate }}
+                  </div>
                 </div>
                 <p class="ai-card-desc">
-                  Categorize content into predefined editorial verticals and extract structural
-                  metadata including author, publication date, and reading time estimation.
+                  {{
+                    'document-detail.document-detail.categorize-content-into-predefined-editorial-verticals'
+                      | translate
+                  }}
                 </p>
                 <div class="ai-card-body">
                   @if (aiClassifyLoading()) {
@@ -1125,24 +1269,32 @@
                   } @else if (aiClassification()) {
                     <div class="ai-meta-rows">
                       <div class="ai-meta-row">
-                        <span class="ai-meta-key">Description</span>
+                        <span class="ai-meta-key">{{
+                          'document-detail.document-detail.description' | translate
+                        }}</span>
                         <span class="ai-meta-val">{{ aiClassification()!.description }}</span>
                       </div>
                       <div class="ai-meta-row">
-                        <span class="ai-meta-key">Primary Category</span>
+                        <span class="ai-meta-key">{{
+                          'document-detail.document-detail.primary-category' | translate
+                        }}</span>
                         <sat-category-tag category="blue">{{
                           aiClassification()!.nature
                         }}</sat-category-tag>
                       </div>
                       <div class="ai-meta-row">
-                        <span class="ai-meta-key">Subjects</span>
+                        <span class="ai-meta-key">{{
+                          'document-detail.document-detail.subjects' | translate
+                        }}</span>
                         <span class="ai-meta-val">{{
                           aiClassification()!.subjects.join(', ')
                         }}</span>
                       </div>
                       @if (aiClassification()!.suggestedWorkflow !== 'none') {
                         <div class="ai-meta-row">
-                          <span class="ai-meta-key">Workflow</span>
+                          <span class="ai-meta-key">{{
+                            'document-detail.document-detail.workflow' | translate
+                          }}</span>
                           <span class="ai-meta-val">
                             <sat-status-tag status="info" [hideIcon]="true">{{
                               aiClassification()!.suggestedWorkflow
@@ -1154,11 +1306,17 @@
                   } @else {
                     <div class="ai-meta-rows">
                       <div class="ai-meta-row">
-                        <span class="ai-meta-key">Primary Category</span>
-                        <span class="ai-meta-val ai-meta-val--muted">Unclassified</span>
+                        <span class="ai-meta-key">{{
+                          'document-detail.document-detail.primary-category' | translate
+                        }}</span>
+                        <span class="ai-meta-val ai-meta-val--muted">{{
+                          'document-detail.document-detail.unclassified' | translate
+                        }}</span>
                       </div>
                       <div class="ai-meta-row">
-                        <span class="ai-meta-key">Complexity Level</span>
+                        <span class="ai-meta-key">{{
+                          'document-detail.document-detail.complexity-level' | translate
+                        }}</span>
                         <span class="ai-meta-val ai-meta-val--muted">&mdash;</span>
                       </div>
                     </div>
@@ -1167,8 +1325,11 @@
                 <div class="ai-card-actions">
                   @if (aiClassifyLoading()) {
                     <button mat-flat-button class="ai-btn-primary ai-btn-full" disabled>
-                      <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
-                      Classify
+                      <mat-spinner
+                        diameter="16"
+                        [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                      ></mat-spinner>
+                      {{ 'document-detail.document-detail.classify' | translate }}
                     </button>
                   } @else {
                     <button
@@ -1177,7 +1338,7 @@
                       (click)="classifyDocument()"
                     >
                       <mat-icon>tune</mat-icon>
-                      Classify
+                      {{ 'document-detail.document-detail.classify' | translate }}
                     </button>
                   }
                 </div>
@@ -1189,22 +1350,36 @@
                   <span class="ai-card-icon ai-card-icon--indigo">
                     <mat-icon>hub</mat-icon>
                   </span>
-                  <div class="ai-card-title">Related Documents</div>
+                  <div class="ai-card-title">
+                    {{ 'document-detail.document-detail.related-documents' | translate }}
+                  </div>
                 </div>
                 <p class="ai-card-desc">
-                  Discover documents within the archive that share thematic overlaps, common
-                  entities, or stylistic signatures to ensure editorial consistency.
+                  {{
+                    'document-detail.document-detail.discover-documents-within-the-archive-that'
+                      | translate
+                  }}
                 </p>
                 <div class="ai-card-body">
                   @if (aiSimilarLoading()) {
                     <div class="ai-doc-thumbs">
                       <div class="ai-doc-thumb ai-doc-thumb--skeleton">
-                        <mat-spinner diameter="20" aria-label="Loading"></mat-spinner>
-                        <span>Scanning Archive...</span>
+                        <mat-spinner
+                          diameter="20"
+                          [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                        ></mat-spinner>
+                        <span>{{
+                          'document-detail.document-detail.scanning-archive' | translate
+                        }}</span>
                       </div>
                       <div class="ai-doc-thumb ai-doc-thumb--skeleton">
-                        <mat-spinner diameter="20" aria-label="Loading"></mat-spinner>
-                        <span>Scanning Archive...</span>
+                        <mat-spinner
+                          diameter="20"
+                          [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                        ></mat-spinner>
+                        <span>{{
+                          'document-detail.document-detail.scanning-archive' | translate
+                        }}</span>
                       </div>
                     </div>
                   } @else if (aiSimilarDocs().length) {
@@ -1226,11 +1401,15 @@
                     <div class="ai-doc-thumbs">
                       <div class="ai-doc-thumb">
                         <mat-icon class="ai-doc-thumb-icon">description</mat-icon>
-                        <span>Document Preview</span>
+                        <span>{{
+                          'document-detail.document-detail.document-preview' | translate
+                        }}</span>
                       </div>
                       <div class="ai-doc-thumb">
                         <mat-icon class="ai-doc-thumb-icon">description</mat-icon>
-                        <span>Document Preview</span>
+                        <span>{{
+                          'document-detail.document-detail.document-preview' | translate
+                        }}</span>
                       </div>
                     </div>
                   }
@@ -1238,13 +1417,16 @@
                 <div class="ai-card-actions">
                   @if (aiSimilarLoading()) {
                     <button mat-stroked-button class="ai-btn-outline" disabled>
-                      <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
-                      Find Connections
+                      <mat-spinner
+                        diameter="16"
+                        [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                      ></mat-spinner>
+                      {{ 'document-detail.document-detail.find-connections' | translate }}
                     </button>
                   } @else {
                     <button mat-stroked-button class="ai-btn-outline" (click)="findSimilar()">
                       <mat-icon>search</mat-icon>
-                      Find Connections
+                      {{ 'document-detail.document-detail.find-connections' | translate }}
                     </button>
                   }
                 </div>
@@ -1265,7 +1447,7 @@
           class="panel-toggle-btn"
           (click)="propertiesPanelOpen.set(!propertiesPanelOpen())"
           [matTooltip]="propertiesPanelOpen() ? 'Hide details' : 'Show details'"
-          aria-label="Toggle details panel"
+          [attr.aria-label]="'document-detail.document-detail.toggle-details-panel' | translate"
         >
           <mat-icon>{{ propertiesPanelOpen() ? 'info' : 'info_outline' }}</mat-icon>
         </button>
@@ -1274,10 +1456,17 @@
 
     <!-- Right: Properties Panel (persists across all tabs) -->
     @if (propertiesPanelOpen()) {
-      <aside class="properties-panel" aria-label="Document properties">
+      <aside
+        class="properties-panel"
+        [attr.aria-label]="'document-detail.document-detail.document-properties' | translate"
+      >
         <div class="panel-header">
           <span class="panel-title">{{ fileName() }}</span>
-          <button mat-icon-button (click)="closePropertiesPanel()" aria-label="Close panel">
+          <button
+            mat-icon-button
+            (click)="closePropertiesPanel()"
+            [attr.aria-label]="'document-detail.document-detail.close-panel' | translate"
+          >
             <mat-icon>close</mat-icon>
           </button>
         </div>
@@ -1288,21 +1477,21 @@
             [class.sub-tab--active]="panelSubTab() === 'properties'"
             (click)="switchPanelSubTab('properties')"
           >
-            Properties
+            {{ 'document-detail.document-detail.properties' | translate }}
           </button>
           <button
             class="sub-tab"
             [class.sub-tab--active]="panelSubTab() === 'comments'"
             (click)="switchPanelSubTab('comments')"
           >
-            Comments
+            {{ 'document-detail.document-detail.comments' | translate }}
           </button>
           <button
             class="sub-tab"
             [class.sub-tab--active]="panelSubTab() === 'activity'"
             (click)="switchPanelSubTab('activity')"
           >
-            Activity
+            {{ 'document-detail.document-detail.activity' | translate }}
           </button>
         </div>
 
@@ -1313,16 +1502,22 @@
             <div class="doc-info-section">
               @if (documentWorkflows().length > 0) {
                 <div class="doc-info-row">
-                  <span class="doc-info-label">Process</span>
+                  <span class="doc-info-label">{{
+                    'document-detail.document-detail.process' | translate
+                  }}</span>
                   <span class="doc-info-value">
-                    <sat-status-tag status="important">Running</sat-status-tag>
+                    <sat-status-tag status="important">{{
+                      'document-detail.document-detail.running' | translate
+                    }}</sat-status-tag>
                   </span>
                 </div>
               }
 
               @if (docState()) {
                 <div class="doc-info-row">
-                  <span class="doc-info-label">State</span>
+                  <span class="doc-info-label">{{
+                    'document-detail.document-detail.state' | translate
+                  }}</span>
                   <span class="doc-info-value">
                     <sat-status-tag status="info" [hideIcon]="true">{{
                       docState()
@@ -1332,7 +1527,9 @@
               }
 
               <div class="doc-info-row">
-                <span class="doc-info-label">Version</span>
+                <span class="doc-info-label">{{
+                  'document-detail.document-detail.version' | translate
+                }}</span>
                 <span class="doc-info-value">
                   @if (hasVersion()) {
                     <div class="version-select-wrapper">
@@ -1344,7 +1541,12 @@
                         <div class="version-dropdown">
                           @if (versionsLoading()) {
                             <div class="version-dropdown-loading">
-                              <mat-spinner diameter="20" aria-label="Loading" />
+                              <mat-spinner
+                                diameter="20"
+                                [attr.aria-label]="
+                                  'document-detail.document-detail.loading' | translate
+                                "
+                              />
                             </div>
                           } @else {
                             @if (doc()?.isCheckedOut && canWriteDoc()) {
@@ -1353,7 +1555,9 @@
                                 (click)="versionDropdownOpen.set(false); openCreateVersionDialog()"
                               >
                                 <mat-icon class="create-version-icon">add_circle_outline</mat-icon>
-                                <span class="version-dropdown-label">Create Version</span>
+                                <span class="version-dropdown-label">{{
+                                  'document-detail.document-detail.create-version' | translate
+                                }}</span>
                               </button>
                             }
                             <button
@@ -1384,7 +1588,11 @@
                               }
                             }
                             @if (versions().length === 0) {
-                              <div class="version-dropdown-empty">No previous versions</div>
+                              <div class="version-dropdown-empty">
+                                {{
+                                  'document-detail.document-detail.no-previous-versions' | translate
+                                }}
+                              </div>
                             }
                           }
                         </div>
@@ -1397,7 +1605,7 @@
                       class="create-version-btn"
                       (click)="openCreateVersionDialog()"
                     >
-                      Create Version
+                      {{ 'document-detail.document-detail.create-version' | translate }}
                     </button>
                   } @else {
                     <span class="no-publications">—</span>
@@ -1406,7 +1614,9 @@
               </div>
 
               <div class="doc-info-row">
-                <span class="doc-info-label">Publications</span>
+                <span class="doc-info-label">{{
+                  'document-detail.document-detail.publications' | translate
+                }}</span>
                 <span class="doc-info-value">
                   @if (publicationCount() > 0) {
                     <button type="button" class="publications-link" (click)="goToPublishingTab()">
@@ -1420,21 +1630,27 @@
 
               @if (modified()) {
                 <div class="doc-info-row">
-                  <span class="doc-info-label">Last Modified</span>
+                  <span class="doc-info-label">{{
+                    'document-detail.document-detail.last-modified' | translate
+                  }}</span>
                   <span class="doc-info-value">{{ modified() | date: 'longDate' }}</span>
                 </div>
               }
 
               @if (created()) {
                 <div class="doc-info-row">
-                  <span class="doc-info-label">Created</span>
+                  <span class="doc-info-label">{{
+                    'document-detail.document-detail.created' | translate
+                  }}</span>
                   <span class="doc-info-value">{{ created() | date: 'longDate' }}</span>
                 </div>
               }
 
               @if (creator()) {
                 <div class="doc-info-row">
-                  <span class="doc-info-label">By</span>
+                  <span class="doc-info-label">{{
+                    'document-detail.document-detail.by' | translate
+                  }}</span>
                   <span class="doc-info-value creator-value">
                     <sat-avatar
                       [initials]="creator()!.charAt(0).toUpperCase()"
@@ -1450,7 +1666,9 @@
 
               @if (contributors().length > 0) {
                 <div class="doc-info-row">
-                  <span class="doc-info-label">Contributors</span>
+                  <span class="doc-info-label">{{
+                    'document-detail.document-detail.contributors' | translate
+                  }}</span>
                   <span class="doc-info-value contributors-value">
                     @for (c of contributors(); track c) {
                       <span class="contributor-entry">
@@ -1470,44 +1688,59 @@
             </div>
 
             <div class="indexing-header">
-              <div class="indexing-title" role="heading" aria-level="4">Indexing Properties</div>
+              <div class="indexing-title" role="heading" aria-level="4">
+                {{ 'document-detail.document-detail.indexing-properties' | translate }}
+              </div>
             </div>
 
             <div class="prop-field">
-              <span class="prop-label">Title</span>
+              <span class="prop-label">{{
+                'document-detail.document-detail.title' | translate
+              }}</span>
               <span class="prop-value">{{ doc()!.title }}</span>
             </div>
 
             @if (isNoteDocument()) {
               <div class="prop-field">
-                <span class="prop-label">Format</span>
+                <span class="prop-label">{{
+                  'document-detail.document-detail.format' | translate
+                }}</span>
                 <span class="prop-value">{{ noteFormatDisplay() }}</span>
               </div>
             }
 
             @if (hasPersistedMainBlob()) {
               <div class="prop-field">
-                <span class="prop-label">File Name</span>
+                <span class="prop-label">{{
+                  'document-detail.document-detail.file-name' | translate
+                }}</span>
                 <span class="prop-value">{{ fileName() }}</span>
               </div>
             }
 
             @if (expires()) {
               <div class="prop-field">
-                <span class="prop-label">Expires</span>
+                <span class="prop-label">{{
+                  'document-detail.document-detail.expires' | translate
+                }}</span>
                 <span class="prop-value">{{ expires() | date: 'longDate' }}</span>
               </div>
             }
 
             <div class="prop-field prop-field--tags">
-              <span class="prop-label">Tags</span>
+              <span class="prop-label">{{
+                'document-detail.document-detail.tags' | translate
+              }}</span>
               @if (canWriteDoc()) {
                 <mat-form-field
                   appearance="fill"
                   class="tags-suggestion-field"
                   subscriptSizing="dynamic"
                 >
-                  <mat-chip-grid #tagChipGrid aria-label="Document tags">
+                  <mat-chip-grid
+                    #tagChipGrid
+                    [attr.aria-label]="'document-detail.document-detail.document-tags' | translate"
+                  >
                     @for (tag of tags(); track $index) {
                       <mat-chip-row (removed)="removeInlineTag(tag)">
                         {{ tag }}
@@ -1557,21 +1790,27 @@
 
             @if (description()) {
               <div class="prop-field">
-                <span class="prop-label">Description</span>
+                <span class="prop-label">{{
+                  'document-detail.document-detail.description' | translate
+                }}</span>
                 <p class="prop-description">{{ description() }}</p>
               </div>
             }
 
             @if (documentCategory()) {
               <div class="prop-field">
-                <span class="prop-label">Nature</span>
+                <span class="prop-label">{{
+                  'document-detail.document-detail.nature' | translate
+                }}</span>
                 <span class="prop-value">{{ documentCategory() }}</span>
               </div>
             }
 
             @if (documentCoverage()) {
               <div class="prop-field prop-field--tags">
-                <span class="prop-label">Coverage</span>
+                <span class="prop-label">{{
+                  'document-detail.document-detail.coverage' | translate
+                }}</span>
                 <div class="tags-readonly">
                   <span class="tags-readonly-chip">{{ documentCoverageDisplay() }}</span>
                 </div>
@@ -1580,16 +1819,22 @@
 
             @if (documentSubjects().length > 0) {
               <div class="prop-field">
-                <span class="prop-label">Subjects</span>
+                <span class="prop-label">{{
+                  'document-detail.document-detail.subjects' | translate
+                }}</span>
                 <span class="prop-value">{{ documentSubjectsDisplay() }}</span>
               </div>
             }
 
             <div class="prop-section-divider"></div>
 
-            <div class="section-title" role="heading" aria-level="4">Attachments</div>
+            <div class="section-title" role="heading" aria-level="4">
+              {{ 'document-detail.document-detail.attachments' | translate }}
+            </div>
             @if (attachments().length === 0) {
-              <p class="section-empty">There are no attachments</p>
+              <p class="section-empty">
+                {{ 'document-detail.document-detail.there-are-no-attachments' | translate }}
+              </p>
             } @else {
               @for (att of attachments(); track att.index) {
                 <div class="attachment-card">
@@ -1600,24 +1845,28 @@
                   <div class="attachment-actions">
                     <button
                       mat-icon-button
-                      matTooltip="Open in Nuxeo Drive"
-                      aria-label="Open in Nuxeo Drive"
+                      [matTooltip]="
+                        'document-detail.document-detail.open-in-nuxeo-drive' | translate
+                      "
+                      [attr.aria-label]="
+                        'document-detail.document-detail.open-in-nuxeo-drive' | translate
+                      "
                       (click)="openDriveDialog()"
                     >
                       <mat-icon>open_in_new</mat-icon>
                     </button>
                     <button
                       mat-icon-button
-                      matTooltip="Preview"
-                      aria-label="Preview"
+                      [matTooltip]="'document-detail.document-detail.preview' | translate"
+                      [attr.aria-label]="'document-detail.document-detail.preview' | translate"
                       (click)="previewAttachment(att)"
                     >
                       <mat-icon>visibility</mat-icon>
                     </button>
                     <button
                       mat-icon-button
-                      matTooltip="Download"
-                      aria-label="Download"
+                      [matTooltip]="'document-detail.document-detail.download' | translate"
+                      [attr.aria-label]="'document-detail.document-detail.download' | translate"
                       (click)="downloadAttachment(att.url, att.name)"
                     >
                       <mat-icon>download</mat-icon>
@@ -1626,19 +1875,21 @@
                       <button
                         mat-icon-button
                         [matMenuTriggerFor]="attMenu"
-                        matTooltip="More"
-                        aria-label="More actions"
+                        [matTooltip]="'document-detail.document-detail.more' | translate"
+                        [attr.aria-label]="
+                          'document-detail.document-detail.more-actions' | translate
+                        "
                       >
                         <mat-icon>more_vert</mat-icon>
                       </button>
                       <mat-menu #attMenu="matMenu">
                         <button mat-menu-item (click)="openReplaceDialog(att)">
                           <mat-icon>find_replace</mat-icon>
-                          <span>Replace</span>
+                          <span>{{ 'document-detail.document-detail.replace' | translate }}</span>
                         </button>
                         <button mat-menu-item (click)="openRemoveDialog(att)">
                           <mat-icon>cancel</mat-icon>
-                          <span>Remove</span>
+                          <span>{{ 'document-detail.document-detail.remove' | translate }}</span>
                         </button>
                       </mat-menu>
                     }
@@ -1649,7 +1900,9 @@
 
             @if (canWriteDoc()) {
               <label class="upload-attachment-zone">
-                <span class="upload-link">Upload attachment</span>
+                <span class="upload-link">{{
+                  'document-detail.document-detail.upload-attachment' | translate
+                }}</span>
                 <input #attachmentInput type="file" hidden (change)="uploadAttachment($event)" />
               </label>
             }
@@ -1657,7 +1910,9 @@
             @if (hasCollections()) {
               <div class="prop-section-divider"></div>
 
-              <div class="section-title" role="heading" aria-level="4">Collections</div>
+              <div class="section-title" role="heading" aria-level="4">
+                {{ 'document-detail.document-detail.collections' | translate }}
+              </div>
               @for (col of collections(); track col.uid) {
                 <sat-category-tag category="blue">
                   <mat-icon>bookmark</mat-icon>
@@ -1673,7 +1928,10 @@
           <div class="panel-body comments-panel">
             @if (commentsLoading()) {
               <div class="panel-loading">
-                <mat-spinner diameter="28" aria-label="Loading" />
+                <mat-spinner
+                  diameter="28"
+                  [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                />
               </div>
             } @else {
               <!-- AI Sentiment Analysis -->
@@ -1685,7 +1943,10 @@
                     [disabled]="aiSentimentLoading()"
                   >
                     @if (aiSentimentLoading()) {
-                      <mat-spinner diameter="16" aria-label="Loading" />
+                      <mat-spinner
+                        diameter="16"
+                        [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                      />
                     } @else {
                       <mat-icon>psychology</mat-icon>
                     }
@@ -1697,7 +1958,9 @@
                   <div class="sentiment-summary-panel">
                     <div class="sentiment-summary-header">
                       <mat-icon>forum</mat-icon>
-                      <span>Thread Summary</span>
+                      <span>{{
+                        'document-detail.document-detail.thread-summary' | translate
+                      }}</span>
                     </div>
                     <p class="sentiment-summary-text">{{ aiThreadSummary() }}</p>
                   </div>
@@ -1730,16 +1993,20 @@
                         mat-icon-button
                         [matMenuTriggerFor]="commentMenu"
                         class="comment-menu-btn"
-                        aria-label="Comment actions"
+                        [attr.aria-label]="
+                          'document-detail.document-detail.comment-actions' | translate
+                        "
                       >
                         <mat-icon>more_vert</mat-icon>
                       </button>
                       <mat-menu #commentMenu="matMenu">
                         <button mat-menu-item (click)="startEditComment(comment)">
-                          <mat-icon>edit</mat-icon> Edit
+                          <mat-icon>edit</mat-icon>
+                          {{ 'document-detail.document-detail.edit' | translate }}
                         </button>
                         <button mat-menu-item (click)="deleteComment(comment)">
-                          <mat-icon>delete</mat-icon> Delete
+                          <mat-icon>delete</mat-icon>
+                          {{ 'document-detail.document-detail.delete' | translate }}
                         </button>
                       </mat-menu>
                     }
@@ -1756,16 +2023,16 @@
                         mat-icon-button
                         (click)="saveEditComment()"
                         [disabled]="commentSaving()"
-                        matTooltip="Save"
-                        aria-label="Save"
+                        [matTooltip]="'document-detail.document-detail.save' | translate"
+                        [attr.aria-label]="'document-detail.document-detail.save' | translate"
                       >
                         <mat-icon>check</mat-icon>
                       </button>
                       <button
                         mat-icon-button
                         (click)="cancelEditComment()"
-                        matTooltip="Cancel"
-                        aria-label="Cancel"
+                        [matTooltip]="'document-detail.document-detail.cancel' | translate"
+                        [attr.aria-label]="'document-detail.document-detail.cancel' | translate"
                       >
                         <mat-icon>close</mat-icon>
                       </button>
@@ -1785,7 +2052,8 @@
                   @if (canWriteDoc()) {
                     <div class="comment-footer">
                       <button class="reply-toggle-btn" (click)="startReply(comment.id)">
-                        <mat-icon class="reply-icon">reply</mat-icon> Reply
+                        <mat-icon class="reply-icon">reply</mat-icon>
+                        {{ 'document-detail.document-detail.reply' | translate }}
                       </button>
                     </div>
                   }
@@ -1817,16 +2085,20 @@
                                 mat-icon-button
                                 [matMenuTriggerFor]="replyMenu"
                                 class="comment-menu-btn"
-                                aria-label="Reply actions"
+                                [attr.aria-label]="
+                                  'document-detail.document-detail.reply-actions' | translate
+                                "
                               >
                                 <mat-icon>more_vert</mat-icon>
                               </button>
                               <mat-menu #replyMenu="matMenu">
                                 <button mat-menu-item (click)="startEditComment(reply)">
-                                  <mat-icon>edit</mat-icon> Edit
+                                  <mat-icon>edit</mat-icon>
+                                  {{ 'document-detail.document-detail.edit' | translate }}
                                 </button>
                                 <button mat-menu-item (click)="deleteComment(reply, comment.id)">
-                                  <mat-icon>delete</mat-icon> Delete
+                                  <mat-icon>delete</mat-icon>
+                                  {{ 'document-detail.document-detail.delete' | translate }}
                                 </button>
                               </mat-menu>
                             }
@@ -1843,16 +2115,20 @@
                                 mat-icon-button
                                 (click)="saveEditComment()"
                                 [disabled]="commentSaving()"
-                                matTooltip="Save"
-                                aria-label="Save"
+                                [matTooltip]="'document-detail.document-detail.save' | translate"
+                                [attr.aria-label]="
+                                  'document-detail.document-detail.save' | translate
+                                "
                               >
                                 <mat-icon>check</mat-icon>
                               </button>
                               <button
                                 mat-icon-button
                                 (click)="cancelEditComment()"
-                                matTooltip="Cancel"
-                                aria-label="Cancel"
+                                [matTooltip]="'document-detail.document-detail.cancel' | translate"
+                                [attr.aria-label]="
+                                  'document-detail.document-detail.cancel' | translate
+                                "
                               >
                                 <mat-icon>close</mat-icon>
                               </button>
@@ -1869,7 +2145,9 @@
                     <div class="reply-input-row">
                       <input
                         class="new-comment-input reply-input"
-                        placeholder="Write a reply here"
+                        [placeholder]="
+                          'document-detail.document-detail.write-a-reply-here' | translate
+                        "
                         [value]="replyText()"
                         (input)="replyText.set($any($event.target).value)"
                         (keydown.enter)="submitReply(comment.id)"
@@ -1879,16 +2157,16 @@
                           mat-icon-button
                           (click)="submitReply(comment.id)"
                           [disabled]="commentSaving()"
-                          matTooltip="Submit"
-                          aria-label="Submit"
+                          [matTooltip]="'document-detail.document-detail.submit' | translate"
+                          [attr.aria-label]="'document-detail.document-detail.submit' | translate"
                         >
                           <mat-icon>check</mat-icon>
                         </button>
                         <button
                           mat-icon-button
                           (click)="cancelReply()"
-                          matTooltip="Cancel"
-                          aria-label="Cancel"
+                          [matTooltip]="'document-detail.document-detail.cancel' | translate"
+                          [attr.aria-label]="'document-detail.document-detail.cancel' | translate"
                         >
                           <mat-icon>close</mat-icon>
                         </button>
@@ -1899,7 +2177,9 @@
               }
 
               @if (comments().length === 0) {
-                <p class="section-empty">No comments yet</p>
+                <p class="section-empty">
+                  {{ 'document-detail.document-detail.no-comments-yet' | translate }}
+                </p>
               }
 
               @if (canWriteDoc()) {
@@ -1907,7 +2187,9 @@
                 <div class="new-comment-row">
                   <input
                     class="new-comment-input"
-                    placeholder="Write a comment here"
+                    [placeholder]="
+                      'document-detail.document-detail.write-a-comment-here' | translate
+                    "
                     [value]="newCommentText()"
                     (input)="newCommentText.set($any($event.target).value)"
                     (keydown.enter)="submitComment()"
@@ -1917,16 +2199,16 @@
                       mat-icon-button
                       (click)="submitComment()"
                       [disabled]="commentSaving()"
-                      matTooltip="Submit"
-                      aria-label="Submit"
+                      [matTooltip]="'document-detail.document-detail.submit' | translate"
+                      [attr.aria-label]="'document-detail.document-detail.submit' | translate"
                     >
                       <mat-icon>check</mat-icon>
                     </button>
                     <button
                       mat-icon-button
                       (click)="cancelNewComment()"
-                      matTooltip="Cancel"
-                      aria-label="Cancel"
+                      [matTooltip]="'document-detail.document-detail.cancel' | translate"
+                      [attr.aria-label]="'document-detail.document-detail.cancel' | translate"
                     >
                       <mat-icon>close</mat-icon>
                     </button>
@@ -1942,7 +2224,10 @@
           <div class="panel-body activity-panel">
             @if (panelActivityLoading()) {
               <div class="panel-loading">
-                <mat-spinner diameter="28" aria-label="Loading" />
+                <mat-spinner
+                  diameter="28"
+                  [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                />
               </div>
             } @else {
               @for (entry of panelActivity(); track $index) {
@@ -1963,7 +2248,9 @@
               }
 
               @if (panelActivity().length === 0) {
-                <p class="section-empty">No recent activity</p>
+                <p class="section-empty">
+                  {{ 'document-detail.document-detail.no-recent-activity' | translate }}
+                </p>
               }
             }
           </div>

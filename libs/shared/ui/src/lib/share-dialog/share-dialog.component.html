@@ -1,15 +1,22 @@
-<h2 mat-dialog-title>Share the Document</h2>
+<h2 mat-dialog-title>{{ 'shared-ui.share-dialog.share-the-document' | translate }}</h2>
 
 <mat-dialog-content>
   <p class="share-subtitle">Internal Access link to {{ data.title }}.</p>
   <div class="share-link-row">
     <input class="share-link-input" readonly [value]="data.url" #linkInput />
-    <button mat-icon-button class="copy-btn" (click)="copyLink()" aria-label="Copy link">
+    <button
+      mat-icon-button
+      class="copy-btn"
+      (click)="copyLink()"
+      [attr.aria-label]="'shared-ui.share-dialog.copy-link' | translate"
+    >
       <mat-icon>link</mat-icon>
     </button>
   </div>
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-flat-button color="primary" mat-dialog-close>Close</button>
+  <button mat-flat-button color="primary" mat-dialog-close>
+    {{ 'shared-ui.share-dialog.close' | translate }}
+  </button>
 </mat-dialog-actions>

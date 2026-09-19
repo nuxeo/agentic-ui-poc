@@ -15,21 +15,27 @@
       @if (savedSearchOpen()) {
         <div class="saved-filters-panel">
           @if (savedSearchesLoading()) {
-            <div class="saved-filters-empty">Loading saved searches...</div>
+            <div class="saved-filters-empty">
+              {{ 'search.search-filters-drawer.loading-saved-searches' | translate }}
+            </div>
           } @else if (availableSavedSearches().length === 0) {
-            <div class="saved-filters-empty">No saved searches</div>
+            <div class="saved-filters-empty">
+              {{ 'search.search-filters-drawer.no-saved-searches' | translate }}
+            </div>
           } @else {
             <div class="saved-filters-search">
               <input
                 class="saved-filters-search-input"
                 type="text"
-                placeholder="Search..."
+                [placeholder]="'search.search-filters-drawer.search' | translate"
                 [value]="savedSearchFilter()"
                 (input)="savedSearchFilter.set($any($event.target).value)"
               />
             </div>
             @if (filteredSavedSearches().length === 0) {
-              <div class="saved-filters-empty">No matching saved searches</div>
+              <div class="saved-filters-empty">
+                {{ 'search.search-filters-drawer.no-matching-saved-searches' | translate }}
+              </div>
             } @else {
               @for (option of filteredSavedSearches(); track option.key) {
                 <button
@@ -66,12 +72,12 @@
 @if (viewMode() === 'filter') {
   <div class="filters-section">
     <div class="filter-group">
-      <p class="filter-title">Full Text</p>
+      <p class="filter-title">{{ 'search.search-filters-drawer.full-text' | translate }}</p>
       <div class="filter-input-wrap">
         <input
           class="filter-input"
           type="text"
-          placeholder="Search for something..."
+          [placeholder]="'search.search-filters-drawer.search-for-something' | translate"
           [value]="secondarySearchInput()"
           (input)="onSecondarySearchInput($any($event.target).value)"
           (keydown.enter)="onSecondarySearchEnter()"
@@ -86,7 +92,9 @@
 
     <div class="filter-group">
       <button class="filter-btn" type="button" (click)="toggleFilter('modification-date')">
-        <span class="filter-btn-label">Modification Date</span>
+        <span class="filter-btn-label">{{
+          'search.search-filters-drawer.modification-date' | translate
+        }}</span>
         <mat-icon class="filter-btn-icon">
           {{ isExpanded('modification-date') ? 'expand_less' : 'expand_more' }}
         </mat-icon>
@@ -95,7 +103,9 @@
       @if (isExpanded('modification-date')) {
         <div class="filter-options">
           @if (availableModificationDateWithData().length === 0) {
-            <span class="filter-no-results">No available results</span>
+            <span class="filter-no-results">{{
+              'search.search-filters-drawer.no-available-results' | translate
+            }}</span>
           } @else {
             @for (option of availableModificationDateWithData(); track option.key) {
               <mat-checkbox
@@ -112,13 +122,13 @@
     </div>
 
     <div class="filter-group">
-      <p class="filter-title">Authors</p>
+      <p class="filter-title">{{ 'search.search-filters-drawer.authors' | translate }}</p>
       <div class="typeahead-field">
         <div class="typeahead-input-wrap">
           <input
             class="typeahead-input"
             type="text"
-            placeholder="Search for authors..."
+            [placeholder]="'search.search-filters-drawer.search-for-authors' | translate"
             [value]="authorInput()"
             (input)="onAuthorInput($any($event.target).value)"
             (focus)="authorOpen.set(true)"
@@ -130,7 +140,9 @@
         @if (authorOpen()) {
           <div class="typeahead-panel">
             @if (filteredAuthors().length === 0) {
-              <div class="typeahead-hint">No results found</div>
+              <div class="typeahead-hint">
+                {{ 'search.search-filters-drawer.no-results-found' | translate }}
+              </div>
             } @else {
               @for (author of filteredAuthors(); track author.key) {
                 <button class="typeahead-option" type="button" (mousedown)="selectAuthor(author)">
@@ -144,13 +156,13 @@
     </div>
 
     <div class="filter-group">
-      <p class="filter-title">Collections</p>
+      <p class="filter-title">{{ 'search.search-filters-drawer.collections' | translate }}</p>
       <div class="typeahead-field">
         <div class="typeahead-input-wrap">
           <input
             class="typeahead-input"
             type="text"
-            placeholder="Select a value."
+            [placeholder]="'search.search-filters-drawer.select-a-value' | translate"
             [value]="collectionInput()"
             (input)="onCollectionInput($any($event.target).value)"
             (focus)="onCollectionFocus()"
@@ -162,9 +174,13 @@
         @if (collectionOpen()) {
           <div class="typeahead-panel">
             @if (collectionsLoading()) {
-              <div class="typeahead-hint">Loading collections...</div>
+              <div class="typeahead-hint">
+                {{ 'search.search-filters-drawer.loading-collections' | translate }}
+              </div>
             } @else if (filteredCollections().length === 0) {
-              <div class="typeahead-hint">No results found</div>
+              <div class="typeahead-hint">
+                {{ 'search.search-filters-drawer.no-results-found' | translate }}
+              </div>
             } @else {
               @for (collection of filteredCollections(); track collection.key) {
                 <button
@@ -182,7 +198,7 @@
     </div>
 
     <div class="filter-group">
-      <p class="filter-title">Tags</p>
+      <p class="filter-title">{{ 'search.search-filters-drawer.tags' | translate }}</p>
       <div class="typeahead-field">
         <div class="typeahead-input-wrap">
           <input
@@ -200,7 +216,9 @@
         @if (tagOpen()) {
           <div class="typeahead-panel">
             @if (!tagInput().trim()) {
-              <div class="typeahead-hint">Please enter 1 or more characters</div>
+              <div class="typeahead-hint">
+                {{ 'search.search-filters-drawer.please-enter-1-or-more-characters' | translate }}
+              </div>
             } @else if (filteredTags().length === 0) {
               <div class="typeahead-hint">No results for {{ tagInput().trim() }}</div>
             } @else if (filteredTags().length > 0) {
@@ -217,7 +235,9 @@
 
     <div class="filter-group">
       <button class="filter-btn" type="button" (click)="toggleFilter('nature')">
-        <span class="filter-btn-label">Nature</span>
+        <span class="filter-btn-label">{{
+          'search.search-filters-drawer.nature' | translate
+        }}</span>
         <mat-icon class="filter-btn-icon">
           {{ isExpanded('nature') ? 'expand_less' : 'expand_more' }}
         </mat-icon>
@@ -226,7 +246,9 @@
       @if (isExpanded('nature')) {
         <div class="filter-options">
           @if (availableNatureWithData().length === 0) {
-            <span class="filter-no-results">No available results</span>
+            <span class="filter-no-results">{{
+              'search.search-filters-drawer.no-available-results' | translate
+            }}</span>
           } @else {
             @for (option of availableNatureWithData(); track option.key) {
               <mat-checkbox
@@ -244,7 +266,9 @@
 
     <div class="filter-group">
       <button class="filter-btn" type="button" (click)="toggleFilter('subjects')">
-        <span class="filter-btn-label">Subjects</span>
+        <span class="filter-btn-label">{{
+          'search.search-filters-drawer.subjects' | translate
+        }}</span>
         <mat-icon class="filter-btn-icon">
           {{ isExpanded('subjects') ? 'expand_less' : 'expand_more' }}
         </mat-icon>
@@ -253,7 +277,9 @@
       @if (isExpanded('subjects')) {
         <div class="filter-options">
           @if (availableSubjectsWithData().length === 0) {
-            <span class="filter-no-results">No available results</span>
+            <span class="filter-no-results">{{
+              'search.search-filters-drawer.no-available-results' | translate
+            }}</span>
           } @else {
             @for (option of availableSubjectsWithData(); track option.key) {
               <mat-checkbox
@@ -271,7 +297,9 @@
 
     <div class="filter-group">
       <button class="filter-btn" type="button" (click)="toggleFilter('coverage')">
-        <span class="filter-btn-label">Coverage</span>
+        <span class="filter-btn-label">{{
+          'search.search-filters-drawer.coverage' | translate
+        }}</span>
         <mat-icon class="filter-btn-icon">
           {{ isExpanded('coverage') ? 'expand_less' : 'expand_more' }}
         </mat-icon>
@@ -280,7 +308,9 @@
       @if (isExpanded('coverage')) {
         <div class="filter-options">
           @if (availableCoverageWithData().length === 0) {
-            <span class="filter-no-results">No available results</span>
+            <span class="filter-no-results">{{
+              'search.search-filters-drawer.no-available-results' | translate
+            }}</span>
           } @else {
             @for (option of availableCoverageWithData(); track option.key) {
               <mat-checkbox
@@ -298,7 +328,7 @@
 
     <div class="filter-group">
       <button class="filter-btn" type="button" (click)="toggleFilter('size')">
-        <span class="filter-btn-label">Size</span>
+        <span class="filter-btn-label">{{ 'search.search-filters-drawer.size' | translate }}</span>
         <mat-icon class="filter-btn-icon">
           {{ isExpanded('size') ? 'expand_less' : 'expand_more' }}
         </mat-icon>
@@ -307,7 +337,9 @@
       @if (isExpanded('size')) {
         <div class="filter-options">
           @if (availableSizesWithData().length === 0) {
-            <span class="filter-no-results">No available results</span>
+            <span class="filter-no-results">{{
+              'search.search-filters-drawer.no-available-results' | translate
+            }}</span>
           } @else {
             @for (option of availableSizesWithData(); track option.key) {
               <mat-checkbox
@@ -335,7 +367,7 @@
         [disabled]="!hasActiveFilters()"
         (click)="resetFilters()"
       >
-        Reset
+        {{ 'search.search-filters-drawer.reset' | translate }}
       </button>
       <button
         mat-flat-button
@@ -345,7 +377,7 @@
         [disabled]="!hasActiveFilters()"
         (click)="openSaveAsDialog()"
       >
-        Save As
+        {{ 'search.search-filters-drawer.save-as' | translate }}
       </button>
     </div>
   </div>

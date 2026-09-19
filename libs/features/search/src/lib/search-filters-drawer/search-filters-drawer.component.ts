@@ -21,6 +21,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { SearchQueueComponent } from '../search-queue/search-queue.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 interface CountOption {
   key: string;
@@ -42,6 +43,7 @@ type DrawerViewMode = 'filter' | 'queue';
   selector: 'lib-search-filters-drawer',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatIconModule,
     MatButtonModule,
     MatCheckboxModule,

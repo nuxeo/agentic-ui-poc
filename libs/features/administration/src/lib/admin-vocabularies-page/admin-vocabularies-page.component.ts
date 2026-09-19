@@ -28,11 +28,13 @@ import {
   VocabularyEntryFormDialogData,
   VocabularyEntryFormDialogResult,
 } from '../vocabulary-entry-form-dialog/vocabulary-entry-form-dialog.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-admin-vocabularies-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatFormFieldModule,
     MatSelectModule,

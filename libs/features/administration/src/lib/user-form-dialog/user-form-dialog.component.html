@@ -1,7 +1,7 @@
 <div class="dialog-shell">
   @if (saving()) {
     <div class="dialog-busy" aria-busy="true" aria-live="polite">
-      <mat-spinner diameter="40" aria-label="Loading" />
+      <mat-spinner diameter="40" [attr.aria-label]="'admin.user-form-dialog.loading' | translate" />
     </div>
   }
   <div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
@@ -10,11 +10,14 @@
   <mat-dialog-content class="form">
     @if (loadingGroups) {
       <div class="spinner-wrap">
-        <mat-spinner diameter="36" aria-label="Loading" />
+        <mat-spinner
+          diameter="36"
+          [attr.aria-label]="'admin.user-form-dialog.loading' | translate"
+        />
       </div>
     }
     <mat-form-field appearance="outline" class="full first-field">
-      <mat-label>Username</mat-label>
+      <mat-label>{{ 'admin.user-form-dialog.username' | translate }}</mat-label>
       <input
         matInput
         name="username"
@@ -25,19 +28,19 @@
       />
     </mat-form-field>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>First name</mat-label>
+      <mat-label>{{ 'admin.user-form-dialog.first-name' | translate }}</mat-label>
       <input matInput name="firstName" [(ngModel)]="firstName" [disabled]="saving()" />
     </mat-form-field>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>Last name</mat-label>
+      <mat-label>{{ 'admin.user-form-dialog.last-name' | translate }}</mat-label>
       <input matInput name="lastName" [(ngModel)]="lastName" [disabled]="saving()" />
     </mat-form-field>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>Company</mat-label>
+      <mat-label>{{ 'admin.user-form-dialog.company' | translate }}</mat-label>
       <input matInput name="company" [(ngModel)]="company" [disabled]="saving()" />
     </mat-form-field>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>Email</mat-label>
+      <mat-label>{{ 'admin.user-form-dialog.email' | translate }}</mat-label>
       <input
         matInput
         name="email"
@@ -49,7 +52,7 @@
       />
     </mat-form-field>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>Groups</mat-label>
+      <mat-label>{{ 'admin.user-form-dialog.groups' | translate }}</mat-label>
       <mat-chip-grid #groupChipGrid>
         @for (group of groups; track group) {
           <mat-chip-row (removed)="removeGroup(group)">
@@ -97,11 +100,11 @@
       (change)="onSetUserPasswordChange($event.checked)"
       color="primary"
     >
-      Set user password
+      {{ 'admin.user-form-dialog.set-user-password' | translate }}
     </mat-slide-toggle>
     @if (setUserPassword) {
       <mat-form-field appearance="outline" class="full">
-        <mat-label>Password</mat-label>
+        <mat-label>{{ 'admin.user-form-dialog.password' | translate }}</mat-label>
         <input
           matInput
           name="password"
@@ -113,7 +116,7 @@
         />
       </mat-form-field>
       <mat-form-field appearance="outline" class="full">
-        <mat-label>Verify password</mat-label>
+        <mat-label>{{ 'admin.user-form-dialog.verify-password' | translate }}</mat-label>
         <input
           matInput
           name="confirmPassword"
@@ -124,13 +127,15 @@
           required
         />
         @if (confirmPassword && password !== confirmPassword) {
-          <mat-error>Passwords do not match</mat-error>
+          <mat-error>{{ 'admin.user-form-dialog.passwords-do-not-match' | translate }}</mat-error>
         }
       </mat-form-field>
     }
   </mat-dialog-content>
   <mat-dialog-actions align="end" class="dialog-actions">
-    <button type="button" mat-button mat-dialog-close [disabled]="saving()">Cancel</button>
+    <button type="button" mat-button mat-dialog-close [disabled]="saving()">
+      {{ 'admin.user-form-dialog.cancel' | translate }}
+    </button>
     @if (data.mode === 'create') {
       <button
         type="button"
@@ -139,7 +144,7 @@
         (click)="submit(true)"
         [disabled]="!canSave"
       >
-        Create another
+        {{ 'admin.user-form-dialog.create-another' | translate }}
       </button>
     }
     <button

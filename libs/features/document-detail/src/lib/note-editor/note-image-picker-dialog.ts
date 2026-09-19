@@ -27,11 +27,13 @@ import {
   SelectionService,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { extractMainBlobFileName } from './note-image-url';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-note-image-picker-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatButtonModule,

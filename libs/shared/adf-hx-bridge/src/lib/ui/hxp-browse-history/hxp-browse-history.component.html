@@ -1,7 +1,7 @@
 <div class="hxp-history">
   <div class="hxp-history__filters">
     <label class="hxp-history__field">
-      <span class="hxp-history__label">Username</span>
+      <span class="hxp-history__label">{{ 'hxp.hxp-browse-history.username' | translate }}</span>
       <input
         type="text"
         class="hxp-history__input"
@@ -10,7 +10,7 @@
       />
     </label>
     <label class="hxp-history__field">
-      <span class="hxp-history__label">From</span>
+      <span class="hxp-history__label">{{ 'hxp.hxp-browse-history.from' | translate }}</span>
       <input
         type="date"
         class="hxp-history__input"
@@ -19,7 +19,7 @@
       />
     </label>
     <label class="hxp-history__field">
-      <span class="hxp-history__label">To</span>
+      <span class="hxp-history__label">{{ 'hxp.hxp-browse-history.to' | translate }}</span>
       <input
         type="date"
         class="hxp-history__input"
@@ -28,26 +28,26 @@
       />
     </label>
     <label class="hxp-history__field">
-      <span class="hxp-history__label">Action</span>
+      <span class="hxp-history__label">{{ 'hxp.hxp-browse-history.action' | translate }}</span>
       <select
         class="hxp-history__select"
         [value]="filterAction()"
         (change)="filterActionChange.emit($any($event.target).value)"
       >
-        <option value="">All</option>
+        <option value="">{{ 'hxp.hxp-browse-history.all' | translate }}</option>
         @for (action of availableActions(); track action.id) {
           <option [value]="action.id">{{ action.label }}</option>
         }
       </select>
     </label>
     <label class="hxp-history__field">
-      <span class="hxp-history__label">Category</span>
+      <span class="hxp-history__label">{{ 'hxp.hxp-browse-history.category' | translate }}</span>
       <select
         class="hxp-history__select"
         [value]="filterCategory()"
         (change)="filterCategoryChange.emit($any($event.target).value)"
       >
-        <option value="">All</option>
+        <option value="">{{ 'hxp.hxp-browse-history.all' | translate }}</option>
         @for (category of availableCategories(); track category.id) {
           <option [value]="category.id">{{ category.label }}</option>
         }
@@ -60,7 +60,9 @@
       <hxp-spinner diameter="24" />
     </div>
   } @else if (entries().length === 0) {
-    <p class="hxp-history__empty">No audit entries found.</p>
+    <p class="hxp-history__empty">
+      {{ 'hxp.hxp-browse-history.no-audit-entries-found' | translate }}
+    </p>
   } @else {
     <div class="hxp-history__table-wrap">
       <table class="hxp-history__table">
@@ -68,26 +70,26 @@
           <tr>
             <th>
               <button type="button" class="hxp-history__sort" (click)="toggleSort('eventId')">
-                Performed Action
+                {{ 'hxp.hxp-browse-history.performed-action' | translate }}
               </button>
             </th>
             <th>
               <button type="button" class="hxp-history__sort" (click)="toggleSort('eventDate')">
-                Date
+                {{ 'hxp.hxp-browse-history.date' | translate }}
               </button>
             </th>
             <th>
               <button type="button" class="hxp-history__sort" (click)="toggleSort('principalName')">
-                Username
+                {{ 'hxp.hxp-browse-history.username' | translate }}
               </button>
             </th>
             <th>
               <button type="button" class="hxp-history__sort" (click)="toggleSort('category')">
-                Category
+                {{ 'hxp.hxp-browse-history.category' | translate }}
               </button>
             </th>
-            <th>Comment</th>
-            <th>State</th>
+            <th>{{ 'hxp.hxp-browse-history.comment' | translate }}</th>
+            <th>{{ 'hxp.hxp-browse-history.state' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -112,7 +114,7 @@
         [disabled]="pageIndex() <= 0"
         (click)="previousPage()"
       >
-        Previous
+        {{ 'hxp.hxp-browse-history.previous' | translate }}
       </button>
       <span class="hxp-history__pager-label">
         Page {{ pageIndex() + 1 }} of {{ pageCount() }}
@@ -123,7 +125,7 @@
         [disabled]="pageIndex() + 1 >= pageCount()"
         (click)="nextPage()"
       >
-        Next
+        {{ 'hxp.hxp-browse-history.next' | translate }}
       </button>
     </div>
   }

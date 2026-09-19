@@ -25,11 +25,13 @@ import {
   AuditSummaryResponse,
   AuditFilterResponse,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-admin-audit-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     FormsModule,
     MatButtonModule,

@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>Export</h2>
+<h2 mat-dialog-title>{{ 'shared-ui.export-dialog.export' | translate }}</h2>
 
 <mat-dialog-content>
   @for (option of options; track option.type) {
@@ -13,5 +13,7 @@
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-stroked-button mat-dialog-close [disabled]="!!exporting()">Cancel</button>
+  <button mat-stroked-button mat-dialog-close [disabled]="!!exporting()">
+    {{ 'shared-ui.export-dialog.cancel' | translate }}
+  </button>
 </mat-dialog-actions>

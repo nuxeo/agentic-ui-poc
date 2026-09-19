@@ -77,11 +77,13 @@ import {
   UpdatePermissionDialogComponent,
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-collection-detail',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     FormsModule,
     MatIconModule,

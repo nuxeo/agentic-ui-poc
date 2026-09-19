@@ -31,6 +31,7 @@ import {
   PERMISSION_DENIED_MESSAGE,
   isPermissionDeniedError,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface EditCollectionDialogData {
   document: NuxeoDocument;
@@ -40,6 +41,7 @@ export interface EditCollectionDialogData {
   selector: 'lib-edit-collection-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,

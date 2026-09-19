@@ -3,13 +3,18 @@
   <div class="viewer-content" [class.fit-real]="fitMode() === 'real' && contentType() === 'image'">
     @if (loading()) {
       <div class="viewer-loading">
-        <mat-spinner diameter="36" aria-label="Loading" />
+        <mat-spinner
+          diameter="36"
+          [attr.aria-label]="'shared-ui.document-viewer.loading' | translate"
+        />
       </div>
     } @else if (annotationsTab() && !arenderAvailable()) {
       <div class="viewer-placeholder">
         <mat-icon class="placeholder-icon">edit_note</mat-icon>
-        <p>Annotations are not available for this document.</p>
-        <span class="mime-label">Use the View tab for the standard preview.</span>
+        <p>{{ 'shared-ui.document-viewer.annotations-are-not-available-for-this' | translate }}</p>
+        <span class="mime-label">{{
+          'shared-ui.document-viewer.use-the-view-tab-for-the' | translate
+        }}</span>
       </div>
     } @else if (showARenderViewer()) {
       @for (rid of [arenderReloadId()]; track rid) {
@@ -78,7 +83,7 @@
         @default {
           <div class="viewer-placeholder">
             <mat-icon class="placeholder-icon">insert_drive_file</mat-icon>
-            <p>Preview not available</p>
+            <p>{{ 'shared-ui.document-viewer.preview-not-available' | translate }}</p>
             @if (mimeType()) {
               <span class="mime-label">{{ mimeType() }}</span>
             }
@@ -108,32 +113,42 @@
   <!-- Image toolbar (zoom/rotate) -->
   @if (showImageToolbar()) {
     <div class="viewer-toolbar">
-      <button mat-icon-button matTooltip="Zoom in" aria-label="Zoom in" (click)="zoomIn()">
+      <button
+        mat-icon-button
+        [matTooltip]="'shared-ui.document-viewer.zoom-in' | translate"
+        [attr.aria-label]="'shared-ui.document-viewer.zoom-in' | translate"
+        (click)="zoomIn()"
+      >
         <mat-icon>zoom_in</mat-icon>
       </button>
       <button
         mat-icon-button
         [matTooltip]="fitMode() === 'width' ? 'Actual size' : 'Fit to viewer'"
-        aria-label="Toggle fit"
+        [attr.aria-label]="'shared-ui.document-viewer.toggle-fit' | translate"
         (click)="toggleFit()"
       >
         <mat-icon>{{ fitMode() === 'width' ? 'crop_free' : 'fit_screen' }}</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Zoom out" aria-label="Zoom out" (click)="zoomOut()">
+      <button
+        mat-icon-button
+        [matTooltip]="'shared-ui.document-viewer.zoom-out' | translate"
+        [attr.aria-label]="'shared-ui.document-viewer.zoom-out' | translate"
+        (click)="zoomOut()"
+      >
         <mat-icon>zoom_out</mat-icon>
       </button>
       <button
         mat-icon-button
-        matTooltip="Rotate left"
-        aria-label="Rotate left"
+        [matTooltip]="'shared-ui.document-viewer.rotate-left' | translate"
+        [attr.aria-label]="'shared-ui.document-viewer.rotate-left' | translate"
         (click)="rotateLeft()"
       >
         <mat-icon>rotate_left</mat-icon>
       </button>
       <button
         mat-icon-button
-        matTooltip="Rotate right"
-        aria-label="Rotate right"
+        [matTooltip]="'shared-ui.document-viewer.rotate-right' | translate"
+        [attr.aria-label]="'shared-ui.document-viewer.rotate-right' | translate"
         (click)="rotateRight()"
       >
         <mat-icon>rotate_right</mat-icon>
@@ -153,8 +168,8 @@
       @if (!annotationsTab()) {
         <button
           mat-icon-button
-          matTooltip="Open with Nuxeo Drive"
-          aria-label="Open with Nuxeo Drive"
+          [matTooltip]="'shared-ui.document-viewer.open-with-nuxeo-drive' | translate"
+          [attr.aria-label]="'shared-ui.document-viewer.open-with-nuxeo-drive' | translate"
           (click)="openWithDriveClicked.emit()"
         >
           <mat-icon>cloud_sync</mat-icon>
@@ -162,16 +177,16 @@
       }
       <button
         mat-icon-button
-        matTooltip="Preview"
-        aria-label="Preview"
+        [matTooltip]="'shared-ui.document-viewer.preview' | translate"
+        [attr.aria-label]="'shared-ui.document-viewer.preview' | translate"
         (click)="previewClicked.emit()"
       >
         <mat-icon>visibility</mat-icon>
       </button>
       <button
         mat-icon-button
-        matTooltip="Download"
-        aria-label="Download"
+        [matTooltip]="'shared-ui.document-viewer.download' | translate"
+        [attr.aria-label]="'shared-ui.document-viewer.download' | translate"
         (click)="downloadClicked.emit()"
       >
         <mat-icon>download</mat-icon>
@@ -179,8 +194,8 @@
       @if (showMainFileControls()) {
         <button
           mat-icon-button
-          matTooltip="Replace"
-          aria-label="Replace main file"
+          [matTooltip]="'shared-ui.document-viewer.replace' | translate"
+          [attr.aria-label]="'shared-ui.document-viewer.replace-main-file' | translate"
           [disabled]="mainFileActionInProgress() === 'replace-main'"
           (click)="replaceMainFileClicked.emit()"
         >
@@ -188,8 +203,8 @@
         </button>
         <button
           mat-icon-button
-          matTooltip="Remove"
-          aria-label="Remove main file"
+          [matTooltip]="'shared-ui.document-viewer.remove' | translate"
+          [attr.aria-label]="'shared-ui.document-viewer.remove-main-file' | translate"
           class="footer-remove-btn"
           [disabled]="mainFileActionInProgress() === 'remove-main'"
           (click)="removeMainFileClicked.emit()"
@@ -204,42 +219,52 @@
   @if (showVideoInfoCard()) {
     <div class="picture-cards">
       <div class="picture-card">
-        <h4 class="picture-card-title">Video Info</h4>
+        <h4 class="picture-card-title">{{ 'shared-ui.document-viewer.video-info' | translate }}</h4>
         <div class="picture-card-body">
           @if (videoInfo(); as vi) {
             @if (isFiniteNumber(vi.duration)) {
               <div class="info-row">
-                <span class="info-label">Duration</span>
+                <span class="info-label">{{
+                  'shared-ui.document-viewer.duration' | translate
+                }}</span>
                 <span class="info-value">{{ formatDuration(vi.duration) }}</span>
               </div>
             }
             @if (vi.width && vi.height) {
               <div class="info-row">
-                <span class="info-label">Resolution</span>
+                <span class="info-label">{{
+                  'shared-ui.document-viewer.resolution' | translate
+                }}</span>
                 <span class="info-value">{{ vi.width }} × {{ vi.height }}</span>
               </div>
             }
             @if (vi.format) {
               <div class="info-row">
-                <span class="info-label">Format</span>
+                <span class="info-label">{{ 'shared-ui.document-viewer.format' | translate }}</span>
                 <span class="info-value">{{ vi.format }}</span>
               </div>
             }
             @if (vi.videoCodec) {
               <div class="info-row">
-                <span class="info-label">Video Codec</span>
+                <span class="info-label">{{
+                  'shared-ui.document-viewer.video-codec' | translate
+                }}</span>
                 <span class="info-value">{{ vi.videoCodec }}</span>
               </div>
             }
             @if (vi.audioCodec) {
               <div class="info-row">
-                <span class="info-label">Audio Codec</span>
+                <span class="info-label">{{
+                  'shared-ui.document-viewer.audio-codec' | translate
+                }}</span>
                 <span class="info-value">{{ vi.audioCodec }}</span>
               </div>
             }
             @if (vi.frameRate) {
               <div class="info-row">
-                <span class="info-label">Frame Rate</span>
+                <span class="info-label">{{
+                  'shared-ui.document-viewer.frame-rate' | translate
+                }}</span>
                 <span class="info-value">{{ vi.frameRate }} fps</span>
               </div>
             }
@@ -254,30 +279,36 @@
     <div class="picture-cards">
       <!-- Picture Info -->
       <div class="picture-card">
-        <h4 class="picture-card-title">Picture Info</h4>
+        <h4 class="picture-card-title">
+          {{ 'shared-ui.document-viewer.picture-info' | translate }}
+        </h4>
         <div class="picture-card-body">
           <div class="info-row">
-            <span class="info-label">Dimensions</span>
+            <span class="info-label">{{ 'shared-ui.document-viewer.dimensions' | translate }}</span>
             <span class="info-value">{{ pictureInfo()!.width }} x {{ pictureInfo()!.height }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Format</span>
+            <span class="info-label">{{ 'shared-ui.document-viewer.format' | translate }}</span>
             <span class="info-value">{{ pictureInfo()!.format }}</span>
           </div>
           @if (pictureInfo()!.colorSpace) {
             <div class="info-row">
-              <span class="info-label">Color Profile</span>
+              <span class="info-label">{{
+                'shared-ui.document-viewer.color-profile' | translate
+              }}</span>
               <span class="info-value">{{ pictureInfo()!.colorSpace }}</span>
             </div>
           }
           @if (pictureInfo()!.depth) {
             <div class="info-row">
-              <span class="info-label">Bit Depth per Channel</span>
+              <span class="info-label">{{
+                'shared-ui.document-viewer.bit-depth-per-channel' | translate
+              }}</span>
               <span class="info-value">{{ pictureInfo()!.depth }}</span>
             </div>
           }
           <div class="info-row">
-            <span class="info-label">Weight</span>
+            <span class="info-label">{{ 'shared-ui.document-viewer.weight' | translate }}</span>
             <span class="info-value">{{ pictureInfo()!.weight }}</span>
           </div>
         </div>
@@ -286,7 +317,9 @@
       <!-- Additional Formats -->
       @if (pictureViews().length > 0) {
         <div class="picture-card">
-          <h4 class="picture-card-title">Additional Formats</h4>
+          <h4 class="picture-card-title">
+            {{ 'shared-ui.document-viewer.additional-formats' | translate }}
+          </h4>
           <div class="picture-card-body">
             @for (view of pictureViews(); track view.title) {
               <div class="format-row">
@@ -314,7 +347,7 @@
       <!-- EXIF -->
       @if (exifEntries().length > 0) {
         <div class="picture-card">
-          <h4 class="picture-card-title">EXIF</h4>
+          <h4 class="picture-card-title">{{ 'shared-ui.document-viewer.exif' | translate }}</h4>
           <div class="picture-card-body">
             @for (entry of exifEntries(); track entry.label) {
               <div class="info-row">
@@ -329,7 +362,7 @@
       <!-- IPTC -->
       @if (iptcEntries().length > 0) {
         <div class="picture-card">
-          <h4 class="picture-card-title">IPTC</h4>
+          <h4 class="picture-card-title">{{ 'shared-ui.document-viewer.iptc' | translate }}</h4>
           <div class="picture-card-body">
             @for (entry of iptcEntries(); track entry.label) {
               <div class="info-row">

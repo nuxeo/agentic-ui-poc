@@ -1,9 +1,8 @@
-<h2 mat-dialog-title>Upload to Content Lake</h2>
+<h2 mat-dialog-title>{{ 'kd.content-lake-upload.upload-to-content-lake' | translate }}</h2>
 
 <mat-dialog-content class="kd-content-lake-upload">
   <p class="kd-muted kd-content-lake-upload__intro">
-    Files are uploaded to Nuxeo first, then ingested into Content Lake so Knowledge Discovery agents
-    can cite them. Before upload, we search the repository and Content Lake for matching files.
+    {{ 'kd.content-lake-upload.files-are-uploaded-to-nuxeo-first' | translate }}
   </p>
 
   <div class="kd-content-lake-upload__path-row">
@@ -12,7 +11,7 @@
       appearance="outline"
       subscriptSizing="dynamic"
     >
-      <mat-label>Nuxeo folder path</mat-label>
+      <mat-label>{{ 'kd.content-lake-upload.nuxeo-folder-path' | translate }}</mat-label>
       <input
         matInput
         [ngModel]="parentPath()"
@@ -22,7 +21,11 @@
         placeholder="/default-domain/workspaces/MyWorkspace"
       />
       @if (loadingSubfolders()) {
-        <mat-spinner matSuffix diameter="18" aria-label="Loading" />
+        <mat-spinner
+          matSuffix
+          diameter="18"
+          [attr.aria-label]="'kd.content-lake-upload.loading' | translate"
+        />
       }
       <mat-autocomplete
         #folderAuto="matAutocomplete"
@@ -33,16 +36,16 @@
           <mat-option [value]="option.path">{{ option.title }}</mat-option>
         }
       </mat-autocomplete>
-      <mat-hint>Type / to browse subfolders</mat-hint>
+      <mat-hint>{{ 'kd.content-lake-upload.type-to-browse-subfolders' | translate }}</mat-hint>
     </mat-form-field>
     <button
       type="button"
       mat-icon-button
       class="kd-content-lake-upload__up-btn"
-      matTooltip="Up one folder level"
+      [matTooltip]="'kd.content-lake-upload.up-one-folder-level' | translate"
       [disabled]="isBusy() || !canGoUpOneFolderLevel()"
       (click)="goUpOneFolderLevel()"
-      aria-label="Up one folder level"
+      [attr.aria-label]="'kd.content-lake-upload.up-one-folder-level' | translate"
     >
       <mat-icon>arrow_upward</mat-icon>
     </button>
@@ -65,7 +68,7 @@
     />
     <span class="kd-content-lake-upload__picker-label">
       <mat-icon>upload_file</mat-icon>
-      Choose file(s)
+      {{ 'kd.content-lake-upload.choose-file-s' | translate }}
     </span>
   </label>
 
@@ -84,18 +87,20 @@
       class="kd-content-lake-upload__clear"
       (click)="clearSelection()"
     >
-      Clear
+      {{ 'kd.content-lake-upload.clear' | translate }}
     </button>
   }
 
   @if (checkingDuplicates()) {
-    <p class="kd-content-lake-upload__status">Checking for existing Content Lake copies...</p>
+    <p class="kd-content-lake-upload__status">
+      {{ 'kd.content-lake-upload.checking-for-existing-content-lake-copies' | translate }}
+    </p>
   }
 
   @if (duplicateMatches().length > 0) {
     <div class="kd-content-lake-upload__duplicates">
       <p class="kd-content-lake-upload__error">
-        These files match documents already indexed in Content Lake elsewhere in Nuxeo:
+        {{ 'kd.content-lake-upload.these-files-match-documents-already-indexed' | translate }}
       </p>
       <ul>
         @for (match of duplicateMatches(); track match.fileName) {
@@ -106,7 +111,7 @@
               class="kd-content-lake-upload__doc-link"
               (click)="openDocument(match.existingUid)"
             >
-              Open existing document
+              {{ 'kd.content-lake-upload.open-existing-document' | translate }}
             </button>
             <span class="kd-content-lake-upload__doc-meta">{{ match.existingPath }}</span>
           </li>
@@ -142,14 +147,16 @@
 
   @if (phase() === 'ingesting') {
     <div class="kd-content-lake-upload__progress">
-      <mat-spinner diameter="18" aria-label="Loading" />
-      <span>Ingesting into Content Lake...</span>
+      <mat-spinner diameter="18" [attr.aria-label]="'kd.content-lake-upload.loading' | translate" />
+      <span>{{ 'kd.content-lake-upload.ingesting-into-content-lake' | translate }}</span>
     </div>
   }
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button type="button" mat-button [disabled]="isBusy()" (click)="close()">Close</button>
+  <button type="button" mat-button [disabled]="isBusy()" (click)="close()">
+    {{ 'kd.content-lake-upload.close' | translate }}
+  </button>
   <button
     type="button"
     mat-flat-button

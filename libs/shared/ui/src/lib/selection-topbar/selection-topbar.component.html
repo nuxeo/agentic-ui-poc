@@ -3,10 +3,12 @@
     <span class="selected-label">All {{ selectedCount() }} item(s) selected</span>
     @if (!clearOnly()) {
       <button mat-button type="button" class="clear-btn" (click)="openSelectionPopup()">
-        Display selection
+        {{ 'shared-ui.selection-topbar.display-selection' | translate }}
       </button>
     }
-    <button mat-button type="button" class="clear-btn" (click)="cleared.emit()">Clear</button>
+    <button mat-button type="button" class="clear-btn" (click)="cleared.emit()">
+      {{ 'shared-ui.selection-topbar.clear' | translate }}
+    </button>
   </div>
 
   @if (!clearOnly()) {
@@ -35,7 +37,7 @@
   <button
     type="button"
     class="selection-popup-backdrop"
-    aria-label="Close selected items popup"
+    [attr.aria-label]="'shared-ui.selection-topbar.close-selected-items-popup' | translate"
     (click)="closeSelectionPopup()"
   ></button>
   <div
@@ -47,11 +49,13 @@
     tabindex="-1"
   >
     <div class="selection-popup-header">
-      <span id="selection-popup-title" class="selection-popup-title">Selected Items</span>
+      <span id="selection-popup-title" class="selection-popup-title">{{
+        'shared-ui.selection-topbar.selected-items' | translate
+      }}</span>
       <button
         mat-icon-button
         type="button"
-        aria-label="Close"
+        [attr.aria-label]="'shared-ui.selection-topbar.close' | translate"
         class="selection-popup-close"
         (click)="closeSelectionPopup()"
       >

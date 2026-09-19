@@ -9,7 +9,7 @@
         (click)="openSaveAsDialog()"
       >
         <mat-icon>bookmark_add</mat-icon>
-        Save As
+        {{ 'assets.asset-search-results.save-as' | translate }}
       </button>
     }
     @if (hasSelectedSavedSearch()) {
@@ -19,7 +19,7 @@
         type="button"
         (click)="onSaveSelectedSavedSearch()"
       >
-        Save
+        {{ 'assets.asset-search-results.save' | translate }}
       </button>
     }
     @if (hasSelectedSavedSearch()) {
@@ -27,14 +27,20 @@
         mat-icon-button
         type="button"
         [matMenuTriggerFor]="resultsActionsMenu"
-        aria-label="Results actions"
+        [attr.aria-label]="'assets.asset-search-results.results-actions' | translate"
       >
         <mat-icon>more_vert</mat-icon>
       </button>
       <mat-menu #resultsActionsMenu="matMenu">
-        <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
-        <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
-        <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">Delete</button>
+        <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">
+          {{ 'assets.asset-search-results.edit' | translate }}
+        </button>
+        <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">
+          {{ 'assets.asset-search-results.share' | translate }}
+        </button>
+        <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">
+          {{ 'assets.asset-search-results.delete' | translate }}
+        </button>
       </mat-menu>
     }
   </div>
@@ -48,8 +54,8 @@
     <div class="toolbar-actions">
       <button
         mat-icon-button
-        matTooltip="Export CSV"
-        aria-label="Export CSV"
+        [matTooltip]="'assets.asset-search-results.export-csv' | translate"
+        [attr.aria-label]="'assets.asset-search-results.export-csv' | translate"
         (click)="exportCsv()"
         class="toolbar-btn"
       >
@@ -59,7 +65,7 @@
       <button
         mat-icon-button
         [matTooltip]="viewMode() === 'list' ? 'Switch to Grid View' : ''"
-        aria-label="Grid view"
+        [attr.aria-label]="'assets.asset-search-results.grid-view' | translate"
         [attr.aria-pressed]="viewMode() === 'grid'"
         [class.active]="viewMode() === 'grid'"
         (click)="setViewMode('grid')"
@@ -71,7 +77,7 @@
       <button
         mat-icon-button
         [matTooltip]="viewMode() === 'grid' ? 'Switch to Table View' : ''"
-        aria-label="Table view"
+        [attr.aria-label]="'assets.asset-search-results.table-view' | translate"
         [attr.aria-pressed]="viewMode() === 'list'"
         [class.active]="viewMode() === 'list'"
         (click)="setViewMode('list')"
@@ -85,7 +91,10 @@
   <main class="results-content">
     @if (loading()) {
       <div class="results-loading">
-        <mat-spinner diameter="32" aria-label="Loading" />
+        <mat-spinner
+          diameter="32"
+          [attr.aria-label]="'assets.asset-search-results.loading' | translate"
+        />
       </div>
     }
 
@@ -94,7 +103,9 @@
     }
 
     @if (!loading() && !error() && resultCount() === 0 && viewMode() === 'grid') {
-      <div class="results-empty">No Documents match the search criteria.</div>
+      <div class="results-empty">
+        {{ 'assets.asset-search-results.no-documents-match-the-search-criteria' | translate }}
+      </div>
     }
 
     <!-- Grid View -->
@@ -143,12 +154,14 @@
           <button
             type="button"
             class="col-panel-backdrop"
-            aria-label="Close column picker"
+            [attr.aria-label]="'assets.asset-search-results.close-column-picker' | translate"
             (click)="closeColumnPanel()"
             (keydown.escape)="closeColumnPanel()"
           ></button>
           <div class="col-panel">
-            <p class="col-panel-title">Column Settings</p>
+            <p class="col-panel-title">
+              {{ 'assets.asset-search-results.column-settings' | translate }}
+            </p>
             <div class="col-panel-list">
               @for (col of columnsForPanel; track col.key) {
                 <mat-checkbox
@@ -160,8 +173,12 @@
               }
             </div>
             <div class="col-panel-actions">
-              <button mat-button (click)="resetColumns()">Reset</button>
-              <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+              <button mat-button (click)="resetColumns()">
+                {{ 'assets.asset-search-results.reset' | translate }}
+              </button>
+              <button mat-flat-button color="primary" (click)="applyColumns()">
+                {{ 'assets.asset-search-results.done' | translate }}
+              </button>
             </div>
           </div>
         }
@@ -194,8 +211,8 @@
               <button
                 mat-icon-button
                 class="gear-btn"
-                matTooltip="Manage columns"
-                aria-label="Manage columns"
+                [matTooltip]="'assets.asset-search-results.manage-columns' | translate"
+                [attr.aria-label]="'assets.asset-search-results.manage-columns' | translate"
                 (click)="openColumnPanel()"
               >
                 <mat-icon>tune</mat-icon>
@@ -243,7 +260,9 @@
           }
 
           @if (!loading() && resultCount() === 0) {
-            <div class="results-empty">No Documents match the search criteria.</div>
+            <div class="results-empty">
+              {{ 'assets.asset-search-results.no-documents-match-the-search-criteria' | translate }}
+            </div>
           }
         </div>
       </div>

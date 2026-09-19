@@ -1,5 +1,5 @@
 <div class="replace-dialog">
-  <h2>Replace File</h2>
+  <h2>{{ 'document-detail.replace-attachment-dialog.replace-file' | translate }}</h2>
 
   <label
     class="upload-zone"
@@ -11,13 +11,19 @@
     @if (selectedFile(); as file) {
       <span class="file-chosen">{{ file.name }}</span>
     } @else {
-      <span class="upload-link">Upload main file</span>
+      <span class="upload-link">{{
+        'document-detail.replace-attachment-dialog.upload-main-file' | translate
+      }}</span>
     }
     <input #fileInput type="file" hidden (change)="onFileSelected($event)" />
   </label>
 
   <div class="dialog-actions">
-    <button class="btn-cancel" (click)="cancel()">Cancel</button>
-    <button class="btn-replace" [disabled]="!selectedFile()" (click)="confirm()">Replace</button>
+    <button class="btn-cancel" (click)="cancel()">
+      {{ 'document-detail.replace-attachment-dialog.cancel' | translate }}
+    </button>
+    <button class="btn-replace" [disabled]="!selectedFile()" (click)="confirm()">
+      {{ 'document-detail.replace-attachment-dialog.replace' | translate }}
+    </button>
   </div>
 </div>

@@ -21,6 +21,7 @@ import {
   isMailSendError,
   permissionUpdateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface UpdatePermissionDialogData {
   documentUid: string;
@@ -39,6 +40,7 @@ const PERMISSION_OPTIONS = [
   selector: 'lib-update-permission-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -53,7 +55,76 @@ const PERMISSION_OPTIONS = [
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './update-permission-dialog.html',
-  styleUrl: './update-permission-dialog.scss',
+  styles: [
+    `
+      :host {
+        display: block;
+        min-width: 440px;
+      }
+
+      mat-dialog-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-top: 8px !important;
+      }
+
+      .full-width {
+        width: 100%;
+      }
+
+      .field-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 6px;
+      }
+
+      .time-frame-section {
+        margin-bottom: 8px;
+      }
+
+      .time-frame-radios {
+        display: flex;
+        gap: 24px;
+      }
+
+      .date-fields {
+        display: flex;
+        gap: 16px;
+
+        mat-form-field {
+          flex: 1;
+        }
+      }
+
+      .notify-checkbox {
+        margin: 4px 0 8px;
+      }
+
+      .mail-hint {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+        line-height: 1.4;
+      }
+
+      .notify-section {
+        margin-top: 4px;
+      }
+
+      mat-dialog-actions {
+        display: flex;
+        gap: 8px;
+        padding: 8px 24px 16px;
+      }
+
+      .spacer {
+        flex: 1;
+      }
+    `,
+  ],
 })
 export class UpdatePermissionDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<UpdatePermissionDialogComponent>);

@@ -31,11 +31,13 @@ import {
   aiErrorMessage,
   type Insight,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     MatDialogModule,
     MatButtonModule,

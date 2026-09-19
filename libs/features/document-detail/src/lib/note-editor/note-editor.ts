@@ -44,11 +44,13 @@ import { applyHeaderFormatSelectionOnly, type QuillRange } from './note-quill-he
 import { NoteImagePickerDialogComponent } from './note-image-picker-dialog';
 import { buildNoteImagesInsertHtml } from './note-image-insert';
 import { notePictureInsertUrl } from './note-image-url';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-note-editor',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatButtonModule,
     MatDialogModule,

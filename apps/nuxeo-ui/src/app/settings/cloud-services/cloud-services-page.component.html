@@ -3,7 +3,9 @@
     <div class="connected-accounts-page__title" role="heading" aria-level="2">{{ title }}</div>
 
     @if (loading()) {
-      <div class="connected-accounts-page__state">Loading connected accounts…</div>
+      <div class="connected-accounts-page__state">
+        {{ 'app.cloud-services-page.loading-connected-accounts' | translate }}
+      </div>
     } @else {
       @if (error(); as errorMessage) {
         <div class="connected-accounts-page__state connected-accounts-page__state--error">
@@ -14,18 +16,20 @@
           <table class="connected-accounts-table">
             <thead>
               <tr>
-                <th>Service Name</th>
-                <th>Nuxeo Login</th>
-                <th>Service Login</th>
-                <th>Creation Date</th>
-                <th>Shared</th>
+                <th>{{ 'app.cloud-services-page.service-name' | translate }}</th>
+                <th>{{ 'app.cloud-services-page.nuxeo-login' | translate }}</th>
+                <th>{{ 'app.cloud-services-page.service-login' | translate }}</th>
+                <th>{{ 'app.cloud-services-page.creation-date' | translate }}</th>
+                <th>{{ 'app.cloud-services-page.shared' | translate }}</th>
               </tr>
             </thead>
             <tbody>
               @if (serviceAccounts().length === 0) {
                 <tr>
                   <td colspan="5" class="connected-accounts-table__empty">
-                    <div class="connected-accounts-table__empty-content">No tokens defined.</div>
+                    <div class="connected-accounts-table__empty-content">
+                      {{ 'app.cloud-services-page.no-tokens-defined' | translate }}
+                    </div>
                   </td>
                 </tr>
               } @else {

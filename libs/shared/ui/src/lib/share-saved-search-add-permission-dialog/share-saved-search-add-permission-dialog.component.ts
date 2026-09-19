@@ -17,6 +17,7 @@ import {
   DocumentDetailService,
   type UserGroupSuggestion,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ShareSavedSearchAddPermissionDialogData {
   title?: string;
@@ -46,6 +47,7 @@ const RIGHT_OPTIONS = [
   selector: 'lib-share-saved-search-add-permission-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,

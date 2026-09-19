@@ -21,6 +21,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { BrowseComponent } from './browse';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 // jsdom does not implement it; the Satori breadcrumbs and the Material menu both
 // observe their host element on construction.
@@ -147,7 +148,7 @@ describe('BrowseComponent — rendered document list', () => {
     manifest.set({});
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent, TranslateModule.forRoot()],
+      imports: [BrowseComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),

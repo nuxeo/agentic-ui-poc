@@ -6,17 +6,17 @@
   } @else if (documents().length === 0) {
     <div class="hxp-trash__empty">
       <hxp-icon name="delete-outline" size="lg" [decorative]="true" />
-      <p>Trash is empty</p>
+      <p>{{ 'hxp.hxp-browse-trash.trash-is-empty' | translate }}</p>
     </div>
   } @else {
     <div class="hxp-trash__table-wrap">
       <table class="hxp-trash__table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Last Modified</th>
-            <th>Actions</th>
+            <th>{{ 'hxp.hxp-browse-trash.name' | translate }}</th>
+            <th>{{ 'hxp.hxp-browse-trash.type' | translate }}</th>
+            <th>{{ 'hxp.hxp-browse-trash.last-modified' | translate }}</th>
+            <th>{{ 'hxp.hxp-browse-trash.actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -42,7 +42,7 @@
               <td>
                 <button type="button" class="hxp-trash__restore" (click)="restore.emit(doc)">
                   <hxp-icon name="restore" size="sm" [decorative]="true" />
-                  Restore
+                  {{ 'hxp.hxp-browse-trash.restore' | translate }}
                 </button>
               </td>
             </tr>

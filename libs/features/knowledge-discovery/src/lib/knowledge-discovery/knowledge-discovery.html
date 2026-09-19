@@ -1,21 +1,21 @@
 <div class="kd-page">
   <header class="kd-topbar">
     <div class="kd-topbar__title">
-      <span class="kd-eyebrow">Knowledge Discovery</span>
-      <h1>Ask grounded questions with citations</h1>
+      <span class="kd-eyebrow">{{ 'kd.knowledge-discovery.knowledge-discovery' | translate }}</span>
+      <h1>{{ 'kd.knowledge-discovery.ask-grounded-questions-with-citations' | translate }}</h1>
     </div>
     <div class="kd-topbar__actions">
       <button mat-stroked-button type="button" (click)="openContentLakeUploadDialog()">
         <mat-icon>cloud_upload</mat-icon>
-        Upload to Content Lake
+        {{ 'kd.knowledge-discovery.upload-to-content-lake' | translate }}
       </button>
       <button mat-stroked-button type="button" (click)="loadReferenceData()">
         <mat-icon>sync</mat-icon>
-        Refresh metadata
+        {{ 'kd.knowledge-discovery.refresh-metadata' | translate }}
       </button>
       <button mat-stroked-button type="button" (click)="loadAgents()">
         <mat-icon>refresh</mat-icon>
-        Refresh agents
+        {{ 'kd.knowledge-discovery.refresh-agents' | translate }}
       </button>
     </div>
   </header>
@@ -40,7 +40,7 @@
             (click)="copyDebugInfo(detail); $event.preventDefault()"
           >
             <mat-icon>content_copy</mat-icon>
-            Copy
+            {{ 'kd.knowledge-discovery.copy' | translate }}
           </button>
         </summary>
         <pre class="kd-debug__body">{{ detail | json }}</pre>
@@ -67,7 +67,7 @@
             (click)="copyDebugInfo(detail); $event.preventDefault()"
           >
             <mat-icon>content_copy</mat-icon>
-            Copy
+            {{ 'kd.knowledge-discovery.copy' | translate }}
           </button>
         </summary>
         <pre class="kd-debug__body">{{ detail | json }}</pre>
@@ -94,7 +94,7 @@
             (click)="copyDebugInfo(detail); $event.preventDefault()"
           >
             <mat-icon>content_copy</mat-icon>
-            Copy
+            {{ 'kd.knowledge-discovery.copy' | translate }}
           </button>
         </summary>
         <pre class="kd-debug__body">{{ detail | json }}</pre>
@@ -107,14 +107,17 @@
       <section class="kd-card kd-composer">
         <div class="kd-card__header">
           <div>
-            <span class="kd-section-label">Ask</span>
-            <h2>What would you like to know?</h2>
+            <span class="kd-section-label">{{ 'kd.knowledge-discovery.ask' | translate }}</span>
+            <h2>{{ 'kd.knowledge-discovery.what-would-you-like-to-know' | translate }}</h2>
           </div>
 
           @if (isAwaitingResponse()) {
             <span class="kd-inline-status">
-              <mat-spinner diameter="16" aria-label="Loading" />
-              Waiting for answer
+              <mat-spinner
+                diameter="16"
+                [attr.aria-label]="'kd.knowledge-discovery.loading' | translate"
+              />
+              {{ 'kd.knowledge-discovery.waiting-for-answer' | translate }}
             </span>
           } @else {
             @if (selectedAgent(); as agent) {
@@ -127,11 +130,13 @@
         </div>
 
         @if (!hasSelection()) {
-          <p class="kd-helper">Select an agent on the right to start asking questions.</p>
+          <p class="kd-helper">
+            {{ 'kd.knowledge-discovery.select-an-agent-on-the-right' | translate }}
+          </p>
         }
 
         <mat-form-field appearance="outline" class="kd-block-field" subscriptSizing="dynamic">
-          <mat-label>Your question</mat-label>
+          <mat-label>{{ 'kd.knowledge-discovery.your-question' | translate }}</mat-label>
           <textarea
             matInput
             rows="3"
@@ -144,9 +149,11 @@
 
         @if (agentSupportsDynamicFilter()) {
           <details class="kd-advanced">
-            <summary>Advanced filter (JSON, optional)</summary>
+            <summary>
+              {{ 'kd.knowledge-discovery.advanced-filter-json-optional' | translate }}
+            </summary>
             <mat-form-field appearance="outline" class="kd-block-field">
-              <mat-label>Dynamic filter JSON</mat-label>
+              <mat-label>{{ 'kd.knowledge-discovery.dynamic-filter-json' | translate }}</mat-label>
               <textarea
                 matInput
                 rows="3"
@@ -166,7 +173,10 @@
         @if (isAwaitingResponse()) {
           <div class="kd-progress-card">
             <div class="kd-progress-card__icon">
-              <mat-spinner diameter="18" aria-label="Loading" />
+              <mat-spinner
+                diameter="18"
+                [attr.aria-label]="'kd.knowledge-discovery.loading' | translate"
+              />
             </div>
             <div class="kd-progress-card__content">
               <p class="kd-progress-card__title">{{ loadingTitle() }}</p>
@@ -183,7 +193,7 @@
             (click)="clearQuestion()"
           >
             <mat-icon>close</mat-icon>
-            Clear
+            {{ 'kd.knowledge-discovery.clear' | translate }}
           </button>
           <button
             mat-flat-button
@@ -193,7 +203,7 @@
             type="button"
           >
             <mat-icon>send</mat-icon>
-            Ask
+            {{ 'kd.knowledge-discovery.ask' | translate }}
           </button>
         </div>
       </section>
@@ -201,8 +211,10 @@
       <section class="kd-card kd-answer">
         <div class="kd-card__header">
           <div>
-            <span class="kd-section-label">Response</span>
-            <h2>Answer</h2>
+            <span class="kd-section-label">{{
+              'kd.knowledge-discovery.response' | translate
+            }}</span>
+            <h2>{{ 'kd.knowledge-discovery.answer' | translate }}</h2>
           </div>
 
           @if (answer(); as currentAnswer) {
@@ -223,7 +235,10 @@
             @if (isAwaitingResponse() && !currentAnswer.answer) {
               <div class="kd-answer__loading">
                 <div class="kd-answer__loading-header">
-                  <mat-spinner diameter="20" aria-label="Loading" />
+                  <mat-spinner
+                    diameter="20"
+                    [attr.aria-label]="'kd.knowledge-discovery.loading' | translate"
+                  />
                   <div>
                     <p class="kd-answer__loading-title">{{ loadingTitle() }}</p>
                     <p class="kd-answer__loading-copy">{{ loadingMessage() }}</p>
@@ -253,7 +268,7 @@
                 }
               </div>
             } @else {
-              <p class="kd-empty">No answer text yet.</p>
+              <p class="kd-empty">{{ 'kd.knowledge-discovery.no-answer-text-yet' | translate }}</p>
             }
 
             @if (currentAnswer.error) {
@@ -267,7 +282,7 @@
                 (click)="submitFeedback('Good')"
               >
                 <mat-icon>thumb_up</mat-icon>
-                Helpful
+                {{ 'kd.knowledge-discovery.helpful' | translate }}
               </button>
               <button
                 mat-stroked-button
@@ -275,7 +290,7 @@
                 (click)="submitFeedback('Bad')"
               >
                 <mat-icon>thumb_down</mat-icon>
-                Not helpful
+                {{ 'kd.knowledge-discovery.not-helpful' | translate }}
               </button>
               <button
                 mat-stroked-button
@@ -283,14 +298,14 @@
                 (click)="submitFeedback('Retry')"
               >
                 <mat-icon>refresh</mat-icon>
-                Retry
+                {{ 'kd.knowledge-discovery.retry' | translate }}
               </button>
             </div>
           </div>
         } @else {
           <div class="kd-empty-state">
             <mat-icon>psychology</mat-icon>
-            <p>Ask a question to see the grounded answer here.</p>
+            <p>{{ 'kd.knowledge-discovery.ask-a-question-to-see-the' | translate }}</p>
           </div>
         }
       </section>
@@ -300,17 +315,23 @@
       <section class="kd-card kd-agents">
         <div class="kd-card__header">
           <div>
-            <span class="kd-section-label">Agents</span>
+            <span class="kd-section-label">{{ 'kd.knowledge-discovery.agents' | translate }}</span>
             <h3>Available ({{ agents().length }})</h3>
           </div>
         </div>
 
         @if (loadingAgents()) {
-          <div class="kd-state"><mat-spinner diameter="20" aria-label="Loading" /></div>
+          <div class="kd-state">
+            <mat-spinner
+              diameter="20"
+              [attr.aria-label]="'kd.knowledge-discovery.loading' | translate"
+            />
+          </div>
         } @else if (agents().length === 0) {
           <p class="kd-empty">
-            No agents yet. Create one in the
-            <strong>Hyland Insight</strong> admin UI, then use <em>Refresh agents</em> above.
+            {{ 'kd.knowledge-discovery.no-agents-yet-create-one-in' | translate }}
+            <strong>{{ 'kd.knowledge-discovery.hyland-insight' | translate }}</strong> admin UI,
+            then use <em>{{ 'kd.knowledge-discovery.refresh-agents' | translate }}</em> above.
           </p>
         } @else {
           <ul class="kd-agent-list">
@@ -335,7 +356,9 @@
         <section class="kd-card kd-agent-summary">
           <div class="kd-card__header">
             <div>
-              <span class="kd-section-label">Selected</span>
+              <span class="kd-section-label">{{
+                'kd.knowledge-discovery.selected' | translate
+              }}</span>
               <h3>{{ agent.name }}</h3>
             </div>
           </div>
@@ -356,15 +379,15 @@
       <section class="kd-card">
         <div class="kd-card__header">
           <div>
-            <span class="kd-section-label">History</span>
-            <h3>Recent questions</h3>
+            <span class="kd-section-label">{{ 'kd.knowledge-discovery.history' | translate }}</span>
+            <h3>{{ 'kd.knowledge-discovery.recent-questions' | translate }}</h3>
           </div>
           @if (selectedAgentId()) {
             <button
               mat-icon-button
-              matTooltip="Reload history"
+              [matTooltip]="'kd.knowledge-discovery.reload-history' | translate"
               (click)="loadHistory(selectedAgentId() ?? '')"
-              aria-label="Reload history"
+              [attr.aria-label]="'kd.knowledge-discovery.reload-history' | translate"
             >
               <mat-icon>refresh</mat-icon>
             </button>
@@ -372,9 +395,14 @@
         </div>
 
         @if (loadingHistory()) {
-          <div class="kd-state"><mat-spinner diameter="20" aria-label="Loading" /></div>
+          <div class="kd-state">
+            <mat-spinner
+              diameter="20"
+              [attr.aria-label]="'kd.knowledge-discovery.loading' | translate"
+            />
+          </div>
         } @else if (history().length === 0) {
-          <p class="kd-empty">No recent questions.</p>
+          <p class="kd-empty">{{ 'kd.knowledge-discovery.no-recent-questions' | translate }}</p>
         } @else {
           <ul class="kd-history">
             @for (item of history(); track item.id) {
@@ -392,15 +420,20 @@
       <section class="kd-card">
         <div class="kd-card__header">
           <div>
-            <span class="kd-section-label">Models</span>
-            <h3>Reference data</h3>
+            <span class="kd-section-label">{{ 'kd.knowledge-discovery.models' | translate }}</span>
+            <h3>{{ 'kd.knowledge-discovery.reference-data' | translate }}</h3>
           </div>
         </div>
 
         @if (loadingReferenceData()) {
-          <div class="kd-state"><mat-spinner diameter="20" aria-label="Loading" /></div>
+          <div class="kd-state">
+            <mat-spinner
+              diameter="20"
+              [attr.aria-label]="'kd.knowledge-discovery.loading' | translate"
+            />
+          </div>
         } @else if (models().length === 0) {
-          <p class="kd-empty">No models loaded.</p>
+          <p class="kd-empty">{{ 'kd.knowledge-discovery.no-models-loaded' | translate }}</p>
         } @else {
           <ul class="kd-reference">
             @for (model of models(); track model.modelName) {

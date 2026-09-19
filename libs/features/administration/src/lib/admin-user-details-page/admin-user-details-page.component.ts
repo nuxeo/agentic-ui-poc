@@ -32,6 +32,7 @@ import {
   ChangePasswordDialogComponent,
   ChangePasswordDialogData,
 } from '../change-password-dialog/change-password-dialog.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 const PERM_PAGE_SIZE = 10;
 
@@ -39,6 +40,7 @@ const PERM_PAGE_SIZE = 10;
   selector: 'lib-admin-user-details-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     RouterLink,
     MatButtonModule,
     MatIconModule,

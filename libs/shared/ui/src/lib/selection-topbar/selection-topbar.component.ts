@@ -21,11 +21,12 @@ import {
   ExtensionRuleContextService,
   type ExtensionActionDescriptor,
 } from '@nuxeo-satori/platform/extensions';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-selection-topbar',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule],
+  imports: [TranslatePipe, MatButtonModule, MatIconModule, MatTooltipModule],
   templateUrl: './selection-topbar.component.html',
   styleUrl: './selection-topbar.component.scss',
 })

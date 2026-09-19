@@ -26,6 +26,7 @@ import {
   type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 type UploadPhase = 'idle' | 'uploading' | 'ingesting' | 'complete' | 'error';
 
@@ -80,6 +81,7 @@ function getPathCompletionContext(path: string): { parentPath: string; partial: 
   selector: 'lib-content-lake-upload',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatButtonModule,

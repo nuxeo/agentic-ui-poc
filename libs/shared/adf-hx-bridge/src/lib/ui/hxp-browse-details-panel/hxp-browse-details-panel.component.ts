@@ -6,6 +6,7 @@ import { hxpDocTitle, hxpDocTypeLabel } from '../../utils/hxp-browse-cell.utils'
 import { hxpRelativeTime } from '../../utils/hxp-relative-time.utils';
 import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';
 import { HxpSpinnerComponent } from '../hxp-spinner/hxp-spinner.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export type HxpDetailsSubTab = 'info' | 'tags' | 'activity';
 
@@ -14,7 +15,7 @@ export type HxpDetailsSubTab = 'info' | 'tags' | 'activity';
   standalone: true,
   templateUrl: './hxp-browse-details-panel.component.html',
   styleUrl: './hxp-browse-details-panel.component.scss',
-  imports: [DatePipe, HxpIconComponent, HxpSpinnerComponent],
+  imports: [TranslatePipe, DatePipe, HxpIconComponent, HxpSpinnerComponent],
 })
 export class HxpBrowseDetailsPanelComponent {
   readonly document = input.required<Document>();
