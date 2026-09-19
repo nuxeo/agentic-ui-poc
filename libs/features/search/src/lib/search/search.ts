@@ -55,6 +55,8 @@ export type ViewMode = 'grid' | 'table' | 'list';
 interface ColumnDef {
   key: string;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   width: string;
 }
 
@@ -64,18 +66,23 @@ interface QuickFilterOption {
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'name', label: 'Title', width: '2fr' },
-  { key: 'type', label: 'Type', width: '1fr' },
-  { key: 'modified', label: 'Modified', width: '1fr' },
-  { key: 'contributor', label: 'Last contributor', width: '1.2fr' },
-  { key: 'state', label: 'State', width: '1fr' },
-  { key: 'version', label: 'Version', width: '0.8fr' },
-  { key: 'created', label: 'Created', width: '1fr' },
-  { key: 'author', label: 'Author', width: '1fr' },
-  { key: 'nature', label: 'Nature', width: '1fr' },
-  { key: 'coverage', label: 'Coverage', width: '1fr' },
-  { key: 'subjects', label: 'Subjects', width: '1fr' },
-  { key: 'flags', label: 'Flags', width: '1fr' },
+  { key: 'name', labelKey: 'search.column.name', label: 'Title', width: '2fr' },
+  { key: 'type', labelKey: 'search.column.type', label: 'Type', width: '1fr' },
+  { key: 'modified', labelKey: 'search.column.modified', label: 'Modified', width: '1fr' },
+  {
+    key: 'contributor',
+    labelKey: 'search.column.contributor',
+    label: 'Last contributor',
+    width: '1.2fr',
+  },
+  { key: 'state', labelKey: 'search.column.state', label: 'State', width: '1fr' },
+  { key: 'version', labelKey: 'search.column.version', label: 'Version', width: '0.8fr' },
+  { key: 'created', labelKey: 'search.column.created', label: 'Created', width: '1fr' },
+  { key: 'author', labelKey: 'search.column.author', label: 'Author', width: '1fr' },
+  { key: 'nature', labelKey: 'search.column.nature', label: 'Nature', width: '1fr' },
+  { key: 'coverage', labelKey: 'search.column.coverage', label: 'Coverage', width: '1fr' },
+  { key: 'subjects', labelKey: 'search.column.subjects', label: 'Subjects', width: '1fr' },
+  { key: 'flags', labelKey: 'search.column.flags', label: 'Flags', width: '1fr' },
 ];
 
 const QUICK_FILTER_OPTIONS: QuickFilterOption[] = [

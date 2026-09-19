@@ -26,6 +26,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 interface CountOption {
   key: string;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   value: string;
   count: number;
 }
@@ -1267,39 +1269,48 @@ export class SearchFiltersDrawerComponent {
 type ModifiedDateId = 'last24h' | 'lastWeek' | 'lastMonth' | 'lastYear' | 'moreThan1YearAgo';
 type SizeBucketId = 'tiny' | 'small' | 'medium' | 'big' | 'huge';
 
-const MODIFIED_DATE_OPTION_DEFS: Array<{ id: ModifiedDateId; label: string }> = [
-  { id: 'last24h', label: 'Last 24h' },
-  { id: 'lastWeek', label: 'Last week' },
-  { id: 'lastMonth', label: 'Last month' },
-  { id: 'lastYear', label: 'Last year' },
-  { id: 'moreThan1YearAgo', label: 'More than a year ago' },
+const MODIFIED_DATE_OPTION_DEFS: Array<{ id: ModifiedDateId; labelKey: string; label: string }> = [
+  { id: 'last24h', labelKey: 'search.filter.last24h', label: 'Last 24h' },
+  { id: 'lastWeek', labelKey: 'search.filter.last-week', label: 'Last week' },
+  { id: 'lastMonth', labelKey: 'search.filter.last-month', label: 'Last month' },
+  { id: 'lastYear', labelKey: 'search.filter.last-year', label: 'Last year' },
+  {
+    id: 'moreThan1YearAgo',
+    labelKey: 'search.filter.more-than1-year-ago',
+    label: 'More than a year ago',
+  },
 ];
 
-const SIZE_OPTION_DEFS: Array<{ value: SizeBucketId; label: string }> = [
+const SIZE_OPTION_DEFS: Array<{ value: SizeBucketId; labelKey: string; label: string }> = [
   {
     value: 'tiny',
+    labelKey: 'search.filter.option.less-than-100-kb',
     label: 'Less than 100 KB',
   },
   {
     value: 'small',
+    labelKey: 'search.filter.option.between-100-kb-and-1-mb',
     label: 'Between 100 KB and 1 MB',
   },
   {
     value: 'medium',
+    labelKey: 'search.filter.option.between-1-mb-and-10-mb',
     label: 'Between 1 MB and 10 MB',
   },
   {
     value: 'big',
+    labelKey: 'search.filter.option.between-10-mb-and-100-mb',
     label: 'Between 10 MB and 100 MB',
   },
   {
     value: 'huge',
+    labelKey: 'search.filter.option.more-than-100-mb',
     label: 'More than 100 MB',
   },
 ];
 
 const QUEUE_QUICK_FILTER_OPTIONS = [
-  { label: 'No Containers', value: 'noFolder' },
-  { label: 'Most Recent', value: 'mostRecent' },
-  { label: 'Validated', value: 'onlyValidated' },
+  { labelKey: 'search.filter.option.no-containers', label: 'No Containers', value: 'noFolder' },
+  { labelKey: 'search.filter.option.most-recent', label: 'Most Recent', value: 'mostRecent' },
+  { labelKey: 'search.filter.option.validated', label: 'Validated', value: 'onlyValidated' },
 ] as const;

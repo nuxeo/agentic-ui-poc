@@ -35,22 +35,29 @@ export type ViewMode = 'grid' | 'list';
 export interface ColumnDef {
   key: string;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   width: string;
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'name', label: 'Title', width: '280px' },
-  { key: 'type', label: 'Type', width: '120px' },
-  { key: 'modified', label: 'Modified', width: '140px' },
-  { key: 'contributor', label: 'Last contributor', width: '180px' },
-  { key: 'state', label: 'State', width: '120px' },
-  { key: 'version', label: 'Version', width: '100px' },
-  { key: 'created', label: 'Created', width: '140px' },
-  { key: 'author', label: 'Author', width: '150px' },
-  { key: 'nature', label: 'Nature', width: '140px' },
-  { key: 'coverage', label: 'Coverage', width: '140px' },
-  { key: 'subjects', label: 'Subjects', width: '200px' },
-  { key: 'flags', label: 'Flags', width: '120px' },
+  { key: 'name', labelKey: 'assets.column.name', label: 'Title', width: '280px' },
+  { key: 'type', labelKey: 'assets.column.type', label: 'Type', width: '120px' },
+  { key: 'modified', labelKey: 'assets.column.modified', label: 'Modified', width: '140px' },
+  {
+    key: 'contributor',
+    labelKey: 'assets.column.contributor',
+    label: 'Last contributor',
+    width: '180px',
+  },
+  { key: 'state', labelKey: 'assets.column.state', label: 'State', width: '120px' },
+  { key: 'version', labelKey: 'assets.column.version', label: 'Version', width: '100px' },
+  { key: 'created', labelKey: 'assets.column.created', label: 'Created', width: '140px' },
+  { key: 'author', labelKey: 'assets.column.author', label: 'Author', width: '150px' },
+  { key: 'nature', labelKey: 'assets.column.nature', label: 'Nature', width: '140px' },
+  { key: 'coverage', labelKey: 'assets.column.coverage', label: 'Coverage', width: '140px' },
+  { key: 'subjects', labelKey: 'assets.column.subjects', label: 'Subjects', width: '200px' },
+  { key: 'flags', labelKey: 'assets.column.flags', label: 'Flags', width: '120px' },
 ];
 
 export interface AssetResult {

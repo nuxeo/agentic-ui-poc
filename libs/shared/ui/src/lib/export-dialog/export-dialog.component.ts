@@ -17,6 +17,8 @@ export type ExportType = 'thumbnail' | 'pdf' | 'zip' | 'xml';
 interface ExportOption {
   type: ExportType;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   icon: string;
 }
 
@@ -98,10 +100,10 @@ export class ExportDialogComponent {
   readonly exporting = signal<ExportType | null>(null);
 
   readonly options: ExportOption[] = [
-    { type: 'thumbnail', label: 'Thumbnail', icon: 'image' },
-    { type: 'pdf', label: 'PDF', icon: 'picture_as_pdf' },
-    { type: 'zip', label: 'ZIP Export', icon: 'folder_zip' },
-    { type: 'xml', label: 'XML Export', icon: 'code' },
+    { type: 'thumbnail', labelKey: 'rendition.thumbnail', label: 'Thumbnail', icon: 'image' },
+    { type: 'pdf', labelKey: 'rendition.pdf', label: 'PDF', icon: 'picture_as_pdf' },
+    { type: 'zip', labelKey: 'rendition.zip', label: 'ZIP Export', icon: 'folder_zip' },
+    { type: 'xml', labelKey: 'rendition.xml', label: 'XML Export', icon: 'code' },
   ];
 
   onExport(type: ExportType): void {

@@ -256,7 +256,8 @@
                 (change)="toggleNature(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.label }}{{ getCountText(option.count) }}
+                {{ option.labelKey ? (option.labelKey | translate) : option.label
+                }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }
@@ -287,7 +288,8 @@
                 (change)="toggleSubject(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.label }}{{ getCountText(option.count) }}
+                {{ option.labelKey ? (option.labelKey | translate) : option.label
+                }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }
@@ -318,7 +320,8 @@
                 (change)="toggleCoverage(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.label }}{{ getCountText(option.count) }}
+                {{ option.labelKey ? (option.labelKey | translate) : option.label
+                }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }
@@ -347,7 +350,8 @@
                 (change)="toggleSize(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.label }}{{ getCountText(option.count) }}
+                {{ option.labelKey ? (option.labelKey | translate) : option.label
+                }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }

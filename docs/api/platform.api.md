@@ -1030,15 +1030,19 @@ const NOTE_DOCUMENT_PICKER_HEADERS: {
 const NOTE_DOCUMENT_PICKER_PROVIDER = "document_picker";
 const NOTE_FORMAT_OPTIONS: readonly [{
     readonly value: "text/html";
+    readonly labelKey: "note-format.html";
     readonly label: "HTML";
     }, {
     readonly value: "text/plain";
+    readonly labelKey: "note-format.plain";
     readonly label: "Text";
     }, {
     readonly value: "text/xml";
+    readonly labelKey: "note-format.xml";
     readonly label: "XML";
     }, {
     readonly value: "text/markdown";
+    readonly labelKey: "note-format.markdown";
     readonly label: "Markdown";
     }];
 }
@@ -1945,7 +1949,7 @@ class DocumentViewerComponent {
     readonly removeMainFileClicked: _angular_core.OutputEmitterRef<void>;
     readonly storyboardSeek: _angular_core.OutputEmitterRef<number>;
     readonly formatDownload: _angular_core.OutputEmitterRef<string>;
-    readonly contentType: _angular_core.Signal<"image" | "video" | "audio" | "markdown" | "html" | "xml" | "text" | "pdf" | "pdfRendition" | "preview" | "none">;
+    readonly contentType: _angular_core.Signal<"pdf" | "xml" | "image" | "audio" | "html" | "video" | "markdown" | "text" | "pdfRendition" | "preview" | "none">;
     readonly showARenderViewer: _angular_core.Signal<boolean>;
     readonly showImageToolbar: _angular_core.Signal<boolean>;
     readonly showVideoStoryboard: _angular_core.Signal<boolean>;

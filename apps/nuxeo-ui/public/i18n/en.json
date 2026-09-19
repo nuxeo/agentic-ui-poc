@@ -416,6 +416,40 @@
     },
     "assets-queue": {
       "no-asset-results": "No asset results"
+    },
+    "column": {
+      "name": "Title",
+      "type": "Type",
+      "modified": "Modified",
+      "contributor": "Last contributor",
+      "state": "State",
+      "version": "Version",
+      "created": "Created",
+      "author": "Author",
+      "nature": "Nature",
+      "coverage": "Coverage",
+      "subjects": "Subjects",
+      "flags": "Flags"
+    },
+    "filter": {
+      "asset-type": "Asset Type",
+      "asset-format": "Asset Format",
+      "asset-width": "Asset Width",
+      "option": {
+        "less-than-500-px": "Less than 500 px",
+        "between-500-px-and-1500-px": "Between 500 px and 1500 px",
+        "between-1500-px-and-2000-px": "Between 1500 px and 2000 px",
+        "more-than-2000-px": "More than 2000 px",
+        "less-than-30-s": "Less than 30 s",
+        "between-30-s-and-180-s": "Between 30 s and 180 s",
+        "between-180-s-and-600-s": "Between 180 s and 600 s",
+        "between-600-s-and-1800-s": "Between 600 s and 1800 s",
+        "more-than-1800-s": "More than 1800 s"
+      },
+      "asset-height": "Asset Height",
+      "color-profile": "Color Profile",
+      "color-depth": "Color Depth per Channel",
+      "video-duration": "Video Duration"
     }
   },
   "browse": {
@@ -613,6 +647,20 @@
       "search-documents": "Search documents",
       "searching": "Searching...",
       "try-a-different-search-term": "Try a different search term"
+    },
+    "column": {
+      "title": "Title",
+      "type": "Type",
+      "modified": "Modified",
+      "lastcontributor": "Last Contributor",
+      "state": "State",
+      "version": "Version",
+      "created": "Created",
+      "author": "Author",
+      "nature": "Nature",
+      "coverage": "Coverage",
+      "subjects": "Subjects",
+      "flags": "Flags"
     }
   },
   "collections": {
@@ -1232,6 +1280,37 @@
     },
     "search-queue": {
       "no-search-results": "No search results"
+    },
+    "column": {
+      "name": "Title",
+      "type": "Type",
+      "modified": "Modified",
+      "contributor": "Last contributor",
+      "state": "State",
+      "version": "Version",
+      "created": "Created",
+      "author": "Author",
+      "nature": "Nature",
+      "coverage": "Coverage",
+      "subjects": "Subjects",
+      "flags": "Flags"
+    },
+    "filter": {
+      "last24h": "Last 24h",
+      "last-week": "Last week",
+      "last-month": "Last month",
+      "last-year": "Last year",
+      "more-than1-year-ago": "More than a year ago",
+      "option": {
+        "less-than-100-kb": "Less than 100 KB",
+        "between-100-kb-and-1-mb": "Between 100 KB and 1 MB",
+        "between-1-mb-and-10-mb": "Between 1 MB and 10 MB",
+        "between-10-mb-and-100-mb": "Between 10 MB and 100 MB",
+        "more-than-100-mb": "More than 100 MB",
+        "no-containers": "No Containers",
+        "most-recent": "Most Recent",
+        "validated": "Validated"
+      }
     }
   },
   "settings": {
@@ -1519,6 +1598,15 @@
       "search-for-something": "Search for something...",
       "size": "Size",
       "trash-is-empty": "Trash is empty."
+    },
+    "column": {
+      "title": "Title",
+      "type": "Type",
+      "modified": "Modified",
+      "contributor": "Last contributor",
+      "created": "Created",
+      "author": "Author",
+      "state": "State"
     }
   },
   "action": {
@@ -1582,5 +1670,25 @@
     "administration-audit": "Audit",
     "administration-cloud-services": "Cloud Services",
     "administration-nxql-search": "NXQL Search"
+  },
+  "permission": {
+    "read": "Read",
+    "read-write": "Edit",
+    "everything": "Manage everything",
+    "read-can-collect": "Can collect"
+  },
+  "note-format": {
+    "html": "HTML",
+    "plain": "Text",
+    "xml": "XML",
+    "markdown": "Markdown"
+  },
+  "rendition": {
+    "thumbnail": "Thumbnail",
+    "pdf": "PDF",
+    "zip-export": "ZIP Export",
+    "xml-export": "XML Export",
+    "zip": "ZIP Export",
+    "xml": "XML Export"
   }
 }

@@ -96,7 +96,9 @@
     @for (group of filterGroups(); track group.id) {
       <div class="filter-group">
         <button class="filter-btn" type="button" (click)="toggleFilter(group.id)">
-          <span class="filter-btn-label">{{ group.label }}</span>
+          <span class="filter-btn-label">{{
+            group.labelKey ? (group.labelKey | translate) : group.label
+          }}</span>
           <mat-icon class="filter-btn-icon">
             {{ isExpanded(group.id) ? 'expand_less' : 'expand_more' }}
           </mat-icon>
@@ -115,7 +117,8 @@
                   (change)="toggleOption(group.id, option.value)"
                   class="filter-checkbox"
                 >
-                  {{ option.label }}{{ getCountText(group.id, option.aggKey) }}
+                  {{ option.labelKey ? (option.labelKey | translate) : option.label
+                  }}{{ getCountText(group.id, option.aggKey) }}
                 </mat-checkbox>
               }
             }

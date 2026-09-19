@@ -332,7 +332,7 @@
                 class="col-panel-option"
                 [checked]="isPendingColumn(col.key)"
                 (change)="togglePendingColumn(col.key)"
-                >{{ col.label }}</mat-checkbox
+                >{{ col.labelKey ? (col.labelKey | translate) : col.label }}</mat-checkbox
               >
             }
           </div>
@@ -358,7 +358,7 @@
                 class="col-sortable"
                 (click)="sortBy(col.key)"
               >
-                {{ col.label }}
+                {{ col.labelKey ? (col.labelKey | translate) : col.label }}
                 <mat-icon class="sort-icon" [class.sort-active]="sortColumn() === col.key">
                   {{
                     sortColumn() === col.key && sortDirection() === 'desc'
@@ -368,7 +368,7 @@
                 </mat-icon>
               </button>
             } @else {
-              <span>{{ col.label }}</span>
+              <span>{{ col.labelKey ? (col.labelKey | translate) : col.label }}</span>
             }
           }
           <span class="col-gear">

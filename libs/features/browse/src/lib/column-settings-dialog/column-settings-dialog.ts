@@ -26,18 +26,23 @@ export interface ColumnDef {
  * the duplication cannot drift unnoticed.
  */
 export const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'title', label: 'Title', visible: true },
-  { key: 'type', label: 'Type', visible: false },
-  { key: 'modified', label: 'Modified', visible: true },
-  { key: 'lastContributor', label: 'Last Contributor', visible: true },
-  { key: 'state', label: 'State', visible: false },
-  { key: 'version', label: 'Version', visible: false },
-  { key: 'created', label: 'Created', visible: false },
-  { key: 'author', label: 'Author', visible: false },
-  { key: 'nature', label: 'Nature', visible: false },
-  { key: 'coverage', label: 'Coverage', visible: false },
-  { key: 'subjects', label: 'Subjects', visible: false },
-  { key: 'flags', label: 'Flags', visible: false },
+  { key: 'title', labelKey: 'browse.column.title', label: 'Title', visible: true },
+  { key: 'type', labelKey: 'browse.column.type', label: 'Type', visible: false },
+  { key: 'modified', labelKey: 'browse.column.modified', label: 'Modified', visible: true },
+  {
+    key: 'lastContributor',
+    labelKey: 'browse.column.lastcontributor',
+    label: 'Last Contributor',
+    visible: true,
+  },
+  { key: 'state', labelKey: 'browse.column.state', label: 'State', visible: false },
+  { key: 'version', labelKey: 'browse.column.version', label: 'Version', visible: false },
+  { key: 'created', labelKey: 'browse.column.created', label: 'Created', visible: false },
+  { key: 'author', labelKey: 'browse.column.author', label: 'Author', visible: false },
+  { key: 'nature', labelKey: 'browse.column.nature', label: 'Nature', visible: false },
+  { key: 'coverage', labelKey: 'browse.column.coverage', label: 'Coverage', visible: false },
+  { key: 'subjects', labelKey: 'browse.column.subjects', label: 'Subjects', visible: false },
+  { key: 'flags', labelKey: 'browse.column.flags', label: 'Flags', visible: false },
 ];
 
 const STORAGE_KEY = 'browse_column_settings';
