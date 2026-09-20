@@ -90,6 +90,11 @@ const GOOD_TEMPLATE = `<button type="button" [attr.aria-label]="'app.nav.toggle'
  * The uncommitted step matters for the diff-scoped guardrail: `parseDiff()` falls back to
  * `git diff <base>` when the tree is dirty, so a working-tree change is what a developer's
  * pre-commit run actually sees.
+ *
+ * `mutate` receives `git` as well as `write` because `git diff` cannot see an UNTRACKED file.
+ * A control that only writes a brand-new path produces an empty diff, and a diff-scoped
+ * guardrail is then green on a tree that is broken on purpose — which is a control asserting
+ * nothing. Staging the file is what makes it a reintroduction rather than a stray.
  */
 function withFixture(files, mutate, run) {
   const dir = mkdtempSync(join(tmpdir(), 'guardrail-selftest-'));
@@ -123,7 +128,7 @@ function withFixture(files, mutate, run) {
       encoding: 'utf8',
     }).stdout.trim();
 
-    if (mutate) mutate(write);
+    if (mutate) mutate(write, git);
 
     return run((guardrail) => {
       // The fixture must not inherit the OUTER repository's refs.
@@ -739,6 +744,122 @@ expectGreen('a packaged config matching the compiled defaults', 'checkPackagedCo
     '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
     '  "defaultThemeId": "nuxeo",\n  "themes": []\n}\n',
 });
+
+/* ---------------- checkNoReviewCorpusChurn ---------------- */
+
+/**
+ * Both halves of the corpus check, which shipped with neither.
+ *
+ * They are separate assertions and neither implies the other: the path half catches the corpus
+ * file returning under its own name, the marker half catches the generated statistics block
+ * returning to any file — including under a different name, which the path half cannot see.
+ */
+// Split, like the guardrail's own copy is. `checkNoReviewCorpusChurn` fails any ADDED line
+// carrying this marker, and it does not exempt itself or this file — so writing it whole here
+// makes the gate red on the change that adds its controls. That is the fourth time a guardrail
+// in this repository has matched the text describing it; the split is the standing workaround.
+const CORPUS_MARKER = `pr-review-stats${':'}start`;
+/** The guardrail's diagnostic, assembled so this line does not contain the marker either. */
+const CORPUS_MARKER_MESSAGE = new RegExp(`adds a generated \`${CORPUS_MARKER}\` block`);
+
+expectGreen('a diff that touches no review bookkeeping', 'checkNoReviewCorpusChurn', {
+  'docs/some-doc.md': '# A document\n',
+});
+
+expectRed(
+  'the tracked findings corpus back in the diff',
+  'checkNoReviewCorpusChurn',
+  { 'docs/some-doc.md': '# A document\n' },
+  (write, git) => {
+    write('docs/pr-review-findings.jsonl', '{"finding":"one"}\n');
+    // Staged, because `git diff` does not report an untracked path. Written and left untracked,
+    // this control was green against a tree carrying the corpus — it asserted nothing.
+    git(['add', 'docs/pr-review-findings.jsonl']);
+  },
+  /docs\/pr-review-findings\.jsonl is back in the diff/,
+);
+
+expectRed(
+  'the generated statistics block re-added under another path',
+  'checkNoReviewCorpusChurn',
+  { '.cursor/skills/pre-pr-review/SKILL.md': '# Pre-PR review\n' },
+  (write) =>
+    write(
+      '.cursor/skills/pre-pr-review/SKILL.md',
+      `# Pre-PR review\n\n<!-- ${CORPUS_MARKER} -->\n| finding | count |\n`,
+    ),
+  CORPUS_MARKER_MESSAGE,
+);
+
+// The marker check reads ADDED lines, not file contents, so a pull request that merely touches
+// a file already carrying the marker is not blamed for it. Without this the check would go red
+// on every unrelated change to that file, and a gate nobody can pass gets bypassed.
+falsePositiveControls += 1;
+expectGreen('a file that already carried the marker before this diff', 'checkNoReviewCorpusChurn', {
+  '.cursor/skills/pre-pr-review/SKILL.md': `# Pre-PR review\n\n<!-- ${CORPUS_MARKER} -->\n`,
+});
+
+/* ---------------- checkNoHardcodedUiText: comment and <pre> spans ---------------- */
+
+// The founding case. A multi-line template comment's interior lines start with prose, so the
+// `startsWith('<!--')` skip never saw them and every sentence beginning with a capital was
+// reported as hard-coded English — including a comment explaining why a label uses an
+// interpolation parameter.
+falsePositiveControls += 1;
+expectGreen('the interior lines of a multi-line template comment', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html':
+    '<!--\n  The name goes through an interpolation parameter, not a concatenation.\n' +
+    '  INFO-144 forbids building a string from concatenated substrings.\n-->\n' +
+    `<button [attr.aria-label]="'x.y' | translate"></button>\n`,
+});
+
+// Code shown to customers as documentation. Translating an import statement would be wrong.
+falsePositiveControls += 1;
+expectGreen('a code sample inside a <pre> block', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html':
+    '<pre>\n  import { Component } from "@angular/core";\n  Register The Rule Here\n</pre>\n',
+});
+
+// The dangerous failure mode: if the span never closes, everything after the first comment in the
+// file is exempt and the guardrail is dead while still reporting green.
+expectRed(
+  'a hard-coded label after a CLOSED multi-line comment',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div></div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<!--\n  An explanation spanning lines.\n-->\n<button title="Recently Edited"></button>\n',
+    ),
+  /Recently Edited/,
+);
+
+expectRed(
+  'a hard-coded label after a CLOSED <pre> block',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div></div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<pre>\n  import { Component } from "@angular/core";\n</pre>\n' +
+        '<button title="Show Details"></button>\n',
+    ),
+  /Show Details/,
+);
+
+// The hole that skipping whole lines left: a real label escaped the gate by having a comment
+// after it on the same line. Spans are blanked instead, so what is left on the line is the markup.
+expectRed(
+  'a hard-coded label on the same line as a trailing comment',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div></div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<button title="Recently Edited"></button> <!-- a trailing note -->\n',
+    ),
+  /Recently Edited/,
+);
 
 /* ---------------- report ---------------- */
 

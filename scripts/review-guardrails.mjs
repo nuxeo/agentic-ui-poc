@@ -1073,12 +1073,66 @@ function checkNoHardcodedUiText() {
     return (text.match(/[A-Za-z]/g) ?? []).length >= 2;
   }
 
+  /**
+   * The file's lines with comment and `<pre>` spans blanked out, keyed by line number.
+   *
+   * ## Why comments are excluded at all
+   *
+   * The skip here was `trimmed.startsWith('<!--')`, which only recognises a comment's FIRST line
+   * — so the body of one was scanned as markup. It fired on the nav drawer's own explanation of
+   * why the tree name goes through an interpolation parameter. Text inside a comment renders to
+   * nobody, so it cannot be a string a user reads.
+   *
+   * `<pre>` holds code samples shown to customers as documentation. `import { Component } from
+   * '@angular/core'` is not prose, and translating it would be actively wrong.
+   *
+   * ## Why spans are blanked rather than whole lines skipped
+   *
+   * The first version of this skipped any line CONTAINING `<!--`, which exempted more than the
+   * comment: `<p>Hello There</p> <!-- note -->` was skipped in full, so a hard-coded label
+   * escaped the gate entirely by having a comment after it. That is a false negative in the check
+   * that enforces AC1, and it is the same mistake the `| translate` handling below already
+   * records having made — skipping the line exempted more than the thing that earned it.
+   *
+   * Blanking preserves line numbers and column positions, so what is left on the line is exactly
+   * the markup, and the patterns above see it unchanged.
+   */
+  function blankSkippableSpans(body) {
+    const OPENERS = [
+      ['<!--', '-->'],
+      ['<pre', '</pre>'],
+    ];
+    const chars = [...body];
+    let index = 0;
+    while (index < chars.length) {
+      const rest = body.slice(index);
+      const opener = OPENERS.find(([open]) => rest.startsWith(open));
+      if (!opener) {
+        index += 1;
+        continue;
+      }
+      const [, close] = opener;
+      const end = body.indexOf(close, index);
+      // An unterminated comment or `<pre>` runs to end of file. Blanking to the end is the safe
+      // reading: the rest of the file is inside it as far as a browser is concerned.
+      const stop = end === -1 ? chars.length : end + close.length;
+      for (let at = index; at < stop; at += 1) {
+        if (chars[at] !== '\n') chars[at] = ' ';
+      }
+      index = stop;
+    }
+    return new Map(chars.join('').split('\n').map((text, at) => [at + 1, text]));
+  }
+
   for (const [file, lines] of addedLinesByFile) {
     if (!/^(libs|apps)\/.+\.html$/.test(file)) continue;
+    const blanked = fileExists(file) ? blankSkippableSpans(read(file)) : new Map();
 
     for (const { line, text } of lines) {
-      const trimmed = text.trim();
-      if (!trimmed || trimmed.startsWith('<!--')) continue;
+      // The blanked working-tree line when there is one, so a comment span on this line is gone.
+      // Falls back to the diff's own text, which is what a deleted or unreadable file leaves.
+      const trimmed = (blanked.get(line) ?? text).trim();
+      if (!trimmed) continue;
       // Everything already routing through the pipe is removed, and then what is LEFT is
       // examined. Skipping the whole line exempted more than the thing that earned the
       // exemption: `<button [attr.aria-label]="'x' | translate">Show details</button>` was
