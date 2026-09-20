@@ -1,38 +1,59 @@
 # Crowdin source and translation mapping.
 #
-# Named `crowdin-conf.yml` rather than `crowdin.yml` to match `nuxeo/nuxeo-web-ui` and
-# `nuxeo/nuxeo-elements`. The Crowdin action picks a root `crowdin.yml` up implicitly; naming it
-# something else forces the workflow to pass `config:` explicitly, which is what makes the file
-# in use visible in the workflow rather than by convention.
+# Implements D8 in `docs/i18n-localization-plan.md`, which is the plan of record for this
+# ticket. The first version of this file was built from `nuxeo/nuxeo-web-ui` alone and missed
+# four things D8 already specified — the enterprise endpoint, approval gating, the source-change
+# policy and obsolete-key deletion. The reference repositories are the procedure; this file is
+# the contract.
 #
-# ## The glob is exact on purpose
+# Named `crowdin-conf.yml` rather than `crowdin.yml` to match `nuxeo-web-ui` and
+# `nuxeo-elements`. The action picks a root `crowdin.yml` up implicitly; naming it otherwise
+# forces the workflows to pass `config:` explicitly, which keeps the file in use visible.
+
+# Hyland Crowdin Enterprise, NOT public crowdin.com. The project lives on the Hyland tenant,
+# and a token issued there does not authenticate against the public API — the failure is a
+# 401 that reads like a bad secret rather than a wrong host.
+'base_url': 'https://hyland.api.crowdin.com'
+
+'project_id_env': 'CROWDIN_PROJECT_ID'
+'api_token_env': 'CROWDIN_PERSONAL_TOKEN'
+
+'base_path': '.'
+'preserve_hierarchy': true
+
+# ## The trap in the glob
 #
 # The HXP standard's example is `/**/**/i18n/en.json`. Do not copy it. With `base_path: "."` it
 # sweeps `node_modules`, which holds 48 upstream catalogues — adf-core's 19 locales, both
-# adf-hx bundles, satori-ui's 15. That would push Alfresco's and Satori's strings into our
-# Crowdin project and bill the translation crew for work another team has already paid for.
+# adf-hx bundles, satori-ui's 15. That pushes Alfresco's and Satori's strings into our project
+# and bills the translation crew for work another team has already paid for.
 #
-# One explicit path, and `checkCrowdinConfig` in `scripts/review-guardrails.mjs` fails the
-# build if it stops matching a catalogue that exists, or if a wildcard ever appears here.
+# Scoped to `apps/` and `libs/`, as D8 requires. `node_modules` sits beside both, so neither
+# pattern can reach it. `checkCrowdinConfig` in `scripts/review-guardrails.mjs` fails any
+# source path that does not begin with one of those two roots.
 #
-# ## Locale codes
-#
-# Two-letter codes, because that is what the application already serves: `AppTranslateLoader`
-# fetches `i18n/<lang>.json` using the language ngx-translate was given, and Layer 0
-# `availableLanguages` holds `en`, `fr`, `de`. Web UI maps `-es` to `-es-ES` and three others
-# because its filenames carry regions; ours do not, so adding a `translation_replace` here
-# would produce files the loader cannot find.
-#
-# When a region-specific locale is genuinely needed — `pt-BR` against `pt-PT` is the usual
-# first — it needs a matching change in the loader and in `availableLanguages`, not a rename
-# rule here on its own.
-
-'preserve_hierarchy': true
-
-'files':
-  [
+# The `libs/` entry matches nothing today. It is here for NXSAT-284 AC4, per-library
+# catalogues, so that shipping one is an asset glob rather than a change to this contract.
+'files': [
     {
-      'source': '/apps/nuxeo-ui/public/i18n/en.json',
-      'translation': '/apps/nuxeo-ui/public/i18n/%two_letters_code%.json',
+      'source': '/apps/*/public/i18n/en.json',
+      # `%two_letters_code%`, NOT D8's `%locale%`. Crowdin's `%locale%` renders French as
+      # `fr-FR`, and `AppTranslateLoader` fetches `i18n/fr.json` using the two-letter language
+      # ngx-translate was given — so `%locale%` downloads files the application never reads
+      # while the sync still reports success. Deviation recorded as D8a in the plan.
+      'translation': '/%original_path%/%two_letters_code%.%file_extension%',
+      # Unapproved work is someone's draft. Exporting it puts half-finished translations in
+      # front of users and makes the reviewer's approval meaningless.
+      'export_only_approved': 'true',
+      # The standard's choice, and it carries an assumption we inherit: a developer must NEVER
+      # change the meaning of an existing key — change the key instead. Nothing enforces that,
+      # which is why it is in the maintenance checklist and recorded as deviation D0a.
+      'update_option': 'update_without_changes',
+    },
+    {
+      'source': '/libs/**/i18n/en.json',
+      'translation': '/%original_path%/%two_letters_code%.%file_extension%',
+      'export_only_approved': 'true',
+      'update_option': 'update_without_changes',
     },
   ]

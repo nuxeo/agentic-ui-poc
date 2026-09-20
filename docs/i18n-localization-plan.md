@@ -416,6 +416,23 @@ Per the technical usage guide. Project name must match the GitHub repository nam
 > bill the translation crew for work another team already paid for. Scope the globs to `apps/`
 > and `libs/`, and verify with a `crowdin upload sources --dry-run` before the first real push.
 
+### D8a — `%two_letters_code%`, not `%locale%`
+
+The D8 snippet above maps translations to `%locale%.%file_extension%`. Built as written, that
+is wrong for this application and wrong in the quiet way.
+
+Crowdin's `%locale%` renders French as `fr-FR`. `AppTranslateLoader` fetches
+`i18n/${lang}.json` using the language ngx-translate was handed, and Layer 0
+`availableLanguages` holds two-letter codes — so the sync would download `fr-FR.json`, the
+loader would request `fr.json`, every string would fall through to the English fallback, and
+the pipeline would report success the whole time. An application that looks untranslated
+while the tooling looks healthy.
+
+`crowdin-conf.yml` therefore uses `%two_letters_code%`, and `checkCrowdinConfig` fails any
+mapping that does not. A region-specific locale — `pt-BR` against `pt-PT` is the usual first —
+needs a matching change in the loader and in `availableLanguages`, not a rename rule on its
+own.
+
 `update_option: update_without_changes` is the standard's current choice and it carries an
 explicit assumption we inherit: **a developer must never change the meaning of an existing
 key — change the key instead.** Put that in the maintenance checklist, because nothing

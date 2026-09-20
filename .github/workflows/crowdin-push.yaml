@@ -1,0 +1,69 @@
+# Uploads English to Crowdin when a source catalogue changes.
+#
+# One of the two workflows D8 in `docs/i18n-localization-plan.md` calls for. Push and pull are
+# separate because they fail for different reasons and on different schedules: an upload
+# failure means the source is wrong and blocks a developer, a download failure means the
+# translation pull request did not open and blocks nobody until tomorrow. Merging them into
+# one job makes the second look like the first.
+#
+# `nuxeo-web-ui` runs a single combined workflow. The divergence is deliberate and is D8's.
+name: Crowdin Push
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'apps/*/public/i18n/en.json'
+      - 'apps/*/public/i18n/en.context.json'
+      - 'libs/**/i18n/en.json'
+  workflow_dispatch:
+
+concurrency:
+  group: crowdin-push
+  cancel-in-progress: false
+
+jobs:
+  push-sources:
+    # Off until the Crowdin project exists.
+    #
+    # Without this the schedule and the push trigger both go live on merge and fail every day
+    # against secrets that are not set — S6 is blocked on manual project creation through the
+    # INTERN board. A workflow that is red for a reason nobody can fix is a workflow people
+    # learn to ignore, and it will be ignored on the day it is red for a real reason.
+    #
+    # Same `*_ENABLED` variable convention as `GPG_BOT_SIGNING_ENABLED`, see
+    # `docs/github-bot-commit-signing.md`.
+    if: vars.CROWDIN_SYNC_ENABLED == 'true'
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Upload sources to Crowdin
+        uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
+        with:
+          config: crowdin-conf.yml
+          upload_sources: true
+          # A key that no longer exists in English is dead weight the translation crew is still
+          # paying to maintain, and it will be offered to a translator who has no way to know
+          # it renders nowhere.
+          upload_sources_args: '--delete-obsolete'
+          # English is the reference. Leaving it unapproved makes every source string look like
+          # outstanding work on the Crowdin dashboard, which hides the real queue.
+          auto_approve_imported: true
+          download_translations: false
+          create_pull_request: false
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+
+      # Only after the sources exist: context attaches to strings Crowdin already holds.
+      - name: Push translator context
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+        run: node tools/i18n/crowdin-push-context.mjs

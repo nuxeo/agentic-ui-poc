@@ -57,9 +57,12 @@ function derivedNuxeoServerUrl(): string {
  * formatting pipes.
  */
 export function initialiseAppConfigAndLanguage(
-  config: AppConfigService,
-  translate: TranslateService,
-  userPreferences: UserPreferencesService,
+  // Narrowed to the members actually used, rather than the whole service. A test double then
+  // needs no cast, and the signature states the real dependency surface — widening it later
+  // is a visible change instead of an invisible one.
+  config: Pick<AppConfigService, 'load' | 'bootstrap'>,
+  translate: Pick<TranslateService, 'setFallbackLang' | 'use'>,
+  userPreferences: Pick<UserPreferencesService, 'set'>,
 ): () => Promise<void> {
   return async () => {
     await config.load();

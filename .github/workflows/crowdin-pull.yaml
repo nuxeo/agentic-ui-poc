@@ -1,0 +1,82 @@
+# Opens a pull request with whatever has been translated and approved.
+#
+# The second of D8's two workflows. Daily, because a translation finished on Tuesday should
+# not wait for someone to remember.
+#
+# It does not merge anything. The translation pull request is reviewed like any other, which
+# is the point: NXSAT-227 records "who owns the daily translation PR" as an open decision, and
+# an unowned PR is the documented failure mode of the Web UI process. This makes the work
+# visible; it does not decide who does it.
+name: Crowdin Pull
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: crowdin-pull
+  cancel-in-progress: false
+
+jobs:
+  pull-translations:
+    # See the note in crowdin-push.yaml: off until the project exists.
+    if: vars.CROWDIN_SYNC_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      # Signed, like every other bot commit here. Reuses the existing key rather than minting
+      # a second one — see docs/github-bot-commit-signing.md.
+      - name: Import the bot signing key
+        if: vars.GPG_BOT_SIGNING_ENABLED == 'true'
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32871f91346555e39762 # v6.3.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Download translations and open a pull request
+        uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
+        with:
+          # The action's own `git checkout "${GITHUB_REF#refs/heads/}"` would undo the `ref`
+          # above on a scheduled run.
+          skip_ref_checkout: true
+
+          config: crowdin-conf.yml
+          upload_sources: false
+          download_translations: true
+
+          create_pull_request: true
+          localization_branch_name: crowdin-translations-update
+          pull_request_base_branch_name: main
+          pull_request_title: 'chore(i18n): new Crowdin translations'
+          pull_request_body: |
+            Opened by the Crowdin Pull workflow. Contains only catalogue files.
+
+            Only **approved** translations are exported, so anything here has been through
+            review on the Crowdin side. `checkTranslationCatalogues` runs on this pull request
+            and fails a catalogue that is malformed, blank-valued, or out of key parity with
+            English — which is what a half-finished sync produces.
+
+            Do not hand-edit a non-English catalogue to fix something here. Crowdin is the
+            source of truth and overwrites it on the next pull; fix it in Crowdin.
+          commit_message: 'chore(i18n): update translations from Crowdin'
+
+          github_user_name: github-actions[bot]
+          github_user_email: github-actions[bot]@users.noreply.github.com
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+          # A branch pushed with the default GITHUB_TOKEN does not start a workflow run, so the
+          # translation pull request would arrive with no CI — and its own body promises the
+          # catalogue gate has run on it. A bot PAT makes the push an event GitHub will act on.
+          GITHUB_TOKEN: ${{ secrets.CROWDIN_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}

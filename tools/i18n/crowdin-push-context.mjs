@@ -30,7 +30,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const API = 'https://api.crowdin.com/api/v2';
+/**
+ * Hyland Crowdin **Enterprise**, not public crowdin.com.
+ *
+ * Read from the environment with the enterprise host as the default, so it matches
+ * `base_url` in `crowdin-conf.yml` and can still be pointed elsewhere for a dry run. The
+ * first version of this file called the public API: a token issued on the Hyland tenant
+ * fails there with a 401, which reads like a bad secret rather than a wrong host — and the
+ * project would simply not be found.
+ */
+const API = `${process.env['CROWDIN_BASE_URL'] ?? 'https://hyland.api.crowdin.com'}/api/v2`;
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const CONTEXT_FILE = join(REPO, 'apps/nuxeo-ui/public/i18n/en.context.json');
 

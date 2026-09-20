@@ -1801,7 +1801,10 @@ function checkAdvertisedLocalesShip() {
  */
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
-  const workflow = '.github/workflows/crowdin.yaml';
+  // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
+  // must name the config explicitly, or the action falls back to a default file that is not
+  // this one.
+  const workflows = ['.github/workflows/crowdin-push.yaml', '.github/workflows/crowdin-pull.yaml'];
 
   if (!fileExists(config)) {
     fail(
@@ -1811,9 +1814,11 @@ function checkCrowdinConfig() {
     );
     return;
   }
-  if (!fileExists(workflow)) {
-    fail(`${workflow} is missing, so ${config} is read by nothing.`);
-    return;
+  for (const workflow of workflows) {
+    if (!fileExists(workflow)) {
+      fail(`${workflow} is missing, so ${config} is read by nothing on that half of the sync.`);
+      return;
+    }
   }
 
   // Comments stripped first. The file explains why it has no `translation_replace`, and the
@@ -1831,30 +1836,75 @@ function checkCrowdinConfig() {
     return;
   }
 
+  // Wildcards are allowed — D8 uses them, and the `libs/**` entry is what makes per-library
+  // catalogues (NXSAT-284 AC4) an asset glob rather than a change to this contract. What is
+  // not allowed is a ROOT that could reach `node_modules`, which is where the 48 upstream
+  // catalogues live. `apps/` and `libs/` sit beside it, so neither can.
   for (const source of sources) {
-    if (/[*?]/.test(source)) {
+    if (!/^\/(apps|libs)\//.test(source)) {
       fail(
-        `${config} uses a wildcard in its source path \`${source}\`.\n` +
-          '    With `base_path: "."` a glob reaches `node_modules`, which holds 48 upstream ' +
-          'catalogues at the same relative shape. Name each catalogue explicitly.',
+        `${config} declares the source \`${source}\`, which is not rooted at /apps/ or /libs/.\n` +
+          '    With `base_path: "."` any wider root reaches `node_modules` — 48 upstream ' +
+          'catalogues at the same relative shape, which would bill the translation crew for ' +
+          "another team's strings.",
       );
       continue;
     }
-    const relative = source.replace(/^\//, '');
-    if (!fileExists(relative)) {
+    // A pattern matching nothing makes the sync a silent no-op: it uploads nothing, downloads
+    // nothing, opens no pull request and reports success. Nobody investigates a green job.
+    // The `libs/` entry legitimately matches nothing yet, so only a total miss across all
+    // sources is a failure.
+  }
+  const anyMatch = sources.some((source) => {
+    const pattern = source.replace(/^\//, '');
+    if (!/[*?]/.test(pattern)) return fileExists(pattern);
+    const regex = new RegExp(
+      `^${pattern
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*\*/g, '\u0000')
+        .replace(/\*/g, '[^/]*')
+        .replace(/\u0000/g, '.*')}$`,
+    );
+    return (
+      [...walk('apps', (path) => regex.test(path)), ...walk('libs', (path) => regex.test(path))]
+        .length > 0
+    );
+  });
+  if (!anyMatch) {
+    fail(
+      `${config} declares ${sources.length} source pattern(s) and none matches a file.\n` +
+        '    The sync would upload nothing and report success — the one failure mode nobody ' +
+        'investigates.',
+    );
+  }
+
+  // D8 requires both on every source entry.
+  for (const required of ['export_only_approved', 'update_option']) {
+    if (!body.includes(required)) {
       fail(
-        `${config} names \`${source}\` as a source, and no such file exists.\n` +
-          '    The sync would upload nothing, download nothing and report success — the one ' +
-          'failure mode nobody investigates.',
+        `${config} omits \`${required}\`, which D8 in docs/i18n-localization-plan.md requires ` +
+          'on every source entry. Without `export_only_approved` the sync exports unreviewed ' +
+          "drafts; without `update_option` the source-change behaviour is the tool's default " +
+          'rather than the one recorded as deviation D0a.',
       );
     }
+  }
+  if (!body.includes('hyland.api.crowdin.com')) {
+    fail(
+      `${config} does not set \`base_url\` to the Hyland Crowdin Enterprise endpoint. A token ` +
+        'issued on the Hyland tenant fails against public crowdin.com with a 401, which reads ' +
+        'like a bad secret rather than a wrong host.',
+    );
   }
 
   // The translation pattern has to produce the filename the loader fetches. `%two_letters_code%`
   // yields `fr.json`; a `translation_replace` renaming it to `fr-FR.json` would produce files
   // `AppTranslateLoader` never asks for, and the sync would still look healthy.
   for (const translation of translations) {
-    if (!/%two_letters_code%\.json$/.test(translation)) {
+    // `%file_extension%` is Crowdin's own placeholder for the source file's extension, which
+    // is `.json` here. Accepting both spellings rather than only the literal one, because the
+    // first version of this check rejected the plan's own form.
+    if (!/%two_letters_code%\.(json|%file_extension%)$/.test(translation)) {
       fail(
         `${config} maps translations to \`${translation}\`, which does not end in ` +
           '`%two_letters_code%.json`.\n' +
@@ -1871,9 +1921,30 @@ function checkCrowdinConfig() {
     );
   }
 
-  if (!read(workflow).includes(`config: ${config}`)) {
+  for (const workflow of workflows) {
+    const text = read(workflow);
+    if (!text.includes(`config: ${config}`)) {
+      fail(
+        `${workflow} does not pass \`config: ${config}\`, so the action looks for a default file ` +
+          'that is not this one.',
+      );
+    }
+    // Merged without this, both workflows go live against secrets that do not exist and fail
+    // every day until S6 is unblocked. A job that is red for a reason nobody can fix is a job
+    // people stop reading, including on the day it is red for a real reason.
+    if (!text.includes("vars.CROWDIN_SYNC_ENABLED == 'true'")) {
+      fail(
+        `${workflow} is not gated on \`vars.CROWDIN_SYNC_ENABLED\`. The Crowdin project is ` +
+          'created manually through the INTERN board and does not exist yet.',
+      );
+    }
+  }
+
+  if (!read(workflows[0]).includes('--delete-obsolete')) {
     fail(
-      `${workflow} does not pass \`config: ${config}\`, so the action would look for a default.`,
+      `${workflows[0]} does not pass \`--delete-obsolete\` when uploading sources, which D8 ` +
+        'requires. A key removed from English otherwise stays in Crowdin and is offered to a ' +
+        'translator who has no way to know it renders nowhere.',
     );
   }
 }

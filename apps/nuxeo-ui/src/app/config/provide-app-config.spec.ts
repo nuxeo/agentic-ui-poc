@@ -2,6 +2,8 @@ import { UserPreferenceValues } from '@alfresco/adf-core';
 import { of } from 'rxjs';
 
 import { initialiseAppConfigAndLanguage } from './provide-app-config';
+import { DEFAULT_APP_BOOTSTRAP_CONFIG } from '@nuxeo-satori/platform/app-config';
+import { signal } from '@angular/core';
 
 /**
  * Two behaviours here are invisible from outside and each was a shipped defect.
@@ -23,7 +25,11 @@ describe('initialiseAppConfigAndLanguage', () => {
       load: jasmine.createSpy('load').and.callFake(async () => {
         order.push('load');
       }),
-      bootstrap: () => ({ defaultLanguage }),
+      // A real signal, not an arrow. `AppConfigService.bootstrap` is a `Signal`, which
+      // carries a brand a bare function does not have — and the real config shape, because a
+      // partial literal was rejected too. Both caught by narrowing the signature rather than
+      // casting past it.
+      bootstrap: signal({ ...DEFAULT_APP_BOOTSTRAP_CONFIG, defaultLanguage }),
     };
     const translate = {
       setFallbackLang: jasmine.createSpy('setFallbackLang'),
@@ -40,13 +46,11 @@ describe('initialiseAppConfigAndLanguage', () => {
     return { config, translate, userPreferences, order };
   }
 
+  // No casts: the function takes only the members it uses, so these doubles satisfy it
+  // structurally and a signature change becomes a compile error here.
   const run = async (language: string) => {
     const h = harness(language);
-    await initialiseAppConfigAndLanguage(
-      h.config as never,
-      h.translate as never,
-      h.userPreferences as never,
-    )();
+    await initialiseAppConfigAndLanguage(h.config, h.translate, h.userPreferences)();
     return h;
   };
 
