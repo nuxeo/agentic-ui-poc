@@ -1182,8 +1182,16 @@ function checkNoHardcodedUiText() {
           break;
         }
       }
-      if (!offence && BARE_PROSE_LINE.test(trimmed) && isDisplayText(trimmed)) {
-        offence = { what: `the text \`${trimmed}\``, value: trimmed };
+      // The REMAINDER, not `trimmed`.
+      //
+      // Testing the raw line meant a line mixing a translated interpolation with hard-coded prose
+      // could never reach this check at all: `{{ 'x.label' | translate }} Show Details` contains
+      // `{`, so `BARE_PROSE_LINE` rejected it and `Show Details` was never examined. The whole
+      // point of computing `remainder` is that what is LEFT after removing the translated parts is
+      // the thing to judge — every other branch above already uses it, and this one did not.
+      const bare = remainder.trim();
+      if (!offence && BARE_PROSE_LINE.test(bare) && isDisplayText(bare)) {
+        offence = { what: `the text \`${bare}\``, value: bare };
       }
       if (!offence) continue;
 

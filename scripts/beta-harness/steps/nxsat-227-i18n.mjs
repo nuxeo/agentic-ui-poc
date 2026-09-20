@@ -784,10 +784,20 @@ export default async function run(page, h) {
   // it never would: Angular logs a pipe exception to the console and leaves the binding EMPTY.
   // So the check passed with every date cell blank — the precise failure it was written to
   // catch. The console-error step still runs as a separate diagnostic.
-  const renderedDates = await page
-    .locator('lib-browse td.cell-modified')
-    .allInnerTexts()
-    .catch(() => []);
+  // On the adf-hx surface, and that choice is the whole assertion.
+  //
+  // This used to read `lib-browse td.cell-modified`, which binds `{{ doc.lastModified | date }}` —
+  // Angular's own `DatePipe`, with no locale argument, so it formats with `LOCALE_ID`. Nothing
+  // provides `LOCALE_ID` from configuration, so those cells are `en-US` whatever the configured
+  // language is. The guard this step exists to exercise writes adf-core's
+  // `UserPreferenceValues.Locale`, which Angular's `DatePipe` never reads — so deleting the guard
+  // left production browse's dates untouched and this check green. It could not fail on its subject.
+  //
+  // `.adf-cell-date` is adf-core's `LocalizedDatePipe`, which does read that preference, and is
+  // where the eleven `InvalidPipeArgument` errors were measured in the first place.
+  await h.goTo('/#/browse-adf-hx');
+  await page.waitForTimeout(4000);
+  const renderedDates = await page.locator('.adf-cell-date').allInnerTexts().catch(() => []);
   const nonEmptyDates = renderedDates.map((text) => text.trim()).filter(Boolean);
   h.check(
     'the unshipped locale rendered at least one date cell to judge',

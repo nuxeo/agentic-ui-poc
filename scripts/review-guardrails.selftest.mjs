@@ -995,6 +995,18 @@ expectRed(
   /Show Details/,
 );
 
+// Prose on the same line as a TRANSLATED interpolation, which the bare-prose branch could never
+// reach: it tested the raw line, and the raw line contains `{`, so `BARE_PROSE_LINE` rejected it and
+// the hard-coded words were never judged. Every other branch already used the remainder.
+expectRed(
+  'hard-coded prose beside a translated interpolation on one line',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div></div>\n' },
+  (write) =>
+    write('libs/features/x/src/lib/x.html', `{{ 'x.label' | translate }} Show Details\n`),
+  /Show Details/,
+);
+
 // And the parameterised interpolation alone is still exempt, or the fix would fail every
 // pluralised string in the repository.
 falsePositiveControls += 1;

@@ -26,11 +26,18 @@
  *
  * ## Why it is idempotent rather than incremental
  *
- * It sets context on every string every run instead of tracking what changed. A daily job
+ * It CONSIDERS every string every run instead of tracking what changed on our side. A daily job
  * that skips unchanged strings has to be right about what "unchanged" means across a tool
  * that renumbers string IDs when a file is re-uploaded; being wrong there loses context
  * silently, and nobody notices until a translator asks a question the file was supposed to
- * answer. Re-sending everything costs one API call per string per day and cannot drift.
+ * answer. Reading everything every run cannot drift.
+ *
+ * It does **not** PATCH every string every run, which an earlier version of this paragraph said.
+ * The comparison is against what Crowdin already holds — `if (string.context === text) continue;`
+ * — so a steady state costs the `GET` pages and no writes at all, and the `updated` count in the
+ * summary line is the number of strings that actually differed. Worth being exact about, because
+ * "one API call per string per day" was the basis for calling the cost acceptable and it
+ * overstated the real cost by the size of the catalogue.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
