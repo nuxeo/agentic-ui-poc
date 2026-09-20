@@ -585,6 +585,103 @@ expectRed(
   /nav-items\.ts.*label: 'Real Descriptor'/s,
 );
 
+// ── controls for the blind spots Copilot found on #198 ───────────────────────────────────
+//
+// Each of these passed before the fix, and each is a shape the check was written to catch.
+
+expectRed(
+  'prose alone on its own line, as Prettier and Angular control flow write it',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div>placeholder</div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<button>\n  @if (saving()) {\n    <mat-spinner />\n  } @else {\n    Create\n  }\n</button>\n',
+    ),
+  /hard-coded English/,
+);
+
+expectRed(
+  'literal text beside a translated attribute on the same line',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div>placeholder</div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      `<button [attr.aria-label]="'x.y' | translate">Show details</button>\n`,
+    ),
+  /hard-coded English/,
+);
+
+// The exemption must still apply to whatever actually earned it.
+expectGreen('a fully translated element across several lines', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html': `<button [attr.aria-label]="'x.y' | translate">\n  {{ 'x.z' | translate }}\n</button>\n`,
+});
+
+// `Object.entries(null)` throws, which killed the script and took every other guardrail's
+// diagnostics with it. Going red for the right reason is the whole point of this one.
+expectRed(
+  'a catalogue that parses to null',
+  'checkTranslationCatalogues',
+  { 'apps/nuxeo-ui/public/i18n/en.json': 'null\n' },
+  null,
+  /parses but is null, not an object/,
+);
+
+expectRed(
+  'a catalogue value that is null rather than a string',
+  'checkTranslationCatalogues',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": null\n}\n',
+    'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+  },
+  null,
+  // Must name en.json. It used to drop the key and then blame fr.json for an "extra" one.
+  /en\.json maps `a` to null/,
+);
+
+expectRed(
+  'translator context that is an empty string',
+  'checkTranslationContext',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': '{\n  "a": ""\n}\n',
+  },
+  null,
+  /same as saying nothing/,
+);
+
+expectRed(
+  'a context file that parses to null',
+  'checkTranslationContext',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': 'null\n',
+  },
+  null,
+  /parses but is null/,
+);
+
+// The comment beside `availableLanguages` claimed an invariant nothing enforced.
+expectRed(
+  'an advertised locale with no catalogue behind it',
+  'checkAdvertisedLocalesShip',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+      '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "es"]\n}\n',
+  },
+  null,
+  /advertises "es".*no catalogue ships/s,
+);
+
+expectGreen('an advertised locale that ships', 'checkAdvertisedLocalesShip', {
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+  'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+    '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "fr"]\n}\n',
+});
+
 /* ---------------- report ---------------- */
 
 const total = negative + positive;

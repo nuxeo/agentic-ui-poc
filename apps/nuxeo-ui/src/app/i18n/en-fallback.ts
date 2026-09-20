@@ -40,8 +40,10 @@
  * `settings.themes.search` was missing, and it is the `[attr.aria-label]` of the themes
  * toolbar's search button. A failed fetch therefore named that control `settings.themes.search`
  * — the same class of defect as the empty `sat.platform-nav.*` names above, differing only in
- * whether the wrong name is blank or is a raw key. Neither is detectable by axe: one has no
- * name, which axe catches, and one has a name that is simply not words, which it cannot.
+ * whether the wrong name is blank or is a raw key. Only one of the two is machine-detectable:
+ * axe catches the blank name, because it checks that a control HAS a name. It cannot catch the
+ * raw key, because a raw key is a name — it is simply not words. That is why this map is
+ * enforced by a guardrail rather than left to the accessibility scan.
  *
  * `checkAccessibleNameFallbacks` in `scripts/review-guardrails.mjs` enforces exactly that rule:
  * it reads the keys our templates bind to `aria-label` and `title` through the translate pipe,

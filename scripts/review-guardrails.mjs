@@ -1035,6 +1035,20 @@ function checkNoHardcodedUiText() {
   const TEXT_ATTRIBUTES = /\b(placeholder|matTooltip|alt|aria-label|title)="([^"<>{}]*)"/g;
   /** Element text on the same line as its tags: `>Some text<`. */
   const ELEMENT_TEXT = />([^<>{}]*)</g;
+  /**
+   * A line that is nothing but words — no tag, no binding, no interpolation, no pipe.
+   *
+   * `ELEMENT_TEXT` needs `>` and `<` on the same line as the words, and Prettier splits them
+   * whenever the element does not fit. Angular control flow splits them always:
+   *
+   *     } @else {
+   *       Create
+   *     }
+   *
+   * Strict on purpose: a trailing comma means a TypeScript fragment rather than markup, and
+   * any of `<>{}="|` means the line carries syntax that one of the other patterns owns.
+   */
+  const BARE_PROSE_LINE = /^[^<>{}="|]+$/;
 
   /** Prose a user reads, as opposed to an icon ligature, a CSS value or a number. */
   function isDisplayText(value) {
@@ -1050,34 +1064,43 @@ function checkNoHardcodedUiText() {
     for (const { line, text } of lines) {
       const trimmed = text.trim();
       if (!trimmed || trimmed.startsWith('<!--')) continue;
-      // A line already routing through the pipe is the shape we are asking for. Checking the
-      // whole line rather than the match keeps a translated attribute from tripping on its
-      // neighbour's literal text.
-      if (trimmed.includes('| translate')) continue;
+      // Everything already routing through the pipe is removed, and then what is LEFT is
+      // examined. Skipping the whole line exempted more than the thing that earned the
+      // exemption: `<button [attr.aria-label]="'x' | translate">Show details</button>` was
+      // never looked at.
+      const remainder = trimmed
+        .replace(/(?:\[[\w.$-]+\]|\([\w.$-]+\))="[^"]*\|\s*translate[^"]*"/g, '')
+        .replace(/\{\{[^}]*\|\s*translate[^}]*\}\}/g, '');
+      if (!remainder.trim() || remainder.includes('| translate')) continue;
 
       /** @type {{ what: string, value: string } | null} */
       let offence = null;
 
-      for (const [, attribute, value] of trimmed.matchAll(TEXT_ATTRIBUTES)) {
+      for (const [, attribute, value] of remainder.matchAll(TEXT_ATTRIBUTES)) {
         if (!isDisplayText(value)) continue;
         offence = { what: `${attribute}="${value}"`, value };
         break;
       }
       if (!offence) {
-        for (const [, value] of trimmed.matchAll(ELEMENT_TEXT)) {
+        for (const [, value] of remainder.matchAll(ELEMENT_TEXT)) {
           if (!isDisplayText(value)) continue;
           offence = { what: `the text \`${value.trim()}\``, value };
           break;
         }
       }
+      if (!offence && BARE_PROSE_LINE.test(trimmed) && isDisplayText(trimmed)) {
+        offence = { what: `the text \`${trimmed}\``, value: trimmed };
+      }
       if (!offence) continue;
 
       fail(
         `${file}:${line} introduces ${offence.what} as hard-coded English.\n` +
-          "    Add a key to the owning project's `i18n/en.json` and bind it with the translate " +
+          '    Add the key to `apps/nuxeo-ui/public/i18n/en.json` — the only catalogue the ' +
+          'loader currently merges — and bind it with the translate ' +
           "pipe — `{{ 'browse.details.show' | translate }}` for text, " +
           '`[attr.aria-label]="\'…\' | translate"` for an accessible name.\n' +
-          '    Add the translator context alongside it in `i18n/en.context.json`: INFO-144 ' +
+          '    Add the translator context beside it in `apps/nuxeo-ui/public/i18n/en.context.json`: ' +
+          'INFO-144 ' +
           'requires every string to carry enough context to be translated without asking, and ' +
           'acronyms to be expanded.\n' +
           '    If the key names a control, it must also go in `en-fallback.ts` — see ' +
@@ -1199,12 +1222,14 @@ function checkTranslationCatalogues() {
   }
 
   /** Flattens to dotted keys, mirroring `flattenCatalogue` in `app-translate-loader.ts`. */
-  function flatten(value, prefix, out) {
+  function flatten(value, prefix, out, onInvalid) {
     for (const [key, entry] of Object.entries(value)) {
       const path = prefix ? `${prefix}.${key}` : key;
       if (typeof entry === 'string') out.set(path, entry);
       else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-        flatten(entry, path, out);
+        flatten(entry, path, out, onInvalid);
+      } else {
+        onInvalid(path, entry);
       }
     }
     return out;
@@ -1236,7 +1261,32 @@ function checkTranslationCatalogues() {
       continue;
     }
 
-    const flat = flatten(json, '', new Map());
+    // `JSON.parse` accepts `null`, a number, a string and an array. `Object.entries(null)`
+    // THROWS, which killed the whole script and discarded every other guardrail's
+    // diagnostics; a bare string silently flattens to character indices. Rejected by shape
+    // before anything walks it.
+    if (json === null || typeof json !== 'object' || Array.isArray(json)) {
+      fail(
+        `${catalogue} parses but is ${
+          json === null ? 'null' : Array.isArray(json) ? 'an array' : `a ${typeof json}`
+        }, not an object of keys.\n` +
+          '    ngx-translate expects an object. A catalogue of any other shape resolves every ' +
+          'key to undefined, so the whole locale renders as raw keys.',
+      );
+      continue;
+    }
+
+    const flat = flatten(json, '', new Map(), (path, entry) => {
+      // A non-string leaf used to be skipped, which dropped the key from the reference set —
+      // and the parity check downstream then blamed the OTHER locale for an "extra" key,
+      // pointing at the wrong file for a fault in this one.
+      fail(
+        `${catalogue} maps \`${path}\` to ${entry === null ? 'null' : typeof entry}, not a ` +
+          'string.\n' +
+          '    ngx-translate returns it verbatim, so the UI renders it where the words should ' +
+          'be. A half-finished Crowdin pull is the usual cause.',
+      );
+    });
     parsed.set(catalogue, flat);
 
     for (const [key, value] of flat) {
@@ -1377,7 +1427,37 @@ function checkTranslationContext() {
       }
     })(catalogue, '');
 
-    const documented = new Set(Object.keys(context).filter((key) => !key.startsWith('$')));
+    // `Object.keys(null)` throws, and a context file of any other shape documents nothing.
+    if (context === null || typeof context !== 'object' || Array.isArray(context)) {
+      fail(
+        `${contextFile} parses but is ${
+          context === null ? 'null' : Array.isArray(context) ? 'an array' : `a ${typeof context}`
+        }, not an object keyed like the catalogue.`,
+      );
+      continue;
+    }
+
+    // A key whose value is blank documents nothing, and comparing key names alone accepted it.
+    // An entry that says nothing tells a translator exactly what an absent one does.
+    for (const [key, value] of Object.entries(context)) {
+      if (key.startsWith('$')) continue;
+      if (typeof value === 'string' && value.trim()) continue;
+      fail(
+        `${contextFile} documents \`${key}\` with ${
+          typeof value === 'string'
+            ? 'an empty string'
+            : `a ${value === null ? 'null' : typeof value}`
+        }.\n` +
+          '    That is the same as saying nothing, and it satisfies a check that only compares ' +
+          'key names. Describe what the string is and where it appears.',
+      );
+    }
+
+    const documented = new Set(
+      Object.keys(context).filter(
+        (key) => !key.startsWith('$') && typeof context[key] === 'string' && context[key].trim(),
+      ),
+    );
     compared += 1;
 
     const undocumented = [...keys].filter((key) => !documented.has(key));
@@ -1644,6 +1724,65 @@ function checkAccessibleNameFallbacks() {
  * authoritative set is one thing to read. `verify-gate.mjs` does the same and for the same
  * reason: its usage line went stale twice while gates were being added.
  */
+
+/**
+ * Every advertised locale ships a catalogue, and the default is one of them.
+ *
+ * `checkTranslationCatalogues` validates the files that exist. It never reads
+ * `availableLanguages`, so adding `es` to that list without an `es.json` passed — and the
+ * comment beside the list claimed otherwise. A reviewer reading it would believe the list was
+ * enforced. This makes the claim true instead of removing it.
+ */
+function checkAdvertisedLocalesShip() {
+  const config = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+  if (!fileExists(config)) {
+    fail(`${config} was not found, so this gate asserted nothing. Check the path.`);
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(read(config));
+  } catch (error) {
+    fail(`${config} is not valid JSON: ${error.message}`);
+    return;
+  }
+
+  const shipped = new Set(
+    [...walk('apps', (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path))]
+      .map((path) => /([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[1])
+      .filter(Boolean),
+  );
+  if (shipped.size === 0) {
+    fail('No catalogues were found under apps/, so this gate asserted nothing.');
+    return;
+  }
+
+  const advertised = parsed['availableLanguages'];
+  if (Array.isArray(advertised)) {
+    for (const locale of advertised) {
+      if (shipped.has(locale)) continue;
+      fail(
+        `${config} advertises "${locale}" in availableLanguages but no catalogue ships for ` +
+          `it. Catalogues found: ${[...shipped].sort().join(', ')}.\n` +
+          '    Choosing it would render the English fallback throughout, which reads as a ' +
+          'broken language rather than an absent one.',
+      );
+    }
+  }
+
+  const fallback = parsed['defaultLanguage'];
+  if (typeof fallback === 'string' && !shipped.has(fallback)) {
+    fail(`${config} ships \`defaultLanguage: "${fallback}"\` but no catalogue exists for it.`);
+  }
+  if (typeof fallback === 'string' && Array.isArray(advertised) && !advertised.includes(fallback)) {
+    fail(
+      `${config} ships \`defaultLanguage: "${fallback}"\` which is absent from ` +
+        'availableLanguages, so the default is a language a user cannot switch back to.',
+    );
+  }
+}
+
 const GUARDRAILS = [
   checkThemeTokens,
   checkDocsNumbering,
@@ -1660,6 +1799,7 @@ const GUARDRAILS = [
   checkNoHardcodedUiText,
   checkNoHardcodedDescriptorText,
   checkTranslationCatalogues,
+  checkAdvertisedLocalesShip,
   checkTranslationContext,
   checkAccessibleNameFallbacks,
   checkLocaleDataRegistered,

@@ -71,7 +71,7 @@ const ENVIRONMENTAL_ERRORS = [
   // appears only once the adf-hx nav drawer is opened, comes from upstream's user resolution,
   // and has nothing to do with translation. Suppressed rather than left to fail a capture it is
   // not about — but it is a real 404 on every drawer open and worth a ticket of its own.
-  '/nuxeo/api/v1/group/',
+  '/nuxeo/api/v1/group/Administrator',
   // The five catalogue 404s that step 7 **induces on purpose** by asking for a locale no
   // catalogue ships. They are the tolerant path working: `AppTranslateLoader` answers each
   // failed folder fetch with `{}` and the app renders English. The browser still logs a console
@@ -287,12 +287,37 @@ export default async function run(page, h) {
   // ---------------------------------------------------------------------------
   h.step('Every shell route is free of raw translation keys');
   const offendingRoutes = [];
+  const unreachedRoutes = [];
   for (const route of ROUTES) {
     await h.goTo(route);
     await page.waitForTimeout(1200);
+
+    // Confirm the route actually arrived before reading anything off it.
+    //
+    // `goTo` is `page.goto`, and a route that redirects to a clean shell — or to an error page
+    // with no key-shaped text — leaves the key scan with nothing to find and passes. Eight
+    // vacuous passes read exactly like eight surfaces checked. The hash is what the router
+    // resolved to, so comparing it catches a redirect; `main` having content catches an empty
+    // error page.
+    const landed = await page.evaluate(() => ({
+      hash: window.location.hash,
+      rendered: (document.querySelector('main')?.textContent ?? '').trim().length,
+    }));
+    if (!landed.hash.startsWith(route) || landed.rendered === 0) {
+      unreachedRoutes.push(
+        `${route}: landed on ${landed.hash || '(no hash)'} with ${landed.rendered} char(s)`,
+      );
+      continue;
+    }
+
     const found = await rawKeysOnPage(page);
     if (found.length > 0) offendingRoutes.push(`${route}: ${found.join(', ')}`);
   }
+  h.check(
+    `all ${ROUTES.length} shell routes were reached, so the scan below is not vacuous`,
+    unreachedRoutes.length === 0,
+    unreachedRoutes.join('\n      '),
+  );
   h.check(
     `all ${ROUTES.length} shell routes render no raw translation key`,
     offendingRoutes.length === 0,
