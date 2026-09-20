@@ -76,3 +76,26 @@ the thread.
 `.cursor/skills/fix-pr-comments.md` used to do this and is retired — it fetched with
 unpaginated REST, read only `CHANGES_REQUESTED` summaries, and treated replying as optional.
 The mapping table above is still the reference for turning a comment into a fix.
+
+## When to stop: Copilot does not approve, ever
+
+`reviewDecision` stays `REVIEW_REQUIRED` no matter how many rounds you run, because
+`copilot-pull-request-reviewer` submits every review as `COMMENTED` and has never once
+submitted `APPROVED` in this repository. Waiting for its approval is waiting for something
+that does not happen, and branch protection needs a human approval regardless.
+
+Verify it rather than believing this paragraph:
+
+```bash
+gh api graphql -f query='{repository(owner:"nuxeo",name:"agentic-ui-poc"){pullRequests(last:40,states:[OPEN,MERGED,CLOSED]){nodes{reviews(first:20){nodes{author{login} state}}}}}}' \
+  --jq '[.data.repository.pullRequests.nodes[].reviews.nodes[] | select(.author.login=="copilot-pull-request-reviewer")] | group_by(.state) | map({state: .[0].state, count: length})'
+```
+
+So the exit condition for the review loop is **a Copilot round that produces no new threads**,
+with every thread resolved and CI green. Then hand back for a human approval.
+
+Budget for more than one round. Each round tends to surface defects the previous round's fixes
+introduced or exposed, and that is the loop working rather than a sign of trouble: on NXSAT-227,
+round four found that the accessible-name gate could not see the parameterised binding the
+round-three accessible-name fix had just added, so deleting the new key from the fallback map
+passed the gate that exists to prevent exactly that.

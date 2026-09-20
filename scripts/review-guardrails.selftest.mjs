@@ -1088,6 +1088,85 @@ expectRed(
   /tools\/i18n\/crowdin-push-context\.mjs is missing/,
 );
 
+// ── controls for round four of the Copilot review ────────────────────────────────────────
+
+/* ---------------- checkAccessibleNameFallbacks: parameterised bindings ---------------- */
+
+/**
+ * The binding shape the accessible-name fix itself introduced, which this gate could not see.
+ *
+ * `nav-drawer.component.html` binds `'nav.tree.toggle' | translate: { name: nodeLabel(node) }`.
+ * The matcher stopped at `| translate`, so the key could be deleted from the fallback map and this
+ * guardrail stayed green — restoring exactly the raw-key accessible name it exists to prevent.
+ * Verified against the real repository before the fix by deleting that entry: still green.
+ *
+ * A parameterised name is MORE likely here, not less: INFO-144 forbids concatenation, so every
+ * label that carries a value is pushed towards this form.
+ */
+const PARAM_TEMPLATE =
+  `<button type="button"\n` +
+  `  [attr.aria-label]="'app.nav.toggle' | translate: { name: nodeLabel(node) }"\n` +
+  `></button>\n`;
+
+const PARAM_APP = {
+  'apps/nuxeo-ui/public/i18n/en.json': EN_JSON,
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html': PARAM_TEMPLATE,
+};
+
+expectRed(
+  'a parameterised accessible name whose key is missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  PARAM_APP,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      EN_FALLBACK.replace(/\s*'app\.nav\.toggle': 'Toggle navigation menu',/, ''),
+    ),
+  /binds aria-label to `app\.nav\.toggle`.*omits/s,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a parameterised accessible name whose key IS in the fallback map',
+  'checkAccessibleNameFallbacks',
+  PARAM_APP,
+);
+
+// A catalogue of `null` is valid JSON, so the `try` around `JSON.parse` does not catch it and
+// `Object.entries(null)` threw — killing the process before any accumulated diagnostic printed and
+// discarding every other guardrail's output. A guardrail that can crash silences the others.
+expectGreen('a catalogue that parses to null does not crash this gate', 'checkAccessibleNameFallbacks', {
+  'apps/nuxeo-ui/public/i18n/en.json': 'null\n',
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html': GOOD_TEMPLATE,
+});
+
+/* ---------------- checkTranslatorContextPush: the push trigger ---------------- */
+
+// `paths` and the discovery walk are two independent lists of what counts as a source, and they
+// drifted the moment discovery grew. A context file read by the script but watched by no trigger
+// means Crowdin serves context the repository has already moved past.
+expectRed(
+  'a context file the push workflow watches no path for',
+  'checkTranslatorContextPush',
+  {
+    ...CONTEXT_PUSH,
+    '.github/workflows/crowdin-push.yaml':
+      "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n",
+  },
+  null,
+  /watches no path matching apps\/nuxeo-ui\/public\/i18n\/en\.context\.json/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a push workflow watching every discovered context file', 'checkTranslatorContextPush', {
+  ...CONTEXT_PUSH,
+  '.github/workflows/crowdin-push.yaml':
+    "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
+    "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n",
+});
+
 /* ---------------- report ---------------- */
 
 const total = negative + positive;

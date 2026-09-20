@@ -16,6 +16,12 @@ on:
       - 'apps/*/public/i18n/en.json'
       - 'apps/*/public/i18n/en.context.json'
       - 'libs/**/i18n/en.json'
+      # The library context glob was missing while the catalogue one was present, which made
+      # translator guidance a second-class trigger: `crowdin-push-context.mjs` discovers every
+      # `libs/**/i18n/en.context.json`, so editing one alone changed what the job would upload and
+      # yet started nothing. Crowdin then held stale context until some later catalogue change or a
+      # manual run — and stale context is worse than none, because a translator believes it.
+      - 'libs/**/i18n/en.context.json'
   workflow_dispatch:
 
 concurrency:

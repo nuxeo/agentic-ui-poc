@@ -34,15 +34,55 @@ jobs:
       pull-requests: write
 
     steps:
+      # Fail loudly on a half-configured activation rather than quietly doing less.
+      #
+      # Every promise this job's own pull-request body makes depends on something here, and each
+      # one used to degrade silently instead of stopping:
+      #
+      #   - Signing was gated on `GPG_BOT_SIGNING_ENABLED`, so enabling `CROWDIN_SYNC_ENABLED`
+      #     alone produced UNSIGNED commits while the comment beside the step said "signed, like
+      #     every other bot commit here".
+      #   - `GITHUB_TOKEN` fell back to the default token, and a branch pushed with that starts no
+      #     workflow run — so the translation pull request would arrive with no CI at all, while
+      #     its body tells the reviewer `checkTranslationCatalogues` has run on it.
+      #
+      # Both are the same defect: an operator turns the sync on, the job goes green, and what it
+      # actually delivered is weaker than what is documented. Whoever activates this gets told
+      # exactly what is missing instead.
+      - name: Check the activation is complete
+        env:
+          SIGNING_ENABLED: ${{ vars.GPG_BOT_SIGNING_ENABLED }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+          CROWDIN_BOT_GITHUB_TOKEN: ${{ secrets.CROWDIN_BOT_GITHUB_TOKEN }}
+        run: |
+          missing=()
+          [ "$SIGNING_ENABLED" = "true" ] || missing+=("vars.GPG_BOT_SIGNING_ENABLED must be 'true' — this job commits to main and every bot commit here is signed")
+          [ -n "$GPG_PRIVATE_KEY" ] || missing+=("secrets.GPG_PRIVATE_KEY")
+          [ -n "$GPG_PASSPHRASE" ] || missing+=("secrets.GPG_PASSPHRASE")
+          [ -n "$CROWDIN_PROJECT_ID" ] || missing+=("secrets.CROWDIN_PROJECT_ID")
+          [ -n "$CROWDIN_PERSONAL_TOKEN" ] || missing+=("secrets.CROWDIN_PERSONAL_TOKEN")
+          [ -n "$CROWDIN_BOT_GITHUB_TOKEN" ] || missing+=("secrets.CROWDIN_BOT_GITHUB_TOKEN — the default GITHUB_TOKEN pushes a branch without starting a workflow, so the translation PR would have no CI")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::CROWDIN_SYNC_ENABLED is on but the activation is incomplete."
+            for item in "${missing[@]}"; do echo "  - $item"; done
+            echo "See docs/i18n-localization-plan.md D8 and docs/github-bot-commit-signing.md."
+            exit 1
+          fi
+          echo "Activation complete: signing on, Crowdin credentials and bot token present."
+
       - name: Checkout
         uses: actions/checkout@v6
         with:
           ref: main
 
       # Signed, like every other bot commit here. Reuses the existing key rather than minting
-      # a second one — see docs/github-bot-commit-signing.md.
+      # a second one — see docs/github-bot-commit-signing.md. Unconditional: the preflight above
+      # has already refused the run if signing is not configured, so there is no path where this
+      # job commits unsigned.
       - name: Import the bot signing key
-        if: vars.GPG_BOT_SIGNING_ENABLED == 'true'
         uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32871f91346555e39762 # v6.3.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -85,4 +125,8 @@ jobs:
           # A branch pushed with the default GITHUB_TOKEN does not start a workflow run, so the
           # translation pull request would arrive with no CI — and its own body promises the
           # catalogue gate has run on it. A bot PAT makes the push an event GitHub will act on.
-          GITHUB_TOKEN: ${{ secrets.CROWDIN_BOT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          #
+          # No `|| secrets.GITHUB_TOKEN` fallback. That fallback is what made the weaker outcome
+          # the silent default: the job stayed green and delivered a pull request with no checks.
+          # The preflight step requires this secret, so reaching here means it is set.
+          GITHUB_TOKEN: ${{ secrets.CROWDIN_BOT_GITHUB_TOKEN }}

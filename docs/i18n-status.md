@@ -263,12 +263,26 @@ acronyms and do-not-translate flags for all 44 keys.
 
 ### Evidence
 
-`npm run beta:evidence -- nxsat-227-i18n` → **PASS, 25/25 across 9 steps.** Asserts off the
-rendered DOM: no raw key in any `aria-label`, `title` or leaf text node on all eight routes; the
-toggle named `Toggle <folder>`; `fr` and `de` differing from each other; an unshipped locale
-degrading to English rather than to keys. Every language switch goes through a real
-`page.reload()`, because `withHashLocation()` makes `goto()` same-document and without it
-`APP_INITIALIZER` never re-runs.
+`npm run beta:evidence -- nxsat-227-i18n` → **PASS, 34/34 across 10 steps**, read from that run's
+`manifest.json` rather than transcribed. Re-run it rather than trusting this line: the figure here
+was `25/25 across 9 steps` from the 16 September run, which **predated five of the assertions it
+was being cited as proving** — the adf-hx language check, the translated suggestion payload, the
+French axe scan, route reachability and the date-formatting check were all added after it.
+
+Asserts off the rendered DOM: no raw key in any `aria-label`, `title` or leaf text node on all
+eight routes; the toggle named `Toggle <folder>`; `fr` and `de` differing from each other; an
+unshipped locale degrading to English rather than to keys, and still rendering dates rather than
+leaving them blank; a suggestion click sending the French string rather than the English one behind
+its label; and no serious or critical axe violation on the French shell, with no ignore list.
+
+Every language switch goes through a real `page.reload()`, because `withHashLocation()` makes
+`goto()` same-document and without it `APP_INITIALIZER` never re-runs.
+
+Six of those checks were failing when the assertions were first run honestly, and four of the six
+were defects in the evidence rather than the application — a raw-key sweep reading `<style>`
+elements, a route-reached check that rejected a legitimate child route, and a date check measuring
+a surface that renders no date cells. The fourth was real: the French axe scan found the navigation
+tree's folder toggles had no accessible name at all.
 
 ### Two defects found by running the application, which the controls did not catch
 
@@ -346,21 +360,43 @@ Worth recording, because it is the argument for writing controls at all:
 1. **Approve the `pull_request` workflow runs on [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198).** No
    PR-event run has fired for the branch, so CodeQL has not analysed `refs/pull/198/merge` and
    the `code-scanning` gate correctly refuses to call an unscanned ref clean. Needs repo admin.
-2. **Answer the two open decisions on NXSAT-227:** who owns the daily Crowdin translation PR
-   (blocks S6 — unowned, it rots), and whether RTL is in scope (recommendation: no).
+2. **Answer the one open decision left on NXSAT-227:** whether RTL is in scope (recommendation:
+   no). "Who owns the daily Crowdin translation PR" was retired on 20 Sep 2026 — the premise that
+   an unowned one rots is contradicted by the measurement in D8b of
+   `docs/i18n-localization-plan.md`.
 
-### Slice S6 — the Crowdin pipeline, the only Beta work left
+### Slice S6 — the Crowdin pipeline is BUILT and dormant; what is left is external
 
-3. **Request the Crowdin project** via a Jira issue on the INTERN board. Manual, done by global
-   admins, so raise it before you need it. Project name must match the repository:
-   `agentic-ui-poc`.
-4. Add `crowdin.yml`, and the push/pull GitHub Actions with signed commits — this repo already
-   has the bot GPG infrastructure, so reuse it rather than minting another key. Pin the action by
-   SHA.
-5. **Do not copy the standard's `/**/**/i18n/en.json` glob verbatim.** With `base_path: "."` it
-   sweeps `node_modules`, which holds 48 upstream catalogues. That would push Alfresco's and
-   Satori's strings into our project and bill the translation crew for work another team already
-   paid for. Scope to `apps/` and `libs/`, and verify with a dry run.
+This section used to tell the reader to write the pipeline. It is written, in this pull request,
+and the distinction that matters now is between what the repository contains and what only a Crowdin
+admin can do.
+
+**In the repository, gated off.** `crowdin-conf.yml`, `.github/workflows/crowdin-push.yaml` and
+`crowdin-pull.yaml`, and `tools/i18n/crowdin-push-context.mjs` for the translator context the JSON
+source format cannot carry. Both workflows are gated on `vars.CROWDIN_SYNC_ENABLED`, so merging
+this changes no behaviour: nothing runs until that variable is set. `checkCrowdinConfig` and
+`checkTranslatorContextPush` hold the shape.
+
+**Not in the repository, and nobody here can do it.**
+
+3. **The Crowdin project itself**, requested as
+   [INTERN-1346](https://hyland.atlassian.net/browse/INTERN-1346). Created manually by global
+   admins; the project name must match the repository, `agentic-ui-poc`.
+4. **Set the secrets and then the variable**, in that order —
+   `CROWDIN_PROJECT_ID`, `CROWDIN_PERSONAL_TOKEN`, `CROWDIN_BOT_GITHUB_TOKEN`, and the bot GPG
+   pair. `crowdin-pull.yaml` refuses to run on a half-configured activation rather than quietly
+   committing unsigned or opening a pull request with no CI, so a missing secret is a red job with
+   a message naming it, not a silent downgrade.
+5. **The first sync has never run.** `tools/i18n/crowdin-push-context.mjs` has never made a real
+   HTTP call, and its pure parts being covered is not the same as having worked. Treat the first
+   push as a thing to watch, and check what reached Crowdin against the repository before letting
+   the daily pull open anything.
+
+One trap is already handled and must stay handled: the standard's `/**/**/i18n/en.json` glob, with
+`base_path: "."`, sweeps `node_modules` and its 48 upstream catalogues — which would push
+Alfresco's and Satori's strings into our project and bill the translation crew for work another team
+has already paid for. `crowdin-conf.yml` is scoped to `apps/` and `libs/`, and `checkCrowdinConfig`
+fails any source that is not.
 
 ### NXSAT-284 — GA extraction: 1350 template strings, 257 descriptor strings, plus an unknown number passed imperatively
 
@@ -392,6 +428,22 @@ Worth recording, because it is the argument for writing controls at all:
    package and strings in `apps/nuxeo-ui/public/i18n/` do not travel with it. This needs **no
    loader change**: `AppTranslateLoader` already merges N folders and exposes
    `registerProvider`. Then flip `checkNoHardcodedUiText` to repo-wide.
+
+### Known-incomplete, and easy to read as done
+
+These were carried in a temporary handover document that has been deleted — a working note that
+duplicated mutable state and went stale within a day. They are recorded here because each one is a
+place a reader will call the ticket finished and be wrong.
+
+- **Eight literal `aria-label` selectors in `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` are
+  latently broken.** All the labels they select on are now translated, so those selectors pass only
+  because English resolves to the identical words. In any other locale they match nothing, and the
+  harness goes green having asserted less — the failure mode is silence, not a red. They want
+  `data-testid`.
+- **Roughly 160 user-facing strings are still built in TypeScript** — snackbar messages, dialog
+  titles, error text. Surveyed, not extracted. Outside AC1's wording, which is about templates, so
+  the ticket can close with all of them still hard-coded.
+- **`NXSAT-284` is still `Open` in Jira** although most of it has shipped.
 
 ### Separate stories, not part of either ticket
 

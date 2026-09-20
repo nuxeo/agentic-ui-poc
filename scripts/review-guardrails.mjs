@@ -1671,6 +1671,40 @@ async function checkTranslatorContextPush() {
     }
   }
 
+  // 1b. The push workflow starts when a file the script reads changes.
+  //
+  // `paths` and the discovery walk are two independent lists of what counts as a source, and they
+  // drifted the moment discovery grew: `libs/**/i18n/en.context.json` was discovered but not
+  // watched, so editing translator guidance for a library changed what the job would upload and
+  // started nothing. Crowdin then served stale context until some unrelated catalogue change, and
+  // stale context is worse than none because a translator believes it.
+  const pushWorkflow = '.github/workflows/crowdin-push.yaml';
+  if (fileExists(pushWorkflow)) {
+    const watched = [...read(pushWorkflow).matchAll(/^\s*-\s*'([^']*i18n[^']*)'/gm)].map(
+      ([, glob]) =>
+        new RegExp(
+          `^${glob
+            .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+            .replace(/\*\*/g, '\u0000')
+            .replace(/\*/g, '[^/]*')
+            .replace(/\u0000/g, '.*')}$`,
+        ),
+    );
+    const discovered = [
+      ...walk('apps', (path) => /(^|\/)i18n\/en\.context\.json$/.test(path)),
+      ...walk('libs', (path) => /(^|\/)i18n\/en\.context\.json$/.test(path)),
+    ];
+    for (const contextFile of discovered) {
+      if (!watched.some((glob) => glob.test(contextFile))) {
+        fail(
+          `${pushWorkflow} watches no path matching ${contextFile}, which ${script} reads.\n` +
+            '    Editing it alone would change what the job uploads and trigger nothing, leaving ' +
+            'Crowdin with context the repository has already moved past. Add a `paths` glob for it.',
+        );
+      }
+    }
+  }
+
   // 2a. The script's flattener, RUN on fixtures.
   //
   // Each case is one thing the two implementations must agree a key is. The expectations are the
@@ -1891,6 +1925,17 @@ function checkAccessibleNameFallbacks() {
     return;
   }
 
+  // `Object.entries(null)` throws, and `collect` below walks whatever parsed. A catalogue of
+  // `null` is valid JSON, so the `try` above does not catch it — the crash landed here instead,
+  // killing the process before the accumulated `failures` were printed and discarding every other
+  // guardrail's diagnostics, including `checkTranslationCatalogues`'s own clean report of the same
+  // file. That guardrail naming the shape earlier does not stop this one crashing on it.
+  if (catalogue === null || typeof catalogue !== 'object' || Array.isArray(catalogue)) {
+    // Not reported: `checkTranslationCatalogues` names the file and the shape, and one defect
+    // should produce one message. Returning is what keeps the rest of the run alive.
+    return;
+  }
+
   const owned = new Set();
   (function collect(value, prefix) {
     for (const [key, entry] of Object.entries(value)) {
@@ -1907,7 +1952,16 @@ function checkAccessibleNameFallbacks() {
   // `[attr.aria-label]`, `[aria-label]`, `[attr.title]` and `[title]` bound to a single
   // translate-piped literal key. A ternary or a concatenation is not matched, deliberately:
   // this stays a check with no judgement calls in it.
-  const BINDING = /\[(?:attr\.)?(aria-label|title)\]="\s*'([^']+)'\s*\|\s*translate\s*"/g;
+  //
+  // The optional `: { … }` is the pipe's PARAMETERS, and leaving it out made this gate blind to
+  // the binding shape the accessible-name fix itself introduced. `nav-drawer.component.html` binds
+  // `'nav.tree.toggle' | translate: { name: nodeLabel(node) }`, which the parameterless pattern
+  // could not see — so deleting that key from `EN_FALLBACK_TRANSLATIONS` passed this guardrail and
+  // restored the raw-key accessible name it exists to prevent. Verified by doing exactly that:
+  // the gate stayed green. A parameterised name is MORE likely to be needed here, not less, since
+  // it is the form INFO-144's no-concatenation rule pushes every label with a value towards.
+  const BINDING =
+    /\[(?:attr\.)?(aria-label|title)\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
   // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
   // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns
