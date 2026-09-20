@@ -235,21 +235,19 @@
                 <div class="ai-chat-suggestions">
                   <button
                     class="ai-chat-suggestion"
-                    (click)="
-                      aiChatInput.set('What documents were modified today?'); sendAiMessage()
-                    "
+                    (click)="sendAiSuggestion('shell.ai.suggestion.modified-today')"
                   >
                     {{ 'shell.ai.suggestion.modified-today' | translate }}
                   </button>
                   <button
                     class="ai-chat-suggestion"
-                    (click)="aiChatInput.set('Summarize my pending tasks'); sendAiMessage()"
+                    (click)="sendAiSuggestion('shell.ai.suggestion.summarize-tasks')"
                   >
                     {{ 'shell.ai.suggestion.summarize-tasks' | translate }}
                   </button>
                   <button
                     class="ai-chat-suggestion"
-                    (click)="aiChatInput.set('Show me recent uploads'); sendAiMessage()"
+                    (click)="sendAiSuggestion('shell.ai.suggestion.recent-uploads')"
                   >
                     {{ 'shell.ai.suggestion.recent-uploads' | translate }}
                   </button>
