@@ -829,6 +829,46 @@ expectRed(
   /sets `export_only_approved: false`, not `true`/,
 );
 
+// An ABSENT mapping, which is what a check that iterates only the values it finds cannot see.
+// With the `translation` line deleted from the second entry, the source count still said two, the
+// segment count still said two, and the surviving entry's valid pattern carried the gate to green.
+expectRed(
+  'a Crowdin entry that declares no translation mapping at all',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+          /\s*'translation': '[^']*',/,
+          '',
+        ),
+      ]),
+    ),
+  /entry `\/libs\/\*\*\/i18n\/en\.json` declares no `translation`/,
+);
+
+// A mapping that is present but wrong, per entry rather than anywhere in the body.
+expectRed(
+  'one Crowdin entry mapping translations to a regional filename',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+          '%two_letters_code%.%file_extension%',
+          '%locale%.json',
+        ),
+      ]),
+    ),
+  /entry `\/libs\/\*\*\/i18n\/en\.json` maps translations to `[^`]*%locale%\.json`/,
+);
+
 // A gate that cannot segment the file must say so rather than report a policy it stopped
 // enforcing. Block-style YAML is valid Crowdin config and this segmenter does not read it.
 expectRed(

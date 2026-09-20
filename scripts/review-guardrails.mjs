@@ -2175,7 +2175,9 @@ function checkCrowdinConfig() {
     .filter((line) => !/^\s*#/.test(line))
     .join('\n');
   const sources = [...body.matchAll(/'source':\s*'([^']+)'/g)].map(([, path]) => path);
-  const translations = [...body.matchAll(/'translation':\s*'([^']+)'/g)].map(([, path]) => path);
+  // No body-wide `translations` list. It existed, and collecting the mappings that happen to be
+  // present is exactly what let a missing one through — the per-entry loop below reads each entry
+  // instead, so an absent `translation` is a finding rather than one fewer thing to check.
 
   if (sources.length === 0) {
     fail(`${config} declares no source file, so the sync would upload nothing and still pass.`);
@@ -2309,14 +2311,32 @@ function checkCrowdinConfig() {
   // The translation pattern has to produce the filename the loader fetches. `%two_letters_code%`
   // yields `fr.json`; a `translation_replace` renaming it to `fr-FR.json` would produce files
   // `AppTranslateLoader` never asks for, and the sync would still look healthy.
-  for (const translation of translations) {
+  //
+  // Read PER ENTRY, for the same reason the D8 options above are. This loop used to iterate the
+  // `translation` values it happened to FIND, so an entry that lost its mapping entirely was
+  // never mentioned: `sources.length` still said two, the segment count still said two, and the
+  // surviving entry's valid pattern carried the check to green. A guardrail that only validates
+  // what is present cannot notice an absence — the same shape of blindness as the body-wide
+  // options check, left behind in the same function when that one was fixed.
+  for (const entry of entries ?? []) {
+    const source = /'?source'?\s*:\s*'([^']+)'/.exec(entry)?.[1] ?? '(entry with no source)';
+    const translation = /'?translation'?\s*:\s*'([^']+)'/.exec(entry)?.[1];
+    if (translation === undefined) {
+      fail(
+        `${config} entry \`${source}\` declares no \`translation\`, so Crowdin decides where its ` +
+          'downloads land.\n' +
+          '    `AppTranslateLoader` fetches `i18n/<lang>.json`, and anything else downloads ' +
+          'files the application never reads while the sync still reports success.',
+      );
+      continue;
+    }
     // `%file_extension%` is Crowdin's own placeholder for the source file's extension, which
     // is `.json` here. Accepting both spellings rather than only the literal one, because the
     // first version of this check rejected the plan's own form.
     if (!/%two_letters_code%\.(json|%file_extension%)$/.test(translation)) {
       fail(
-        `${config} maps translations to \`${translation}\`, which does not end in ` +
-          '`%two_letters_code%.json`.\n' +
+        `${config} entry \`${source}\` maps translations to \`${translation}\`, which does not ` +
+          'end in `%two_letters_code%.json`.\n' +
           '    `AppTranslateLoader` fetches `i18n/<lang>.json` using the two-letter language ' +
           'it was given, so anything else downloads files the application never reads.',
       );
