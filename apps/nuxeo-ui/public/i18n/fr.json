@@ -1,30 +1,33 @@
 {
   "app": {
-    "title": "Hyland Nuxeo",
+    "login-page": {},
     "nav": {
       "toggle": "Afficher ou masquer le menu de navigation"
-    }
+    },
+    "title": "Hyland Nuxeo"
   },
   "browse": {
     "details": {
-      "show": "Afficher les détails",
       "hide": "Masquer les détails",
+      "show": "Afficher les détails",
       "toggle": "Afficher ou masquer le panneau de détails"
     },
     "scope": {
       "create-import": "Créer / Importer",
+      "delete": "Supprimer",
       "drive": "Nuxeo Drive",
       "edit": "Modifier les métadonnées",
-      "delete": "Supprimer",
-      "share": "Partager",
+      "export": "Exporter",
       "notify": "Notifier",
-      "export": "Exporter"
+      "share": "Partager"
     }
   },
   "nav": {
     "clipboard": {
+      "copy": "Copier",
       "empty": "Le presse-papiers est vide",
       "hint": "Utilisez « Ajouter au presse-papiers » sur des documents ou des collections pour ajouter des éléments ici.",
+      "move": "Déplacer",
       "remove": "Retirer du presse-papiers",
       "tip": "Accédez à un conteneur pour coller ou déplacer le contenu du presse-papiers."
     },
@@ -69,25 +72,45 @@
       "dashboard": "Voir le tableau de bord des tâches",
       "empty": "Aucune tâche en attente",
       "retry": "Réessayer"
+    },
+    "tree": {
+      "retry": "Réessayer",
+      "root": "Racine",
+      "toggle": "Développer ou réduire {{ name }}"
     }
   },
   "settings": {
     "themes": {
-      "title": "Thèmes",
-      "search": "Rechercher des thèmes",
+      "apply": "Appliquer",
       "current": "Actuel",
-      "apply": "Appliquer"
+      "search": "Rechercher des thèmes",
+      "title": "Thèmes"
     }
   },
   "shell": {
     "ai": {
       "clear": "Effacer la conversation",
       "close": "Fermer la conversation",
+      "empty-state": "Posez-moi des questions sur vos documents, recherchez dans le référentiel ou obtenez des informations sur les workflows et les tâches.",
       "heading": "Assistant IA Nuxeo",
       "input-placeholder": "Posez une question sur vos documents...",
       "open": "Assistant IA",
       "send": "Envoyer le message",
+      "sources": "Sources",
+      "suggestion": {
+        "modified-today": "Quels documents ont été modifiés aujourd’hui ?",
+        "recent-uploads": "Montre-moi les derniers téléversements",
+        "summarize-tasks": "Résume mes tâches en attente"
+      },
       "title": "Assistant IA"
+    },
+    "menu": {
+      "about": "À propos",
+      "ai-features": "Fonctions IA {{ state }}",
+      "help": "Aide",
+      "state-off": "désactivées",
+      "state-on": "activées",
+      "themes": "Thèmes"
     },
     "search": {
       "no-results": "Aucun résultat trouvé",

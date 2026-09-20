@@ -28,7 +28,9 @@
               <button
                 type="button"
                 matChipRemove
-                [attr.aria-label]="'Remove ' + naturePillLabel(natureId)"
+                [attr.aria-label]="
+                  'shared.remove-item' | translate: { name: naturePillLabel(natureId) }
+                "
                 (click)="$event.stopPropagation(); clearNature()"
               >
                 <mat-icon>cancel</mat-icon>
@@ -72,7 +74,7 @@
               <button
                 type="button"
                 matChipRemove
-                [attr.aria-label]="'Remove ' + subjectPillLabel(id)"
+                [attr.aria-label]="'shared.remove-item' | translate: { name: subjectPillLabel(id) }"
                 (click)="$event.stopPropagation()"
               >
                 <mat-icon>cancel</mat-icon>
@@ -121,7 +123,9 @@
               <button
                 type="button"
                 matChipRemove
-                [attr.aria-label]="'Remove ' + coveragePillLabel(coverageId)"
+                [attr.aria-label]="
+                  'shared.remove-item' | translate: { name: coveragePillLabel(coverageId) }
+                "
                 (click)="$event.stopPropagation(); clearCoverage()"
               >
                 <mat-icon>cancel</mat-icon>

@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router, provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { EMPTY, Subject, of, throwError } from 'rxjs';
@@ -144,7 +145,14 @@ describe('BrowseComponent — rendered document list', () => {
     TestBed.resetTestingModule();
   });
 
-  async function render(): Promise<BrowseComponent> {
+  /**
+   * `extraProviders` exists for the one test that needs a tab other than the first: a
+   * `MatTabBody` only attaches its content portal once the tab animation reports it centred,
+   * so without `provideNoopAnimations()` the Permissions tab has a body element and no
+   * content. It is opt-in rather than added here for everyone, to keep the other tests in
+   * this file rendering exactly as they did.
+   */
+  async function render(extraProviders: unknown[] = []): Promise<BrowseComponent> {
     manifest.set({});
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
@@ -172,6 +180,7 @@ describe('BrowseComponent — rendered document list', () => {
           useValue: { open: vi.fn(() => ({ afterClosed: () => of(false) })) },
         },
         { provide: AppConfigService, useValue: { manifest } },
+        ...extraProviders,
       ],
     }).compileComponents();
 
@@ -569,5 +578,91 @@ describe('BrowseComponent — rendered document list', () => {
     await render();
 
     expect(detail.getAuditLog).not.toHaveBeenCalled();
+  });
+
+  // ── Header cells must carry text (NXENG-937) ──
+
+  /**
+   * Header cells with no text, keyed by class so a failure names the offender.
+   *
+   * Asserts **text**, not accessible name, because that is what axe's `empty-table-header`
+   * requires: its rule definition is `any: ['has-visible-text']`, with none of the
+   * `aria-label` / `aria-labelledby` alternatives that `empty-heading` accepts. An
+   * `aria-label` on the `<th>` was the first attempt at NXENG-937 and left the violation
+   * standing, so checking the accessible name here would pass on the broken markup.
+   */
+  function unlabelledHeaders(selector: string): string[] {
+    return [...fixture.nativeElement.querySelectorAll(`${selector} thead th`)]
+      .filter((th) => !(th as HTMLElement).textContent?.trim())
+      .map((th) => (th as HTMLElement).className || '<no class>');
+  }
+
+  it('gives every document-list header cell text, including the selection and actions columns', async () => {
+    browse.getBrowseFolderContents.mockReturnValue(
+      of({
+        folder,
+        entries: [
+          doc({ uid: 'c-1', title: 'Budget.xlsx' }),
+          // A collection entry, so the otherwise-hidden actions header renders too.
+          doc({ uid: 'c-2', title: 'Q3 Collection', type: 'Collection' }),
+        ],
+        totalSize: 2,
+      }),
+    );
+
+    const component = await render();
+
+    expect(component.hasCollectionEntries()).toBe(true);
+    expect(query('.browse-table thead th.col-checkbox')).not.toBeNull();
+    expect(query('.browse-table thead th.col-actions')).not.toBeNull();
+    expect(unlabelledHeaders('.browse-table')).toEqual([]);
+  });
+
+  it('gives every local-permissions header cell text, including the actions column', async () => {
+    // `Everything` is what makes the actions column render at all, and one granted local ACE
+    // is what makes the table render instead of the empty-state message.
+    const withLocalAce = doc({
+      uid: 'ws-1',
+      title: 'Workspace',
+      type: 'Workspace',
+      path: '/default-domain/workspaces/ws-1',
+      facets: ['Folderish'],
+      contextParameters: {
+        permissions: ['Everything'],
+        acls: [
+          {
+            name: 'local',
+            aces: [
+              {
+                id: 'l-1',
+                username: 'members',
+                externalUser: false,
+                permission: 'Read',
+                granted: true,
+                creator: 'Administrator',
+                begin: null,
+                end: null,
+                status: 'effective',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    browse.getBrowseFolderContents.mockReturnValue(
+      of({ folder: withLocalAce, entries: [], totalSize: 0 }),
+    );
+    // Selecting the tab makes the component load permissions; the default `EMPTY` stub never
+    // emits, which leaves the tab on its spinner branch and renders no table at all.
+    detail.getDocumentPermissions.mockReturnValue(of(withLocalAce));
+
+    const component = await render([provideNoopAnimations()]);
+    component.activeTabIndex.set(1);
+    await settle();
+
+    expect(component.canManageCurrentPermissions()).toBe(true);
+    expect(component.localAces()).toHaveLength(1);
+    expect(query('.perm-table')).not.toBeNull();
+    expect(unlabelledHeaders('.perm-table')).toEqual([]);
   });
 });

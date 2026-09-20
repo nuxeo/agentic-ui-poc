@@ -296,7 +296,11 @@
                   <table class="browse-table">
                     <thead>
                       <tr>
-                        <th class="col-checkbox"></th>
+                        <th class="col-checkbox">
+                          <span class="cdk-visually-hidden">{{
+                            'browse.browse.selection' | translate
+                          }}</span>
+                        </th>
                         @for (col of visibleColumns(); track col.key) {
                           <th class="sortable-th" (click)="toggleBrowseSort(col.key)">
                             <span class="th-label">{{
@@ -310,10 +314,11 @@
                           </th>
                         }
                         @if (hasCollectionEntries()) {
-                          <th
-                            class="col-actions"
-                            [attr.aria-label]="'browse.browse.actions' | translate"
-                          ></th>
+                          <th class="col-actions">
+                            <span class="cdk-visually-hidden">{{
+                              'browse.browse.actions' | translate
+                            }}</span>
+                          </th>
                         }
                         <th class="col-gear">
                           <button
@@ -517,7 +522,11 @@
                           <th>{{ 'browse.browse.time-frame' | translate }}</th>
                           <th>{{ 'browse.browse.granted-by' | translate }}</th>
                           @if (canManageCurrentPermissions()) {
-                            <th></th>
+                            <th>
+                              <span class="cdk-visually-hidden">{{
+                                'browse.browse.actions' | translate
+                              }}</span>
+                            </th>
                           }
                         </tr>
                       </thead>
@@ -1101,7 +1110,7 @@
                     type="button"
                     class="tag-remove-btn"
                     (click)="removeTag(tag)"
-                    [attr.aria-label]="'Remove tag ' + tag"
+                    [attr.aria-label]="'shared.remove-tag' | translate: { name: tag }"
                   >
                     <mat-icon>close</mat-icon>
                   </button>

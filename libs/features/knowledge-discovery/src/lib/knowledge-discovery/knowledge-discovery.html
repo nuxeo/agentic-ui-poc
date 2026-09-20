@@ -267,7 +267,9 @@
                     <button
                       type="button"
                       class="kd-citation-marker"
-                      [attr.aria-label]="'View citation ' + segment.index"
+                      [attr.aria-label]="
+                        'shared.view-citation' | translate: { number: segment.index }
+                      "
                       (click)="openCitationDialog(currentAnswer, segment.index)"
                     >
                       {{ segment.index }}

@@ -1220,7 +1220,7 @@
                         <button
                           class="ai-tag-chip"
                           type="button"
-                          [attr.aria-label]="'Add tag ' + tag.label"
+                          [attr.aria-label]="'shared.add-tag' | translate: { name: tag.label }"
                           (click)="applyAiTag(tag.label)"
                         >
                           <span class="ai-tag-label">{{ tag.label }}</span>
@@ -1762,14 +1762,22 @@
                     @for (tag of tags(); track $index) {
                       <mat-chip-row (removed)="removeInlineTag(tag)">
                         {{ tag }}
-                        <button type="button" matChipRemove [attr.aria-label]="'Remove tag ' + tag">
+                        <button
+                          type="button"
+                          matChipRemove
+                          [attr.aria-label]="'shared.remove-tag' | translate: { name: tag }"
+                        >
                           <mat-icon>cancel</mat-icon>
                         </button>
                       </mat-chip-row>
                     }
                     <input
                       name="tagInput"
-                      [placeholder]="tags().length ? '' : 'Add a tag…'"
+                      [placeholder]="
+                        tags().length
+                          ? ''
+                          : ('document-detail.document-detail.add-a-tag' | translate)
+                      "
                       [matChipInputFor]="tagChipGrid"
                       [matAutocomplete]="tagAuto"
                       [(ngModel)]="tagInput"

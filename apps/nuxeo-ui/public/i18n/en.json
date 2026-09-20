@@ -1,4 +1,36 @@
 {
+  "action": {
+    "bulk-actions-add-to-clipboard": "Add to Clipboard",
+    "bulk-actions-add-to-collection": "Add to Collection",
+    "bulk-actions-compare": "Compare",
+    "bulk-actions-delete": "Delete selected",
+    "bulk-actions-download-zip": "Download All as Zip",
+    "bulk-actions-publish": "Publish Document",
+    "context-menu-export": "Export",
+    "context-menu-share": "Share",
+    "context-menu-subscribe": "Notify Me",
+    "context-menu-unsubscribe": "Unsubscribe",
+    "toolbar-add-to-clipboard": "Add to Clipboard",
+    "toolbar-add-to-collection": "Add to collection",
+    "toolbar-add-to-favorites": "Add to Favorites",
+    "toolbar-delete": "Delete",
+    "toolbar-edit": "Edit",
+    "toolbar-edit-properties": "Edit properties",
+    "toolbar-export": "Export",
+    "toolbar-lock": "Lock",
+    "toolbar-publish": "Publish document",
+    "toolbar-remove-from-clipboard": "Remove from Clipboard",
+    "toolbar-remove-from-favorites": "Remove from Favorites",
+    "toolbar-share": "Share",
+    "toolbar-start-process": "Start Process",
+    "toolbar-subscribe": "Notify Me",
+    "toolbar-unlock": "Unlock",
+    "toolbar-unsubscribe": "Unsubscribe"
+  },
+  "adf-hx-bridge": {
+    "notify-me": "Notify Me",
+    "unsubscribe": "Unsubscribe"
+  },
   "admin": {
     "admin-analytics-page": {
       "ai-audit-anomalies": "AI Audit Anomalies",
@@ -172,6 +204,14 @@
       "vocabularies": "Vocabularies",
       "vocabulary": "Vocabulary"
     },
+    "analytics": {
+      "tab": {
+        "document-distribution": "Document Distribution",
+        "repository-content": "Repository Content",
+        "search": "Search",
+        "workflow": "Workflow"
+      }
+    },
     "change-password-dialog": {
       "cancel": "Cancel",
       "change-password": "Change password",
@@ -179,6 +219,13 @@
       "new-password": "New password",
       "save": "Save",
       "user": "User:"
+    },
+    "cloud-services": {
+      "tab": {
+        "consumers": "Consumers",
+        "providers": "Providers",
+        "tokens": "Tokens"
+      }
     },
     "group-form-dialog": {
       "cancel": "Cancel",
@@ -213,22 +260,31 @@
       "parent": "Parent",
       "save": "Save",
       "select-a-parent": "Select a Parent"
-    },
-    "analytics": {
-      "tab": {
-        "document-distribution": "Document Distribution",
-        "repository-content": "Repository Content",
-        "search": "Search",
-        "workflow": "Workflow"
-      }
-    },
-    "cloud-services": {
-      "tab": {
-        "providers": "Providers",
-        "tokens": "Tokens",
-        "consumers": "Consumers"
-      }
     }
+  },
+  "administration": {
+    "add-entry": "Add Entry",
+    "admin-analytics-page": {
+      "scan-for-anomalies": "Scan for Anomalies"
+    },
+    "create": "Create",
+    "create-group": "Create group",
+    "create-user": "Create user",
+    "edit-entry": "Edit Entry",
+    "edit-group": "Edit group",
+    "edit-user": "Edit user",
+    "group-form-dialog": {
+      "search-users-or-type-a-username": "Search users or type a username…"
+    },
+    "label": "Label",
+    "label-en": "Label (en)",
+    "save": "Save",
+    "user-form-dialog": {
+      "loading-groups": "Loading groups...",
+      "pick-from-search-or-enter-a": "Pick from search or enter a group name and press Enter",
+      "search-groups-or-type-a-group-name": "Search groups or type a group name…"
+    },
+    "yes": "Yes"
   },
   "app": {
     "app-shell": {
@@ -324,12 +380,15 @@
     "login-page": {
       "copyright-c-1992-2026-hyland-software": "Copyright (C) 1992–2026 Hyland Software, Inc.",
       "hyland": "Hyland",
+      "log-in": "Log in",
       "or": "OR",
       "password": "Password",
       "password-is-required": "Password is required",
+      "password-required": "Password (required)",
+      "sign-in-credentials": "Sign in credentials",
       "username": "Username",
       "username-is-required": "Username is required",
-      "log-in": "Log in"
+      "username-required": "Username (required)"
     },
     "nav": {
       "toggle": "Toggle navigation menu"
@@ -434,47 +493,51 @@
       "no-asset-results": "No asset results"
     },
     "column": {
-      "name": "Title",
-      "type": "Type",
-      "modified": "Modified",
-      "contributor": "Last contributor",
-      "state": "State",
-      "version": "Version",
-      "created": "Created",
       "author": "Author",
-      "nature": "Nature",
+      "contributor": "Last contributor",
       "coverage": "Coverage",
+      "created": "Created",
+      "flags": "Flags",
+      "modified": "Modified",
+      "name": "Title",
+      "nature": "Nature",
+      "state": "State",
       "subjects": "Subjects",
-      "flags": "Flags"
+      "type": "Type",
+      "version": "Version"
     },
     "filter": {
-      "asset-type": "Asset Type",
       "asset-format": "Asset Format",
-      "asset-width": "Asset Width",
-      "option": {
-        "less-than-500-px": "Less than 500 px",
-        "between-500-px-and-1500-px": "Between 500 px and 1500 px",
-        "between-1500-px-and-2000-px": "Between 1500 px and 2000 px",
-        "more-than-2000-px": "More than 2000 px",
-        "less-than-30-s": "Less than 30 s",
-        "between-30-s-and-180-s": "Between 30 s and 180 s",
-        "between-180-s-and-600-s": "Between 180 s and 600 s",
-        "between-600-s-and-1800-s": "Between 600 s and 1800 s",
-        "more-than-1800-s": "More than 1800 s"
-      },
       "asset-height": "Asset Height",
-      "color-profile": "Color Profile",
+      "asset-type": "Asset Type",
+      "asset-width": "Asset Width",
       "color-depth": "Color Depth per Channel",
+      "color-profile": "Color Profile",
+      "option": {
+        "between-1500-px-and-2000-px": "Between 1500 px and 2000 px",
+        "between-180-s-and-600-s": "Between 180 s and 600 s",
+        "between-30-s-and-180-s": "Between 30 s and 180 s",
+        "between-500-px-and-1500-px": "Between 500 px and 1500 px",
+        "between-600-s-and-1800-s": "Between 600 s and 1800 s",
+        "less-than-30-s": "Less than 30 s",
+        "less-than-500-px": "Less than 500 px",
+        "more-than-1800-s": "More than 1800 s",
+        "more-than-2000-px": "More than 2000 px"
+      },
       "video-duration": "Video Duration"
     },
-    "switch-to-grid-view": "Switch to Grid View",
-    "switch-to-table-view": "Switch to Table View",
     "saved-searches": "Saved Searches",
     "search-filters": "Search Filters",
+    "switch-to-filter-view": "Switch to Filter view",
+    "switch-to-grid-view": "Switch to Grid View",
     "switch-to-queue-view": "Switch to Queue view",
-    "switch-to-filter-view": "Switch to Filter view"
+    "switch-to-table-view": "Switch to Table View"
   },
   "browse": {
+    "block": "Block",
+    "breadcrumb": {
+      "root": "Root"
+    },
     "browse": {
       "action": "Action",
       "actions": "Actions",
@@ -529,6 +592,7 @@
       "retry": "Retry",
       "right": "Right",
       "search-or-create-a-tag": "Search or create a tag",
+      "selection": "Selection",
       "send-notification-email": "Send notification email",
       "sharing-to-external-users-does-not": "Sharing to external users does not create new user accounts. External users\n                      are provided a link to access this document.",
       "state": "State",
@@ -558,10 +622,27 @@
       "the-repository-root-carries-no-access": "The repository root carries no access control list. Open a domain or folder to see\n                and manage its permissions.",
       "this-folder-is-empty": "This folder is empty"
     },
+    "column": {
+      "author": "Author",
+      "coverage": "Coverage",
+      "created": "Created",
+      "flags": "Flags",
+      "lastcontributor": "Last Contributor",
+      "modified": "Modified",
+      "nature": "Nature",
+      "state": "State",
+      "subjects": "Subjects",
+      "title": "Title",
+      "type": "Type",
+      "version": "Version"
+    },
     "column-settings-dialog": {
       "columns-settings": "Columns Settings",
       "done": "Done",
       "reset": "Reset"
+    },
+    "create-import": {
+      "types-load-failed": "Could not load creatable document types for this folder."
     },
     "create-import-dialog": {
       "add-more-files": "Add more files",
@@ -585,6 +666,7 @@
       "edit-previous": "Edit Previous",
       "enter-a-valid-date": "Enter a valid date",
       "expires": "Expires",
+      "file-import-is-not-available-at": "File import is not available at the repository root. Create a domain first, or",
       "files-to-import": "Files to import",
       "format": "Format",
       "import": "Import",
@@ -607,10 +689,9 @@
       "type": "Type",
       "unchecked-files-will-be-discarded": "Unchecked files will be discarded.",
       "upload-a-main-file-to-create": "Upload a main file to create this document.",
+      "upload-complete": "Upload complete",
       "upload-main-file": "Upload main file",
-      "working": "Working…",
-      "file-import-is-not-available-at": "File import is not available at the repository root. Create a domain first, or",
-      "upload-complete": "Upload complete"
+      "working": "Working…"
     },
     "details": {
       "hide": "Hide details",
@@ -632,13 +713,13 @@
       "enter-a-valid-date": "Enter a valid date",
       "expires": "Expires",
       "nature": "Nature",
+      "save": "Save",
       "search": "Search…",
       "search-coverage": "Search Coverage",
       "search-nature": "Search Nature",
       "search-subjects": "Search Subjects",
       "subjects": "Subjects",
-      "title": "Title",
-      "save": "Save"
+      "title": "Title"
     },
     "folder-picker-dialog": {
       "cancel": "Cancel",
@@ -653,6 +734,7 @@
       "up-one-level": "Up one level",
       "use-this-folder": "Use this folder"
     },
+    "hide-details": "Hide details",
     "scope": {
       "create-import": "Create / Import",
       "delete": "Delete",
@@ -673,38 +755,19 @@
       "searching": "Searching...",
       "try-a-different-search-term": "Try a different search term"
     },
-    "column": {
-      "title": "Title",
-      "type": "Type",
-      "modified": "Modified",
-      "lastcontributor": "Last Contributor",
-      "state": "State",
-      "version": "Version",
-      "created": "Created",
-      "author": "Author",
-      "nature": "Nature",
-      "coverage": "Coverage",
-      "subjects": "Subjects",
-      "flags": "Flags"
-    },
-    "breadcrumb": {
-      "root": "Root"
-    },
-    "unblock": "Unblock",
-    "block": "Block",
-    "hide-details": "Hide details",
     "show-details": "Show details",
-    "create-import": {
-      "types-load-failed": "Could not load creatable document types for this folder."
-    },
     "tab": {
-      "view": "View",
-      "permissions": "Permissions",
       "history": "History",
-      "trash": "Trash"
-    }
+      "permissions": "Permissions",
+      "trash": "Trash",
+      "view": "View"
+    },
+    "unblock": "Unblock"
   },
   "collections": {
+    "add-to-clipboard": "Add to Clipboard",
+    "block": "Block",
+    "collection": "Collection",
     "collection-detail": {
       "actions": "Actions",
       "back-to-collections": "Back to collections",
@@ -745,8 +808,10 @@
       "share": "Share",
       "sharing-to-external-users-does-not": "Sharing to external users does not create new user accounts. External users are\n                provided a link to access this document.",
       "state": "State",
+      "the-collection-could-not-be-loaded": "The collection could not be loaded. This may be a permission or connection problem.",
       "the-document-is-not-shared-with": "The document is not shared with any external user.",
       "there-are-no-local-permissions": "There are no local permissions.",
+      "this-collection-does-not-exist-or": "This collection does not exist, or it has been deleted. The link may be out of date.",
       "this-collection-is-empty": "This collection is empty",
       "time-frame": "Time Frame",
       "title": "Title",
@@ -754,37 +819,71 @@
       "try-again": "Try again",
       "user": "User",
       "user-group": "User / Group",
-      "username": "Username",
-      "this-collection-does-not-exist-or": "This collection does not exist, or it has been deleted. The link may be out of date.",
-      "the-collection-could-not-be-loaded": "The collection could not be loaded. This may be a permission or connection problem."
+      "username": "Username"
     },
     "collection-not-found": "Collection not found",
     "collection-unavailable": "Collection unavailable",
-    "collection": "Collection",
-    "unsubscribe": "Unsubscribe",
+    "lock": "Lock",
+    "mmmm-d-yyyy": "MMMM d, yyyy",
     "notify-me": "Notify Me",
     "remove-from-clipboard": "Remove from Clipboard",
-    "add-to-clipboard": "Add to Clipboard",
-    "unlock": "Unlock",
-    "lock": "Lock",
-    "unblock": "Unblock",
-    "block": "Block",
-    "mmmm-d-yyyy": "MMMM d, yyyy",
     "tab": {
-      "view": "View",
+      "history": "History",
       "permissions": "Permissions",
-      "history": "History"
-    }
+      "view": "View"
+    },
+    "unblock": "Unblock",
+    "unlock": "Unlock",
+    "unsubscribe": "Unsubscribe"
+  },
+  "column": {
+    "document-list-author": "Author",
+    "document-list-coverage": "Coverage",
+    "document-list-created": "Created",
+    "document-list-flags": "Flags",
+    "document-list-last-contributor": "Last Contributor",
+    "document-list-modified": "Modified",
+    "document-list-nature": "Nature",
+    "document-list-state": "State",
+    "document-list-subjects": "Subjects",
+    "document-list-title": "Title",
+    "document-list-type": "Type",
+    "document-list-version": "Version"
+  },
+  "common": {
+    "select-item": "Select {{ name }}"
+  },
+  "dashboard": {
+    "favorite-items": "Favorite Items",
+    "recently-edited": "Recently Edited",
+    "recently-viewed": "Recently Viewed",
+    "tasks": "Tasks"
+  },
+  "doc-type": {
+    "audio": "Audio",
+    "collection": "Collection",
+    "domain": "Domain",
+    "file": "File",
+    "folder": "Folder",
+    "note": "Note",
+    "ordered-folder": "Ordered Folder",
+    "picture": "Picture",
+    "section": "Section",
+    "section-root": "Section Root",
+    "template-root": "Template Root",
+    "video": "Video",
+    "workspace": "Workspace",
+    "workspace-root": "Workspace Root"
   },
   "document-detail": {
     "add-to-collection-dialog": {
+      "add": "Add",
       "add-to-collection": "Add to Collection",
       "cancel": "Cancel",
       "collections": "Collections",
       "loading-collections": "Loading collections...",
       "search-or-create-collection": "Search or create collection...",
-      "select-a-collection": "Select a Collection...",
-      "add": "Add"
+      "select-a-collection": "Select a Collection..."
     },
     "attachment-preview-dialog": {
       "close": "Close",
@@ -795,19 +894,23 @@
       "zoom-in": "Zoom in",
       "zoom-out": "Zoom out"
     },
+    "block": "Block",
+    "checking-content-lake-status": "Checking Content Lake status",
     "create-version-dialog": {
       "cancel": "Cancel",
+      "create-version": "Create Version",
       "major-version": "Major version",
-      "minor-version": "Minor version",
-      "create-version": "Create Version"
+      "minor-version": "Minor version"
     },
     "document-detail": {
       "abandon": "Abandon",
       "activity": "Activity",
+      "add-a-tag": "Add a tag…",
       "ai-assistant": "AI Assistant",
       "ai-insights": "AI Insights",
       "already-in-content-lake": "Already in Content Lake",
       "already-ingested-to-content-lake": "Already ingested to Content Lake",
+      "analyze-sentiment": "Analyze Sentiment",
       "attachments": "Attachments",
       "augment-your-editorial-workflow-with-cognitive": "Augment your editorial workflow with cognitive processing. Generate summaries,\n                  classify complex data, and discover hidden relationships.",
       "automatic-taxonomy-mapping-based-on-entity": "Automatic taxonomy mapping based on entity extraction and sentiment analysis of\n                  the current document text.",
@@ -818,6 +921,7 @@
       "choose-process": "Choose process",
       "classification-amp-metadata": "Classification &amp; Metadata",
       "classify": "Classify",
+      "classify-document": "Classify Document",
       "close-panel": "Close panel",
       "close-start-process-dialog": "Close start process dialog",
       "collections": "Collections",
@@ -833,6 +937,7 @@
       "delete": "Delete",
       "delete-permanently": "Delete Permanently",
       "delete-permission": "Delete permission",
+      "describe-image": "Describe Image",
       "description": "Description",
       "discover-documents-within-the-archive-that": "Discover documents within the archive that share thematic overlaps, common\n                  entities, or stylistic signatures to ensure editorial consistency.",
       "document-preview": "Document Preview",
@@ -844,6 +949,7 @@
       "edit-permission": "Edit permission",
       "event-category": "Event Category",
       "expires": "Expires",
+      "extract-named-entities-text": "Extract Named Entities (Text)",
       "file-name": "File Name",
       "filter-by-username": "Filter by username",
       "find-connections": "Find Connections",
@@ -905,12 +1011,14 @@
       "send-notification": "Send notification",
       "send-notification-email": "Send notification email",
       "sharing-to-external-users-does-not": "Sharing to external users does not create new user accounts. External users are\n                  provided a link to access this document.",
+      "start": "Start",
       "start-process": "Start Process",
       "state": "State",
       "subjects": "Subjects",
       "submit": "Submit",
       "suggest-tags": "Suggest Tags",
       "suggested-tags": "Suggested Tags",
+      "summarize-document": "Summarize Document",
       "tags": "Tags",
       "the-document-is-not-shared-with": "The document is not shared with any external user.",
       "there-are-no-attachments": "There are no attachments",
@@ -923,6 +1031,7 @@
       "toggle-details-panel": "Toggle details panel",
       "unclassified": "Unclassified",
       "unpublish": "Unpublish",
+      "unpublish-all": "Unpublish All",
       "upload-attachment": "Upload attachment",
       "user": "User",
       "user-group": "User / Group",
@@ -933,15 +1042,8 @@
       "write-a-comment-here": "Write a comment here",
       "write-a-reply-here": "Write a reply here",
       "you-are-viewing-a-trashed-document": "You are viewing a trashed document.",
-      "you-started-a": "You started a",
-      "extract-named-entities-text": "Extract Named Entities (Text)",
-      "classify-document": "Classify Document",
-      "summarize-document": "Summarize Document",
-      "describe-image": "Describe Image",
       "you-have-a-task-to-process": "You have a task to process",
-      "start": "Start",
-      "unpublish-all": "Unpublish All",
-      "analyze-sentiment": "Analyze Sentiment"
+      "you-started-a": "You started a"
     },
     "drive-dialog": {
       "checking-nuxeo-drive": "Checking Nuxeo Drive...",
@@ -958,14 +1060,19 @@
       "enter-a-valid-date": "Enter a valid date",
       "expires": "Expires",
       "nature": "Nature",
+      "save": "Save",
       "search": "Search…",
       "search-coverage": "Search Coverage",
       "search-nature": "Search Nature",
       "search-subjects": "Search Subjects",
       "subjects": "Subjects",
-      "title": "Title",
-      "save": "Save"
+      "title": "Title"
     },
+    "generate": "Generate",
+    "hide-details": "Hide details",
+    "html-source": "HTML source",
+    "ingesting-into-content-lake": "Ingesting into Content Lake",
+    "mmmm-d-yyyy": "MMMM d, yyyy",
     "note-editor": {
       "align-center": "Align center",
       "align-left": "Align left",
@@ -992,15 +1099,15 @@
       "note-formatting": "Note formatting",
       "note-html-source": "Note HTML source",
       "numbered-list": "Numbered list",
+      "placeholder": "Type here...",
+      "save": "Save",
       "strikethrough": "Strikethrough",
       "subscript": "Subscript",
       "superscript": "Superscript",
       "text-color": "Text color",
       "text-style": "Text style",
       "underline": "Underline",
-      "uploading-image": "Uploading image…",
-      "placeholder": "Type here...",
-      "save": "Save"
+      "uploading-image": "Uploading image…"
     },
     "note-image-picker-dialog": {
       "cancel": "Cancel",
@@ -1023,11 +1130,12 @@
       "none": "None",
       "options": "Options",
       "override-existing-publications": "Override existing publications.",
+      "publish": "Publish",
       "renditions": "Renditions",
       "show-renditions": "Show renditions",
-      "version": "Version",
-      "publish": "Publish"
+      "version": "Version"
     },
+    "regenerate": "Regenerate",
     "remove-attachment-dialog": {
       "do-you-really-want-to-remove": "Do you really want to remove this file?",
       "no": "No",
@@ -1040,20 +1148,30 @@
       "replace-file": "Replace File",
       "upload-main-file": "Upload main file"
     },
-    "ingesting-into-content-lake": "Ingesting into Content Lake",
-    "checking-content-lake-status": "Checking Content Lake status",
-    "unblock": "Unblock",
-    "block": "Block",
-    "mmmm-d-yyyy": "MMMM d, yyyy",
-    "regenerate": "Regenerate",
-    "generate": "Generate",
-    "hide-details": "Hide details",
-    "show-details": "Show details",
-    "unknown": "Unknown",
-    "reply": "Reply",
     "replies": "Replies",
-    "visual-editor": "Visual editor",
-    "html-source": "HTML source"
+    "reply": "Reply",
+    "show-details": "Show details",
+    "unblock": "Unblock",
+    "unknown": "Unknown",
+    "visual-editor": "Visual editor"
+  },
+  "drawer": {
+    "administration-analytics": "Analytics",
+    "administration-audit": "Audit",
+    "administration-cloud-services": "Cloud Services",
+    "administration-nxql-search": "NXQL Search",
+    "administration-users-groups": "Users & Groups",
+    "administration-vocabularies": "Vocabularies",
+    "settings-authorized-applications": "Authorized Applications",
+    "settings-cloud-services": "Cloud Services",
+    "settings-nuxeo-drive": "Nuxeo Drive",
+    "settings-profile": "Profile",
+    "settings-themes": "Themes"
+  },
+  "extensions": {
+    "extension-outlet": {
+      "loading": "Loading…"
+    }
   },
   "hxp": {
     "hxp-browse-details-panel": {
@@ -1143,12 +1261,12 @@
       "upload-with-nuxeo-drive": "Upload with Nuxeo Drive"
     },
     "tab": {
-      "view": "View",
+      "history": "History",
       "permissions": "Permissions",
       "properties": "Properties",
+      "trash": "Trash",
       "versions": "Versions",
-      "history": "History",
-      "trash": "Trash"
+      "view": "View"
     }
   },
   "kd": {
@@ -1212,10 +1330,22 @@
       "your-question": "Your question"
     }
   },
+  "knowledge-discovery": {
+    "blocked": "Blocked",
+    "complete": "Complete",
+    "content-lake-upload": {
+      "upload": "Upload"
+    },
+    "error": "Error",
+    "submitted": "Submitted",
+    "unknown": "Unknown"
+  },
   "nav": {
     "clipboard": {
+      "copy": "Copy",
       "empty": "Clipboard is empty",
       "hint": "Use \"Add to Clipboard\" on documents or collections to add items here.",
+      "move": "Move",
       "remove": "Remove from clipboard",
       "tip": "Browse to a container to paste or move clipboard content."
     },
@@ -1247,9 +1377,9 @@
       "personal-space": "Personal Space",
       "recently-viewed": "Recently viewed",
       "search-filters": "Search filters",
+      "settings": "Settings",
       "tasks": "Tasks",
-      "trash": "Trash",
-      "settings": "Settings"
+      "trash": "Trash"
     },
     "loading": "Loading",
     "recent": {
@@ -1261,6 +1391,39 @@
       "dashboard": "View Tasks Dashboard",
       "empty": "No pending tasks",
       "retry": "Retry"
+    },
+    "tree": {
+      "retry": "Retry",
+      "root": "Root",
+      "toggle": "Toggle {{ name }}"
+    }
+  },
+  "note-format": {
+    "html": "HTML",
+    "markdown": "Markdown",
+    "plain": "Text",
+    "xml": "XML"
+  },
+  "permission": {
+    "everything": "Manage everything",
+    "read": "Read",
+    "read-can-collect": "Can collect",
+    "read-write": "Edit"
+  },
+  "permission-dialogs": {
+    "add-permission-dialog": {
+      "create": "Create",
+      "create-and-add-another": "Create And Add Another"
+    },
+    "delete-permission-dialog": {
+      "delete": "Delete"
+    },
+    "share-external-dialog": {
+      "create": "Create",
+      "create-and-add-another": "Create And Add Another"
+    },
+    "update-permission-dialog": {
+      "update": "Update"
     }
   },
   "permissions": {
@@ -1297,6 +1460,9 @@
       "share-with-external-user": "Share With External User",
       "to": "To"
     },
+    "time-frame": {
+      "permanent": "Permanent"
+    },
     "update-permission-dialog": {
       "cancel": "Cancel",
       "date-based": "Date-based",
@@ -1309,12 +1475,63 @@
       "time-frame": "Time Frame",
       "to": "To",
       "update-permission": "Update Permission"
-    },
-    "time-frame": {
-      "permanent": "Permanent"
+    }
+  },
+  "rendition": {
+    "pdf": "PDF",
+    "thumbnail": "Thumbnail",
+    "xml": "XML Export",
+    "xml-export": "XML Export",
+    "zip": "ZIP Export",
+    "zip-export": "ZIP Export"
+  },
+  "saved-search": {
+    "dialog": {
+      "name-placeholder": "Enter a name for your saved search"
     }
   },
   "search": {
+    "ai-search": "AI Search",
+    "ai-search-active": "AI Search Active",
+    "column": {
+      "author": "Author",
+      "contributor": "Last contributor",
+      "coverage": "Coverage",
+      "created": "Created",
+      "flags": "Flags",
+      "modified": "Modified",
+      "name": "Title",
+      "nature": "Nature",
+      "state": "State",
+      "subjects": "Subjects",
+      "type": "Type",
+      "version": "Version"
+    },
+    "filter": {
+      "last-month": "Last month",
+      "last-week": "Last week",
+      "last-year": "Last year",
+      "last24h": "Last 24h",
+      "more-than1-year-ago": "More than a year ago",
+      "option": {
+        "between-1-mb-and-10-mb": "Between 1 MB and 10 MB",
+        "between-10-mb-and-100-mb": "Between 10 MB and 100 MB",
+        "between-100-kb-and-1-mb": "Between 100 KB and 1 MB",
+        "less-than-100-kb": "Less than 100 KB",
+        "more-than-100-mb": "More than 100 MB",
+        "most-recent": "Most Recent",
+        "no-containers": "No Containers",
+        "validated": "Validated"
+      },
+      "tag-placeholder": "e.g. events, boston"
+    },
+    "hide-query": "Hide Query",
+    "quick-filter": {
+      "most-recent": "Most Recent",
+      "no-containers": "No Containers",
+      "validated": "Validated"
+    },
+    "saved-searches": "Saved Searches",
     "search": {
       "add-to-favorites": "Add to favorites",
       "ask-in-natural-language-e-g": "Ask in natural language... e.g. 'PDFs uploaded last week by Administrator'",
@@ -1346,6 +1563,7 @@
       "table-view": "Table view",
       "title": "Title"
     },
+    "search-filters": "Search Filters",
     "search-filters-drawer": {
       "authors": "Authors",
       "collections": "Collections",
@@ -1373,76 +1591,42 @@
     "search-queue": {
       "no-search-results": "No search results"
     },
-    "column": {
-      "name": "Title",
-      "type": "Type",
-      "modified": "Modified",
-      "contributor": "Last contributor",
-      "state": "State",
-      "version": "Version",
-      "created": "Created",
-      "author": "Author",
-      "nature": "Nature",
-      "coverage": "Coverage",
-      "subjects": "Subjects",
-      "flags": "Flags"
-    },
-    "filter": {
-      "last24h": "Last 24h",
-      "last-week": "Last week",
-      "last-month": "Last month",
-      "last-year": "Last year",
-      "more-than1-year-ago": "More than a year ago",
-      "option": {
-        "less-than-100-kb": "Less than 100 KB",
-        "between-100-kb-and-1-mb": "Between 100 KB and 1 MB",
-        "between-1-mb-and-10-mb": "Between 1 MB and 10 MB",
-        "between-10-mb-and-100-mb": "Between 10 MB and 100 MB",
-        "more-than-100-mb": "More than 100 MB",
-        "no-containers": "No Containers",
-        "most-recent": "Most Recent",
-        "validated": "Validated"
-      },
-      "tag-placeholder": "e.g. events, boston"
-    },
-    "quick-filter": {
-      "no-containers": "No Containers",
-      "most-recent": "Most Recent",
-      "validated": "Validated"
-    },
-    "saved-searches": "Saved Searches",
-    "search-filters": "Search Filters",
-    "switch-to-queue-view": "Switch to Queue view",
     "switch-to-filter-view": "Switch to Filter view",
-    "ai-search-active": "AI Search Active",
-    "ai-search": "AI Search",
-    "hide-query": "Hide Query",
-    "view-query": "View Query",
     "switch-to-grid-view": "Switch to Grid View",
+    "switch-to-list-view": "Switch to List view",
+    "switch-to-queue-view": "Switch to Queue view",
     "switch-to-table-view": "Switch to Table View",
-    "switch-to-list-view": "Switch to List view"
+    "view-query": "View Query"
   },
   "settings": {
+    "authorized-applications": {
+      "load-failed": "Failed to load authorized applications."
+    },
+    "cloud-services": {
+      "load-failed": "Failed to load connected accounts.",
+      "title": "Connected accounts"
+    },
+    "hide-password": "Hide password",
+    "profile": {
+      "local-permissions": "Local permissions",
+      "no-local-permissions": "No local permissions found."
+    },
+    "save-changes": "Save changes",
+    "show-password": "Show password",
     "themes": {
       "apply": "Apply",
       "current": "Current",
       "search": "Search themes",
       "title": "Themes"
-    },
-    "hide-password": "Hide password",
-    "show-password": "Show password",
-    "save-changes": "Save changes",
-    "cloud-services": {
-      "load-failed": "Failed to load connected accounts.",
-      "title": "Connected accounts"
-    },
-    "authorized-applications": {
-      "load-failed": "Failed to load authorized applications."
-    },
-    "profile": {
-      "local-permissions": "Local permissions",
-      "no-local-permissions": "No local permissions found."
     }
+  },
+  "shared": {
+    "add-tag": "Add tag {{ name }}",
+    "include-file": "Include {{ name }}",
+    "remove-group": "Remove group {{ name }}",
+    "remove-item": "Remove {{ name }}",
+    "remove-tag": "Remove tag {{ name }}",
+    "view-citation": "View citation {{ number }}"
   },
   "shared-ui": {
     "confirm-dialog": {
@@ -1591,12 +1775,31 @@
     "ai": {
       "clear": "Clear chat",
       "close": "Close chat",
+      "empty-state": "Ask me about your documents, search the repository, or get insights about workflows and tasks.",
       "heading": "Nuxeo AI Assistant",
       "input-placeholder": "Ask anything about your documents...",
       "open": "AI Assistant",
       "send": "Send message",
+      "sources": "Sources",
+      "suggestion": {
+        "modified-today": "What documents were modified today?",
+        "recent-uploads": "Show me recent uploads",
+        "summarize-tasks": "Summarize my pending tasks"
+      },
       "title": "AI Assistant"
     },
+    "due": "Due",
+    "file": "File",
+    "menu": {
+      "about": "About",
+      "ai-features": "AI Features {{ state }}",
+      "help": "Help",
+      "state-off": "Off",
+      "state-on": "On",
+      "themes": "Themes"
+    },
+    "off": "Off",
+    "overdue": "Overdue",
     "search": {
       "no-results": "No results found",
       "placeholder": "Search documents, users or groups",
@@ -1604,13 +1807,19 @@
     },
     "settings": {
       "menu": "Settings menu"
-    },
-    "off": "Off",
-    "file": "File",
-    "overdue": "Overdue",
-    "due": "Due"
+    }
+  },
+  "tab": {
+    "tabs-ai-insights": "AI Insights",
+    "tabs-annotations": "Annotations",
+    "tabs-history": "History",
+    "tabs-permissions": "Permissions",
+    "tabs-publishing": "Publishing",
+    "tabs-view": "View"
   },
   "tasks": {
+    "document": "Document",
+    "no-document": "No document",
     "task-detail": {
       "abandon": "Abandon",
       "add-a-comment": "Add a comment…",
@@ -1668,6 +1877,7 @@
       "reassign-task": "Reassign Task",
       "review-type": "Review Type",
       "search-users-or-groups": "Search users or groups",
+      "select-a-task": "Select a task from the Tasks panel on the left",
       "select-a-task-from-the": "Select a task from the",
       "select-new-assignees-the-current-assignees": "Select new assignees. The current assignees will be removed from this task.",
       "simple-review": "Simple Review",
@@ -1675,13 +1885,22 @@
       "type-to-search": "Type to search…",
       "validation": "Validation",
       "view-graph": "View Graph",
-      "workflow-graph": "Workflow Graph",
-      "select-a-task": "Select a task from the Tasks panel on the left"
-    },
-    "document": "Document",
-    "no-document": "No document"
+      "workflow-graph": "Workflow Graph"
+    }
   },
   "trash": {
+    "column": {
+      "author": "Author",
+      "contributor": "Last contributor",
+      "created": "Created",
+      "modified": "Modified",
+      "state": "State",
+      "title": "Title",
+      "type": "Type"
+    },
+    "search-filters": "Search Filters",
+    "show-filters": "Show filters",
+    "show-results": "Show results",
     "trash": {
       "clear": "Clear",
       "close-column-picker": "Close column picker",
@@ -1728,208 +1947,28 @@
       "search-for-something": "Search for something...",
       "size": "Size",
       "trash-is-empty": "Trash is empty."
-    },
-    "column": {
-      "title": "Title",
-      "type": "Type",
-      "modified": "Modified",
-      "contributor": "Last contributor",
-      "created": "Created",
-      "author": "Author",
-      "state": "State"
-    },
-    "search-filters": "Search Filters",
-    "show-results": "Show results",
-    "show-filters": "Show filters"
-  },
-  "action": {
-    "bulk-actions-download-zip": "Download All as Zip",
-    "bulk-actions-add-to-collection": "Add to Collection",
-    "bulk-actions-compare": "Compare",
-    "bulk-actions-add-to-clipboard": "Add to Clipboard",
-    "bulk-actions-publish": "Publish Document",
-    "bulk-actions-delete": "Delete selected",
-    "toolbar-edit": "Edit",
-    "toolbar-edit-properties": "Edit properties",
-    "toolbar-add-to-collection": "Add to collection",
-    "toolbar-delete": "Delete",
-    "toolbar-lock": "Lock",
-    "toolbar-unlock": "Unlock",
-    "toolbar-add-to-favorites": "Add to Favorites",
-    "toolbar-remove-from-favorites": "Remove from Favorites",
-    "toolbar-share": "Share",
-    "toolbar-publish": "Publish document",
-    "toolbar-subscribe": "Notify Me",
-    "toolbar-unsubscribe": "Unsubscribe",
-    "toolbar-add-to-clipboard": "Add to Clipboard",
-    "toolbar-remove-from-clipboard": "Remove from Clipboard",
-    "toolbar-export": "Export",
-    "toolbar-start-process": "Start Process",
-    "context-menu-share": "Share",
-    "context-menu-subscribe": "Notify Me",
-    "context-menu-unsubscribe": "Unsubscribe",
-    "context-menu-export": "Export"
-  },
-  "column": {
-    "document-list-title": "Title",
-    "document-list-type": "Type",
-    "document-list-modified": "Modified",
-    "document-list-last-contributor": "Last Contributor",
-    "document-list-state": "State",
-    "document-list-version": "Version",
-    "document-list-created": "Created",
-    "document-list-author": "Author",
-    "document-list-nature": "Nature",
-    "document-list-coverage": "Coverage",
-    "document-list-subjects": "Subjects",
-    "document-list-flags": "Flags"
-  },
-  "tab": {
-    "tabs-view": "View",
-    "tabs-annotations": "Annotations",
-    "tabs-permissions": "Permissions",
-    "tabs-history": "History",
-    "tabs-publishing": "Publishing",
-    "tabs-ai-insights": "AI Insights"
-  },
-  "drawer": {
-    "settings-nuxeo-drive": "Nuxeo Drive",
-    "settings-profile": "Profile",
-    "settings-authorized-applications": "Authorized Applications",
-    "settings-cloud-services": "Cloud Services",
-    "administration-analytics": "Analytics",
-    "administration-users-groups": "Users & Groups",
-    "administration-vocabularies": "Vocabularies",
-    "administration-audit": "Audit",
-    "administration-cloud-services": "Cloud Services",
-    "administration-nxql-search": "NXQL Search",
-    "settings-themes": "Themes"
-  },
-  "permission": {
-    "read": "Read",
-    "read-write": "Edit",
-    "everything": "Manage everything",
-    "read-can-collect": "Can collect"
-  },
-  "note-format": {
-    "html": "HTML",
-    "plain": "Text",
-    "xml": "XML",
-    "markdown": "Markdown"
-  },
-  "rendition": {
-    "thumbnail": "Thumbnail",
-    "pdf": "PDF",
-    "zip-export": "ZIP Export",
-    "xml-export": "XML Export",
-    "zip": "ZIP Export",
-    "xml": "XML Export"
-  },
-  "saved-search": {
-    "dialog": {
-      "name-placeholder": "Enter a name for your saved search"
     }
-  },
-  "dashboard": {
-    "recently-edited": "Recently Edited",
-    "tasks": "Tasks",
-    "recently-viewed": "Recently Viewed",
-    "favorite-items": "Favorite Items"
-  },
-  "administration": {
-    "yes": "Yes",
-    "create-group": "Create group",
-    "edit-group": "Edit group",
-    "create-user": "Create user",
-    "edit-user": "Edit user",
-    "create": "Create",
-    "save": "Save",
-    "add-entry": "Add Entry",
-    "edit-entry": "Edit Entry",
-    "label-en": "Label (en)",
-    "label": "Label",
-    "admin-analytics-page": {
-      "scan-for-anomalies": "Scan for Anomalies"
-    },
-    "user-form-dialog": {
-      "loading-groups": "Loading groups...",
-      "pick-from-search-or-enter-a": "Pick from search or enter a group name and press Enter"
-    }
-  },
-  "knowledge-discovery": {
-    "submitted": "Submitted",
-    "complete": "Complete",
-    "error": "Error",
-    "blocked": "Blocked",
-    "unknown": "Unknown",
-    "content-lake-upload": {
-      "upload": "Upload"
-    }
-  },
-  "adf-hx-bridge": {
-    "unsubscribe": "Unsubscribe",
-    "notify-me": "Notify Me"
   },
   "ui": {
-    "confirm": "Confirm",
     "actual-size": "Actual size",
-    "fit-to-viewer": "Fit to viewer",
-    "saved-search": "Saved Search",
-    "enter-a-name-for-your-saved": "Enter a name for your saved search",
     "add-a-permission": "Add a Permission",
-    "unblock": "Unblock",
     "block": "Block",
-    "update": "Update",
+    "confirm": "Confirm",
     "create": "Create",
     "document-compare-dialog": {
-      "no-document-data-available-to-compare": "No document data available to compare.",
-      "no-differences-found-between-the-selected": "No differences found between the selected documents."
+      "no-differences-found-between-the-selected": "No differences found between the selected documents.",
+      "no-document-data-available-to-compare": "No document data available to compare."
     },
     "document-viewer": {
       "your-browser-does-not-support-video": "Your browser does not support video playback."
     },
     "edit-collection-dialog": {
       "save": "Save"
-    }
-  },
-  "doc-type": {
-    "audio": "Audio",
-    "collection": "Collection",
-    "file": "File",
-    "folder": "Folder",
-    "note": "Note",
-    "ordered-folder": "Ordered Folder",
-    "picture": "Picture",
-    "video": "Video",
-    "workspace": "Workspace",
-    "section": "Section",
-    "section-root": "Section Root",
-    "template-root": "Template Root",
-    "domain": "Domain",
-    "workspace-root": "Workspace Root"
-  },
-  "common": {
-    "select-item": "Select {{ name }}"
-  },
-  "permission-dialogs": {
-    "add-permission-dialog": {
-      "create-and-add-another": "Create And Add Another",
-      "create": "Create"
     },
-    "delete-permission-dialog": {
-      "delete": "Delete"
-    },
-    "share-external-dialog": {
-      "create-and-add-another": "Create And Add Another",
-      "create": "Create"
-    },
-    "update-permission-dialog": {
-      "update": "Update"
-    }
-  },
-  "extensions": {
-    "extension-outlet": {
-      "loading": "Loading…"
-    }
+    "enter-a-name-for-your-saved": "Enter a name for your saved search",
+    "fit-to-viewer": "Fit to viewer",
+    "saved-search": "Saved Search",
+    "unblock": "Unblock",
+    "update": "Update"
   }
 }

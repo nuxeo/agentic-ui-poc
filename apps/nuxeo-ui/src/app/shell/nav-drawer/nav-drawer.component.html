@@ -79,7 +79,7 @@
         @if (browseTreeShowRootBack()) {
           <button class="tree-back" type="button" (click)="navigateToBrowseRoot()">
             <mat-icon>chevron_left</mat-icon>
-            {{ 'app.nav-drawer.root' | translate }}
+            {{ 'nav.tree.root' | translate }}
           </button>
         }
         <div class="tree-list">
@@ -104,7 +104,7 @@
         <div class="tree-empty error">
           <span>{{ personalSpaceError() }}</span>
           <button mat-stroked-button type="button" (click)="refreshPersonalSpaceTree()">
-            {{ 'app.nav-drawer.retry' | translate }}
+            {{ 'nav.tree.retry' | translate }}
           </button>
         </div>
       } @else if (personalSpaceNodes().length === 0) {
@@ -385,7 +385,7 @@
               (click)="copyClipboard()"
             >
               <mat-icon>content_copy</mat-icon>
-              {{ 'app.nav-drawer.copy' | translate }}
+              {{ 'nav.clipboard.copy' | translate }}
             </button>
             <button
               mat-stroked-button
@@ -395,7 +395,7 @@
               (click)="moveClipboard()"
             >
               <mat-icon>drive_file_move</mat-icon>
-              {{ 'app.nav-drawer.move' | translate }}
+              {{ 'nav.clipboard.move' | translate }}
             </button>
           </div>
         </div>
@@ -452,7 +452,20 @@
 <ng-template #folderTpl let-node let-depth="depth">
   <div class="tree-node" [style.padding-left.px]="12 + depth * 20">
     @if (hasChildren(node)) {
-      <button class="tree-toggle" (click)="toggleNode(node)" type="button">
+      <!--
+        The name goes through an interpolation PARAMETER, not a `+`. D0c in
+        docs/i18n-localization-plan.md: INFO-144 forbids building a string from concatenated
+        substrings, and upstream's own tree toggle is the cautionary example — it does
+        `('DOCUMENT_TREE.TOGGLE_ARIA-LABEL ' | translate) + node.name`, which no translator can
+        reorder for a language that needs the noun first.
+      -->
+      <button
+        class="tree-toggle"
+        (click)="toggleNode(node)"
+        type="button"
+        [attr.aria-label]="'nav.tree.toggle' | translate: { name: nodeLabel(node) }"
+        [attr.aria-expanded]="node.expanded"
+      >
         @if (node.loading) {
           <mat-spinner diameter="14" [attr.aria-label]="'nav.loading' | translate" />
         } @else {

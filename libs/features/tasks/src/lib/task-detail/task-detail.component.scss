@@ -160,7 +160,8 @@
   gap: 0.2rem;
   font-size: 0.8rem;
   color: #1565c0;
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
   cursor: pointer;
 
   &:hover {

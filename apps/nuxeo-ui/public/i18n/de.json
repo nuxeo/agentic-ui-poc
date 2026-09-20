@@ -1,30 +1,33 @@
 {
   "app": {
-    "title": "Hyland Nuxeo",
+    "login-page": {},
     "nav": {
       "toggle": "Navigationsmenü ein- oder ausblenden"
-    }
+    },
+    "title": "Hyland Nuxeo"
   },
   "browse": {
     "details": {
-      "show": "Details anzeigen",
       "hide": "Details ausblenden",
+      "show": "Details anzeigen",
       "toggle": "Detailbereich ein- oder ausblenden"
     },
     "scope": {
       "create-import": "Erstellen / Importieren",
+      "delete": "Löschen",
       "drive": "Nuxeo Drive",
       "edit": "Metadaten bearbeiten",
-      "delete": "Löschen",
-      "share": "Teilen",
+      "export": "Exportieren",
       "notify": "Benachrichtigen",
-      "export": "Exportieren"
+      "share": "Teilen"
     }
   },
   "nav": {
     "clipboard": {
+      "copy": "Kopieren",
       "empty": "Die Zwischenablage ist leer",
       "hint": "Verwenden Sie „Zur Zwischenablage hinzufügen“ bei Dokumenten oder Sammlungen, um hier Elemente hinzuzufügen.",
+      "move": "Verschieben",
       "remove": "Aus der Zwischenablage entfernen",
       "tip": "Navigieren Sie zu einem Container, um den Inhalt der Zwischenablage einzufügen oder zu verschieben."
     },
@@ -69,25 +72,45 @@
       "dashboard": "Aufgaben-Dashboard anzeigen",
       "empty": "Keine ausstehenden Aufgaben",
       "retry": "Wiederholen"
+    },
+    "tree": {
+      "retry": "Erneut versuchen",
+      "root": "Stamm",
+      "toggle": "{{ name }} ein- oder ausklappen"
     }
   },
   "settings": {
     "themes": {
-      "title": "Designs",
-      "search": "Designs suchen",
+      "apply": "Anwenden",
       "current": "Aktuell",
-      "apply": "Anwenden"
+      "search": "Designs suchen",
+      "title": "Designs"
     }
   },
   "shell": {
     "ai": {
       "clear": "Chat leeren",
       "close": "Chat schließen",
+      "empty-state": "Fragen Sie mich zu Ihren Dokumenten, durchsuchen Sie das Repository oder erhalten Sie Einblicke in Workflows und Aufgaben.",
       "heading": "Nuxeo KI-Assistent",
       "input-placeholder": "Stellen Sie eine Frage zu Ihren Dokumenten...",
       "open": "KI-Assistent",
       "send": "Nachricht senden",
+      "sources": "Quellen",
+      "suggestion": {
+        "modified-today": "Welche Dokumente wurden heute geändert?",
+        "recent-uploads": "Zeige mir die neuesten Uploads",
+        "summarize-tasks": "Fasse meine offenen Aufgaben zusammen"
+      },
       "title": "KI-Assistent"
+    },
+    "menu": {
+      "about": "Info",
+      "ai-features": "KI-Funktionen {{ state }}",
+      "help": "Hilfe",
+      "state-off": "aus",
+      "state-on": "ein",
+      "themes": "Designs"
     },
     "search": {
       "no-results": "Keine Ergebnisse gefunden",

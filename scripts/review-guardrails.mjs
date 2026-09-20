@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 const repoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -206,6 +207,7 @@ function inlineStyleBlockLines(source) {
   }
   return covered;
 }
+
 
 /**
  * A colour literal must come from a **theme token with a fallback**, not be typed
@@ -987,7 +989,8 @@ function checkNoAdfHxInPublicApi() {
     }
 
     for (const offender of offenders) {
-      if (ALLOWED.has(offender.file)) continue;
+      const offenderPath = offender.file.replace(/\\/g, '/');
+      if (ALLOWED.has(offender.file) || ALLOWED.has(offenderPath)) continue;
       fail(
         `${offender.file} imports from \`@alfresco/*\` and is reachable from the public barrel ` +
           `${barrel} via ${offender.from.slice(1).join(' -> ') || 'a direct export'}. That both ` +
@@ -1043,10 +1046,25 @@ function checkNoHardcodedUiText() {
    * it. That leaves genuine prose, which is the only thing this is meant to find.
    */
   const BARE_PROSE_LINE = /^[^<>{}="|]+$/;
+  /**
+   * The same attributes written as a BINDING carrying a literal: `[title]="'Recently Edited'"`.
+   *
+   * Angular resolves that to the same DOM attribute as the plain form, so it is the same defect —
+   * but `TEXT_ATTRIBUTES` cannot see it, because the brackets are part of the attribute name and
+   * the braces exclusion never applies.
+   */
+  const BOUND_TEXT_ATTRIBUTES =
+    /\[(?:attr\.)?(placeholder|matTooltip|alt|aria-label|title)\]="\s*('[^']*'|"[^"]*")\s*"/g;
 
   /** Prose a user reads, as opposed to an icon ligature, a CSS value or a number. */
   function isDisplayText(value) {
-    const text = value.trim();
+    // A BOUND literal keeps its inner quotes: `[title]="'Recently Edited'"` captures
+    // `'Recently Edited'`, which starts with an apostrophe, so the capital-letter test below
+    // rejected it and the string passed.
+    const text = value
+      .trim()
+      .replace(/^(['"])(.*)\1$/, '$2')
+      .trim();
     if (text.length < 2) return false;
     if (!/^[A-Z]/.test(text)) return false;
     return (text.match(/[A-Za-z]/g) ?? []).length >= 2;
@@ -1071,6 +1089,13 @@ function checkNoHardcodedUiText() {
     // A standalone debug page, not referenced by `angular.json` and not copied as an asset, so
     // it is never served to anyone.
     /^apps\/nuxeo-ui\/src\/diagnostic\.html$/,
+    // Spec fixtures. A `*.host.html` is the template of a test host component, compiled only by
+    // the spec that names it and served by no build config — verified for all three: each is
+    // referenced by exactly one `.spec.ts` and appears in no `assets` glob. Their text is test
+    // DATA, chosen to reproduce a rendering bug, so keying it would make the fixture describe
+    // something other than the case under test. They arrived from `main` after this sweep went
+    // repo-wide, which is why the list did not already cover them.
+    /\.host\.html$/,
     // The document shell. `checkNoTemplateSyntaxInDocumentShell` REQUIRES its title to be a
     // literal — Angular never compiles this file, so a pipe there renders as visible braces.
     // Without this exemption the two gates contradict each other and one of them has to be
@@ -1105,37 +1130,65 @@ function checkNoHardcodedUiText() {
   ]);
 
   /**
-   * Regions to skip that span lines, which a scan of one line at a time cannot see.
+   * The file's lines with comment and `<pre>` spans blanked out, keyed by line number.
    *
-   * The old check skipped a line STARTING with `<!--`, so the body of a multi-line comment was
-   * scanned as markup — the nav drawer's explanation of the sidebar slot was reported as
-   * hard-coded UI text. And `<pre>` holds code samples shown to customers as documentation;
-   * `import { Component } from '@angular/core'` is not prose and translating it would be
-   * actively wrong.
+   * ## Why comments are excluded at all
+   *
+   * The skip here was `trimmed.startsWith('<!--')`, which only recognises a comment's FIRST line
+   * — so the body of one was scanned as markup. It fired on the nav drawer's own explanation of
+   * why the tree name goes through an interpolation parameter. Text inside a comment renders to
+   * nobody, so it cannot be a string a user reads.
+   *
+   * `<pre>` holds code samples shown to customers as documentation. `import { Component } from
+   * '@angular/core'` is not prose, and translating it would be actively wrong.
+   *
+   * ## Why spans are blanked rather than whole lines skipped
+   *
+   * The first version of this skipped any line CONTAINING `<!--`, which exempted more than the
+   * comment: `<p>Hello There</p> <!-- note -->` was skipped in full, so a hard-coded label
+   * escaped the gate entirely by having a comment after it. That is a false negative in the check
+   * that enforces AC1, and it is the same mistake the `| translate` handling below already
+   * records having made — skipping the line exempted more than the thing that earned it.
+   *
+   * Blanking preserves line numbers and column positions, so what is left on the line is exactly
+   * the markup, and the patterns above see it unchanged.
    */
-  function skippableRegions(body) {
-    const skip = new Set();
-    let inComment = false;
-    let inPre = false;
-    for (const [index, text] of body.split('\n').entries()) {
-      const opensComment = text.includes('<!--') && !text.includes('-->');
-      const opensPre = /<pre\b/.test(text) && !/<\/pre>/.test(text);
-      if (inComment || inPre || opensComment || opensPre || /<!--|<pre\b/.test(text)) {
-        skip.add(index + 1);
+  function blankSkippableSpans(body) {
+    const OPENERS = [
+      ['<!--', '-->'],
+      ['<pre', '</pre>'],
+    ];
+    const chars = [...body];
+    let index = 0;
+    while (index < chars.length) {
+      const rest = body.slice(index);
+      const opener = OPENERS.find(([open]) => rest.startsWith(open));
+      if (!opener) {
+        index += 1;
+        continue;
       }
-      if (inComment && text.includes('-->')) inComment = false;
-      else if (opensComment) inComment = true;
-      if (inPre && /<\/pre>/.test(text)) inPre = false;
-      else if (opensPre) inPre = true;
+      const [, close] = opener;
+      const end = body.indexOf(close, index);
+      // An unterminated comment or `<pre>` runs to end of file. Blanking to the end is the safe
+      // reading: the rest of the file is inside it as far as a browser is concerned.
+      const stop = end === -1 ? chars.length : end + close.length;
+      for (let at = index; at < stop; at += 1) {
+        if (chars[at] !== '\n') chars[at] = ' ';
+      }
+      index = stop;
     }
-    return skip;
+    return new Map(chars.join('').split('\n').map((text, at) => [at + 1, text]));
   }
 
   for (const [file, lines] of everyLine) {
-    const skip = skippableRegions(read(file));
-    for (const { line, text } of lines) {
-      const trimmed = text.trim();
-      if (!trimmed || skip.has(line)) continue;
+    // Spans BLANKED, not lines skipped. Skipping any line containing `<!--` exempted more than
+    // the comment: `<button title="Recently Edited"></button> <!-- note -->` was skipped whole, so
+    // a real label escaped by having a comment after it. Blanking preserves line and column, so
+    // what is left on the line is exactly the markup.
+    const blanked = blankSkippableSpans(read(file));
+    for (const { line } of lines) {
+      const trimmed = (blanked.get(line) ?? '').trim();
+      if (!trimmed) continue;
 
       // Everything already routing through the pipe is removed, and then what is LEFT is
       // examined.
@@ -1146,7 +1199,7 @@ function checkNoHardcodedUiText() {
       // exempting more than the thing that earned the exemption.
       const remainder = trimmed
         .replace(/(?:\[[\w.$-]+\]|\([\w.$-]+\))="[^"]*\|\s*translate[^"]*"/g, '')
-        .replace(/\{\{[^}]*\|\s*translate[^}]*\}\}/g, '');
+        .replace(/\{\{(?:[^{}]|\{[^{}]*\})*\|\s*translate(?:[^{}]|\{[^{}]*\})*\}\}/g, '');
       if (!remainder.trim() || remainder.includes('| translate')) continue;
 
       /** @type {{ what: string, value: string } | null} */
@@ -1164,6 +1217,13 @@ function checkNoHardcodedUiText() {
           break;
         }
       }
+      if (!offence) {
+        for (const [, attribute, value] of remainder.matchAll(BOUND_TEXT_ATTRIBUTES)) {
+          if (!isDisplayText(value)) continue;
+          offence = { what: `[${attribute}]="${value}"`, value };
+          break;
+        }
+      }
       // Prose alone on its own line, which `ELEMENT_TEXT` cannot see because it needs `>` and
       // `<` on the same line as the words.
       //
@@ -1177,8 +1237,41 @@ function checkNoHardcodedUiText() {
       // 34 strings were sitting in that gap — the Save, Create, Publish and Delete button of
       // almost every dialog in the application, and the login button. The check was written to
       // catch exactly those and reported the tree clean.
-      if (!offence && BARE_PROSE_LINE.test(trimmed) && isDisplayText(trimmed)) {
-        offence = { what: `the text \`${trimmed}\``, value: trimmed };
+      // The REMAINDER, not `trimmed`: a line mixing a translated interpolation with hard-coded
+      // words contains `{`, which `BARE_PROSE_LINE` rejects, so those words were never judged.
+      const bare = remainder.trim();
+      if (!offence && BARE_PROSE_LINE.test(bare) && isDisplayText(bare)) {
+        offence = { what: `the text \`${bare}\``, value: bare };
+      }
+
+      // Quoted literals inside an Angular EXPRESSION. `{{ isOverdue(t) ? 'Overdue' : 'Due' }}` is
+      // displayed text whose braces defeat both `ELEMENT_TEXT` and `BARE_PROSE_LINE`.
+      if (!offence) {
+        // Interpolations, and bound attributes that DISPLAY text — not every bound attribute.
+        //
+        // The first version scanned any `[…]="…"`, which flagged `[attr.data-type]="'Folder'"`: a
+        // discriminator no user reads. It passed review only because the control covering it was
+        // vacuous under a diff-scoped sweep — the fixture file was in the baseline commit, so the
+        // diff was empty and nothing was examined. 284's repo-wide sweep is what exposed it.
+        const expressions = [
+          ...remainder.matchAll(/\{\{([^{}]*)\}\}/g),
+          ...remainder.matchAll(
+            /\[(?:attr\.)?(?:placeholder|matTooltip|alt|aria-label|title)\]="([^"]*)"/g,
+          ),
+        ].map(([, body]) => body);
+        for (const expression of expressions) {
+          if (/\|\s*translate/.test(expression)) continue;
+          for (const [, literal] of expression.matchAll(/'([^']*)'/g)) {
+            if (!isDisplayText(literal)) continue;
+            // A dotted lowercase token is a key or a filename, never a sentence.
+            if (/^[a-z][\w-]*(\.[\w-]+)+$/.test(literal)) continue;
+            // SCREAMING_SNAKE is a discriminator or an enum member, never displayed prose.
+            if (/^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$/.test(literal)) continue;
+            offence = { what: `the quoted literal \`'${literal}'\``, value: literal };
+            break;
+          }
+          if (offence) break;
+        }
       }
       if (!offence) continue;
 
@@ -1322,8 +1415,7 @@ const isGeneratedLocale = (path) =>
   GENERATED_LOCALES.has(/(^|\/)i18n\/([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[2] ?? '');
 
 function checkTranslationCatalogues() {
-  const isCatalogue = (path) =>
-    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
+  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
   const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
 
   if (catalogues.length === 0) {
@@ -1334,15 +1426,7 @@ function checkTranslationCatalogues() {
     return;
   }
 
-  /**
-   * Flattens to dotted keys, mirroring `flattenCatalogue` in `app-translate-loader.ts`.
-   *
-   * A leaf that is neither a string nor an object is REPORTED rather than skipped. Skipping it
-   * dropped the key from the reference set, and the parity check downstream then blamed the
-   * other locale for carrying a key "absent from en.json" — pointing at the wrong file for a
-   * fault in this one. `null` is the realistic way to get here: it is what a half-finished
-   * Crowdin pull leaves behind, and `JSON.parse` accepts it happily.
-   */
+  /** Flattens to dotted keys, mirroring `flattenCatalogue` in `app-translate-loader.ts`. */
   function flatten(value, prefix, out, onInvalid) {
     for (const [key, entry] of Object.entries(value)) {
       const path = prefix ? `${prefix}.${key}` : key;
@@ -1382,12 +1466,30 @@ function checkTranslationCatalogues() {
       continue;
     }
 
+    // `JSON.parse` accepts `null`, a number, a string and an array. `Object.entries(null)`
+    // THROWS, which killed the whole script and discarded every other guardrail's
+    // diagnostics; a bare string silently flattens to character indices. Rejected by shape
+    // before anything walks it.
+    if (json === null || typeof json !== 'object' || Array.isArray(json)) {
+      fail(
+        `${catalogue} parses but is ${
+          json === null ? 'null' : Array.isArray(json) ? 'an array' : `a ${typeof json}`
+        }, not an object of keys.\n` +
+          '    ngx-translate expects an object. A catalogue of any other shape resolves every ' +
+          'key to undefined, so the whole locale renders as raw keys.',
+      );
+      continue;
+    }
+
     const flat = flatten(json, '', new Map(), (path, entry) => {
+      // A non-string leaf used to be skipped, which dropped the key from the reference set —
+      // and the parity check downstream then blamed the OTHER locale for an "extra" key,
+      // pointing at the wrong file for a fault in this one.
       fail(
         `${catalogue} maps \`${path}\` to ${entry === null ? 'null' : typeof entry}, not a ` +
           'string.\n' +
-          '    ngx-translate returns it verbatim, so the UI renders `null` where the words ' +
-          'should be. A half-finished Crowdin pull is the usual cause.',
+          '    ngx-translate returns it verbatim, so the UI renders it where the words should ' +
+          'be. A half-finished Crowdin pull is the usual cause.',
       );
     });
     parsed.set(catalogue, flat);
@@ -1533,6 +1635,23 @@ function checkTranslationContext() {
       continue;
     }
 
+    // The CONTEXT file's shape is checked above; the CATALOGUE's is not, and `collect` below
+    // walks it. `Object.entries(null)` throws and aborts the whole process before any
+    // accumulated diagnostic is printed — `checkTranslationCatalogues` records the shape error
+    // but cannot stop a later guardrail from crashing on the same file.
+    if (catalogue === null || typeof catalogue !== 'object' || Array.isArray(catalogue)) {
+      fail(
+        `${reference} parses but is ${
+          catalogue === null
+            ? 'null'
+            : Array.isArray(catalogue)
+              ? 'an array'
+              : `a ${typeof catalogue}`
+        }, not an object of keys, so its context cannot be compared.`,
+      );
+      continue;
+    }
+
     const keys = new Set();
     (function collect(value, prefix) {
       for (const [key, entry] of Object.entries(value)) {
@@ -1542,20 +1661,28 @@ function checkTranslationContext() {
       }
     })(catalogue, '');
 
-    // A key whose value is blank documents nothing. Accepting it let the gate pass a context
-    // file that satisfied the key-parity check and told a translator exactly as much as an
-    // absent entry would have.
-    const blank = Object.entries(context).filter(
-      ([key, value]) => !key.startsWith('$') && (typeof value !== 'string' || !value.trim()),
-    );
-    for (const [key, value] of blank) {
+    // `Object.keys(null)` throws, and a context file of any other shape documents nothing.
+    if (context === null || typeof context !== 'object' || Array.isArray(context)) {
+      fail(
+        `${contextFile} parses but is ${
+          context === null ? 'null' : Array.isArray(context) ? 'an array' : `a ${typeof context}`
+        }, not an object keyed like the catalogue.`,
+      );
+      continue;
+    }
+
+    // A key whose value is blank documents nothing, and comparing key names alone accepted it.
+    // An entry that says nothing tells a translator exactly what an absent one does.
+    for (const [key, value] of Object.entries(context)) {
+      if (key.startsWith('$')) continue;
+      if (typeof value === 'string' && value.trim()) continue;
       fail(
         `${contextFile} documents \`${key}\` with ${
           typeof value === 'string'
             ? 'an empty string'
             : `a ${value === null ? 'null' : typeof value}`
         }.\n` +
-          '    That is the same as saying nothing, and it passes a check that only compares ' +
+          '    That is the same as saying nothing, and it satisfies a check that only compares ' +
           'key names. Describe what the string is and where it appears.',
       );
     }
@@ -1594,6 +1721,225 @@ function checkTranslationContext() {
       `${references.length} reference catalogue(s) were found but none was compared against a ` +
         'context file, so this gate asserted nothing.',
     );
+  }
+}
+
+/**
+ * The translator-context push can actually reach every context file in the repository.
+ *
+ * `tools/i18n/crowdin-push-context.mjs` used to name one context file, the app's, while
+ * `crowdin-conf.yml` already declared a second source mapping for the per-library catalogues
+ * NXSAT-284 AC4 will add. Nothing compared the two, so the day a library catalogue landed its
+ * context would have been uploaded by nobody while the script still printed a success line.
+ * The script's own docstring meanwhile claimed to be gated by a `checkTranslatorContextPush`
+ * that did not exist. This is that guardrail, written rather than the claim deleted, because
+ * both things it asserts are real invariants:
+ *
+ * 1. **Every discovered context file is reachable through a declared Crowdin source.** The
+ *    script discovers context files by walking `apps/` and `libs/`; a context file whose sibling
+ *    catalogue no source glob matches is never uploaded, so its context has nowhere to attach.
+ * 2. **The two flatteners agree.** `flattenKeys` in the script is a deliberate second
+ *    implementation of `flattenCatalogue` in `app-translate-loader.ts` — the script runs under
+ *    plain Node with no TypeScript toolchain. Two copies with nothing comparing them is how a
+ *    wrong half survives: if they disagree about what a key looks like, context is attached to
+ *    identifiers ngx-translate never asks for, and every symptom appears in Crowdin rather than
+ *    in this repository.
+ *
+ * ## What the two halves of check 2 can and cannot do, stated exactly
+ *
+ * The first draft of this said the flatteners were "compared by behaviour, not by text" and then
+ * compared them by grepping both files for source patterns. Neither half was behavioural, and the
+ * comment asserting otherwise is the kind of claim this repository has been caught on repeatedly —
+ * a check's docstring describing a stronger check than its body performs.
+ *
+ * - **The script's flattener is run.** It is ESM under plain Node, so it can be imported and
+ *   called on fixtures. This half is genuinely behavioural: it fails when the OUTPUT changes,
+ *   whatever the source looks like.
+ * - **The loader's flattener is not run.** It is TypeScript, and this script has no compiler. So
+ *   its half remains a check that the shape it relies on is still *present* in the source. That is
+ *   weaker, and it is a tripwire rather than a proof: it notices the loader being rewritten so the
+ *   contract below has to be revisited. `app-translate-loader.spec.ts` is what actually tests the
+ *   loader's behaviour.
+ */
+async function checkTranslatorContextPush() {
+  const script = 'tools/i18n/crowdin-push-context.mjs';
+  const loader = 'apps/nuxeo-ui/src/app/i18n/app-translate-loader.ts';
+  const config = 'crowdin-conf.yml';
+
+  if (!fileExists(script)) {
+    fail(
+      `${script} is missing. It is the only path translator context reaches Crowdin by — the ` +
+        'JSON source format has nowhere to carry it. If it has been removed on purpose, remove ' +
+        'this guardrail in the same change.',
+    );
+    return;
+  }
+
+  // 1. Reachability. The globs live in the config; the discovery walk lives in the script.
+  if (fileExists(config)) {
+    const body = read(config)
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    const patterns = [...body.matchAll(/'source':\s*'([^']+)'/g)].map(
+      ([, path]) =>
+        // Same glob translation `checkCrowdinConfig` uses: `**` crosses separators, `*` does not.
+        // Built here rather than shared because that one tests existence and this one tests
+        // reachability, and a helper answering both would have to be told which.
+        new RegExp(
+          `^${path
+            .replace(/^\//, '')
+            .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+            .replace(/\*\*/g, '\u0000')
+            .replace(/\*/g, '[^/]*')
+            .replace(/\u0000/g, '.*')}$`,
+        ),
+    );
+    const contextFiles = [
+      ...walk('apps', (path) => /(^|\/)i18n\/en\.context\.json$/.test(path)),
+      ...walk('libs', (path) => /(^|\/)i18n\/en\.context\.json$/.test(path)),
+    ];
+    for (const contextFile of contextFiles) {
+      const catalogue = contextFile.replace(/en\.context\.json$/, 'en.json');
+      if (!patterns.some((pattern) => pattern.test(catalogue))) {
+        fail(
+          `${contextFile} documents \`${catalogue}\`, which no \`source\` in ${config} matches.\n` +
+            `    ${script} would discover the context and find no Crowdin file to attach it to, ` +
+            'and the translators would work from the string alone. Add a source mapping for it.',
+        );
+      }
+    }
+  }
+
+  // 1b. The push workflow starts when a file the script reads changes.
+  //
+  // `paths` and the discovery walk are two independent lists of what counts as a source, and they
+  // drifted the moment discovery grew: `libs/**/i18n/en.context.json` was discovered but not
+  // watched, so editing translator guidance for a library changed what the job would upload and
+  // started nothing. Crowdin then served stale context until some unrelated catalogue change, and
+  // stale context is worse than none because a translator believes it.
+  const pushWorkflow = '.github/workflows/crowdin-push.yaml';
+  if (fileExists(pushWorkflow)) {
+    // FIRST: the workflow has to actually run the script.
+    //
+    // Everything below checks that the right files TRIGGER the job, which is worthless if the job
+    // does not invoke the uploader. Deleting the "Push translator context" step left every
+    // guardrail green while no translator context reached Crowdin at all — the gate verified the
+    // doorbell and never checked whether anyone answered. The green fixture in the selftest had the
+    // same gap, which is how it survived being written.
+    if (!new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`).test(read(pushWorkflow))) {
+      fail(
+        `${pushWorkflow} never runs \`node ${script}\`, so no translator context is uploaded.\n` +
+          "    The catalogue goes up through the Crowdin action, but Crowdin's JSON source format " +
+          'has nowhere to carry context — this script is the only path it has. Without the step, ' +
+          'translators work from the string alone and every gate here still passes.',
+      );
+    }
+
+    const watched = [...read(pushWorkflow).matchAll(/^\s*-\s*'([^']*i18n[^']*)'/gm)].map(
+      ([, glob]) =>
+        new RegExp(
+          `^${glob
+            .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+            .replace(/\*\*/g, '\u0000')
+            .replace(/\*/g, '[^/]*')
+            .replace(/\u0000/g, '.*')}$`,
+        ),
+    );
+    const discovered = [
+      ...walk('apps', (path) => /(^|\/)i18n\/en\.context\.json$/.test(path)),
+      ...walk('libs', (path) => /(^|\/)i18n\/en\.context\.json$/.test(path)),
+    ];
+    for (const contextFile of discovered) {
+      if (!watched.some((glob) => glob.test(contextFile))) {
+        fail(
+          `${pushWorkflow} watches no path matching ${contextFile}, which ${script} reads.\n` +
+            '    Editing it alone would change what the job uploads and trigger nothing, leaving ' +
+            'Crowdin with context the repository has already moved past. Add a `paths` glob for it.',
+        );
+      }
+    }
+  }
+
+  // 2a. The script's flattener, RUN on fixtures.
+  //
+  // Each case is one thing the two implementations must agree a key is. The expectations are the
+  // loader's documented behaviour, transcribed — which is why 2b then checks the loader still has
+  // that shape, so a change there cannot leave these expectations silently describing nobody.
+  const CONTRACT = [
+    ['nested objects become dotted keys', { a: { b: 'B', c: 'C' }, d: 'D' }, ['a.b', 'a.c', 'd']],
+    ['nesting descends arbitrarily', { a: { b: { c: { d: 'D' } } } }, ['a.b.c.d']],
+    // ngx-translate resolves neither, so neither is a string to send context for. An array leaf
+    // recursed into yields `a.0`, which is an identifier Crowdin has never heard of.
+    ['array leaves are not keys', { a: ['x'], b: 'B' }, ['b']],
+    ['null leaves are skipped rather than thrown on', { a: null, b: 'B' }, ['b']],
+  ];
+
+  let flattenKeys;
+  try {
+    ({ flattenKeys } = await import(pathToFileURL(join(repoRoot, script)).href));
+  } catch (error) {
+    fail(
+      `${script} could not be imported, so its flattener was not exercised: ` +
+        `${error instanceof Error ? error.message : String(error)}\n` +
+        '    It is written to be importable without performing any network call — `main()` is ' +
+        'guarded on `process.argv[1]`. If that guard has gone, importing it here would have hit ' +
+        'the Crowdin API from a lint gate.',
+    );
+    return;
+  }
+  if (typeof flattenKeys !== 'function') {
+    fail(
+      `${script} no longer exports \`flattenKeys\`, so nothing compares it with the loader's ` +
+        'flattener. Two implementations of the same flattening with nothing between them is how ' +
+        'a wrong half survives.',
+    );
+    return;
+  }
+  for (const [rule, input, expected] of CONTRACT) {
+    let actual;
+    try {
+      actual = flattenKeys(input);
+    } catch (error) {
+      actual = `threw ${error instanceof Error ? error.message : String(error)}`;
+    }
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      fail(
+        `${script} \`flattenKeys\` disagrees with the loader on "${rule}".\n` +
+          `    ${JSON.stringify(input)} -> ${JSON.stringify(actual)}, expected ` +
+          `${JSON.stringify(expected)}.\n` +
+          '    The two flatten the same catalogue and must agree on what a key is: a ' +
+          'disagreement attaches translator context to identifiers the application never ' +
+          'resolves, and every symptom of it appears in Crowdin rather than here.',
+      );
+    }
+  }
+
+  // 2b. The loader still has the shape those expectations were transcribed from.
+  //
+  // A source check, not a behavioural one, and deliberately labelled as such — the loader is
+  // TypeScript and this script has no compiler. It is a tripwire: it fires when the loader is
+  // rewritten, so somebody re-derives the contract above instead of trusting a transcription of
+  // an implementation that no longer exists.
+  if (!fileExists(loader)) {
+    fail(`${loader} is missing, so ${script}'s duplicate flattener has nothing to agree with.`);
+    return;
+  }
+  const loaderSource = read(loader);
+  const LOADER_SHAPE = [
+    ['builds dotted paths', /prefix \? `\$\{prefix\}\.\$\{key\}` : key/],
+    ['excludes arrays from the recursion', /!Array\.isArray\(/],
+    ['excludes null from the recursion', /value !== null/],
+  ];
+  for (const [rule, present] of LOADER_SHAPE) {
+    if (!present.test(loaderSource)) {
+      fail(
+        `${loader} no longer visibly "${rule}", so the flattening contract asserted against ` +
+          `${script} above was transcribed from an implementation that has changed.\n` +
+          '    Re-derive the expectations in `CONTRACT` from the loader as it now is, then ' +
+          'update this shape check. Do not simply delete the failing line.',
+      );
+    }
   }
 }
 
@@ -1642,8 +1988,7 @@ function checkLocaleDataRegistered() {
     return;
   }
 
-  const isCatalogue = (path) =>
-    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
+  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
   const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
   const shipped = new Set(
     catalogues
@@ -1736,6 +2081,17 @@ function checkAccessibleNameFallbacks() {
     return;
   }
 
+  // `Object.entries(null)` throws, and `collect` below walks whatever parsed. A catalogue of
+  // `null` is valid JSON, so the `try` above does not catch it — the crash landed here instead,
+  // killing the process before the accumulated `failures` were printed and discarding every other
+  // guardrail's diagnostics, including `checkTranslationCatalogues`'s own clean report of the same
+  // file. That guardrail naming the shape earlier does not stop this one crashing on it.
+  if (catalogue === null || typeof catalogue !== 'object' || Array.isArray(catalogue)) {
+    // Not reported: `checkTranslationCatalogues` names the file and the shape, and one defect
+    // should produce one message. Returning is what keeps the rest of the run alive.
+    return;
+  }
+
   const owned = new Set();
   (function collect(value, prefix) {
     for (const [key, entry] of Object.entries(value)) {
@@ -1749,28 +2105,76 @@ function checkAccessibleNameFallbacks() {
     .split('\n')
     .filter((file) => /^(libs|apps)\/.+\.html$/.test(file));
 
-  // `[attr.aria-label]`, `[aria-label]`, `[attr.title]` and `[title]` bound to a single
-  // translate-piped literal key. A ternary or a concatenation is not matched, deliberately:
+  // `[attr.aria-label]`, `[aria-label]`, `[attr.title]`, `[title]` and `[placeholder]` bound to a
+  // single translate-piped literal key. A ternary or a concatenation is not matched, deliberately:
   // this stays a check with no judgement calls in it.
-  const BINDING = /\[(?:attr\.)?(aria-label|title)\]="\s*'([^']+)'\s*\|\s*translate\s*"/g;
+  //
+  // `placeholder` is here because for the two shell text inputs it is the ONLY thing naming them —
+  // neither carries an `aria-label`. HTML-AAM accepts it as the accessible name of last resort, and
+  // the evidence harness's unnamed-control sweep was taught to honour it for that reason. Which
+  // opened a hole this gate could not see: neither `shell.search.placeholder` nor
+  // `shell.ai.input-placeholder` was in `EN_FALLBACK_TRANSLATIONS`, so a failed catalogue fetch
+  // named the global search box `shell.search.placeholder` — a raw key as an accessible name, the
+  // precise WCAG 4.1.2 failure this gate exists to stop — while every check passed, including the
+  // raw-key sweep, which did not read placeholders either.
+  //
+  // The optional `: { … }` is the pipe's PARAMETERS, and leaving it out made this gate blind to
+  // the binding shape the accessible-name fix itself introduced. `nav-drawer.component.html` binds
+  // `'nav.tree.toggle' | translate: { name: nodeLabel(node) }`, which the parameterless pattern
+  // could not see — so deleting that key from `EN_FALLBACK_TRANSLATIONS` passed this guardrail and
+  // restored the raw-key accessible name it exists to prevent. Verified by doing exactly that:
+  // the gate stayed green. A parameterised name is MORE likely to be needed here, not less, since
+  // it is the form INFO-144's no-concatenation rule pushes every label with a value towards.
+  const BINDING =
+    /\[(?:attr\.)?(aria-label|title|placeholder)\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
   // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
   // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns
   // the reputation that gets it switched off. One missing key, one message, with a count.
   /** @type {Map<string, { attribute: string, sites: string[] }>} */
   const offences = new Map();
+  /** Keys in OUR shape that no catalogue defines — a typo renders as the raw key. */
+  const undefinedKeys = new Map();
   let bindings = 0;
+
+  /**
+   * Upstream's keys are SCREAMING_CASE and ours are lowercase dotted — D4 in
+   * docs/i18n-localization-plan.md, which chose that convention precisely so a guardrail could
+   * tell "an untranslated upstream key leaked" from "one of ours is missing".
+   */
+  const isUpstreamShaped = (key) => /^[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+$/.test(key);
 
   for (const template of templates) {
     if (!fileExists(template)) continue;
     for (const [, attribute, key] of read(template).matchAll(BINDING)) {
       bindings += 1;
-      if (!owned.has(key)) continue;
+      if (!owned.has(key)) {
+        // A key absent from the catalogue used to be waved through as upstream-owned. That is true
+        // for a SCREAMING_CASE key and false for one of ours: `shell.ai.opne` is not upstream's,
+        // it is a typo, and ngx-translate renders a missing key as the key itself — so the gate
+        // that exists to stop a raw key naming a control could not see the commonest way of
+        // producing one. Absence is now only an excuse for the shape that belongs to upstream.
+        if (!isUpstreamShaped(key)) {
+          if (!undefinedKeys.has(key)) undefinedKeys.set(key, { attribute, sites: [] });
+          undefinedKeys.get(key).sites.push(template);
+        }
+        continue;
+      }
       if (fallback.has(key) && fallback.get(key).trim() !== '') continue;
 
       if (!offences.has(key)) offences.set(key, { attribute, sites: [] });
       offences.get(key).sites.push(template);
     }
+  }
+
+  for (const [key, { attribute, sites }] of undefinedKeys) {
+    fail(
+      `${[...new Set(sites)].join(', ')} binds ${attribute} to \`${key}\`, which no catalogue ` +
+        `defines and which is not upstream-shaped.\n` +
+        '    ngx-translate renders a key it cannot resolve as the key itself, so this names the ' +
+        `control \`${key}\` — the WCAG 4.1.2 failure this gate exists to stop. Either add it to ` +
+        `${catalogueFile} with its fallback and context, or fix the spelling.`,
+    );
   }
 
   for (const [key, { attribute, sites }] of offences) {
@@ -1834,46 +2238,472 @@ function checkAccessibleNameFallbacks() {
  */
 
 /**
- * No Angular template syntax in a document shell.
+ * Every advertised locale ships a catalogue, and the default is one of them.
  *
- * `index.html` is served as-is and Angular never compiles it, so `{{ 'key' | translate }}` in
- * the `<title>` renders those braces as literal text in the browser tab. The i18n extraction
- * codemod did exactly that: it globbed `*.html` and could not tell a component template from
- * the shell that hosts the application.
- *
- * Nothing else caught it. Lint does not parse `index.html` as a template, the build copies it
- * verbatim, and no test opens a browser and reads `document.title` before bootstrap. It was
- * found by loading the page and looking at the tab.
- *
- * The window is short — `AppShellComponent` replaces the title from Layer 0 branding once it
- * boots — but it is the first thing a user sees, and on a slow load it is the only thing.
+ * `checkTranslationCatalogues` validates the files that exist. It never reads
+ * `availableLanguages`, so adding `es` to that list without an `es.json` passed — and the
+ * comment beside the list claimed otherwise. A reviewer reading it would believe the list was
+ * enforced. This makes the claim true instead of removing it.
  */
-function checkNoTemplateSyntaxInDocumentShell() {
-  const shells = [...walk('apps', (path) => /(^|\/)src\/index\.html$/.test(path))];
+function checkAdvertisedLocalesShip() {
+  /**
+   * Every Layer 0 bootstrap config, paired with the catalogue directory ITS OWN application
+   * serves.
+   *
+   * Scoped per application rather than repo-wide: gathering catalogue names across every app meant
+   * one app adding `es.json` would let another's config advertise `es` with no catalogue behind it.
+   *
+   * And it is a LIST rather than the packaged config alone, because checking one config while the
+   * repository contains two is the same blindness by omission. `nuxeo-satori-template` is the
+   * public Layer 0 example a customer copies, it advertised `fr` and `de`, and it has no catalogue
+   * directory and no `TranslateModule` at all — so the example shipped describing two languages it
+   * could not render, and this gate did not look at it.
+   */
+  const configs = [
+    ['nuxeo-agentic-ui-package/src/main/config/bootstrap.json', 'apps/nuxeo-ui/public/i18n'],
+    [
+      'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json',
+      'apps/nuxeo-satori-template/public/i18n',
+    ],
+  ].filter(([config]) => fileExists(config));
 
-  if (shells.length === 0) {
+  if (configs.length === 0) {
     fail(
-      'No `src/index.html` was found under apps/, so this gate asserted nothing. Check the ' +
-        'glob before trusting a pass.',
+      'No Layer 0 bootstrap config was found, so this gate asserted nothing. Check the paths in ' +
+        '`checkAdvertisedLocalesShip`.',
     );
     return;
   }
 
-  for (const shell of shells) {
-    // Comments are blanked, not dropped, so the reported line number still points at the file
-    // as written. The comment in `index.html` explaining this rule quotes the syntax it
-    // forbids, and the first run of this check failed on that comment.
-    const body = read(shell).replace(/<!--[\s\S]*?-->/g, (block) => block.replace(/[^\n]/g, ' '));
-    for (const [index, line] of body.split('\n').entries()) {
-      const match = /\{\{[^}]*\}\}|\*ngIf|\[[\w.]+\]="/.exec(line);
-      if (!match) continue;
+  for (const [config, catalogueDir] of configs) {
+    let parsed;
+    try {
+      parsed = JSON.parse(read(config));
+    } catch (error) {
+      fail(`${config} is not valid JSON: ${error.message}`);
+      continue;
+    }
+
+    const shipped = new Set(
+      [...walk(catalogueDir, (path) => /\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path))]
+        .map((path) => /([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[1])
+        .filter(Boolean),
+    );
+
+    // `en` needs no catalogue: it is the source language, compiled in as the fallback. Every other
+    // advertised locale is a promise that a catalogue exists, so an application with no catalogue
+    // directory at all may advertise English and nothing else.
+    const needsCatalogue = (locale) => locale !== 'en';
+
+    const advertised = parsed['availableLanguages'];
+    if (Array.isArray(advertised)) {
+      for (const locale of advertised) {
+        if (!needsCatalogue(locale) || shipped.has(locale)) continue;
+        fail(
+          `${config} advertises "${locale}" in availableLanguages but ${catalogueDir} ships no ` +
+            `catalogue for it. Catalogues found: ${[...shipped].sort().join(', ') || '(none)'}.\n` +
+            '    Choosing it would render the English fallback throughout, which reads as a ' +
+            'broken language rather than an absent one.',
+        );
+      }
+    }
+
+    const fallback = parsed['defaultLanguage'];
+    if (typeof fallback === 'string' && needsCatalogue(fallback) && !shipped.has(fallback)) {
       fail(
-        `${shell}:${index + 1} contains Angular template syntax \`${match[0].trim()}\`. ` +
-          'This file is the document shell, not a component template — Angular never compiles ' +
-          'it, so the braces render as literal text. Put the string in the component that owns ' +
-          'the element, or set it at runtime as `branding.documentTitle` does.',
+        `${config} ships \`defaultLanguage: "${fallback}"\` but ${catalogueDir} has no catalogue ` +
+          'for it.',
       );
     }
+    if (
+      typeof fallback === 'string' &&
+      Array.isArray(advertised) &&
+      !advertised.includes(fallback)
+    ) {
+      fail(
+        `${config} ships \`defaultLanguage: "${fallback}"\` which is absent from ` +
+          'availableLanguages, so the default is a language a user cannot switch back to.',
+      );
+    }
+  }
+}
+
+/**
+ * The Crowdin config points at catalogues that exist, and cannot reach `node_modules`.
+ *
+ * Two failure modes, both silent and both expensive.
+ *
+ * A source path that no longer matches anything makes the daily sync a no-op: it uploads
+ * nothing, downloads nothing, opens no pull request, and reports success. Nobody notices a job
+ * that succeeds. Moving or renaming the catalogue is enough to cause it.
+ *
+ * And a wildcard in the source path is how the upstream catalogues get swept in. The HXP
+ * standard's own example is `/**` + `/**` + `/i18n/en.json`, which with `base_path: "."`
+ * matches 48 catalogues under `node_modules` — adf-core's 19 locales, both adf-hx bundles,
+ * satori-ui's 15. That pushes another team's strings into our project and bills the
+ * translation crew for work already paid for. NXSAT-227 records it as a trap; this makes it
+ * unrepeatable rather than remembered.
+ */
+/**
+ * The `files:` entries of a comment-stripped `crowdin-conf.yml`, one chunk of text per entry.
+ *
+ * Segmented rather than YAML-parsed on purpose: no YAML parser is a declared dependency of this
+ * repository. `yaml` and `js-yaml` resolve today only because something else pulls them in —
+ * `js-yaml` appears in `package.json` under `overrides`, which pins a transitive version and
+ * declares nothing — and a guardrail that imports an undeclared package goes red for a reason
+ * unrelated to what it guards the first time the tree resolves differently.
+ *
+ * Returns `null` when the block is not the flow-mapping form the file uses, so the caller can
+ * fail loudly. Guessing entry boundaries is worse than admitting defeat: splitting on each
+ * `source` key would attribute an entry's options to the previous one whenever a key order
+ * changed, and blindness to which entry an option belongs to is the exact defect this replaced.
+ *
+ * @param {string} body `crowdin-conf.yml` with comment lines removed
+ * @returns {string[]|null}
+ */
+function crowdinFileEntries(body) {
+  const list = /'?files'?\s*:\s*\[([\s\S]*)\]/.exec(body);
+  if (!list) return null;
+  const entries = [...list[1].matchAll(/\{[^{}]*\}/g)].map(([entry]) => entry);
+  return entries.length > 0 ? entries : null;
+}
+
+function checkCrowdinConfig() {
+  const config = 'crowdin-conf.yml';
+  // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
+  // must name the config explicitly, or the action falls back to a default file that is not
+  // this one.
+  const workflows = ['.github/workflows/crowdin-push.yaml', '.github/workflows/crowdin-pull.yaml'];
+
+  if (!fileExists(config)) {
+    fail(
+      `${config} is missing. The Crowdin pipeline is NXSAT-227 slice S6; if it has been ` +
+        'removed on purpose, remove this guardrail in the same change rather than leaving a ' +
+        'check for a file nobody intends to have.',
+    );
+    return;
+  }
+  for (const workflow of workflows) {
+    if (!fileExists(workflow)) {
+      fail(`${workflow} is missing, so ${config} is read by nothing on that half of the sync.`);
+      return;
+    }
+  }
+
+  // Comments stripped first. The file explains why it has no `translation_replace`, and the
+  // first run of this check failed on that explanation — the same way the document-shell
+  // check failed on the comment describing it.
+  const body = read(config)
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+  const sources = [...body.matchAll(/'source':\s*'([^']+)'/g)].map(([, path]) => path);
+  // No body-wide `translations` list. It existed, and collecting the mappings that happen to be
+  // present is exactly what let a missing one through — the per-entry loop below reads each entry
+  // instead, so an absent `translation` is a finding rather than one fewer thing to check.
+
+  if (sources.length === 0) {
+    fail(`${config} declares no source file, so the sync would upload nothing and still pass.`);
+    return;
+  }
+
+  // Wildcards are allowed — D8 uses them, and the `libs/**` entry is what makes per-library
+  // catalogues (NXSAT-284 AC4) an asset glob rather than a change to this contract. What is
+  // not allowed is a ROOT that could reach `node_modules`, which is where the 48 upstream
+  // catalogues live. `apps/` and `libs/` sit beside it, so neither can.
+  for (const source of sources) {
+    if (!/^\/(apps|libs)\//.test(source)) {
+      fail(
+        `${config} declares the source \`${source}\`, which is not rooted at /apps/ or /libs/.\n` +
+          '    With `base_path: "."` any wider root reaches `node_modules` — 48 upstream ' +
+          'catalogues at the same relative shape, which would bill the translation crew for ' +
+          "another team's strings.",
+      );
+      continue;
+    }
+    // A pattern matching nothing makes the sync a silent no-op: it uploads nothing, downloads
+    // nothing, opens no pull request and reports success. Nobody investigates a green job.
+    // The `libs/` entry legitimately matches nothing yet, so only a total miss across all
+    // sources is a failure.
+  }
+  const anyMatch = sources.some((source) => {
+    const pattern = source.replace(/^\//, '');
+    if (!/[*?]/.test(pattern)) return fileExists(pattern);
+    const regex = new RegExp(
+      `^${pattern
+        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*\*/g, '\u0000')
+        .replace(/\*/g, '[^/]*')
+        .replace(/\u0000/g, '.*')}$`,
+    );
+    return (
+      [...walk('apps', (path) => regex.test(path)), ...walk('libs', (path) => regex.test(path))]
+        .length > 0
+    );
+  });
+  if (!anyMatch) {
+    fail(
+      `${config} declares ${sources.length} source pattern(s) and none matches a file.\n` +
+        '    The sync would upload nothing and report success — the one failure mode nobody ' +
+        'investigates.',
+    );
+  }
+
+  // D8 requires both on EVERY source entry, so both are read per entry.
+  //
+  // The first version asked `body.includes(required)` once for the whole file. With two
+  // mappings that cannot enforce the policy it reports: deleting both options from the
+  // `libs/**` entry still passed, because the `apps/*` entry contained the tokens. Caught in
+  // review — the same defect class as the corpus check below, a gate whose scope is wider than
+  // the claim it prints.
+  const entries = crowdinFileEntries(body);
+  if (!entries) {
+    fail(
+      `${config} has a \`files\` block this guardrail cannot segment into entries, so the D8 ` +
+        'per-entry options were not checked. It expects the flow-mapping form `files: [ { … }, ' +
+        '{ … } ]`. Restore that shape or teach `crowdinFileEntries` the new one — do not leave ' +
+        'a gate that reports a policy it silently stopped enforcing.',
+    );
+  } else {
+    if (entries.length !== sources.length) {
+      fail(
+        `${config} declares ${sources.length} \`source\` value(s) but segments into ` +
+          `${entries.length} entr(ies), so at least one entry was not read. The per-entry D8 ` +
+          'check cannot be trusted until the two agree.',
+      );
+    }
+    // Values, not just presence. `export_only_approved: 'false'` satisfied the old token check
+    // while doing the opposite of what D8 asks for.
+    const D8_OPTIONS = [
+      [
+        'export_only_approved',
+        'true',
+        'Unapproved work is a draft; exporting it puts half-finished translations in front of ' +
+          "users and makes the reviewer's approval meaningless.",
+      ],
+      [
+        'update_option',
+        'update_without_changes',
+        'Anything else makes the source-change behaviour the tool default rather than the one ' +
+          'recorded as deviation D0a.',
+      ],
+    ];
+    for (const entry of entries) {
+      const source = /'?source'?\s*:\s*'([^']+)'/.exec(entry)?.[1] ?? '(entry with no source)';
+      for (const [option, expected, why] of D8_OPTIONS) {
+        const declared = new RegExp(`'?${option}'?\\s*:\\s*'?([A-Za-z_]+)'?`).exec(entry)?.[1];
+        if (declared === undefined) {
+          fail(
+            `${config} entry \`${source}\` omits \`${option}\`, which D8 in ` +
+              `docs/i18n-localization-plan.md requires on every source entry.\n    ${why}`,
+          );
+        } else if (declared !== expected) {
+          fail(
+            `${config} entry \`${source}\` sets \`${option}: ${declared}\`, not \`${expected}\`.` +
+              `\n    ${why}`,
+          );
+        }
+      }
+    }
+  }
+  // Parsed and compared by HOST, not by substring.
+  //
+  // `body.includes('hyland.api.crowdin.com')` is the shape CodeQL flags as
+  // `js/incomplete-url-substring-sanitization`, and it is right to: that string can sit
+  // anywhere in a URL, so `https://evil.example/?x=hyland.api.crowdin.com` would satisfy it.
+  // Nothing hostile is going to edit this file, but a check that passes on a URL pointing
+  // somewhere else is not checking anything.
+  const ENTERPRISE_HOST = 'hyland.api.crowdin.com';
+  const declaredBaseUrl = /'base_url':\s*'([^']+)'/.exec(body)?.[1];
+  let baseUrlHost = null;
+  try {
+    baseUrlHost = declaredBaseUrl ? new URL(declaredBaseUrl).host : null;
+  } catch {
+    baseUrlHost = null;
+  }
+  if (baseUrlHost !== ENTERPRISE_HOST) {
+    fail(
+      `${config} sets \`base_url\` to ${declaredBaseUrl ? `\`${declaredBaseUrl}\`` : 'nothing'}, ` +
+        `whose host is not ${ENTERPRISE_HOST}.\n` +
+        '    The project lives on the Hyland Crowdin Enterprise tenant. A token issued there ' +
+        'fails against public crowdin.com with a 401, which reads like a bad secret rather ' +
+        'than a wrong host.',
+    );
+  }
+
+  // The translation pattern has to produce the filename the loader fetches. `%two_letters_code%`
+  // yields `fr.json`; a `translation_replace` renaming it to `fr-FR.json` would produce files
+  // `AppTranslateLoader` never asks for, and the sync would still look healthy.
+  //
+  // Read PER ENTRY, for the same reason the D8 options above are. This loop used to iterate the
+  // `translation` values it happened to FIND, so an entry that lost its mapping entirely was
+  // never mentioned: `sources.length` still said two, the segment count still said two, and the
+  // surviving entry's valid pattern carried the check to green. A guardrail that only validates
+  // what is present cannot notice an absence — the same shape of blindness as the body-wide
+  // options check, left behind in the same function when that one was fixed.
+  for (const entry of entries ?? []) {
+    const source = /'?source'?\s*:\s*'([^']+)'/.exec(entry)?.[1] ?? '(entry with no source)';
+    const translation = /'?translation'?\s*:\s*'([^']+)'/.exec(entry)?.[1];
+    if (translation === undefined) {
+      fail(
+        `${config} entry \`${source}\` declares no \`translation\`, so Crowdin decides where its ` +
+          'downloads land.\n' +
+          '    `AppTranslateLoader` fetches `i18n/<lang>.json`, and anything else downloads ' +
+          'files the application never reads while the sync still reports success.',
+      );
+      continue;
+    }
+    // `%file_extension%` is Crowdin's own placeholder for the source file's extension, which
+    // is `.json` here. Accepting both spellings rather than only the literal one, because the
+    // first version of this check rejected the plan's own form.
+    if (!/%two_letters_code%\.(json|%file_extension%)$/.test(translation)) {
+      fail(
+        `${config} entry \`${source}\` maps translations to \`${translation}\`, which does not ` +
+          'end in `%two_letters_code%.json`.\n' +
+          '    `AppTranslateLoader` fetches `i18n/<lang>.json` using the two-letter language ' +
+          'it was given, so anything else downloads files the application never reads.',
+      );
+    }
+  }
+  if (/translation_replace/.test(body)) {
+    fail(
+      `${config} declares a \`translation_replace\`. Our filenames carry no region, so a ` +
+        'rename here produces catalogues the loader cannot find. Adding a regional locale ' +
+        'needs a matching change in the loader and in `availableLanguages`.',
+    );
+  }
+
+  for (const workflow of workflows) {
+    const text = read(workflow);
+    if (!text.includes(`config: ${config}`)) {
+      fail(
+        `${workflow} does not pass \`config: ${config}\`, so the action looks for a default file ` +
+          'that is not this one.',
+      );
+    }
+    // Merged without this, both workflows go live against secrets that do not exist and fail
+    // every day until S6 is unblocked. A job that is red for a reason nobody can fix is a job
+    // people stop reading, including on the day it is red for a real reason.
+    if (!text.includes("vars.CROWDIN_SYNC_ENABLED == 'true'")) {
+      fail(
+        `${workflow} is not gated on \`vars.CROWDIN_SYNC_ENABLED\`. The Crowdin project is ` +
+          'created manually through the INTERN board and does not exist yet.',
+      );
+    }
+  }
+
+  // Signing must be configured where the COMMIT happens, which is inside the action's container.
+  //
+  // `crowdin/github-action` is `runs: using: docker`. A host-level `ghaction-import-gpg` step
+  // therefore signs nothing the action does: it writes to the runner's GnuPG home and the runner's
+  // global git config, and the commit is made in a different filesystem and a different git.
+  // That step was in `crowdin-pull.yaml`, with correct inputs, succeeding, and having no effect on
+  // the guarantee it was there to provide — a step that can neither fail nor work.
+  //
+  // This is the whole defect class of this file expressed as a check: the pull workflow's own
+  // pull-request body tells a reviewer what has been verified, so every promise it makes needs
+  // something that actually enforces it.
+  // Scoped to the ACTION's own step, not the file.
+  //
+  // The first version searched the whole file for `gpg_private_key:`, and a host-level
+  // `ghaction-import-gpg` step supplies that same input name — so the check passed on precisely
+  // the arrangement it exists to reject. Caught by its own negative control, which kept the dead
+  // host step in the fixture on purpose.
+  const pull = read(workflows[1]);
+  const pullSteps = pull.split(/^\s*-\s(?=name:|uses:)/m);
+  const crowdinStep = pullSteps.find((step) => /uses:\s*crowdin\/github-action/.test(step));
+  if (crowdinStep !== undefined && !/^\s*gpg_private_key:/m.test(crowdinStep)) {
+    fail(
+      `${workflows[1]} runs crowdin/github-action without passing \`gpg_private_key\`, so its ` +
+        'commits are unsigned.\n' +
+        '    The action declares `runs: using: docker`, so it commits inside its own container. ' +
+        'Importing a key in a preceding host step configures the RUNNER, not the container — it ' +
+        'succeeds and changes nothing. Pass `gpg_private_key` (and `gpg_passphrase`) to the ' +
+        'action itself.',
+    );
+  }
+
+  if (!read(workflows[0]).includes('--delete-obsolete')) {
+    fail(
+      `${workflows[0]} does not pass \`--delete-obsolete\` when uploading sources, which D8 ` +
+        'requires. A key removed from English otherwise stays in Crowdin and is offered to a ' +
+        'translator who has no way to know it renders nowhere.',
+    );
+  }
+}
+
+/**
+ * The packaged marketplace config ships Nuxeo defaults, not a demo rebrand.
+ *
+ * `nuxeo-agentic-ui-package/src/main/config/bootstrap.json` is installed into a customer's
+ * Nuxeo. The rebrand demo edits it — `docs/beta-demo-runbook.md` walks through setting
+ * `applicationTitle` to "Acme Content Cloud" and adding an `acme` theme — and tells you to
+ * run `git checkout --` on it afterwards.
+ *
+ * That was not run, and the demo branding reached a pull request inside an i18n change, where
+ * nobody was looking for it. Every fresh installation would have come up rebranded. No gate
+ * saw it; a reviewer did.
+ *
+ * So the rule is the runbook's own instruction, enforced: the packaged branding must match
+ * what the application compiles in. A real branding change is a change to
+ * `DEFAULT_APP_BOOTSTRAP_CONFIG` as well, which is a deliberate act rather than a leftover.
+ */
+function checkPackagedConfigIsNotADemo() {
+  const packaged = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+  const compiled = 'libs/shared/app-config/src/lib/bootstrap-config.ts';
+  if (!fileExists(packaged) || !fileExists(compiled)) {
+    fail(`${packaged} or ${compiled} is missing, so this gate asserted nothing.`);
+    return;
+  }
+
+  let config;
+  try {
+    config = JSON.parse(read(packaged));
+  } catch (error) {
+    fail(`${packaged} is not valid JSON: ${error.message}`);
+    return;
+  }
+
+  const defaults = read(compiled);
+  const compiledTitle = /applicationTitle:\s*'([^']*)'/.exec(defaults)?.[1];
+  const compiledTheme = /defaultThemeId:\s*'([^']*)'/.exec(defaults)?.[1];
+  if (!compiledTitle || !compiledTheme) {
+    fail(
+      `Could not read applicationTitle / defaultThemeId out of ${compiled}, so this gate ` +
+        'asserted nothing. The shape it parses has changed.',
+    );
+    return;
+  }
+
+  const shippedTitle = config['branding']?.['applicationTitle'];
+  if (shippedTitle !== undefined && shippedTitle !== compiledTitle) {
+    fail(
+      `${packaged} ships \`applicationTitle: "${shippedTitle}"\`, which is not the compiled ` +
+        `default "${compiledTitle}".\n` +
+        '    The rebrand demo edits this file and `docs/beta-demo-runbook.md` says to run ' +
+        '`git checkout --` on it afterwards. If this is a real branding change, change ' +
+        `${compiled} in the same commit.`,
+    );
+  }
+
+  const shippedTheme = config['defaultThemeId'];
+  if (shippedTheme !== undefined && shippedTheme !== compiledTheme) {
+    fail(
+      `${packaged} ships \`defaultThemeId: "${shippedTheme}"\`, which is not the compiled ` +
+        `default "${compiledTheme}". Every fresh installation would start on that theme.`,
+    );
+  }
+
+  // The demo adds a whole theme here. A customer-supplied theme is a Layer 0 capability and
+  // belongs in a CUSTOMER's file, not in the one we ship.
+  const shippedThemes = config['themes'];
+  if (Array.isArray(shippedThemes) && shippedThemes.length > 0) {
+    fail(
+      `${packaged} ships ${shippedThemes.length} theme(s): ` +
+        `${shippedThemes.map((theme) => theme?.id).join(', ')}.\n` +
+        '    The packaged file layers over the compiled themes; shipping one here means every ' +
+        'installation gets it. Demo themes belong in the demo, per the runbook.',
+    );
   }
 }
 
@@ -1961,6 +2791,80 @@ function checkNoProseInComponentInputs() {
  * Also rejects a default that is not in `availableLanguages`, and any `availableLanguages`
  * entry with no catalogue behind it — advertising a language the app cannot render.
  */
+
+/**
+ * No Angular template syntax in a document shell.
+ *
+ * `index.html` is served as-is and Angular never compiles it, so `{{ 'key' | translate }}` in
+ * the `<title>` renders those braces as literal text in the browser tab. The i18n extraction
+ * codemod did exactly that: it globbed `*.html` and could not tell a component template from
+ * the shell that hosts the application.
+ *
+ * Nothing else caught it. Lint does not parse `index.html` as a template, the build copies it
+ * verbatim, and no test opens a browser and reads `document.title` before bootstrap. It was
+ * found by loading the page and looking at the tab.
+ *
+ * The window is short — `AppShellComponent` replaces the title from Layer 0 branding once it
+ * boots — but it is the first thing a user sees, and on a slow load it is the only thing.
+ */
+function checkNoTemplateSyntaxInDocumentShell() {
+  const shells = [...walk('apps', (path) => /(^|\/)src\/index\.html$/.test(path))];
+
+  if (shells.length === 0) {
+    fail(
+      'No `src/index.html` was found under apps/, so this gate asserted nothing. Check the ' +
+        'glob before trusting a pass.',
+    );
+    return;
+  }
+
+  for (const shell of shells) {
+    // Comments are blanked, not dropped, so the reported line number still points at the file
+    // as written. The comment in `index.html` explaining this rule quotes the syntax it
+    // forbids, and the first run of this check failed on that comment.
+    const body = read(shell).replace(/<!--[\s\S]*?-->/g, (block) => block.replace(/[^\n]/g, ' '));
+    for (const [index, line] of body.split('\n').entries()) {
+      const match = /\{\{[^}]*\}\}|\*ngIf|\[[\w.]+\]="/.exec(line);
+      if (!match) continue;
+      fail(
+        `${shell}:${index + 1} contains Angular template syntax \`${match[0].trim()}\`. ` +
+          'This file is the document shell, not a component template — Angular never compiles ' +
+          'it, so the braces render as literal text. Put the string in the component that owns ' +
+          'the element, or set it at runtime as `branding.documentTitle` does.',
+      );
+    }
+  }
+}
+
+/**
+ * No prose in a plain attribute on a component — it is an `@Input`, not HTML.
+ *
+ * `checkNoHardcodedUiText` knows the HTML attributes that hold text: `title`, `aria-label`,
+ * `placeholder`, `alt`. It cannot know that `label` on `<mat-tab>` is one too, because that is
+ * a component input and there is no list of every input in every library.
+ *
+ * Fourteen tab labels sat in that gap — the four across the top of the browse page among them —
+ * through a full extraction, a repo-wide residue scan and a pseudo-locale audit of nine routes.
+ * The audit did see them; I read its output as upstream noise because Material rendered them.
+ *
+ * The heuristic is the element name: a hyphenated custom element or a PascalCase one is a
+ * component, and a capitalised attribute value on it is prose. Known non-text inputs are
+ * exempt, and that list is the part to extend when this reports a false positive — not the
+ * element pattern.
+ */
+
+/**
+ * The shipped Layer 0 default must be a locale that ships.
+ *
+ * `zz` is generated by `tools/i18n/pseudo-locale.mjs` for auditing, and selecting it means
+ * pointing the packaged `bootstrap.json` at it — which is a tracked file that installs into a
+ * customer's Nuxeo. It was committed that way once in this branch. Nothing else would have
+ * caught it: the build is happy, every test is happy, and the application renders perfectly.
+ * In accented gibberish.
+ *
+ * Also rejects a default that is not in `availableLanguages`, and any `availableLanguages`
+ * entry with no catalogue behind it — advertising a language the app cannot render.
+ */
 function checkShippedDefaultLanguage() {
   const config = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
   if (!fileExists(config)) {
@@ -2033,11 +2937,15 @@ const GUARDRAILS = [
   checkNoAdfHxInPublicApi,
   checkNoHardcodedUiText,
   checkNoHardcodedDescriptorText,
-  checkNoTemplateSyntaxInDocumentShell,
-  checkNoProseInComponentInputs,
-  checkShippedDefaultLanguage,
   checkTranslationCatalogues,
+  checkAdvertisedLocalesShip,
+  checkCrowdinConfig,
+  checkPackagedConfigIsNotADemo,
   checkTranslationContext,
+  checkTranslatorContextPush,
+  checkNoProseInComponentInputs,
+  checkNoTemplateSyntaxInDocumentShell,
+  checkShippedDefaultLanguage,
   checkAccessibleNameFallbacks,
   checkLocaleDataRegistered,
 ];
@@ -2076,7 +2984,10 @@ function selectGuardrails() {
   return [...wanted].map((name) => byName.get(name));
 }
 
-for (const guardrail of selectGuardrails()) guardrail();
+// Awaited: `checkTranslatorContextPush` imports the context-push script to run its flattener on
+// fixtures, which needs a dynamic `import()`. Awaiting a synchronous guardrail is a no-op, so
+// every other one is unaffected.
+for (const guardrail of selectGuardrails()) await guardrail();
 
 if (warnings.length) {
   console.warn('\nReview guardrail warnings:');

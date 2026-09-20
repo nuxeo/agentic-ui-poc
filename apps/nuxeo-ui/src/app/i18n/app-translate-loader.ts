@@ -110,9 +110,14 @@ const TRAILING_SPACE = ' ';
  * `HxpDocumentTreeComponent` binds the node toggle's accessible name to
  * `('DOCUMENT_TREE.TOGGLE_ARIA-LABEL ' | translate) + node.name`. Its catalogue ships
  * `DOCUMENT_TREE.TOGGLE_ARIA-LABEL` with no trailing space, so the lookup misses a key that is
- * present and ngx-translate falls through to its key passthrough. The toggle's accessible name
- * became `DOCUMENT_TREE.TOGGLE_ARIA-LABEL Home`, on every surface — the tree is the app shell's
- * nav drawer.
+ * present and ngx-translate falls through to its key passthrough.
+ *
+ * The accessible name was therefore `DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined`, on every surface
+ * — the tree is the app shell's nav drawer. **`undefined`, not the folder name**: `node` is a
+ * wrapper carrying `node.document`, `node.isLoading` and `node.isSelectable`, with no `name` on it
+ * at all. This comment said `… Home` for two review rounds, and that one word is what made the
+ * alias look sufficient. It is not: with the key resolved the name became `Toggleundefined`, and
+ * the folder name needs W15 — see `hxp-document-tree-toggle-name.directive.ts`.
  *
  * **This is not W6 and seeding did not fix it.** W6 was a catalogue that never loaded; here the
  * catalogue loads and the key resolves, and upstream asks for a different key. Aliasing is the

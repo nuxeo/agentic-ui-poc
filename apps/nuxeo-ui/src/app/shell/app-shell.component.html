@@ -125,7 +125,15 @@
         }
       </div>
 
-      <sat-word-mark-logo satAppHeaderLogo />
+      <!--
+        The word mark is decorative here: it is not a link or a control, the header's name
+        comes from the level-1 heading above, and the vendor's own stylesheet drops it
+        entirely below 619px. It is a vendor component whose <svg> carries no <title> and
+        which we cannot label from this template, so the graphic is hidden from assistive
+        technology instead — otherwise it is announced as an unnamed image (WCAG 1.1.1,
+        NXENG-767 / NXENG-759). aria-hidden is not display:none: it still renders.
+      -->
+      <sat-word-mark-logo satAppHeaderLogo aria-hidden="true" />
 
       <div satAppHeaderActions>
         @if (featureFlags.aiEnabled()) {
@@ -155,22 +163,30 @@
       @if (themingFlags.themingEnabled()) {
         <a mat-menu-item routerLink="/settings/themes">
           <mat-icon>palette</mat-icon>
-          {{ 'app.app-shell.themes' | translate }}
+          {{ 'shell.menu.themes' | translate }}
         </a>
       }
       <button mat-menu-item type="button" (click)="featureFlags.toggle()">
         <mat-icon [style.color]="featureFlags.aiEnabled() ? '#4caf50' : '#9e9e9e'">{{
           featureFlags.aiEnabled() ? 'toggle_on' : 'toggle_off'
         }}</mat-icon>
-        AI Features {{ featureFlags.aiEnabled() ? 'On' : ('shell.off' | translate) }}
+        {{
+          'shell.menu.ai-features'
+            | translate
+              : {
+                  state:
+                    (featureFlags.aiEnabled() ? 'shell.menu.state-on' : 'shell.menu.state-off')
+                    | translate,
+                }
+        }}
       </button>
       <button mat-menu-item type="button">
         <mat-icon>help_outline</mat-icon>
-        {{ 'app.app-shell.help' | translate }}
+        {{ 'shell.menu.help' | translate }}
       </button>
       <button mat-menu-item type="button">
         <mat-icon>info_outline</mat-icon>
-        {{ 'app.app-shell.about' | translate }}
+        {{ 'shell.menu.about' | translate }}
       </button>
     </mat-menu>
 
@@ -223,29 +239,25 @@
               <div class="ai-chat-welcome">
                 <mat-icon class="ai-chat-welcome-icon">auto_awesome</mat-icon>
                 <h3>{{ 'shell.ai.heading' | translate }}</h3>
-                <p>
-                  {{ 'app.app-shell.ask-me-about-your-documents-search' | translate }}
-                </p>
+                <p>{{ 'shell.ai.empty-state' | translate }}</p>
                 <div class="ai-chat-suggestions">
                   <button
                     class="ai-chat-suggestion"
-                    (click)="
-                      aiChatInput.set('What documents were modified today?'); sendAiMessage()
-                    "
+                    (click)="sendAiSuggestion('shell.ai.suggestion.modified-today')"
                   >
-                    {{ 'app.app-shell.what-documents-were-modified-today' | translate }}
+                    {{ 'shell.ai.suggestion.modified-today' | translate }}
                   </button>
                   <button
                     class="ai-chat-suggestion"
-                    (click)="aiChatInput.set('Summarize my pending tasks'); sendAiMessage()"
+                    (click)="sendAiSuggestion('shell.ai.suggestion.summarize-tasks')"
                   >
-                    {{ 'app.app-shell.summarize-my-pending-tasks' | translate }}
+                    {{ 'shell.ai.suggestion.summarize-tasks' | translate }}
                   </button>
                   <button
                     class="ai-chat-suggestion"
-                    (click)="aiChatInput.set('Show me recent uploads'); sendAiMessage()"
+                    (click)="sendAiSuggestion('shell.ai.suggestion.recent-uploads')"
                   >
-                    {{ 'app.app-shell.show-me-recent-uploads' | translate }}
+                    {{ 'shell.ai.suggestion.recent-uploads' | translate }}
                   </button>
                 </div>
               </div>
@@ -271,7 +283,7 @@
                     <div class="ai-msg-sources">
                       <div class="ai-sources-label">
                         <mat-icon>link</mat-icon>
-                        {{ 'app.app-shell.sources' | translate }}
+                        {{ 'shell.ai.sources' | translate }}
                       </div>
                       @for (source of msg.sources!; track source.uid) {
                         <button

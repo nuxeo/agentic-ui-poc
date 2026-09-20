@@ -134,12 +134,20 @@ jobs:
             // Fetch quality gate status from SonarCloud
             const qualityGateUrl = `https://sonarcloud.io/api/qualitygates/project_status?projectKey=${projectKey}&pullRequest=${prNumber}`;
 
+            // Coverage comes from the measures API, not from the gate conditions. When a PR has no
+            // coverable new lines — a CSS/HTML/spec-only change — `new_coverage` has no value and
+            // SonarCloud drops the condition from project_status entirely, so a conditions-only
+            // table shows no coverage row at all and reads as "coverage was not measured".
+            const measuresUrl = `https://sonarcloud.io/api/measures/component?component=${projectKey}&pullRequest=${prNumber}&metricKeys=new_coverage,new_lines_to_cover,new_uncovered_lines,coverage`;
+
+            const sonarFetch = (url) => fetch(url, {
+              headers: {
+                'Authorization': `Bearer ${process.env.SONAR_TOKEN}`
+              }
+            });
+
             try {
-              const response = await fetch(qualityGateUrl, {
-                headers: {
-                  'Authorization': `Bearer ${process.env.SONAR_TOKEN}`
-                }
-              });
+              const response = await sonarFetch(qualityGateUrl);
 
               const data = await response.json();
               const projectStatus = data.projectStatus;
@@ -173,6 +181,39 @@ jobs:
                 });
                 comment += '\n';
               }
+
+              // Coverage on new code, reported whether or not the gate had a condition for it.
+              const measuresResponse = await sonarFetch(measuresUrl);
+              const measures = (await measuresResponse.json())?.component?.measures ?? [];
+
+              // New-code metrics arrive as a period value rather than a plain `value`; the key has
+              // been both `period` and `periods[0]` across SonarCloud versions.
+              const measure = (key) => {
+                const m = measures.find(x => x.metric === key);
+                return m?.value ?? m?.period?.value ?? m?.periods?.[0]?.value;
+              };
+
+              const newLinesToCover = Number(measure('new_lines_to_cover') ?? 0);
+              const newCoverage = measure('new_coverage');
+              const overallCoverage = measure('coverage');
+
+              comment += '### Coverage\n\n';
+
+              if (newLinesToCover > 0 && newCoverage !== undefined) {
+                const uncovered = measure('new_uncovered_lines');
+                comment += `- **Coverage on new code: ${Number(newCoverage).toFixed(1)}%** `;
+                comment += `(${newLinesToCover} new lines to cover`;
+                comment += uncovered === undefined ? ')\n' : `, ${uncovered} uncovered)\n`;
+              } else {
+                comment += '- **Coverage on new code: n/a** — this pull request adds no coverable ';
+                comment += 'lines (styles, templates and spec files are excluded from coverage)\n';
+              }
+
+              if (overallCoverage !== undefined) {
+                comment += `- Overall project coverage: ${Number(overallCoverage).toFixed(1)}%\n`;
+              }
+
+              comment += '\n';
 
               // Add links
               comment += `### 🔗 Links\n\n`;

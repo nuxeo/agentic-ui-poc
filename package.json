@@ -34,7 +34,7 @@
     "prepare": "husky",
     "review:guardrails": "node scripts/review-guardrails.mjs",
     "review:guardrails-selftest": "node scripts/review-guardrails.selftest.mjs",
-    "review:preflight": "npm run review:guardrails && npm run review:guardrails-selftest && npm run beta:sanitizers && npm run beta:sanitizers-selftest && npx nx affected -t lint && npx nx affected -t test",
+    "review:preflight": "npm run review:guardrails && npm run review:guardrails-selftest && npm run beta:sanitizers && npm run beta:sanitizers-selftest && npx nx affected -t lint && npx nx affected -t test && npm run review:crowdin-selftest",
     "start": "nx serve",
     "test": "nx test",
     "watch": "nx build --watch --configuration development",
@@ -50,7 +50,8 @@
     "mirror:agents": "node scripts/mirror-agent-config.mjs sync",
     "beta:mirror": "node scripts/mirror-agent-config.mjs check",
     "i18n:pseudo": "node tools/i18n/pseudo-locale.mjs",
-    "i18n:audit": "node tools/i18n/pseudo-locale.mjs && node tools/i18n/pseudo-locale-audit.mjs"
+    "i18n:audit": "node tools/i18n/pseudo-locale.mjs && node tools/i18n/pseudo-locale-audit.mjs",
+    "review:crowdin-selftest": "node tools/i18n/crowdin-push-context.selftest.mjs"
   },
   "lint-staged": {
     "*.ts": [

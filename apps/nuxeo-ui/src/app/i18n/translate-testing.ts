@@ -24,15 +24,28 @@ import { EN_FALLBACK_TRANSLATIONS } from './en-fallback';
  * bundled. Keeping the two apart is the point of `en-fallback.ts` existing at all.
  */
 class FallbackCatalogueLoader implements TranslateLoader {
+  constructor(private readonly extra: Record<string, string> = {}) {}
+
   getTranslation(): Observable<Record<string, string>> {
-    return of(EN_FALLBACK_TRANSLATIONS);
+    return of({ ...EN_FALLBACK_TRANSLATIONS, ...this.extra });
   }
 }
 
-/** Import this in any `nuxeo-ui` spec whose component template uses the translate pipe. */
-export function testTranslateModule() {
+/**
+ * Import this in any `nuxeo-ui` spec whose component template uses the translate pipe.
+ *
+ * `extra` is for keys the fallback map deliberately does not hold — VISIBLE text such as a
+ * `mat-label` or a `mat-error`, as opposed to an accessible name. The map is partial on purpose
+ * (see `checkAccessibleNameFallbacks`) and widening it to satisfy a spec would blur what it is
+ * for, so a spec that asserts visible English declares that English here instead.
+ *
+ * Passing the expected string rather than reading the catalogue is the point: the spec then says
+ * what a user should see, and a catalogue change that alters the wording shows up as a failing
+ * assertion to be read rather than silently redefining what the test proves.
+ */
+export function testTranslateModule(extra: Record<string, string> = {}) {
   return TranslateModule.forRoot({
-    loader: { provide: TranslateLoader, useClass: FallbackCatalogueLoader },
+    loader: { provide: TranslateLoader, useFactory: () => new FallbackCatalogueLoader(extra) },
     lang: 'en',
     fallbackLang: 'en',
   });

@@ -26,14 +26,22 @@
       @for (id of memberUsernames; track id) {
         <mat-chip-row (removed)="removeMember(id)">
           {{ id }}
-          <button type="button" matChipRemove [attr.aria-label]="'Remove ' + id">
+          <button
+            type="button"
+            matChipRemove
+            [attr.aria-label]="'shared.remove-item' | translate: { name: id }"
+          >
             <mat-icon>cancel</mat-icon>
           </button>
         </mat-chip-row>
       }
       <input
         name="memberUserSearch"
-        [placeholder]="memberUsernames.length ? '' : 'Search users or type a username…'"
+        [placeholder]="
+          memberUsernames.length
+            ? ''
+            : ('administration.group-form-dialog.search-users-or-type-a-username' | translate)
+        "
         [matChipInputFor]="chipGrid"
         [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
         [matAutocomplete]="userAuto"

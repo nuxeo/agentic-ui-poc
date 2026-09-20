@@ -115,7 +115,7 @@
             <button
               type="button"
               class="hxp-details-panel__tag-remove"
-              [attr.aria-label]="'Remove tag ' + tag"
+              [attr.aria-label]="'shared.remove-tag' | translate: { name: tag }"
               (click)="tagRemove.emit(tag)"
             >
               <hxp-icon name="close" size="sm" [decorative]="true" />

@@ -655,6 +655,18 @@ export class AppShellComponent implements OnDestroy {
     this.aiChatInput.set('');
   }
 
+  /**
+   * Send one of the empty-state suggestions, in the user's language.
+   *
+   * The template used to set `aiChatInput` to the English sentence and call `sendAiMessage()`,
+   * so the button's visible label was translated but the message sent — and echoed back as the
+   * user's own turn — was always English. Resolving the key here keeps the two the same string.
+   */
+  sendAiSuggestion(key: string): void {
+    this.aiChatInput.set(this.translate.instant(key));
+    this.sendAiMessage();
+  }
+
   clearAiChat(): void {
     this.aiChat.clear();
   }

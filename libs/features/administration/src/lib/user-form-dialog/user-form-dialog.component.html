@@ -61,14 +61,22 @@
         @for (group of groups; track group) {
           <mat-chip-row (removed)="removeGroup(group)">
             {{ group }}
-            <button type="button" matChipRemove [attr.aria-label]="'Remove group ' + group">
+            <button
+              type="button"
+              matChipRemove
+              [attr.aria-label]="'shared.remove-group' | translate: { name: group }"
+            >
               <mat-icon>cancel</mat-icon>
             </button>
           </mat-chip-row>
         }
         <input
           name="groupSearch"
-          [placeholder]="groups.length ? '' : 'Search groups or type a group name…'"
+          [placeholder]="
+            groups.length
+              ? ''
+              : ('administration.user-form-dialog.search-groups-or-type-a-group-name' | translate)
+          "
           [matChipInputFor]="groupChipGrid"
           [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
           [matAutocomplete]="groupAuto"

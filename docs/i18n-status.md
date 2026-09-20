@@ -7,13 +7,13 @@ This is the status page. The **plan** is [`docs/i18n-localization-plan.md`](i18n
 the two are separate on purpose, because a plan that carries its own progress report goes stale
 silently and gets believed anyway.
 
-|              |                                                                                   |
-| ------------ | --------------------------------------------------------------------------------- |
-| Beta ticket  | [NXSAT-227](https://hyland.atlassian.net/browse/NXSAT-227) — delivered, in review |
-| GA ticket    | [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284) — not started          |
-| Pull request | [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198)                          |
-| Branch       | `feature/nxsat-227a-i18n`                                                         |
-| Gate         | 21 of 22 green · `code-scanning` blocked on a permissions step, not on the diff   |
+|              |                                                                                                                                                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beta ticket  | [NXSAT-227](https://hyland.atlassian.net/browse/NXSAT-227) — delivered, in review                                                                                                                                                 |
+| GA ticket    | [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284) — not started                                                                                                                                                          |
+| Pull request | [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198)                                                                                                                                                                          |
+| Branch       | `feature/nxsat-227a-i18n`                                                                                                                                                                                                         |
+| Gate         | **23 of 23 green**, `code-scanning` included. Re-measure rather than reading this: `npm run beta:gate`. This row said 21 of 22 and named a blocker that no longer exists — the gate count grew and CodeQL now runs on the branch. |
 
 ---
 
@@ -94,10 +94,10 @@ python3 -c "import json;d=json.load(open('apps/nuxeo-ui/public/i18n/en.json'));.
 
 |                              | Before (on `main`) | Now                  |
 | ---------------------------- | ------------------ | -------------------- |
-| Keys in the app catalogue    | **16**             | **44**               |
+| Keys in the app catalogue    | **16**             | **60**               |
 | Locales shipped              | 1 (`en`)           | 3 (`en`, `fr`, `de`) |
 | Locales at full key parity   | n/a                | 3 of 3, gated        |
-| Keys with translator context | 0                  | 44 of 44, gated      |
+| Keys with translator context | 0                  | 60 of 60, gated      |
 
 ### Call sites
 
@@ -118,8 +118,20 @@ git grep -c "| translate" HEAD        -- '*.html' | awk -F: '{s+=$3} END {print 
 | Passed imperatively in `.ts`     | never counted |
 
 Four of ninety-two is the honest headline. It went up by one template because the work was
-deliberately deep rather than wide: the two shell templates that were extracted are now at
-**zero** remaining hard-coded strings, which no template in this repository was before.
+deliberately deep rather than wide: `app-shell.component.html` is at **zero** remaining
+hard-coded strings, which no template in this repository was before.
+
+`nav-drawer.component.html` is **not** at zero, and this passage claimed both templates were.
+One string is left — `isOverdue(task) ? 'Overdue' : 'Due'` at line 266 — a quoted literal inside an
+Angular expression, which `checkNoHardcodedUiText` does not inspect: the interpolation braces mean it
+matches neither the element-text pattern nor the bare-prose one. It predates this diff, and the gate
+is diff-scoped, so **the gate cannot certify either template as fully extracted** — it can only say
+nothing new was added. That distinction is the honest version of this row.
+
+Verified rather than asserted, twice over. The claim was false when first written — twelve strings
+were left, all of them prose alone on its own line, the shape `checkNoHardcodedUiText` could not see
+until this PR fixed it. A reviewer found those, not the gate that existed to. The ternary is the
+thirteenth, found the same way.
 
 ### What is still hard-coded
 
@@ -257,8 +269,13 @@ Two things that were _not_ true, despite the ticket saying so:
 
 — a **trailing space inside the key literal**. The catalogue ships the key without one, so the
 lookup missed a key that was present, ngx-translate fell through to its key passthrough, and
-every folder toggle in the tree was announced as `DOCUMENT_TREE.TOGGLE_ARIA-LABEL Default domain`
+every folder toggle in the tree was announced as `DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined`
 — on **every surface**, because the tree is the app shell's nav drawer.
+
+`undefined`, not the folder name. `Default domain` is only the label rendered _beside_ the toggle;
+the toggle itself appends `node.name`, which upstream's node wrapper does not have. Writing the
+folder name here obscured why the W13 alias alone was never going to be enough, and W15 is what
+supplies a real name.
 
 A WCAG 4.1.2 failure, and **axe cannot detect it**: axe checks that a control _has_ an accessible
 name, not that the name is words. The blank-name variant of the same defect (upstream finding
@@ -287,7 +304,9 @@ Plus `checkAngularDevAssets` extended to compare the `ignore` list, which it did
 entry excluding a file in the base array and not in `development` read as identical while the two
 configurations served different files.
 
-`review-guardrails.selftest.mjs` — **33 controls, 19 negative and 14 positive.** It builds a
+`review-guardrails.selftest.mjs`. **Its totals are not restated here** — the suite prints them,
+`npm run review:guardrails-selftest`, and a number copied into prose next to a list it does not
+come from goes stale silently: this sentence said 58, then 71, while the suite held 78. It builds a
 throwaway git repository per control under `os.tmpdir()`, so unlike the sanitizer selftest a hard
 kill cannot leave a dirty tree. Registered as gate `guardrails-selftest`, as an npm script, in
 `review:preflight` and in CI.
@@ -298,16 +317,33 @@ Eleven guardrails shipped before this with **no tests at all**.
 
 48 occurrences across the app shell and nav drawer, taking both templates to zero. `fr` and `de`
 catalogues at full key parity. `en.context.json` carrying part of speech, surrounding UI, expanded
-acronyms and do-not-translate flags for all 44 keys.
+acronyms and do-not-translate flags for all 60 keys — 44 at the first extraction, and sixteen more
+since, each added with its context because `checkTranslationContext` fails a key without one.
 
 ### Evidence
 
-`npm run beta:evidence -- nxsat-227-i18n` → **PASS, 25/25 across 9 steps.** Asserts off the
-rendered DOM: no raw key in any `aria-label`, `title` or leaf text node on all eight routes; the
-toggle named `Toggle <folder>`; `fr` and `de` differing from each other; an unshipped locale
-degrading to English rather than to keys. Every language switch goes through a real
-`page.reload()`, because `withHashLocation()` makes `goto()` same-document and without it
-`APP_INITIALIZER` never re-runs.
+`npm run beta:evidence -- nxsat-227-i18n` → **PASS, 38/38 across 10 steps**, read from that run's
+`manifest.json` rather than transcribed. Re-run it rather than trusting this line: the figure here
+was `25/25 across 9 steps` from the 16 September run, which **predated five of the assertions it
+was being cited as proving** — the adf-hx language check, the translated suggestion payload, the
+French axe scan, route reachability and the date-formatting check were all added after it.
+
+Asserts off the rendered DOM: no raw key in any `aria-label`, `title` or leaf text node on all
+eight routes; the toggle named `Toggle <folder>`; `fr` and `de` differing from each other; an
+unshipped locale degrading to English rather than to keys, and still rendering dates rather than
+leaving them blank; a suggestion click sending the French string rather than the English one behind
+its label; and **no axe violation at any impact** on the French shell — `failOn` is
+`[minor, moderate, serious, critical]`, not the helper's serious-and-critical default — with no
+ignore list.
+
+Every language switch goes through a real `page.reload()`, because `withHashLocation()` makes
+`goto()` same-document and without it `APP_INITIALIZER` never re-runs.
+
+Six of those checks were failing when the assertions were first run honestly, and four of the six
+were defects in the evidence rather than the application — a raw-key sweep reading `<style>`
+elements, a route-reached check that rejected a legitimate child route, and a date check measuring
+a surface that renders no date cells. The fourth was real: the French axe scan found the navigation
+tree's folder toggles had no accessible name at all.
 
 ### Two defects found by running the application, which the controls did not catch
 
@@ -373,33 +409,69 @@ Worth recording, because it is the argument for writing controls at all:
 | Which file layout?             | The **current Hyland/CIC** one — `i18n/en.json` + `i18n/<locale>.json`, which our repo already matched. **Not** Web UI's `messages.json`; that is a Polymer-era convention needing a locale-rename table we do not need.                                                                                         |
 | Framework?                     | `ngx-translate` v17, already the portfolio norm.                                                                                                                                                                                                                                                                 |
 | Fully compliant with INFO-144? | **No — one documented deviation.** INFO-144 requires a changed source string to be flagged for translator review. The HXP standard's `update_option: update_without_changes` does not do that, mitigating with a manual Crowdin filter plus the convention _never change the meaning of a key — change the key_. |
-| Compliant on string context?   | Yes, and gated, for the 44 keys that exist.                                                                                                                                                                                                                                                                      |
+| Compliant on string context?   | Yes, and gated, for the 60 keys that exist.                                                                                                                                                                                                                                                                      |
 | Compliant on concatenation?    | Ours, yes. **Upstream's tree is not** — `(translate) + node.name` cannot be reordered by a translator. Finding 1.3.                                                                                                                                                                                              |
 
 ---
 
 ## Next steps
 
-### Immediate — unblocks the PR
+### Immediate — what [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198) is actually waiting on
 
-1. **Approve the `pull_request` workflow runs on [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198).** No
-   PR-event run has fired for the branch, so CodeQL has not analysed `refs/pull/198/merge` and
-   the `code-scanning` gate correctly refuses to call an unscanned ref clean. Needs repo admin.
-2. **Answer the two open decisions on NXSAT-227:** who owns the daily Crowdin translation PR
-   (blocks S6 — unowned, it rots), and whether RTL is in scope (recommendation: no).
+**One thing: a human approval.** CI is green, every review thread is resolved, and nothing here
+needs a repo admin.
 
-### Slice S6 — the Crowdin pipeline, the only Beta work left
+`copilot-pull-request-reviewer` **never submits `APPROVED`** — it has not once in this repository,
+across every pull request it has reviewed — so `reviewDecision` stays `REVIEW_REQUIRED` however many
+rounds run. The query to verify that, and the exit condition it implies, are in
+`AGENTS/09-pr-feedback.md`. Branch protection needs a human, and that is the only step left.
 
-3. **Request the Crowdin project** via a Jira issue on the INTERN board. Manual, done by global
-   admins, so raise it before you need it. Project name must match the repository:
-   `agentic-ui-poc`.
-4. Add `crowdin.yml`, and the push/pull GitHub Actions with signed commits — this repo already
-   has the bot GPG infrastructure, so reuse it rather than minting another key. Pin the action by
-   SHA.
-5. **Do not copy the standard's `/**/**/i18n/en.json` glob verbatim.** With `base_path: "."` it
-   sweeps `node_modules`, which holds 48 upstream catalogues. That would push Alfresco's and
-   Satori's strings into our project and bill the translation crew for work another team already
-   paid for. Scope to `apps/` and `libs/`, and verify with a dry run.
+Both items this section used to list are **done**, and leaving them here contradicted the 23/23 gate
+row twelve lines above:
+
+- ~~Approve the `pull_request` workflow runs so CodeQL can analyse `refs/pull/198/merge`.~~ The runs
+  have fired and `code-scanning` is green. No admin action outstanding.
+- **Whether RTL is in scope does not block this PR**, which is why it has moved out of this section
+  rather than being ticked off. Decision **Q3 in the plan is still formally open**, with a
+  recommendation of _no_ for both Beta and the GA extraction — so calling it "answered" would be
+  wrong in the other direction. Nothing in #198 implements or depends on RTL; it is tracked as
+  [DS-2277](https://hyland.atlassian.net/browse/DS-2277) and listed under separate stories below.
+- ~~Answer who owns the daily Crowdin translation PR.~~ Retired on 20 September 2026 — the premise
+  that an unowned one rots is contradicted by the measurement in D8b of
+  `docs/i18n-localization-plan.md`.
+
+### Slice S6 — the Crowdin pipeline is BUILT and dormant; what is left is external
+
+This section used to tell the reader to write the pipeline. It is written, in this pull request,
+and the distinction that matters now is between what the repository contains and what only a Crowdin
+admin can do.
+
+**In the repository, gated off.** `crowdin-conf.yml`, `.github/workflows/crowdin-push.yaml` and
+`crowdin-pull.yaml`, and `tools/i18n/crowdin-push-context.mjs` for the translator context the JSON
+source format cannot carry. Both workflows are gated on `vars.CROWDIN_SYNC_ENABLED`, so merging
+this changes no behaviour: nothing runs until that variable is set. `checkCrowdinConfig` and
+`checkTranslatorContextPush` hold the shape.
+
+**Not in the repository, and nobody here can do it.**
+
+3. **The Crowdin project itself**, requested as
+   [INTERN-1346](https://hyland.atlassian.net/browse/INTERN-1346). Created manually by global
+   admins; the project name must match the repository, `agentic-ui-poc`.
+4. **Set the secrets and then the variable**, in that order —
+   `CROWDIN_PROJECT_ID`, `CROWDIN_PERSONAL_TOKEN`, `CROWDIN_BOT_GITHUB_TOKEN`, and the bot GPG
+   pair. `crowdin-pull.yaml` refuses to run on a half-configured activation rather than quietly
+   committing unsigned or opening a pull request with no CI, so a missing secret is a red job with
+   a message naming it, not a silent downgrade.
+5. **The first sync has never run.** `tools/i18n/crowdin-push-context.mjs` has never made a real
+   HTTP call, and its pure parts being covered is not the same as having worked. Treat the first
+   push as a thing to watch, and check what reached Crowdin against the repository before letting
+   the daily pull open anything.
+
+One trap is already handled and must stay handled: the standard's `/**/**/i18n/en.json` glob, with
+`base_path: "."`, sweeps `node_modules` and its 48 upstream catalogues — which would push
+Alfresco's and Satori's strings into our project and bill the translation crew for work another team
+has already paid for. `crowdin-conf.yml` is scoped to `apps/` and `libs/`, and `checkCrowdinConfig`
+fails any source that is not.
 
 ### NXSAT-284 — GA extraction: 1350 template strings, 257 descriptor strings, plus an unknown number passed imperatively
 
@@ -431,6 +503,37 @@ Worth recording, because it is the argument for writing controls at all:
    package and strings in `apps/nuxeo-ui/public/i18n/` do not travel with it. This needs **no
    loader change**: `AppTranslateLoader` already merges N folders and exposes
    `registerProvider`. Then flip `checkNoHardcodedUiText` to repo-wide.
+
+### Known-incomplete, and easy to read as done
+
+These were carried in a temporary handover document that has been deleted — a working note that
+duplicated mutable state and went stale within a day. They are recorded here because each one is a
+place a reader will call the ticket finished and be wrong.
+
+- **Literal `aria-label` selectors in `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` will break
+  silently when NXSAT-284 reaches them — one of them already can.** An earlier version of this
+  bullet said all the labels they select on "are now translated". That was wrong, and measured
+  rather than assumed it is one in six: of `Card view`, `List view`, `Manage columns`, `Grid view`,
+  `Close panel` and `Toggle details panel`, only the last has a catalogue key
+  (`browse.details.toggle`). The other five are still literal English in feature and shared
+  templates that this PR deliberately excludes.
+
+  So the risk is latent rather than live: those selectors match today because the DOM really does
+  contain those English words. The moment NXSAT-284 localises those libraries, a non-English run
+  matches nothing and the harness goes **green having asserted less** — silence, not a red, which
+  is why it belongs on this list rather than in a backlog. They want `data-testid` before the
+  strings move, not after.
+
+- **Roughly 160 user-facing strings are still built in TypeScript** — snackbar messages, dialog
+  titles, error text. Surveyed, not extracted. Outside AC1's wording, which is about templates, so
+  the ticket can close with all of them still hard-coded.
+- **`NXSAT-284`'s Jira state and the work in flight are not the same thing, and neither is "mostly
+  done".** An earlier version of this bullet, carried over from a working note, said most of
+  NXSAT-284 had shipped. That contradicts this page's own status row (`not started`) and its own
+  measurement of what is left — 1,350 template strings and 257 descriptor strings. What is actually
+  true: the descriptor-label slice is built and in review on
+  [#215](https://github.com/nuxeo/agentic-ui-poc/pull/215), which is not merged; the bulk extraction
+  has not begun. Jira says `Open`, and for once that is the accurate summary.
 
 ### Separate stories, not part of either ticket
 

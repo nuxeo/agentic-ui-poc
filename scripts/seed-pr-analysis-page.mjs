@@ -51,9 +51,19 @@ const body = [
   // on the artifact that records it. The table below is the count; this section is the reading
   // of it, and only the reading is durable. `npm run review:analysis -- stats` derives the
   // distribution from the table on demand.
+  //
+  // For the same reason this prose must not claim every finding was accepted as valid. The
+  // Findings table has no `Accepted` column, so neither `stats` nor a reader can derive it —
+  // it would be an `unenforced-guarantee` on the page that records them. Add the column first
+  // if the claim is ever wanted.
+  //
+  // Nor may it claim anything about how the record changed over time. The table is a current
+  // snapshot with no history: `stats` computes today's distribution and `check-order` compares
+  // today's ranking, so "the ordering has held as the record grew" is unfalsifiable from here.
+  // Only the present reading is derivable, and only the derivable belongs on the page.
   h2('What they say'),
   p(
-    'Every finding so far has been accepted as valid; none was a false positive. Three classes &mdash; <code>proxy-check</code>, <code>unenforced-guarantee</code> and <code>stale-prose</code> &mdash; account for the clear majority, and the ordering between them has held as the record has grown. What each one demands of a pre-PR check:',
+    'Three classes &mdash; <code>proxy-check</code>, <code>unenforced-guarantee</code> and <code>stale-prose</code> &mdash; account for the clear majority. What each one demands of a pre-PR check:',
   ),
   `<table><tbody>
      <tr>${th('Class')}${th('What a pre-PR check would have to do')}</tr>

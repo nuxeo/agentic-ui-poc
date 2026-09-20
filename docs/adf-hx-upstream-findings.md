@@ -140,9 +140,15 @@ The catalogue shipped in the same package has no such key. It has the key withou
 ```
 
 So the lookup misses, ngx-translate falls through to its key passthrough, and every folder
-toggle in the tree is announced as **`DOCUMENT_TREE.TOGGLE_ARIA-LABEL Home`**. The sibling
-binding one block down is correct — `'DOCUMENT_TREE.CONTEXT_MENU.TRIGGER_ARIA_LABEL' | translate`,
-no trailing space — which is what makes this look like a slip rather than a convention.
+toggle in the tree is announced as **`DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined`**.
+
+`undefined`, not the folder name — and this example said `… Home` until the third defect below was
+found, which is what made the trailing space look like the whole story. `node.name` does not exist;
+the concatenation appends the string `"undefined"` whatever the key resolves to.
+
+The sibling binding one block down is correct — `'DOCUMENT_TREE.CONTEXT_MENU.TRIGGER_ARIA_LABEL' |
+translate`, no trailing space — which is what makes the space look like a slip rather than a
+convention.
 
 **Reproduce**
 
@@ -176,12 +182,35 @@ move it. Even with the key resolved, no locale can render this as anything but `
 **Our mitigation.** We alias the whitespace key onto the canonical one in our translation loader,
 copying the resolved value so a French catalogue still yields a French name. It is recorded as
 W13 in `docs/adf-hx-workarounds.md` and it yields to an upstream-shipped key, so it becomes inert
-rather than authoritative if this is fixed. We cannot mitigate the concatenation at all.
+rather than authoritative if this is fixed.
 
-**Ask:** delete the trailing space from the key literal, and take the node name through an
-interpolation parameter rather than string concatenation — `'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' |
-translate: { name: node.name }` with the catalogue value carrying the placeholder. The first is a
-one-character change; the second is what makes the label translatable at all.
+**The concatenation is mitigated too, by W15**, and this paragraph said it could not be. W15 is a
+host-side directive that sets the whole `aria-label` from the row's rendered label through our own
+`nav.tree.toggle`, which takes the folder as an interpolation parameter — so at the host boundary
+there is no concatenation left and a translator can reorder. What we cannot do is fix it _inside_
+upstream's template, which is why the ask below still stands.
+
+**There is a third defect here, and it makes the other two moot on their own.** `node.name` does
+not exist. `node` is a wrapper — the same template reads `node.document`, `node.isLoading` and
+`node.isSelectable`, and renders the visible label as
+`{{ node.document | breadcrumbLabel: 'DOCUMENT_TREE.ROOT' }}`. So the concatenation appends the
+string `"undefined"`, for every consumer of the component, and no catalogue entry can change it.
+Measured on a real application against `7.20.0-automate.292`:
+
+```
+tree aria-labels: ["Toggleundefined", "Toggleundefined"]
+```
+
+Fixing only the trailing space yields `Toggle undefined`. That is why our own mitigation is a
+directive that sets the attribute outright (W15), rather than the alias alone (W13).
+
+**Ask:** delete the trailing space from the key literal, and pass the **label the row already
+renders** through an interpolation parameter rather than concatenating a property the node does not
+have — `'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' | translate: { name: (node.document | breadcrumbLabel:
+'DOCUMENT_TREE.ROOT') }`, with the catalogue value carrying the placeholder. The trailing space is a
+one-character change; using `node.document` is what makes the name a name at all; and the
+interpolation parameter is what makes it translatable, since a concatenated string cannot be
+reordered for a language that needs the noun first.
 
 ---
 

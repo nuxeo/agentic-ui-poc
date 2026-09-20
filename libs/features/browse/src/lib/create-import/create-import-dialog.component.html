@@ -228,7 +228,7 @@
                               class="import-staged-card__remove"
                               [disabled]="busy()"
                               (click)="removeUploadAt($index)"
-                              [attr.aria-label]="'Remove ' + f.name"
+                              [attr.aria-label]="'shared.remove-item' | translate: { name: f.name }"
                             >
                               <mat-icon>close</mat-icon>
                             </button>
@@ -523,7 +523,9 @@
                           <button
                             type="button"
                             matChipRemove
-                            [attr.aria-label]="'Remove ' + naturePillLabel(natureId)"
+                            [attr.aria-label]="
+                              'shared.remove-item' | translate: { name: naturePillLabel(natureId) }
+                            "
                             (click)="$event.stopPropagation(); clearNature()"
                           >
                             <mat-icon>cancel</mat-icon>
@@ -570,7 +572,9 @@
                           <button
                             type="button"
                             matChipRemove
-                            [attr.aria-label]="'Remove ' + subjectPillLabel(id)"
+                            [attr.aria-label]="
+                              'shared.remove-item' | translate: { name: subjectPillLabel(id) }
+                            "
                             (click)="$event.stopPropagation()"
                           >
                             <mat-icon>cancel</mat-icon>
@@ -624,7 +628,10 @@
                           <button
                             type="button"
                             matChipRemove
-                            [attr.aria-label]="'Remove ' + coveragePillLabel(coverageId)"
+                            [attr.aria-label]="
+                              'shared.remove-item'
+                                | translate: { name: coveragePillLabel(coverageId) }
+                            "
                             (click)="$event.stopPropagation(); clearCoverage()"
                           >
                             <mat-icon>cancel</mat-icon>
@@ -762,7 +769,10 @@
                               <button
                                 type="button"
                                 matChipRemove
-                                [attr.aria-label]="'Remove ' + naturePillLabel(natureId)"
+                                [attr.aria-label]="
+                                  'shared.remove-item'
+                                    | translate: { name: naturePillLabel(natureId) }
+                                "
                                 (click)="$event.stopPropagation(); clearNature()"
                               >
                                 <mat-icon>cancel</mat-icon>
@@ -811,7 +821,9 @@
                               <button
                                 type="button"
                                 matChipRemove
-                                [attr.aria-label]="'Remove ' + subjectPillLabel(id)"
+                                [attr.aria-label]="
+                                  'shared.remove-item' | translate: { name: subjectPillLabel(id) }
+                                "
                                 (click)="$event.stopPropagation()"
                               >
                                 <mat-icon>cancel</mat-icon>
@@ -865,7 +877,10 @@
                               <button
                                 type="button"
                                 matChipRemove
-                                [attr.aria-label]="'Remove ' + coveragePillLabel(coverageId)"
+                                [attr.aria-label]="
+                                  'shared.remove-item'
+                                    | translate: { name: coveragePillLabel(coverageId) }
+                                "
                                 (click)="$event.stopPropagation(); clearCoverage()"
                               >
                                 <mat-icon>cancel</mat-icon>
@@ -958,7 +973,7 @@
                       [checked]="entry.checked"
                       [disabled]="busy()"
                       (change)="toggleImportFileChecked(i, $event.checked)"
-                      [aria-label]="'Include ' + entry.file.name"
+                      [aria-label]="'shared.include-file' | translate: { name: entry.file.name }"
                     />
                     <button
                       type="button"

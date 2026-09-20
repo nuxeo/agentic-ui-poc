@@ -128,6 +128,14 @@ const ALL_GATES = [
     // The negative/positive split is the evidence, so surface it on a pass too.
     echoOnPass: true,
   },
+  {
+    id: 'crowdin-selftest',
+    label: 'Crowdin context push controls',
+    cmd: 'node',
+    argv: ['tools/i18n/crowdin-push-context.selftest.mjs'],
+    // The negative/positive split is the evidence, so surface it on a pass too.
+    echoOnPass: true,
+  },
   // SonarCloud security remediation harness (section 5 of docs/sonarcloud-security-remediation-plan.md).
   // Enforces that every DomSanitizer.bypassSecurityTrust* call is registered in
   // .ai/state/sanitizer-allowlist.json with a written justification. Catches unregistered bypasses,
