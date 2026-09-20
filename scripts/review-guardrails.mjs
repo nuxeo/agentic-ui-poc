@@ -1138,9 +1138,26 @@ function checkNoHardcodedUiText() {
       // examined. Skipping the whole line exempted more than the thing that earned the
       // exemption: `<button [attr.aria-label]="'x' | translate">Show details</button>` was
       // never looked at.
+      // The interpolation pattern allows ONE level of braces inside, for the pipe's parameters.
+      //
+      // `{{ 'items' | translate: { count: n } }}` ends at the parameters' own `}`, so a
+      // `[^}]*` interpolation pattern removed nothing, `| translate` survived into the
+      // remainder, and the whole-line escape below then skipped the line — taking any
+      // hard-coded sibling text with it:
+      //
+      //   {{ 'items' | translate: { count: n } }} <span>Show Details</span>
+      //
+      // "Show Details" was never examined. A false negative in the gate that enforces AC1, and
+      // one this PR created: parameterised pipes became the recommended form here the moment
+      // accessible names started carrying values, because INFO-144 forbids concatenating them.
       const remainder = trimmed
         .replace(/(?:\[[\w.$-]+\]|\([\w.$-]+\))="[^"]*\|\s*translate[^"]*"/g, '')
-        .replace(/\{\{[^}]*\|\s*translate[^}]*\}\}/g, '');
+        .replace(/\{\{(?:[^{}]|\{[^{}]*\})*\|\s*translate(?:[^{}]|\{[^{}]*\})*\}\}/g, '');
+      // Still a whole-line escape for anything the patterns above could not remove, and still a
+      // hole — narrower now, but a line mixing an unrecognised translate form with hard-coded
+      // text is skipped. Kept because the alternative is failing on forms nobody has written yet,
+      // and a gate that cannot pass gets switched off. The negative controls pin the forms that
+      // ARE recognised, so a new one has to be added deliberately.
       if (!remainder.trim() || remainder.includes('| translate')) continue;
 
       /** @type {{ what: string, value: string } | null} */

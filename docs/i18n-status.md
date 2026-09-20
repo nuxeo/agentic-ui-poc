@@ -435,11 +435,20 @@ These were carried in a temporary handover document that has been deleted — a 
 duplicated mutable state and went stale within a day. They are recorded here because each one is a
 place a reader will call the ticket finished and be wrong.
 
-- **Eight literal `aria-label` selectors in `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` are
-  latently broken.** All the labels they select on are now translated, so those selectors pass only
-  because English resolves to the identical words. In any other locale they match nothing, and the
-  harness goes green having asserted less — the failure mode is silence, not a red. They want
-  `data-testid`.
+- **Literal `aria-label` selectors in `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` will break
+  silently when NXSAT-284 reaches them — one of them already can.** An earlier version of this
+  bullet said all the labels they select on "are now translated". That was wrong, and measured
+  rather than assumed it is one in six: of `Card view`, `List view`, `Manage columns`, `Grid view`,
+  `Close panel` and `Toggle details panel`, only the last has a catalogue key
+  (`browse.details.toggle`). The other five are still literal English in feature and shared
+  templates that this PR deliberately excludes.
+
+  So the risk is latent rather than live: those selectors match today because the DOM really does
+  contain those English words. The moment NXSAT-284 localises those libraries, a non-English run
+  matches nothing and the harness goes **green having asserted less** — silence, not a red, which
+  is why it belongs on this list rather than in a backlog. They want `data-testid` before the
+  strings move, not after.
+
 - **Roughly 160 user-facing strings are still built in TypeScript** — snackbar messages, dialog
   titles, error text. Surveyed, not extracted. Outside AC1's wording, which is about templates, so
   the ticket can close with all of them still hard-coded.

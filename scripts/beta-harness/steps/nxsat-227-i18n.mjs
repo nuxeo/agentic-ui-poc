@@ -303,9 +303,40 @@ export default async function run(page, h) {
       rawNames.length === 0,
       rawNames.join(', '),
     );
+    // Compared against the row's own rendered label, NOT `startsWith('Toggle')`.
+    //
+    // The prefix form passed on `Toggleundefined`, which is what every toggle actually announced
+    // for two rounds: upstream binds `… + node.name` and its node wrapper has no `name`, so the
+    // name was the verb followed by the string "undefined". This check is the reason that shipped
+    // unnoticed — it asserted the beginning of the name and the defect was in the end of it.
+    //
+    // Reading the folder's label from the row and requiring the whole accessible name to contain
+    // it ties the assertion to the thing a screen-reader user needs: which folder this toggle
+    // opens. `Toggleundefined` and `Toggle ` both fail it.
+    const toggleNames = await page.locator('hxp-document-tree mat-tree-node').evaluateAll((rows) =>
+      rows
+        .map((row) => ({
+          label: (row.querySelector('.hxp-node-container')?.textContent ?? '').trim(),
+          name: (
+            row.querySelector('button[matTreeNodeToggle]')?.getAttribute('aria-label') ?? ''
+          ).trim(),
+        }))
+        .filter((entry) => entry.label !== '' && entry.name !== ''),
+    );
     h.check(
-      'every folder toggle begins with the translated word, not the key',
-      names.every((name) => name.trim().startsWith('Toggle')),
+      'the tree rendered at least one labelled row to compare against',
+      toggleNames.length > 0,
+      `${toggleNames.length} row(s) had both a visible label and a named toggle`,
+    );
+    const unnamed = toggleNames.filter((entry) => !entry.name.includes(entry.label));
+    h.check(
+      "every folder toggle's accessible name contains that folder's own visible label",
+      toggleNames.length > 0 && unnamed.length === 0,
+      unnamed.map((entry) => `label=${entry.label} name=${entry.name}`).join(' | '),
+    );
+    h.check(
+      'no folder toggle is announced with the literal word undefined',
+      names.every((name) => !/undefined/i.test(name)),
       names.join(' | '),
     );
     h.check(
@@ -327,7 +358,12 @@ export default async function run(page, h) {
   // rows belong to the ARIA problems already reported as upstream finding 1.2; failing this
   // capture on them would attribute upstream's debt to this change and make the check unusable
   // on any page rendering a document list.
-  const INTERACTIVE = 'button, a, input, select, textarea, [role="button"], [role="link"]';
+  // `a[href]`, not `a`. An anchor without an `href` is not a link: it is not focusable, exposes no
+  // link role, and axe's `link-name` rule does not apply to it. The broad `a` selector reported one
+  // such anchor in the shell as unnamed, which is a finding nobody can act on — there is nothing to
+  // name. Matching axe's own scope keeps the check's verdict comparable with the axe step's.
+  const INTERACTIVE =
+    'button, a[href], input, select, textarea, [role="button"], [role="link"]';
   const blanks = await page.evaluate((selector) => {
     const offenders = [];
     for (const element of document.querySelectorAll(selector)) {
@@ -341,6 +377,73 @@ export default async function run(page, h) {
     'no interactive control carries an empty aria-label',
     blanks.length === 0,
     blanks.join(', '),
+  );
+
+  // A control with NO `aria-label` at all, and nothing else naming it either.
+  //
+  // The check above only inspects controls that HAVE the attribute, while the step's title claims
+  // to sweep for missing accessible names — so an icon-only button with no ARIA and no text passed
+  // it. That is not hypothetical: it is precisely how the app shell's own navigation-tree folder
+  // toggles kept no accessible name at all through this entire ticket, on every route, until an
+  // axe scan in French found them. A check narrower than its own name is how that happens.
+  //
+  // This approximates the accessible-name computation rather than implementing it. An element is
+  // unnamed when nothing in HTML-AAM's order names it: no non-empty `aria-label`, no resolvable
+  // `aria-labelledby`, no associated `<label>`, no `title`, no `placeholder` on a form control,
+  // and no visible text of its own.
+  //
+  // `mat-icon` ligature text is excluded because Angular Material marks those `aria-hidden`, which
+  // is the exact trap the nav-drawer toggle fell into — the button looked like it had text and
+  // announced nothing.
+  //
+  // The first version of this omitted `placeholder` and `<label>`, and reported the global search
+  // box, the adf-hx toolbar filter and the AI chat input as unnamed. All three are named, by
+  // placeholder, which HTML-AAM accepts for a form control and axe agrees with — the French axe
+  // scan in step 5 passes on the same page. A check stricter than the standard it cites produces
+  // failures nobody can act on, and a capture that cannot go green gets bypassed. axe remains the
+  // authority; this exists to catch the case axe cannot, a name that is present but is a raw key.
+  const unnamed = await page.evaluate((selector) => {
+    const named = (value) => (value ?? '').trim() !== '';
+    const offenders = [];
+    for (const element of document.querySelectorAll(selector)) {
+      if (named(element.getAttribute('aria-label'))) continue;
+      if (named(element.getAttribute('title'))) continue;
+      if (named(element.getAttribute('placeholder'))) continue;
+      if (element.getAttribute('aria-hidden') === 'true') continue;
+      if (element.hasAttribute('hidden') || element.closest('[aria-hidden="true"]')) continue;
+
+      // `aria-labelledby` only counts if the ids it points at exist and carry text. A dangling
+      // reference names nothing, and is a defect this would otherwise call a pass.
+      const labelledBy = (element.getAttribute('aria-labelledby') ?? '')
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((id) => document.getElementById(id))
+        .filter((target) => named(target?.textContent));
+      if (labelledBy.length > 0) continue;
+
+      // A `<label for>` or a wrapping `<label>`, which is how a form control is usually named.
+      const id = element.getAttribute('id');
+      const explicit = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+      if (named(explicit?.textContent) || named(element.closest('label')?.textContent)) continue;
+
+      // Text the user would hear, with anything `aria-hidden` removed — icon ligatures included.
+      const clone = element.cloneNode(true);
+      for (const hidden of clone.querySelectorAll('[aria-hidden="true"], mat-icon, .mat-icon')) {
+        hidden.remove();
+      }
+      if (named(clone.textContent)) continue;
+
+      offenders.push(
+        `<${element.tagName.toLowerCase()} class="${element.className || ''}">` +
+          (element.getAttribute('href') !== null ? ` href=${element.getAttribute('href')}` : ''),
+      );
+    }
+    return [...new Set(offenders)];
+  }, INTERACTIVE);
+  h.check(
+    'no interactive control is left with no accessible name at all',
+    unnamed.length === 0,
+    unnamed.join(', '),
   );
   h.note(
     'Upstream emits `<adf-datatable-row aria-label="">` on document-list rows. Those are not ' +

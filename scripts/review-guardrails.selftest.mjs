@@ -971,6 +971,37 @@ expectGreen('a file that already carried the marker before this diff', 'checkNoR
   '.cursor/skills/pre-pr-review/SKILL.md': `# Pre-PR review\n\n<!-- ${CORPUS_MARKER} -->\n`,
 });
 
+/* ---------------- checkNoHardcodedUiText: parameterised translate spans ---------------- */
+
+// A parameterised pipe's own braces ended the interpolation pattern, so `| translate` survived
+// into the remainder and the whole-line escape skipped the line — carrying the hard-coded sibling
+// text with it. A false negative in the gate that enforces AC1, created by this PR: parameterised
+// pipes became the recommended form once accessible names started carrying values.
+expectRed(
+  'hard-coded text beside a parameterised translate interpolation',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div></div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      `{{ 'x.items' | translate: { count: n } }} <span>Show Details</span>\n`,
+    ),
+  /Show Details/,
+);
+
+// And the parameterised interpolation alone is still exempt, or the fix would fail every
+// pluralised string in the repository.
+falsePositiveControls += 1;
+expectGreen('a parameterised translate interpolation on its own', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html': `{{ 'x.items' | translate: { count: n } }}\n`,
+});
+
+falsePositiveControls += 1;
+expectGreen('a parameterised translate bound to an accessible name', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html':
+    `<button [attr.aria-label]="'x.y' | translate: { name: nodeLabel(node) }"></button>\n`,
+});
+
 /* ---------------- checkNoHardcodedUiText: comment and <pre> spans ---------------- */
 
 // The founding case. A multi-line template comment's interior lines start with prose, so the

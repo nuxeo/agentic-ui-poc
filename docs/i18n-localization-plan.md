@@ -167,7 +167,10 @@ Tagged `[ticket]` for verbatim, `[derived]` where the ticket implies but does no
 
 ### Decisions
 
-Q1 and Q2 were settled on 16 September 2026. Q3 and Q4 remain open: Q4 blocks slice S6, and
+Q1 and Q2 were settled on 16 September 2026, and Q4 on 20 September — it does not block slice S6;
+the table below records the measurement. **Q3 alone remains open.** This paragraph said "Q3 and Q4
+remain open: Q4 blocks slice S6" while the row immediately beneath it recorded Q4 as answered and
+non-blocking, which is the plan of record contradicting itself one line apart.
 Q3 blocks any RTL commitment.
 
 | ID  | Question                                    | Answer                                                                                                                                                                                                                                                                                                                                                                           |
@@ -631,13 +634,13 @@ say so in the report rather than leaving it unstated.
 
 ### The recurring loop
 
-| Cadence                   | Action                                                                                                                                                                                                                | Owner               |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| Daily, automated          | Crowdin pull workflow opens a translation PR.                                                                                                                                                                         | Bot                 |
-| Per PR                    | Review and merge the translation PR. **A rotting translation PR is the main failure mode of this setup** — the technical guide recommends also triggering the pull on push to `main` when PRs are not merged quickly. | Named owner, per Q4 |
-| Per feature PR            | New keys go in `en.json` **only**. Tag the Jira ticket `translation`, per the Web UI process.                                                                                                                         | Author              |
-| 3 business days before QA | Manual check of `translation`-labelled tickets, so missing translations can still be requested in time. Adopted from the Web UI process, which documents this exact gap.                                              | Release owner       |
-| Per adf-hx bump           | Confirm the new component's keys resolve — not merely that it renders. Registering a catalogue is not the same as loading it, which is what made the versions panel render `MANAGE_VERSIONS.DIALOG.TITLE`.            | Whoever bumps       |
+| Cadence                   | Action                                                                                                                                                                                                                                                                                                                                                                                              | Owner         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Daily, automated          | Crowdin pull workflow opens a translation PR.                                                                                                                                                                                                                                                                                                                                                       | Bot           |
+| Per PR                    | Review and merge the translation PR. Not a standing duty: a release-checklist line, per Q4 and the measurement in D8b. The claim that "a rotting translation PR is the main failure mode of this setup" was **not measured before being repeated** and does not survive being checked — of the 99 such pull requests `nuxeo-web-ui` has had, 39 merged at a median lag of one day and none is open. | Release owner |
+| Per feature PR            | New keys go in `en.json` **only**. Tag the Jira ticket `translation`, per the Web UI process.                                                                                                                                                                                                                                                                                                       | Author        |
+| 3 business days before QA | Manual check of `translation`-labelled tickets, so missing translations can still be requested in time. Adopted from the Web UI process, which documents this exact gap.                                                                                                                                                                                                                            | Release owner |
+| Per adf-hx bump           | Confirm the new component's keys resolve — not merely that it renders. Registering a catalogue is not the same as loading it, which is what made the versions panel render `MANAGE_VERSIONS.DIALOG.TITLE`.                                                                                                                                                                                          | Whoever bumps |
 
 ### Standing rules
 
