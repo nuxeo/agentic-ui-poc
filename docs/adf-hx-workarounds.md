@@ -68,10 +68,17 @@ believed anyway; the section three paragraphs up already tells the reader not to
 | W15 | Document-tree folder toggle renamed from the rendered row — `hxp-document-tree-toggle-name.directive.ts`                 | Upstream binds the toggle's `aria-label` to `('DOCUMENT_TREE.TOGGLE_ARIA-LABEL ' \| translate) + node.name`, but `node` is a wrapper carrying `node.document`, `node.isLoading` and `node.isSelectable` — there is no `name` on it. So `node.name` is `undefined` for **every** consumer, and no catalogue entry or Nuxeo→Hx mapping change can reach it. Measured before the fix: `["Toggleundefined", "Toggleundefined"]`. The directive sets the name from the row's rendered label through `nav.tree.toggle`, which takes the folder as an interpolation parameter — so it also fixes the half of finding 1.3 that W13 could not, upstream's concatenation being unreorderable for languages that need the noun first. | **Removable** in full when upstream binds its visible label expression into the `aria-label` instead of `node.name`. Asserted by the evidence capture comparing each toggle's accessible name against that row's own visible label, so a regression shows up as a red check rather than as silence.      |
 | W14 | adf-core's locale preference re-asserted from our Layer 0 config on every boot — `provide-app-config.ts`                 | adf-core's `TranslationService` reads the locale from its own `UserPreferencesService` and calls `translate.use(...)` on the shared ngx-translate instance when it constructs, plus on an `effect`. So the language chosen from `defaultLanguage` survived until the first adf-hx surface rendered and then silently reverted to English — measured on both the `/#/browse-adf-hx` route and the adf-hx nav drawer, with no page reload involved.                                                                                                                                                                                                                                                                          | **Removable** if adf-core takes its locale from the host rather than owning it. Structural while two services both drive one shared `TranslateService`.                                                                                                                                                  |
 
-**Count for leadership: 14 workarounds, of which 7 are structural** — W4, W8, W11, W12 outright,
-W14 structural while two services drive one shared `TranslateService`, and W2 and W10
-structural in practice because the alternatives are worse. Seven are genuinely removable when
-upstream changes: W1, W3, W5, W6, W7, W9, W13.
+**For leadership: which of these are structural, by id rather than by total.** Structural outright:
+W4, W8, W11, W12. Structural while two services drive one shared `TranslateService`: W14.
+Structural in practice, because the alternatives are worse: W2, W10. Genuinely removable when
+upstream changes: W1, W3, W5, W6, W7, W9, W13, W15.
+
+No derived totals, and the ids are listed so a reader can recount against the table rather than
+trust a sum. The previous version of this paragraph said "14 workarounds, of which 7 are
+structural" — and the paragraph at the top of Category 1 claimed those totals had been removed
+while this one still carried them, which is the same defect one level down. Splitting the
+structural group three ways is also the honest reason a single number was misleading: whether
+W2, W10 and W14 count as structural depends on a judgement the number hides.
 
 **W6 and W13 are not the same defect, and conflating them would hide the second.** W6 was a
 catalogue that never loaded. W13 is a catalogue that loads correctly, holds the key, and is then

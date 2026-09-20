@@ -681,7 +681,9 @@ expectRed(
       '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "es"]\n}\n',
   },
   null,
-  /advertises "es".*no catalogue ships/s,
+  // The message now names the catalogue directory it looked in, because the gate reads more than
+  // one config and "no catalogue ships" was ambiguous about which application was meant.
+  /advertises "es"[\s\S]*ships no catalogue for it/,
 );
 
 expectGreen('an advertised locale that ships', 'checkAdvertisedLocalesShip', {
@@ -1188,6 +1190,59 @@ expectRed(
   },
   null,
   /tools\/i18n\/crowdin-push-context\.mjs is missing/,
+);
+
+// ── controls for round nine: the template config the gate never read ─────────────────────
+
+/**
+ * `checkAdvertisedLocalesShip` read one bootstrap config while the repository had two.
+ *
+ * `nuxeo-satori-template` is the public Layer 0 example a customer copies. It advertised `fr` and
+ * `de`, ships no catalogue directory and wires no `TranslateModule` — so the example described two
+ * languages it could not render, and the gate was looking somewhere else entirely.
+ */
+const TEMPLATE_CONFIG = 'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json';
+const PACKAGED_CONFIG = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+const EN_ONLY = '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en"]\n}\n';
+
+expectRed(
+  'the template config advertising a locale it ships no catalogue for',
+  'checkAdvertisedLocalesShip',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    [PACKAGED_CONFIG]: EN_ONLY,
+    [TEMPLATE_CONFIG]: '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "fr"]\n}\n',
+  },
+  null,
+  /nuxeo-satori-template[\s\S]*advertises "fr"[\s\S]*ships no catalogue/,
+);
+
+// English needs no catalogue — it is the source language, compiled in as the fallback — so an
+// application with no catalogue directory may advertise English and nothing else. Without this the
+// widened gate would fail every template that has no i18n yet, which is a gate nobody can pass.
+falsePositiveControls += 1;
+expectGreen(
+  'a template advertising English only, with no catalogues',
+  'checkAdvertisedLocalesShip',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    [PACKAGED_CONFIG]: EN_ONLY,
+    [TEMPLATE_CONFIG]: EN_ONLY,
+  },
+);
+
+// The two configs stay independent: a catalogue in the main app must not satisfy the template.
+expectRed(
+  "the template borrowing the main app's catalogues",
+  'checkAdvertisedLocalesShip',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+    [PACKAGED_CONFIG]: '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "fr"]\n}\n',
+    [TEMPLATE_CONFIG]: '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "fr"]\n}\n',
+  },
+  null,
+  /nuxeo-satori-template[\s\S]*advertises "fr"/,
 );
 
 // ── controls for round four of the Copilot review ────────────────────────────────────────

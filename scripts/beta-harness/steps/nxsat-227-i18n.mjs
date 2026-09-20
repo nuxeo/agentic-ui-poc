@@ -314,7 +314,18 @@ export default async function run(page, h) {
     const names = await toggles.evaluateAll((nodes) =>
       nodes.map((node) => node.getAttribute('aria-label') ?? ''),
     );
-    const rawNames = names.filter((name) => RAW_KEY.test(name.trim()));
+    // BOTH patterns, the anchored one and the embedded one.
+    //
+    // The anchored pattern alone could not match `DOCUMENT_TREE.TOGGLE_ARIA-LABEL Home`, which is
+    // the shape of the regression this whole step is named after — the key is concatenated with the
+    // folder name, so it is never the entire value. And the three checks below accept it too: the
+    // name contains the row's label, contains no `undefined`, and is not empty. So the check called
+    // "no folder toggle is announced with a raw translation key" passed on precisely the raw
+    // translation key it was written for, and only the separate all-route sweep would have caught
+    // it — the sweep that uses both patterns, which is where these come from.
+    const rawNames = names.filter(
+      (name) => RAW_KEY.test(name.trim()) || EMBEDDED_RAW_KEY.test(name.trim()),
+    );
     h.check(
       'no folder toggle is announced with a raw translation key',
       rawNames.length === 0,

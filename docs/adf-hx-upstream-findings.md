@@ -140,9 +140,15 @@ The catalogue shipped in the same package has no such key. It has the key withou
 ```
 
 So the lookup misses, ngx-translate falls through to its key passthrough, and every folder
-toggle in the tree is announced as **`DOCUMENT_TREE.TOGGLE_ARIA-LABEL Home`**. The sibling
-binding one block down is correct — `'DOCUMENT_TREE.CONTEXT_MENU.TRIGGER_ARIA_LABEL' | translate`,
-no trailing space — which is what makes this look like a slip rather than a convention.
+toggle in the tree is announced as **`DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined`**.
+
+`undefined`, not the folder name — and this example said `… Home` until the third defect below was
+found, which is what made the trailing space look like the whole story. `node.name` does not exist;
+the concatenation appends the string `"undefined"` whatever the key resolves to.
+
+The sibling binding one block down is correct — `'DOCUMENT_TREE.CONTEXT_MENU.TRIGGER_ARIA_LABEL' |
+translate`, no trailing space — which is what makes the space look like a slip rather than a
+convention.
 
 **Reproduce**
 

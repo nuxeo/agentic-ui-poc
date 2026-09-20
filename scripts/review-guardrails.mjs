@@ -2098,57 +2098,85 @@ function checkAccessibleNameFallbacks() {
  * enforced. This makes the claim true instead of removing it.
  */
 function checkAdvertisedLocalesShip() {
-  const config = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
-  if (!fileExists(config)) {
-    fail(`${config} was not found, so this gate asserted nothing. Check the path.`);
+  /**
+   * Every Layer 0 bootstrap config, paired with the catalogue directory ITS OWN application
+   * serves.
+   *
+   * Scoped per application rather than repo-wide: gathering catalogue names across every app meant
+   * one app adding `es.json` would let another's config advertise `es` with no catalogue behind it.
+   *
+   * And it is a LIST rather than the packaged config alone, because checking one config while the
+   * repository contains two is the same blindness by omission. `nuxeo-satori-template` is the
+   * public Layer 0 example a customer copies, it advertised `fr` and `de`, and it has no catalogue
+   * directory and no `TranslateModule` at all — so the example shipped describing two languages it
+   * could not render, and this gate did not look at it.
+   */
+  const configs = [
+    ['nuxeo-agentic-ui-package/src/main/config/bootstrap.json', 'apps/nuxeo-ui/public/i18n'],
+    [
+      'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json',
+      'apps/nuxeo-satori-template/public/i18n',
+    ],
+  ].filter(([config]) => fileExists(config));
+
+  if (configs.length === 0) {
+    fail(
+      'No Layer 0 bootstrap config was found, so this gate asserted nothing. Check the paths in ' +
+        '`checkAdvertisedLocalesShip`.',
+    );
     return;
   }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(read(config));
-  } catch (error) {
-    fail(`${config} is not valid JSON: ${error.message}`);
-    return;
-  }
+  for (const [config, catalogueDir] of configs) {
+    let parsed;
+    try {
+      parsed = JSON.parse(read(config));
+    } catch (error) {
+      fail(`${config} is not valid JSON: ${error.message}`);
+      continue;
+    }
 
-  // Scoped to the directory THIS configuration's application actually serves, not to every
-  // app. Gathering catalogue names repo-wide meant another app adding `es.json` would let the
-  // packaged config advertise `es` while `apps/nuxeo-ui` had no catalogue for it — the gate
-  // green and the language broken.
-  const CATALOGUE_DIR = 'apps/nuxeo-ui/public/i18n';
-  const shipped = new Set(
-    [...walk(CATALOGUE_DIR, (path) => /\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path))]
-      .map((path) => /([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[1])
-      .filter(Boolean),
-  );
-  if (shipped.size === 0) {
-    fail(`No catalogues were found in ${CATALOGUE_DIR}, so this gate asserted nothing.`);
-    return;
-  }
+    const shipped = new Set(
+      [...walk(catalogueDir, (path) => /\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path))]
+        .map((path) => /([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[1])
+        .filter(Boolean),
+    );
 
-  const advertised = parsed['availableLanguages'];
-  if (Array.isArray(advertised)) {
-    for (const locale of advertised) {
-      if (shipped.has(locale)) continue;
+    // `en` needs no catalogue: it is the source language, compiled in as the fallback. Every other
+    // advertised locale is a promise that a catalogue exists, so an application with no catalogue
+    // directory at all may advertise English and nothing else.
+    const needsCatalogue = (locale) => locale !== 'en';
+
+    const advertised = parsed['availableLanguages'];
+    if (Array.isArray(advertised)) {
+      for (const locale of advertised) {
+        if (!needsCatalogue(locale) || shipped.has(locale)) continue;
+        fail(
+          `${config} advertises "${locale}" in availableLanguages but ${catalogueDir} ships no ` +
+            `catalogue for it. Catalogues found: ${[...shipped].sort().join(', ') || '(none)'}.\n` +
+            '    Choosing it would render the English fallback throughout, which reads as a ' +
+            'broken language rather than an absent one.',
+        );
+      }
+    }
+
+    const fallback = parsed['defaultLanguage'];
+    if (typeof fallback === 'string' && needsCatalogue(fallback) && !shipped.has(fallback)) {
       fail(
-        `${config} advertises "${locale}" in availableLanguages but no catalogue ships for ` +
-          `it. Catalogues found: ${[...shipped].sort().join(', ')}.\n` +
-          '    Choosing it would render the English fallback throughout, which reads as a ' +
-          'broken language rather than an absent one.',
+        `${config} ships \`defaultLanguage: "${fallback}"\` but ${catalogueDir} has no catalogue ` +
+          'for it.',
       );
     }
-  }
-
-  const fallback = parsed['defaultLanguage'];
-  if (typeof fallback === 'string' && !shipped.has(fallback)) {
-    fail(`${config} ships \`defaultLanguage: "${fallback}"\` but no catalogue exists for it.`);
-  }
-  if (typeof fallback === 'string' && Array.isArray(advertised) && !advertised.includes(fallback)) {
-    fail(
-      `${config} ships \`defaultLanguage: "${fallback}"\` which is absent from ` +
-        'availableLanguages, so the default is a language a user cannot switch back to.',
-    );
+    if (
+      typeof fallback === 'string' &&
+      Array.isArray(advertised) &&
+      !advertised.includes(fallback)
+    ) {
+      fail(
+        `${config} ships \`defaultLanguage: "${fallback}"\` which is absent from ` +
+          'availableLanguages, so the default is a language a user cannot switch back to.',
+      );
+    }
   }
 }
 
