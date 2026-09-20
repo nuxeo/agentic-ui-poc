@@ -128,11 +128,19 @@ than by a gate.
 
 ## Still outstanding beyond the review threads
 
-- **NXSAT-227 AC5** — the Crowdin pipeline is built and gated but **blocked** on two things
-  nobody here can do: the project is created manually via the INTERN board, and "who owns the
-  daily translation PR" is an open decision. Both workflows are gated on
-  `vars.CROWDIN_SYNC_ENABLED` so they stay dormant until then.
-  `tools/i18n/crowdin-push-context.mjs` has **never run against a real project**.
+- **NXSAT-227 AC5** — the Crowdin pipeline is built and gated, waiting on the project itself.
+  Requested as [INTERN-1346](https://hyland.atlassian.net/browse/INTERN-1346); precedent says
+  about a day's turnaround. Both workflows are gated on `vars.CROWDIN_SYNC_ENABLED` so they
+  stay dormant until the secrets exist, and `tools/i18n/crowdin-push-context.mjs` has **never
+  run against a real project**.
+
+  The second blocker this document previously listed — "who owns the daily translation PR" —
+  was **retired on 20 Sep 2026**, because the premise was false. The evidence and the query
+  behind it are D8b in `docs/i18n-localization-plan.md`; read it there rather than trusting a
+  second copy here. In short: the daily cron is a poll, and of the 99 Crowdin pull requests
+  `nuxeo-web-ui` has had since 2022, 39 merged at a median lag of one day and none is open.
+  Reviewing one is a release-checklist line, not a role.
+
 - **NXSAT-284 AC4** — per-library catalogues. All 1,600-odd keys live in
   `apps/nuxeo-ui/public/i18n/`, and `libs/platform` is publishable, so its strings do not travel
   with it. Largest remaining piece of real work.

@@ -3,10 +3,16 @@
 # The second of D8's two workflows. Daily, because a translation finished on Tuesday should
 # not wait for someone to remember.
 #
-# It does not merge anything. The translation pull request is reviewed like any other, which
-# is the point: NXSAT-227 records "who owns the daily translation PR" as an open decision, and
-# an unowned PR is the documented failure mode of the Web UI process. This makes the work
-# visible; it does not decide who does it.
+# Daily is a POLL, not a publish. On a day with nothing approved this opens nothing. Measured on
+# nuxeo/nuxeo-web-ui, which has run the same schedule since 2022: 99 pull requests, 39 of them
+# merged at a median lag of one day, none currently open. Thirty-nine merges across fifty-one
+# months is roughly one a month — the release cadence, reached by the mechanism rather than by
+# scheduling it. The numbers and the query behind them are in D8b; do not restate them from here.
+#
+# It merges nothing. The translation pull request is reviewed like any other, and reviewing it
+# is a release-checklist line rather than a standing duty. See D8b in
+# docs/i18n-localization-plan.md, which corrects an earlier claim in this repository that an
+# unowned translation PR rots — the data says otherwise.
 name: Crowdin Pull
 
 on:

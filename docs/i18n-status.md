@@ -246,7 +246,9 @@ Plus `checkAngularDevAssets` extended to compare the `ignore` list, which it did
 entry excluding a file in the base array and not in `development` read as identical while the two
 configurations served different files.
 
-`review-guardrails.selftest.mjs` — **58 controls, 32 negative and 26 positive.** It builds a
+`review-guardrails.selftest.mjs`. **Its totals are not restated here** — the suite prints them,
+`npm run review:guardrails-selftest`, and a number copied into prose next to a list it does not
+come from goes stale silently: this sentence said 58, then 71, while the suite held 78. It builds a
 throwaway git repository per control under `os.tmpdir()`, so unlike the sanitizer selftest a hard
 kill cannot leave a dirty tree. Registered as gate `guardrails-selftest`, as an npm script, in
 `review:preflight` and in CI.

@@ -17,15 +17,15 @@ blocked on manual project creation via the INTERN board. The GA extraction is
 
 ### What shipped, 16 September 2026
 
-| Slice | Delivered                                                                                                                                                                                                                                                                                                                       |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| S1    | The `DOCUMENT_TREE.TOGGLE_ARIA-LABEL` alias (W13) and the missing `settings.themes.search` fallback. Its catalogue value was literally `"Search (placeholder)"`, shipping as a real accessible name.                                                                                                                            |
-| S2    | `checkTranslationCatalogues` and `checkAccessibleNameFallbacks`.                                                                                                                                                                                                                                                                |
-| S3    | `checkNoHardcodedUiText`, plus `review-guardrails.selftest.mjs` — **58 controls, 32 negative and 26 positive** — registered as gate `guardrails-selftest`, an npm script, in `review:preflight` and in CI. It is the first negative-control suite any guardrail in this repository has had; eleven shipped before it with none. |
-| S3a   | `checkTranslationContext`, and `checkAngularDevAssets` extended to compare `ignore`.                                                                                                                                                                                                                                            |
-| S4    | 48 occurrences extracted across `apps/nuxeo-ui`, with `en.context.json`.                                                                                                                                                                                                                                                        |
-| S5    | `fr` and `de` catalogues at full key parity, and `steps/nxsat-227-i18n.mjs` — **29/29 checks**.                                                                                                                                                                                                                                 |
-| S5a   | `W14` — adf-core no longer resets the language on adf-hx surfaces — plus Angular locale data for `fr`/`de`, `checkLocaleDataRegistered`, and a formatting-locale guard so an unshipped locale degrades instead of throwing. All three found by running the application, not by the gates.                                       |
+| Slice | Delivered                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S1    | The `DOCUMENT_TREE.TOGGLE_ARIA-LABEL` alias (W13) and the missing `settings.themes.search` fallback. Its catalogue value was literally `"Search (placeholder)"`, shipping as a real accessible name.                                                                                                                                                                                                                                                                      |
+| S2    | `checkTranslationCatalogues` and `checkAccessibleNameFallbacks`.                                                                                                                                                                                                                                                                                                                                                                                                          |
+| S3    | `checkNoHardcodedUiText`, plus `review-guardrails.selftest.mjs`, registered as gate `guardrails-selftest`, an npm script, in `review:preflight` and in CI. It is the first negative-control suite any guardrail in this repository has had; eleven shipped before it with none. **No count here on purpose** — `npm run review:guardrails-selftest` prints its own totals, and this line carried a stale one through three rounds (58, then 71, while the suite held 78). |
+| S3a   | `checkTranslationContext`, and `checkAngularDevAssets` extended to compare `ignore`.                                                                                                                                                                                                                                                                                                                                                                                      |
+| S4    | 48 occurrences extracted across `apps/nuxeo-ui`, with `en.context.json`.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| S5    | `fr` and `de` catalogues at full key parity, and `steps/nxsat-227-i18n.mjs` — **29/29 checks**.                                                                                                                                                                                                                                                                                                                                                                           |
+| S5a   | `W14` — adf-core no longer resets the language on adf-hx surfaces — plus Angular locale data for `fr`/`de`, `checkLocaleDataRegistered`, and a formatting-locale guard so an unshipped locale degrades instead of throwing. All three found by running the application, not by the gates.                                                                                                                                                                                 |
 
 **Two defects in this work were found by writing its own controls, not by review:** an unguarded
 `JSON.parse` that crashed the guardrail script and discarded every other guardrail's
@@ -170,12 +170,12 @@ Tagged `[ticket]` for verbatim, `[derived]` where the ticket implies but does no
 Q1 and Q2 were settled on 16 September 2026. Q3 and Q4 remain open: Q4 blocks slice S6, and
 Q3 blocks any RTL commitment.
 
-| ID  | Question                       | Answer                                                                                                                                                                                                                                                                              |
-| --- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Q1  | Is full extraction Beta or GA? | **GA — decided. Split the ticket** into 227a (Beta) and a new GA ticket, per the table above. This confirms the 21 Aug decision rather than overturning it.                                                                                                                         |
-| Q2  | Which target locales?          | **`fr` and `de` — decided.** Both are covered by every upstream catalogue we seed (adf-core, both adf-hx bundles, satori-ui), so a locale switch exercises the whole stack rather than our own file alone. Web UI ships 16; matching that at Beta is not credible.                  |
-| Q3  | Is RTL in scope?               | **Open.** Recommendation: no, for neither Beta nor the GA extraction. Track against [DS-2277](https://hyland.atlassian.net/browse/DS-2277) and target the "good enough" level from the Satori spectrum. Arabic and Hebrew are Web UI release-blocking locales, so this will return. |
-| Q4  | Who owns the daily Crowdin PR? | **Open, and it blocks S6.** Needs a named owner before the pull workflow is enabled, or the PR rots. Web UI's process names a translation-crew contact; we need the equivalent.                                                                                                     |
+| ID  | Question                                    | Answer                                                                                                                                                                                                                                                                                                                                                                           |
+| --- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | Is full extraction Beta or GA?              | **GA — decided. Split the ticket** into 227a (Beta) and a new GA ticket, per the table above. This confirms the 21 Aug decision rather than overturning it.                                                                                                                                                                                                                      |
+| Q2  | Which target locales?                       | **`fr` and `de` — decided.** Both are covered by every upstream catalogue we seed (adf-core, both adf-hx bundles, satori-ui), so a locale switch exercises the whole stack rather than our own file alone. Web UI ships 16; matching that at Beta is not credible.                                                                                                               |
+| Q3  | Is RTL in scope?                            | **Open.** Recommendation: no, for neither Beta nor the GA extraction. Track against [DS-2277](https://hyland.atlassian.net/browse/DS-2277) and target the "good enough" level from the Satori spectrum. Arabic and Hebrew are Web UI release-blocking locales, so this will return.                                                                                              |
+| Q4  | Who reviews the Crowdin PR when it appears? | **Answered 20 Sep 2026 — it does not block S6.** The question was posed as "who owns the _daily_ PR", on the premise that an unowned one rots. Both halves were wrong; D8b below records the measurement, and the query to reproduce it, because the first version of that table stated four counts that no query produced. It is a release-checklist line, not a standing role. |
 
 ---
 
@@ -416,6 +416,50 @@ Per the technical usage guide. Project name must match the GitHub repository nam
 > bill the translation crew for work another team already paid for. Scope the globs to `apps/`
 > and `libs/`, and verify with a `crowdin upload sources --dry-run` before the first real push.
 
+### D8b — the pull is a daily POLL, not a daily pull request
+
+I wrote, in this plan and in three other places, that an unowned daily translation PR "rots —
+that is the documented failure mode in the Web UI process". Both parts of that were wrong, and
+neither was ever checked before being repeated.
+
+Measured on 20 Sep 2026 across every Crowdin pull request `nuxeo/nuxeo-web-ui` has ever had.
+**Reproduce it before believing it** — the first version of this table was written from a
+different, unstated query and every count in it was wrong:
+
+```bash
+gh api -X GET search/issues -f q='repo:nuxeo/nuxeo-web-ui is:pr head:crowdin' --jq '.total_count'
+```
+
+| Scoped to `head:crowdin`, 2022-06-06 to 2026-09-02 |                                    |
+| -------------------------------------------------- | ---------------------------------- |
+| Total                                              | 99                                 |
+| Merged                                             | 39 — median lag **1 day**, max 294 |
+| Closed unmerged                                    | 60 — median age **0 days**         |
+| **Still open**                                     | **0**                              |
+
+Two of those rows need reading carefully, because each looks like the opposite of what it is:
+
+- **60 closed unmerged is not 60 abandoned translations.** The action pushes to one long-lived
+  branch per base, so each run supersedes its own previous pull request — which is why the median
+  age at close is **zero days**. Eight of the sixty lived longer than thirty days; that is the
+  real tail, and it is small.
+- **A 294-day maximum merge lag is not the typical experience.** The median is one day. Quoting
+  the range alone would describe a process nobody has.
+
+So they do not rot. And they are not daily: the cron polls daily, but a pull request appears only
+when a translator has approved something. Thirty-nine merged across the fifty-one months measured
+is roughly one a month, which is already the release cadence — arrived at by the mechanism rather
+than by scheduling it.
+
+So the daily schedule stays. On a day with nothing approved it opens nothing and costs nothing,
+and it surfaces a broken catalogue within a day instead of on release day. What changes is the
+question asked of the team: not "who owns a daily duty" but "who reviews this PR when it turns
+up", which belongs on the release checklist.
+
+The half that genuinely needs to be fast is the **push**, and it already is — on source change.
+A string added today that does not reach Crowdin until release week cannot be translated for
+that release.
+
 ### D8a — `%two_letters_code%`, not `%locale%`
 
 The D8 snippet above maps translations to `%locale%.%file_extension%`. Built as written, that
@@ -551,13 +595,13 @@ New steps file, `scripts/beta-harness/steps/nxsat-227-i18n.mjs`, run via
 `assertions` gate, which parses steps files with acorn and **exits 1 if any assertion's
 condition is a constant**. Do not record a limitation as `h.check(name, true)` — use `h.note`.
 
-| Step                   | Load-bearing assertion                                                                                                                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Raw-key sweep          | On each of the eight routes, no element's `aria-label`, `title` or text content matches `/^[A-Z][A-Z0-9_]*\.[A-Z0-9_.-]+$/`.                                                                      |
-| Document tree          | The toggle button's accessible name is `Toggle <node name>`, read from the DOM, not from the catalogue.                                                                                           |
-| French locale          | Bootstrap set to `fr`, **`page.reload()` called**, shell chrome renders French. Without the reload `APP_INITIALIZER` never re-runs and the check is vacuous — this has caught people here before. |
-| Empty accessible names | No `aria-label=""` anywhere. The regression test for the `sat.*` critical finding.                                                                                                                |
-| axe, French            | `h.expectNoA11yViolations` in `fr`, `KNOWN_VIOLATIONS` empty.                                                                                                                                     |
+| Step                   | Load-bearing assertion                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Raw-key sweep          | On each of the eight routes, no element's `aria-label`, `title` or text content **is** one of our catalogue keys, **contains** one as a word, or matches the upstream shape `/\b[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+\b/`. Not a single anchored regex: a word-dot-word pattern cannot separate `nav.refresh` from `report.pdf`, and the founding regression was the concatenated form `DOCUMENT_TREE.TOGGLE_ARIA-LABEL Home`, which anchoring cannot match. |
+| Document tree          | The toggle button's accessible name is `Toggle <node name>`, read from the DOM, not from the catalogue.                                                                                                                                                                                                                                                                                                                                                |
+| French locale          | Bootstrap set to `fr`, **`page.reload()` called**, shell chrome renders French. Without the reload `APP_INITIALIZER` never re-runs and the check is vacuous — this has caught people here before.                                                                                                                                                                                                                                                      |
+| Empty accessible names | No `aria-label=""` anywhere. The regression test for the `sat.*` critical finding.                                                                                                                                                                                                                                                                                                                                                                     |
+| axe, French            | `h.expectNoA11yViolations` on the French shell, with **no** ignore list. Phase 6 passes the same surfaces in English with `KNOWN_VIOLATIONS` empty, so anything found here is something translation introduced.                                                                                                                                                                                                                                        |
 
 Negative controls to run before trusting any of it: blank a catalogue key and confirm the
 raw-key sweep goes red; remove the `fr.json` file and confirm the locale step goes red;

@@ -190,8 +190,20 @@ async function rawKeysOnPage(page) {
         }
       }
 
+      // Elements whose text content is code, not words. `<style>` is a leaf element, so the
+      // sweep read whole stylesheets as candidate labels — and adf-hx's breadcrumb ships an
+      // inline SVG chevron whose path data is `M0.229292 0.234315C-0.0751287 …`. `M0` matches
+      // `[A-Z][A-Z0-9_]*` and `.229292` matches `\.[A-Z0-9_-]+`, so every SVG path command in
+      // every stylesheet was reported as a raw translation key. Two routes failed on it while
+      // nothing was wrong with either.
+      //
+      // This is why the harness has to be RUN: the pattern is correct, the scope was not, and
+      // no amount of reasoning about the regex in isolation would have shown it.
+      const NOT_TEXT = new Set(['STYLE', 'SCRIPT', 'TEMPLATE', 'NOSCRIPT', 'TITLE']);
+
       for (const element of document.querySelectorAll('*')) {
         if (element.children.length > 0) continue;
+        if (NOT_TEXT.has(element.tagName)) continue;
         const text = (element.textContent ?? '').trim();
         if (text && isRawKey(text)) {
           offences.push(`${element.tagName.toLowerCase()} text="${text}"`);
@@ -360,11 +372,18 @@ export default async function run(page, h) {
     // them directly failed every route, which would have turned the check I added to stop
     // vacuous passes into a permanent red — the opposite mistake, and just as useless.
     //
-    // Exact match after normalising, not a prefix: `/#/browse` is a prefix of
-    // `/#/browse-adf-hx`, so a redirect between those two would have satisfied it.
+    // The route itself, or a child of it. Not a bare `startsWith`: `/#/browse` is a prefix of
+    // `/#/browse-adf-hx`, so a redirect between those two siblings would have satisfied it.
+    // Requiring the next character to be `/` keeps the sibling out while admitting a child.
+    //
+    // A child has to be admitted because `/#/tasks` selects the first task and lands on
+    // `#/tasks/<uid>`. The exact-match version of this check called that "unreached" and went
+    // red on a route that had rendered perfectly — which is the second time a check added here
+    // to stop vacuous passes became a false failure instead. Both directions have to be tried.
     const expected = route.replace(/^\//, '');
     const actual = landed.hash.split('?')[0].replace(/\/$/, '');
-    if (actual !== expected || landed.rendered === 0) {
+    const arrived = actual === expected || actual.startsWith(`${expected}/`);
+    if (!arrived || landed.rendered === 0) {
       unreachedRoutes.push(
         `${route}: landed on ${landed.hash || '(no hash)'} with ${landed.rendered} char(s)`,
       );
@@ -425,6 +444,59 @@ export default async function run(page, h) {
     frenchKeys.length === 0,
     frenchKeys.join('\n      '),
   );
+
+  // The AI assistant's empty-state suggestions: the button LABEL was translated and the string
+  // it sent was not.
+  //
+  // The template set `aiChatInput` to a hard-coded English sentence and called `sendAiMessage()`,
+  // so a French user clicked "Quels documents ont été modifiés aujourd'hui ?" and watched their
+  // own turn appear in the transcript as "What documents were modified today?" — which is also
+  // what went to the backend, and what the backend would have answered in. A translated label
+  // over an untranslated payload, and no static check can see it: both strings are legitimate,
+  // one is just in the wrong language. Found in review.
+  //
+  // Asserted through the DOM rather than in a unit test on purpose. The defect lived in the gap
+  // between the template's label and the template's click handler, and a unit test calling
+  // `sendAiSuggestion` directly would have passed against the broken template.
+  await page.locator('[aria-label="Assistant IA"]').first().click();
+  await page.waitForTimeout(800);
+  const suggestion = page.locator('button.ai-chat-suggestion').first();
+  const suggestionLabel = (await suggestion.innerText().catch(() => '')).trim();
+  h.check(
+    'a French suggestion button is offered to click',
+    suggestionLabel.length > 0 && suggestionLabel !== 'What documents were modified today?',
+    `first suggestion read ${JSON.stringify(suggestionLabel)}`,
+  );
+  await suggestion.click();
+  await page.waitForTimeout(1200);
+  const sentMessage = (
+    await page
+      .locator('.ai-chat-msg.user')
+      .first()
+      .innerText()
+      .catch(() => '')
+  ).trim();
+  h.check(
+    'clicking a suggestion sends the French string, not the English one behind the label',
+    sentMessage === suggestionLabel,
+    `button said ${JSON.stringify(suggestionLabel)} but the message sent was ` +
+      `${JSON.stringify(sentMessage)}`,
+  );
+  await h.screenshot('fr-ai-suggestion-sends-french');
+  // Close the panel again: it overlays the header, and the axe scan below is about the shell.
+  await page.locator('[aria-label="Fermer la conversation"]').first().click();
+  await page.waitForTimeout(500);
+
+  // Promised by the test plan's own table in `docs/i18n-localization-plan.md` and, until this
+  // round, not actually called anywhere in this file — the recorded evidence claimed a French
+  // axe pass it had never made. Caught in review.
+  //
+  // No `ignore` list, deliberately. Phase 6 scans these surfaces in English and passes with
+  // `KNOWN_VIOLATIONS` empty, so anything axe finds here is something the French pass
+  // introduced: an accessible name that resolved to a key, a translated label that no longer
+  // matches its control, a string long enough to break a contrast-bearing layout. An ignore
+  // list would let exactly those through.
+  await h.expectNoA11yViolations('French shell has no WCAG 2.1 AA violations');
   await h.screenshot('fr-shell-french-chrome');
 
   // ---------------------------------------------------------------------------
@@ -489,7 +561,14 @@ export default async function run(page, h) {
   h.step('An unknown locale degrades to English rather than to raw keys');
   // The tolerance claim: a customer who sets a language we ship no catalogue for must get a
   // working application, not a page of keys.
+  //
+  // On production browse, and navigated there BEFORE the reload so the whole step measures one
+  // surface. Step 6 left the page on `/#/browse-adf-hx` and steps 7 and 8 only reloaded, so the
+  // date assertion below was looking for `td.cell-modified` on a route that renders upstream's
+  // document list instead — no cells, and its own vacuity guard went red. The adf-hx surface is
+  // covered by step 4 and step 6; this step is about the fallback path.
   bootstrapBody = bootstrapWithLanguage(UNSHIPPED_LOCALE);
+  await h.goTo('/#/browse');
   await reloadApp(page);
   await h.expectVisible('app shell rendered for an unknown locale', 'app-shell');
 
@@ -521,7 +600,7 @@ export default async function run(page, h) {
   // So the check passed with every date cell blank — the precise failure it was written to
   // catch. The console-error step still runs as a separate diagnostic.
   const renderedDates = await page
-    .locator('lib-browse td.cell-modified, lib-browse-adf-hx-poc td.cell-modified')
+    .locator('lib-browse td.cell-modified')
     .allInnerTexts()
     .catch(() => []);
   const nonEmptyDates = renderedDates.map((text) => text.trim()).filter(Boolean);
