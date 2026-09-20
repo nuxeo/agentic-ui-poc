@@ -1,0 +1,38 @@
+# Crowdin source and translation mapping.
+#
+# Named `crowdin-conf.yml` rather than `crowdin.yml` to match `nuxeo/nuxeo-web-ui` and
+# `nuxeo/nuxeo-elements`. The Crowdin action picks a root `crowdin.yml` up implicitly; naming it
+# something else forces the workflow to pass `config:` explicitly, which is what makes the file
+# in use visible in the workflow rather than by convention.
+#
+# ## The glob is exact on purpose
+#
+# The HXP standard's example is `/**/**/i18n/en.json`. Do not copy it. With `base_path: "."` it
+# sweeps `node_modules`, which holds 48 upstream catalogues — adf-core's 19 locales, both
+# adf-hx bundles, satori-ui's 15. That would push Alfresco's and Satori's strings into our
+# Crowdin project and bill the translation crew for work another team has already paid for.
+#
+# One explicit path, and `checkCrowdinConfig` in `scripts/review-guardrails.mjs` fails the
+# build if it stops matching a catalogue that exists, or if a wildcard ever appears here.
+#
+# ## Locale codes
+#
+# Two-letter codes, because that is what the application already serves: `AppTranslateLoader`
+# fetches `i18n/<lang>.json` using the language ngx-translate was given, and Layer 0
+# `availableLanguages` holds `en`, `fr`, `de`. Web UI maps `-es` to `-es-ES` and three others
+# because its filenames carry regions; ours do not, so adding a `translation_replace` here
+# would produce files the loader cannot find.
+#
+# When a region-specific locale is genuinely needed — `pt-BR` against `pt-PT` is the usual
+# first — it needs a matching change in the loader and in `availableLanguages`, not a rename
+# rule here on its own.
+
+'preserve_hierarchy': true
+
+'files':
+  [
+    {
+      'source': '/apps/nuxeo-ui/public/i18n/en.json',
+      'translation': '/apps/nuxeo-ui/public/i18n/%two_letters_code%.json',
+    },
+  ]

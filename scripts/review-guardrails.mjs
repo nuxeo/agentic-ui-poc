@@ -1783,6 +1783,101 @@ function checkAdvertisedLocalesShip() {
   }
 }
 
+/**
+ * The Crowdin config points at catalogues that exist, and cannot reach `node_modules`.
+ *
+ * Two failure modes, both silent and both expensive.
+ *
+ * A source path that no longer matches anything makes the daily sync a no-op: it uploads
+ * nothing, downloads nothing, opens no pull request, and reports success. Nobody notices a job
+ * that succeeds. Moving or renaming the catalogue is enough to cause it.
+ *
+ * And a wildcard in the source path is how the upstream catalogues get swept in. The HXP
+ * standard's own example is `/**` + `/**` + `/i18n/en.json`, which with `base_path: "."`
+ * matches 48 catalogues under `node_modules` — adf-core's 19 locales, both adf-hx bundles,
+ * satori-ui's 15. That pushes another team's strings into our project and bills the
+ * translation crew for work already paid for. NXSAT-227 records it as a trap; this makes it
+ * unrepeatable rather than remembered.
+ */
+function checkCrowdinConfig() {
+  const config = 'crowdin-conf.yml';
+  const workflow = '.github/workflows/crowdin.yaml';
+
+  if (!fileExists(config)) {
+    fail(
+      `${config} is missing. The Crowdin pipeline is NXSAT-227 slice S6; if it has been ` +
+        'removed on purpose, remove this guardrail in the same change rather than leaving a ' +
+        'check for a file nobody intends to have.',
+    );
+    return;
+  }
+  if (!fileExists(workflow)) {
+    fail(`${workflow} is missing, so ${config} is read by nothing.`);
+    return;
+  }
+
+  // Comments stripped first. The file explains why it has no `translation_replace`, and the
+  // first run of this check failed on that explanation — the same way the document-shell
+  // check failed on the comment describing it.
+  const body = read(config)
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+  const sources = [...body.matchAll(/'source':\s*'([^']+)'/g)].map(([, path]) => path);
+  const translations = [...body.matchAll(/'translation':\s*'([^']+)'/g)].map(([, path]) => path);
+
+  if (sources.length === 0) {
+    fail(`${config} declares no source file, so the sync would upload nothing and still pass.`);
+    return;
+  }
+
+  for (const source of sources) {
+    if (/[*?]/.test(source)) {
+      fail(
+        `${config} uses a wildcard in its source path \`${source}\`.\n` +
+          '    With `base_path: "."` a glob reaches `node_modules`, which holds 48 upstream ' +
+          'catalogues at the same relative shape. Name each catalogue explicitly.',
+      );
+      continue;
+    }
+    const relative = source.replace(/^\//, '');
+    if (!fileExists(relative)) {
+      fail(
+        `${config} names \`${source}\` as a source, and no such file exists.\n` +
+          '    The sync would upload nothing, download nothing and report success — the one ' +
+          'failure mode nobody investigates.',
+      );
+    }
+  }
+
+  // The translation pattern has to produce the filename the loader fetches. `%two_letters_code%`
+  // yields `fr.json`; a `translation_replace` renaming it to `fr-FR.json` would produce files
+  // `AppTranslateLoader` never asks for, and the sync would still look healthy.
+  for (const translation of translations) {
+    if (!/%two_letters_code%\.json$/.test(translation)) {
+      fail(
+        `${config} maps translations to \`${translation}\`, which does not end in ` +
+          '`%two_letters_code%.json`.\n' +
+          '    `AppTranslateLoader` fetches `i18n/<lang>.json` using the two-letter language ' +
+          'it was given, so anything else downloads files the application never reads.',
+      );
+    }
+  }
+  if (/translation_replace/.test(body)) {
+    fail(
+      `${config} declares a \`translation_replace\`. Our filenames carry no region, so a ` +
+        'rename here produces catalogues the loader cannot find. Adding a regional locale ' +
+        'needs a matching change in the loader and in `availableLanguages`.',
+    );
+  }
+
+  if (!read(workflow).includes(`config: ${config}`)) {
+    fail(
+      `${workflow} does not pass \`config: ${config}\`, so the action would look for a default.`,
+    );
+  }
+}
+
 const GUARDRAILS = [
   checkThemeTokens,
   checkDocsNumbering,
@@ -1800,6 +1895,7 @@ const GUARDRAILS = [
   checkNoHardcodedDescriptorText,
   checkTranslationCatalogues,
   checkAdvertisedLocalesShip,
+  checkCrowdinConfig,
   checkTranslationContext,
   checkAccessibleNameFallbacks,
   checkLocaleDataRegistered,
