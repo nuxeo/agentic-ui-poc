@@ -165,7 +165,20 @@ async function reloadApp(page) {
  */
 async function rawKeysOnPage(page) {
   return page.evaluate(
-    (matchers) => {
+    ({ embedded, ourKeys }) => {
+      // Defined INSIDE the callback: `page.evaluate` serialises this function and runs it in
+      // the browser, where nothing from module scope exists. The previous revision referenced
+      // an `isRawKey` that was never defined anywhere, so the first call threw a
+      // ReferenceError — caught in review, because I verified the matching logic in isolation
+      // and never ran the harness.
+      const embeddedPattern = new RegExp(embedded);
+      const keys = new Set(ourKeys);
+      /** Exact for our keys, shaped for upstream's, and either may be concatenated with text. */
+      const isRawKey = (value) =>
+        keys.has(value) ||
+        embeddedPattern.test(value) ||
+        value.split(/\s+/).some((word) => keys.has(word));
+
       const offences = [];
 
       for (const element of document.querySelectorAll('[aria-label], [title]')) {
@@ -189,7 +202,7 @@ async function rawKeysOnPage(page) {
       // and the anchored one cannot match it.
       return [...new Set(offences)];
     },
-    [RAW_KEY.source, EMBEDDED_RAW_KEY.source],
+    { embedded: EMBEDDED_RAW_KEY.source, ourKeys: OUR_KEYS },
   );
 }
 
