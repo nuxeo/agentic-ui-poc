@@ -745,6 +745,107 @@ expectGreen('a packaged config matching the compiled defaults', 'checkPackagedCo
     '  "defaultThemeId": "nuxeo",\n  "themes": []\n}\n',
 });
 
+// ── controls for round three of the Copilot review ───────────────────────────────────────
+
+/**
+ * A `crowdin-conf.yml` with two source entries, and the workflow pair that reads it.
+ *
+ * `checkCrowdinConfig` shipped with no controls at all, and the gap hid a real defect: its D8
+ * options check asked `body.includes('export_only_approved')` once for the whole file, so with
+ * two mappings it could not tell which entry declared what. Two entries is therefore the
+ * minimum fixture — a single-entry one passes body-wide and per-entry checks identically and
+ * would have proved nothing.
+ */
+const CROWDIN_ENTRY = (source) =>
+  `    {\n` +
+  `      'source': '${source}',\n` +
+  `      'translation': '/%original_path%/%two_letters_code%.%file_extension%',\n` +
+  `      'export_only_approved': 'true',\n` +
+  `      'update_option': 'update_without_changes',\n` +
+  `    },\n`;
+
+const crowdinConf = (entries) =>
+  `'base_url': 'https://hyland.api.crowdin.com'\n` +
+  `'project_id_env': 'CROWDIN_PROJECT_ID'\n` +
+  `'api_token_env': 'CROWDIN_PERSONAL_TOKEN'\n` +
+  `'base_path': '.'\n` +
+  `'preserve_hierarchy': true\n` +
+  `'files': [\n${entries.join('')}  ]\n`;
+
+const CROWDIN_WORKFLOW = (extra) =>
+  `name: crowdin\non: push\njobs:\n  sync:\n    if: \${{ vars.CROWDIN_SYNC_ENABLED == 'true' }}\n` +
+  `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
+  `        with:\n          config: crowdin-conf.yml\n${extra}`;
+
+const CROWDIN = {
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+  ]),
+  '.github/workflows/crowdin-push.yaml': CROWDIN_WORKFLOW(
+    `          command_args: '--delete-obsolete'\n`,
+  ),
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(''),
+  'apps/nuxeo-ui/public/i18n/en.json': EN_JSON,
+};
+
+expectGreen('a D8-compliant two-entry Crowdin config', 'checkCrowdinConfig', CROWDIN);
+
+// The founding defect. Both options deleted from the SECOND entry only: the first still
+// contains both tokens, so the body-wide check this replaced stayed green here.
+expectRed(
+  'one Crowdin source entry stripped of both D8 options',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        `    {\n      'source': '/libs/**/i18n/en.json',\n` +
+          `      'translation': '/%original_path%/%two_letters_code%.%file_extension%',\n    },\n`,
+      ]),
+    ),
+  /entry `\/libs\/\*\*\/i18n\/en\.json` omits `export_only_approved`/,
+);
+
+// Presence is not the policy. `export_only_approved: 'false'` does the opposite of what D8 asks
+// and satisfied every token-counting form of this check.
+expectRed(
+  'a Crowdin entry that declares export_only_approved and disables it',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+          `'export_only_approved': 'true'`,
+          `'export_only_approved': 'false'`,
+        ),
+      ]),
+    ),
+  /sets `export_only_approved: false`, not `true`/,
+);
+
+// A gate that cannot segment the file must say so rather than report a policy it stopped
+// enforcing. Block-style YAML is valid Crowdin config and this segmenter does not read it.
+expectRed(
+  'a files block this guardrail cannot segment',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      `'base_url': 'https://hyland.api.crowdin.com'\n'base_path': '.'\n` +
+        `'files':\n  - 'source': '/apps/*/public/i18n/en.json'\n` +
+        `    'translation': '/%original_path%/%two_letters_code%.%file_extension%'\n` +
+        `    'export_only_approved': 'true'\n    'update_option': 'update_without_changes'\n`,
+    ),
+  /cannot segment into entries/,
+);
+
 /* ---------------- checkNoReviewCorpusChurn ---------------- */
 
 /**
@@ -859,6 +960,132 @@ expectRed(
       '<button title="Recently Edited"></button> <!-- a trailing note -->\n',
     ),
   /Recently Edited/,
+);
+
+/* ---------------- checkTranslatorContextPush ---------------- */
+
+/** The two lines of the loader's flattener this guardrail holds the script's copy to. */
+const LOADER_FLATTENER = `export function flattenCatalogue(source, prefix = '', target = {}) {
+  if (typeof source !== 'object' || source === null || Array.isArray(source)) return target;
+  for (const [key, value] of Object.entries(source)) {
+    const path = prefix ? \`\${prefix}.\${key}\` : key;
+    if (typeof value === 'string') target[path] = value;
+    else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      flattenCatalogue(value, path, target);
+    }
+  }
+  return target;
+}
+`;
+
+const SCRIPT_FLATTENER = `export function flattenKeys(node, prefix = '') {
+  const out = [];
+  for (const [key, value] of Object.entries(node)) {
+    const path = prefix ? \`\${prefix}.\${key}\` : key;
+    if (typeof value === 'string') out.push(path);
+    else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      out.push(...flattenKeys(value, path));
+    }
+  }
+  return out;
+}
+`;
+
+const CONTEXT_PUSH = {
+  'tools/i18n/crowdin-push-context.mjs': SCRIPT_FLATTENER,
+  'apps/nuxeo-ui/src/app/i18n/app-translate-loader.ts': LOADER_FLATTENER,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+  ]),
+  'apps/nuxeo-ui/public/i18n/en.json': EN_JSON,
+  'apps/nuxeo-ui/public/i18n/en.context.json': EN_CONTEXT,
+};
+
+expectGreen('a context file reachable through a declared source', 'checkTranslatorContextPush', {
+  ...CONTEXT_PUSH,
+});
+
+// The `libs/**` glob crosses separators, so a deeply nested library catalogue IS reachable.
+// Without this control the reachability half could be satisfied by a glob translation that
+// treated `**` as `*`, and would then reject every real library catalogue.
+falsePositiveControls += 1;
+expectGreen('a deeply nested library context file the libs glob covers', 'checkTranslatorContextPush', {
+  ...CONTEXT_PUSH,
+  'libs/platform/nuxeo-client/src/i18n/en.json': EN_JSON,
+  'libs/platform/nuxeo-client/src/i18n/en.context.json': EN_CONTEXT,
+});
+
+// The founding defect, the other way round: a context file whose catalogue no source matches.
+// Its context reaches Crowdin through nothing, and the script still prints a success line.
+expectRed(
+  'a context file no Crowdin source mapping reaches',
+  'checkTranslatorContextPush',
+  { ...CONTEXT_PUSH },
+  (write) => {
+    write('tools/other/i18n/en.json', EN_JSON);
+    write('tools/other/i18n/en.context.json', EN_CONTEXT);
+    // Under `apps/`, so the walk finds it, but at a depth the `/apps/*/public/` glob cannot reach.
+    write('apps/nuxeo-ui/src/deep/i18n/en.json', EN_JSON);
+    write('apps/nuxeo-ui/src/deep/i18n/en.context.json', EN_CONTEXT);
+  },
+  /apps\/nuxeo-ui\/src\/deep\/i18n\/en\.context\.json documents .*which no `source`/s,
+);
+
+// The flattener half. Two implementations with nothing comparing them is how a wrong half
+// survives; a disagreement here attaches context to identifiers the app never resolves.
+//
+// The guardrail IMPORTS the fixture's flattener and runs it, so this control asserts changed
+// OUTPUT, not changed source text: dropping the array guard makes an array leaf recurse into the
+// identifier `a.0`, which Crowdin has never heard of. An earlier revision of both the check and
+// this control compared source patterns while claiming to compare behaviour.
+expectRed(
+  'the script flattener dropping its array-leaf guard while the loader keeps it',
+  'checkTranslatorContextPush',
+  { ...CONTEXT_PUSH },
+  (write) =>
+    write(
+      'tools/i18n/crowdin-push-context.mjs',
+      SCRIPT_FLATTENER.replace(` && !Array.isArray(value)`, ''),
+    ),
+  /disagrees with the loader on "array leaves are not keys"[\s\S]*\["a\.0","b"\]/,
+);
+
+// A flattener that no longer exports `flattenKeys` leaves nothing to compare. Without this the
+// import half could fail open: a missing export is not a disagreement.
+expectRed(
+  'the script no longer exporting its flattener',
+  'checkTranslatorContextPush',
+  { ...CONTEXT_PUSH },
+  (write) =>
+    write('tools/i18n/crowdin-push-context.mjs', SCRIPT_FLATTENER.replace('export function', 'function')),
+  /no longer exports `flattenKeys`/,
+);
+
+// The loader-shape tripwire. It is a SOURCE check, not a behavioural one, because the loader is
+// TypeScript and this script has no compiler — so what it must do is fire when the loader is
+// rewritten, forcing the transcribed expectations above to be re-derived rather than trusted.
+expectRed(
+  'the loader flattener rewritten so the transcribed contract no longer describes it',
+  'checkTranslatorContextPush',
+  { ...CONTEXT_PUSH },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/app-translate-loader.ts',
+      LOADER_FLATTENER.replace(' && value !== null', ''),
+    ),
+  /no longer visibly "excludes null from the recursion"/,
+);
+
+expectRed(
+  'the context push script deleted while the guardrail still claims to gate it',
+  'checkTranslatorContextPush',
+  {
+    'apps/nuxeo-ui/src/app/i18n/app-translate-loader.ts': LOADER_FLATTENER,
+    'crowdin-conf.yml': crowdinConf([CROWDIN_ENTRY('/apps/*/public/i18n/en.json')]),
+  },
+  null,
+  /tools\/i18n\/crowdin-push-context\.mjs is missing/,
 );
 
 /* ---------------- report ---------------- */

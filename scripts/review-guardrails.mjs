@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 const repoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
@@ -1584,6 +1585,175 @@ function checkTranslationContext() {
 }
 
 /**
+ * The translator-context push can actually reach every context file in the repository.
+ *
+ * `tools/i18n/crowdin-push-context.mjs` used to name one context file, the app's, while
+ * `crowdin-conf.yml` already declared a second source mapping for the per-library catalogues
+ * NXSAT-284 AC4 will add. Nothing compared the two, so the day a library catalogue landed its
+ * context would have been uploaded by nobody while the script still printed a success line.
+ * The script's own docstring meanwhile claimed to be gated by a `checkTranslatorContextPush`
+ * that did not exist. This is that guardrail, written rather than the claim deleted, because
+ * both things it asserts are real invariants:
+ *
+ * 1. **Every discovered context file is reachable through a declared Crowdin source.** The
+ *    script discovers context files by walking `apps/` and `libs/`; a context file whose sibling
+ *    catalogue no source glob matches is never uploaded, so its context has nowhere to attach.
+ * 2. **The two flatteners agree.** `flattenKeys` in the script is a deliberate second
+ *    implementation of `flattenCatalogue` in `app-translate-loader.ts` — the script runs under
+ *    plain Node with no TypeScript toolchain. Two copies with nothing comparing them is how a
+ *    wrong half survives: if they disagree about what a key looks like, context is attached to
+ *    identifiers ngx-translate never asks for, and every symptom appears in Crowdin rather than
+ *    in this repository.
+ *
+ * ## What the two halves of check 2 can and cannot do, stated exactly
+ *
+ * The first draft of this said the flatteners were "compared by behaviour, not by text" and then
+ * compared them by grepping both files for source patterns. Neither half was behavioural, and the
+ * comment asserting otherwise is the kind of claim this repository has been caught on repeatedly —
+ * a check's docstring describing a stronger check than its body performs.
+ *
+ * - **The script's flattener is run.** It is ESM under plain Node, so it can be imported and
+ *   called on fixtures. This half is genuinely behavioural: it fails when the OUTPUT changes,
+ *   whatever the source looks like.
+ * - **The loader's flattener is not run.** It is TypeScript, and this script has no compiler. So
+ *   its half remains a check that the shape it relies on is still *present* in the source. That is
+ *   weaker, and it is a tripwire rather than a proof: it notices the loader being rewritten so the
+ *   contract below has to be revisited. `app-translate-loader.spec.ts` is what actually tests the
+ *   loader's behaviour.
+ */
+async function checkTranslatorContextPush() {
+  const script = 'tools/i18n/crowdin-push-context.mjs';
+  const loader = 'apps/nuxeo-ui/src/app/i18n/app-translate-loader.ts';
+  const config = 'crowdin-conf.yml';
+
+  if (!fileExists(script)) {
+    fail(
+      `${script} is missing. It is the only path translator context reaches Crowdin by — the ` +
+        'JSON source format has nowhere to carry it. If it has been removed on purpose, remove ' +
+        'this guardrail in the same change.',
+    );
+    return;
+  }
+
+  // 1. Reachability. The globs live in the config; the discovery walk lives in the script.
+  if (fileExists(config)) {
+    const body = read(config)
+      .split('\n')
+      .filter((line) => !/^\s*#/.test(line))
+      .join('\n');
+    const patterns = [...body.matchAll(/'source':\s*'([^']+)'/g)].map(
+      ([, path]) =>
+        // Same glob translation `checkCrowdinConfig` uses: `**` crosses separators, `*` does not.
+        // Built here rather than shared because that one tests existence and this one tests
+        // reachability, and a helper answering both would have to be told which.
+        new RegExp(
+          `^${path
+            .replace(/^\//, '')
+            .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+            .replace(/\*\*/g, '\u0000')
+            .replace(/\*/g, '[^/]*')
+            .replace(/\u0000/g, '.*')}$`,
+        ),
+    );
+    const contextFiles = [
+      ...walk('apps', (path) => /(^|\/)i18n\/en\.context\.json$/.test(path)),
+      ...walk('libs', (path) => /(^|\/)i18n\/en\.context\.json$/.test(path)),
+    ];
+    for (const contextFile of contextFiles) {
+      const catalogue = contextFile.replace(/en\.context\.json$/, 'en.json');
+      if (!patterns.some((pattern) => pattern.test(catalogue))) {
+        fail(
+          `${contextFile} documents \`${catalogue}\`, which no \`source\` in ${config} matches.\n` +
+            `    ${script} would discover the context and find no Crowdin file to attach it to, ` +
+            'and the translators would work from the string alone. Add a source mapping for it.',
+        );
+      }
+    }
+  }
+
+  // 2a. The script's flattener, RUN on fixtures.
+  //
+  // Each case is one thing the two implementations must agree a key is. The expectations are the
+  // loader's documented behaviour, transcribed — which is why 2b then checks the loader still has
+  // that shape, so a change there cannot leave these expectations silently describing nobody.
+  const CONTRACT = [
+    ['nested objects become dotted keys', { a: { b: 'B', c: 'C' }, d: 'D' }, ['a.b', 'a.c', 'd']],
+    ['nesting descends arbitrarily', { a: { b: { c: { d: 'D' } } } }, ['a.b.c.d']],
+    // ngx-translate resolves neither, so neither is a string to send context for. An array leaf
+    // recursed into yields `a.0`, which is an identifier Crowdin has never heard of.
+    ['array leaves are not keys', { a: ['x'], b: 'B' }, ['b']],
+    ['null leaves are skipped rather than thrown on', { a: null, b: 'B' }, ['b']],
+  ];
+
+  let flattenKeys;
+  try {
+    ({ flattenKeys } = await import(pathToFileURL(join(repoRoot, script)).href));
+  } catch (error) {
+    fail(
+      `${script} could not be imported, so its flattener was not exercised: ` +
+        `${error instanceof Error ? error.message : String(error)}\n` +
+        '    It is written to be importable without performing any network call — `main()` is ' +
+        'guarded on `process.argv[1]`. If that guard has gone, importing it here would have hit ' +
+        'the Crowdin API from a lint gate.',
+    );
+    return;
+  }
+  if (typeof flattenKeys !== 'function') {
+    fail(
+      `${script} no longer exports \`flattenKeys\`, so nothing compares it with the loader's ` +
+        'flattener. Two implementations of the same flattening with nothing between them is how ' +
+        'a wrong half survives.',
+    );
+    return;
+  }
+  for (const [rule, input, expected] of CONTRACT) {
+    let actual;
+    try {
+      actual = flattenKeys(input);
+    } catch (error) {
+      actual = `threw ${error instanceof Error ? error.message : String(error)}`;
+    }
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      fail(
+        `${script} \`flattenKeys\` disagrees with the loader on "${rule}".\n` +
+          `    ${JSON.stringify(input)} -> ${JSON.stringify(actual)}, expected ` +
+          `${JSON.stringify(expected)}.\n` +
+          '    The two flatten the same catalogue and must agree on what a key is: a ' +
+          'disagreement attaches translator context to identifiers the application never ' +
+          'resolves, and every symptom of it appears in Crowdin rather than here.',
+      );
+    }
+  }
+
+  // 2b. The loader still has the shape those expectations were transcribed from.
+  //
+  // A source check, not a behavioural one, and deliberately labelled as such — the loader is
+  // TypeScript and this script has no compiler. It is a tripwire: it fires when the loader is
+  // rewritten, so somebody re-derives the contract above instead of trusting a transcription of
+  // an implementation that no longer exists.
+  if (!fileExists(loader)) {
+    fail(`${loader} is missing, so ${script}'s duplicate flattener has nothing to agree with.`);
+    return;
+  }
+  const loaderSource = read(loader);
+  const LOADER_SHAPE = [
+    ['builds dotted paths', /prefix \? `\$\{prefix\}\.\$\{key\}` : key/],
+    ['excludes arrays from the recursion', /!Array\.isArray\(/],
+    ['excludes null from the recursion', /value !== null/],
+  ];
+  for (const [rule, present] of LOADER_SHAPE) {
+    if (!present.test(loaderSource)) {
+      fail(
+        `${loader} no longer visibly "${rule}", so the flattening contract asserted against ` +
+          `${script} above was transcribed from an implementation that has changed.\n` +
+          '    Re-derive the expectations in `CONTRACT` from the loader as it now is, then ' +
+          'update this shape check. Do not simply delete the failing line.',
+      );
+    }
+  }
+}
+
+/**
  * Every locale we ship a catalogue for has Angular locale data registered.
  *
  * Translating strings and formatting dates are separate mechanisms. `DatePipe`, `DecimalPipe`
@@ -1897,6 +2067,30 @@ function checkAdvertisedLocalesShip() {
  * translation crew for work already paid for. NXSAT-227 records it as a trap; this makes it
  * unrepeatable rather than remembered.
  */
+/**
+ * The `files:` entries of a comment-stripped `crowdin-conf.yml`, one chunk of text per entry.
+ *
+ * Segmented rather than YAML-parsed on purpose: no YAML parser is a declared dependency of this
+ * repository. `yaml` and `js-yaml` resolve today only because something else pulls them in —
+ * `js-yaml` appears in `package.json` under `overrides`, which pins a transitive version and
+ * declares nothing — and a guardrail that imports an undeclared package goes red for a reason
+ * unrelated to what it guards the first time the tree resolves differently.
+ *
+ * Returns `null` when the block is not the flow-mapping form the file uses, so the caller can
+ * fail loudly. Guessing entry boundaries is worse than admitting defeat: splitting on each
+ * `source` key would attribute an entry's options to the previous one whenever a key order
+ * changed, and blindness to which entry an option belongs to is the exact defect this replaced.
+ *
+ * @param {string} body `crowdin-conf.yml` with comment lines removed
+ * @returns {string[]|null}
+ */
+function crowdinFileEntries(body) {
+  const list = /'?files'?\s*:\s*\[([\s\S]*)\]/.exec(body);
+  if (!list) return null;
+  const entries = [...list[1].matchAll(/\{[^{}]*\}/g)].map(([entry]) => entry);
+  return entries.length > 0 ? entries : null;
+}
+
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
   // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
@@ -1976,15 +2170,61 @@ function checkCrowdinConfig() {
     );
   }
 
-  // D8 requires both on every source entry.
-  for (const required of ['export_only_approved', 'update_option']) {
-    if (!body.includes(required)) {
+  // D8 requires both on EVERY source entry, so both are read per entry.
+  //
+  // The first version asked `body.includes(required)` once for the whole file. With two
+  // mappings that cannot enforce the policy it reports: deleting both options from the
+  // `libs/**` entry still passed, because the `apps/*` entry contained the tokens. Caught in
+  // review — the same defect class as the corpus check below, a gate whose scope is wider than
+  // the claim it prints.
+  const entries = crowdinFileEntries(body);
+  if (!entries) {
+    fail(
+      `${config} has a \`files\` block this guardrail cannot segment into entries, so the D8 ` +
+        'per-entry options were not checked. It expects the flow-mapping form `files: [ { … }, ' +
+        '{ … } ]`. Restore that shape or teach `crowdinFileEntries` the new one — do not leave ' +
+        'a gate that reports a policy it silently stopped enforcing.',
+    );
+  } else {
+    if (entries.length !== sources.length) {
       fail(
-        `${config} omits \`${required}\`, which D8 in docs/i18n-localization-plan.md requires ` +
-          'on every source entry. Without `export_only_approved` the sync exports unreviewed ' +
-          "drafts; without `update_option` the source-change behaviour is the tool's default " +
-          'rather than the one recorded as deviation D0a.',
+        `${config} declares ${sources.length} \`source\` value(s) but segments into ` +
+          `${entries.length} entr(ies), so at least one entry was not read. The per-entry D8 ` +
+          'check cannot be trusted until the two agree.',
       );
+    }
+    // Values, not just presence. `export_only_approved: 'false'` satisfied the old token check
+    // while doing the opposite of what D8 asks for.
+    const D8_OPTIONS = [
+      [
+        'export_only_approved',
+        'true',
+        'Unapproved work is a draft; exporting it puts half-finished translations in front of ' +
+          "users and makes the reviewer's approval meaningless.",
+      ],
+      [
+        'update_option',
+        'update_without_changes',
+        'Anything else makes the source-change behaviour the tool default rather than the one ' +
+          'recorded as deviation D0a.',
+      ],
+    ];
+    for (const entry of entries) {
+      const source = /'?source'?\s*:\s*'([^']+)'/.exec(entry)?.[1] ?? '(entry with no source)';
+      for (const [option, expected, why] of D8_OPTIONS) {
+        const declared = new RegExp(`'?${option}'?\\s*:\\s*'?([A-Za-z_]+)'?`).exec(entry)?.[1];
+        if (declared === undefined) {
+          fail(
+            `${config} entry \`${source}\` omits \`${option}\`, which D8 in ` +
+              `docs/i18n-localization-plan.md requires on every source entry.\n    ${why}`,
+          );
+        } else if (declared !== expected) {
+          fail(
+            `${config} entry \`${source}\` sets \`${option}: ${declared}\`, not \`${expected}\`.` +
+              `\n    ${why}`,
+          );
+        }
+      }
     }
   }
   // Parsed and compared by HOST, not by substring.
@@ -2159,6 +2399,7 @@ const GUARDRAILS = [
   checkCrowdinConfig,
   checkPackagedConfigIsNotADemo,
   checkTranslationContext,
+  checkTranslatorContextPush,
   checkAccessibleNameFallbacks,
   checkLocaleDataRegistered,
 ];
@@ -2197,7 +2438,10 @@ function selectGuardrails() {
   return [...wanted].map((name) => byName.get(name));
 }
 
-for (const guardrail of selectGuardrails()) guardrail();
+// Awaited: `checkTranslatorContextPush` imports the context-push script to run its flattener on
+// fixtures, which needs a dynamic `import()`. Awaiting a synchronous guardrail is a no-op, so
+// every other one is unaffected.
+for (const guardrail of selectGuardrails()) await guardrail();
 
 if (warnings.length) {
   console.warn('\nReview guardrail warnings:');
