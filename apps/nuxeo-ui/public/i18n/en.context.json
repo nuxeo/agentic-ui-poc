@@ -51,6 +51,7 @@
   "shell.ai.suggestion.summarize-tasks": "A suggested question offered as a button in the AI assistant panel. An IMPERATIVE instruction to the assistant.",
   "nav.tree.root": "Button returning the folder tree to the repository root. A NOUN.",
   "nav.tree.retry": "Button re-attempting a failed load of the personal space tree. A VERB, imperative.",
+  "nav.tree.toggle": "Accessible name for the chevron button that expands or collapses one folder in the navigation tree. A VERB phrase, imperative. `{{ name }}` is the folder's own title and is NOT translated — place it wherever the target language needs it, which is the whole reason it is a parameter rather than appended to the end.",
   "nav.clipboard.copy": "Button copying the clipboard's documents into the current folder. A VERB, imperative.",
   "nav.clipboard.move": "Button moving the clipboard's documents into the current folder. A VERB, imperative.",
   "shell.ai.empty-state": "Shown in the AI assistant panel before the first message. A full SENTENCE listing what the assistant can do. ACRONYM: 'AI' means Artificial Intelligence. Expand or transliterate it according to the target language's convention for that term, as shell.ai.open does.",

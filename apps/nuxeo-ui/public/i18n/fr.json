@@ -57,7 +57,8 @@
     },
     "tree": {
       "root": "Racine",
-      "retry": "Réessayer"
+      "retry": "Réessayer",
+      "toggle": "Développer ou réduire {{ name }}"
     }
   },
   "settings": {

@@ -57,7 +57,8 @@
     },
     "tree": {
       "root": "Stamm",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "toggle": "{{ name }} ein- oder ausklappen"
     }
   },
   "settings": {

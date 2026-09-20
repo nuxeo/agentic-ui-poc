@@ -444,7 +444,20 @@
 <ng-template #folderTpl let-node let-depth="depth">
   <div class="tree-node" [style.padding-left.px]="12 + depth * 20">
     @if (hasChildren(node)) {
-      <button class="tree-toggle" (click)="toggleNode(node)" type="button">
+      <!--
+        The name goes through an interpolation PARAMETER, not a `+`. D0c in
+        docs/i18n-localization-plan.md: INFO-144 forbids building a string from concatenated
+        substrings, and upstream's own tree toggle is the cautionary example — it does
+        `('DOCUMENT_TREE.TOGGLE_ARIA-LABEL ' | translate) + node.name`, which no translator can
+        reorder for a language that needs the noun first.
+      -->
+      <button
+        class="tree-toggle"
+        (click)="toggleNode(node)"
+        type="button"
+        [attr.aria-label]="'nav.tree.toggle' | translate: { name: nodeLabel(node) }"
+        [attr.aria-expanded]="node.expanded"
+      >
         @if (node.loading) {
           <mat-spinner diameter="14" [attr.aria-label]="'nav.loading' | translate" />
         } @else {

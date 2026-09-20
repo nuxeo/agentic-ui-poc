@@ -73,4 +73,9 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'nav.loading': 'Loading',
   'nav.favorites.remove': 'Remove from favorites',
   'nav.clipboard.remove': 'Remove from clipboard',
+  // The navigation tree's folder toggle. It had NO accessible name at all — an icon-only button
+  // wrapping a `mat-icon`, which Angular Material marks `aria-hidden` — so axe reported four
+  // `button-name` nodes at critical. Found by the French axe scan the test plan had promised and
+  // this capture was not making; the English Phase 6 scan does not open the drawer.
+  'nav.tree.toggle': 'Toggle {{ name }}',
 };

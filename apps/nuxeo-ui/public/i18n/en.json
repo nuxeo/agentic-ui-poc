@@ -57,7 +57,8 @@
     },
     "tree": {
       "root": "Root",
-      "retry": "Retry"
+      "retry": "Retry",
+      "toggle": "Toggle {{ name }}"
     }
   },
   "settings": {
