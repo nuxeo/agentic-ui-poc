@@ -48,80 +48,92 @@ function derivedNuxeoServerUrl(): string {
  * only consumer that runs before the load completes, and it deliberately uses
  * relative URLs so it does not depend on its own output.
  */
+/**
+ * Loads Layer 0 configuration, then applies the language it names.
+ *
+ * Exported and named rather than inline in the provider so it can be tested. The two
+ * behaviours worth asserting are invisible from outside: that adf-core's preference is
+ * written on EVERY boot, and that a locale with no Angular data is not handed to the
+ * formatting pipes.
+ */
+export function initialiseAppConfigAndLanguage(
+  config: AppConfigService,
+  translate: TranslateService,
+  userPreferences: UserPreferencesService,
+): () => Promise<void> {
+  return async () => {
+    await config.load();
+    // Sequenced inside one initializer on purpose: Angular runs
+    // `APP_INITIALIZER` functions concurrently, and the catalogue to load
+    // is named by the configuration that has just been fetched. The
+    // manifest's `labels` are layered on by `AppTranslateLoader`, so this
+    // also has to happen after the manifest has landed.
+    const { defaultLanguage } = config.bootstrap();
+    translate.setFallbackLang('en');
+    await firstValueFrom(translate.use(defaultLanguage));
+
+    /*
+     * WORKAROUND(adf-hx): W14 — adf-core takes ownership of the language the moment any
+     * adf-hx surface renders, and it has never heard of our Layer 0 `defaultLanguage`.
+     *
+     * `TranslationService`'s constructor reads the locale from adf-core's own
+     * `UserPreferencesService` and calls `loadTranslation(locale, 'en')`, which calls
+     * `translate.use(...)` on the shared ngx-translate instance. It also holds an
+     * `effect` on `localeSignal()` that does the same on every later change. So the
+     * language we set three lines above survives exactly until the first adf-hx
+     * component constructs, and then silently reverts.
+     *
+     * Measured before the fix: with `defaultLanguage: 'fr'`, the seven ordinary shell
+     * routes rendered French and both adf-hx surfaces — the `/#/browse-adf-hx` route and
+     * the adf-hx nav drawer — reverted to English, re-fetching all five catalogues for
+     * `en`. No page reload was involved: `performance.getEntriesByType('navigation')`
+     * stayed at one entry.
+     *
+     * Writing our language into adf-core's preference is the only lever that survives,
+     * because `initUserLanguage()` resolves stored locale first, then adf-core's own
+     * `AppConfigService` `locale` key, then `'en'` — and we own neither of the last two.
+     *
+     * **Set on every boot, deliberately.** `set()` also persists to storage, and stored
+     * locale *wins over* configuration in `initUserLanguage()`. Writing it once would
+     * mean a customer who later changes `defaultLanguage` keeps the old language forever
+     * on any browser that had already run the app. Re-asserting it here every boot makes
+     * our Layer 0 configuration authoritative and stale storage irrelevant.
+     *
+     * This costs no bundle: `app.config.ts` already imports
+     * `CONTEXT_MENU_ACTIONS_PROVIDERS` from adf-hx, so adf-core is eager either way —
+     * see the initial-bundle decision in `AGENTS/11-beta-program.md` §3.
+     */
+    /*
+     * Only hand adf-core a locale we can actually format in.
+     *
+     * `translate.use('xx')` is harmless — every string falls through to the English
+     * fallback. Angular's date, number and currency pipes are not so forgiving: given a
+     * locale with no registered data they throw `NG0701` rather than degrading, so a
+     * customer who sets `defaultLanguage` to a locale we do not ship — a typo is enough —
+     * would get English text and a broken date in every list.
+     *
+     * Measured: with `defaultLanguage: 'xx'`, eleven `InvalidPipeArgument` errors on a
+     * single pass of the evidence capture. Strings were fine, which is exactly what makes
+     * it easy to miss.
+     *
+     * So the string language and the formatting locale are allowed to differ here, on
+     * purpose. Strings follow the configuration; formatting follows the configuration
+     * only where we have the data to honour it.
+     */
+    const formattingLocale = REGISTERED_LOCALES.includes(defaultLanguage) ? defaultLanguage : 'en';
+    userPreferences.set(UserPreferenceValues.Locale, formattingLocale);
+  };
+}
+
 export function provideAppConfig(): Provider[] {
   return [
     {
       provide: APP_INITIALIZER,
-      useFactory:
-        (
-          config: AppConfigService,
-          translate: TranslateService,
-          userPreferences: UserPreferencesService,
-        ) =>
-        async () => {
-          await config.load();
-          // Sequenced inside one initializer on purpose: Angular runs
-          // `APP_INITIALIZER` functions concurrently, and the catalogue to load
-          // is named by the configuration that has just been fetched. The
-          // manifest's `labels` are layered on by `AppTranslateLoader`, so this
-          // also has to happen after the manifest has landed.
-          const { defaultLanguage } = config.bootstrap();
-          translate.setFallbackLang('en');
-          await firstValueFrom(translate.use(defaultLanguage));
-
-          /*
-           * WORKAROUND(adf-hx): W14 — adf-core takes ownership of the language the moment any
-           * adf-hx surface renders, and it has never heard of our Layer 0 `defaultLanguage`.
-           *
-           * `TranslationService`'s constructor reads the locale from adf-core's own
-           * `UserPreferencesService` and calls `loadTranslation(locale, 'en')`, which calls
-           * `translate.use(...)` on the shared ngx-translate instance. It also holds an
-           * `effect` on `localeSignal()` that does the same on every later change. So the
-           * language we set three lines above survives exactly until the first adf-hx
-           * component constructs, and then silently reverts.
-           *
-           * Measured before the fix: with `defaultLanguage: 'fr'`, the seven ordinary shell
-           * routes rendered French and both adf-hx surfaces — the `/#/browse-adf-hx` route and
-           * the adf-hx nav drawer — reverted to English, re-fetching all five catalogues for
-           * `en`. No page reload was involved: `performance.getEntriesByType('navigation')`
-           * stayed at one entry.
-           *
-           * Writing our language into adf-core's preference is the only lever that survives,
-           * because `initUserLanguage()` resolves stored locale first, then adf-core's own
-           * `AppConfigService` `locale` key, then `'en'` — and we own neither of the last two.
-           *
-           * **Set on every boot, deliberately.** `set()` also persists to storage, and stored
-           * locale *wins over* configuration in `initUserLanguage()`. Writing it once would
-           * mean a customer who later changes `defaultLanguage` keeps the old language forever
-           * on any browser that had already run the app. Re-asserting it here every boot makes
-           * our Layer 0 configuration authoritative and stale storage irrelevant.
-           *
-           * This costs no bundle: `app.config.ts` already imports
-           * `CONTEXT_MENU_ACTIONS_PROVIDERS` from adf-hx, so adf-core is eager either way —
-           * see the initial-bundle decision in `AGENTS/11-beta-program.md` §3.
-           */
-          /*
-           * Only hand adf-core a locale we can actually format in.
-           *
-           * `translate.use('xx')` is harmless — every string falls through to the English
-           * fallback. Angular's date, number and currency pipes are not so forgiving: given a
-           * locale with no registered data they throw `NG0701` rather than degrading, so a
-           * customer who sets `defaultLanguage` to a locale we do not ship — a typo is enough —
-           * would get English text and a broken date in every list.
-           *
-           * Measured: with `defaultLanguage: 'xx'`, eleven `InvalidPipeArgument` errors on a
-           * single pass of the evidence capture. Strings were fine, which is exactly what makes
-           * it easy to miss.
-           *
-           * So the string language and the formatting locale are allowed to differ here, on
-           * purpose. Strings follow the configuration; formatting follows the configuration
-           * only where we have the data to honour it.
-           */
-          const formattingLocale = REGISTERED_LOCALES.includes(defaultLanguage)
-            ? defaultLanguage
-            : 'en';
-          userPreferences.set(UserPreferenceValues.Locale, formattingLocale);
-        },
+      useFactory: (
+        config: AppConfigService,
+        translate: TranslateService,
+        userPreferences: UserPreferencesService,
+      ) => initialiseAppConfigAndLanguage(config, translate, userPreferences),
       deps: [AppConfigService, TranslateService, UserPreferencesService],
       multi: true,
     },
