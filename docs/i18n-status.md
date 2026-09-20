@@ -7,13 +7,13 @@ This is the status page. The **plan** is [`docs/i18n-localization-plan.md`](i18n
 the two are separate on purpose, because a plan that carries its own progress report goes stale
 silently and gets believed anyway.
 
-|              |                                                                                   |
-| ------------ | --------------------------------------------------------------------------------- |
-| Beta ticket  | [NXSAT-227](https://hyland.atlassian.net/browse/NXSAT-227) — delivered, in review |
-| GA ticket    | [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284) — not started          |
-| Pull request | [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198)                          |
-| Branch       | `feature/nxsat-227a-i18n`                                                         |
-| Gate         | 21 of 22 green · `code-scanning` blocked on a permissions step, not on the diff   |
+|              |                                                                                                                                                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beta ticket  | [NXSAT-227](https://hyland.atlassian.net/browse/NXSAT-227) — delivered, in review                                                                                                                                                 |
+| GA ticket    | [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284) — not started                                                                                                                                                          |
+| Pull request | [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198)                                                                                                                                                                          |
+| Branch       | `feature/nxsat-227a-i18n`                                                                                                                                                                                                         |
+| Gate         | **23 of 23 green**, `code-scanning` included. Re-measure rather than reading this: `npm run beta:gate`. This row said 21 of 22 and named a blocker that no longer exists — the gate count grew and CodeQL now runs on the branch. |
 
 ---
 
@@ -50,10 +50,10 @@ python3 -c "import json;d=json.load(open('apps/nuxeo-ui/public/i18n/en.json'));.
 
 |                              | Before (on `main`) | Now                  |
 | ---------------------------- | ------------------ | -------------------- |
-| Keys in the app catalogue    | **16**             | **44**               |
+| Keys in the app catalogue    | **16**             | **60**               |
 | Locales shipped              | 1 (`en`)           | 3 (`en`, `fr`, `de`) |
 | Locales at full key parity   | n/a                | 3 of 3, gated        |
-| Keys with translator context | 0                  | 44 of 44, gated      |
+| Keys with translator context | 0                  | 60 of 60, gated      |
 
 ### Call sites
 
@@ -264,11 +264,12 @@ Eleven guardrails shipped before this with **no tests at all**.
 
 48 occurrences across the app shell and nav drawer, taking both templates to zero. `fr` and `de`
 catalogues at full key parity. `en.context.json` carrying part of speech, surrounding UI, expanded
-acronyms and do-not-translate flags for all 44 keys.
+acronyms and do-not-translate flags for all 60 keys — 44 at the first extraction, and sixteen more
+since, each added with its context because `checkTranslationContext` fails a key without one.
 
 ### Evidence
 
-`npm run beta:evidence -- nxsat-227-i18n` → **PASS, 34/34 across 10 steps**, read from that run's
+`npm run beta:evidence -- nxsat-227-i18n` → **PASS, 38/38 across 10 steps**, read from that run's
 `manifest.json` rather than transcribed. Re-run it rather than trusting this line: the figure here
 was `25/25 across 9 steps` from the 16 September run, which **predated five of the assertions it
 was being cited as proving** — the adf-hx language check, the translated suggestion payload, the
@@ -355,7 +356,7 @@ Worth recording, because it is the argument for writing controls at all:
 | Which file layout?             | The **current Hyland/CIC** one — `i18n/en.json` + `i18n/<locale>.json`, which our repo already matched. **Not** Web UI's `messages.json`; that is a Polymer-era convention needing a locale-rename table we do not need.                                                                                         |
 | Framework?                     | `ngx-translate` v17, already the portfolio norm.                                                                                                                                                                                                                                                                 |
 | Fully compliant with INFO-144? | **No — one documented deviation.** INFO-144 requires a changed source string to be flagged for translator review. The HXP standard's `update_option: update_without_changes` does not do that, mitigating with a manual Crowdin filter plus the convention _never change the meaning of a key — change the key_. |
-| Compliant on string context?   | Yes, and gated, for the 44 keys that exist.                                                                                                                                                                                                                                                                      |
+| Compliant on string context?   | Yes, and gated, for the 60 keys that exist.                                                                                                                                                                                                                                                                      |
 | Compliant on concatenation?    | Ours, yes. **Upstream's tree is not** — `(translate) + node.name` cannot be reordered by a translator. Finding 1.3.                                                                                                                                                                                              |
 
 ---

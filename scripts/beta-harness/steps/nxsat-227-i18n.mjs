@@ -122,20 +122,29 @@ const EMBEDDED_RAW_KEY = /\b[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+\b/;
  * `report.pdf` as a raw key while its comment claimed it did not. Reading the catalogue makes
  * the question exact: a string IS a raw key when the catalogue has that key.
  */
-const OUR_KEYS = (() => {
+/**
+ * The app catalogue flattened to dotted keys, as ngx-translate resolves them.
+ *
+ * Both the key list and the VALUES, because an assertion about a rendered string should compare
+ * against the string a translator edits rather than a literal copied into this file. The tree
+ * toggle's expected name is built from `nav.tree.toggle` for that reason.
+ */
+const APP_CATALOGUE = (() => {
   const catalogue = JSON.parse(
     readFileSync(resolve(process.cwd(), 'apps/nuxeo-ui/public/i18n/en.json'), 'utf8'),
   );
-  const keys = [];
+  const flat = {};
   (function walk(node, prefix) {
     for (const [key, value] of Object.entries(node)) {
       const path = prefix ? `${prefix}.${key}` : key;
-      if (typeof value === 'string') keys.push(path);
+      if (typeof value === 'string') flat[path] = value;
       else if (value && typeof value === 'object') walk(value, path);
     }
   })(catalogue, '');
-  return keys;
+  return flat;
 })();
+
+const OUR_KEYS = Object.keys(APP_CATALOGUE);
 
 /** Routes the shell reaches without needing a document id. */
 const ROUTES = [
@@ -364,11 +373,40 @@ export default async function run(page, h) {
       toggleNames.length > 0,
       `${toggleNames.length} row(s) had both a visible label and a named toggle`,
     );
-    const unnamed = toggleNames.filter((entry) => !entry.name.includes(entry.label));
+    // The COMPLETE expected name, built from the catalogue, not `includes(label)`.
+    //
+    // Containment alone accepts a name that is only the folder — if `nav.tree.toggle` were reduced
+    // to `{{ name }}`, the action word would vanish from every toggle and this check would still
+    // pass, because the label is still in there. The claim being made is `Toggle <folder>`, so the
+    // assertion compares the whole string. `OUR_KEYS` already reads the catalogue, so the expected
+    // value comes from the same file a translator edits rather than from a literal here.
+    const toggleTemplate = APP_CATALOGUE['nav.tree.toggle'];
+    // The template needs the placeholder AND an action word, checked separately from the rendered
+    // comparison below.
+    //
+    // Deriving the expectation from the catalogue makes the DOM comparison self-consistent: reduce
+    // `nav.tree.toggle` to `{{ name }}` and the expectation shrinks with it, so the action word can
+    // disappear from every toggle in the application and the comparison still passes. Verified by
+    // doing exactly that — 38/38, with the prefix gone. So the catalogue value itself is asserted
+    // here: a name that is only the folder name does not say what the control DOES, which is the
+    // whole point of an accessible name on an icon button.
+    const toggleWords = (toggleTemplate ?? '').replace('{{ name }}', ' ').trim();
     h.check(
-      "every folder toggle's accessible name contains that folder's own visible label",
+      'nav.tree.toggle carries both the folder placeholder and an action word',
+      typeof toggleTemplate === 'string' &&
+        toggleTemplate.includes('{{ name }}') &&
+        (toggleWords.match(/[A-Za-zÀ-ÿ]/g) ?? []).length >= 2,
+      `nav.tree.toggle = ${JSON.stringify(toggleTemplate)}, words beside the placeholder: ` +
+        `${JSON.stringify(toggleWords)}`,
+    );
+    const expectedName = (label) => (toggleTemplate ?? '').replace('{{ name }}', label).trim();
+    const unnamed = toggleNames.filter((entry) => entry.name !== expectedName(entry.label));
+    h.check(
+      "every folder toggle's accessible name is exactly the catalogue's Toggle <folder>",
       toggleNames.length > 0 && unnamed.length === 0,
-      unnamed.map((entry) => `label=${entry.label} name=${entry.name}`).join(' | '),
+      unnamed
+        .map((entry) => `expected=${expectedName(entry.label)} actual=${entry.name}`)
+        .join(' | '),
     );
     h.check(
       'no folder toggle is announced with the literal word undefined',
