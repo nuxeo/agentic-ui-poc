@@ -101,6 +101,42 @@ const PACKAGED_BOOTSTRAP = readFileSync(
  */
 const RAW_KEY = /^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)+$/;
 
+/**
+ * A raw key CONCATENATED with user text, which is the shape the originating defect had.
+ *
+ * `DOCUMENT_TREE.TOGGLE_ARIA-LABEL Home` fails the anchored pattern above, because of the
+ * folder name appended to it — so the all-route sweep stayed green on the exact regression
+ * this capture was written for, and only the separate tree assertion caught it.
+ *
+ * SCREAMING_CASE only, and deliberately so. Upstream's keys look like this and no English
+ * sentence does; our own lowercase keys are matched by identity against the catalogue
+ * instead, below, which is exact rather than shaped.
+ */
+const EMBEDDED_RAW_KEY = /\b[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+\b/;
+
+/**
+ * Our own keys, by identity rather than by shape.
+ *
+ * `nav.refresh` and `report.pdf` are structurally identical — a word, a dot, a word — so no
+ * regex can separate a catalogue key from a filename, and the anchored pattern above reported
+ * `report.pdf` as a raw key while its comment claimed it did not. Reading the catalogue makes
+ * the question exact: a string IS a raw key when the catalogue has that key.
+ */
+const OUR_KEYS = (() => {
+  const catalogue = JSON.parse(
+    readFileSync(resolve(process.cwd(), 'apps/nuxeo-ui/public/i18n/en.json'), 'utf8'),
+  );
+  const keys = [];
+  (function walk(node, prefix) {
+    for (const [key, value] of Object.entries(node)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof value === 'string') keys.push(path);
+      else if (value && typeof value === 'object') walk(value, path);
+    }
+  })(catalogue, '');
+  return keys;
+})();
+
 /** Routes the shell reaches without needing a document id. */
 const ROUTES = [
   '/#/browse',
@@ -128,29 +164,33 @@ async function reloadApp(page) {
  * that reason, which is recorded in `phase-6-a11y.mjs`.
  */
 async function rawKeysOnPage(page) {
-  return page.evaluate((source) => {
-    const pattern = new RegExp(source);
-    const offences = [];
+  return page.evaluate(
+    (matchers) => {
+      const offences = [];
 
-    for (const element of document.querySelectorAll('[aria-label], [title]')) {
-      for (const attribute of ['aria-label', 'title']) {
-        const value = element.getAttribute(attribute);
-        if (value && pattern.test(value.trim())) {
-          offences.push(`${element.tagName.toLowerCase()}[${attribute}]="${value.trim()}"`);
+      for (const element of document.querySelectorAll('[aria-label], [title]')) {
+        for (const attribute of ['aria-label', 'title']) {
+          const value = element.getAttribute(attribute);
+          if (value && isRawKey(value.trim())) {
+            offences.push(`${element.tagName.toLowerCase()}[${attribute}]="${value.trim()}"`);
+          }
         }
       }
-    }
 
-    for (const element of document.querySelectorAll('*')) {
-      if (element.children.length > 0) continue;
-      const text = (element.textContent ?? '').trim();
-      if (text && pattern.test(text)) {
-        offences.push(`${element.tagName.toLowerCase()} text="${text}"`);
+      for (const element of document.querySelectorAll('*')) {
+        if (element.children.length > 0) continue;
+        const text = (element.textContent ?? '').trim();
+        if (text && isRawKey(text)) {
+          offences.push(`${element.tagName.toLowerCase()} text="${text}"`);
+        }
       }
-    }
 
-    return [...new Set(offences)];
-  }, RAW_KEY.source);
+      // Both patterns, because the concatenated form is the shape the originating defect had
+      // and the anchored one cannot match it.
+      return [...new Set(offences)];
+    },
+    [RAW_KEY.source, EMBEDDED_RAW_KEY.source],
+  );
 }
 
 /** The bootstrap file with `defaultLanguage` swapped, leaving everything else alone. */
@@ -303,7 +343,15 @@ export default async function run(page, h) {
       hash: window.location.hash,
       rendered: (document.querySelector('main')?.textContent ?? '').trim().length,
     }));
-    if (!landed.hash.startsWith(route) || landed.rendered === 0) {
+    // `window.location.hash` is `#/browse`; the route in ROUTES is `/#/browse`. Comparing
+    // them directly failed every route, which would have turned the check I added to stop
+    // vacuous passes into a permanent red — the opposite mistake, and just as useless.
+    //
+    // Exact match after normalising, not a prefix: `/#/browse` is a prefix of
+    // `/#/browse-adf-hx`, so a redirect between those two would have satisfied it.
+    const expected = route.replace(/^\//, '');
+    const actual = landed.hash.split('?')[0].replace(/\/$/, '');
+    if (actual !== expected || landed.rendered === 0) {
       unreachedRoutes.push(
         `${route}: landed on ${landed.hash || '(no hash)'} with ${landed.rendered} char(s)`,
       );
@@ -453,15 +501,27 @@ export default async function run(page, h) {
   // Asserted here rather than left to the console-error step because that step's suppression
   // list would have been the tempting place to put it, and suppressing it would have hidden a
   // real product defect behind a capture that reported PASS.
-  const dateCell = await page
-    .locator('lib-browse, lib-browse-adf-hx-poc')
-    .first()
-    .innerText()
-    .catch(() => '');
+  // Asserted on a rendered date, not on the absence of an error string.
+  //
+  // The first version checked that the page text did not contain `InvalidPipeArgument`, which
+  // it never would: Angular logs a pipe exception to the console and leaves the binding EMPTY.
+  // So the check passed with every date cell blank — the precise failure it was written to
+  // catch. The console-error step still runs as a separate diagnostic.
+  const renderedDates = await page
+    .locator('lib-browse td.cell-modified, lib-browse-adf-hx-poc td.cell-modified')
+    .allInnerTexts()
+    .catch(() => []);
+  const nonEmptyDates = renderedDates.map((text) => text.trim()).filter(Boolean);
   h.check(
-    'an unshipped locale still renders dates rather than throwing',
-    !dateCell.includes('InvalidPipeArgument'),
-    `page text contained a pipe error: ${JSON.stringify(dateCell.slice(0, 120))}`,
+    'the unshipped locale rendered at least one date cell to judge',
+    renderedDates.length > 0,
+    'no date cell was found, so the assertion below would be vacuous',
+  );
+  h.check(
+    'an unshipped locale still renders dates rather than leaving them blank',
+    renderedDates.length > 0 && nonEmptyDates.length === renderedDates.length,
+    `${renderedDates.length - nonEmptyDates.length} of ${renderedDates.length} date cell(s) ` +
+      'were empty, which is what an NG0701 pipe failure looks like in the DOM',
   );
   await h.screenshot('xx-shell-falls-back-to-english');
 

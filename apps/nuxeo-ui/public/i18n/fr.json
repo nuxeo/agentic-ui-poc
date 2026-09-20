@@ -26,7 +26,9 @@
       "empty": "Le presse-papiers est vide",
       "hint": "Utilisez « Ajouter au presse-papiers » sur des documents ou des collections pour ajouter des éléments ici.",
       "remove": "Retirer du presse-papiers",
-      "tip": "Accédez à un conteneur pour coller ou déplacer le contenu du presse-papiers."
+      "tip": "Accédez à un conteneur pour coller ou déplacer le contenu du presse-papiers.",
+      "copy": "Copier",
+      "move": "Déplacer"
     },
     "collections": {
       "empty": "Aucune collection trouvée"
@@ -52,6 +54,10 @@
       "dashboard": "Voir le tableau de bord des tâches",
       "empty": "Aucune tâche en attente",
       "retry": "Réessayer"
+    },
+    "tree": {
+      "root": "Racine",
+      "retry": "Réessayer"
     }
   },
   "settings": {
@@ -70,7 +76,14 @@
       "input-placeholder": "Posez une question sur vos documents...",
       "open": "Assistant IA",
       "send": "Envoyer le message",
-      "title": "Assistant IA"
+      "title": "Assistant IA",
+      "empty-state": "Posez-moi des questions sur vos documents, recherchez dans le référentiel ou obtenez des informations sur les workflows et les tâches.",
+      "suggestion": {
+        "modified-today": "Quels documents ont été modifiés aujourd’hui ?",
+        "summarize-tasks": "Résume mes tâches en attente",
+        "recent-uploads": "Montre-moi les derniers téléversements"
+      },
+      "sources": "Sources"
     },
     "search": {
       "no-results": "Aucun résultat trouvé",
@@ -79,6 +92,14 @@
     },
     "settings": {
       "menu": "Menu des paramètres"
+    },
+    "menu": {
+      "themes": "Thèmes",
+      "help": "Aide",
+      "about": "À propos",
+      "ai-features": "Fonctions IA {{ state }}",
+      "state-on": "activées",
+      "state-off": "désactivées"
     }
   }
 }

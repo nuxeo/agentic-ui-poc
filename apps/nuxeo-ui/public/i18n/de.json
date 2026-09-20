@@ -26,7 +26,9 @@
       "empty": "Die Zwischenablage ist leer",
       "hint": "Verwenden Sie „Zur Zwischenablage hinzufügen“ bei Dokumenten oder Sammlungen, um hier Elemente hinzuzufügen.",
       "remove": "Aus der Zwischenablage entfernen",
-      "tip": "Navigieren Sie zu einem Container, um den Inhalt der Zwischenablage einzufügen oder zu verschieben."
+      "tip": "Navigieren Sie zu einem Container, um den Inhalt der Zwischenablage einzufügen oder zu verschieben.",
+      "copy": "Kopieren",
+      "move": "Verschieben"
     },
     "collections": {
       "empty": "Keine Sammlungen gefunden"
@@ -52,6 +54,10 @@
       "dashboard": "Aufgaben-Dashboard anzeigen",
       "empty": "Keine ausstehenden Aufgaben",
       "retry": "Wiederholen"
+    },
+    "tree": {
+      "root": "Stamm",
+      "retry": "Erneut versuchen"
     }
   },
   "settings": {
@@ -70,7 +76,14 @@
       "input-placeholder": "Stellen Sie eine Frage zu Ihren Dokumenten...",
       "open": "KI-Assistent",
       "send": "Nachricht senden",
-      "title": "KI-Assistent"
+      "title": "KI-Assistent",
+      "empty-state": "Fragen Sie mich zu Ihren Dokumenten, durchsuchen Sie das Repository oder erhalten Sie Einblicke in Workflows und Aufgaben.",
+      "suggestion": {
+        "modified-today": "Welche Dokumente wurden heute geändert?",
+        "summarize-tasks": "Fasse meine offenen Aufgaben zusammen",
+        "recent-uploads": "Zeige mir die neuesten Uploads"
+      },
+      "sources": "Quellen"
     },
     "search": {
       "no-results": "Keine Ergebnisse gefunden",
@@ -79,6 +92,14 @@
     },
     "settings": {
       "menu": "Einstellungsmenü"
+    },
+    "menu": {
+      "themes": "Designs",
+      "help": "Hilfe",
+      "about": "Info",
+      "ai-features": "KI-Funktionen {{ state }}",
+      "state-on": "ein",
+      "state-off": "aus"
     }
   }
 }

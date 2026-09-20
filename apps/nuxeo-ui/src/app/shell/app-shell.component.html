@@ -155,22 +155,30 @@
       @if (themingFlags.themingEnabled()) {
         <a mat-menu-item routerLink="/settings/themes">
           <mat-icon>palette</mat-icon>
-          Themes
+          {{ 'shell.menu.themes' | translate }}
         </a>
       }
       <button mat-menu-item type="button" (click)="featureFlags.toggle()">
         <mat-icon [style.color]="featureFlags.aiEnabled() ? '#4caf50' : '#9e9e9e'">{{
           featureFlags.aiEnabled() ? 'toggle_on' : 'toggle_off'
         }}</mat-icon>
-        AI Features {{ featureFlags.aiEnabled() ? 'On' : 'Off' }}
+        {{
+          'shell.menu.ai-features'
+            | translate
+              : {
+                  state:
+                    (featureFlags.aiEnabled() ? 'shell.menu.state-on' : 'shell.menu.state-off')
+                    | translate,
+                }
+        }}
       </button>
       <button mat-menu-item type="button">
         <mat-icon>help_outline</mat-icon>
-        Help
+        {{ 'shell.menu.help' | translate }}
       </button>
       <button mat-menu-item type="button">
         <mat-icon>info_outline</mat-icon>
-        About
+        {{ 'shell.menu.about' | translate }}
       </button>
     </mat-menu>
 
@@ -223,10 +231,7 @@
               <div class="ai-chat-welcome">
                 <mat-icon class="ai-chat-welcome-icon">auto_awesome</mat-icon>
                 <h3>{{ 'shell.ai.heading' | translate }}</h3>
-                <p>
-                  Ask me about your documents, search the repository, or get insights about
-                  workflows and tasks.
-                </p>
+                <p>{{ 'shell.ai.empty-state' | translate }}</p>
                 <div class="ai-chat-suggestions">
                   <button
                     class="ai-chat-suggestion"
@@ -234,19 +239,19 @@
                       aiChatInput.set('What documents were modified today?'); sendAiMessage()
                     "
                   >
-                    What documents were modified today?
+                    {{ 'shell.ai.suggestion.modified-today' | translate }}
                   </button>
                   <button
                     class="ai-chat-suggestion"
                     (click)="aiChatInput.set('Summarize my pending tasks'); sendAiMessage()"
                   >
-                    Summarize my pending tasks
+                    {{ 'shell.ai.suggestion.summarize-tasks' | translate }}
                   </button>
                   <button
                     class="ai-chat-suggestion"
                     (click)="aiChatInput.set('Show me recent uploads'); sendAiMessage()"
                   >
-                    Show me recent uploads
+                    {{ 'shell.ai.suggestion.recent-uploads' | translate }}
                   </button>
                 </div>
               </div>
@@ -272,7 +277,7 @@
                     <div class="ai-msg-sources">
                       <div class="ai-sources-label">
                         <mat-icon>link</mat-icon>
-                        Sources
+                        {{ 'shell.ai.sources' | translate }}
                       </div>
                       @for (source of msg.sources!; track source.uid) {
                         <button

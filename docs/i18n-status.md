@@ -76,6 +76,9 @@ git grep -c "| translate" HEAD        -- '*.html' | awk -F: '{s+=$3} END {print 
 Four of ninety-two is the honest headline. It went up by one template because the work was
 deliberately deep rather than wide: the two shell templates that were extracted are now at
 **zero** remaining hard-coded strings, which no template in this repository was before.
+Verified rather than asserted: the claim was false when first written — twelve strings were
+left, all of them prose alone on its own line, which is the shape `checkNoHardcodedUiText`
+could not see until this PR fixed it. A reviewer found them, not the gate that existed to.
 
 ### What is still hard-coded
 
@@ -243,7 +246,7 @@ Plus `checkAngularDevAssets` extended to compare the `ignore` list, which it did
 entry excluding a file in the base array and not in `development` read as identical while the two
 configurations served different files.
 
-`review-guardrails.selftest.mjs` — **33 controls, 19 negative and 14 positive.** It builds a
+`review-guardrails.selftest.mjs` — **58 controls, 32 negative and 26 positive.** It builds a
 throwaway git repository per control under `os.tmpdir()`, so unlike the sanitizer selftest a hard
 kill cannot leave a dirty tree. Registered as gate `guardrails-selftest`, as an npm script, in
 `review:preflight` and in CI.

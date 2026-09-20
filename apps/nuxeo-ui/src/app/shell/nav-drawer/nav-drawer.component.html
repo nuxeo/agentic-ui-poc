@@ -79,7 +79,7 @@
         @if (browseTreeShowRootBack()) {
           <button class="tree-back" type="button" (click)="navigateToBrowseRoot()">
             <mat-icon>chevron_left</mat-icon>
-            Root
+            {{ 'nav.tree.root' | translate }}
           </button>
         }
         <div class="tree-list">
@@ -101,7 +101,7 @@
         <div class="tree-empty error">
           <span>{{ personalSpaceError() }}</span>
           <button mat-stroked-button type="button" (click)="refreshPersonalSpaceTree()">
-            Retry
+            {{ 'nav.tree.retry' | translate }}
           </button>
         </div>
       } @else if (personalSpaceNodes().length === 0) {
@@ -380,7 +380,7 @@
               (click)="copyClipboard()"
             >
               <mat-icon>content_copy</mat-icon>
-              Copy
+              {{ 'nav.clipboard.copy' | translate }}
             </button>
             <button
               mat-stroked-button
@@ -390,7 +390,7 @@
               (click)="moveClipboard()"
             >
               <mat-icon>drive_file_move</mat-icon>
-              Move
+              {{ 'nav.clipboard.move' | translate }}
             </button>
           </div>
         </div>

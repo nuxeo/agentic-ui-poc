@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /**
- * Negative controls for the three i18n guardrails in `review-guardrails.mjs`.
+ * Negative controls for the i18n and configuration guardrails in `review-guardrails.mjs`.
+ *
+ * No count in this sentence on purpose. It said "three" through two rounds of additions and
+ * was wrong by the end of the first; the executable report at the bottom of this file prints
+ * the real total, and a number duplicated in prose diverges from it immediately.
  *
  * `CLAUDE.md`: *a gate is not evidence until you have seen it fail on purpose.* Three gates in
  * this programme were green while the thing they guarded was broken. Eleven guardrails shipped
- * before this file existed with **no tests at all**, so this covers the three added for
- * NXSAT-227 and establishes somewhere for the rest to go.
+ * before this file existed with **no tests at all**, so this began with the ones
+ * added for NXSAT-227 and establishes somewhere for the rest to go.
  *
  * ## Why a throwaway repository rather than perturbing tracked files
  *
@@ -680,6 +684,60 @@ expectGreen('an advertised locale that ships', 'checkAdvertisedLocalesShip', {
   'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
   'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
     '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "fr"]\n}\n',
+});
+
+// ── controls for round two of the Copilot review ─────────────────────────────────────────
+
+expectRed(
+  'a bound literal in a text attribute',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div>placeholder</div>\n' },
+  (write) =>
+    write('libs/features/x/src/lib/x.html', `<button [title]="'Recently Edited'"></button>\n`),
+  /Recently Edited/,
+);
+
+expectGreen('a bound TRANSLATED value in the same position', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html': `<button [title]="'x.y' | translate"></button>\n`,
+});
+
+// `Object.entries(null)` throws. checkTranslationCatalogues records the shape error but
+// cannot stop this guardrail crashing on the same file and taking the run's output with it.
+expectRed(
+  'a reference catalogue that parses to null, reaching the context gate',
+  'checkTranslationContext',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': 'null\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': '{\n  "a": "context"\n}\n',
+  },
+  null,
+  /parses but is null/,
+);
+
+// The rebrand demo edits the packaged config and the runbook says to reset it. It was not
+// reset, and the demo branding reached a pull request inside an unrelated change.
+expectRed(
+  'the demo rebrand left in the packaged marketplace config',
+  'checkPackagedConfigIsNotADemo',
+  {
+    'libs/shared/app-config/src/lib/bootstrap-config.ts':
+      'export const DEFAULT_APP_BOOTSTRAP_CONFIG = {\n' +
+      "  branding: { applicationTitle: 'Hyland Nuxeo' },\n  defaultThemeId: 'nuxeo',\n};\n",
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+      '{\n  "branding": { "applicationTitle": "Acme Content Cloud" },\n' +
+      '  "defaultThemeId": "acme",\n  "themes": [{ "id": "acme" }]\n}\n',
+  },
+  null,
+  /not the compiled default/,
+);
+
+expectGreen('a packaged config matching the compiled defaults', 'checkPackagedConfigIsNotADemo', {
+  'libs/shared/app-config/src/lib/bootstrap-config.ts':
+    'export const DEFAULT_APP_BOOTSTRAP_CONFIG = {\n' +
+    "  branding: { applicationTitle: 'Hyland Nuxeo' },\n  defaultThemeId: 'nuxeo',\n};\n",
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+    '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+    '  "defaultThemeId": "nuxeo",\n  "themes": []\n}\n',
 });
 
 /* ---------------- report ---------------- */

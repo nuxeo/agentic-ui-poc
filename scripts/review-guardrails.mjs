@@ -1033,6 +1033,15 @@ function checkNoAdfHxInPublicApi() {
 function checkNoHardcodedUiText() {
   /** Attributes whose literal value is read or announced to a user. */
   const TEXT_ATTRIBUTES = /\b(placeholder|matTooltip|alt|aria-label|title)="([^"<>{}]*)"/g;
+  /**
+   * The same attributes written as a BINDING carrying a literal: `[title]="'Recently Edited'"`.
+   *
+   * Angular resolves that to the same DOM attribute as the plain form, so it is the same
+   * defect — but `TEXT_ATTRIBUTES` cannot see it, because the brackets are part of the
+   * attribute name and the braces exclusion never applies.
+   */
+  const BOUND_TEXT_ATTRIBUTES =
+    /\[(?:attr\.)?(placeholder|matTooltip|alt|aria-label|title)\]="\s*('[^']*'|"[^"]*")\s*"/g;
   /** Element text on the same line as its tags: `>Some text<`. */
   const ELEMENT_TEXT = />([^<>{}]*)</g;
   /**
@@ -1052,7 +1061,13 @@ function checkNoHardcodedUiText() {
 
   /** Prose a user reads, as opposed to an icon ligature, a CSS value or a number. */
   function isDisplayText(value) {
-    const text = value.trim();
+    // A BOUND literal keeps its inner quotes: `[title]="'Recently Edited'"` captures
+    // `'Recently Edited'`, which starts with an apostrophe, so the capital-letter test
+    // rejected it and the string passed. That binding style is already in this repository.
+    const text = value
+      .trim()
+      .replace(/^(['"])(.*)\1$/, '$2')
+      .trim();
     if (text.length < 2) return false;
     if (!/^[A-Z]/.test(text)) return false;
     return (text.match(/[A-Za-z]/g) ?? []).length >= 2;
@@ -1080,6 +1095,13 @@ function checkNoHardcodedUiText() {
         if (!isDisplayText(value)) continue;
         offence = { what: `${attribute}="${value}"`, value };
         break;
+      }
+      if (!offence) {
+        for (const [, attribute, value] of remainder.matchAll(BOUND_TEXT_ATTRIBUTES)) {
+          if (!isDisplayText(value)) continue;
+          offence = { what: `[${attribute}]="${value}"`, value };
+          break;
+        }
       }
       if (!offence) {
         for (const [, value] of remainder.matchAll(ELEMENT_TEXT)) {
@@ -1418,6 +1440,23 @@ function checkTranslationContext() {
       continue;
     }
 
+    // The CONTEXT file's shape is checked above; the CATALOGUE's is not, and `collect` below
+    // walks it. `Object.entries(null)` throws and aborts the whole process before any
+    // accumulated diagnostic is printed — `checkTranslationCatalogues` records the shape error
+    // but cannot stop a later guardrail from crashing on the same file.
+    if (catalogue === null || typeof catalogue !== 'object' || Array.isArray(catalogue)) {
+      fail(
+        `${reference} parses but is ${
+          catalogue === null
+            ? 'null'
+            : Array.isArray(catalogue)
+              ? 'an array'
+              : `a ${typeof catalogue}`
+        }, not an object of keys, so its context cannot be compared.`,
+      );
+      continue;
+    }
+
     const keys = new Set();
     (function collect(value, prefix) {
       for (const [key, entry] of Object.entries(value)) {
@@ -1748,13 +1787,18 @@ function checkAdvertisedLocalesShip() {
     return;
   }
 
+  // Scoped to the directory THIS configuration's application actually serves, not to every
+  // app. Gathering catalogue names repo-wide meant another app adding `es.json` would let the
+  // packaged config advertise `es` while `apps/nuxeo-ui` had no catalogue for it — the gate
+  // green and the language broken.
+  const CATALOGUE_DIR = 'apps/nuxeo-ui/public/i18n';
   const shipped = new Set(
-    [...walk('apps', (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path))]
+    [...walk(CATALOGUE_DIR, (path) => /\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path))]
       .map((path) => /([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[1])
       .filter(Boolean),
   );
   if (shipped.size === 0) {
-    fail('No catalogues were found under apps/, so this gate asserted nothing.');
+    fail(`No catalogues were found in ${CATALOGUE_DIR}, so this gate asserted nothing.`);
     return;
   }
 
@@ -1889,11 +1933,28 @@ function checkCrowdinConfig() {
       );
     }
   }
-  if (!body.includes('hyland.api.crowdin.com')) {
+  // Parsed and compared by HOST, not by substring.
+  //
+  // `body.includes('hyland.api.crowdin.com')` is the shape CodeQL flags as
+  // `js/incomplete-url-substring-sanitization`, and it is right to: that string can sit
+  // anywhere in a URL, so `https://evil.example/?x=hyland.api.crowdin.com` would satisfy it.
+  // Nothing hostile is going to edit this file, but a check that passes on a URL pointing
+  // somewhere else is not checking anything.
+  const ENTERPRISE_HOST = 'hyland.api.crowdin.com';
+  const declaredBaseUrl = /'base_url':\s*'([^']+)'/.exec(body)?.[1];
+  let baseUrlHost = null;
+  try {
+    baseUrlHost = declaredBaseUrl ? new URL(declaredBaseUrl).host : null;
+  } catch {
+    baseUrlHost = null;
+  }
+  if (baseUrlHost !== ENTERPRISE_HOST) {
     fail(
-      `${config} does not set \`base_url\` to the Hyland Crowdin Enterprise endpoint. A token ` +
-        'issued on the Hyland tenant fails against public crowdin.com with a 401, which reads ' +
-        'like a bad secret rather than a wrong host.',
+      `${config} sets \`base_url\` to ${declaredBaseUrl ? `\`${declaredBaseUrl}\`` : 'nothing'}, ` +
+        `whose host is not ${ENTERPRISE_HOST}.\n` +
+        '    The project lives on the Hyland Crowdin Enterprise tenant. A token issued there ' +
+        'fails against public crowdin.com with a 401, which reads like a bad secret rather ' +
+        'than a wrong host.',
     );
   }
 
@@ -1949,6 +2010,81 @@ function checkCrowdinConfig() {
   }
 }
 
+/**
+ * The packaged marketplace config ships Nuxeo defaults, not a demo rebrand.
+ *
+ * `nuxeo-agentic-ui-package/src/main/config/bootstrap.json` is installed into a customer's
+ * Nuxeo. The rebrand demo edits it — `docs/beta-demo-runbook.md` walks through setting
+ * `applicationTitle` to "Acme Content Cloud" and adding an `acme` theme — and tells you to
+ * run `git checkout --` on it afterwards.
+ *
+ * That was not run, and the demo branding reached a pull request inside an i18n change, where
+ * nobody was looking for it. Every fresh installation would have come up rebranded. No gate
+ * saw it; a reviewer did.
+ *
+ * So the rule is the runbook's own instruction, enforced: the packaged branding must match
+ * what the application compiles in. A real branding change is a change to
+ * `DEFAULT_APP_BOOTSTRAP_CONFIG` as well, which is a deliberate act rather than a leftover.
+ */
+function checkPackagedConfigIsNotADemo() {
+  const packaged = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+  const compiled = 'libs/shared/app-config/src/lib/bootstrap-config.ts';
+  if (!fileExists(packaged) || !fileExists(compiled)) {
+    fail(`${packaged} or ${compiled} is missing, so this gate asserted nothing.`);
+    return;
+  }
+
+  let config;
+  try {
+    config = JSON.parse(read(packaged));
+  } catch (error) {
+    fail(`${packaged} is not valid JSON: ${error.message}`);
+    return;
+  }
+
+  const defaults = read(compiled);
+  const compiledTitle = /applicationTitle:\s*'([^']*)'/.exec(defaults)?.[1];
+  const compiledTheme = /defaultThemeId:\s*'([^']*)'/.exec(defaults)?.[1];
+  if (!compiledTitle || !compiledTheme) {
+    fail(
+      `Could not read applicationTitle / defaultThemeId out of ${compiled}, so this gate ` +
+        'asserted nothing. The shape it parses has changed.',
+    );
+    return;
+  }
+
+  const shippedTitle = config['branding']?.['applicationTitle'];
+  if (shippedTitle !== undefined && shippedTitle !== compiledTitle) {
+    fail(
+      `${packaged} ships \`applicationTitle: "${shippedTitle}"\`, which is not the compiled ` +
+        `default "${compiledTitle}".\n` +
+        '    The rebrand demo edits this file and `docs/beta-demo-runbook.md` says to run ' +
+        '`git checkout --` on it afterwards. If this is a real branding change, change ' +
+        `${compiled} in the same commit.`,
+    );
+  }
+
+  const shippedTheme = config['defaultThemeId'];
+  if (shippedTheme !== undefined && shippedTheme !== compiledTheme) {
+    fail(
+      `${packaged} ships \`defaultThemeId: "${shippedTheme}"\`, which is not the compiled ` +
+        `default "${compiledTheme}". Every fresh installation would start on that theme.`,
+    );
+  }
+
+  // The demo adds a whole theme here. A customer-supplied theme is a Layer 0 capability and
+  // belongs in a CUSTOMER's file, not in the one we ship.
+  const shippedThemes = config['themes'];
+  if (Array.isArray(shippedThemes) && shippedThemes.length > 0) {
+    fail(
+      `${packaged} ships ${shippedThemes.length} theme(s): ` +
+        `${shippedThemes.map((theme) => theme?.id).join(', ')}.\n` +
+        '    The packaged file layers over the compiled themes; shipping one here means every ' +
+        'installation gets it. Demo themes belong in the demo, per the runbook.',
+    );
+  }
+}
+
 const GUARDRAILS = [
   checkThemeTokens,
   checkDocsNumbering,
@@ -1967,6 +2103,7 @@ const GUARDRAILS = [
   checkTranslationCatalogues,
   checkAdvertisedLocalesShip,
   checkCrowdinConfig,
+  checkPackagedConfigIsNotADemo,
   checkTranslationContext,
   checkAccessibleNameFallbacks,
   checkLocaleDataRegistered,
