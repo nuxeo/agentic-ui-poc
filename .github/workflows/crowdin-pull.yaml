@@ -78,17 +78,24 @@ jobs:
         with:
           ref: main
 
-      # Signed, like every other bot commit here. Reuses the existing key rather than minting
-      # a second one — see docs/github-bot-commit-signing.md. Unconditional: the preflight above
-      # has already refused the run if signing is not configured, so there is no path where this
-      # job commits unsigned.
-      - name: Import the bot signing key
-        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32871f91346555e39762 # v6.3.0
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          git_user_signingkey: true
-          git_commit_gpgsign: true
+      # No host-level `crazy-max/ghaction-import-gpg` step here, deliberately.
+      #
+      # It was here, and it did nothing. `crowdin/github-action` declares `runs: using: docker`,
+      # so it executes in its own container; importing a key into the runner's GnuPG home and
+      # setting `git config --global commit.gpgsign` on the HOST leaves the container's git
+      # untouched. The commit is made inside the container, so it would have been unsigned — while
+      # a preflight step three lines up refused to run without signing configured, and the comment
+      # on the step said "signed, like every other bot commit here".
+      #
+      # That is the third silent downgrade found in this one file, and the most convincing of the
+      # three: the step existed, its inputs were correct, it would have succeeded, and it had no
+      # effect on the thing it was there to guarantee. A step that cannot fail and cannot work is
+      # worse than no step, because it answers the question nobody then asks again.
+      #
+      # The action takes `gpg_private_key` and `gpg_passphrase` of its own — verified against
+      # action.yml at the pinned SHA — so signing is configured where the commit actually happens.
+      # See docs/github-bot-commit-signing.md; this reuses the existing key rather than minting a
+      # second one.
 
       - name: Download translations and open a pull request
         uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
@@ -119,6 +126,11 @@ jobs:
 
           github_user_name: github-actions[bot]
           github_user_email: github-actions[bot]@users.noreply.github.com
+
+          # Signing, configured on the action rather than on the host, because this action runs in
+          # its own Docker container and the commit is made there. See the note above the checkout.
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
         env:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}

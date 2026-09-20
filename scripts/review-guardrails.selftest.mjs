@@ -785,11 +785,42 @@ const CROWDIN = {
   '.github/workflows/crowdin-push.yaml': CROWDIN_WORKFLOW(
     `          command_args: '--delete-obsolete'\n`,
   ),
-  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(''),
+  // The pull workflow signs on the ACTION, because that is the only placement that signs
+  // anything — see the control for it below.
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}\n`,
+  ),
   'apps/nuxeo-ui/public/i18n/en.json': EN_JSON,
 };
 
 expectGreen('a D8-compliant two-entry Crowdin config', 'checkCrowdinConfig', CROWDIN);
+
+// Signing has to be configured on the ACTION, because `crowdin/github-action` is a Docker action
+// and commits inside its own container. A host-level key import succeeds, changes nothing the
+// container sees, and leaves the commit unsigned — a step that can neither fail nor work.
+//
+// The fixture deliberately KEEPS a host-level import step while removing the action's input, which
+// is the exact arrangement that shipped. It is also what caught the first version of this check:
+// that searched the whole file for `gpg_private_key:`, matched the host step's identically-named
+// input, and passed on the defect.
+expectRed(
+  'the pull workflow importing a key on the host but not signing the action',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW('').replace(
+        '      - uses: crowdin/github-action@v2\n',
+        `      - uses: crazy-max/ghaction-import-gpg@v6\n` +
+          `        with:\n` +
+          `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}\n` +
+          `          git_commit_gpgsign: true\n` +
+          `      - uses: crowdin/github-action@v2\n`,
+      ),
+    ),
+  /without passing `gpg_private_key`, so its commits are unsigned/,
+);
 
 // The founding defect. Both options deleted from the SECOND entry only: the first still
 // contains both tokens, so the body-wide check this replaced stayed green here.

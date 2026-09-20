@@ -2369,6 +2369,37 @@ function checkCrowdinConfig() {
     }
   }
 
+  // Signing must be configured where the COMMIT happens, which is inside the action's container.
+  //
+  // `crowdin/github-action` is `runs: using: docker`. A host-level `ghaction-import-gpg` step
+  // therefore signs nothing the action does: it writes to the runner's GnuPG home and the runner's
+  // global git config, and the commit is made in a different filesystem and a different git.
+  // That step was in `crowdin-pull.yaml`, with correct inputs, succeeding, and having no effect on
+  // the guarantee it was there to provide — a step that can neither fail nor work.
+  //
+  // This is the whole defect class of this file expressed as a check: the pull workflow's own
+  // pull-request body tells a reviewer what has been verified, so every promise it makes needs
+  // something that actually enforces it.
+  // Scoped to the ACTION's own step, not the file.
+  //
+  // The first version searched the whole file for `gpg_private_key:`, and a host-level
+  // `ghaction-import-gpg` step supplies that same input name — so the check passed on precisely
+  // the arrangement it exists to reject. Caught by its own negative control, which kept the dead
+  // host step in the fixture on purpose.
+  const pull = read(workflows[1]);
+  const pullSteps = pull.split(/^\s*-\s(?=name:|uses:)/m);
+  const crowdinStep = pullSteps.find((step) => /uses:\s*crowdin\/github-action/.test(step));
+  if (crowdinStep !== undefined && !/^\s*gpg_private_key:/m.test(crowdinStep)) {
+    fail(
+      `${workflows[1]} runs crowdin/github-action without passing \`gpg_private_key\`, so its ` +
+        'commits are unsigned.\n' +
+        '    The action declares `runs: using: docker`, so it commits inside its own container. ' +
+        'Importing a key in a preceding host step configures the RUNNER, not the container — it ' +
+        'succeeds and changes nothing. Pass `gpg_private_key` (and `gpg_passphrase`) to the ' +
+        'action itself.',
+    );
+  }
+
   if (!read(workflows[0]).includes('--delete-obsolete')) {
     fail(
       `${workflows[0]} does not pass \`--delete-obsolete\` when uploading sources, which D8 ` +
