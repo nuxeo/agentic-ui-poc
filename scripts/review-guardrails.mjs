@@ -2049,11 +2049,17 @@ function checkAccessibleNameFallbacks() {
   }
 
   /** `'key': 'value'` pairs from the fallback map's object literal. */
+  // Both quote styles, and a value Prettier has wrapped onto the next line.
+  //
+  // The pattern was `/'([^']+)':\s*'([^']*)'/`, which reads a single-quoted value on one line and
+  // nothing else. A value containing an apostrophe — `Ask in natural language... e.g. 'PDFs
+  // uploaded last week by Administrator'` — makes Prettier switch to double quotes and wrap, and
+  // the entry became invisible: the gate reported a key as absent from a file that contains it,
+  // and `fallback.size === 0` cannot catch a PARTIAL parse. 317 of 318 entries were seen.
   const fallback = new Map(
-    [...read(fallbackFile).matchAll(/'([^']+)':\s*'([^']*)'/g)].map(([, key, value]) => [
-      key,
-      value,
-    ]),
+    [...read(fallbackFile).matchAll(/'([^']+)':\s*(?:'([^']*)'|"([^"]*)")/g)].map(
+      ([, key, single, double]) => [key, single ?? double ?? ''],
+    ),
   );
   if (fallback.size === 0) {
     fail(

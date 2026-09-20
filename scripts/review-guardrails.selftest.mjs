@@ -1558,6 +1558,22 @@ expectRed(
   /binds aria-label to `app\.nav\.toggle`.*omits/s,
 );
 
+// A fallback value Prettier wrapped and double-quoted, because it contains an apostrophe. The
+// parser read single-quoted one-line entries only, so this entry was invisible and the gate
+// reported a key as absent from the very file that defines it — 317 of 318 entries seen, and
+// `fallback.size === 0` cannot catch a partial parse.
+falsePositiveControls += 1;
+expectGreen('a double-quoted, wrapped fallback entry', 'checkAccessibleNameFallbacks', {
+  'apps/nuxeo-ui/public/i18n/en.json':
+    '{\n  "search": { "search": { "ask": "Ask e.g. \'PDFs from last week\'" } }\n}\n',
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts':
+    'export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {\n' +
+    "  'search.search.ask':\n" +
+    '    "Ask e.g. \'PDFs from last week\'",\n};\n',
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html':
+    `<input [placeholder]="'search.search.ask' | translate" />\n`,
+});
+
 falsePositiveControls += 1;
 expectGreen(
   'a parameterised accessible name whose key IS in the fallback map',
