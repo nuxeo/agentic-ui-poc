@@ -48,6 +48,7 @@
     }
   ],
 
+  "$language-note": "English only, on purpose. This template ships no catalogue directory and wires no TranslateModule, so listing fr and de here advertised two languages it could not render — in the public Layer 0 example a customer copies. Add a locale here only together with apps/nuxeo-satori-template/public/i18n/<locale>.json and the loader to read it; checkAdvertisedLocalesShip now fails this file if you do not.",
   "defaultLanguage": "en",
   "availableLanguages": ["en"]
 }
