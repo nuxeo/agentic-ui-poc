@@ -666,6 +666,26 @@ expectRed(
   /asserted nothing/,
 );
 
+// ── slice 12: the sweep is repo-wide, so it must see an UNCHANGED file ──────────────────
+
+expectRed(
+  'a hard-coded string in a file the change never touched',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<button>Regression Bait</button>\n' },
+  // No mutation: the file is in the baseline commit, so a diff-scoped check would not look.
+  null,
+  /Regression Bait/,
+);
+
+expectGreen('prose inside a multi-line HTML comment', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html': '<!--\n  Some explanation in prose.\n-->\n<div></div>\n',
+});
+
+expectGreen('a code sample inside a pre block', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html':
+    '<pre class="code-block">\nImport The Component From Somewhere\n</pre>\n',
+});
+
 // ── the three blind spots found reviewing NXSAT-227 ──────────────────────────────────────
 //
 // Each of these passed before the fix, and each was a shape the check was written to catch.

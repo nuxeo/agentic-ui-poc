@@ -1926,5 +1926,10 @@
     "update-permission-dialog": {
       "update": "Update"
     }
+  },
+  "extensions": {
+    "extension-outlet": {
+      "loading": "Loading…"
+    }
   }
 }

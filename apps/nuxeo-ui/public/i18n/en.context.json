@@ -1597,5 +1597,6 @@
   "ui.document-compare-dialog.no-differences-found-between-the-selected": "User-facing text in document-compare-dialog.html, rendered inside an Angular control-flow block (an @if or @else arm). Usually a button label or a state message.",
   "ui.document-viewer.your-browser-does-not-support-video": "User-facing text in document-viewer.component.html, rendered inside an Angular control-flow block (an @if or @else arm). Usually a button label or a state message.",
   "ui.edit-collection-dialog.save": "User-facing text in edit-collection-dialog.html, rendered inside an Angular control-flow block (an @if or @else arm). Usually a button label or a state message.",
-  "app.login-page.log-in": "User-facing text in login-page.component.html, rendered inside an Angular control-flow block (an @if or @else arm). Usually a button label or a state message."
+  "app.login-page.log-in": "User-facing text in login-page.component.html, rendered inside an Angular control-flow block (an @if or @else arm). Usually a button label or a state message.",
+  "extensions.extension-outlet.loading": "Announced by a live region while a manifest-registered component is being fetched. A single word plus an ellipsis; the character is U+2026, not three dots, and should stay whatever the target language uses for a continuation."
 }

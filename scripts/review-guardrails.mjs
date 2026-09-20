@@ -1052,12 +1052,90 @@ function checkNoHardcodedUiText() {
     return (text.match(/[A-Za-z]/g) ?? []).length >= 2;
   }
 
-  for (const [file, lines] of addedLinesByFile) {
-    if (!/^(libs|apps)\/.+\.html$/.test(file)) continue;
+  /**
+   * Templates exempt from the repo-wide sweep, and why each one is.
+   *
+   * `apps/nuxeo-satori-template` is the customer starter template and its 122 strings are
+   * deferred by an explicit decision, not an oversight. `libs/extensions/acme-extensions` is
+   * the worked example of a customer extension — its strings are a customer's to translate,
+   * and keying them would teach the opposite lesson. `libs/core` is Nx scaffolding that
+   * renders nowhere.
+   *
+   * Nothing shippable is on this list, and adding to it should be harder than fixing the
+   * string.
+   */
+  const EXEMPT = [
+    /^apps\/nuxeo-satori-template\//,
+    /^libs\/extensions\/acme-extensions\//,
+    /^libs\/core\//,
+    // A standalone debug page, not referenced by `angular.json` and not copied as an asset, so
+    // it is never served to anyone.
+    /^apps\/nuxeo-ui\/src\/diagnostic\.html$/,
+    // The document shell. `checkNoTemplateSyntaxInDocumentShell` REQUIRES its title to be a
+    // literal — Angular never compiles this file, so a pipe there renders as visible braces.
+    // Without this exemption the two gates contradict each other and one of them has to be
+    // wrong. The title is replaced at runtime from Layer 0 `branding.documentTitle`.
+    /(^|\/)src\/index\.html$/,
+  ];
 
+  /**
+   * Every template, not only the changed ones.
+   *
+   * Diff scope was right while the application was full of hard-coded English: a repo-wide
+   * check would have been red on day one and turned off by the end of the week. It is now
+   * within six strings of clean, and diff scope has a cost — a string that moves between files
+   * in a refactor reads as unchanged, and anything that pre-dates the check is invisible
+   * forever. `docs/i18n-full-extraction-plan.md` calls this slice 12.
+   */
+  const templates = [
+    ...walk('apps', (path) => path.endsWith('.html')),
+    ...walk('libs', (path) => path.endsWith('.html')),
+  ].filter((path) => !EXEMPT.some((pattern) => pattern.test(path)));
+
+  if (templates.length === 0) {
+    fail('No templates were found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+
+  const everyLine = templates.map((file) => [
+    file,
+    read(file)
+      .split('\n')
+      .map((text, index) => ({ line: index + 1, text })),
+  ]);
+
+  /**
+   * Regions to skip that span lines, which a scan of one line at a time cannot see.
+   *
+   * The old check skipped a line STARTING with `<!--`, so the body of a multi-line comment was
+   * scanned as markup — the nav drawer's explanation of the sidebar slot was reported as
+   * hard-coded UI text. And `<pre>` holds code samples shown to customers as documentation;
+   * `import { Component } from '@angular/core'` is not prose and translating it would be
+   * actively wrong.
+   */
+  function skippableRegions(body) {
+    const skip = new Set();
+    let inComment = false;
+    let inPre = false;
+    for (const [index, text] of body.split('\n').entries()) {
+      const opensComment = text.includes('<!--') && !text.includes('-->');
+      const opensPre = /<pre\b/.test(text) && !/<\/pre>/.test(text);
+      if (inComment || inPre || opensComment || opensPre || /<!--|<pre\b/.test(text)) {
+        skip.add(index + 1);
+      }
+      if (inComment && text.includes('-->')) inComment = false;
+      else if (opensComment) inComment = true;
+      if (inPre && /<\/pre>/.test(text)) inPre = false;
+      else if (opensPre) inPre = true;
+    }
+    return skip;
+  }
+
+  for (const [file, lines] of everyLine) {
+    const skip = skippableRegions(read(file));
     for (const { line, text } of lines) {
       const trimmed = text.trim();
-      if (!trimmed || trimmed.startsWith('<!--')) continue;
+      if (!trimmed || skip.has(line)) continue;
 
       // Everything already routing through the pipe is removed, and then what is LEFT is
       // examined.

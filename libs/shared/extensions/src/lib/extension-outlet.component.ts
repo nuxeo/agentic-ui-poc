@@ -16,6 +16,7 @@ import {
 } from '@angular/core';
 
 import { ExtensionComponentRegistry } from './extension-component-registry.service';
+import { TranslatePipe } from '@ngx-translate/core';
 
 /**
  * Renders a component resolved from the registry, by ID or by type.
@@ -38,6 +39,7 @@ import { ExtensionComponentRegistry } from './extension-component-registry.servi
 @Component({
   selector: 'lib-extension-outlet',
   standalone: true,
+  imports: [TranslatePipe],
   templateUrl: './extension-outlet.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
