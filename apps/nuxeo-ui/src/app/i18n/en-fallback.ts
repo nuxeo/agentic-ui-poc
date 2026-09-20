@@ -48,6 +48,7 @@
  * and fails when one of them is missing from this map or blank in it.
  */
 export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'app.login-page.log-in': 'Log in',
   'dashboard.recently-edited': 'Recently Edited',
   'dashboard.tasks': 'Tasks',
   'dashboard.recently-viewed': 'Recently Viewed',

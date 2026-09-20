@@ -666,6 +666,73 @@ expectRed(
   /asserted nothing/,
 );
 
+// ── the three blind spots found reviewing NXSAT-227 ──────────────────────────────────────
+//
+// Each of these passed before the fix, and each was a shape the check was written to catch.
+
+expectRed(
+  'prose alone on its own line, as Prettier and Angular control flow write it',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div>placeholder</div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<button>\n  @if (saving()) {\n    <mat-spinner />\n  } @else {\n    Create\n  }\n</button>\n',
+    ),
+  /hard-coded English/,
+);
+
+expectRed(
+  'literal text beside a translated attribute on the same line',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div>placeholder</div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      `<button [attr.aria-label]="'x.y' | translate">Show details</button>\n`,
+    ),
+  /hard-coded English/,
+);
+
+// The exemption must still apply to what actually earned it.
+expectGreen('a fully translated element across several lines', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html': `<button [attr.aria-label]="'x.y' | translate">\n  {{ 'x.z' | translate }}\n</button>\n`,
+});
+
+expectRed(
+  'a catalogue value that is null rather than a string',
+  'checkTranslationCatalogues',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": null\n}\n',
+    'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+  },
+  null,
+  // Must name en.json. It used to drop the key and then blame fr.json for an "extra" one.
+  /en\.json maps `a` to null/,
+);
+
+expectRed(
+  'translator context that is an empty string',
+  'checkTranslationContext',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': '{\n  "a": ""\n}\n',
+  },
+  null,
+  /same as saying nothing/,
+);
+
+expectRed(
+  'translator context that is only whitespace',
+  'checkTranslationContext',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': '{\n  "a": "   "\n}\n',
+  },
+  null,
+  /same as saying nothing/,
+);
+
 expectGreen('a label paired with a labelKey', 'checkNoHardcodedDescriptorText', {
   ...WITH_DESCRIPTORS,
   'libs/shared/extensions/src/lib/nav-items.ts':

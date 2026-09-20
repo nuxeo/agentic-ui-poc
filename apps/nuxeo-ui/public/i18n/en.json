@@ -328,7 +328,8 @@
       "password": "Password",
       "password-is-required": "Password is required",
       "username": "Username",
-      "username-is-required": "Username is required"
+      "username-is-required": "Username is required",
+      "log-in": "Log in"
     },
     "nav": {
       "toggle": "Toggle navigation menu"
@@ -607,7 +608,9 @@
       "unchecked-files-will-be-discarded": "Unchecked files will be discarded.",
       "upload-a-main-file-to-create": "Upload a main file to create this document.",
       "upload-main-file": "Upload main file",
-      "working": "Working…"
+      "working": "Working…",
+      "file-import-is-not-available-at": "File import is not available at the repository root. Create a domain first, or",
+      "upload-complete": "Upload complete"
     },
     "details": {
       "hide": "Hide details",
@@ -634,7 +637,8 @@
       "search-nature": "Search Nature",
       "search-subjects": "Search Subjects",
       "subjects": "Subjects",
-      "title": "Title"
+      "title": "Title",
+      "save": "Save"
     },
     "folder-picker-dialog": {
       "cancel": "Cancel",
@@ -750,7 +754,9 @@
       "try-again": "Try again",
       "user": "User",
       "user-group": "User / Group",
-      "username": "Username"
+      "username": "Username",
+      "this-collection-does-not-exist-or": "This collection does not exist, or it has been deleted. The link may be out of date.",
+      "the-collection-could-not-be-loaded": "The collection could not be loaded. This may be a permission or connection problem."
     },
     "collection-not-found": "Collection not found",
     "collection-unavailable": "Collection unavailable",
@@ -777,7 +783,8 @@
       "collections": "Collections",
       "loading-collections": "Loading collections...",
       "search-or-create-collection": "Search or create collection...",
-      "select-a-collection": "Select a Collection..."
+      "select-a-collection": "Select a Collection...",
+      "add": "Add"
     },
     "attachment-preview-dialog": {
       "close": "Close",
@@ -791,7 +798,8 @@
     "create-version-dialog": {
       "cancel": "Cancel",
       "major-version": "Major version",
-      "minor-version": "Minor version"
+      "minor-version": "Minor version",
+      "create-version": "Create Version"
     },
     "document-detail": {
       "abandon": "Abandon",
@@ -925,7 +933,15 @@
       "write-a-comment-here": "Write a comment here",
       "write-a-reply-here": "Write a reply here",
       "you-are-viewing-a-trashed-document": "You are viewing a trashed document.",
-      "you-started-a": "You started a"
+      "you-started-a": "You started a",
+      "extract-named-entities-text": "Extract Named Entities (Text)",
+      "classify-document": "Classify Document",
+      "summarize-document": "Summarize Document",
+      "describe-image": "Describe Image",
+      "you-have-a-task-to-process": "You have a task to process",
+      "start": "Start",
+      "unpublish-all": "Unpublish All",
+      "analyze-sentiment": "Analyze Sentiment"
     },
     "drive-dialog": {
       "checking-nuxeo-drive": "Checking Nuxeo Drive...",
@@ -947,7 +963,8 @@
       "search-nature": "Search Nature",
       "search-subjects": "Search Subjects",
       "subjects": "Subjects",
-      "title": "Title"
+      "title": "Title",
+      "save": "Save"
     },
     "note-editor": {
       "align-center": "Align center",
@@ -982,7 +999,8 @@
       "text-style": "Text style",
       "underline": "Underline",
       "uploading-image": "Uploading image…",
-      "placeholder": "Type here..."
+      "placeholder": "Type here...",
+      "save": "Save"
     },
     "note-image-picker-dialog": {
       "cancel": "Cancel",
@@ -1007,7 +1025,8 @@
       "override-existing-publications": "Override existing publications.",
       "renditions": "Renditions",
       "show-renditions": "Show renditions",
-      "version": "Version"
+      "version": "Version",
+      "publish": "Publish"
     },
     "remove-attachment-dialog": {
       "do-you-really-want-to-remove": "Do you really want to remove this file?",
@@ -1828,14 +1847,24 @@
     "add-entry": "Add Entry",
     "edit-entry": "Edit Entry",
     "label-en": "Label (en)",
-    "label": "Label"
+    "label": "Label",
+    "admin-analytics-page": {
+      "scan-for-anomalies": "Scan for Anomalies"
+    },
+    "user-form-dialog": {
+      "loading-groups": "Loading groups...",
+      "pick-from-search-or-enter-a": "Pick from search or enter a group name and press Enter"
+    }
   },
   "knowledge-discovery": {
     "submitted": "Submitted",
     "complete": "Complete",
     "error": "Error",
     "blocked": "Blocked",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "content-lake-upload": {
+      "upload": "Upload"
+    }
   },
   "adf-hx-bridge": {
     "unsubscribe": "Unsubscribe",
@@ -1851,7 +1880,17 @@
     "unblock": "Unblock",
     "block": "Block",
     "update": "Update",
-    "create": "Create"
+    "create": "Create",
+    "document-compare-dialog": {
+      "no-document-data-available-to-compare": "No document data available to compare.",
+      "no-differences-found-between-the-selected": "No differences found between the selected documents."
+    },
+    "document-viewer": {
+      "your-browser-does-not-support-video": "Your browser does not support video playback."
+    },
+    "edit-collection-dialog": {
+      "save": "Save"
+    }
   },
   "doc-type": {
     "audio": "Audio",
@@ -1871,5 +1910,21 @@
   },
   "common": {
     "select-item": "Select {{ name }}"
+  },
+  "permission-dialogs": {
+    "add-permission-dialog": {
+      "create-and-add-another": "Create And Add Another",
+      "create": "Create"
+    },
+    "delete-permission-dialog": {
+      "delete": "Delete"
+    },
+    "share-external-dialog": {
+      "create-and-add-another": "Create And Add Another",
+      "create": "Create"
+    },
+    "update-permission-dialog": {
+      "update": "Update"
+    }
   }
 }

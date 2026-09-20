@@ -45,7 +45,7 @@
             } @else {
               <mat-icon>sell</mat-icon>
             }
-            Extract Named Entities (Text)
+            {{ 'document-detail.document-detail.extract-named-entities-text' | translate }}
           </button>
           <button
             type="button"
@@ -59,7 +59,7 @@
             } @else {
               <mat-icon>category</mat-icon>
             }
-            Classify Document
+            {{ 'document-detail.document-detail.classify-document' | translate }}
           </button>
           <button
             type="button"
@@ -73,7 +73,7 @@
             } @else {
               <mat-icon>short_text</mat-icon>
             }
-            Summarize Document
+            {{ 'document-detail.document-detail.summarize-document' | translate }}
           </button>
         </div>
       }
@@ -92,7 +92,7 @@
             } @else {
               <mat-icon>image_search</mat-icon>
             }
-            Describe Image
+            {{ 'document-detail.document-detail.describe-image' | translate }}
           </button>
         </div>
       }
@@ -265,7 +265,7 @@
     <div class="task-action-banner">
       <mat-icon class="task-action-icon">check_box</mat-icon>
       <span class="task-action-text">
-        You have a task to process
+        {{ 'document-detail.document-detail.you-have-a-task-to-process' | translate }}
         @if (taskDueLabel(task)) {
           before <strong>{{ taskDueLabel(task) }}</strong>
         }
@@ -331,7 +331,7 @@
                 [attr.aria-label]="'document-detail.document-detail.loading' | translate"
               />
             }
-            Start
+            {{ 'document-detail.document-detail.start' | translate }}
           </button>
         </div>
       }
@@ -945,7 +945,7 @@
                         [attr.aria-label]="'document-detail.document-detail.loading' | translate"
                       />
                     } @else {
-                      Unpublish All
+                      {{ 'document-detail.document-detail.unpublish-all' | translate }}
                     }
                   </button>
                 }
@@ -1968,7 +1968,7 @@
                     } @else {
                       <mat-icon>psychology</mat-icon>
                     }
-                    Analyze Sentiment
+                    {{ 'document-detail.document-detail.analyze-sentiment' | translate }}
                   </button>
                 </div>
 

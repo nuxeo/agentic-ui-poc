@@ -13,9 +13,9 @@
       </div>
       <div class="unavailable-detail">
         @if (loadState() === 'not-found') {
-          This collection does not exist, or it has been deleted. The link may be out of date.
+          {{ 'collections.collection-detail.this-collection-does-not-exist-or' | translate }}
         } @else {
-          The collection could not be loaded. This may be a permission or connection problem.
+          {{ 'collections.collection-detail.the-collection-could-not-be-loaded' | translate }}
         }
       </div>
       <div class="unavailable-actions">

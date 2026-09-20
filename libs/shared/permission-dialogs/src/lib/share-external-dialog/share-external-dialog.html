@@ -69,7 +69,7 @@
     @if (saving() && addAnother) {
       <mat-spinner diameter="18" />
     } @else {
-      Create And Add Another
+      {{ 'permission-dialogs.share-external-dialog.create-and-add-another' | translate }}
     }
   </button>
   <button
@@ -82,7 +82,7 @@
     @if (saving() && !addAnother) {
       <mat-spinner diameter="18" />
     } @else {
-      Create
+      {{ 'permission-dialogs.share-external-dialog.create' | translate }}
     }
   </button>
 </mat-dialog-actions>

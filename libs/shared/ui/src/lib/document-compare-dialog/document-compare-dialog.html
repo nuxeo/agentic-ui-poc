@@ -44,9 +44,9 @@
   } @else if (sections().length === 0) {
     <p class="compare-empty">
       @if (viewAllData()) {
-        No document data available to compare.
+        {{ 'ui.document-compare-dialog.no-document-data-available-to-compare' | translate }}
       } @else {
-        No differences found between the selected documents.
+        {{ 'ui.document-compare-dialog.no-differences-found-between-the-selected' | translate }}
       }
     </p>
   } @else {

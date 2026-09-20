@@ -171,7 +171,7 @@
             @if (importRestricted()) {
               <p class="empty-hint">
                 @if (isAtRepositoryRoot()) {
-                  File import is not available at the repository root. Create a domain first, or
+                  {{ 'browse.create-import-dialog.file-import-is-not-available-at' | translate }}
                   choose a folder below.
                 } @else {
                   {{ importLocationHint() }}
@@ -464,7 +464,7 @@
                             @if (mainFileUploading()) {
                               Uploading… {{ mainFileUploadPercent() }}%
                             } @else {
-                              Upload complete
+                              {{ 'browse.create-import-dialog.upload-complete' | translate }}
                             }
                           </span>
                         }

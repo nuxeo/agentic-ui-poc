@@ -1035,6 +1035,14 @@ function checkNoHardcodedUiText() {
   const TEXT_ATTRIBUTES = /\b(placeholder|matTooltip|alt|aria-label|title)="([^"<>{}]*)"/g;
   /** Element text on the same line as its tags: `>Some text<`. */
   const ELEMENT_TEXT = />([^<>{}]*)</g;
+  /**
+   * A line that is nothing but words — no tag, no binding, no interpolation, no pipe.
+   *
+   * Deliberately strict. A trailing comma means a TypeScript fragment rather than markup, and
+   * any of `<>{}="|` means the line is carrying syntax and one of the other two patterns owns
+   * it. That leaves genuine prose, which is the only thing this is meant to find.
+   */
+  const BARE_PROSE_LINE = /^[^<>{}="|]+$/;
 
   /** Prose a user reads, as opposed to an icon ligature, a CSS value or a number. */
   function isDisplayText(value) {
@@ -1050,25 +1058,49 @@ function checkNoHardcodedUiText() {
     for (const { line, text } of lines) {
       const trimmed = text.trim();
       if (!trimmed || trimmed.startsWith('<!--')) continue;
-      // A line already routing through the pipe is the shape we are asking for. Checking the
-      // whole line rather than the match keeps a translated attribute from tripping on its
-      // neighbour's literal text.
-      if (trimmed.includes('| translate')) continue;
+
+      // Everything already routing through the pipe is removed, and then what is LEFT is
+      // examined.
+      //
+      // This used to `continue` on the whole line, so one translated expression exempted
+      // everything beside it — `<button [attr.aria-label]="'x' | translate">Show details</button>`
+      // was never looked at. Two of the three blind spots in this check were of that shape:
+      // exempting more than the thing that earned the exemption.
+      const remainder = trimmed
+        .replace(/(?:\[[\w.$-]+\]|\([\w.$-]+\))="[^"]*\|\s*translate[^"]*"/g, '')
+        .replace(/\{\{[^}]*\|\s*translate[^}]*\}\}/g, '');
+      if (!remainder.trim() || remainder.includes('| translate')) continue;
 
       /** @type {{ what: string, value: string } | null} */
       let offence = null;
 
-      for (const [, attribute, value] of trimmed.matchAll(TEXT_ATTRIBUTES)) {
+      for (const [, attribute, value] of remainder.matchAll(TEXT_ATTRIBUTES)) {
         if (!isDisplayText(value)) continue;
         offence = { what: `${attribute}="${value}"`, value };
         break;
       }
       if (!offence) {
-        for (const [, value] of trimmed.matchAll(ELEMENT_TEXT)) {
+        for (const [, value] of remainder.matchAll(ELEMENT_TEXT)) {
           if (!isDisplayText(value)) continue;
           offence = { what: `the text \`${value.trim()}\``, value };
           break;
         }
+      }
+      // Prose alone on its own line, which `ELEMENT_TEXT` cannot see because it needs `>` and
+      // `<` on the same line as the words.
+      //
+      // Prettier puts text on its own line whenever the element does not fit, and Angular
+      // control flow does it always:
+      //
+      //     } @else {
+      //       Create
+      //     }
+      //
+      // 34 strings were sitting in that gap — the Save, Create, Publish and Delete button of
+      // almost every dialog in the application, and the login button. The check was written to
+      // catch exactly those and reported the tree clean.
+      if (!offence && BARE_PROSE_LINE.test(trimmed) && isDisplayText(trimmed)) {
+        offence = { what: `the text \`${trimmed}\``, value: trimmed };
       }
       if (!offence) continue;
 
@@ -1224,13 +1256,23 @@ function checkTranslationCatalogues() {
     return;
   }
 
-  /** Flattens to dotted keys, mirroring `flattenCatalogue` in `app-translate-loader.ts`. */
-  function flatten(value, prefix, out) {
+  /**
+   * Flattens to dotted keys, mirroring `flattenCatalogue` in `app-translate-loader.ts`.
+   *
+   * A leaf that is neither a string nor an object is REPORTED rather than skipped. Skipping it
+   * dropped the key from the reference set, and the parity check downstream then blamed the
+   * other locale for carrying a key "absent from en.json" — pointing at the wrong file for a
+   * fault in this one. `null` is the realistic way to get here: it is what a half-finished
+   * Crowdin pull leaves behind, and `JSON.parse` accepts it happily.
+   */
+  function flatten(value, prefix, out, onInvalid) {
     for (const [key, entry] of Object.entries(value)) {
       const path = prefix ? `${prefix}.${key}` : key;
       if (typeof entry === 'string') out.set(path, entry);
       else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-        flatten(entry, path, out);
+        flatten(entry, path, out, onInvalid);
+      } else {
+        onInvalid(path, entry);
       }
     }
     return out;
@@ -1262,7 +1304,14 @@ function checkTranslationCatalogues() {
       continue;
     }
 
-    const flat = flatten(json, '', new Map());
+    const flat = flatten(json, '', new Map(), (path, entry) => {
+      fail(
+        `${catalogue} maps \`${path}\` to ${entry === null ? 'null' : typeof entry}, not a ` +
+          'string.\n' +
+          '    ngx-translate returns it verbatim, so the UI renders `null` where the words ' +
+          'should be. A half-finished Crowdin pull is the usual cause.',
+      );
+    });
     parsed.set(catalogue, flat);
 
     for (const [key, value] of flat) {
@@ -1415,7 +1464,29 @@ function checkTranslationContext() {
       }
     })(catalogue, '');
 
-    const documented = new Set(Object.keys(context).filter((key) => !key.startsWith('$')));
+    // A key whose value is blank documents nothing. Accepting it let the gate pass a context
+    // file that satisfied the key-parity check and told a translator exactly as much as an
+    // absent entry would have.
+    const blank = Object.entries(context).filter(
+      ([key, value]) => !key.startsWith('$') && (typeof value !== 'string' || !value.trim()),
+    );
+    for (const [key, value] of blank) {
+      fail(
+        `${contextFile} documents \`${key}\` with ${
+          typeof value === 'string'
+            ? 'an empty string'
+            : `a ${value === null ? 'null' : typeof value}`
+        }.\n` +
+          '    That is the same as saying nothing, and it passes a check that only compares ' +
+          'key names. Describe what the string is and where it appears.',
+      );
+    }
+
+    const documented = new Set(
+      Object.keys(context).filter(
+        (key) => !key.startsWith('$') && typeof context[key] === 'string' && context[key].trim(),
+      ),
+    );
     compared += 1;
 
     const undocumented = [...keys].filter((key) => !documented.has(key));
