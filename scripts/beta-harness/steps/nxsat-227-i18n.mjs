@@ -104,7 +104,7 @@ const RAW_KEY = /^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)+$/;
 /**
  * A raw key CONCATENATED with user text, which is the shape the originating defect had.
  *
- * `DOCUMENT_TREE.TOGGLE_ARIA-LABEL Home` fails the anchored pattern above, because of the
+ * `DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined` fails the anchored pattern above, because of the
  * folder name appended to it — so the all-route sweep stayed green on the exact regression
  * this capture was written for, and only the separate tree assertion caught it.
  *
@@ -324,7 +324,7 @@ export default async function run(page, h) {
     );
     // BOTH patterns, the anchored one and the embedded one.
     //
-    // The anchored pattern alone could not match `DOCUMENT_TREE.TOGGLE_ARIA-LABEL Home`, which is
+    // The anchored pattern alone could not match `DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined`, which is
     // the shape of the regression this whole step is named after — the key is concatenated with the
     // folder name, so it is never the entire value. And the three checks below accept it too: the
     // name contains the row's label, contains no `undefined`, and is not empty. So the check called

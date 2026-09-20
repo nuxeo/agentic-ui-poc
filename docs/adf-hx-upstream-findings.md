@@ -182,7 +182,13 @@ move it. Even with the key resolved, no locale can render this as anything but `
 **Our mitigation.** We alias the whitespace key onto the canonical one in our translation loader,
 copying the resolved value so a French catalogue still yields a French name. It is recorded as
 W13 in `docs/adf-hx-workarounds.md` and it yields to an upstream-shipped key, so it becomes inert
-rather than authoritative if this is fixed. We cannot mitigate the concatenation at all.
+rather than authoritative if this is fixed.
+
+**The concatenation is mitigated too, by W15**, and this paragraph said it could not be. W15 is a
+host-side directive that sets the whole `aria-label` from the row's rendered label through our own
+`nav.tree.toggle`, which takes the folder as an interpolation parameter — so at the host boundary
+there is no concatenation left and a translator can reorder. What we cannot do is fix it _inside_
+upstream's template, which is why the ask below still stands.
 
 **There is a third defect here, and it makes the other two moot on their own.** `node.name` does
 not exist. `node` is a wrapper — the same template reads `node.document`, `node.isLoading` and

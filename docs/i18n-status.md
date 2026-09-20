@@ -216,8 +216,13 @@ Two things that were _not_ true, despite the ticket saying so:
 
 — a **trailing space inside the key literal**. The catalogue ships the key without one, so the
 lookup missed a key that was present, ngx-translate fell through to its key passthrough, and
-every folder toggle in the tree was announced as `DOCUMENT_TREE.TOGGLE_ARIA-LABEL Default domain`
+every folder toggle in the tree was announced as `DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined`
 — on **every surface**, because the tree is the app shell's nav drawer.
+
+`undefined`, not the folder name. `Default domain` is only the label rendered _beside_ the toggle;
+the toggle itself appends `node.name`, which upstream's node wrapper does not have. Writing the
+folder name here obscured why the W13 alias alone was never going to be enough, and W15 is what
+supplies a real name.
 
 A WCAG 4.1.2 failure, and **axe cannot detect it**: axe checks that a control _has_ an accessible
 name, not that the name is words. The blank-name variant of the same defect (upstream finding
@@ -273,7 +278,9 @@ Asserts off the rendered DOM: no raw key in any `aria-label`, `title` or leaf te
 eight routes; the toggle named `Toggle <folder>`; `fr` and `de` differing from each other; an
 unshipped locale degrading to English rather than to keys, and still rendering dates rather than
 leaving them blank; a suggestion click sending the French string rather than the English one behind
-its label; and no serious or critical axe violation on the French shell, with no ignore list.
+its label; and **no axe violation at any impact** on the French shell — `failOn` is
+`[minor, moderate, serious, critical]`, not the helper's serious-and-critical default — with no
+ignore list.
 
 Every language switch goes through a real `page.reload()`, because `withHashLocation()` makes
 `goto()` same-document and without it `APP_INITIALIZER` never re-runs.
