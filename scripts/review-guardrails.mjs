@@ -1193,6 +1193,36 @@ function checkNoHardcodedUiText() {
       if (!offence && BARE_PROSE_LINE.test(bare) && isDisplayText(bare)) {
         offence = { what: `the text \`${bare}\``, value: bare };
       }
+
+      // Quoted literals inside an Angular EXPRESSION, which nothing above could reach.
+      //
+      // `{{ isOverdue(task) ? 'Overdue' : 'Due' }}` is displayed text, and the interpolation braces
+      // mean it matches neither `ELEMENT_TEXT` (which needs `>` and `<` around the words) nor
+      // `BARE_PROSE_LINE` (which rejects `{`). `nav-drawer.component.html:266` is exactly that and
+      // sat in a template this repository described as having **zero** hard-coded strings left.
+      //
+      // Scoped to interpolations and to bound attributes, not to any quote in the file: an
+      // expression elsewhere legitimately quotes keys, ids, types and CSS classes. `isDisplayText`
+      // then does the judging it already does everywhere else — capitalised, two letters or more —
+      // so `'Overdue'` is caught and `'browse.title'` or `'mediumDate'` are not.
+      if (!offence) {
+        const expressions = [
+          ...remainder.matchAll(/\{\{([^{}]*)\}\}/g),
+          ...remainder.matchAll(/(?:\[[\w.$-]+\]|\([\w.$-]+\))="([^"]*)"/g),
+        ].map(([, body]) => body);
+        for (const expression of expressions) {
+          // A key going through the pipe is already exempt; anything else quoted is a candidate.
+          if (/\|\s*translate/.test(expression)) continue;
+          for (const [, literal] of expression.matchAll(/'([^']*)'/g)) {
+            if (!isDisplayText(literal)) continue;
+            // A dotted lowercase token is a key or a filename, never a sentence.
+            if (/^[a-z][\w-]*(\.[\w-]+)+$/.test(literal)) continue;
+            offence = { what: `the quoted literal \`'${literal}'\``, value: literal };
+            break;
+          }
+          if (offence) break;
+        }
+      }
       if (!offence) continue;
 
       fail(

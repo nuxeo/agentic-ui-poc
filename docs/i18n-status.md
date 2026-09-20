@@ -74,11 +74,20 @@ git grep -c "| translate" HEAD        -- '*.html' | awk -F: '{s+=$3} END {print 
 | Passed imperatively in `.ts`     | never counted |
 
 Four of ninety-two is the honest headline. It went up by one template because the work was
-deliberately deep rather than wide: the two shell templates that were extracted are now at
-**zero** remaining hard-coded strings, which no template in this repository was before.
-Verified rather than asserted: the claim was false when first written — twelve strings were
-left, all of them prose alone on its own line, which is the shape `checkNoHardcodedUiText`
-could not see until this PR fixed it. A reviewer found them, not the gate that existed to.
+deliberately deep rather than wide: `app-shell.component.html` is at **zero** remaining
+hard-coded strings, which no template in this repository was before.
+
+`nav-drawer.component.html` is **not** at zero, and this passage claimed both templates were.
+One string is left — `isOverdue(task) ? 'Overdue' : 'Due'` at line 266 — a quoted literal inside an
+Angular expression, which `checkNoHardcodedUiText` does not inspect: the interpolation braces mean it
+matches neither the element-text pattern nor the bare-prose one. It predates this diff, and the gate
+is diff-scoped, so **the gate cannot certify either template as fully extracted** — it can only say
+nothing new was added. That distinction is the honest version of this row.
+
+Verified rather than asserted, twice over. The claim was false when first written — twelve strings
+were left, all of them prose alone on its own line, the shape `checkNoHardcodedUiText` could not see
+until this PR fixed it. A reviewer found those, not the gate that existed to. The ternary is the
+thirteenth, found the same way.
 
 ### What is still hard-coded
 

@@ -67,7 +67,7 @@ describe('initialiseAppConfigAndLanguage', () => {
     expect(h.translate.setFallbackLang).toHaveBeenCalledWith('en');
   });
 
-  it('writes the language into adf-core s preference, which is the W14 fix', async () => {
+  it("writes the language into adf-core's preference, which is the W14 fix", async () => {
     const h = await run('fr');
     // Without this, adf-core reverts the whole application to English the moment an adf-hx
     // surface renders — no reload involved.

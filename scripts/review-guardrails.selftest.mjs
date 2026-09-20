@@ -995,6 +995,30 @@ expectRed(
   /Show Details/,
 );
 
+// A quoted literal inside an Angular EXPRESSION. Displayed text that nothing could reach: the
+// interpolation braces mean it matches neither the element-text pattern nor the bare-prose one.
+// `nav-drawer.component.html:266` is exactly this shape and sat in a template this repository
+// described as having zero hard-coded strings left.
+expectRed(
+  'a hard-coded literal inside a ternary interpolation',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div></div>\n' },
+  (write) =>
+    write('libs/features/x/src/lib/x.html', `<span>{{ isOverdue(t) ? 'Overdue' : 'Due' }}</span>\n`),
+  /the quoted literal `'Overdue'`/,
+);
+
+// Expressions quote keys, ids, types and CSS classes constantly. Flagging every quoted string would
+// make this gate unpassable, so `isDisplayText` and a dotted-token exemption do the judging.
+falsePositiveControls += 1;
+expectGreen('quoted non-prose inside expressions', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html':
+    `<span>{{ doc.lastModified | date: 'mediumDate' }}</span>\n` +
+    `<div [class.active]="mode === 'grid'"></div>\n` +
+    `<span>{{ 'browse.title' | translate }}</span>\n` +
+    `<hxp-icon name="refresh" [attr.data-type]="'Folder'" />\n`,
+});
+
 // Prose on the same line as a TRANSLATED interpolation, which the bare-prose branch could never
 // reach: it tested the raw line, and the raw line contains `{`, so `BARE_PROSE_LINE` rejected it and
 // the hard-coded words were never judged. Every other branch already used the remainder.

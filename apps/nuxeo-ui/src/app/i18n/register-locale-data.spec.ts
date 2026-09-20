@@ -33,7 +33,7 @@ describe('registerShippedLocaleData', () => {
     expect(formatDate(MIDSUMMER, 'longDate', 'de')).toContain('Juli');
   });
 
-  it('uses each locale s own separators, not English ones', () => {
+  it("uses each locale's own separators, not English ones", () => {
     // A locale registered under the wrong data would still format — just wrongly. French uses
     // a comma for the decimal mark and German a full stop for thousands.
     expect(formatNumber(1234.5, 'fr', '1.1-1')).toContain(',');

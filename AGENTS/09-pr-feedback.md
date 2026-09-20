@@ -80,9 +80,14 @@ The mapping table above is still the reference for turning a comment into a fix.
 ## When to stop: Copilot does not approve, ever
 
 `reviewDecision` stays `REVIEW_REQUIRED` no matter how many rounds you run, because
-`copilot-pull-request-reviewer` submits every review as `COMMENTED` and has never once
-submitted `APPROVED` in this repository. Waiting for its approval is waiting for something
-that does not happen, and branch protection needs a human approval regardless.
+`copilot-pull-request-reviewer` submits its reviews as `COMMENTED`. **In every review sampled here
+it has never submitted `APPROVED`** — and that is a sample, not a census: the query below reads the
+last 40 pull requests and the first 20 reviews on each, while this repository has more than a
+hundred pull requests. It is enough to stop you waiting, and it is not proof of "never".
+
+Waiting for its approval is waiting for something that has not happened yet in any sampled review,
+and branch protection needs a human approval regardless — which is the part that does not depend on
+the sample at all.
 
 Verify it rather than believing this paragraph:
 

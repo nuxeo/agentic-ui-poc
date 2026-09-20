@@ -58,9 +58,15 @@ jobs:
           # paying to maintain, and it will be offered to a translator who has no way to know
           # it renders nowhere.
           upload_sources_args: '--delete-obsolete'
-          # English is the reference. Leaving it unapproved makes every source string look like
-          # outstanding work on the Crowdin dashboard, which hides the real queue.
-          auto_approve_imported: true
+          # No `auto_approve_imported` here, and the reason is worth recording rather than
+          # rediscovering. It was set to `true` with a comment claiming it kept source strings off
+          # the Crowdin review queue. It does nothing in this step: the pinned action feeds that
+          # input into `UPLOAD_TRANSLATIONS_OPTIONS` only —
+          #   if [ "$INPUT_AUTO_APPROVE_IMPORTED" = true ]; then
+          #     UPLOAD_TRANSLATIONS_OPTIONS="... --auto-approve-imported"
+          # — and this step uploads sources, not translations. A setting that reads as a guarantee
+          # and changes nothing is worse than its absence. If source-string approval turns out to
+          # matter, it needs the Crowdin API and something asserting it worked.
           download_translations: false
           create_pull_request: false
         env:
