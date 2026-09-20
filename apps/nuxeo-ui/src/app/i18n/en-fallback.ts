@@ -64,6 +64,12 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   // Shell chrome accessible names. Not the visible text from the same templates: this map is for
   // the names that would become raw keys on a control, and `checkAccessibleNameFallbacks` is the
   // list of what that means in practice.
+  // Placeholders, and they are accessible names rather than hints: neither the global search box
+  // nor the assistant's message box carries an `aria-label`, so the placeholder is the only thing
+  // naming them — HTML-AAM's last resort. Absent here, a failed catalogue fetch named the search
+  // box `shell.search.placeholder`, which is a raw key announced as a control's name.
+  'shell.search.placeholder': 'Search documents, users or groups',
+  'shell.ai.input-placeholder': 'Ask anything about your documents...',
   'shell.ai.open': 'AI Assistant',
   'shell.ai.clear': 'Clear chat',
   'shell.ai.close': 'Close chat',

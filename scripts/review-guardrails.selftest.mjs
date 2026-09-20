@@ -784,9 +784,13 @@ const CROWDIN = {
     CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
     CROWDIN_ENTRY('/libs/**/i18n/en.json'),
   ]),
-  '.github/workflows/crowdin-push.yaml': CROWDIN_WORKFLOW(
-    `          command_args: '--delete-obsolete'\n`,
-  ),
+  // The push workflow both WATCHES the context files and RUNS the uploader. The green fixture
+  // originally had only the `paths`, which is the same gap the guardrail had — so the control for
+  // the trigger passed while nothing asserted the job did any work.
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
   // The pull workflow signs on the ACTION, because that is the only placement that signs
   // anything — see the control for it below.
   '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
@@ -1290,6 +1294,42 @@ expectGreen(
   PARAM_APP,
 );
 
+// A PLACEHOLDER is the only thing naming the two shell text inputs, so its key needs a fallback
+// exactly as an `aria-label`'s does. Neither `shell.search.placeholder` nor
+// `shell.ai.input-placeholder` was in the map, and nothing noticed: this gate read only `aria-label`
+// and `title`, while the evidence harness's unnamed-control sweep deliberately accepts a placeholder
+// AS a name. Between them a raw key could be announced as the global search box's name.
+const PLACEHOLDER_CATALOGUE =
+  '{\n  "shell": { "search": { "placeholder": "Search documents" } }\n}\n';
+const PLACEHOLDER_TEMPLATE = `<input [placeholder]="'shell.search.placeholder' | translate" />\n`;
+
+expectRed(
+  'a translated placeholder whose key is missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': PLACEHOLDER_CATALOGUE,
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts':
+      'export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {\n' +
+      "  'unrelated.key': 'Unrelated',\n};\n",
+    'apps/nuxeo-ui/src/app/shell/app-shell.component.html': PLACEHOLDER_TEMPLATE,
+  },
+  null,
+  /binds placeholder to `shell\.search\.placeholder`[\s\S]*omits/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a translated placeholder whose key IS in the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': PLACEHOLDER_CATALOGUE,
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts':
+      'export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {\n' +
+      "  'shell.search.placeholder': 'Search documents',\n};\n",
+    'apps/nuxeo-ui/src/app/shell/app-shell.component.html': PLACEHOLDER_TEMPLATE,
+  },
+);
+
 // A catalogue of `null` is valid JSON, so the `try` around `JSON.parse` does not catch it and
 // `Object.entries(null)` threw — killing the process before any accumulated diagnostic printed and
 // discarding every other guardrail's output. A guardrail that can crash silences the others.
@@ -1323,6 +1363,24 @@ expectGreen('an upstream SCREAMING_CASE key absent from our catalogue', 'checkAc
     `<button type="button" [attr.aria-label]="'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' | translate"></button>\n`,
 });
 
+/* ---------------- checkTranslatorContextPush: the push STEP ---------------- */
+
+// The gate verified which files trigger the job and never that the job runs the uploader. Deleting
+// the step left every guardrail green while no translator context reached Crowdin — the doorbell
+// checked, nobody answering.
+expectRed(
+  'a push workflow that watches the context files but never runs the uploader',
+  'checkTranslatorContextPush',
+  {
+    ...CONTEXT_PUSH,
+    '.github/workflows/crowdin-push.yaml':
+      "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
+      "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n",
+  },
+  null,
+  /never runs `node tools\/i18n\/crowdin-push-context\.mjs`/,
+);
+
 /* ---------------- checkTranslatorContextPush: the push trigger ---------------- */
 
 // `paths` and the discovery walk are two independent lists of what counts as a source, and they
@@ -1343,9 +1401,12 @@ expectRed(
 falsePositiveControls += 1;
 expectGreen('a push workflow watching every discovered context file', 'checkTranslatorContextPush', {
   ...CONTEXT_PUSH,
+  // Carries the uploader step as well as the globs, or this positive control fails on the
+  // *invocation* half and stops saying anything about the trigger half it exists for.
   '.github/workflows/crowdin-push.yaml':
     "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
-    "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n",
+    "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n" +
+    '    steps:\n      - run: node tools/i18n/crowdin-push-context.mjs\n',
 });
 
 /* ---------------- report ---------------- */

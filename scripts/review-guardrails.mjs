@@ -1697,6 +1697,22 @@ async function checkTranslatorContextPush() {
   // stale context is worse than none because a translator believes it.
   const pushWorkflow = '.github/workflows/crowdin-push.yaml';
   if (fileExists(pushWorkflow)) {
+    // FIRST: the workflow has to actually run the script.
+    //
+    // Everything below checks that the right files TRIGGER the job, which is worthless if the job
+    // does not invoke the uploader. Deleting the "Push translator context" step left every
+    // guardrail green while no translator context reached Crowdin at all — the gate verified the
+    // doorbell and never checked whether anyone answered. The green fixture in the selftest had the
+    // same gap, which is how it survived being written.
+    if (!new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`).test(read(pushWorkflow))) {
+      fail(
+        `${pushWorkflow} never runs \`node ${script}\`, so no translator context is uploaded.\n` +
+          "    The catalogue goes up through the Crowdin action, but Crowdin's JSON source format " +
+          'has nowhere to carry context — this script is the only path it has. Without the step, ' +
+          'translators work from the string alone and every gate here still passes.',
+      );
+    }
+
     const watched = [...read(pushWorkflow).matchAll(/^\s*-\s*'([^']*i18n[^']*)'/gm)].map(
       ([, glob]) =>
         new RegExp(
@@ -1966,9 +1982,18 @@ function checkAccessibleNameFallbacks() {
     .split('\n')
     .filter((file) => /^(libs|apps)\/.+\.html$/.test(file));
 
-  // `[attr.aria-label]`, `[aria-label]`, `[attr.title]` and `[title]` bound to a single
-  // translate-piped literal key. A ternary or a concatenation is not matched, deliberately:
+  // `[attr.aria-label]`, `[aria-label]`, `[attr.title]`, `[title]` and `[placeholder]` bound to a
+  // single translate-piped literal key. A ternary or a concatenation is not matched, deliberately:
   // this stays a check with no judgement calls in it.
+  //
+  // `placeholder` is here because for the two shell text inputs it is the ONLY thing naming them —
+  // neither carries an `aria-label`. HTML-AAM accepts it as the accessible name of last resort, and
+  // the evidence harness's unnamed-control sweep was taught to honour it for that reason. Which
+  // opened a hole this gate could not see: neither `shell.search.placeholder` nor
+  // `shell.ai.input-placeholder` was in `EN_FALLBACK_TRANSLATIONS`, so a failed catalogue fetch
+  // named the global search box `shell.search.placeholder` — a raw key as an accessible name, the
+  // precise WCAG 4.1.2 failure this gate exists to stop — while every check passed, including the
+  // raw-key sweep, which did not read placeholders either.
   //
   // The optional `: { … }` is the pipe's PARAMETERS, and leaving it out made this gate blind to
   // the binding shape the accessible-name fix itself introduced. `nav-drawer.component.html` binds
@@ -1978,7 +2003,7 @@ function checkAccessibleNameFallbacks() {
   // the gate stayed green. A parameterised name is MORE likely to be needed here, not less, since
   // it is the form INFO-144's no-concatenation rule pushes every label with a value towards.
   const BINDING =
-    /\[(?:attr\.)?(aria-label|title)\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
+    /\[(?:attr\.)?(aria-label|title|placeholder)\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
   // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
   // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns

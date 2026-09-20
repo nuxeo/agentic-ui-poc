@@ -181,8 +181,16 @@ async function rawKeysOnPage(page) {
 
       const offences = [];
 
-      for (const element of document.querySelectorAll('[aria-label], [title]')) {
-        for (const attribute of ['aria-label', 'title']) {
+      // `placeholder` and `alt` as well as `aria-label` and `title`.
+      //
+      // For the two shell text inputs the placeholder is the ONLY thing naming them, so a raw key
+      // there is a raw key announced as a control's name — and this sweep did not read placeholders,
+      // while the unnamed-control check below deliberately accepts a placeholder AS a name. Between
+      // them, `shell.search.placeholder` rendering into the global search box would have been
+      // invisible to the whole capture. `alt` is included for the same reason: it is the accessible
+      // name of an image.
+      for (const element of document.querySelectorAll('[aria-label], [title], [placeholder], [alt]')) {
+        for (const attribute of ['aria-label', 'title', 'placeholder', 'alt']) {
           const value = element.getAttribute(attribute);
           if (value && isRawKey(value.trim())) {
             offences.push(`${element.tagName.toLowerCase()}[${attribute}]="${value.trim()}"`);
@@ -627,7 +635,15 @@ export default async function run(page, h) {
   // introduced: an accessible name that resolved to a key, a translated label that no longer
   // matches its control, a string long enough to break a contrast-bearing layout. An ignore
   // list would let exactly those through.
-  await h.expectNoA11yViolations('French shell has no WCAG 2.1 AA violations');
+  // `failOn` every impact, because the check's NAME promises every WCAG 2.1 AA violation and the
+  // helper defaults to serious and critical only. The comment above said "anything axe finds here is
+  // something the French pass introduced" while a minor or moderate finding would have produced a
+  // PASS — the check claiming more than it enforced, which is the defect class this review has spent
+  // ten rounds on. Either the name narrows or the verdict widens; the verdict is the honest one,
+  // because the claim this step exists to make is that translation introduced no violation at all.
+  await h.expectNoA11yViolations('French shell has no WCAG 2.1 AA violations', {
+    failOn: ['minor', 'moderate', 'serious', 'critical'],
+  });
   await h.screenshot('fr-shell-french-chrome');
 
   // ---------------------------------------------------------------------------
