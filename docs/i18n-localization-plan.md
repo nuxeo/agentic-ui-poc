@@ -110,9 +110,25 @@ name>`. **No amount of asset wiring fixes this.** It is an upstream typo in the 
 finding 4.6 in `docs/adf-hx-upstream-findings.md`, and it renders on every surface because the
 tree is the app shell's nav drawer (`libs/shared/adf-hx-bridge/src/lib/ui/hxp-browse-nav-drawer/`).
 
-This matters for sizing: the ticket's headline deliverable "wire adf-hx translation assets" is
-already delivered, and the visible defect it cites needs a one-line Layer 0 entry, not an
-integration.
+This matters for sizing, but **not as much as this paragraph originally claimed.** It said the
+visible defect "needs a one-line Layer 0 entry, not an integration". The one-line entry — the W13
+alias — stops the raw key and does not produce a usable name, because there is a **third** defect
+in the same binding: upstream appends `node.name`, and `node` is a wrapper carrying
+`node.document`, `node.isLoading` and `node.isSelectable`, with no `name` on it at all. Measured
+with the alias in place and nothing else:
+
+```
+tree aria-labels: ["Toggleundefined", "Toggleundefined"]
+```
+
+So the accessible name needs the alias **and** W15, a directive that derives the name from the row
+the tree already renders — see `docs/adf-hx-workarounds.md` and
+`hxp-document-tree-toggle-name.directive.ts`. Still not an integration, and still small; but a
+one-line catalogue entry was never going to be the whole of it, and sizing the slice from this
+sentence would have under-read it.
+
+The rest holds: the ticket's headline deliverable "wire adf-hx translation assets" is already
+delivered, and no amount of asset wiring touches any of the three defects.
 
 ### The scope question the ticket asks is already answered
 
@@ -514,9 +530,23 @@ ticket. Worth doing before we add a second token to the estate.
 selectors across two files. Translate those labels and both harnesses go red for reasons that
 have nothing to do with the product.
 
-**So 227b must migrate those selectors to `data-testid` before it translates a single
-`aria-label`.** That is a prerequisite slice, not a cleanup. The e2e specs under
-`apps/nuxeo-ui-e2e/` do not use `aria-label` selectors and are unaffected.
+**~~So 227b must migrate those selectors to `data-testid` before it translates a single
+`aria-label`.~~ Corrected 19 September 2026 — it is not a prerequisite, and B0 in the build plan
+below records why.** This sentence said the opposite of that correction and both were left standing,
+which made the plan of record ambiguous on a sequencing decision. Only one of them can be followed.
+
+What is actually true: Angular resolves the pipe and sets the attribute to the **resolved string**,
+so in English the DOM is byte-identical and a literal-`aria-label` selector keeps matching.
+`browse.details.toggle` has been through the pipe since before this work and
+`phase-1-tag-styles.mjs` still selects it as `button[aria-label="Toggle details panel"]`.
+
+The migration is therefore **required before those labels are localised**, not before they are
+translated — the harnesses break on the first non-English run, not on extraction. It is tracked as
+known-incomplete in `docs/i18n-status.md` rather than as a blocking slice, and the failure mode
+recorded there is the one that matters: the selector matches nothing and the harness goes green
+having asserted less.
+
+The e2e specs under `apps/nuxeo-ui-e2e/` do not use `aria-label` selectors and are unaffected.
 
 ---
 
