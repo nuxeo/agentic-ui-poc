@@ -363,15 +363,29 @@ Worth recording, because it is the argument for writing controls at all:
 
 ## Next steps
 
-### Immediate — unblocks the PR
+### Immediate — what [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198) is actually waiting on
 
-1. **Approve the `pull_request` workflow runs on [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198).** No
-   PR-event run has fired for the branch, so CodeQL has not analysed `refs/pull/198/merge` and
-   the `code-scanning` gate correctly refuses to call an unscanned ref clean. Needs repo admin.
-2. **Answer the one open decision left on NXSAT-227:** whether RTL is in scope (recommendation:
-   no). "Who owns the daily Crowdin translation PR" was retired on 20 Sep 2026 — the premise that
-   an unowned one rots is contradicted by the measurement in D8b of
-   `docs/i18n-localization-plan.md`.
+**One thing: a human approval.** CI is green, every review thread is resolved, and nothing here
+needs a repo admin.
+
+`copilot-pull-request-reviewer` **never submits `APPROVED`** — it has not once in this repository,
+across every pull request it has reviewed — so `reviewDecision` stays `REVIEW_REQUIRED` however many
+rounds run. The query to verify that, and the exit condition it implies, are in
+`AGENTS/09-pr-feedback.md`. Branch protection needs a human, and that is the only step left.
+
+Both items this section used to list are **done**, and leaving them here contradicted the 23/23 gate
+row twelve lines above:
+
+- ~~Approve the `pull_request` workflow runs so CodeQL can analyse `refs/pull/198/merge`.~~ The runs
+  have fired and `code-scanning` is green. No admin action outstanding.
+- **Whether RTL is in scope does not block this PR**, which is why it has moved out of this section
+  rather than being ticked off. Decision **Q3 in the plan is still formally open**, with a
+  recommendation of _no_ for both Beta and the GA extraction — so calling it "answered" would be
+  wrong in the other direction. Nothing in #198 implements or depends on RTL; it is tracked as
+  [DS-2277](https://hyland.atlassian.net/browse/DS-2277) and listed under separate stories below.
+- ~~Answer who owns the daily Crowdin translation PR.~~ Retired on 20 September 2026 — the premise
+  that an unowned one rots is contradicted by the measurement in D8b of
+  `docs/i18n-localization-plan.md`.
 
 ### Slice S6 — the Crowdin pipeline is BUILT and dormant; what is left is external
 
