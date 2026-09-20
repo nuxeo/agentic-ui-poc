@@ -61,14 +61,20 @@ export class HxpDocumentTreeToggleNameDirective implements AfterViewInit, OnDest
   ngAfterViewInit(): void {
     this.apply();
 
-    // `childList` and `subtree` only, deliberately NOT `attributes`.
+    // `childList`, `subtree` and `characterData` — but deliberately NOT `attributes`.
     //
     // Observing attribute changes would see this directive's own `setAttribute` and re-enter
-    // immediately. Structural changes are the ones that matter anyway: the tree adds and removes
-    // node rows when a folder is expanded, collapsed or lazily loaded, and a row that appears
-    // after the first pass is exactly the row that would otherwise keep upstream's broken name.
+    // immediately. Text changes cannot: this only ever writes an attribute, so `characterData`
+    // is safe and is load-bearing. A row whose label arrives by the text node being updated —
+    // upstream swaps a skeleton loader for the real label after a lazy load, and every label
+    // changes when the language does — is a `characterData` mutation and no `childList` one.
+    // Without it such a row kept `Toggleundefined`, or kept a name in the previous language.
     this.observer = new MutationObserver(() => this.apply());
-    this.observer.observe(this.host.nativeElement, { childList: true, subtree: true });
+    this.observer.observe(this.host.nativeElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
 
     // Belt and braces: `ngOnDestroy` disconnects, and so does this. A MutationObserver holding a
     // reference to a detached subtree is the shape of leak this repository has been bitten by

@@ -452,7 +452,13 @@ place a reader will call the ticket finished and be wrong.
 - **Roughly 160 user-facing strings are still built in TypeScript** — snackbar messages, dialog
   titles, error text. Surveyed, not extracted. Outside AC1's wording, which is about templates, so
   the ticket can close with all of them still hard-coded.
-- **`NXSAT-284` is still `Open` in Jira** although most of it has shipped.
+- **`NXSAT-284`'s Jira state and the work in flight are not the same thing, and neither is "mostly
+  done".** An earlier version of this bullet, carried over from a working note, said most of
+  NXSAT-284 had shipped. That contradicts this page's own status row (`not started`) and its own
+  measurement of what is left — 1,350 template strings and 257 descriptor strings. What is actually
+  true: the descriptor-label slice is built and in review on
+  [#215](https://github.com/nuxeo/agentic-ui-poc/pull/215), which is not merged; the bulk extraction
+  has not begun. Jira says `Open`, and for once that is the accurate summary.
 
 ### Separate stories, not part of either ticket
 

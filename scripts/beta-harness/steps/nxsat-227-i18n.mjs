@@ -201,12 +201,29 @@ async function rawKeysOnPage(page) {
       // no amount of reasoning about the regex in isolation would have shown it.
       const NOT_TEXT = new Set(['STYLE', 'SCRIPT', 'TEMPLATE', 'NOSCRIPT', 'TITLE']);
 
-      for (const element of document.querySelectorAll('*')) {
-        if (element.children.length > 0) continue;
-        if (NOT_TEXT.has(element.tagName)) continue;
-        const text = (element.textContent ?? '').trim();
+      // Every TEXT NODE, not every leaf element.
+      //
+      // The leaf-element rule was there because an ancestor's `textContent` concatenates its
+      // children, which no anchored pattern could match. But it also skipped any element that has
+      // children, and the commonest shape in this application is exactly that:
+      //
+      //   <button><mat-icon>refresh</mat-icon> nav.refresh</button>
+      //
+      // The label is a direct text node beside an icon element, so the button was never scanned
+      // and the raw key rendered with every route still green. Walking text nodes keeps the reason
+      // the restriction existed — each node is examined on its own, never concatenated with a
+      // sibling — while losing the blind spot.
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) =>
+          NOT_TEXT.has(node.parentElement?.tagName ?? '')
+            ? NodeFilter.FILTER_REJECT
+            : NodeFilter.FILTER_ACCEPT,
+      });
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = (node.nodeValue ?? '').trim();
         if (text && isRawKey(text)) {
-          offences.push(`${element.tagName.toLowerCase()} text="${text}"`);
+          const owner = node.parentElement?.tagName.toLowerCase() ?? 'text';
+          offences.push(`${owner} text="${text}"`);
         }
       }
 

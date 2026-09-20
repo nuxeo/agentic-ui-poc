@@ -178,10 +178,27 @@ copying the resolved value so a French catalogue still yields a French name. It 
 W13 in `docs/adf-hx-workarounds.md` and it yields to an upstream-shipped key, so it becomes inert
 rather than authoritative if this is fixed. We cannot mitigate the concatenation at all.
 
-**Ask:** delete the trailing space from the key literal, and take the node name through an
-interpolation parameter rather than string concatenation — `'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' |
-translate: { name: node.name }` with the catalogue value carrying the placeholder. The first is a
-one-character change; the second is what makes the label translatable at all.
+**There is a third defect here, and it makes the other two moot on their own.** `node.name` does
+not exist. `node` is a wrapper — the same template reads `node.document`, `node.isLoading` and
+`node.isSelectable`, and renders the visible label as
+`{{ node.document | breadcrumbLabel: 'DOCUMENT_TREE.ROOT' }}`. So the concatenation appends the
+string `"undefined"`, for every consumer of the component, and no catalogue entry can change it.
+Measured on a real application against `7.20.0-automate.292`:
+
+```
+tree aria-labels: ["Toggleundefined", "Toggleundefined"]
+```
+
+Fixing only the trailing space yields `Toggle undefined`. That is why our own mitigation is a
+directive that sets the attribute outright (W15), rather than the alias alone (W13).
+
+**Ask:** delete the trailing space from the key literal, and pass the **label the row already
+renders** through an interpolation parameter rather than concatenating a property the node does not
+have — `'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' | translate: { name: (node.document | breadcrumbLabel:
+'DOCUMENT_TREE.ROOT') }`, with the catalogue value carrying the placeholder. The trailing space is a
+one-character change; using `node.document` is what makes the name a name at all; and the
+interpolation parameter is what makes it translatable, since a concatenated string cannot be
+reordered for a language that needs the noun first.
 
 ---
 

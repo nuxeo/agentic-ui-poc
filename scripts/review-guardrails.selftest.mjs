@@ -1244,6 +1244,30 @@ expectGreen('a catalogue that parses to null does not crash this gate', 'checkAc
   'apps/nuxeo-ui/src/app/shell/app-shell.component.html': GOOD_TEMPLATE,
 });
 
+// A key in OUR shape that no catalogue defines. ngx-translate renders an unresolved key as the key
+// itself, so this names the control `app.nav.togle` — and the gate used to wave it through as
+// "upstream-owned", which is the commonest way of producing the defect it exists to stop.
+expectRed(
+  'a misspelled accessible-name key no catalogue defines',
+  'checkAccessibleNameFallbacks',
+  APP,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/shell/app-shell.component.html',
+      `<button type="button" [attr.aria-label]="'app.nav.togle' | translate"></button>\n`,
+    ),
+  /binds aria-label to `app\.nav\.togle`, which no catalogue defines/,
+);
+
+// Upstream's SCREAMING_CASE keys come from seeded catalogues this repository does not own, so
+// absence there is expected and must stay silent. D4 chose the case convention for exactly this.
+falsePositiveControls += 1;
+expectGreen('an upstream SCREAMING_CASE key absent from our catalogue', 'checkAccessibleNameFallbacks', {
+  ...APP,
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html':
+    `<button type="button" [attr.aria-label]="'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' | translate"></button>\n`,
+});
+
 /* ---------------- checkTranslatorContextPush: the push trigger ---------------- */
 
 // `paths` and the discovery walk are two independent lists of what counts as a source, and they

@@ -1985,18 +1985,48 @@ function checkAccessibleNameFallbacks() {
   // the reputation that gets it switched off. One missing key, one message, with a count.
   /** @type {Map<string, { attribute: string, sites: string[] }>} */
   const offences = new Map();
+  /** Keys in OUR shape that no catalogue defines — a typo renders as the raw key. */
+  const undefinedKeys = new Map();
   let bindings = 0;
+
+  /**
+   * Upstream's keys are SCREAMING_CASE and ours are lowercase dotted — D4 in
+   * docs/i18n-localization-plan.md, which chose that convention precisely so a guardrail could
+   * tell "an untranslated upstream key leaked" from "one of ours is missing".
+   */
+  const isUpstreamShaped = (key) => /^[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+$/.test(key);
 
   for (const template of templates) {
     if (!fileExists(template)) continue;
     for (const [, attribute, key] of read(template).matchAll(BINDING)) {
       bindings += 1;
-      if (!owned.has(key)) continue;
+      if (!owned.has(key)) {
+        // A key absent from the catalogue used to be waved through as upstream-owned. That is true
+        // for a SCREAMING_CASE key and false for one of ours: `shell.ai.opne` is not upstream's,
+        // it is a typo, and ngx-translate renders a missing key as the key itself — so the gate
+        // that exists to stop a raw key naming a control could not see the commonest way of
+        // producing one. Absence is now only an excuse for the shape that belongs to upstream.
+        if (!isUpstreamShaped(key)) {
+          if (!undefinedKeys.has(key)) undefinedKeys.set(key, { attribute, sites: [] });
+          undefinedKeys.get(key).sites.push(template);
+        }
+        continue;
+      }
       if (fallback.has(key) && fallback.get(key).trim() !== '') continue;
 
       if (!offences.has(key)) offences.set(key, { attribute, sites: [] });
       offences.get(key).sites.push(template);
     }
+  }
+
+  for (const [key, { attribute, sites }] of undefinedKeys) {
+    fail(
+      `${[...new Set(sites)].join(', ')} binds ${attribute} to \`${key}\`, which no catalogue ` +
+        `defines and which is not upstream-shaped.\n` +
+        '    ngx-translate renders a key it cannot resolve as the key itself, so this names the ' +
+        `control \`${key}\` — the WCAG 4.1.2 failure this gate exists to stop. Either add it to ` +
+        `${catalogueFile} with its fallback and context, or fix the spelling.`,
+    );
   }
 
   for (const [key, { attribute, sites }] of offences) {

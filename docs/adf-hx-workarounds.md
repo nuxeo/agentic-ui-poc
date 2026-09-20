@@ -22,8 +22,8 @@ are listed with `— (config)` and the gate does not look for a marker in them.
 **Audiences differ per category, which is why they are separated:**
 
 - **Category 1** is for leadership and for whoever plans an adf-hx upgrade. Read the
-  **Removable?** column before quoting a count. "Fourteen workarounds" is not fourteen things that
-  eventually go away.
+  **Removable?** column before quoting a count, and take the count from the table rather than from
+  any sentence about it. "N workarounds" is not N things that eventually go away.
 - **Category 2** is for product: these are features a customer sees, which upstream does not own.
   If we stop maintaining them, they disappear.
 - **Category 3** is for whoever adopts the next component: it is the list of calls that throw.
@@ -40,9 +40,15 @@ Last updated: 2026-09-16. Versions: `@alfresco/adf-hx-content-services@7.20.0-au
 
 ## Category 1 — Workarounds for upstream defects
 
-**Read the last column before counting.** Seven of the fourteen are **structural**: they do not go away
-when upstream fixes a bug, because they exist to reconcile two content models or two build
-systems. Presenting fourteen as fourteen pieces of future cleanup would be wrong.
+**Read the last column before counting, and count from the table.** A substantial minority are
+**structural**: they do not go away when upstream fixes a bug, because they exist to reconcile two
+content models or two build systems. Presenting the whole list as future cleanup would be wrong.
+
+No totals are quoted here any more, and that is deliberate. This paragraph said "seven of the
+fourteen" while the table held **fifteen** rows — and classifying each row by its own last column
+gives six structural, not seven, so the figure was wrong before W15 was added as well as after.
+A count restated in prose beside the list it comes from is a count that drifts silently and is
+believed anyway; the section three paragraphs up already tells the reader not to quote one.
 
 | ID  | What we do                                                                                                               | Why it exists                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Removable?                                                                                                                                                                                                                                                                                               |
 | --- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -45,7 +45,10 @@ describe('HxpDocumentTreeToggleNameDirective', () => {
     }
     const container = document.createElement('div');
     container.className = 'hxp-node-container';
-    container.textContent = label;
+    // An explicit text node, always, even when the label is empty. `textContent = ''` creates no
+    // child at all, and the `characterData` control needs an existing node to write through —
+    // which is also how Angular updates an interpolation.
+    container.appendChild(document.createTextNode(label));
     node.appendChild(container);
     return node;
   }
@@ -141,6 +144,29 @@ describe('HxpDocumentTreeToggleNameDirective', () => {
     directive = attach();
     await settle();
     expect(names()).toEqual(['Développer ou réduire Accueil']);
+  });
+
+  // A label that arrives by the text node being REPLACED, not by a row being inserted. Upstream
+  // swaps a skeleton loader for the real label after a lazy load, and every label changes when the
+  // language does — both are `characterData` mutations and neither is a `childList` one, so
+  // observing structure alone left the toggle on `Toggleundefined` or on the previous language.
+  it('renames a toggle when its row label is filled in later', async () => {
+    host.append(row(''));
+    directive = attach();
+    await settle();
+    expect(names()).toEqual(['Toggleundefined']);
+
+    // `nodeValue` on the existing text node, NOT `container.textContent = …`.
+    //
+    // Assigning `textContent` replaces the text node — a `childList` mutation, which the observer
+    // saw even before `characterData` was added, so a test written that way passed with the fix
+    // removed and proved nothing. Angular updates an interpolation by writing to the existing text
+    // node, which is `characterData` and nothing else. Verified by deleting `characterData: true`
+    // and watching this go red.
+    const container = host.querySelector('.hxp-node-container') as HTMLElement;
+    (container.firstChild as Text).nodeValue = 'Workspaces';
+    await settle();
+    expect(names()).toEqual(['Toggle Workspaces']);
   });
 
   // The observer holds a reference to the subtree it watches. Left connected it is the same shape
