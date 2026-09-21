@@ -15,6 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslateModule } from '@ngx-translate/core';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
@@ -33,6 +34,7 @@ const LAST_USER_KEY = 'agentic_ui_last_username';
     MatInputModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    TranslateModule,
     SatLogoModule,
   ],
   templateUrl: './login-page.component.html',

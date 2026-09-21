@@ -1,8 +1,13 @@
 <div class="login-page">
-  <a class="login-skip-link" mat-raised-button href="#login-main" (click)="skipToSignIn($event)"
-    >Skip to sign in</a
+  <a class="login-skip-link" mat-raised-button href="#login-main" (click)="skipToSignIn($event)">{{
+    'login.skip-link' | translate
+  }}</a>
+  <main
+    id="login-main"
+    tabindex="-1"
+    class="login-panel"
+    [attr.aria-label]="'login.panel-label' | translate"
   >
-  <main id="login-main" tabindex="-1" class="login-panel" aria-label="Log in">
     <div class="login-panel-inner">
       <a routerLink="/login" class="login-brand" aria-label="Hyland">
         <sat-logo direction="horizontal">
@@ -11,7 +16,7 @@
         </sat-logo>
       </a>
 
-      <h1 id="login-page-heading" class="login-title">Log in</h1>
+      <h1 id="login-page-heading" class="login-title">{{ 'login.title' | translate }}</h1>
 
       <form
         class="login-form"

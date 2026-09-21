@@ -54,6 +54,8 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'sat.platform-nav.collapse': 'Collapse navigation',
   'app.title': 'Hyland Nuxeo',
   'app.nav.toggle': 'Toggle navigation menu',
+  'login.panel-label': 'Log in',
+  'login.skip-link': 'Skip to sign in',
   'browse.details.show': 'Show details',
   'browse.details.hide': 'Hide details',
   'browse.details.toggle': 'Toggle details panel',

@@ -2,12 +2,23 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { of, Observable } from 'rxjs';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
 import { LoginPageComponent } from './login-page.component';
+
+class LoginTranslateLoader implements TranslateLoader {
+  getTranslation() {
+    return of({
+      'login.title': 'Log in',
+      'login.panel-label': 'Log in',
+      'login.skip-link': 'Skip to sign in',
+    });
+  }
+}
 
 describe('LoginPageComponent', () => {
   let fixture: ComponentFixture<LoginPageComponent>;
@@ -27,7 +38,12 @@ describe('LoginPageComponent', () => {
     });
 
     await TestBed.configureTestingModule({
-      imports: [LoginPageComponent],
+      imports: [
+        LoginPageComponent,
+        TranslateModule.forRoot({
+          loader: { provide: TranslateLoader, useClass: LoginTranslateLoader },
+        }),
+      ],
       providers: [
         provideRouter([{ path: 'dashboard', component: LoginPageComponent }]),
         { provide: AuthService, useValue: auth },
