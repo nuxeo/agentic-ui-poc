@@ -1,12 +1,12 @@
 import { DatePipe } from '@angular/common';
-import { Component, input, output } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import type { AuditEntry } from '@nuxeo-satori/platform/nuxeo-client';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 import { hxpDocTitle, hxpDocTypeLabel } from '../../utils/hxp-browse-cell.utils';
 import { hxpRelativeTime } from '../../utils/hxp-relative-time.utils';
 import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';
 import { HxpSpinnerComponent } from '../hxp-spinner/hxp-spinner.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export type HxpDetailsSubTab = 'info' | 'tags' | 'activity';
 
@@ -51,8 +51,12 @@ export class HxpBrowseDetailsPanelComponent {
     return (doc['dc_lastContributor'] as string | undefined) ?? '—';
   }
 
+  private readonly translate = inject(TranslateService);
+
   protected relativeTime(dateStr: string): string {
-    return hxpRelativeTime(dateStr);
+    // The ACTIVE language, not a default. Omitting it printed English timestamps beside
+    // translated labels on this very panel.
+    return hxpRelativeTime(dateStr, this.translate.currentLang);
   }
 
   protected activityLabel(entry: AuditEntry): string {

@@ -292,8 +292,15 @@
                           matTooltipPosition="above"
                           (click)="openAiSource(source.uid, source.type, source.path)"
                         >
+                          <!--
+                            `'File'` is a Nuxeo SCHEMA TYPE, not display text: `docTypeIcon` keys
+                            its map on `File`, `Folder`, `Workspace`. The extraction codemod keyed
+                            this fallback, so in French it became `Fichier`, the lookup missed and
+                            every untyped AI source fell back to the generic icon. Domain values
+                            must not be translated.
+                          -->
                           <mat-icon class="ai-source-card-icon">{{
-                            docTypeIcon(source.type ?? ('shell.file' | translate))
+                            docTypeIcon(source.type ?? 'File')
                           }}</mat-icon>
                           <span class="ai-source-card-info">
                             <span class="ai-source-card-title">{{ source.title }}</span>

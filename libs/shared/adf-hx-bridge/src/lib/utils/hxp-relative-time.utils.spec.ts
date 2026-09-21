@@ -29,42 +29,42 @@ describe('hxpRelativeTime', () => {
   });
 
   it('returns an empty string for a missing date rather than the epoch', () => {
-    expect(hxpRelativeTime(null)).toBe('');
-    expect(hxpRelativeTime(undefined)).toBe('');
-    expect(hxpRelativeTime('')).toBe('');
+    expect(hxpRelativeTime(null, 'en')).toBe('');
+    expect(hxpRelativeTime(undefined, 'en')).toBe('');
+    expect(hxpRelativeTime('', 'en')).toBe('');
   });
 
   it('returns an empty string for an unparseable date, not "NaN minutes ago"', () => {
-    expect(hxpRelativeTime('not a date')).toBe('');
+    expect(hxpRelativeTime('not a date', 'en')).toBe('');
   });
 
   it('says "now" for anything within the last minute', () => {
-    expect(hxpRelativeTime(ago(0))).toBe('now');
-    expect(hxpRelativeTime(ago(30_000))).toBe('now');
+    expect(hxpRelativeTime(ago(0), 'en')).toBe('now');
+    expect(hxpRelativeTime(ago(30_000), 'en')).toBe('now');
   });
 
   it('counts minutes once past the "now" threshold', () => {
-    expect(hxpRelativeTime(ago(2 * 60_000))).toBe('2 minutes ago');
-    expect(hxpRelativeTime(ago(59 * 60_000))).toBe('59 minutes ago');
+    expect(hxpRelativeTime(ago(2 * 60_000), 'en')).toBe('2 minutes ago');
+    expect(hxpRelativeTime(ago(59 * 60_000), 'en')).toBe('59 minutes ago');
   });
 
   it('reports whole hours below a day', () => {
-    expect(hxpRelativeTime(ago(3_600_000))).toBe('1 hour ago');
-    expect(hxpRelativeTime(ago(5 * 3_600_000))).toBe('5 hours ago');
-    expect(hxpRelativeTime(ago(23 * 3_600_000))).toBe('23 hours ago');
+    expect(hxpRelativeTime(ago(3_600_000), 'en')).toBe('1 hour ago');
+    expect(hxpRelativeTime(ago(5 * 3_600_000), 'en')).toBe('5 hours ago');
+    expect(hxpRelativeTime(ago(23 * 3_600_000), 'en')).toBe('23 hours ago');
   });
 
   it('prefers the word a language has over counting units', () => {
     // English has "yesterday"; the hand-rolled version could only produce "a day ago".
-    expect(hxpRelativeTime(ago(86_400_000))).toBe('yesterday');
+    expect(hxpRelativeTime(ago(86_400_000), 'en')).toBe('yesterday');
   });
 
   it('coarsens past a year instead of counting hundreds of days', () => {
-    expect(hxpRelativeTime(ago(400 * 86_400_000))).toBe('last year');
+    expect(hxpRelativeTime(ago(400 * 86_400_000), 'en')).toBe('last year');
   });
 
   it('handles a future date rather than clamping it to the present', () => {
-    expect(hxpRelativeTime(new Date(NOW.getTime() + 5 * 60_000).toISOString())).toBe(
+    expect(hxpRelativeTime(new Date(NOW.getTime() + 5 * 60_000).toISOString(), 'en')).toBe(
       'in 5 minutes',
     );
   });
@@ -75,6 +75,6 @@ describe('hxpRelativeTime', () => {
   });
 
   it('defaults to English when no locale is passed', () => {
-    expect(hxpRelativeTime(ago(3 * 86_400_000))).toBe('3 days ago');
+    expect(hxpRelativeTime(ago(3 * 86_400_000), 'en')).toBe('3 days ago');
   });
 });
