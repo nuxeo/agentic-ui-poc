@@ -388,6 +388,14 @@ describe('DocumentDetailComponent — tab surfaces', () => {
       .compileComponents();
   });
 
+  afterEach(() => {
+    // Ensures no unexpected HTTP requests were made. This spec was added as part of Stage 2.4
+    // of the integration-test plan (QW7 from the audit). It will initially fail, exposing
+    // untested HTTP surface in a 15-provider component that makes only 2 expectOne calls in
+    // ~2000 lines. That's the point: the spec currently asserts almost nothing about HTTP.
+    http.verify();
+  });
+
   describe('tab switching', () => {
     it('lazy-loads the permissions tab on first show and not again', async () => {
       await build();
