@@ -9,36 +9,36 @@
   "tolerance": 0.5,
   "projects": {
     "adf-hx-bridge": {
-      "lines": 91.62,
-      "statements": 91.62,
-      "branches": 93.45,
-      "functions": 83.41,
-      "sTotal": 2100,
-      "sCovered": 1924
+      "lines": 99.64,
+      "statements": 99.64,
+      "branches": 93.53,
+      "functions": 100,
+      "sTotal": 2241,
+      "sCovered": 2233
     },
     "administration": {
       "lines": 62.08,
       "statements": 62.08,
-      "branches": 65.1,
-      "functions": 55.81,
+      "branches": 64.92,
+      "functions": 55.29,
       "sTotal": 1031,
       "sCovered": 640
     },
     "browse": {
       "lines": 99.02,
       "statements": 99.02,
-      "branches": 93.05,
+      "branches": 92.94,
       "functions": 98.96,
-      "sTotal": 3076,
-      "sCovered": 3046
+      "sTotal": 3072,
+      "sCovered": 3042
     },
     "collections": {
-      "lines": 94.05,
-      "statements": 94.05,
-      "branches": 85.35,
-      "functions": 91.38,
-      "sTotal": 672,
-      "sCovered": 632
+      "lines": 94.96,
+      "statements": 94.96,
+      "branches": 86.67,
+      "functions": 93.33,
+      "sTotal": 695,
+      "sCovered": 660
     },
     "core": {
       "lines": 100,
@@ -49,20 +49,20 @@
       "sCovered": 7
     },
     "document-detail": {
-      "lines": 92.55,
-      "statements": 92.55,
-      "branches": 83.45,
-      "functions": 97.81,
-      "sTotal": 4724,
-      "sCovered": 4372
+      "lines": 92.73,
+      "statements": 92.73,
+      "branches": 83.85,
+      "functions": 97.83,
+      "sTotal": 4758,
+      "sCovered": 4412
     },
     "knowledge-discovery": {
-      "lines": 64.77,
-      "statements": 64.77,
-      "branches": 59.46,
-      "functions": 68,
-      "sTotal": 1039,
-      "sCovered": 673
+      "lines": 65.68,
+      "statements": 65.68,
+      "branches": 62.18,
+      "functions": 69.33,
+      "sTotal": 1043,
+      "sCovered": 685
     },
     "nuxeo-client": {
       "lines": 94.31,
@@ -73,36 +73,36 @@
       "sCovered": 3877
     },
     "search": {
-      "lines": 91.16,
-      "statements": 91.16,
-      "branches": 84.05,
-      "functions": 90.48,
-      "sTotal": 848,
-      "sCovered": 773
+      "lines": 94.56,
+      "statements": 94.56,
+      "branches": 82.76,
+      "functions": 90.28,
+      "sTotal": 974,
+      "sCovered": 921
     },
     "shared-app-config": {
-      "lines": 100,
-      "statements": 100,
-      "branches": 90.22,
-      "functions": 96.97,
-      "sTotal": 426,
-      "sCovered": 426
+      "lines": 99.58,
+      "statements": 99.58,
+      "branches": 92,
+      "functions": 94.44,
+      "sTotal": 475,
+      "sCovered": 473
     },
     "shared-extensions": {
-      "lines": 94.71,
-      "statements": 94.71,
-      "branches": 93.07,
-      "functions": 75.64,
-      "sTotal": 662,
-      "sCovered": 627
+      "lines": 95.18,
+      "statements": 95.18,
+      "branches": 93.51,
+      "functions": 77.65,
+      "sTotal": 726,
+      "sCovered": 691
     },
     "shared-kd-client": {
       "lines": 99.72,
       "statements": 99.72,
-      "branches": 92.77,
+      "branches": 92.88,
       "functions": 100,
-      "sTotal": 713,
-      "sCovered": 711
+      "sTotal": 724,
+      "sCovered": 722
     },
     "shared-ke-client": {
       "lines": 100,
@@ -113,12 +113,12 @@
       "sCovered": 247
     },
     "ui": {
-      "lines": 97.57,
-      "statements": 97.57,
-      "branches": 96.93,
+      "lines": 97.59,
+      "statements": 97.59,
+      "branches": 96.55,
       "functions": 88.64,
-      "sTotal": 493,
-      "sCovered": 481
+      "sTotal": 498,
+      "sCovered": 486
     },
     "permission-dialogs": {
       "lines": 93.85,
@@ -135,6 +135,30 @@
       "functions": 38.46,
       "sTotal": 101,
       "sCovered": 54
+    },
+    "assets": {
+      "lines": 97.4,
+      "statements": 97.4,
+      "branches": 92.31,
+      "functions": 66.67,
+      "sTotal": 77,
+      "sCovered": 75
+    },
+    "shared-ai-client": {
+      "lines": 16.51,
+      "statements": 16.51,
+      "branches": 84.85,
+      "functions": 44.44,
+      "sTotal": 212,
+      "sCovered": 35
+    },
+    "tasks": {
+      "lines": 43.81,
+      "statements": 43.81,
+      "branches": 52.31,
+      "functions": 45.76,
+      "sTotal": 687,
+      "sCovered": 301
     }
   }
 }

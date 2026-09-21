@@ -47,8 +47,13 @@ jobs:
       # `--coverageReporters=lcov` used to be passed here and did nothing: the Nx executor
       # accepts the flag and never forwards it to Vitest. The reporter is declared in each
       # project's vite.config.mts instead.
+      #
+      # `nuxeo-ui` is excluded because it runs Karma+Jasmine (not Vitest) and Karma does not
+      # accept the --coverage flag. Its 18 spec files and 135 test cases are therefore not
+      # included in the coverage report. This is a known limitation until AC3 (move nuxeo-ui
+      # to Vitest) is completed.
       - name: Run tests with coverage
-        run: npx nx run-many -t test --coverage --parallel=1
+        run: npx nx run-many -t test --coverage --parallel=1 --exclude=nuxeo-ui
         continue-on-error: true  # Don't fail the workflow if tests fail, SonarCloud will report it
 
       # Rebases each project's lcov records onto the repository root and merges them into the
