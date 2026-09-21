@@ -1642,6 +1642,11 @@
     "submitted": "Submitted",
     "unknown": "Unknown"
   },
+  "login": {
+    "panel-label": "Log in",
+    "skip-link": "Skip to sign in",
+    "title": "Log in"
+  },
   "nav": {
     "clipboard": {
       "copy": "Copy",
@@ -2141,7 +2146,10 @@
     "settings": {
       "menu": "Settings menu"
     },
-    "slot-empty": "Content for \"{{ name }}\" will appear here."
+    "slot-empty": "Content for \"{{ name }}\" will appear here.",
+    "test": {
+      "platform-nav-item": "Browse"
+    }
   },
   "tab": {
     "tabs-ai-insights": "AI Insights",

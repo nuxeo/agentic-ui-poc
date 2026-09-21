@@ -10,6 +10,10 @@ import { AuthService } from '../auth/auth.service';
 import { LoginPageComponent } from './login-page.component';
 import { testTranslateModule } from '../i18n/translate-testing';
 
+/** Synthetic values for unit tests only — not Nuxeo or dev default credentials. */
+const MOCK_LOGIN_USER = 'nxeng-login-spec-user';
+const MOCK_LOGIN_SECRET = 'nxeng-login-spec-secret';
+
 describe('LoginPageComponent', () => {
   let fixture: ComponentFixture<LoginPageComponent>;
   let component: LoginPageComponent;
@@ -52,6 +56,23 @@ describe('LoginPageComponent', () => {
     fixture = TestBed.createComponent(LoginPageComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it('keeps the credential field above siblings when focused (NXENG-749)', () => {
+    const secretInput = fixture.nativeElement.querySelector(
+      'input[type="password"]',
+    ) as HTMLInputElement;
+    secretInput.focus();
+    fixture.detectChanges();
+
+    const secretField = secretInput.closest('mat-form-field') as HTMLElement;
+    const wrapper = secretInput.closest('.mat-mdc-text-field-wrapper') as HTMLElement;
+    expect(secretField).toBeTruthy();
+    expect(secretField.classList.contains('login-field-password')).toBe(true);
+    expect(getComputedStyle(wrapper).overflow).toBe('visible');
+    expect(getComputedStyle(secretField).zIndex).toBe('2');
+    expect(getComputedStyle(secretField).position).toBe('relative');
+    expect(getComputedStyle(secretInput).scrollMarginBlock).not.toBe('0px');
   });
 
   it('groups username and password in a credentials fieldset (NXENG-752)', () => {
@@ -154,11 +175,11 @@ describe('LoginPageComponent', () => {
     const router = TestBed.inject(Router);
     spyOn(router, 'navigateByUrl').and.returnValue(Promise.resolve(true));
 
-    component.form.setValue({ username: 'administrator', password: 'Administrator' });
+    component.form.setValue({ username: MOCK_LOGIN_USER, password: MOCK_LOGIN_SECRET });
     component.submit();
     await Promise.resolve();
 
-    expect(auth.login).toHaveBeenCalledWith('administrator', 'Administrator', false);
+    expect(auth.login).toHaveBeenCalledWith(MOCK_LOGIN_USER, MOCK_LOGIN_SECRET, false);
     expect(router.navigateByUrl).toHaveBeenCalledWith('/dashboard');
   });
 
@@ -188,7 +209,7 @@ describe('LoginPageComponent', () => {
   });
 
   it('enables Log in when username and password are present', () => {
-    component.form.setValue({ username: 'administrator', password: 'Administrator' });
+    component.form.setValue({ username: MOCK_LOGIN_USER, password: MOCK_LOGIN_SECRET });
     fixture.detectChanges();
 
     expect(component.submitDisabled()).toBe(false);
@@ -200,14 +221,14 @@ describe('LoginPageComponent', () => {
     const passwordInput = el.querySelector('input[formcontrolname="password"]') as HTMLInputElement;
 
     component.form.setValue({ username: '', password: '' });
-    usernameInput.value = 'administrator';
-    passwordInput.value = 'Administrator';
+    usernameInput.value = MOCK_LOGIN_USER;
+    passwordInput.value = MOCK_LOGIN_SECRET;
     component.onCredentialInput();
     fixture.detectChanges();
 
     expect(component.form.getRawValue()).toEqual({
-      username: 'administrator',
-      password: 'Administrator',
+      username: MOCK_LOGIN_USER,
+      password: MOCK_LOGIN_SECRET,
     });
     expect(component.submitDisabled()).toBe(false);
   });
@@ -220,21 +241,21 @@ describe('LoginPageComponent', () => {
     const usernameInput = el.querySelector('input[formcontrolname="username"]') as HTMLInputElement;
     const passwordInput = el.querySelector('input[formcontrolname="password"]') as HTMLInputElement;
 
-    component.form.setValue({ username: 'administrator', password: '' });
-    passwordInput.value = 'Administrator';
+    component.form.setValue({ username: MOCK_LOGIN_USER, password: '' });
+    passwordInput.value = MOCK_LOGIN_SECRET;
 
     component.submit();
     await Promise.resolve();
 
-    expect(auth.login).toHaveBeenCalledWith('administrator', 'Administrator', false);
+    expect(auth.login).toHaveBeenCalledWith(MOCK_LOGIN_USER, MOCK_LOGIN_SECRET, false);
   });
 
   it('reacts to scoped autofill animation names from emulated encapsulation', () => {
     const el = fixture.nativeElement as HTMLElement;
     const usernameInput = el.querySelector('input[formcontrolname="username"]') as HTMLInputElement;
     const passwordInput = el.querySelector('input[formcontrolname="password"]') as HTMLInputElement;
-    usernameInput.value = 'administrator';
-    passwordInput.value = 'Administrator';
+    usernameInput.value = MOCK_LOGIN_USER;
+    passwordInput.value = MOCK_LOGIN_SECRET;
 
     component.onAutofillAnimation({
       animationName: 'ng-c1234567890_login-autofill-start',
@@ -242,8 +263,8 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
 
     expect(component.form.getRawValue()).toEqual({
-      username: 'administrator',
-      password: 'Administrator',
+      username: MOCK_LOGIN_USER,
+      password: MOCK_LOGIN_SECRET,
     });
   });
 
@@ -278,7 +299,7 @@ describe('LoginPageComponent', () => {
       }),
     );
 
-    component.form.setValue({ username: 'bad', password: 'bad' });
+    component.form.setValue({ username: 'bad-user', password: 'bad-secret' });
     component.submit();
 
     expect(auth.login).toHaveBeenCalled();
