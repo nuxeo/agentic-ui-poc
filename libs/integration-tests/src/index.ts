@@ -22,3 +22,14 @@ export {
   createTestDocument,
   type IntegrationHarness,
 } from './lib/integration-harness';
+
+export {
+  createNonAdminUser,
+  deleteUser,
+  grantPermission,
+  revokePermission,
+  canRead,
+  canWrite,
+  type TestUser,
+  type CreateUserOptions,
+} from './lib/user-fixtures';
