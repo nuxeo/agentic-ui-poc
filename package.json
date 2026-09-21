@@ -50,7 +50,7 @@
     "mirror:agents": "node scripts/mirror-agent-config.mjs sync",
     "beta:mirror": "node scripts/mirror-agent-config.mjs check",
     "i18n:pseudo": "node tools/i18n/pseudo-locale.mjs",
-    "i18n:audit": "node tools/i18n/pseudo-locale.mjs && node tools/i18n/pseudo-locale-audit.mjs",
+    "i18n:audit": "node tools/i18n/pseudo-locale.mjs && node tools/i18n/pseudo-locale-audit.mjs && node tools/i18n/pseudo-locale-deep.mjs",
     "review:crowdin-selftest": "node tools/i18n/crowdin-push-context.selftest.mjs"
   },
   "lint-staged": {

@@ -12,9 +12,21 @@
  * aggregation buckets are legitimately English and must never be translated. They are filtered
  * by the containers they render in rather than by a word list, so a genuine miss cannot hide by
  * resembling one.
+ *
+ * ## It selects `zz` itself, and proves it
+ *
+ * The packaged bootstrap ships `defaultLanguage: 'en'` and `zz` is deliberately absent from
+ * `availableLanguages`, so nothing here made the running application use it. This audit used to
+ * navigate and read — against an ENGLISH app, where every string is plain ASCII prose and so
+ * every string looks like a miss. The number it printed could not substantiate anything.
+ *
+ * It now intercepts the Layer 0 config and serves `defaultLanguage: 'zz'`, then asserts the
+ * SENTINEL `⟦` is actually on the page before believing a single finding. Without that assertion
+ * a run where the pseudo-locale failed to load is indistinguishable from a run where it worked,
+ * and the two produce opposite conclusions from identical output.
  */
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BASE = process.env['APP_URL'] ?? 'http://localhost:4200';
@@ -92,13 +104,42 @@ const FORMATTED_DATE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/;
 const ASCII_PROSE = /^[A-Za-z][A-Za-z0-9 ,.'&()/-]{2,}$/;
 
 mkdirSync(OUT, { recursive: true });
+const BOOTSTRAP_ROUTE = '**/agentic-ui-config/bootstrap.json';
+const PACKAGED_BOOTSTRAP = join(
+  process.cwd(),
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+);
+/** The packaged Layer 0 config with only `defaultLanguage` swapped, leaving branding alone. */
+const bootstrapForPseudoLocale = () => {
+  const config = JSON.parse(readFileSync(PACKAGED_BOOTSTRAP, 'utf8'));
+  config.defaultLanguage = 'zz';
+  // `availableLanguages` must advertise it too, or `checkAdvertisedLocalesShip`'s contract —
+  // default must be selectable — is violated at runtime and the loader may refuse it.
+  config.availableLanguages = [...new Set([...(config.availableLanguages ?? []), 'zz'])];
+  return JSON.stringify(config, null, 2);
+};
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+await page.route(BOOTSTRAP_ROUTE, (route) =>
+  route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    headers: { 'cache-control': 'no-store' },
+    body: bootstrapForPseudoLocale(),
+  }),
+);
 
 const findings = [];
+let sentinelSeen = false;
 for (const [name, route] of ROUTES) {
   await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3500);
+  // The pseudo-locale is either active or this audit means nothing. `⟦` can only come from
+  // `zz.json`, so seeing it once proves the catalogue loaded and the override took effect.
+  if (!sentinelSeen) {
+    sentinelSeen = await page.evaluate(() => document.body.innerText.includes('\u27E6'));
+  }
   await page.screenshot({ path: join(OUT, `${name}.png`), fullPage: false });
 
   const english = await page.evaluate((selectors) => {
@@ -143,5 +184,28 @@ writeFileSync(join(OUT, 'findings.json'), `${JSON.stringify(findings, null, 2)}\
 await browser.close();
 
 const total = findings.reduce((n, f) => n + f.count, 0);
+
+// Refuse to report a total the run cannot support.
+//
+// Without the pseudo-locale active every string is plain English, so the "untranslated" count
+// equals the whole application and reads as a catastrophic result rather than a broken audit. The
+// two failures produce opposite conclusions from identical output, so this exits non-zero instead
+// of printing a number someone would quote.
+if (!sentinelSeen) {
+  console.error(
+    'The pseudo-locale never rendered: no `\u27E6` appeared on any route, so this run cannot ' +
+      'tell an untranslated string from an unloaded catalogue and its count means nothing.\n' +
+      '  - run `npm run i18n:pseudo` first, so apps/nuxeo-ui/public/i18n/zz.json exists\n' +
+      '  - check the dev server is serving it, and that the bootstrap route intercepted here ' +
+      'still matches the URL the app fetches',
+  );
+  process.exit(1);
+}
+
 console.log(`\n${total} untranslated visible string(s) across ${ROUTES.length} routes`);
+console.log(
+  'A FLOOR, not a total: this reads nine routes as they first render. Dialogs, menus, tooltips ' +
+    'and empty states are not opened here — `pseudo-locale-deep.mjs` does that, and `i18n:audit` ' +
+    'runs it next.',
+);
 console.log(`screenshots and findings.json in ${OUT}`);
