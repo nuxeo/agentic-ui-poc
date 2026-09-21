@@ -143,7 +143,10 @@
   <div class="results-toolbar">
     <div class="results-summary">
       @if (resultCount() > 0) {
-        <span class="results-count">{{ resultCount() }} result(s)</span>
+        <span class="results-count">{{
+          (resultCount() === 1 ? 'common.count.result-one' : 'common.count.result-many')
+            | translate: { count: resultCount() }
+        }}</span>
       }
 
       <div class="quick-filters">

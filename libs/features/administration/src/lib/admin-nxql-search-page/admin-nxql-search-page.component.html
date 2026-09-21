@@ -107,7 +107,12 @@
       />
     </div>
   } @else {
-    <p class="nxql-count">{{ totalSize() }} result(s)</p>
+    <p class="nxql-count">
+      {{
+        (totalSize() === 1 ? 'common.count.result-one' : 'common.count.result-many')
+          | translate: { count: totalSize() }
+      }}
+    </p>
     <div class="nxql-table-wrap mat-elevation-z1">
       <table mat-table [dataSource]="results()" class="nxql-table">
         <ng-container matColumnDef="path">

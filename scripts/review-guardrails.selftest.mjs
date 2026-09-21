@@ -1278,6 +1278,65 @@ expectGreen('a dialog data object with no user-facing text', 'checkNoHardcodedDi
   'libs/features/x/src/lib/x.ts': "dialog.open(C, {\n  data: { id: 'Ab12', uid: 'X9' },\n});\n",
 });
 
+/* ---------------- the mixed-language sentence, either side of a value ---------------- */
+
+// Fifty-one of these were in the tree with the whole sweep green: `ELEMENT_TEXT` needs `>` and `<`
+// with no braces between them, and `BARE_PROSE_LINE` rejects `{`, so English beside an interpolated
+// value was judged by nothing.
+
+expectRed(
+  'prose before an interpolated value',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) => write('libs/features/x/src/lib/x.html', '<h2>Create Version for {{ title }}</h2>\n'),
+  /the text `Create Version for` beside an interpolated value/,
+);
+
+// The load-bearing control. A sentence CONTINUATION is lowercase, and `isDisplayText` requires an
+// initial capital — so the predicate that guards the rest of this check would have excluded exactly
+// the half of the sentence this case exists to find.
+expectRed(
+  'prose after an interpolated value, which is lowercase',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.html', '<p><strong>{{ name }}</strong> workflow on this document.</p>\n'),
+  /the text `workflow on this document\.` beside an interpolated value/,
+);
+
+// `BARE_PROSE_LINE` rejects `"`, which hid this shape specifically.
+expectRed(
+  'prose quoting an interpolated value',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.html', '<p>Content for "{{ item }}" will appear here.</p>\n'),
+  /beside an interpolated value/,
+);
+
+// Prettier splits an element across lines, leaving a partial tag on each. Without stripping those,
+// `{{ x }}</span` reported the fragment `/span` and the check looked broken rather than useful.
+falsePositiveControls += 1;
+expectGreen('a partial tag left by Prettier is not prose', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html': "<span class=\"c\"\n  >{{ 'a.b' | translate }}</span\n>\n",
+});
+
+// Units beside a bound number are not translatable prose, and a shape heuristic cannot tell them
+// from short English words, so they are listed explicitly.
+falsePositiveControls += 1;
+expectGreen('a unit beside an interpolated number', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html': '<span>{{ rate() }} fps</span>\n',
+});
+
+falsePositiveControls += 1;
+expectGreen('a fully parameterised sentence', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html':
+    "<p>{{ 'x.slot-empty' | translate: { name: item.label } }}</p>\n",
+});
+
 /* ------------- checkNoHardcodedDialogText: every literal form, not just one ------------- */
 
 // The first version matched single quotes only and reported green over ten template-literal dialog

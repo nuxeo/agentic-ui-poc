@@ -41,9 +41,21 @@
       <div class="hxp-search-page__results">
         <div class="hxp-search-page__results-count">
           @if (totalCount() >= 0) {
-            <p>Found {{ totalCount() }} result{{ totalCount() === 1 ? '' : 's' }}</p>
+            <p>
+              {{
+                (totalCount() === 1
+                  ? 'common.count.found-result-one'
+                  : 'common.count.found-result-many'
+                ) | translate: { count: totalCount() }
+              }}
+            </p>
           } @else {
-            <p>{{ results().length }} result{{ results().length === 1 ? '' : 's' }}</p>
+            <p>
+              {{
+                (results().length === 1 ? 'common.count.result-one' : 'common.count.result-many')
+                  | translate: { count: results().length }
+              }}
+            </p>
           }
         </div>
 
@@ -61,7 +73,9 @@
             <mat-icon>chevron_left</mat-icon>
           </button>
 
-          <span class="hxp-search-page__page-info"> Page {{ currentPage() + 1 }} </span>
+          <span class="hxp-search-page__page-info">
+            {{ 'common.page-number' | translate: { page: currentPage() + 1 } }}
+          </span>
 
           <!--
             Next was unbound, so it stayed enabled on the last page and clicking it

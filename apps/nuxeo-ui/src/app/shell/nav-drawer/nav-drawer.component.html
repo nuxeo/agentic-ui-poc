@@ -181,7 +181,9 @@
               <div class="expired-meta">
                 <span class="expired-type">{{ doc.type }}</span>
                 <span class="expired-sep">&middot;</span>
-                <span class="expired-date">Expired {{ expiredDate(doc) }}</span>
+                <span class="expired-date">{{
+                  'shell.expired-on' | translate: { date: expiredDate(doc) }
+                }}</span>
               </div>
             </div>
             <mat-icon class="expired-warning-icon">warning</mat-icon>
@@ -210,9 +212,10 @@
               }
               <div class="collection-card-body">
                 <span class="collection-card-title">{{ col.title }}</span>
-                <span class="collection-card-date"
-                  >Last Modified {{ col.lastModified | date: 'mediumDate' }}</span
-                >
+                <span class="collection-card-date">{{
+                  'shell.last-modified-on'
+                    | translate: { date: col.lastModified | date: 'mediumDate' }
+                }}</span>
                 <span class="collection-card-owner">
                   <span class="owner-avatar">{{ collectionOwnerInitial(col) }}</span>
                   {{ collectionOwner(col) }}
@@ -441,7 +444,7 @@
     <lib-extension-outlet [componentId]="sidebarId" />
   } @else {
     <div class="drawer-empty">
-      <p>Content for "{{ item | descriptorLabel }}" will appear here.</p>
+      <p>{{ 'shell.slot-empty' | translate: { name: item | descriptorLabel } }}</p>
     </div>
   }
 }

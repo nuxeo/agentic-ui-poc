@@ -112,11 +112,13 @@
         (visible)="onGroupPermSectionVisible($event)"
       >
         <div class="profile-card__section-title" role="heading" aria-level="3">
-          {{ g.label }} permissions
+          {{ 'settings.profile.group-permissions-heading' | translate: { group: g.label } }}
         </div>
 
         @if (isGroupPermLoading(g.identifier)) {
-          <p class="profile-card__text">Loading {{ g.label }} permissions…</p>
+          <p class="profile-card__text">
+            {{ 'settings.profile.loading-group-permissions' | translate: { group: g.label } }}
+          </p>
         } @else if (hasGroupPermLoaded(g.identifier)) {
           <ng-container
             *ngTemplateOutlet="

@@ -190,7 +190,7 @@
         <section class="ud-card mat-elevation-z1">
           <header class="ud-section-head">
             <div class="ud-section-heading" role="heading" aria-level="2">
-              {{ g.label }} permissions
+              {{ 'settings.profile.group-permissions-heading' | translate: { group: g.label } }}
             </div>
           </header>
           @if (isGroupPermLoading(g.id)) {
@@ -254,7 +254,9 @@
                 <tr mat-row *matRowDef="let row; columns: permColumns"></tr>
               </table>
               @if (gp.rows.length === 0) {
-                <p class="ud-empty">{{ g.label }} does not have permissions.</p>
+                <p class="ud-empty">
+                  {{ 'admin.no-permissions-for' | translate: { name: g.label } }}
+                </p>
               }
               <mat-paginator
                 [length]="gp.totalDocuments"

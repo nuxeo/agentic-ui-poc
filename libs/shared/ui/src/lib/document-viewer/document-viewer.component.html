@@ -334,8 +334,12 @@
                 <button
                   mat-icon-button
                   class="format-download-btn"
-                  matTooltip="Download {{ view.title }}"
-                  aria-label="Download {{ view.title }}"
+                  [matTooltip]="
+                    'shared-ui.document-viewer.download-named' | translate: { name: view.title }
+                  "
+                  [attr.aria-label]="
+                    'shared-ui.document-viewer.download-named' | translate: { name: view.title }
+                  "
                   (click)="formatDownload.emit(view.downloadUrl)"
                 >
                   <mat-icon>download</mat-icon>

@@ -343,7 +343,9 @@
           @if (selectedDocType(); as dt) {
             <div class="type-form-header">
               <mat-icon class="type-form-icon" aria-hidden="true">{{ dt.icon }}</mat-icon>
-              <span class="type-form-title">New {{ dt.label }}</span>
+              <span class="type-form-title">
+                {{ 'browse.create-import-dialog.new-of-type' | translate: { type: dt.label } }}
+              </span>
             </div>
 
             <div class="create-form">
@@ -462,7 +464,10 @@
                           />
                           <span class="content-file-progress-label">
                             @if (mainFileUploading()) {
-                              Uploading… {{ mainFileUploadPercent() }}%
+                              {{
+                                'browse.create-import-dialog.uploading-percent'
+                                  | translate: { percent: mainFileUploadPercent() }
+                              }}
                             } @else {
                               {{ 'browse.create-import-dialog.upload-complete' | translate }}
                             }

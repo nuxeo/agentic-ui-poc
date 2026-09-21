@@ -541,6 +541,20 @@ fails any source that is not.
 
 ### Known-incomplete, and easy to read as done
 
+- **Library catalogues are not packaged, so a package consumer sees raw keys.** `libs/shared/ui` and
+  `libs/shared/extensions` reference **120 distinct keys** (`shared-ui.*`, `extensions.*`) that exist
+  only in `apps/nuxeo-ui/public/i18n/en.json`. Neither library ships an `i18n/` directory and
+  `libs/platform/ng-package.json` packages no catalogue, so someone installing
+  `@nuxeo-satori/platform/ui` gets templates asking for keys nothing supplies.
+
+  Adding `@ngx-translate/core` as a peer dependency made the pipe resolvable; it did not make the
+  STRINGS available, and those are two different problems that look like one.
+
+  Closing it needs per-library catalogues, a loader that merges them with the host's, a documented
+  loader path, and a gate asserting every key a library references is in a catalogue that library
+  ships. That is an architectural change and belongs in its own pull request — this page already
+  required per-library catalogues, so the requirement is not new, only unmet.
+
 - **Dialog text — 48 strings, now keyed and gated.** `title`, `message` and `confirmLabel` on
   `ConfirmDialogData` and the `data:` of a `MatDialog.open(...)` were English literals across 13
   production files, concentrated in `trash.component.ts` (9), `document-detail.ts` (7) and

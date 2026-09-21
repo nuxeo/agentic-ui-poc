@@ -26,7 +26,7 @@ import {
   type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 type UploadPhase = 'idle' | 'uploading' | 'ingesting' | 'complete' | 'error';
 
@@ -97,6 +97,7 @@ function getPathCompletionContext(path: string): { parentPath: string; partial: 
 })
 export class ContentLakeUploadComponent {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
   private readonly dialogRef = inject(MatDialogRef<ContentLakeUploadComponent>);
   private readonly importService = inject(DocumentImportService);
   private readonly ingestService = inject(ContentLakeIngestService);
@@ -258,7 +259,12 @@ export class ContentLakeUploadComponent {
             return;
           }
           const count = status.processed || this.uploadedDocuments().length;
-          const message = `Uploaded and ingested ${count} document(s) to Content Lake.`;
+          const message = this.translate.instant(
+            count === 1
+              ? 'kd.content-lake-upload.ingested-one'
+              : 'kd.content-lake-upload.ingested-many',
+            { count },
+          );
           this.phase.set('complete');
           this.statusMessage.set(message);
           this.showSuccessToast(message);

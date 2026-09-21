@@ -48,7 +48,12 @@
         } @else {
           <mat-icon>add_circle</mat-icon>
         }
-        <span>Create "{{ searchTerm() }}"</span>
+        <span>
+          {{
+            'document-detail.add-to-collection-dialog.create-named'
+              | translate: { name: searchTerm() }
+          }}
+        </span>
       </button>
     }
   }

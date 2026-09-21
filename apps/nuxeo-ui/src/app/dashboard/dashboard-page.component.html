@@ -8,7 +8,12 @@
           <span class="ai-banner-title">{{ 'app.dashboard-page.ai-insights' | translate }}</span>
         </div>
         @if (!aiInsightsLoading() && aiInsights().length > 0) {
-          <span class="ai-banner-count">{{ aiInsights().length }} actionable items</span>
+          <span class="ai-banner-count">{{
+            (aiInsights().length === 1
+              ? 'common.count.actionable-item-one'
+              : 'common.count.actionable-item-many'
+            ) | translate: { count: aiInsights().length }
+          }}</span>
         }
       </div>
 

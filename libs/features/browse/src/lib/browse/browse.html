@@ -111,7 +111,12 @@
           <mat-tab [label]="'browse.tab.view' | translate">
             <!-- Toolbar: result count + filters + view toggle + column settings + export CSV -->
             <div class="view-toolbar">
-              <span class="result-count">{{ filteredEntries().length }} result(s)</span>
+              <span class="result-count">{{
+                (filteredEntries().length === 1
+                  ? 'common.count.result-one'
+                  : 'common.count.result-many'
+                ) | translate: { count: filteredEntries().length }
+              }}</span>
               <div class="toolbar-spacer"></div>
 
               <mat-form-field

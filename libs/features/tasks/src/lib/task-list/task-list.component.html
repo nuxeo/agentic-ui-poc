@@ -52,7 +52,7 @@
               <span class="task-workflow-badge">{{ taskWorkflow(task) }}</span>
               <span class="task-due" [class.overdue]="isOverdue(task)">
                 <mat-icon class="inline-icon">schedule</mat-icon>
-                Due {{ dueLabel(task) }}
+                {{ 'tasks.due-on' | translate: { date: dueLabel(task) } }}
               </span>
             </div>
           </div>

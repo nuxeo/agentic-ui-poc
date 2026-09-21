@@ -177,7 +177,12 @@
               <p>{{ 'collections.collection-detail.this-collection-is-empty' | translate }}</p>
             </div>
           } @else {
-            <div class="result-count">{{ totalSize() }} result(s)</div>
+            <div class="result-count">
+              {{
+                (totalSize() === 1 ? 'common.count.result-one' : 'common.count.result-many')
+                  | translate: { count: totalSize() }
+              }}
+            </div>
             <div class="members-table-wrapper">
               <table class="members-table">
                 <thead>

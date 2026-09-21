@@ -1,7 +1,10 @@
 <div class="results-page">
   @if (selectedCount() > 0) {
     <div class="selection-bar">
-      <span class="selection-bar-count">All {{ selectedCount() }} item(s) selected</span>
+      <span class="selection-bar-count">{{
+        (selectedCount() === 1 ? 'common.count.all-selected-one' : 'common.count.all-selected-many')
+          | translate: { count: selectedCount() }
+      }}</span>
       <a class="selection-bar-clear" (click)="selectionService.clear()">{{
         'trash.trash.clear' | translate
       }}</a>
@@ -66,7 +69,12 @@
   <div class="results-toolbar">
     <div class="results-summary">
       @if (resultCount() > 0) {
-        <span class="results-count">{{ totalResults() }} trashed document(s)</span>
+        <span class="results-count">{{
+          (totalResults() === 1
+            ? 'common.count.trashed-document-one'
+            : 'common.count.trashed-document-many'
+          ) | translate: { count: totalResults() }
+        }}</span>
       }
     </div>
 

@@ -119,7 +119,7 @@
         {{ 'hxp.hxp-browse-history.previous' | translate }}
       </button>
       <span class="hxp-history__pager-label">
-        Page {{ pageIndex() + 1 }} of {{ pageCount() }}
+        {{ 'common.page-of' | translate: { page: pageIndex() + 1, total: pageCount() } }}
       </span>
       <button
         type="button"

@@ -27,7 +27,7 @@ import {
   SelectionService,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { extractMainBlobFileName } from './note-image-url';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-note-image-picker-dialog',
@@ -51,6 +51,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class NoteImagePickerDialogComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
   private readonly dialogRef = inject(
     MatDialogRef<NoteImagePickerDialogComponent, NuxeoDocument[]>,
   );
@@ -76,7 +77,11 @@ export class NoteImagePickerDialogComponent implements OnInit {
 
   readonly resultsLabel = computed(() => {
     const count = this.totalSize();
-    return `${count} result(s)`;
+    // A key per grammatical number rather than an `(s)` suffix, matching the templates.
+    return this.translate.instant(
+      count === 1 ? 'common.count.result-one' : 'common.count.result-many',
+      { count },
+    );
   });
 
   readonly isAllSelected = computed(() => {

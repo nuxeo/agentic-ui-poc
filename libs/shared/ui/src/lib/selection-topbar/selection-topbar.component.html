@@ -1,6 +1,9 @@
 <div class="selection-topbar" [class.selection-topbar--clear-only]="clearOnly()">
   <div class="topbar-left">
-    <span class="selected-label">All {{ selectedCount() }} item(s) selected</span>
+    <span class="selected-label">{{
+      (selectedCount() === 1 ? 'common.count.all-selected-one' : 'common.count.all-selected-many')
+        | translate: { count: selectedCount() }
+    }}</span>
     @if (!clearOnly()) {
       <button mat-button type="button" class="clear-btn" (click)="openSelectionPopup()">
         {{ 'shared-ui.selection-topbar.display-selection' | translate }}
@@ -19,7 +22,7 @@
           type="button"
           class="topbar-icon-btn"
           [attr.data-action-id]="action.id"
-          [matTooltip]="action.tooltip ?? action.label"
+          [matTooltip]="action.tooltip ?? (action | descriptorLabel)"
           matTooltipPosition="below"
           matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
           [attr.aria-label]="action | descriptorLabel"

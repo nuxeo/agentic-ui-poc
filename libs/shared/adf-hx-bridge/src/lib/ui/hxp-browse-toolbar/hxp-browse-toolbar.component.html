@@ -1,5 +1,8 @@
 <div class="hxp-browse-toolbar">
-  <span class="hxp-browse-toolbar__count">{{ resultCount() }} result(s)</span>
+  <span class="hxp-browse-toolbar__count">{{
+    (resultCount() === 1 ? 'common.count.result-one' : 'common.count.result-many')
+      | translate: { count: resultCount() }
+  }}</span>
   <div class="hxp-browse-toolbar__spacer"></div>
 
   <label class="hxp-browse-toolbar__field">

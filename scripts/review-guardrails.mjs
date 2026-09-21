@@ -1071,6 +1071,77 @@ function checkNoHardcodedUiText() {
   }
 
   /**
+   * Whether a line with its interpolations blanked still carries English prose, and which part.
+   *
+   * Deliberately NOT `isDisplayText`. That requires an initial capital to keep CSS values and
+   * identifiers out, and a sentence continuation after an interpolated value is lowercase — so the
+   * capital rule excluded the exact shape wanted here. This instead asks whether a fragment reads
+   * like words: at least three letters, and either two words or a word of three or more letters.
+   *
+   * Units and technical tokens are listed rather than inferred. `px`, `KB` and `UTC` appear beside
+   * a bound number in a template and are not translatable prose; a heuristic that tried to
+   * recognise them by shape would either miss short English words like `of` — which IS prose, in
+   * `Page 1 of 5` — or flag the units. A short explicit list is the honest way round that.
+   */
+  const NON_PROSE_TOKENS = new Set([
+    'px',
+    'em',
+    'rem',
+    'ms',
+    'kb',
+    'mb',
+    'gb',
+    'tb',
+    'utc',
+    'id',
+    'uid',
+    'url',
+    'http',
+    'https',
+    'nxql',
+    'pdf',
+    'csv',
+    'json',
+    'api',
+    'ai',
+    'ok',
+    'fps',
+    'dpi',
+    'rgb',
+  ]);
+
+  function proseFragmentBesideValue(blanked) {
+    const candidates = blanked
+      // Complete tags first, then the two PARTIAL ones Prettier leaves when it splits an element
+      // across lines: a tag opened at the end of this line, and the tail of one opened on the
+      // previous line. Without these, `{{ x }}</span` yielded the fragment `/span`.
+      .replace(/<[^>]*>/g, '\u0000')
+      .replace(/<[^<>]*$/g, '\u0000')
+      .replace(/^[^<>]*>/g, '\u0000')
+      .split('\u0000')
+      // `matTooltip="Download` is a mixed attribute value, not a fragment called `matTooltip=...`.
+      // Naming the attribute in the report made a real finding look like a parser artefact.
+      .map((part) => part.replace(/^[\w.[\]-]+="/, '').trim())
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    for (const candidate of candidates) {
+      // Judge the words, but REPORT the fragment as written. Normalising punctuation away before
+      // reporting turned `event(s)` into `event s`, which reads like a parser bug rather than the
+      // untranslatable plural suffix it actually is.
+      const words = candidate.match(/[A-Za-z][A-Za-z'\u2019-]*/g) ?? [];
+      if (words.length === 0) continue;
+      if ((candidate.match(/[A-Za-z]/g) ?? []).length < 3) continue;
+      if (words.every((word) => NON_PROSE_TOKENS.has(word.toLowerCase()))) continue;
+      // A tag remnant that survived the strips above is not prose.
+      if (/^\//.test(candidate)) continue;
+      if (words.length < 2 && !words.some((word) => word.length >= 3)) continue;
+      return candidate;
+    }
+    return null;
+  }
+
+  /**
    * Templates exempt from the repo-wide sweep, and why each one is.
    *
    * `apps/nuxeo-satori-template` is the customer starter template and its 122 strings are
@@ -1242,6 +1313,43 @@ function checkNoHardcodedUiText() {
       const bare = remainder.trim();
       if (!offence && BARE_PROSE_LINE.test(bare) && isDisplayText(bare)) {
         offence = { what: `the text \`${bare}\``, value: bare };
+      }
+
+      // Prose AROUND a dynamic interpolation — the mixed-language sentence.
+      //
+      // `remainder` only strips interpolations that are already TRANSLATED, so a line like
+      //
+      //     <p>Content for "{{ item | descriptorLabel }}" will appear here.</p>
+      //     <strong>{{ workflowDisplayName(wf) }}</strong> workflow on this document.
+      //
+      // still contains braces. `ELEMENT_TEXT` needs `>` and `<` with no braces between them and
+      // `BARE_PROSE_LINE` rejects `{` outright, so the English on either side of the value was
+      // never judged. Blanking the dynamic span is what makes it visible.
+      //
+      // It needs its OWN prose predicate, and the reason is the interesting part. `isDisplayText`
+      // requires an initial capital, which is right for its usual job — it keeps CSS values and
+      // identifiers out — but the fragment AFTER an interpolated value is a sentence continuation
+      // and therefore lowercase almost every time: `workflow on this document`, `in the left menu
+      // for ad-hoc queries`. The capital rule hid precisely the half of the sentence this check
+      // exists to find. `BARE_PROSE_LINE` also rejects `"`, which hid `Content for "`.
+      //
+      // The fix shape is always one parameterised key for the whole sentence: a translator handed
+      // the fragments either side of a value cannot move the value, and in German or Japanese it
+      // does not sit where English puts it. INFO-144 forbids this outright.
+      if (!offence) {
+        // U+0000 cannot occur in a template, so it marks the boundary unambiguously and keeps the
+        // words on either side from being joined into one token.
+        const blanked = remainder.replace(/\{\{[^{}]*\}\}/g, '\u0000');
+        if (blanked.includes('\u0000')) {
+          const fragment = proseFragmentBesideValue(blanked);
+          if (fragment) {
+            offence = {
+              what: `the text \`${fragment}\` beside an interpolated value`,
+              value: fragment,
+              mixed: true,
+            };
+          }
+        }
       }
 
       // Quoted literals inside an Angular EXPRESSION. `{{ isOverdue(t) ? 'Overdue' : 'Due' }}` is

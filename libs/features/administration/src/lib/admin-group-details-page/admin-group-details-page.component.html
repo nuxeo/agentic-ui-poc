@@ -41,8 +41,19 @@
           </div>
         </header>
         <p class="gd-meta">
-          {{ (g.memberUsers ?? []).length }} member(s) • {{ (g.memberGroups ?? []).length }} nested
-          group(s)
+          {{
+            ((g.memberUsers ?? []).length === 1
+              ? 'common.count.member-one'
+              : 'common.count.member-many'
+            ) | translate: { count: (g.memberUsers ?? []).length }
+          }}
+          •
+          {{
+            ((g.memberGroups ?? []).length === 1
+              ? 'common.count.nested-group-one'
+              : 'common.count.nested-group-many'
+            ) | translate: { count: (g.memberGroups ?? []).length }
+          }}
         </p>
       </section>
 
@@ -195,7 +206,9 @@
               <tr mat-row *matRowDef="let row; columns: permColumns"></tr>
             </table>
             @if (lp.rows.length === 0) {
-              <p class="gd-empty">{{ g.grouplabel || g.groupname }} does not have permissions.</p>
+              <p class="gd-empty">
+                {{ 'admin.no-permissions-for' | translate: { name: g.grouplabel || g.groupname } }}
+              </p>
             }
             <mat-paginator
               [length]="lp.totalDocuments"

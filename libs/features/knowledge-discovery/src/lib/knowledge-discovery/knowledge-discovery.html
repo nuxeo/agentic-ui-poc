@@ -29,9 +29,11 @@
       <details class="kd-debug" open>
         <summary>
           <mat-icon>bug_report</mat-icon>
-          Debug: {{ detail.operation }}
+          {{ 'kd.debug-operation' | translate: { operation: detail.operation } }}
           @if (detail.status !== undefined) {
-            <span class="kd-debug__chip">HTTP {{ detail.status }}</span>
+            <span class="kd-debug__chip">{{
+              'kd.debug-http-status' | translate: { status: detail.status }
+            }}</span>
           }
           <button
             type="button"
@@ -56,9 +58,11 @@
       <details class="kd-debug" open>
         <summary>
           <mat-icon>bug_report</mat-icon>
-          Debug: {{ detail.operation }}
+          {{ 'kd.debug-operation' | translate: { operation: detail.operation } }}
           @if (detail.status !== undefined) {
-            <span class="kd-debug__chip">HTTP {{ detail.status }}</span>
+            <span class="kd-debug__chip">{{
+              'kd.debug-http-status' | translate: { status: detail.status }
+            }}</span>
           }
           <button
             type="button"
@@ -83,9 +87,11 @@
       <details class="kd-debug" open>
         <summary>
           <mat-icon>bug_report</mat-icon>
-          Debug: {{ detail.operation }}
+          {{ 'kd.debug-operation' | translate: { operation: detail.operation } }}
           @if (detail.status !== undefined) {
-            <span class="kd-debug__chip">HTTP {{ detail.status }}</span>
+            <span class="kd-debug__chip">{{
+              'kd.debug-http-status' | translate: { status: detail.status }
+            }}</span>
           }
           <button
             type="button"
@@ -335,7 +341,7 @@
         <div class="kd-card__header">
           <div>
             <span class="kd-section-label">{{ 'kd.knowledge-discovery.agents' | translate }}</span>
-            <h3>Available ({{ agents().length }})</h3>
+            <h3>{{ 'common.available-count' | translate: { count: agents().length } }}</h3>
           </div>
         </div>
 
@@ -389,7 +395,12 @@
             <span class="kd-chip">{{ agent.modelName }}</span>
             <span class="kd-chip kd-chip--ghost">{{ agent.agentType || 'standard' }}</span>
             @if (agent.sourceIds.length > 0) {
-              <span class="kd-chip kd-chip--ghost">{{ agent.sourceIds.length }} sources</span>
+              <span class="kd-chip kd-chip--ghost">{{
+                (agent.sourceIds.length === 1
+                  ? 'common.count.source-one'
+                  : 'common.count.source-many'
+                ) | translate: { count: agent.sourceIds.length }
+              }}</span>
             }
           </div>
         </section>

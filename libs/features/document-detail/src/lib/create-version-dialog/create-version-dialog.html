@@ -1,6 +1,11 @@
 <h2 mat-dialog-title>
-  Create Version for {{ data.documentTitle }} - Version {{ data.currentMajor }}.{{
-    data.currentMinor
+  {{
+    'document-detail.create-version-dialog.title'
+      | translate
+        : {
+            document: data.documentTitle,
+            version: data.currentMajor + '.' + data.currentMinor,
+          }
   }}
 </h2>
 

@@ -230,7 +230,9 @@
                 {{ 'search.search-filters-drawer.please-enter-1-or-more-characters' | translate }}
               </div>
             } @else if (filteredTags().length === 0) {
-              <div class="typeahead-hint">No results for {{ tagInput().trim() }}</div>
+              <div class="typeahead-hint">
+                {{ 'search.no-results-for' | translate: { term: tagInput().trim() } }}
+              </div>
             } @else if (filteredTags().length > 0) {
               @for (tag of filteredTags(); track tag.key) {
                 <button class="typeahead-option" type="button" (mousedown)="selectTag(tag)">

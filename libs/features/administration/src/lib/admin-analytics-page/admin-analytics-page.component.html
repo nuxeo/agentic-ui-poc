@@ -91,7 +91,10 @@
           </div>
         } @else {
           <p class="muted">
-            Showing {{ repoDocs().length }} of {{ repoTotal() }} (most recently modified).
+            {{
+              'admin.analytics.showing-of-total'
+                | translate: { shown: repoDocs().length, total: repoTotal() }
+            }}
           </p>
           <div class="table-scroll mat-elevation-z1">
             <table mat-table [dataSource]="repoDocs()" class="mini-table">

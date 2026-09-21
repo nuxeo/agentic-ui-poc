@@ -116,7 +116,7 @@ describe('NoteImagePickerDialogComponent', () => {
       });
       expect(component.results().map((d) => d.uid)).toEqual(['a', 'b']);
       expect(component.totalSize()).toBe(2);
-      expect(component.resultsLabel()).toBe('2 result(s)');
+      expect(component.resultsLabel()).toBe('2 results');
       expect(component.loading()).toBe(false);
       expect(component.searchError()).toBeNull();
     });

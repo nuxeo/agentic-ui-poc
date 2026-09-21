@@ -309,6 +309,7 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'settings.themes.title': 'Themes',
   'shared-ui.document-compare-dialog.loading': 'Loading',
   'shared-ui.document-viewer.download': 'Download',
+  'shared-ui.document-viewer.download-named': 'Download {{ name }}',
   'shared-ui.document-viewer.loading': 'Loading',
   'shared-ui.document-viewer.open-with-nuxeo-drive': 'Open with Nuxeo Drive',
   'shared-ui.document-viewer.preview': 'Preview',

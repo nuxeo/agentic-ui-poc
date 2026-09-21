@@ -201,7 +201,12 @@
 <!-- ───── RESULTS MODE ───── -->
 @if (trashFilterService.layoutMode() === 'results') {
   <div class="drawer-results-header">
-    <span class="drawer-results-count">{{ trashFilterService.totalResults() }} result(s)</span>
+    <span class="drawer-results-count">{{
+      (trashFilterService.totalResults() === 1
+        ? 'common.count.result-one'
+        : 'common.count.result-many'
+      ) | translate: { count: trashFilterService.totalResults() }
+    }}</span>
   </div>
 
   @if (trashFilterService.resultsLoading()) {

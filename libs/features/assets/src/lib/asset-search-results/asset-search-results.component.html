@@ -48,7 +48,10 @@
   <!-- Toolbar -->
   <div class="results-toolbar">
     @if (resultCount() > 0) {
-      <span class="results-count">{{ resultCount() }} result(s)</span>
+      <span class="results-count">{{
+        (resultCount() === 1 ? 'common.count.result-one' : 'common.count.result-many')
+          | translate: { count: resultCount() }
+      }}</span>
     }
 
     <div class="toolbar-actions">

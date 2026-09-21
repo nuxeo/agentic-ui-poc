@@ -84,7 +84,7 @@
                 <span>[{{ reference.index }}]</span>
               }
               @if (reference.pageNumber !== undefined) {
-                <span>Page {{ reference.pageNumber }}</span>
+                <span>{{ 'common.page-number' | translate: { page: reference.pageNumber } }}</span>
               }
             </span>
           </header>
@@ -109,7 +109,9 @@
                         <span>[{{ item.index }}]</span>
                       }
                       @if (item.pageNumber !== undefined) {
-                        <span>Page {{ item.pageNumber }}</span>
+                        <span>{{
+                          'common.page-number' | translate: { page: item.pageNumber }
+                        }}</span>
                       }
                     </span>
                   </header>

@@ -205,12 +205,17 @@
       "vocabulary": "Vocabulary"
     },
     "analytics": {
+      "showing-of-total": "Showing {{ shown }} of {{ total }} (most recently modified).",
       "tab": {
         "document-distribution": "Document Distribution",
         "repository-content": "Repository Content",
         "search": "Search",
         "workflow": "Workflow"
       }
+    },
+    "audit": {
+      "analyzing-entries": "Analyzing {{ count }} entries…",
+      "critical-count": "{{ count }} critical"
     },
     "change-password-dialog": {
       "cancel": "Cancel",
@@ -236,6 +241,7 @@
       "pick-from-search-or-enter-a": "Pick from search or enter a username and press Enter",
       "save": "Save"
     },
+    "no-permissions-for": "{{ name }} does not have permissions.",
     "user-form-dialog": {
       "cancel": "Cancel",
       "company": "Company",
@@ -450,6 +456,7 @@
       "time-frame": "Time Frame"
     },
     "session-expiry-warning-dialog": {
+      "expiry-message": "Your session will expire in {{ minutes }} minutes due to inactivity. Stay signed in to continue working.",
       "session-expiring": "Session expiring",
       "sign-out": "Sign out",
       "stay-signed-in": "Stay signed in"
@@ -675,6 +682,7 @@
       "loading-folders": "Loading folders…",
       "location": "Location",
       "nature": "Nature",
+      "new-of-type": "New {{ type }}",
       "no-document-types-can-be-created": "No document types can be created at this location. Open Sections, Templates, or\n                  Workspaces, then create content inside those folders.",
       "ok": "OK",
       "receive-the-import-report-by-email": "Receive the import report by email.",
@@ -691,6 +699,7 @@
       "upload-a-main-file-to-create": "Upload a main file to create this document.",
       "upload-complete": "Upload complete",
       "upload-main-file": "Upload main file",
+      "uploading-percent": "Uploading… {{ percent }}%",
       "working": "Working…"
     },
     "details": {
@@ -851,6 +860,31 @@
     "document-list-version": "Version"
   },
   "common": {
+    "available-count": "Available ({{ count }})",
+    "count": {
+      "actionable-item-many": "{{ count }} actionable items",
+      "actionable-item-one": "{{ count }} actionable item",
+      "all-selected-many": "All {{ count }} items selected",
+      "all-selected-one": "All {{ count }} item selected",
+      "event-many": "{{ count }} events",
+      "event-one": "{{ count }} event",
+      "found-result-many": "Found {{ count }} results",
+      "found-result-one": "Found {{ count }} result",
+      "member-many": "{{ count }} members",
+      "member-one": "{{ count }} member",
+      "nested-group-many": "{{ count }} nested groups",
+      "nested-group-one": "{{ count }} nested group",
+      "related-event-many": "{{ count }} related events",
+      "related-event-one": "{{ count }} related event",
+      "result-many": "{{ count }} results",
+      "result-one": "{{ count }} result",
+      "source-many": "{{ count }} sources",
+      "source-one": "{{ count }} source",
+      "trashed-document-many": "{{ count }} trashed documents",
+      "trashed-document-one": "{{ count }} trashed document"
+    },
+    "page-number": "Page {{ page }}",
+    "page-of": "Page {{ page }} of {{ total }}",
     "select-item": "Select {{ name }}"
   },
   "confirm": {
@@ -914,6 +948,7 @@
       "add-to-collection": "Add to Collection",
       "cancel": "Cancel",
       "collections": "Collections",
+      "create-named": "Create \"{{ name }}\"",
       "loading-collections": "Loading collections...",
       "search-or-create-collection": "Search or create collection...",
       "select-a-collection": "Select a Collection..."
@@ -933,7 +968,8 @@
       "cancel": "Cancel",
       "create-version": "Create Version",
       "major-version": "Major version",
-      "minor-version": "Minor version"
+      "minor-version": "Minor version",
+      "title": "Create Version for {{ document }} - Version {{ version }}"
     },
     "document-detail": {
       "abandon": "Abandon",
@@ -1184,9 +1220,13 @@
     "replies": "Replies",
     "reply": "Reply",
     "show-details": "Show details",
+    "task-due-before": "before {{ due }}",
     "unblock": "Unblock",
     "unknown": "Unknown",
-    "visual-editor": "Visual editor"
+    "version-latest": "{{ version }} Latest",
+    "version-modified-by": "Modified {{ when }} by {{ who }}",
+    "visual-editor": "Visual editor",
+    "workflow-started-on-document": "You started a {{ workflow }} workflow on this document."
   },
   "drawer": {
     "administration-analytics": "Analytics",
@@ -1309,6 +1349,8 @@
       "clear": "Clear",
       "close": "Close",
       "files-are-uploaded-to-nuxeo-first": "Files are uploaded to Nuxeo first, then ingested into Content Lake so Knowledge Discovery agents\n    can cite them. Before upload, we search the repository and Content Lake for matching files.",
+      "ingested-many": "Uploaded and ingested {{ count }} documents to Content Lake.",
+      "ingested-one": "Uploaded and ingested {{ count }} document to Content Lake.",
       "ingesting-into-content-lake": "Ingesting into Content Lake...",
       "loading": "Loading",
       "nuxeo-folder-path": "Nuxeo folder path",
@@ -1318,6 +1360,8 @@
       "up-one-folder-level": "Up one folder level",
       "upload-to-content-lake": "Upload to Content Lake"
     },
+    "debug-http-status": "HTTP {{ status }}",
+    "debug-operation": "Debug: {{ operation }}",
     "kd-citation-dialog": {
       "citation-references": "Citation references",
       "close-citation-viewer": "Close citation viewer",
@@ -1559,6 +1603,7 @@
       "tag-placeholder": "e.g. events, boston"
     },
     "hide-query": "Hide Query",
+    "no-results-for": "No results for {{ term }}",
     "quick-filter": {
       "most-recent": "Most Recent",
       "no-containers": "No Containers",
@@ -1641,6 +1686,8 @@
     },
     "hide-password": "Hide password",
     "profile": {
+      "group-permissions-heading": "{{ group }} permissions",
+      "loading-group-permissions": "Loading {{ group }} permissions…",
       "local-permissions": "Local permissions",
       "no-local-permissions": "No local permissions found."
     },
@@ -1682,6 +1729,7 @@
       "color-profile": "Color Profile",
       "dimensions": "Dimensions",
       "download": "Download",
+      "download-named": "Download {{ name }}",
       "duration": "Duration",
       "exif": "EXIF",
       "format": "Format",
@@ -1824,7 +1872,9 @@
       "title": "AI Assistant"
     },
     "due": "Due",
+    "expired-on": "Expired {{ date }}",
     "file": "File",
+    "last-modified-on": "Last Modified {{ date }}",
     "menu": {
       "about": "About",
       "ai-features": "AI Features {{ state }}",
@@ -1842,7 +1892,8 @@
     },
     "settings": {
       "menu": "Settings menu"
-    }
+    },
+    "slot-empty": "Content for \"{{ name }}\" will appear here."
   },
   "tab": {
     "tabs-ai-insights": "AI Insights",
@@ -1854,6 +1905,7 @@
   },
   "tasks": {
     "document": "Document",
+    "due-on": "Due {{ date }}",
     "no-document": "No document",
     "task-detail": {
       "abandon": "Abandon",

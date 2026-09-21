@@ -22,9 +22,9 @@
             'admin.admin-audit-page.ai-anomaly-detection' | translate
           }}</span>
           @if (highSeverityCount() > 0) {
-            <span class="ai-anomaly-badge ai-anomaly-badge--high"
-              >{{ highSeverityCount() }} critical</span
-            >
+            <span class="ai-anomaly-badge ai-anomaly-badge--high">{{
+              'admin.audit.critical-count' | translate: { count: highSeverityCount() }
+            }}</span>
           }
         </div>
         <div class="ai-anomaly-banner__actions">
@@ -78,7 +78,14 @@
               </div>
               <p class="ai-anomaly-card__desc">{{ a.description }}</p>
               @if (a.events.length) {
-                <div class="ai-anomaly-card__events">{{ a.events.length }} related event(s)</div>
+                <div class="ai-anomaly-card__events">
+                  {{
+                    (a.events.length === 1
+                      ? 'common.count.related-event-one'
+                      : 'common.count.related-event-many'
+                    ) | translate: { count: a.events.length }
+                  }}
+                </div>
               }
             </div>
           }
@@ -183,7 +190,12 @@
   <!-- ═══════ Results Toolbar ═══════ -->
   @if (!loading()) {
     <div class="audit-toolbar">
-      <p class="audit-meta">{{ totalSize() }} event(s)</p>
+      <p class="audit-meta">
+        {{
+          (totalSize() === 1 ? 'common.count.event-one' : 'common.count.event-many')
+            | translate: { count: totalSize() }
+        }}
+      </p>
       @if (featureFlags.aiEnabled()) {
         <button
           type="button"
@@ -223,7 +235,9 @@
             diameter="28"
             [attr.aria-label]="'admin.admin-audit-page.loading' | translate"
           />
-          <span>Analyzing {{ entries().length }} entries…</span>
+          <span>{{
+            'admin.audit.analyzing-entries' | translate: { count: entries().length }
+          }}</span>
         </div>
       } @else if (auditSummary()) {
         <p class="ai-summary-panel__text">{{ auditSummary()!.summary }}</p>
@@ -320,7 +334,7 @@
       <button type="button" mat-button (click)="prevPage()" [disabled]="pageIndex() === 0">
         {{ 'admin.admin-audit-page.previous' | translate }}
       </button>
-      <span>Page {{ pageIndex() + 1 }}</span>
+      <span>{{ 'common.page-number' | translate: { page: pageIndex() + 1 } }}</span>
       <button
         type="button"
         mat-button

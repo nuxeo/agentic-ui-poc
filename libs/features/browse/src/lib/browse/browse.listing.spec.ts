@@ -237,7 +237,7 @@ describe('BrowseComponent — rendered document list', () => {
 
     expect(component.loading()).toBe(false);
     expect(rowTitles()).toEqual(['Budget.xlsx', 'Notes.txt']);
-    expect(query('.result-count')?.textContent).toContain('2 result(s)');
+    expect(query('.result-count')?.textContent).toContain('2 results');
     expect(query('.browse-empty')).toBeNull();
   });
 
@@ -433,7 +433,7 @@ describe('BrowseComponent — rendered document list', () => {
     await settle();
 
     expect(rowTitles()).toEqual(['Q1 Report', 'Q2 Report']);
-    expect(query('.result-count')?.textContent).toContain('2 result(s)');
+    expect(query('.result-count')?.textContent).toContain('2 results');
   });
 
   it('adds a column to the rendered header when the user switches it on in the picker', async () => {
