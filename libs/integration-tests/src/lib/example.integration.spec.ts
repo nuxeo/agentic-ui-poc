@@ -15,7 +15,9 @@ import { setupIntegrationHarness, createTestDocument } from './integration-harne
 
 describe('Integration Test Example', () => {
   // Set up harness - runs preflight checks, creates data root, registers cleanup
-  const harness = setupIntegrationHarness();
+  const harness = setupIntegrationHarness({
+    allowDefaultCredentials: true, // For local Docker testing
+  });
 
   it('has a unique runId', () => {
     expect(harness.runId).toMatch(/^\d{8}-\d{6}-[a-z0-9]{3}$/);

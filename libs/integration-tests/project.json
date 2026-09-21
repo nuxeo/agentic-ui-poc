@@ -5,5 +5,16 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:integration-test"],
   "// targets": "to see all targets run: nx show project integration-tests --web",
-  "targets": {}
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/integration-tests"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
 }

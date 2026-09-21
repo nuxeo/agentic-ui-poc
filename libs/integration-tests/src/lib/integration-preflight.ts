@@ -86,7 +86,8 @@ export async function runPreflightChecks(
   const user = config.user ?? process.env['NUXEO_USER'] ?? DEFAULT_USER;
   const password = config.password ?? process.env['NUXEO_PASS'] ?? DEFAULT_PASS;
   const allowDefault = config.allowDefaultCredentials ??
-    process.argv.includes('--allow-default-credentials');
+    process.argv.includes('--allow-default-credentials') ??
+    process.env['ALLOW_DEFAULT_CREDENTIALS'] === 'true';
 
   const problems: string[] = [];
   const satisfied: string[] = [];
