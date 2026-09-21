@@ -293,19 +293,44 @@ reduce`.
 `apps/nuxeo-ui-e2e/src/a11y/journey.a11y.spec.ts` (`npm run a11y:journey`) walks the four screens in
 the order a user meets them and emits **one self-contained report per screen** rather than a
 consolidated one. The other suites answer "which rules does the app fail"; this answers "how bad
-is the screen I am about to hand to its owner". **15.1 minutes, 51 findings, 32 blockers.**
+is the screen I am about to hand to its owner". **15.1 minutes, 51 findings, 32 blockers** as
+first measured on 2026-09-16. Document detail has since been re-measured at 17 and 15 after an
+upstream fix (below); the other three rows are still the 16 September figures, so the totals
+here are a snapshot rather than a current count.
 
-| Screen          | Route          | Findings | Blockers | Rule classes                                                                                                             |
-| --------------- | -------------- | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Login           | `/#/login`     | 12       | 2        | `bypass`, `color-contrast`, `focus-indicator-missing`, `landmark-one-main`, `page-has-heading-one`, `region`             |
-| Dashboard       | `/#/dashboard` | 3        | 1        | `color-contrast`, `focus-indicator-missing`, `heading-order`                                                             |
-| Browse          | `/#/browse`    | 11       | 7        | `button-name`, `color-contrast`, `empty-table-header`, `focus-indicator-missing`, `focus-offscreen`, `th-has-data-cells` |
-| Document detail | `/#/doc/:uid`  | 24       | 22       | `button-name`, `color-contrast`, `focus-indicator-missing`, `heading-order`                                              |
+| Screen          | Route          | Findings    | Blockers    | Rule classes                                                                                                             |
+| --------------- | -------------- | ----------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Login           | `/#/login`     | 12          | 2           | `bypass`, `color-contrast`, `focus-indicator-missing`, `landmark-one-main`, `page-has-heading-one`, `region`             |
+| Dashboard       | `/#/dashboard` | 3           | 1           | `color-contrast`, `focus-indicator-missing`, `heading-order`                                                             |
+| Browse          | `/#/browse`    | 11          | 7           | `button-name`, `color-contrast`, `empty-table-header`, `focus-indicator-missing`, `focus-offscreen`, `th-has-data-cells` |
+| Document detail | `/#/doc/:uid`  | 24 → **17** | 22 → **15** | `color-contrast`, `focus-indicator-missing`, `heading-order` — `button-name` fixed, see below                            |
 
 Three of the four had never been scanned by anything. **Document detail is the worst screen in
-the application measured so far**, at 22 blockers, 15 of them `color-contrast`. Dashboard matters
-for a different reason: `app.routes.ts` redirects `path: ''` to it, so it is the first screen
-every signed-in user sees, and it was absent from `SURFACES`.
+the application measured so far**, now at 15 blockers, 15 of them `color-contrast`. Dashboard
+matters for a different reason: `app.routes.ts` redirects `path: ''` to it, so it is the first
+screen every signed-in user sees, and it was absent from `SURFACES`.
+
+### Seven of those blockers are already fixed — re-measured 2026-09-21
+
+The `button-name` findings on this screen were the nav drawer's folder-tree toggles: seven
+buttons whose only content is a `mat-icon`, which Angular Material marks `aria-hidden`, leaving
+them with no accessible name. `NXSAT-227` gave them names upstream, and a re-scan against the
+same document confirms it — nothing else moved:
+
+| Rule                      | 16 Sep | 21 Sep |
+| ------------------------- | ------ | ------ |
+| `button-name`             | 7      | **0**  |
+| `color-contrast`          | 15     | 15     |
+| `focus-indicator-missing` | 1      | 1      |
+| `heading-order`           | 1      | 1      |
+| **total**                 | **24** | **17** |
+
+Worth recording as a closed loop rather than a footnote: this suite found a defect no static
+rule or axe run had reported, the defect was fixed, and the same suite confirmed the fix. That
+is the argument for the layer, made once with evidence.
+
+**Browse's two `button-name` findings are the same two tree toggles and are very likely fixed
+too, but that has not been re-measured.** Its row above still shows the 16 September figures.
 
 ### The run-to-run difference was a loading spinner masking a real defect
 
@@ -329,6 +354,10 @@ contains a `<mat-icon>`, which Angular Material marks `aria-hidden` by default.
 catches the tree mid-load does not merely add two spurious findings — it _suppresses_ a genuine
 `button-name` failure and reports six unnamed toggles where there are seven. The settled state is
 the truthful one, and it is the worse one.
+
+(Those seven have since been given real names upstream — see the re-measurement above. The
+reasoning is kept because the _mechanism_ is general: any element whose loading state carries an
+`aria-label` that its settled state drops will be under-reported by a scan arriving too early.)
 
 `waitForNavTreeSettled()` therefore waits for the root loader to clear, for zero per-node
 spinners, and for the node count to repeat before scanning. It is a correctness fix, not a flake
