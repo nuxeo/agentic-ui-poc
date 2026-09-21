@@ -45,6 +45,7 @@ export default [
                 'type:util',
                 'type:extension',
                 'type:publishable',
+                'type:testing',
               ],
             },
             // A feature may use shared building blocks and may NOT use another feature.
@@ -52,7 +53,7 @@ export default [
             // the fix is to move it — which is what happened to the permission dialogs.
             {
               sourceTag: 'scope:features',
-              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core'],
+              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core', 'type:testing'],
             },
             // Shared code must not depend on a feature. This is the direction that makes
             // a shared library un-shareable, and it is the one `libs/shared/drawers` got
@@ -60,12 +61,12 @@ export default [
             // nobody.
             {
               sourceTag: 'scope:shared',
-              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core'],
+              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core', 'type:testing'],
             },
             // The lowest layer. `libs/core` underpins shared code, so it may not reach up.
             {
               sourceTag: 'scope:core',
-              onlyDependOnLibsWithTags: ['scope:core'],
+              onlyDependOnLibsWithTags: ['scope:core', 'type:testing'],
             },
             // A customer extension library must see only what a customer sees: the
             // published platform entry points. **This rule cannot enforce that**, and the
@@ -85,12 +86,12 @@ export default [
             // rule's to make.
             {
               sourceTag: 'type:extension',
-              onlyDependOnLibsWithTags: ['type:publishable', 'scope:shared'],
+              onlyDependOnLibsWithTags: ['type:publishable', 'scope:shared', 'type:testing'],
             },
             // The published package's own entry points wrap the shared libraries.
             {
               sourceTag: 'type:publishable',
-              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core'],
+              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core', 'type:testing'],
             },
           ],
         },

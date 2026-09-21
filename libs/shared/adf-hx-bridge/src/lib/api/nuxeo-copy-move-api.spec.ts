@@ -5,6 +5,7 @@ import type { CopyCommand, MoveCommand } from '@hylandsoftware/hxcs-js-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import { nuxeoDocument } from '@agentic-ui/shared/testing';
 
 import { NuxeoCopyApi, NuxeoMoveApi } from './nuxeo-copy-move-api';
 
@@ -18,16 +19,9 @@ import { NuxeoCopyApi, NuxeoMoveApi } from './nuxeo-copy-move-api';
  * between moving the right document into the right folder and moving the wrong one.
  */
 
-/** A Nuxeo document as `Document.Copy` / `Document.Move` return it. */
-const nuxeoDoc = (over: Partial<NuxeoDocument> = {}): NuxeoDocument => ({
-  uid: 'copy-1',
-  title: 'Invoice',
-  type: 'File',
-  path: '/default-domain/workspaces/target/Invoice',
-  lastModified: '2026-03-01T00:00:00.000Z',
-  properties: {},
-  ...over,
-});
+// Migrated to @agentic-ui/shared/testing (Stage 3.4). The original default values:
+// uid: 'copy-1', lastModified: '2026-03-01T00:00:00.000Z', path: '/default-domain/workspaces/target/Invoice'
+// now use the shared factory's defaults and override where this spec needs different values.
 
 describe('NuxeoCopyApi', () => {
   let api: NuxeoCopyApi;
@@ -64,7 +58,7 @@ describe('NuxeoCopyApi', () => {
     // Single-document copy goes through the `doc:` form, so no `docs:` batch and no
     // per-document fallback fan-out.
     expect(req.request.body.input).not.toContain('docs:');
-    req.flush(nuxeoDoc({ uid: 'copy-1', title: 'Invoice' }));
+    req.flush(nuxeoDocument({ uid: 'copy-1', title: 'Invoice' }));
 
     const response = await pending;
     expect(response.data.sys_id).toBe('copy-1');
@@ -79,7 +73,7 @@ describe('NuxeoCopyApi', () => {
     const pending = api.copy('doc-1', 'default', copyTo('target-9'));
     httpMock.expectOne('/nuxeo/api/v1/automation/Document.Copy').flush({
       'entity-type': 'documents',
-      entries: [nuxeoDoc({ uid: 'copy-from-entries' })],
+      entries: [nuxeoDocument({ uid: 'copy-from-entries' })],
     });
 
     expect((await pending).data.sys_id).toBe('copy-from-entries');
@@ -173,7 +167,7 @@ describe('NuxeoMoveApi', () => {
       input: 'doc:doc-2',
     });
     req.flush(
-      nuxeoDoc({ uid: 'doc-2', title: 'Moved', path: '/default-domain/workspaces/target/Moved' }),
+      nuxeoDocument({ uid: 'doc-2', title: 'Moved', path: '/default-domain/workspaces/target/Moved' }),
     );
 
     const response = await pending;
@@ -188,7 +182,7 @@ describe('NuxeoMoveApi', () => {
     // Asymmetry with `copy`, and it is correct: `MoveCommand` has `targetParentId` only, so
     // there is no name to refuse. Asserted so the difference reads as deliberate.
     const pending = api.move('doc-2', 'default', moveTo('target-3'));
-    httpMock.expectOne('/nuxeo/api/v1/automation/Document.Move').flush(nuxeoDoc({ uid: 'doc-2' }));
+    httpMock.expectOne('/nuxeo/api/v1/automation/Document.Move').flush(nuxeoDocument({ uid: 'doc-2' }));
     await expect(pending).resolves.toBeDefined();
   });
 

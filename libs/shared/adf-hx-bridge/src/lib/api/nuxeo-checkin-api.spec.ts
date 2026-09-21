@@ -5,6 +5,7 @@ import type { CopyCommand } from '@hylandsoftware/hxcs-js-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import { nuxeoDocument } from '@agentic-ui/shared/testing';
 
 import { NuxeoCheckInApi } from './nuxeo-checkin-api';
 import { NuxeoCopyApi } from './nuxeo-copy-move-api';
@@ -20,15 +21,8 @@ import { NuxeoCopyApi } from './nuxeo-copy-move-api';
  * it actually reaches the `COPY` port, so that is asserted through the real HTTP call.
  */
 
-const nuxeoDoc = (over: Partial<NuxeoDocument> = {}): NuxeoDocument => ({
-  uid: 'doc-1',
-  title: 'Invoice',
-  type: 'File',
-  path: '/default-domain/workspaces/ws/Invoice',
-  lastModified: '2026-03-02T00:00:00.000Z',
-  properties: {},
-  ...over,
-});
+// Migrated to @agentic-ui/shared/testing (Stage 3.4). The original lastModified default
+// ('2026-03-02T00:00:00.000Z') differs from the shared factory; call sites that care should override it.
 
 describe('NuxeoCheckInApi', () => {
   let api: NuxeoCheckInApi;
@@ -61,7 +55,7 @@ describe('NuxeoCheckInApi', () => {
     // apply its own default, so a wrong key here produces a *plausible* result and no error.
     expect(req.request.body).toEqual({ params: { version: 'minor' }, context: {} });
     expect(req.request.headers.get('Content-Type')).toBe('application/json');
-    req.flush(nuxeoDoc({ uid: 'doc-1', title: 'Invoice' }));
+    req.flush(nuxeoDocument({ uid: 'doc-1', title: 'Invoice' }));
 
     const response = await pending;
     expect(response.data.sys_id).toBe('doc-1');
@@ -74,7 +68,7 @@ describe('NuxeoCheckInApi', () => {
 
     const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-1/@op/Document.CheckIn');
     expect(req.request.body).toEqual({ params: { version: 'major' }, context: {} });
-    req.flush(nuxeoDoc());
+    req.flush(nuxeoDocument());
 
     await expect(pending).resolves.toBeDefined();
   });
@@ -85,7 +79,7 @@ describe('NuxeoCheckInApi', () => {
     // truthiness check while every `sys_*` read came back undefined.
     const pending = api.checkin('doc-1');
     httpMock.expectOne('/nuxeo/api/v1/id/doc-1/@op/Document.CheckIn').flush(
-      nuxeoDoc({
+      nuxeoDocument({
         uid: 'v-1',
         title: 'Invoice',
         type: 'File',
@@ -130,7 +124,7 @@ describe('NuxeoCheckInApi', () => {
       context: {},
       input: 'doc:doc-1',
     });
-    req.flush(nuxeoDoc({ uid: 'copied-1' }));
+    req.flush(nuxeoDocument({ uid: 'copied-1' }));
 
     expect((await pending).data.sys_id).toBe('copied-1');
   });
