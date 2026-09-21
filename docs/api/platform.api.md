@@ -156,7 +156,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/extensions
 
-55 exported symbol(s).
+57 exported symbol(s).
 
 ```ts
 const APP_NAV_ITEMS: InjectionToken<Signal<readonly NavItemDescriptor[]>>;
@@ -176,6 +176,12 @@ class AppExtensionsService {
 }
 const CORE_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvaluator>>;
 const DOCUMENT_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvaluator>>;
+class DescriptorLabelPipe implements PipeTransform {
+    transform(descriptor: LabelledDescriptor | null | undefined): string;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<DescriptorLabelPipe, never>;
+    static ɵpipe: _angular_core.ɵɵPipeDeclaration<DescriptorLabelPipe, "descriptorLabel", true>;
+    }
+}
 const EMPTY_EXTENSION_RULE_CONTEXT: ExtensionRuleContext;
 const EXTENSION_SLOTS: {
     readonly navbar: "navbar";
@@ -346,6 +352,11 @@ interface ExtensionTabDescriptor extends ExtensionElement {
     readonly icon?: string;
     readonly rule?: ExtensionRule;
     readonly componentId?: string;
+    }
+}
+interface LabelledDescriptor {
+    readonly label: string;
+    readonly labelKey?: string;
     }
 }
 const NO_EXTENSION_SLOT_OVERRIDES: ExtensionSlotOverrides;
@@ -1878,7 +1889,7 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void;
 
 ## @nuxeo-satori/platform/ui
 
-32 exported symbol(s).
+33 exported symbol(s).
 
 ```ts
 class ConfirmDialogComponent {
@@ -2173,6 +2184,7 @@ interface StoryboardItem {
     label: string;
     }
 }
+type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
 class UiComponent {
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<UiComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<UiComponent, "lib-ui", never, {}, {}, never, never, true, never>;
@@ -2209,6 +2221,6 @@ class WidgetGridComponent {
     }
 }
 function openDocumentCompareDialog(dialog: MatDialog, items: DocumentCompareDialogData['items']): void;
-function trashDocumentConfirmData(title: string): ConfirmDialogData;
-function trashSelectedDocumentsConfirmData(count: number): ConfirmDialogData;
+function trashDocumentConfirmData(title: string, translate: TranslateFn): ConfirmDialogData;
+function trashSelectedDocumentsConfirmData(count: number, translate: TranslateFn): ConfirmDialogData;
 ```
