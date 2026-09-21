@@ -68,7 +68,13 @@ export function toDataColumns(
   descriptors: readonly ExtensionColumnDescriptor[],
   // Upstream's DataTable renders `title`, so there is no template of ours to put a pipe in.
   // The resolver is passed rather than injected to keep this a pure function.
-  translate: (key: string) => string = (key) => key,
+  //
+  // REQUIRED, with no identity default. The default was `(key) => key`, and neither production
+  // caller passed anything — so `descriptorLabel` saw `translate(labelKey) === labelKey`, took that
+  // as "unresolved", and returned the English literal for every column. The table headers never
+  // localized, while both call sites carried a comment saying they were translated. A default that
+  // silently produces the untranslated answer is worse than a compile error.
+  translate: (key: string) => string,
 ): DataColumn[] {
   return descriptors.map((descriptor) => ({
     ...(DATE_COLUMNS.has(descriptor.field)

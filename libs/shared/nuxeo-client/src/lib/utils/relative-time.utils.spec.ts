@@ -66,4 +66,20 @@ describe('formatRelativeTime', () => {
     expect(formatRelativeTime(new Date(NOW - 3 * 86_400_000), 'en', NOW)).toBe('3 days ago');
     expect(formatRelativeTime(NOW - 3 * 86_400_000, 'en', NOW)).toBe('3 days ago');
   });
+
+  // `Math.round` ties towards +∞, so it is asymmetric across zero: 1.5 rounds to 2 and -1.5 to -1.
+  // Ninety seconds either side of now therefore disagreed — "2 minutes ago" against "in 1 minute".
+  it('rounds the same distance either side of now to the same magnitude', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z');
+    const past = formatRelativeTime(new Date(now - 90_000), 'en', now);
+    const future = formatRelativeTime(new Date(now + 90_000), 'en', now);
+    expect(past).toBe('2 minutes ago');
+    expect(future).toBe('in 2 minutes');
+  });
+
+  it('keeps the sign: the past is behind, the future is ahead', () => {
+    const now = Date.parse('2026-09-20T12:00:00Z');
+    expect(formatRelativeTime(new Date(now - 3 * 3_600_000), 'en', now)).toBe('3 hours ago');
+    expect(formatRelativeTime(new Date(now + 3 * 3_600_000), 'en', now)).toBe('in 3 hours');
+  });
 });

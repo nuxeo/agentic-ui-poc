@@ -58,6 +58,14 @@ export function formatRelativeTime(
   // The last entry's limit is Infinity, so a match is guaranteed — but saying so with `!`
   // would be an assertion where a default is available.
   const [, perUnit, unit] = UNITS.find(([limit]) => Math.abs(elapsed) < limit) ?? YEARS;
+  // Rounded on the MAGNITUDE, then signed — not `Math.round(elapsed / perUnit)`.
+  //
+  // `Math.round` breaks ties towards +∞, so it is asymmetric across zero: `Math.round(1.5)` is 2
+  // and `Math.round(-1.5)` is -1. Two instants the same distance either side of now therefore
+  // rendered with different magnitudes — 90 seconds ago was "2 minutes ago" while 90 seconds
+  // ahead was "in 1 minute". Rounding the absolute value first makes the two symmetric, which is
+  // what a reader expects of a relative time.
+  const magnitude = Math.round(Math.abs(elapsed) / perUnit);
   // Negative is the past, which is the opposite sign from `elapsed`.
-  return format.format(-Math.round(elapsed / perUnit), unit);
+  return format.format(elapsed > 0 ? -magnitude : magnitude, unit);
 }
