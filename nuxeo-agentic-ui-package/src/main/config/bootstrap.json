@@ -22,5 +22,5 @@
   "themes": [],
 
   "defaultLanguage": "en",
-  "availableLanguages": ["en"]
+  "availableLanguages": ["en", "fr", "de"]
 }

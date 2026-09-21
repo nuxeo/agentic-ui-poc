@@ -60,7 +60,7 @@ import { SelectionTopbarComponent } from '@nuxeo-satori/platform/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS } from '@nuxeo-satori/platform/extensions';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { AuthService } from '../auth/auth.service';
 import { SessionTimeoutService } from '../auth/session-timeout.service';
@@ -119,6 +119,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly adfHxBrowseContext = inject(AdfHxBrowseContextService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly appConfig = inject(AppConfigService);
+  private readonly translate = inject(TranslateService);
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
   readonly themingFlags = inject(ThemingFeatureFlagService);
@@ -603,6 +604,18 @@ export class AppShellComponent implements OnDestroy {
     if (!msg) return;
     this.aiChat.send(msg);
     this.aiChatInput.set('');
+  }
+
+  /**
+   * Send one of the empty-state suggestions, in the user's language.
+   *
+   * The template used to set `aiChatInput` to the English sentence and call `sendAiMessage()`,
+   * so the button's visible label was translated but the message sent — and echoed back as the
+   * user's own turn — was always English. Resolving the key here keeps the two the same string.
+   */
+  sendAiSuggestion(key: string): void {
+    this.aiChatInput.set(this.translate.instant(key));
+    this.sendAiMessage();
   }
 
   clearAiChat(): void {

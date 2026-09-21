@@ -427,9 +427,9 @@ Two things make the measurement easy to get wrong, and both were measured on NXE
 // BAD ❌ — nothing sets the token, so a divider colour is the focus indicator
 // (no code at all: the defect is the absence)
 
-// GOOD ✅ — point it at the component's own foreground, which is legible on its own
-// background by construction, so one line covers every theme
-sat-platform-nav {
+// GOOD ✅ — declare the default on html so Layer 0 root-token overrides still win,
+// while the value still points at the component's own foreground across every theme
+html {
   --sat-platform-nav-outline: var(
     --agentic-nav-focus-outline-color,
     var(--sat-platform-nav-on-background, var(--mat-sys-on-primary, #fff))
