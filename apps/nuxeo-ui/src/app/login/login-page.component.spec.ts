@@ -64,20 +64,15 @@ describe('LoginPageComponent', () => {
     expect(usernameInput.getAttribute('aria-required')).toBeNull();
   });
 
-  it('disconnects the username aria-required observer on destroy (NXENG-753)', () => {
+  it('disconnects the username aria-required observer on destroy (NXENG-753)', async () => {
     const usernameInput = fixture.nativeElement.querySelector(
       'input[formcontrolname="username"]',
     ) as HTMLInputElement;
-    const disconnectSpy = spyOn(
-      (component as unknown as { usernameAriaRequiredObserver: MutationObserver })
-        .usernameAriaRequiredObserver as MutationObserver,
-      'disconnect',
-    ).and.callThrough();
 
     fixture.destroy();
 
-    expect(disconnectSpy).toHaveBeenCalled();
     usernameInput.setAttribute('aria-required', 'true');
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
     expect(usernameInput.getAttribute('aria-required')).toBe('true');
   });
 
