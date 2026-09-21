@@ -12,9 +12,7 @@
     <mat-label>{{ 'permissions.share-external-dialog.right' | translate }}</mat-label>
     <mat-select [(ngModel)]="permission">
       @for (opt of permissionOptions; track opt.value) {
-        <mat-option [value]="opt.value">{{
-          opt.labelKey ? (opt.labelKey | translate) : opt.label
-        }}</mat-option>
+        <mat-option [value]="opt.value">{{ opt | descriptorLabel }}</mat-option>
       }
     </mat-select>
   </mat-form-field>

@@ -21,18 +21,12 @@ export class WorkflowService {
   }
 
   /** Start a workflow on a document. */
-  startWorkflow(
-    docId: string,
-    workflowModelName: string,
-  ): Observable<NuxeoWorkflow> {
-    return this.api.post<NuxeoWorkflow>(
-      `/nuxeo/api/v1/id/${docId}/@workflow`,
-      {
-        'entity-type': 'workflow',
-        workflowModelName,
-        attachedDocumentIds: [docId],
-      },
-    );
+  startWorkflow(docId: string, workflowModelName: string): Observable<NuxeoWorkflow> {
+    return this.api.post<NuxeoWorkflow>(`/nuxeo/api/v1/id/${docId}/@workflow`, {
+      'entity-type': 'workflow',
+      workflowModelName,
+      attachedDocumentIds: [docId],
+    });
   }
 
   /** Get running workflow instances on a document. */
@@ -51,36 +45,26 @@ export class WorkflowService {
 
   /** Get a specific workflow instance. */
   getWorkflow(workflowId: string): Observable<NuxeoWorkflow> {
-    return this.api.get<NuxeoWorkflow>(
-      `/nuxeo/api/v1/workflow/${workflowId}`,
-    );
+    return this.api.get<NuxeoWorkflow>(`/nuxeo/api/v1/workflow/${workflowId}`);
   }
 
   /** Cancel / abandon a running workflow. */
   cancelWorkflow(workflowInstanceId: string): Observable<void> {
-    return this.api.delete<void>(
-      `/nuxeo/api/v1/workflow/${workflowInstanceId}`,
-    );
+    return this.api.delete<void>(`/nuxeo/api/v1/workflow/${workflowInstanceId}`);
   }
 
   /** Get the workflow graph (JSON). */
   getWorkflowGraph(workflowInstanceId: string): Observable<unknown> {
-    return this.api.get<unknown>(
-      `/nuxeo/api/v1/workflow/${workflowInstanceId}/graph`,
-    );
+    return this.api.get<unknown>(`/nuxeo/api/v1/workflow/${workflowInstanceId}/graph`);
   }
 
   /** Get a specific workflow model by name. */
   getWorkflowModel(modelName: string): Observable<NuxeoWorkflowModel> {
-    return this.api.get<NuxeoWorkflowModel>(
-      `/nuxeo/api/v1/workflowModel/${modelName}`,
-    );
+    return this.api.get<NuxeoWorkflowModel>(`/nuxeo/api/v1/workflowModel/${modelName}`);
   }
 
   /** Get the graph of a workflow model. */
   getWorkflowModelGraph(modelName: string): Observable<unknown> {
-    return this.api.get<unknown>(
-      `/nuxeo/api/v1/workflowModel/${modelName}/graph`,
-    );
+    return this.api.get<unknown>(`/nuxeo/api/v1/workflowModel/${modelName}/graph`);
   }
 }

@@ -22,7 +22,7 @@
           [disabled]="isRequired(col.key)"
           (change)="toggle(col.key)"
         />
-        {{ col.labelKey ? (col.labelKey | translate) : col.label }}
+        {{ col | descriptorLabel }}
       </label>
     }
   </div>

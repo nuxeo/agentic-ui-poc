@@ -238,7 +238,7 @@ export class AppShellComponent implements OnDestroy {
    * makes the dependency explicit, so a language change recomputes the heading rather than
    * leaving one stale string in the middle of a translated page.
    */
-  private navText(item: { readonly label: string; readonly labelKey?: string }): string {
+  protected navText(item: { readonly label: string; readonly labelKey?: string }): string {
     this.currentLang();
     if (!item.labelKey) return item.label;
     const translated = this.translate.instant(item.labelKey);

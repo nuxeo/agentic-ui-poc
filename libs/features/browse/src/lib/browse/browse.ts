@@ -122,6 +122,7 @@ import {
 
 import {
   AppExtensionsService,
+  DescriptorLabelPipe,
   EXTENSION_SLOTS,
   ExtensionActionRegistry,
   ExtensionRuleContextService,
@@ -166,6 +167,7 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
   selector: 'lib-browse',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     TranslatePipe,
     DatePipe,
     NgClass,

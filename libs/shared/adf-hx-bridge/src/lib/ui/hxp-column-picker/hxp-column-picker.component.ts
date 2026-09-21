@@ -9,6 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 /** One row in the picker: a stable key, a label, and whether it is currently shown. */
 export interface HxpPickableColumn {
@@ -37,7 +38,7 @@ export interface HxpPickableColumn {
  */
 @Component({
   selector: 'hxp-column-picker',
-  imports: [TranslatePipe],
+  imports: [DescriptorLabelPipe, TranslatePipe],
   standalone: true,
   templateUrl: './hxp-column-picker.component.html',
   styleUrl: './hxp-column-picker.component.scss',

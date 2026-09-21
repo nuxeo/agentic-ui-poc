@@ -13,6 +13,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AppExtensionsService,
+  DescriptorLabelPipe,
   EXTENSION_SLOTS,
   ExtensionActionRegistry,
   ExtensionOutletComponent,
@@ -252,6 +253,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   selector: 'lib-document-detail',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     TranslatePipe,
     DatePipe,
     NgTemplateOutlet,

@@ -61,6 +61,7 @@ import {
 } from '@agentic-ui/shared/adf-hx-bridge';
 import {
   AppExtensionsService,
+  DescriptorLabelPipe,
   EXTENSION_SLOTS,
   ExtensionComponentRegistry,
   ExtensionOutletComponent,
@@ -90,6 +91,7 @@ export interface FolderNode {
   selector: 'app-nav-drawer',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     NgTemplateOutlet,
     DatePipe,
     RouterLink,

@@ -123,8 +123,7 @@
                 (change)="toggleModificationDate(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.labelKey ? (option.labelKey | translate) : option.label
-                }}{{ getCountText(option.count) }}
+                {{ option | descriptorLabel }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }
@@ -267,8 +266,7 @@
                 (change)="toggleNature(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.labelKey ? (option.labelKey | translate) : option.label
-                }}{{ getCountText(option.count) }}
+                {{ option | descriptorLabel }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }
@@ -299,8 +297,7 @@
                 (change)="toggleSubject(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.labelKey ? (option.labelKey | translate) : option.label
-                }}{{ getCountText(option.count) }}
+                {{ option | descriptorLabel }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }
@@ -331,8 +328,7 @@
                 (change)="toggleCoverage(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.labelKey ? (option.labelKey | translate) : option.label
-                }}{{ getCountText(option.count) }}
+                {{ option | descriptorLabel }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }
@@ -361,8 +357,7 @@
                 (change)="toggleSize(option.value)"
                 class="filter-checkbox"
               >
-                {{ option.labelKey ? (option.labelKey | translate) : option.label
-                }}{{ getCountText(option.count) }}
+                {{ option | descriptorLabel }}{{ getCountText(option.count) }}
               </mat-checkbox>
             }
           }

@@ -22,7 +22,7 @@
           [matTooltip]="action.tooltip ?? action.label"
           matTooltipPosition="below"
           matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
-          [attr.aria-label]="action.labelKey ? (action.labelKey | translate) : action.label"
+          [attr.aria-label]="action | descriptorLabel"
           [disabled]="!isEnabled(action)"
           (click)="run(action)"
         >

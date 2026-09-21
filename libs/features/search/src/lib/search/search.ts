@@ -48,6 +48,7 @@ import {
   aiErrorMessage,
 } from '@agentic-ui/shared/ai-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -159,6 +160,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
   selector: 'lib-search',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     TranslatePipe,
     MatButtonModule,
     MatIconModule,

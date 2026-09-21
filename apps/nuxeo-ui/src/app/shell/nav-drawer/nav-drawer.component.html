@@ -7,7 +7,7 @@
         role="heading"
         aria-level="2"
       >
-        {{ item.labelKey ? (item.labelKey | translate) : item.label }}
+        {{ item | descriptorLabel }}
       </div>
       @if (isTasksPanel) {
         <button
@@ -91,7 +91,7 @@
     </div>
   } @else if (isBrowseAdfHx) {
     <hxp-browse-nav-drawer
-      [title]="item.labelKey ? (item.labelKey | translate) : item.label"
+      [title]="item | descriptorLabel"
       (navigatePath)="onAdfHxBrowseNavigate($event)"
     />
   } @else if (isPersonalSpace) {
@@ -411,7 +411,7 @@
           routerLinkActive="settings-item--active"
           [routerLinkActiveOptions]="{ exact: true }"
         >
-          {{ settingsItem.labelKey ? (settingsItem.labelKey | translate) : settingsItem.label }}
+          {{ settingsItem | descriptorLabel }}
         </button>
       }
       <button type="button" class="settings-item" (click)="onSettingsSignOut()">
@@ -427,7 +427,7 @@
           [class.settings-item--active]="isAdminDrawerPathActive(adminItem.path)"
           (click)="onAdministrationItemClick(adminItem.path)"
         >
-          {{ adminItem.labelKey ? (adminItem.labelKey | translate) : adminItem.label }}
+          {{ adminItem | descriptorLabel }}
         </button>
       }
     </div>
@@ -441,10 +441,7 @@
     <lib-extension-outlet [componentId]="sidebarId" />
   } @else {
     <div class="drawer-empty">
-      <p>
-        Content for "{{ item.labelKey ? (item.labelKey | translate) : item.label }}" will appear
-        here.
-      </p>
+      <p>Content for "{{ item | descriptorLabel }}" will appear here.</p>
     </div>
   }
 }

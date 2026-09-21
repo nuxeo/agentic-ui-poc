@@ -34,6 +34,7 @@ import {
   type NuxeoDocumentList,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export type ViewMode = 'grid' | 'table' | 'list';
 type SortDirection = 'asc' | 'desc';
@@ -77,6 +78,7 @@ const SORTABLE_COLUMNS = new Set(['title', 'modified', 'contributor', 'created',
   selector: 'lib-trash',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     TranslatePipe,
     DatePipe,
     MatButtonModule,

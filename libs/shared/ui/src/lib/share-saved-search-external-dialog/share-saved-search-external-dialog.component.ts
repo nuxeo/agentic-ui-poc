@@ -11,6 +11,7 @@ import { catchError, of } from 'rxjs';
 
 import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe } from '@ngx-translate/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export interface ShareSavedSearchExternalDialogData {
   savedSearchId: string;
@@ -34,6 +35,7 @@ const RIGHT_OPTIONS = [
   selector: 'lib-share-saved-search-external-dialog',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     TranslatePipe,
     FormsModule,
     MatDialogModule,

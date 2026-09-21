@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslatePipe } from '@ngx-translate/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export interface ColumnDef {
   key: string;
@@ -80,7 +81,14 @@ export function saveColumnSettings(columns: ColumnDef[]): void {
 @Component({
   selector: 'lib-column-settings-dialog',
   standalone: true,
-  imports: [TranslatePipe, FormsModule, MatDialogModule, MatButtonModule, MatCheckboxModule],
+  imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatCheckboxModule,
+  ],
   templateUrl: './column-settings-dialog.html',
   styles: [
     `

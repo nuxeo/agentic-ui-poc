@@ -28,6 +28,7 @@ import {
   type ConfirmDialogData,
 } from '@nuxeo-satori/platform/ui';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -289,6 +290,7 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
   selector: 'lib-asset-search-results',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     TranslatePipe,
     MatButtonModule,
     MatMenuModule,

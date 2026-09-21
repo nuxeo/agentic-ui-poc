@@ -155,7 +155,7 @@
             [class.active]="isQuickFilterSelected(filter.value)"
             (click)="toggleQuickFilter(filter.value)"
           >
-            {{ filter.labelKey ? (filter.labelKey | translate) : filter.label }}
+            {{ filter | descriptorLabel }}
           </button>
         }
       </div>
@@ -340,7 +340,7 @@
                 class="col-panel-option"
                 [checked]="isPendingColumn(col.key)"
                 (change)="togglePendingColumn(col.key)"
-                >{{ col.labelKey ? (col.labelKey | translate) : col.label }}</mat-checkbox
+                >{{ col | descriptorLabel }}</mat-checkbox
               >
             }
           </div>
@@ -366,7 +366,7 @@
                 class="col-sortable"
                 (click)="sortBy(col.key)"
               >
-                {{ col.labelKey ? (col.labelKey | translate) : col.label }}
+                {{ col | descriptorLabel }}
                 <mat-icon class="sort-icon" [class.sort-active]="sortColumn() === col.key">
                   {{
                     sortColumn() === col.key && sortDirection() === 'desc'
@@ -376,7 +376,7 @@
                 </mat-icon>
               </button>
             } @else {
-              <span>{{ col.labelKey ? (col.labelKey | translate) : col.label }}</span>
+              <span>{{ col | descriptorLabel }}</span>
             }
           }
           <span class="col-gear">

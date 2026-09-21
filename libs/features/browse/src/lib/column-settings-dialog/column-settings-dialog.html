@@ -3,7 +3,7 @@
 <mat-dialog-content>
   @for (col of columns; track col.key) {
     <mat-checkbox [(ngModel)]="col.visible" [disabled]="col.key === 'title'">
-      {{ col.labelKey ? (col.labelKey | translate) : col.label }}
+      {{ col | descriptorLabel }}
     </mat-checkbox>
   }
 </mat-dialog-content>

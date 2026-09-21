@@ -19,6 +19,7 @@ import {
 import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { AssetsQueueComponent } from '../assets-queue/assets-queue.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export interface FilterOption {
   label: string;
@@ -73,6 +74,7 @@ function toMimeType(value: string): string {
   selector: 'lib-assets-drawer',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     TranslatePipe,
     MatIconModule,
     MatButtonModule,

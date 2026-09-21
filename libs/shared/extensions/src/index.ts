@@ -71,3 +71,4 @@ export {
   type SatoriExtensionContributor,
 } from './lib/provide-satori-extensions';
 export { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS, type NavItemDescriptor } from './lib/nav-items';
+export { DescriptorLabelPipe, type LabelledDescriptor } from './lib/descriptor-label.pipe';

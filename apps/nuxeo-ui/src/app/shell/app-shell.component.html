@@ -22,7 +22,7 @@
         [attr.aria-label]="clipboardNavAriaLabel(item)"
       >
         <sat-platform-nav-avatar [item]="item" />
-        {{ item.labelKey ? (item.labelKey | translate) : item.label }}
+        {{ navText(item) }}
       </sat-platform-nav-list-item>
     }
 

@@ -22,6 +22,7 @@ import {
   permissionUpdateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe } from '@ngx-translate/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export interface UpdatePermissionDialogData {
   documentUid: string;
@@ -40,6 +41,7 @@ const PERMISSION_OPTIONS = [
   selector: 'lib-update-permission-dialog',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     TranslatePipe,
     FormsModule,
     MatDialogModule,

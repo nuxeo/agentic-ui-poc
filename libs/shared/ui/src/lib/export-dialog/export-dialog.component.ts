@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslatePipe } from '@ngx-translate/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export interface ExportDialogData {
   documentUid: string;
@@ -26,6 +27,7 @@ interface ExportOption {
   selector: 'lib-export-dialog',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     TranslatePipe,
     MatDialogModule,
     MatButtonModule,

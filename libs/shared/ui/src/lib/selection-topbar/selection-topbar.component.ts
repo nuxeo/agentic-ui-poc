@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AppExtensionsService,
+  DescriptorLabelPipe,
   EXTENSION_SLOTS,
   ExtensionActionRegistry,
   ExtensionRuleContextService,
@@ -26,7 +27,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 @Component({
   selector: 'lib-selection-topbar',
   standalone: true,
-  imports: [TranslatePipe, MatButtonModule, MatIconModule, MatTooltipModule],
+  imports: [DescriptorLabelPipe, TranslatePipe, MatButtonModule, MatIconModule, MatTooltipModule],
   templateUrl: './selection-topbar.component.html',
   styleUrl: './selection-topbar.component.scss',
 })
