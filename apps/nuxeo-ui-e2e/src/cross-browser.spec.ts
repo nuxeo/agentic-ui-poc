@@ -1,4 +1,5 @@
 import { expect, expectSurfaceWithData, test } from './fixtures';
+import { request, type APIRequestContext } from '@playwright/test';
 
 /**
  * Cross-engine behaviour — Phase 6 step 5, "Chrome and Safari verified".
@@ -26,6 +27,52 @@ import { expect, expectSurfaceWithData, test } from './fixtures';
  * Nothing here runs on a real Safari or on iOS. That gap is recorded rather than blurred,
  * because "Chrome and Safari verified" is a checklist line a customer may read literally.
  */
+
+let api: APIRequestContext;
+const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
+
+test.beforeAll(async () => {
+  api = await request.newContext({
+    baseURL,
+    httpCredentials: {
+      username: process.env['NUXEO_USER'] ?? 'Administrator',
+      password: process.env['NUXEO_PASS'] ?? 'Administrator',
+      origin: baseURL,
+    },
+  });
+});
+
+test.afterAll(async () => {
+  await api?.dispose();
+});
+
+/**
+ * Discover a domain child that will appear at browse root.
+ * Uses API to get real repository data, not a hardcoded constant.
+ */
+async function aRootChild(): Promise<{ uid: string; title: string }> {
+  const response = await api.get('/nuxeo/api/v1/search/lang/NXQL/execute', {
+    params: {
+      query: "SELECT * FROM Document WHERE ecm:path = '/default-domain' AND ecm:primaryType = 'WorkspaceRoot'",
+      pageSize: 1,
+    },
+    headers: { 'X-NXproperties': '*' },
+  });
+
+  if (!response.ok()) throw new Error(`API query failed: ${response.status()}`);
+
+  const body = await response.json();
+  const entries = body.entries ?? [];
+  if (entries.length === 0) {
+    throw new Error('No root child found (expected at least Workspaces)');
+  }
+
+  return {
+    uid: entries[0].uid,
+    title: entries[0].title,
+  };
+}
+
 test.describe('cross-engine behaviour', () => {
   /**
    * The classic Safari divergence: `new Date('2026-08-24 10:00:00')` — a space instead of `T` —
@@ -84,7 +131,9 @@ test.describe('cross-engine behaviour', () => {
    */
   test('blob-URL images actually decode', async ({ signedIn: page }) => {
     await page.goto('/#/browse', { waitUntil: 'networkidle' });
-    await expectSurfaceWithData(page, 'lib-browse', 'Root');
+
+    const rootChild = await aRootChild();
+    await expectSurfaceWithData(page, 'lib-browse', rootChild.title);
     await page.waitForTimeout(2000);
 
     // Two assertions, because "no blob images" has two very different causes: an instance with
@@ -132,14 +181,16 @@ test.describe('cross-engine behaviour', () => {
     signedIn: page,
   }) => {
     await page.goto('/#/browse', { waitUntil: 'networkidle' });
-    await expectSurfaceWithData(page, 'lib-browse', 'Root');
+
+    const rootChild = await aRootChild();
+    await expectSurfaceWithData(page, 'lib-browse', rootChild.title);
 
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForTimeout(1500);
 
     // Still authenticated: the guard did not bounce us, and repository data arrived again.
     expect(page.url(), 'a reload should not redirect to sign-in').not.toMatch(/sign-?in|login/i);
-    await expectSurfaceWithData(page, 'lib-browse', 'Root');
+    await expectSurfaceWithData(page, 'lib-browse', rootChild.title);
   });
 
   /**
