@@ -56,7 +56,7 @@ try {
 /** Assertion helpers whose second argument is the condition under test. */
 const CONDITION_AT_1 = new Set(['check', 'requirePrecondition']);
 /** Helpers that assert against the live page — always falsifiable by construction. */
-const PAGE_ASSERTIONS = new Set(['expectVisible', 'expectText', 'expectNoConsoleErrors']);
+const PAGE_ASSERTIONS = new Set(['expectVisible', 'expectText', 'expectNoConsoleErrors', 'expectNoA11yViolations']);
 
 const files = explicit.length ? explicit.map((p) => resolve(process.cwd(), p)) : await defaultTargets();
 
@@ -346,7 +346,7 @@ function report() {
 
 /** @returns {Promise<string[]>} */
 async function defaultTargets() {
-  const dirs = [resolve(repoRoot, 'scripts/beta-harness/steps'), resolve(repoRoot, 'scripts/collect-evidence/steps')];
+  const dirs = [resolve(repoRoot, 'scripts/beta-harness/steps'), resolve(repoRoot, 'scripts/collect-evidence')];
   const out = [];
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;

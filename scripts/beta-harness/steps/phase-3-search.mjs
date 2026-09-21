@@ -43,7 +43,9 @@
  */
 
 const NUXEO = 'http://localhost:8080/nuxeo';
-const AUTH = `Basic ${Buffer.from('Administrator:Administrator').toString('base64')}`;
+const USER = process.env['NUXEO_USER'] ?? 'Administrator';
+const PASS = process.env['NUXEO_PASS'] ?? 'Administrator';
+const AUTH = `Basic ${Buffer.from(`${USER}:${PASS}`).toString('base64')}`;
 
 /** Ask Nuxeo directly, so the UI is compared against an independent answer. */
 async function restSearch(term, pageSize = 20) {

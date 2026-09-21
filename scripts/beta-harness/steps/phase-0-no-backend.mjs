@@ -55,8 +55,8 @@ export default async function run(page, h) {
 
   h.step('Login surface renders Satori branding and auth options');
   await h.expectVisible('Satori logo present', 'sat-logo');
-  await h.expectText('username field labelled', 'app-login-page', 'Username or email');
-  await h.expectText('Continue action present', 'app-login-page', 'Continue');
+  await h.expectText('username field labelled', 'app-login-page', 'Username (required)');
+  await h.expectText('Log in action present', 'app-login-page', 'Log in');
   await h.expectText('SAML sign-in offered', 'app-login-page', 'SAML');
   await h.screenshot('login-controls');
 
