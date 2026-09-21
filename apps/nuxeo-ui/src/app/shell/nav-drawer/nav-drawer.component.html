@@ -13,8 +13,8 @@
         <button
           mat-icon-button
           (click)="loadTasks()"
-          matTooltip="Refresh"
-          aria-label="Refresh"
+          [matTooltip]="'nav.refresh' | translate"
+          [attr.aria-label]="'nav.refresh' | translate"
           class="refresh-btn"
         >
           <mat-icon>refresh</mat-icon>
@@ -24,8 +24,8 @@
         <button
           mat-icon-button
           (click)="refreshRecentlyViewed()"
-          matTooltip="Refresh"
-          aria-label="Refresh"
+          [matTooltip]="'nav.refresh' | translate"
+          [attr.aria-label]="'nav.refresh' | translate"
           class="refresh-btn"
         >
           <mat-icon>refresh</mat-icon>
@@ -35,8 +35,8 @@
         <button
           mat-icon-button
           (click)="refreshExpired()"
-          matTooltip="Refresh"
-          aria-label="Refresh"
+          [matTooltip]="'nav.refresh' | translate"
+          [attr.aria-label]="'nav.refresh' | translate"
           class="refresh-btn"
         >
           <mat-icon>refresh</mat-icon>
@@ -46,8 +46,8 @@
         <button
           mat-icon-button
           (click)="refreshBrowseTree()"
-          matTooltip="Refresh"
-          aria-label="Refresh"
+          [matTooltip]="'nav.refresh' | translate"
+          [attr.aria-label]="'nav.refresh' | translate"
           class="refresh-btn"
         >
           <mat-icon>refresh</mat-icon>
@@ -57,8 +57,8 @@
         <button
           mat-icon-button
           (click)="refreshPersonalSpaceTree()"
-          matTooltip="Refresh"
-          aria-label="Refresh"
+          [matTooltip]="'nav.refresh' | translate"
+          [attr.aria-label]="'nav.refresh' | translate"
           class="refresh-btn"
         >
           <mat-icon>refresh</mat-icon>
@@ -71,15 +71,15 @@
     <div class="folder-tree">
       @if (rootLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" aria-label="Loading" />
+          <mat-spinner diameter="24" [attr.aria-label]="'nav.loading' | translate" />
         </div>
       } @else if (rootNodes().length === 0) {
-        <div class="tree-empty">No folders found</div>
+        <div class="tree-empty">{{ 'nav.folders.empty' | translate }}</div>
       } @else {
         @if (browseTreeShowRootBack()) {
           <button class="tree-back" type="button" (click)="navigateToBrowseRoot()">
             <mat-icon>chevron_left</mat-icon>
-            Root
+            {{ 'nav.tree.root' | translate }}
           </button>
         }
         <div class="tree-list">
@@ -95,17 +95,17 @@
     <div class="folder-tree">
       @if (personalSpaceLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" aria-label="Loading" />
+          <mat-spinner diameter="24" [attr.aria-label]="'nav.loading' | translate" />
         </div>
       } @else if (personalSpaceError()) {
         <div class="tree-empty error">
           <span>{{ personalSpaceError() }}</span>
           <button mat-stroked-button type="button" (click)="refreshPersonalSpaceTree()">
-            Retry
+            {{ 'nav.tree.retry' | translate }}
           </button>
         </div>
       } @else if (personalSpaceNodes().length === 0) {
-        <div class="tree-empty">No folders found</div>
+        <div class="tree-empty">{{ 'nav.folders.empty' | translate }}</div>
       } @else {
         <div class="tree-list">
           @for (node of personalSpaceNodes(); track node.doc.uid) {
@@ -118,14 +118,14 @@
     <!-- Recently Viewed panel -->
     @if (recentlyViewedLoading()) {
       <div class="tree-loading">
-        <mat-spinner diameter="24" aria-label="Loading" />
+        <mat-spinner diameter="24" [attr.aria-label]="'nav.loading' | translate" />
       </div>
     } @else if (recentlyViewedError()) {
       <div class="tree-empty error">{{ recentlyViewedError() }}</div>
     } @else if (recentlyViewed().length === 0) {
       <div class="tree-empty">
         <mat-icon class="empty-icon">visibility_off</mat-icon>
-        <span>No recently viewed documents</span>
+        <span>{{ 'nav.recent.empty' | translate }}</span>
       </div>
     } @else {
       <div class="rv-list">
@@ -153,14 +153,14 @@
   } @else if (isExpiredQueue) {
     @if (expiredLoading()) {
       <div class="tree-loading">
-        <mat-spinner diameter="24" aria-label="Loading" />
+        <mat-spinner diameter="24" [attr.aria-label]="'nav.loading' | translate" />
       </div>
     } @else if (expiredError()) {
       <div class="tree-empty error">{{ expiredError() }}</div>
     } @else if (expiredDocs().length === 0) {
       <div class="tree-empty">
         <mat-icon class="empty-icon">timer_off</mat-icon>
-        <span>No expired documents</span>
+        <span>{{ 'nav.expired.empty' | translate }}</span>
       </div>
     } @else {
       <div class="expired-list">
@@ -190,10 +190,10 @@
     <div class="collections-panel">
       @if (collectionsLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" aria-label="Loading" />
+          <mat-spinner diameter="24" [attr.aria-label]="'nav.loading' | translate" />
         </div>
       } @else if (collections().length === 0) {
-        <div class="tree-empty">No collections found</div>
+        <div class="tree-empty">{{ 'nav.collections.empty' | translate }}</div>
       } @else {
         <div class="collections-list">
           @for (col of collections(); track col.uid) {
@@ -230,19 +230,21 @@
     <div class="tasks-panel-wrap">
       @if (tasksLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" aria-label="Loading" />
+          <mat-spinner diameter="24" [attr.aria-label]="'nav.loading' | translate" />
         </div>
       } @else if (tasksError()) {
         <div class="tree-empty error">
           <span>{{ tasksError() }}</span>
-          <button mat-stroked-button (click)="loadTasks()">Retry</button>
+          <button mat-stroked-button (click)="loadTasks()">
+            {{ 'nav.tasks.retry' | translate }}
+          </button>
         </div>
       } @else {
         <div class="tasks-panel-body">
           @if (tasks().length === 0) {
             <div class="tree-empty">
               <mat-icon class="empty-icon">task_alt</mat-icon>
-              <span>No pending tasks</span>
+              <span>{{ 'nav.tasks.empty' | translate }}</span>
             </div>
           } @else {
             <div class="task-list task-list--inbox">
@@ -282,7 +284,9 @@
           }
         </div>
         <div class="tasks-drawer-footer">
-          <a routerLink="/dashboard" class="tasks-dashboard-link">View Tasks Dashboard</a>
+          <a routerLink="/dashboard" class="tasks-dashboard-link">{{
+            'nav.tasks.dashboard' | translate
+          }}</a>
         </div>
       }
     </div>
@@ -290,15 +294,13 @@
     <div class="favorites-panel">
       @if (favoritesLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" aria-label="Loading" />
+          <mat-spinner diameter="24" [attr.aria-label]="'nav.loading' | translate" />
         </div>
       } @else if (favorites().length === 0) {
         <div class="tree-empty">
           <mat-icon class="clipboard-empty-icon">star_border</mat-icon>
-          <p>No favorites yet</p>
-          <span class="clipboard-hint"
-            >Use the star icon on documents to add them to your favorites.</span
-          >
+          <p>{{ 'nav.favorites.empty' | translate }}</p>
+          <span class="clipboard-hint">{{ 'nav.favorites.hint' | translate }}</span>
         </div>
       } @else {
         <div class="favorites-list">
@@ -317,8 +319,8 @@
               <button
                 mat-icon-button
                 class="favorite-card-remove"
-                matTooltip="Remove from favorites"
-                aria-label="Remove from favorites"
+                [matTooltip]="'nav.favorites.remove' | translate"
+                [attr.aria-label]="'nav.favorites.remove' | translate"
                 (click)="removeFromFavorites(doc)"
               >
                 <mat-icon>close</mat-icon>
@@ -333,10 +335,8 @@
       @if (clipboardEmpty()) {
         <div class="tree-empty">
           <mat-icon class="clipboard-empty-icon">content_paste</mat-icon>
-          <p>Clipboard is empty</p>
-          <span class="clipboard-hint"
-            >Use "Add to Clipboard" on documents or collections to add items here.</span
-          >
+          <p>{{ 'nav.clipboard.empty' | translate }}</p>
+          <span class="clipboard-hint">{{ 'nav.clipboard.hint' | translate }}</span>
         </div>
       } @else {
         <div class="clipboard-list">
@@ -355,8 +355,8 @@
               <button
                 mat-icon-button
                 class="clipboard-card-remove"
-                matTooltip="Remove from clipboard"
-                aria-label="Remove from clipboard"
+                [matTooltip]="'nav.clipboard.remove' | translate"
+                [attr.aria-label]="'nav.clipboard.remove' | translate"
                 (click)="removeFromClipboard(doc)"
               >
                 <mat-icon>close</mat-icon>
@@ -365,10 +365,10 @@
           }
         </div>
         <div class="clipboard-footer">
-          <p class="clipboard-tip">Browse to a container to paste or move clipboard content.</p>
+          <p class="clipboard-tip">{{ 'nav.clipboard.tip' | translate }}</p>
           @if (clipboardActionLoading()) {
             <div class="clipboard-loading">
-              <mat-spinner diameter="24" aria-label="Loading" />
+              <mat-spinner diameter="24" [attr.aria-label]="'nav.loading' | translate" />
             </div>
           }
           <div class="clipboard-primary-actions">
@@ -380,7 +380,7 @@
               (click)="copyClipboard()"
             >
               <mat-icon>content_copy</mat-icon>
-              Copy
+              {{ 'nav.clipboard.copy' | translate }}
             </button>
             <button
               mat-stroked-button
@@ -390,7 +390,7 @@
               (click)="moveClipboard()"
             >
               <mat-icon>drive_file_move</mat-icon>
-              Move
+              {{ 'nav.clipboard.move' | translate }}
             </button>
           </div>
         </div>
@@ -409,7 +409,9 @@
           {{ settingsItem.label }}
         </button>
       }
-      <button type="button" class="settings-item" (click)="onSettingsSignOut()">Sign Out</button>
+      <button type="button" class="settings-item" (click)="onSettingsSignOut()">
+        {{ 'nav.sign-out' | translate }}
+      </button>
     </div>
   } @else if (isAdministration) {
     <div class="settings-panel">
@@ -442,9 +444,22 @@
 <ng-template #folderTpl let-node let-depth="depth">
   <div class="tree-node" [style.padding-left.px]="12 + depth * 20">
     @if (hasChildren(node)) {
-      <button class="tree-toggle" (click)="toggleNode(node)" type="button">
+      <!--
+        The name goes through an interpolation PARAMETER, not a `+`. D0c in
+        docs/i18n-localization-plan.md: INFO-144 forbids building a string from concatenated
+        substrings, and upstream's own tree toggle is the cautionary example — it does
+        `('DOCUMENT_TREE.TOGGLE_ARIA-LABEL ' | translate) + node.name`, which no translator can
+        reorder for a language that needs the noun first.
+      -->
+      <button
+        class="tree-toggle"
+        (click)="toggleNode(node)"
+        type="button"
+        [attr.aria-label]="'nav.tree.toggle' | translate: { name: nodeLabel(node) }"
+        [attr.aria-expanded]="node.expanded"
+      >
         @if (node.loading) {
-          <mat-spinner diameter="14" aria-label="Loading" />
+          <mat-spinner diameter="14" [attr.aria-label]="'nav.loading' | translate" />
         } @else {
           <mat-icon class="tree-arrow" [class.tree-arrow--expanded]="node.expanded">
             chevron_right

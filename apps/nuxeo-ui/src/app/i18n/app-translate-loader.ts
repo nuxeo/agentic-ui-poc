@@ -93,6 +93,67 @@ const SEEDED_FOLDERS: readonly TranslationFolder[] = [
 ];
 
 /**
+ * Upstream's key literal ends in a space.
+ *
+ * Named rather than written inline for two reasons: a bare `'…LABEL '` reads as a typo and
+ * invites a well-meaning cleanup, and a formatter or editor that trims string contents would
+ * delete the one character this workaround is about without changing anything visible.
+ * `app-translate-loader.spec.ts` asserts the alias still differs from its canonical key, which
+ * is what makes that deletion loud instead of silent.
+ */
+const TRAILING_SPACE = ' ';
+
+/**
+ * WORKAROUND(adf-hx): W13 — upstream asks for a translation key it does not ship, because its
+ * own key literal carries stray trailing whitespace.
+ *
+ * `HxpDocumentTreeComponent` binds the node toggle's accessible name to
+ * `('DOCUMENT_TREE.TOGGLE_ARIA-LABEL ' | translate) + node.name`. Its catalogue ships
+ * `DOCUMENT_TREE.TOGGLE_ARIA-LABEL` with no trailing space, so the lookup misses a key that is
+ * present and ngx-translate falls through to its key passthrough.
+ *
+ * The accessible name was therefore `DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined`, on every surface
+ * — the tree is the app shell's nav drawer. **`undefined`, not the folder name**: `node` is a
+ * wrapper carrying `node.document`, `node.isLoading` and `node.isSelectable`, with no `name` on it
+ * at all. This comment said `… Home` for two review rounds, and that one word is what made the
+ * alias look sufficient. It is not: with the key resolved the name became `Toggleundefined`, and
+ * the folder name needs W15 — see `hxp-document-tree-toggle-name.directive.ts`.
+ *
+ * **This is not W6 and seeding did not fix it.** W6 was a catalogue that never loaded; here the
+ * catalogue loads and the key resolves, and upstream asks for a different key. Aliasing is the
+ * only host-side fix short of patching another library's compiled template.
+ *
+ * Note for whoever removes this: upstream also **concatenates** the node name onto the
+ * translated string, which INFO-144 forbids because no translator can reorder the result. The
+ * alias fixes the key, not the concatenation. Both are finding 1.3 in
+ * `docs/adf-hx-upstream-findings.md`.
+ */
+const UPSTREAM_KEY_ALIASES: readonly (readonly [alias: string, canonical: string])[] = [
+  [`DOCUMENT_TREE.TOGGLE_ARIA-LABEL${TRAILING_SPACE}`, 'DOCUMENT_TREE.TOGGLE_ARIA-LABEL'],
+];
+
+/**
+ * Copies each aliased key's **resolved** value onto the key upstream actually asks for, so a
+ * French catalogue yields a French accessible name rather than a hardcoded English one.
+ *
+ * Applied to the folder catalogues alone, which keeps it below this app's own catalogue and
+ * below the manifest's `labels` — a customer can still override it, as with any other key.
+ *
+ * An alias that already carries a value is left alone. If upstream ever ships the stray-
+ * whitespace key itself, its string wins and this becomes inert rather than authoritative.
+ */
+export function applyUpstreamKeyAliases(catalogue: Record<string, string>): Record<string, string> {
+  for (const [alias, canonical] of UPSTREAM_KEY_ALIASES) {
+    const resolved = catalogue[canonical];
+    if (resolved !== undefined && catalogue[alias] === undefined) catalogue[alias] = resolved;
+  }
+  return catalogue;
+}
+
+/** Exported for the spec, which asserts the aliases are still distinct from their canonicals. */
+export const UPSTREAM_KEY_ALIAS_PAIRS = UPSTREAM_KEY_ALIASES;
+
+/**
  * Loads the shipped translation catalogue and layers the manifest's `labels` over it.
  *
  * That second step is the Layer 0 point of this class: relabelling the product for a
@@ -149,9 +210,11 @@ export class AppTranslateLoader implements TranslateLoader {
     return forkJoin([...folders$, app$]).pipe(
       map((catalogues) => {
         const app = catalogues.pop();
-        const folders = catalogues.reduce<Record<string, string>>(
-          (acc, catalogue) => ({ ...acc, ...flattenCatalogue(catalogue) }),
-          {},
+        const folders = applyUpstreamKeyAliases(
+          catalogues.reduce<Record<string, string>>(
+            (acc, catalogue) => ({ ...acc, ...flattenCatalogue(catalogue) }),
+            {},
+          ),
         );
         this.folderCache.set(lang, folders);
         return { ...folders, ...flattenCatalogue(app), ...this.config.manifest().labels };

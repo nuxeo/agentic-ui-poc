@@ -159,13 +159,7 @@ export class LoginPageComponent implements AfterViewInit, AfterViewChecked, OnDe
     }
   }
 
-  /**
-   * Right-panel art from `apps/nuxeo-ui/public/images/Login-background.svg`.
-   */
-  heroBackgroundImage(): string {
-    return `url("${this.heroImagePath}")`;
-  }
-
+  /** Right-panel art from `apps/nuxeo-ui/public/images/Login-background.svg`. */
   protected readonly heroImagePath = '/images/Login-background.svg';
 
   submit(): void {

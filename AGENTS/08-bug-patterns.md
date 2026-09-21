@@ -418,7 +418,7 @@ the tool cannot compute it.
 Two things make the measurement easy to get wrong, and both were measured on NXENG-758:
 
 - **The negative `outline-offset` changes what the ring is adjacent to.** At `-2px` the ring is
-  painted *inside* the item's box, so it must contrast with the item's own fill, not the panel.
+  painted _inside_ the item's box, so it must contrast with the item's own fill, not the panel.
 - **The current item has a different fill.** Satori lightens it with
   `rgba(255, 255, 255, .12)`. Measured on the default theme: **3.80:1** on a plain item but
   **2.87:1** on the current one — a pass and a fail from the same ring colour.
@@ -427,9 +427,9 @@ Two things make the measurement easy to get wrong, and both were measured on NXE
 // BAD ❌ — nothing sets the token, so a divider colour is the focus indicator
 // (no code at all: the defect is the absence)
 
-// GOOD ✅ — point it at the component's own foreground, which is legible on its own
-// background by construction, so one line covers every theme
-sat-platform-nav {
+// GOOD ✅ — declare the default on html so Layer 0 root-token overrides still win,
+// while the value still points at the component's own foreground across every theme
+html {
   --sat-platform-nav-outline: var(
     --agentic-nav-focus-outline-color,
     var(--sat-platform-nav-on-background, var(--mat-sys-on-primary, #fff))

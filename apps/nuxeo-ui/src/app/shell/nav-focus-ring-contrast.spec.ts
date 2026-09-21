@@ -6,7 +6,7 @@ import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { TranslateModule } from '@ngx-translate/core';
 
 /**
- * Regression test for NXENG-758 — the keyboard focus indicator on the sidebar nav links.
+ * Regression test for NXENG-761 — the keyboard focus indicator on the sidebar nav links.
  *
  * ## What is asserted, and why it is measured rather than inspected
  *
@@ -56,18 +56,13 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
  * current-item assertions were measuring an element that is never a current item and could not
  * have failed. Keep this scoped to the item under test.
  */
-const LINK = 'sat-platform-nav-list-item[data-nav-id="app.navbar.browseAdfHx"] .sat-platform-nav-item';
+const LINK =
+  'sat-platform-nav-list-item[data-nav-id="app.navbar.browseAdfHx"] .sat-platform-nav-item';
 
 @Component({
   standalone: true,
   imports: [SatPlatformNavModule],
-  template: `
-    <sat-platform-nav>
-      <sat-platform-nav-list-item [active]="active()" data-nav-id="app.navbar.browseAdfHx">
-        Browse (adf-hx POC)
-      </sat-platform-nav-list-item>
-    </sat-platform-nav>
-  `,
+  templateUrl: './nav-focus-ring-contrast.host.html',
 })
 class NavHostComponent {
   readonly active = signal(false);
@@ -100,7 +95,10 @@ function parseColor(value: string): { rgb: number[]; alpha: number } {
 }
 
 /** Composite a translucent colour over an opaque backdrop — what the eye actually sees. */
-function compositeOver(fg: { rgb: number[]; alpha: number }, backdrop: readonly number[]): number[] {
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+  backdrop: readonly number[],
+): number[] {
   return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
 }
 
@@ -115,7 +113,7 @@ function paintedBackdrop(element: Element): number[] {
   throw new Error('no painted ancestor found; the nav panel did not render');
 }
 
-describe('sidebar nav focus ring contrast (NXENG-758)', () => {
+describe('sidebar nav focus ring contrast (NXENG-761)', () => {
   /** WCAG 2.1 SC 1.4.11 Non-text Contrast: a focus indicator needs 3:1 against its neighbours. */
   const MINIMUM_RATIO = 3;
 
@@ -194,7 +192,7 @@ describe('sidebar nav focus ring contrast (NXENG-758)', () => {
     // Focusing has to change the element's appearance: an unfocused item reports no outline
     // at all. That is the *precondition* IBM's `style_focus_visible` puts in front of a human
     // reviewer, not a substitute for the re-scan itself — no assertion here can produce an
-    // IBM verdict, and the ticket's AC-2 is tracked as outstanding on NXENG-758.
+    // IBM verdict.
     link.blur();
     expect(getComputedStyle(link).outlineStyle).toBe('none');
   });
@@ -239,7 +237,10 @@ describe('sidebar nav focus ring contrast (NXENG-758)', () => {
     // A custom property written onto `<html>` is exactly how `AppThemeService.applyTheme`
     // applies a Layer 0 `themes[].tokens` entry, so this is the customer's path, not a
     // test-only shortcut. The value is a sentinel rather than a colour we would ship.
-    document.documentElement.style.setProperty('--agentic-nav-focus-outline-color', 'rgb(255, 0, 0)');
+    document.documentElement.style.setProperty(
+      '--agentic-nav-focus-outline-color',
+      'rgb(255, 0, 0)',
+    );
     try {
       const measured = measure('nuxeo', false);
       expect(measured.ringColor).toBe('rgb(255, 0, 0)');
