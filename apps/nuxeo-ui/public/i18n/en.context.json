@@ -2,6 +2,9 @@
   "$schema-note": "Translator context for en.json, keyed by the same dotted key. Required by INFO-144: every string must carry enough context to be translated without asking a developer, acronyms must be expanded, and product names must be flagged as do-not-translate. Keys here must match en.json exactly; `checkTranslationContext` in scripts/review-guardrails.mjs enforces that. This file is developer documentation, not a catalogue: it is excluded from the build assets and is never fetched at runtime.",
   "app.title": "The application name, shown in the browser tab and the header. PRODUCT NAME — do not translate 'Hyland' or 'Nuxeo'.",
   "app.nav.toggle": "Accessible name and tooltip for the button that opens and closes the left navigation rail. 'Toggle' here is a verb meaning show-or-hide, not a noun.",
+  "login.title": "Page heading on the sign-in screen. A verb phrase: authenticate to the application. Use the product's 'log in' wording consistently with nav.sign-out's 'sign out'.",
+  "login.panel-label": "Accessible name on the main landmark wrapping the sign-in form. Same meaning as login.title; names the region for screen-reader users.",
+  "login.skip-link": "Link at the top of the sign-in page that moves keyboard focus to the username field, bypassing decorative chrome. WCAG bypass-block link; a verb phrase.",
   "browse.details.show": "Button that opens the metadata panel beside a document list. 'Details' means the document's metadata, not a level of detail.",
   "browse.details.hide": "Button that closes the metadata panel. Pairs with browse.details.show.",
   "browse.details.toggle": "Accessible name for the single button that both opens and closes the metadata panel. 'Toggle' is a verb.",
@@ -59,5 +62,6 @@
   "shell.menu.state-on": "The enabled state of a toggle, shown inside the AI Features menu item. An ADJECTIVE or short word, not a verb.",
   "shell.menu.state-off": "The disabled state of a toggle, shown inside the AI Features menu item. An ADJECTIVE or short word, not a verb.",
   "shell.ai.suggestion.recent-uploads": "A suggested question offered as a button in the AI assistant panel. An IMPERATIVE instruction to the assistant.",
-  "shell.ai.sources": "Heading above the documents an AI answer cited. A NOUN, plural — the documents the answer came from, not a menu of options."
+  "shell.ai.sources": "Heading above the documents an AI answer cited. A NOUN, plural — the documents the answer came from, not a menu of options.",
+  "shell.test.platform-nav-item": "Label on a platform nav list item in a unit-test host template only. Not shown in the product UI; uses the same word as the real Browse nav entry for focus-ring contrast tests."
 }
