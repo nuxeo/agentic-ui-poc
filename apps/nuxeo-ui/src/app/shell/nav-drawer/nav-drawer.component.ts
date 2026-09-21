@@ -16,6 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslatePipe } from '@ngx-translate/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 
@@ -95,6 +96,7 @@ export interface FolderNode {
     MatButtonModule,
     MatTooltipModule,
     MatSnackBarModule,
+    TranslatePipe,
     ExtensionOutletComponent,
     HxpBrowseNavDrawerComponent,
   ],

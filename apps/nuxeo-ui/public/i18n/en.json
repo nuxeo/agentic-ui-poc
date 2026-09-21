@@ -21,12 +21,86 @@
       "export": "Export"
     }
   },
+  "nav": {
+    "clipboard": {
+      "empty": "Clipboard is empty",
+      "hint": "Use \"Add to Clipboard\" on documents or collections to add items here.",
+      "remove": "Remove from clipboard",
+      "tip": "Browse to a container to paste or move clipboard content.",
+      "copy": "Copy",
+      "move": "Move"
+    },
+    "collections": {
+      "empty": "No collections found"
+    },
+    "expired": {
+      "empty": "No expired documents"
+    },
+    "favorites": {
+      "empty": "No favorites yet",
+      "hint": "Use the star icon on documents to add them to your favorites.",
+      "remove": "Remove from favorites"
+    },
+    "folders": {
+      "empty": "No folders found"
+    },
+    "loading": "Loading",
+    "recent": {
+      "empty": "No recently viewed documents"
+    },
+    "refresh": "Refresh",
+    "sign-out": "Sign Out",
+    "tasks": {
+      "dashboard": "View Tasks Dashboard",
+      "empty": "No pending tasks",
+      "retry": "Retry"
+    },
+    "tree": {
+      "root": "Root",
+      "retry": "Retry",
+      "toggle": "Toggle {{ name }}"
+    }
+  },
   "settings": {
     "themes": {
       "title": "Themes",
-      "search": "Search (placeholder)",
+      "search": "Search themes",
       "current": "Current",
       "apply": "Apply"
+    }
+  },
+  "shell": {
+    "ai": {
+      "clear": "Clear chat",
+      "close": "Close chat",
+      "heading": "Nuxeo AI Assistant",
+      "input-placeholder": "Ask anything about your documents...",
+      "open": "AI Assistant",
+      "send": "Send message",
+      "title": "AI Assistant",
+      "suggestion": {
+        "modified-today": "What documents were modified today?",
+        "summarize-tasks": "Summarize my pending tasks",
+        "recent-uploads": "Show me recent uploads"
+      },
+      "empty-state": "Ask me about your documents, search the repository, or get insights about workflows and tasks.",
+      "sources": "Sources"
+    },
+    "search": {
+      "no-results": "No results found",
+      "placeholder": "Search documents, users or groups",
+      "searching": "Searching…"
+    },
+    "settings": {
+      "menu": "Settings menu"
+    },
+    "menu": {
+      "themes": "Themes",
+      "help": "Help",
+      "about": "About",
+      "ai-features": "AI Features {{ state }}",
+      "state-on": "On",
+      "state-off": "Off"
     }
   }
 }

@@ -25,7 +25,8 @@
             "assets": [
               {
                 "glob": "**/*",
-                "input": "apps/nuxeo-ui/public"
+                "input": "apps/nuxeo-ui/public",
+                "ignore": ["i18n/*.context.json"]
               },
               {
                 "glob": "**/*",
@@ -88,7 +89,8 @@
               "assets": [
                 {
                   "glob": "**/*",
-                  "input": "apps/nuxeo-ui/public"
+                  "input": "apps/nuxeo-ui/public",
+                  "ignore": ["i18n/*.context.json"]
                 },
                 {
                   "glob": "bootstrap.json",

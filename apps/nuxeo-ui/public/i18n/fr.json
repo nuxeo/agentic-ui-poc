@@ -1,0 +1,106 @@
+{
+  "app": {
+    "title": "Hyland Nuxeo",
+    "nav": {
+      "toggle": "Afficher ou masquer le menu de navigation"
+    }
+  },
+  "browse": {
+    "details": {
+      "show": "Afficher les détails",
+      "hide": "Masquer les détails",
+      "toggle": "Afficher ou masquer le panneau de détails"
+    },
+    "scope": {
+      "create-import": "Créer / Importer",
+      "drive": "Nuxeo Drive",
+      "edit": "Modifier les métadonnées",
+      "delete": "Supprimer",
+      "share": "Partager",
+      "notify": "Notifier",
+      "export": "Exporter"
+    }
+  },
+  "nav": {
+    "clipboard": {
+      "empty": "Le presse-papiers est vide",
+      "hint": "Utilisez « Ajouter au presse-papiers » sur des documents ou des collections pour ajouter des éléments ici.",
+      "remove": "Retirer du presse-papiers",
+      "tip": "Accédez à un conteneur pour coller ou déplacer le contenu du presse-papiers.",
+      "copy": "Copier",
+      "move": "Déplacer"
+    },
+    "collections": {
+      "empty": "Aucune collection trouvée"
+    },
+    "expired": {
+      "empty": "Aucun document expiré"
+    },
+    "favorites": {
+      "empty": "Aucun favori pour le moment",
+      "hint": "Utilisez l'icône en forme d'étoile sur les documents pour les ajouter à vos favoris.",
+      "remove": "Retirer des favoris"
+    },
+    "folders": {
+      "empty": "Aucun dossier trouvé"
+    },
+    "loading": "Chargement",
+    "recent": {
+      "empty": "Aucun document consulté récemment"
+    },
+    "refresh": "Actualiser",
+    "sign-out": "Se déconnecter",
+    "tasks": {
+      "dashboard": "Voir le tableau de bord des tâches",
+      "empty": "Aucune tâche en attente",
+      "retry": "Réessayer"
+    },
+    "tree": {
+      "root": "Racine",
+      "retry": "Réessayer",
+      "toggle": "Développer ou réduire {{ name }}"
+    }
+  },
+  "settings": {
+    "themes": {
+      "title": "Thèmes",
+      "search": "Rechercher des thèmes",
+      "current": "Actuel",
+      "apply": "Appliquer"
+    }
+  },
+  "shell": {
+    "ai": {
+      "clear": "Effacer la conversation",
+      "close": "Fermer la conversation",
+      "heading": "Assistant IA Nuxeo",
+      "input-placeholder": "Posez une question sur vos documents...",
+      "open": "Assistant IA",
+      "send": "Envoyer le message",
+      "title": "Assistant IA",
+      "empty-state": "Posez-moi des questions sur vos documents, recherchez dans le référentiel ou obtenez des informations sur les workflows et les tâches.",
+      "suggestion": {
+        "modified-today": "Quels documents ont été modifiés aujourd’hui ?",
+        "summarize-tasks": "Résume mes tâches en attente",
+        "recent-uploads": "Montre-moi les derniers téléversements"
+      },
+      "sources": "Sources"
+    },
+    "search": {
+      "no-results": "Aucun résultat trouvé",
+      "placeholder": "Rechercher des documents, des utilisateurs ou des groupes",
+      "searching": "Recherche en cours…"
+    },
+    "settings": {
+      "menu": "Menu des paramètres"
+    },
+    "menu": {
+      "themes": "Thèmes",
+      "help": "Aide",
+      "about": "À propos",
+      "ai-features": "Fonctions IA {{ state }}",
+      "state-on": "activées",
+      "state-off": "désactivées"
+    }
+  }
+}

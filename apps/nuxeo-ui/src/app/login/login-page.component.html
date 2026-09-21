@@ -1,5 +1,5 @@
 <div class="login-page">
-  <div class="login-panel">
+  <main class="login-panel" aria-label="Log in">
     <div class="login-panel-inner">
       <a routerLink="/login" class="login-brand" aria-label="Hyland">
         <sat-logo direction="horizontal">
@@ -8,41 +8,52 @@
         </sat-logo>
       </a>
 
-      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
-        <mat-form-field
-          appearance="outline"
-          subscriptSizing="dynamic"
-          class="login-field-full login-field-username"
-        >
-          <mat-label>Username</mat-label>
-          <input
-            matInput
-            formControlName="username"
-            autocomplete="username"
-            (input)="onCredentialInput()"
-            (change)="onCredentialInput()"
-            (animationstart)="onAutofillAnimation($event)"
-          />
-          @if (form.controls.username.hasError('required') && form.controls.username.touched) {
-            <mat-error>Username is required</mat-error>
-          }
-        </mat-form-field>
+      <h1 class="login-title">Log in</h1>
 
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="login-field-full">
-          <mat-label>Password</mat-label>
-          <input
-            matInput
-            type="password"
-            formControlName="password"
-            autocomplete="current-password"
-            (input)="onCredentialInput()"
-            (change)="onCredentialInput()"
-            (animationstart)="onAutofillAnimation($event)"
-          />
-          @if (form.controls.password.hasError('required') && form.controls.password.touched) {
-            <mat-error>Password is required</mat-error>
-          }
-        </mat-form-field>
+      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+        <fieldset class="login-credentials">
+          <legend class="cdk-visually-hidden">Sign in credentials</legend>
+          <mat-form-field
+            appearance="outline"
+            subscriptSizing="dynamic"
+            class="login-field-full login-field-username"
+            hideRequiredMarker
+          >
+            <mat-label>Username (required)</mat-label>
+            <input
+              matInput
+              formControlName="username"
+              autocomplete="username"
+              (input)="onCredentialInput()"
+              (change)="onCredentialInput()"
+              (animationstart)="onAutofillAnimation($event)"
+            />
+            @if (form.controls.username.hasError('required') && form.controls.username.touched) {
+              <mat-error>Username is required</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field
+            appearance="outline"
+            subscriptSizing="dynamic"
+            class="login-field-full"
+            hideRequiredMarker
+          >
+            <mat-label>Password (required)</mat-label>
+            <input
+              matInput
+              type="password"
+              formControlName="password"
+              autocomplete="current-password"
+              (input)="onCredentialInput()"
+              (change)="onCredentialInput()"
+              (animationstart)="onAutofillAnimation($event)"
+            />
+            @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+              <mat-error>Password is required</mat-error>
+            }
+          </mat-form-field>
+        </fieldset>
 
         <div class="login-actions-row login-actions-row--single">
           <button
@@ -84,12 +95,11 @@
       }
     </div>
 
-    <p class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</p>
-  </div>
+    <footer class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</footer>
+  </main>
 
-  <div
-    class="login-hero"
-    role="presentation"
-    [style.background-image]="heroBackgroundImage()"
-  ></div>
+  <div class="login-hero" role="presentation" aria-hidden="true">
+    <!-- Decorative hero: img avoids CSS background-image for HC review; SCSS hides it in forced-colors (NXENG-751). -->
+    <img class="login-hero-image" [src]="heroImagePath" alt="" />
+  </div>
 </div>
