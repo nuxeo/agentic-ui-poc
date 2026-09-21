@@ -1329,7 +1329,12 @@ function checkNoHardcodedUiText() {
 function checkNoHardcodedDescriptorText() {
   // `label: 'Browse'` and friends. Single-quoted only: this repo's formatter produces single
   // quotes, and a template literal usually means interpolation, which is not a fixed string.
-  const DESCRIPTOR_TEXT = /\b(label|placeholder|ariaLabel|tooltip)\s*:\s*'([A-Z][^']*)'/g;
+  // `title` is here because it was the hole. Eight `MatDialog` call sites passed
+  // `title: 'Saved Search'` while translating the `placeholder` on the same object literal — the
+  // dialog's own template had a translated fallback that no caller could ever reach. The pattern
+  // covered `placeholder` and not `title`, so the gate watched one field of the pair and not the
+  // other.
+  const DESCRIPTOR_TEXT = /\b(label|title|placeholder|ariaLabel|tooltip)\s*:\s*'([A-Z][^']*)'/g;
 
   for (const [file, lines] of addedLinesByFile) {
     if (!/^(libs|apps)\/.+\.ts$/.test(file)) continue;

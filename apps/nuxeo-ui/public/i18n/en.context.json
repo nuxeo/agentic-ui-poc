@@ -722,6 +722,7 @@
   "column.document-list-type": "Column header in a document list. A NOUN naming the property shown in that column, not an instruction. Descriptor id `app.documentList.type`.",
   "column.document-list-version": "Column header in a document list. A NOUN naming the property shown in that column, not an instruction. Descriptor id `app.documentList.version`.",
   "common.select-item": "Accessible name of the checkbox that selects one row in a document list. An IMPERATIVE instruction; `{{ name }}` is the document's own title and is NOT translated. Announced by a screen reader, never shown. Place the placeholder wherever the target language needs it.",
+  "contracts.saved-search-placeholder": "Example text in the saved-search name box on the contracts page. An EXAMPLE, so translate it into something a speaker of the target language would plausibly type — \"Q3\" is a fiscal quarter and \"Contracts Pending Review\" is a state, neither is a product term.",
   "dashboard.favorite-items": "Rendered from an Angular binding in dashboard-page.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English.",
   "dashboard.recently-edited": "Rendered from an Angular binding in dashboard-page.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English.",
   "dashboard.recently-viewed": "Rendered from an Angular binding in dashboard-page.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English.",
@@ -1623,8 +1624,10 @@
   "ui.document-compare-dialog.no-document-data-available-to-compare": "User-facing text in document-compare-dialog.html, rendered inside an Angular control-flow block (an @if or @else arm). Usually a button label or a state message.",
   "ui.document-viewer.your-browser-does-not-support-video": "User-facing text in document-viewer.component.html, rendered inside an Angular control-flow block (an @if or @else arm). Usually a button label or a state message.",
   "ui.edit-collection-dialog.save": "User-facing text in edit-collection-dialog.html, rendered inside an Angular control-flow block (an @if or @else arm). Usually a button label or a state message.",
+  "ui.edit-saved-search": "Title of the dialog for renaming an existing saved search. A VERB phrase, imperative, followed by the object — distinct from ui.saved-search, which titles the dialog that creates one.",
   "ui.enter-a-name-for-your-saved": "Rendered from an Angular binding in saved-search-dialog.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English.",
   "ui.fit-to-viewer": "Rendered from an Angular binding in document-viewer.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English.",
+  "ui.save-current-search": "Title of the dialog that saves the search currently on screen. A VERB phrase, imperative. \"Current\" means the query the user is looking at right now.",
   "ui.saved-search": "Rendered from an Angular binding in saved-search-dialog.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English.",
   "ui.unblock": "Rendered from an Angular binding in share-saved-search-dialog.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English.",
   "ui.update": "Rendered from an Angular binding in share-saved-search-external-dialog.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English."

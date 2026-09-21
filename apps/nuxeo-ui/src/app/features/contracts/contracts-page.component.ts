@@ -20,7 +20,7 @@ import {
   type ExportDialogData,
   type SavedSearchDialogData,
 } from '@nuxeo-satori/platform/ui';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-contracts-page',
@@ -40,6 +40,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class ContractsPageComponent {
   private dialog = inject(MatDialog);
+  private readonly translate = inject(TranslateService);
 
   // Selection topbar demo state
   readonly showSelection = signal(false);
@@ -94,8 +95,8 @@ export class ContractsPageComponent {
 
   openSavedSearchDialog() {
     const data: SavedSearchDialogData = {
-      title: 'Save Current Search',
-      placeholder: 'e.g., "Q3 Contracts Pending Review"',
+      title: this.translate.instant('ui.save-current-search'),
+      placeholder: this.translate.instant('contracts.saved-search-placeholder'),
       initialValue: '',
     };
 

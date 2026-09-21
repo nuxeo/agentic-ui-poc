@@ -441,7 +441,7 @@ export class SearchFiltersDrawerComponent {
     this.dialog
       .open(SavedSearchDialogComponent, {
         data: {
-          title: 'Saved Search',
+          title: this.translate.instant('ui.saved-search'),
           placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })

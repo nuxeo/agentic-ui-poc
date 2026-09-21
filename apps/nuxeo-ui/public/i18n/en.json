@@ -853,6 +853,9 @@
   "common": {
     "select-item": "Select {{ name }}"
   },
+  "contracts": {
+    "saved-search-placeholder": "e.g., \"Q3 Contracts Pending Review\""
+  },
   "dashboard": {
     "favorite-items": "Favorite Items",
     "recently-edited": "Recently Edited",
@@ -1965,8 +1968,10 @@
     "edit-collection-dialog": {
       "save": "Save"
     },
+    "edit-saved-search": "Edit Saved Search",
     "enter-a-name-for-your-saved": "Enter a name for your saved search",
     "fit-to-viewer": "Fit to viewer",
+    "save-current-search": "Save Current Search",
     "saved-search": "Saved Search",
     "unblock": "Unblock",
     "update": "Update"

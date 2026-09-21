@@ -728,7 +728,7 @@ export class AssetSearchResultsComponent {
     this.dialog
       .open(SavedSearchDialogComponent, {
         data: {
-          title: 'Saved Search',
+          title: this.translate.instant('ui.saved-search'),
           placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
@@ -797,7 +797,7 @@ export class AssetSearchResultsComponent {
     this.dialog
       .open(SavedSearchDialogComponent, {
         data: {
-          title: 'Edit Saved Search',
+          title: this.translate.instant('ui.edit-saved-search'),
           placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: this.selectedSavedSearchTitle(),
         },
@@ -836,7 +836,7 @@ export class AssetSearchResultsComponent {
       width: '95vw',
       maxWidth: '1080px',
       data: {
-        title: this.selectedSavedSearchTitle().trim() || 'Saved Search',
+        title: this.selectedSavedSearchTitle().trim() || this.translate.instant('ui.saved-search'),
         id,
       },
     });
