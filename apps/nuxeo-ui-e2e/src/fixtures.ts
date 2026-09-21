@@ -22,33 +22,42 @@ function sessionFor(username: string, password: string) {
   };
 }
 
+/**
+ * Put the app's session into a page so it is past the route guard.
+ *
+ * `addInitScript` rather than `storageState`: Playwright's `storageState` persists
+ * cookies and **localStorage** only, and this app keeps its session in `sessionStorage`.
+ * A `storageState` fixture would look right, run, and leave every spec signed out — the
+ * kind of green that is worse than a red. `addInitScript` runs before page scripts on
+ * every navigation in the context, which is what makes it survive the reloads these
+ * specs perform.
+ *
+ * Exported as a function, not only as the fixture below, because the accessibility suite
+ * builds its `test` on a different base — `@a11y-scout/playwright` — and cannot extend
+ * this one. Sharing the function keeps one definition of "signed in"; a second copy would
+ * drift the moment the session shape changes.
+ */
+export async function installSession(page: Page): Promise<void> {
+  const username = process.env['NUXEO_USER'] ?? 'Administrator';
+  const password = process.env['NUXEO_PASS'] ?? 'Administrator';
+
+  await page.addInitScript(
+    ({ key, signedOutKey, value }) => {
+      sessionStorage.setItem(key, value);
+      sessionStorage.removeItem(signedOutKey);
+    },
+    {
+      key: SESSION_KEY,
+      signedOutKey: SIGNED_OUT_KEY,
+      value: JSON.stringify(sessionFor(username, password)),
+    },
+  );
+}
+
 export const test = base.extend<{ signedIn: Page }>({
-  /**
-   * A page that is already past the route guard.
-   *
-   * `addInitScript` rather than `storageState`: Playwright's `storageState` persists
-   * cookies and **localStorage** only, and this app keeps its session in `sessionStorage`.
-   * A `storageState` fixture would look right, run, and leave every spec signed out — the
-   * kind of green that is worse than a red. `addInitScript` runs before page scripts on
-   * every navigation in the context, which is what makes it survive the reloads these
-   * specs perform.
-   */
+  /** A page that is already past the route guard. See `installSession`. */
   signedIn: async ({ page }, use) => {
-    const username = process.env['NUXEO_USER'] ?? 'Administrator';
-    const password = process.env['NUXEO_PASS'] ?? 'Administrator';
-
-    await page.addInitScript(
-      ({ key, signedOutKey, value }) => {
-        sessionStorage.setItem(key, value);
-        sessionStorage.removeItem(signedOutKey);
-      },
-      {
-        key: SESSION_KEY,
-        signedOutKey: SIGNED_OUT_KEY,
-        value: JSON.stringify(sessionFor(username, password)),
-      },
-    );
-
+    await installSession(page);
     await use(page);
   },
 });

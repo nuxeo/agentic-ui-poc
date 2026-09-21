@@ -13,8 +13,17 @@
  * do not iterate on the code.
  *
  * Usage:
- *   node scripts/beta-harness/e2e-preflight.mjs
+ *   node scripts/beta-harness/e2e-preflight.mjs           # the critical-path suite
+ *   node scripts/beta-harness/e2e-preflight.mjs --a11y    # also the a11y-scout tarballs
  */
+
+/**
+ * The a11y-scout packages are checked only behind `--a11y`, and that is the whole point of
+ * the flag. They are hand-distributed tarballs available from no registry, so making them
+ * an unconditional precondition would block `beta:e2e` — thirteen specs that do not import
+ * them — on a download most developers have no reason to have.
+ */
+const wantA11y = process.argv.includes('--a11y');
 
 const BASE = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
 const USER = process.env['NUXEO_USER'] ?? 'Administrator';
@@ -63,6 +72,37 @@ if (playwright) {
           '  to be installed, and reporting a pass, is how "cross-browser verified" stops meaning\n' +
           'anything.',
       );
+    }
+  }
+}
+
+/**
+ * 1c. The a11y-scout engine and its Playwright fixture, for `npm run a11y:surfaces`.
+ *
+ * Both are checked by importing rather than by looking in `node_modules`, because the
+ * failure this guards against is the fixture resolving while the engine it re-exports does
+ * not: the fixture tarball declares `a11y-scout` as a plain dependency and npm will happily
+ * leave it unmet if only one tarball was installed. The distinct messages below say which
+ * half is missing instead of reporting a generic module error at collection time.
+ */
+if (wantA11y) {
+  const INSTALL =
+    '    npm install --no-save @playwright/test @axe-core/playwright \\\n' +
+    '      <path>/a11y-scout-0.3.0.tgz <path>/a11y-scout-playwright-0.3.0.tgz\n\n' +
+    '  All four in ONE command: `--no-save` prunes anything previously installed with it,\n' +
+    '  and the two tarballs must resolve together or the fixture cannot find its engine.\n' +
+    '  The tarballs come from the a11y-scout SharePoint distribution folder — they are on\n' +
+    '  no registry, so `npm install a11y-scout` will 404.';
+
+  for (const [specifier, what] of [
+    ['a11y-scout', 'the scanning engine'],
+    ['@a11y-scout/playwright', 'the Playwright fixture'],
+  ]) {
+    try {
+      await import(specifier);
+      ok.push(`${specifier} is importable`);
+    } catch {
+      problems.push(`\`${specifier}\` (${what}) is not installed.\n\n${INSTALL}`);
     }
   }
 }
