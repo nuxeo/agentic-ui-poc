@@ -40,7 +40,8 @@
  *   node scripts/beta-harness/supply-chain.mjs --today 2027-01-01   # test allowlist expiry
  *
  * Exit 1 on a production high/critical, an unallowlisted or expired production finding, an
- * unreferenced production dependency, or an exception that is no longer needed.
+ * unreferenced production dependency, an exception that is no longer needed, or an acceptance
+ * whose cited mitigation no longer exists in the code it names.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -383,6 +384,120 @@ for (const dep of Object.keys(exceptions)) {
   }
 }
 
+/* ------------------------------------------- 5. the cited mitigations still exist ---- */
+
+/**
+ * Does the code an acceptance points at still exist, and does it still contain the guard?
+ *
+ * ## Why
+ *
+ * An acceptance's prose carries its whole argument and nothing verified a word of it. The `quill`
+ * entry has been re-reviewed four times and every pass found at least one source pointer stale —
+ * naming an unrelated line, or sanitised code sitting in a branch the advisory cannot reach. By the
+ * fifth review three of its four pointers had drifted again: the `DOMPurify` call it cited at
+ * 502-503 had moved to 525-526, and 502 had become an unrelated method signature. `advisory` and
+ * `affects` moved part of the entry's burden onto this gate; this moves the source pointers too.
+ *
+ * Line numbers are the part that rots, because they shift whenever anyone inserts a method above
+ * them and nothing complains. So an entry cites a `declaration` — the literal text of the
+ * declaration line — plus an optional `guard` that must appear inside that declaration's body.
+ *
+ * ## What this does NOT do
+ *
+ * It does not check that the claim is true. It checks that the code the claim names still exists
+ * and still contains the mitigation it credits. A reviewer must still read the argument; what they
+ * no longer have to do is work out whether the pointers were ever right in the first place.
+ *
+ * ## Fail-closed choices, each for a reason
+ *
+ * - The anchor must be UNIQUE in the file. A bare symbol name is not enough: `readQuillHtml`
+ *   appears three times in note-editor.ts, twice as a call, so anchoring on the first occurrence
+ *   would brace-match a *caller's* body and then hunt for the guard in the wrong function — and
+ *   find it, since the caller is `onSave`.
+ * - A body whose braces do not balance fails rather than being skipped.
+ * - `mitigations` is optional, exactly as `affects` is: an acceptance can legitimately rest on
+ *   something with no code to point at. But a field that is PRESENT must be a non-empty array of
+ *   usable entries, so it cannot quietly opt out of its own verification.
+ */
+
+/**
+ * The brace-delimited body following `anchor`, or the reason it could not be read.
+ *
+ * @param {string} text
+ * @param {string} anchor
+ * @returns {{ body: string, error?: undefined } | { body?: undefined, error: string }}
+ */
+function bodyAfter(text, anchor) {
+  const at = text.indexOf(anchor);
+  if (at === -1) return { error: 'no such text is in the file' };
+  if (text.indexOf(anchor, at + anchor.length) !== -1) {
+    return { error: 'it appears more than once, so the anchor is ambiguous' };
+  }
+  const open = text.indexOf('{', at);
+  if (open === -1) return { error: 'no brace-delimited body follows it' };
+  let depth = 0;
+  for (let i = open; i < text.length; i += 1) {
+    if (text[i] === '{') depth += 1;
+    else if (text[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return { body: text.slice(open, i + 1) };
+    }
+  }
+  return { error: 'its body has unbalanced braces' };
+}
+
+let mitigationsChecked = 0;
+
+for (const [name, entry] of Object.entries(allowlist.advisories ?? {})) {
+  if (!Object.hasOwn(entry, 'mitigations')) continue;
+  if (!Array.isArray(entry.mitigations) || entry.mitigations.length === 0) {
+    fail(
+      `the allowlist entry for ${name} supplies "mitigations" but it is not a non-empty array ` +
+        `(got ${JSON.stringify(entry.mitigations)}). Remove the field or populate it.`,
+    );
+    continue;
+  }
+  for (const [i, m] of entry.mitigations.entries()) {
+    const where = `${name} mitigations[${i}]`;
+    const str = (v) => typeof v === 'string' && v.trim() !== '';
+    if (!m || !str(m.file) || !str(m.declaration) || !str(m.claim)) {
+      fail(`${where} needs non-empty "file", "declaration" and "claim" strings.`);
+      continue;
+    }
+    const abs = resolve(repoRoot, m.file);
+    if (!existsSync(abs)) {
+      fail(
+        `${where} points at ${m.file}, which does not exist. The file was moved or deleted, so ` +
+          'the acceptance rests on code nobody can find — re-review it.',
+      );
+      continue;
+    }
+    const { body, error } = bodyAfter(readFileSync(abs, 'utf8'), m.declaration);
+    if (error) {
+      fail(
+        `${where} anchors on "${m.declaration}" in ${m.file}, but ${error}. Do not just repair the ` +
+          'pointer: a mitigation that was renamed or removed is a reason to re-review the acceptance.',
+      );
+      continue;
+    }
+    if (Object.hasOwn(m, 'guard')) {
+      if (!str(m.guard)) {
+        fail(`${where} supplies "guard" but it is not a non-empty string.`);
+        continue;
+      }
+      if (!body.includes(m.guard)) {
+        fail(
+          `${where} credits "${m.guard}" inside "${m.declaration}" in ${m.file}, and it is no ` +
+            'longer there. The mitigation this acceptance rests on is gone; the acceptance is void ' +
+            'until it is restored or re-argued.',
+        );
+        continue;
+      }
+    }
+    mitigationsChecked += 1;
+  }
+}
+
 /* ------------------------------------------------------------------------ report ---- */
 
 function relative(p) {
@@ -400,6 +515,7 @@ if (asJson) {
         productionFindings: prodFindings,
         productionDependencies: prodDeps.length,
         unreferenced,
+        mitigationsChecked,
         problems,
         notes,
       },
@@ -420,6 +536,7 @@ console.log(
     `${fullCounts.moderate ?? 0} moderate, ${fullCounts.low ?? 0} low   (reported, not gated)`,
 );
 console.log(`  production deps     ${prodDeps.length}, of which ${unreferenced.length} unreferenced`);
+console.log(`  mitigations         ${mitigationsChecked} cited pointer(s) resolved in the source`);
 console.log(`  date                ${today}`);
 for (const n of notes) console.log(`\n  - ${n}`);
 
