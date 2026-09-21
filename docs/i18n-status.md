@@ -10,22 +10,33 @@ silently and gets believed anyway.
 |              |                                                                                                                                                                                                                                   |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Beta ticket  | [NXSAT-227](https://hyland.atlassian.net/browse/NXSAT-227) — delivered, in review                                                                                                                                                 |
-| GA ticket    | [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284) — not started                                                                                                                                                          |
-| Pull request | [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198)                                                                                                                                                                          |
-| Branch       | `feature/nxsat-227a-i18n`                                                                                                                                                                                                         |
+| GA ticket    | [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284) — delivered, in review. This row said **not started** while the branch implementing it was open, and the same page measured its output two sections below.             |
+| Pull request | [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198) (NXSAT-227, merged) · [#217](https://github.com/nuxeo/agentic-ui-poc/pull/217) (NXSAT-284)                                                                               |
+| Branch       | `feature/nxsat-227a-i18n` (merged) · `feature/nxsat-284-descriptor-labels`                                                                                                                                                        |
 | Gate         | **23 of 23 green**, `code-scanning` included. Re-measure rather than reading this: `npm run beta:gate`. This row said 21 of 22 and named a blocker that no longer exists — the gate count grew and CodeQL now runs on the branch. |
 
 ---
 
 ## Where extraction stands — measured by rendering, not by grepping
 
-Last measured 2026-09-19 on branch `feature/nxsat-284-descriptor-labels`.
+Last measured 2026-09-21 on branch `feature/nxsat-284-descriptor-labels`, by an audit that now
+**selects** the pseudo-locale and refuses to report a total unless the `⟦` sentinel rendered. The
+previous figure of 41 came from a run that could not prove the pseudo-locale was active at all.
 
 |                                                                |          |
 | -------------------------------------------------------------- | -------- |
-| Catalogue keys, each with translator context                   | **1528** |
-| Descriptor labels carrying a `labelKey`                        | **182**  |
-| Visible English strings under the `zz` pseudo-locale, 9 routes | **41**   |
+| Catalogue keys, each with translator context                   | **1653** |
+| Descriptor labels carrying a `labelKey`                        | **191**  |
+| Visible English strings under the `zz` pseudo-locale, 9 routes | **24**   |
+
+Re-measure rather than quoting the table; every figure in it is a moving count:
+
+```bash
+npm run i18n:audit                        # the 24, and the deep pass over dialogs and menus
+node -e "const c=o=>Object.values(o).reduce((n,v)=>n+(v&&typeof v=='object'?c(v):1),0);\
+  console.log(c(require('./apps/nuxeo-ui/public/i18n/en.json')))"   # catalogue keys
+git ls-files '*.ts' | grep -v spec | xargs grep -oh "labelKey: '" | wc -l   # keyed descriptors
+```
 
 The third number is the only one that means "finished", and it is the only one
 that was not available until recently. Key and call-site counts measure what was
@@ -475,6 +486,12 @@ fails any source that is not.
 
 ### NXSAT-284 — GA extraction: 1350 template strings, 257 descriptor strings, plus an unknown number passed imperatively
 
+> **Delivered in [#217](https://github.com/nuxeo/agentic-ui-poc/pull/217).** What follows is the
+> PLAN as it was written, kept because the decisions and the corrected assumptions in it are the
+> record of why the work took the shape it did. For what actually shipped, read the measured
+> table at the top of this page — not the counts here, which are the estimate this planning
+> produced.
+
 6. **~~B0 first, and it blocks everything after it.~~ Corrected 19 Sep 2026 — it is not a
    blocker.** The claim was that translating the nine literal English `aria-label` values that
    `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` select on would turn both harnesses red, so
@@ -554,9 +571,17 @@ fails any source that is not.
 
 1. **The machinery is done and has been since Phase 1.** Everything that looks unfinished is
    content, and content was descoped from Beta on 21 August.
-2. **4 of 92 templates use the translate pipe. 1350 template strings and 257 descriptor
-   strings remain**, plus an uncounted number passed imperatively in `.ts`. That is GA-sized
-   work, tracked as NXSAT-284.
+2. **That GA-sized work has been done.** This point used to read "4 of 92 templates use the
+   translate pipe, 1350 template strings and 257 descriptor strings remain" — the measurement
+   taken before NXSAT-284 ran. Measured 2026-09-21: **86 of 103** templates use the pipe, **1653**
+   catalogue keys with **1654** context entries, and **191** descriptors carry a `labelKey`.
+
+   Do not quote these from here. Two of the three numbers in the table above were stale when this
+   correction was written, because six commits had added keys since anyone re-measured, and my
+   first pass at this paragraph copied them from the pull request description rather than counting.
+   A prose summary of a moving count goes stale silently and is believed anyway — the commands are
+   in the row below the table.
+
 3. **The French screenshot proves the mechanism, not a localised product.** Say that when you
    show it, before someone else points at the English nav — and note the nav is English for a
    structural reason, not because it was skipped: those labels are descriptors, not templates.
