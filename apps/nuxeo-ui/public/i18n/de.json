@@ -5,6 +5,11 @@
       "toggle": "Navigationsmenü ein- oder ausblenden"
     }
   },
+  "login": {
+    "title": "Anmelden",
+    "panel-label": "Anmelden",
+    "skip-link": "Zur Anmeldung springen"
+  },
   "browse": {
     "details": {
       "show": "Details anzeigen",
@@ -101,6 +106,9 @@
       "ai-features": "KI-Funktionen {{ state }}",
       "state-on": "ein",
       "state-off": "aus"
+    },
+    "test": {
+      "platform-nav-item": "Durchsuchen"
     }
   }
 }

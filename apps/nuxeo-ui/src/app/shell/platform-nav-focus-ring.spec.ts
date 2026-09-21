@@ -79,7 +79,7 @@ function flatten(value: string, backdrop: readonly number[]): number[] {
  */
 @Component({
   standalone: true,
-  imports: [SatPlatformNavModule],
+  imports: [SatPlatformNavModule, TranslateModule],
   templateUrl: './platform-nav-focus-ring.host.html',
 })
 class NavHostComponent {}

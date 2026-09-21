@@ -418,7 +418,7 @@ the tool cannot compute it.
 Two things make the measurement easy to get wrong, and both were measured on NXENG-758:
 
 - **The negative `outline-offset` changes what the ring is adjacent to.** At `-2px` the ring is
-  painted *inside* the item's box, so it must contrast with the item's own fill, not the panel.
+  painted _inside_ the item's box, so it must contrast with the item's own fill, not the panel.
 - **The current item has a different fill.** Satori lightens it with
   `rgba(255, 255, 255, .12)`. Measured on the default theme: **3.80:1** on a plain item but
   **2.87:1** on the current one — a pass and a fail from the same ring colour.

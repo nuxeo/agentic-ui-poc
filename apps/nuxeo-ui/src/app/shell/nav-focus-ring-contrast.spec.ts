@@ -56,7 +56,8 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
  * current-item assertions were measuring an element that is never a current item and could not
  * have failed. Keep this scoped to the item under test.
  */
-const LINK = 'sat-platform-nav-list-item[data-nav-id="app.navbar.browseAdfHx"] .sat-platform-nav-item';
+const LINK =
+  'sat-platform-nav-list-item[data-nav-id="app.navbar.browseAdfHx"] .sat-platform-nav-item';
 
 @Component({
   standalone: true,
@@ -94,7 +95,10 @@ function parseColor(value: string): { rgb: number[]; alpha: number } {
 }
 
 /** Composite a translucent colour over an opaque backdrop — what the eye actually sees. */
-function compositeOver(fg: { rgb: number[]; alpha: number }, backdrop: readonly number[]): number[] {
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+  backdrop: readonly number[],
+): number[] {
   return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
 }
 
@@ -233,7 +237,10 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
     // A custom property written onto `<html>` is exactly how `AppThemeService.applyTheme`
     // applies a Layer 0 `themes[].tokens` entry, so this is the customer's path, not a
     // test-only shortcut. The value is a sentinel rather than a colour we would ship.
-    document.documentElement.style.setProperty('--agentic-nav-focus-outline-color', 'rgb(255, 0, 0)');
+    document.documentElement.style.setProperty(
+      '--agentic-nav-focus-outline-color',
+      'rgb(255, 0, 0)',
+    );
     try {
       const measured = measure('nuxeo', false);
       expect(measured.ringColor).toBe('rgb(255, 0, 0)');

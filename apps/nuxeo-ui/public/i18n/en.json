@@ -5,6 +5,11 @@
       "toggle": "Toggle navigation menu"
     }
   },
+  "login": {
+    "title": "Log in",
+    "panel-label": "Log in",
+    "skip-link": "Skip to sign in"
+  },
   "browse": {
     "details": {
       "show": "Show details",
@@ -101,6 +106,9 @@
       "ai-features": "AI Features {{ state }}",
       "state-on": "On",
       "state-off": "Off"
+    },
+    "test": {
+      "platform-nav-item": "Browse"
     }
   }
 }
