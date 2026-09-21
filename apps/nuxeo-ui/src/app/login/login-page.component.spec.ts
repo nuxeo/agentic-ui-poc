@@ -40,14 +40,14 @@ describe('LoginPageComponent', () => {
   });
 
   it('omits redundant aria-required on password when HTML required is set (NXENG-755)', () => {
-    fixture.detectChanges();
-    fixture.detectChanges();
-
     const passwordInput = fixture.nativeElement.querySelector(
       'input[formcontrolname="password"]',
     ) as HTMLInputElement;
 
     expect(passwordInput.required).toBe(true);
+    passwordInput.setAttribute('aria-required', 'true');
+    fixture.detectChanges();
+
     expect(passwordInput.getAttribute('aria-required')).toBeNull();
   });
 

@@ -21,6 +21,7 @@ import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
+import { stripRedundantMatInputAriaRequired } from './login-mat-input-required-a11y';
 
 const LAST_USER_KEY = 'agentic_ui_last_username';
 
@@ -77,18 +78,7 @@ export class LoginPageComponent implements AfterViewInit, AfterViewChecked, OnDe
   }
 
   ngAfterViewChecked(): void {
-    this.neutralizeRedundantPasswordAriaRequired();
-  }
-
-  /**
-   * MatInput sets both HTML `required` and `aria-required="true"`; IBM Equal Access flags the
-   * duplicate (aria_attribute_redundant, NXENG-755). Native `required` is sufficient for AT.
-   */
-  private neutralizeRedundantPasswordAriaRequired(): void {
-    const { passwordInput } = this.getCredentialInputs();
-    if (passwordInput?.required && passwordInput.getAttribute('aria-required') === 'true') {
-      passwordInput.removeAttribute('aria-required');
-    }
+    stripRedundantMatInputAriaRequired(this.getCredentialInputs().passwordInput);
   }
 
   ngOnDestroy(): void {
