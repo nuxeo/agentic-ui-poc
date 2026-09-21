@@ -131,10 +131,16 @@ jobs:
 
             const prNumber = context.issue.number;
 
-            // The comment is found by this marker, not by its prose. The previous lookup
-            // matched any Bot comment containing the words "SonarCloud Analysis", which also
-            // matches a Copilot reply quoting the report — and would have overwritten it.
+            // The comment is found by this marker and by its author, not by its prose. The
+            // previous lookup matched any Bot comment containing the words "SonarCloud
+            // Analysis", which also matches a Copilot reply quoting the report — and would
+            // have overwritten it.
             const MARKER = '<!-- sonarcloud-analysis-report -->';
+
+            // Only this workflow's own comments are candidates. The marker alone does not
+            // establish ownership: GitHub's "Quote reply" copies raw markdown, HTML comments
+            // included, so anyone quoting the report produces a comment carrying the marker.
+            const REPORT_AUTHOR = 'github-actions[bot]';
 
             // Fetch quality gate status from SonarCloud
             const qualityGateUrl = `https://sonarcloud.io/api/qualitygates/project_status?projectKey=${projectKey}&pullRequest=${prNumber}`;
@@ -254,12 +260,18 @@ jobs:
                 per_page: 100
               });
 
+              // Both lookups are restricted to REPORT_AUTHOR. GITHUB_TOKEN cannot edit a
+              // comment it does not own, so selecting someone else's quote of the report means
+              // a 403 from updateComment — and, since the catch below now calls core.setFailed,
+              // a red run that posts no report at all.
+              const ours = comments.filter(c => c.user?.login === REPORT_AUTHOR);
+
               // Comments written before the marker existed are matched on their opening line,
               // so the first run after this change updates the existing report instead of
               // posting a second one. Remove the fallback once no open PR predates the marker.
               const botComment =
-                comments.find(c => c.body.includes(MARKER)) ??
-                comments.find(c => c.user.type === 'Bot' && c.body.startsWith('## SonarCloud Analysis'));
+                ours.find(c => c.body.includes(MARKER)) ??
+                ours.find(c => c.body.startsWith('## SonarCloud Analysis'));
 
               // Create or update comment
               if (botComment) {
