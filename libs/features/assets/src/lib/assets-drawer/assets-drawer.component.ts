@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,7 +20,6 @@ import {
 import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { AssetsQueueComponent } from '../assets-queue/assets-queue.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export interface FilterOption {
   label: string;

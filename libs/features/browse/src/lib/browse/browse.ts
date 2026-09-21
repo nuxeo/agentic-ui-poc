@@ -96,17 +96,17 @@ import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 
 import {
-  ShareDialogComponent,
-  ShareDialogData,
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+  EditCollectionDialogComponent,
+  EditCollectionDialogData,
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
-  ConfirmDialogComponent,
-  ConfirmDialogData,
+  ShareDialogComponent,
+  ShareDialogData,
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
-  EditCollectionDialogComponent,
-  EditCollectionDialogData,
 } from '@nuxeo-satori/platform/ui';
 
 import {
@@ -1440,7 +1440,9 @@ export class BrowseComponent {
           const dialogRef = this.dialog.open(ConfirmDialogComponent, {
             data: {
               title: this.translate.instant('confirm.delete-collection'),
-              message: `Are you sure you want to delete "${fullDoc.title}"?`,
+              message: this.translate.instant('confirm.delete-document-named', {
+                name: fullDoc.title,
+              }),
               confirmLabel: this.translate.instant('confirm.delete'),
             } as ConfirmDialogData,
           });

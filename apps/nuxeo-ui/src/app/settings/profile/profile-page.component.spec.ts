@@ -89,7 +89,13 @@ describe('ProfilePageComponent', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [testTranslateModule(), ProfilePageComponent],
+      imports: [
+        // `permissions.time-frame.permanent` is supplied here rather than widened into the
+        // deliberately partial fallback map, so the assertion below reads the English a user sees
+        // and would fail if the component stopped passing its resolver through.
+        testTranslateModule({ 'permissions.time-frame.permanent': 'Permanent' }),
+        ProfilePageComponent,
+      ],
       providers: [
         { provide: AuthService, useValue: { username: signal('poweruser02') } },
         { provide: UserService, useValue: userService },

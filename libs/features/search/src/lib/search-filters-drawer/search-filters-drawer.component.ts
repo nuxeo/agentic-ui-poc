@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, signal, untracked, DestroyRef } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
@@ -22,7 +23,6 @@ import {
 import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { SearchQueueComponent } from '../search-queue/search-queue.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 interface CountOption {
   key: string;

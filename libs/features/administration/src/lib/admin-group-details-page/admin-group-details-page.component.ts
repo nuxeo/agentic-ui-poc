@@ -150,7 +150,9 @@ export class AdminGroupDetailsPageComponent implements OnInit {
           width: '400px',
           data: {
             title: this.translate.instant('confirm.delete-group'),
-            message: `Delete group "${group.groupname}"?`,
+            message: this.translate.instant('confirm.delete-group-named', {
+              name: group.groupname,
+            }),
             confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
@@ -232,7 +234,7 @@ export class AdminGroupDetailsPageComponent implements OnInit {
   }
 
   timeFrameLabel(row: PrincipalPermissionRow): string {
-    return principalPermissionTimeFrameLabel(row);
+    return principalPermissionTimeFrameLabel(row, (key) => this.translate.instant(key));
   }
 
   removeNestedGroup(nestedId: string): void {

@@ -152,21 +152,21 @@ import {
   timer,
 } from 'rxjs';
 import {
-  ShareDialogComponent,
-  ShareDialogData,
+  ConfirmDialogComponent,
+  ConfirmDialogData,
   DocumentViewerComponent,
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-  type VideoSource,
-  type StoryboardItem,
-  type PictureInfo,
-  type PictureView,
+  ShareDialogComponent,
+  ShareDialogData,
   type ExifData,
   type IptcData,
+  type PictureInfo,
+  type PictureView,
+  type StoryboardItem,
   type VideoInfo,
+  type VideoSource,
 } from '@nuxeo-satori/platform/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 import {

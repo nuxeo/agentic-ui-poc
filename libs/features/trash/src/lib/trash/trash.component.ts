@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, signal, untracked, DestroyRef } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
@@ -17,8 +18,8 @@ import { catchError } from 'rxjs/operators';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import {
   ConfirmDialogComponent,
-  SavedSearchDialogComponent,
   SAVED_SEARCH_DIALOG_OPTIONS,
+  SavedSearchDialogComponent,
   ShareSavedSearchDialogComponent,
   type ConfirmDialogData,
 } from '@nuxeo-satori/platform/ui';
@@ -34,7 +35,6 @@ import {
   type NuxeoDocumentList,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export type ViewMode = 'grid' | 'table' | 'list';
 type SortDirection = 'asc' | 'desc';
@@ -335,7 +335,9 @@ export class TrashComponent {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: this.translate.instant('confirm.delete-saved-search'),
-        message: `Delete saved search "${title.trim()}"?`,
+        message: this.translate.instant('confirm.delete-saved-search-named', {
+          name: title.trim(),
+        }),
         confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
@@ -493,7 +495,12 @@ export class TrashComponent {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: this.translate.instant('confirm.permanently-delete-documents'),
-        message: `Permanently delete ${ids.length} document(s)? This cannot be undone.`,
+        message:
+          ids.length === 1
+            ? this.translate.instant('confirm.permanently-delete-warning')
+            : this.translate.instant('confirm.permanently-delete-documents-count', {
+                count: ids.length,
+              }),
         confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });

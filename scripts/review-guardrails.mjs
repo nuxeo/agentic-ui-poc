@@ -3019,7 +3019,18 @@ function checkShippedDefaultLanguage() {
  * them by never looking.
  */
 function checkNoHardcodedDialogText() {
-  const FIELD = /\b(title|message|confirmLabel|cancelLabel|confirmText|cancelText)\s*:\s*'([A-Z][^']*)'/g;
+  // All three literal forms, not just the single-quoted one.
+  //
+  // The first version of this check matched `'...'` only, and reported green over ten hard-coded
+  // dialog messages written as template literals — including files the same commit had just keyed,
+  // where `title` and `confirmLabel` were translated and `message` beside them was not. A gate that
+  // watches two fields of an object and not the third is how that survived review twice.
+  //
+  // A template literal is the WORST form here, not an equivalent one: `Delete group "${name}"?`
+  // is a concatenation, so even a translator who receives it cannot reorder the value, which
+  // INFO-144 forbids outright.
+  const FIELD =
+    /\b(title|message|confirmLabel|cancelLabel|confirmText|cancelText)\s*:\s*('[A-Z][^']*'|"[A-Z][^"]*"|`[A-Z][^`]*`)/g;
 
   // Same exemptions as the template sweep, for the same reasons.
   const EXEMPT = [
@@ -3101,15 +3112,65 @@ function checkNoHardcodedDialogText() {
     for (const match of text.matchAll(FIELD)) {
       if (!spans.some(([open, close]) => open <= match.index && match.index <= close)) continue;
       const line = text.slice(0, match.index).split('\n').length;
+      const literal = match[2];
+      const interpolated = literal.startsWith('`') && literal.includes('${');
       fail(
-        `${file}:${line} sets \`${match[1]}: '${match[2]}'\` in a dialog's data — user-facing ` +
+        `${file}:${line} sets \`${match[1]}: ${literal}\` in a dialog's data — user-facing ` +
           'text a user reads, built in TypeScript where no template pipe can reach it.\n' +
-          "    Add a key to the owning project's `i18n/en.json` and resolve it at the call site:\n" +
-          `      ${match[1]}: this.translate.instant('confirm.delete-document.${match[1]}')\n` +
+          (interpolated
+            ? '    This one INTERPOLATES, so it is a concatenation as well as untranslated. A\n' +
+              '    translator receiving the fragments cannot move the value, and it does not sit\n' +
+              '    where English puts it in German or Japanese. INFO-144 forbids the shape, so the\n' +
+              '    fix is one parameterised string rather than a lookup per fragment:\n' +
+              `      ${match[1]}: this.translate.instant('confirm.delete-named', { name })\n` +
+              "      en.json: 'Delete \"{{ name }}\"?'\n"
+            : "    Add a key to the owning project's `i18n/en.json` and resolve it at the call site:\n" +
+              `      ${match[1]}: this.translate.instant('confirm.delete-document.${match[1]}')\n`) +
           '    A dialog is the one place `title` is unambiguously prose, which is why this gate ' +
           'can be strict about a field `checkNoHardcodedDescriptorText` must leave alone.',
       );
     }
+  }
+}
+
+/**
+ * A comment claiming a library has no dependency must be true of that library.
+ *
+ * `extension-actions.ts` documented that `libs/shared/extensions` "keeps no dependency on
+ * ngx-translate". Two commits in this change-set then imported ngx-translate into that library —
+ * the extension outlet's live region and `DescriptorLabelPipe` — and the sentence stayed. A
+ * reviewer caught the second; the first had gone unremarked for several commits, because nothing
+ * compares a documented guarantee against the imports beside it.
+ *
+ * So this check reads the claim and the imports in the same library and requires them to agree. It
+ * does not forbid the dependency — that is an architectural decision, and the current answer is
+ * that the FUNCTION is agnostic while the library's components are not. It forbids the two
+ * disagreeing silently.
+ */
+function checkNoStaleAgnosticClaim() {
+  const LIBRARY = 'libs/shared/extensions/src';
+  const CLAIM = /this library keeps no dependency on\s*\n?\s*\*?\s*ngx-translate/;
+
+  const sources = walk(LIBRARY, (path) => /\.ts$/.test(path)).filter(
+    (path) => !/\.spec\.ts$/.test(path),
+  );
+  if (sources.length === 0) {
+    fail(`No sources found under ${LIBRARY}, so this gate asserted nothing.`);
+    return;
+  }
+
+  const importers = sources.filter((file) => /from '@ngx-translate\/core'/.test(read(file)));
+  const claimants = sources.filter((file) => CLAIM.test(read(file)));
+
+  if (claimants.length > 0 && importers.length > 0) {
+    fail(
+      `${claimants.join(', ')} states that ${LIBRARY} keeps no dependency on ngx-translate, but ` +
+        `${importers.length} file(s) in it import from '@ngx-translate/core':\n` +
+        importers.map((file) => `      ${file}`).join('\n') +
+        '\n    Either move the ngx-translate usage out of this library, or narrow the claim to ' +
+        'what is actually guaranteed — that `descriptorLabel` and the descriptor data contract ' +
+        'impose no translation library on a caller, which is true and useful.',
+    );
   }
 }
 
@@ -3129,6 +3190,7 @@ const GUARDRAILS = [
   checkNoHardcodedUiText,
   checkNoHardcodedDescriptorText,
   checkNoHardcodedDialogText,
+  checkNoStaleAgnosticClaim,
   checkTranslationCatalogues,
   checkAdvertisedLocalesShip,
   checkCrowdinConfig,

@@ -271,9 +271,22 @@ export class ExtensionActionRegistry {
  * composed accessible name, and adf-core's `DataColumn.title`, which upstream's own DataTable
  * renders where we have no template at all.
  *
- * Takes a resolver rather than `TranslateService` so this library keeps no dependency on
- * ngx-translate: Layer 1 descriptors are data, and which translation library renders them is
- * the host's business. Callers pass `(key) => translate.instant(key)`.
+ * Takes a resolver rather than `TranslateService` so that **this function, and the descriptor
+ * data contract around it, impose no translation library on a caller**: Layer 1 descriptors are
+ * data, and which library renders them is the host's business. Callers pass
+ * `(key) => translate.instant(key)`.
+ *
+ * That is narrower than what this comment used to claim, and the difference matters. It said the
+ * LIBRARY keeps no dependency on ngx-translate, and that stopped being true in this same
+ * change-set — twice. `extension-outlet.component.ts` imports `TranslatePipe` for its `Loading…`
+ * live region, and `DescriptorLabelPipe` injects `TranslateService`. A reviewer caught the pipe;
+ * the outlet had gone unremarked for several commits.
+ *
+ * Moving both out was tried and is not viable: the pipe in `shared/ui` importing `descriptorLabel`
+ * from here leaves a component undefined at module-initialisation time and takes six `AppShellComponent`
+ * specs with it. So the honest statement is the one above — the function and the data contract are
+ * agnostic, the library's own Angular components are not, and `@ngx-translate/core` is a declared
+ * peer dependency of `@nuxeo-satori/platform` for exactly that reason.
  *
  * Falls back to the literal when a key does not resolve, because ngx-translate passes an
  * unknown key straight through and a column header reading `column.last-contributor` is worse

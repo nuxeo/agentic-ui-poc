@@ -11,6 +11,7 @@
  * a floor, not a total, and it is reported as such.
  */
 import { chromium } from 'playwright';
+import { requireSentinel, sentinelPresent, servePseudoLocale } from './pseudo-locale-page.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -126,6 +127,9 @@ function collect(dataContainers) {
 mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+// Without this the deep pass reads an ENGLISH application and every string looks untranslated.
+await servePseudoLocale(page);
+let sentinelSeen = false;
 
 const findings = new Map();
 const record = (where, items) => {
@@ -141,12 +145,24 @@ const record = (where, items) => {
 
 let opened = 0;
 let skipped = 0;
+let clickFailures = 0;
+
+/**
+ * Visible overlay panes, which is what "an overlay opened" actually means.
+ *
+ * The previous version counted `.cdk-overlay-container`. CDK creates that container once and leaves
+ * it in the DOM after the first overlay closes, so from the second interaction onwards it was
+ * always present — every failed click still incremented `opened` and was reported as covered. The
+ * count could not go down and therefore could not fail.
+ */
+const visiblePanes = () => page.locator('.cdk-overlay-pane:visible').count();
 for (const [route, interactions] of SURFACES) {
   await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3000);
   const name = route.replace(/[#/]+/g, '-').replace(/^-|-$/g, '') || 'root';
   await page.screenshot({ path: join(OUT, `${name}.png`) });
   record(route, await page.evaluate(collect, DATA_CONTAINERS));
+  if (!sentinelSeen) sentinelSeen = await sentinelPresent(page);
 
   for (const [label, selector] of interactions) {
     const target = page.locator(selector).first();
@@ -154,13 +170,20 @@ for (const [route, interactions] of SURFACES) {
       skipped += 1;
       continue;
     }
-    await target.click({ timeout: 4000 }).catch(() => null);
+    const before = await visiblePanes();
+    // A swallowed click is a surface this audit did not read, so it is counted rather than hidden.
+    const clicked = await target
+      .click({ timeout: 4000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!clicked) clickFailures += 1;
     await page.waitForTimeout(1800);
-    const overlay = await page.locator('.cdk-overlay-container').count();
-    if (overlay) {
+    const after = await visiblePanes();
+    if (clicked && after > before) {
       opened += 1;
       await page.screenshot({ path: join(OUT, `${name}--${label}.png`) });
       record(`${route} → ${label}`, await page.evaluate(collect, DATA_CONTAINERS));
+      if (!sentinelSeen) sentinelSeen = await sentinelPresent(page);
     } else {
       skipped += 1;
     }
@@ -173,9 +196,20 @@ const rows = [...findings.values()].sort((a, b) => b.where.length - a.where.leng
 writeFileSync(join(OUT, 'findings.json'), `${JSON.stringify(rows, null, 2)}\n`);
 await browser.close();
 
+requireSentinel(sentinelSeen, 'pseudo-locale-deep');
+
 console.log(
-  `${SURFACES.length} routes, ${opened} overlay(s) opened, ${skipped} interaction(s) unavailable`,
+  `${SURFACES.length} routes, ${opened} overlay(s) opened, ${skipped} interaction(s) unavailable` +
+    (clickFailures ? `, ${clickFailures} click(s) FAILED` : ''),
 );
+if (clickFailures) {
+  // Not fatal — the seeded repository decides which controls exist — but it must be visible, since
+  // a failed click is a surface this audit did not read and previously counted as covered.
+  console.log(
+    `  ${clickFailures} interaction(s) errored rather than being absent. Those surfaces were not ` +
+      'read, so the count below excludes them.',
+  );
+}
 console.log(`${rows.length} distinct untranslated string(s) — a FLOOR, not a total\n`);
 for (const r of rows.slice(0, 60)) {
   console.log(

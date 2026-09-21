@@ -167,7 +167,10 @@ export class AdminVocabulariesPageComponent implements OnInit {
         {
           data: {
             title: this.translate.instant('confirm.delete-vocabulary-entry'),
-            message: `Permanently delete "${entry.id}" from ${directoryName}? This cannot be undone.`,
+            message: this.translate.instant('confirm.delete-vocabulary-entry-named', {
+              name: entry.id,
+              directory: directoryName,
+            }),
             confirmLabel: this.translate.instant('confirm.delete'),
           },
         },

@@ -23,11 +23,11 @@ Last measured 2026-09-21 on branch `feature/nxsat-284-descriptor-labels`, by an 
 **selects** the pseudo-locale and refuses to report a total unless the `⟦` sentinel rendered. The
 previous figure of 41 came from a run that could not prove the pseudo-locale was active at all.
 
-|                                                                |          |
-| -------------------------------------------------------------- | -------- |
-| Catalogue keys, each with translator context                   | **1653** |
-| Descriptor labels carrying a `labelKey`                        | **191**  |
-| Visible English strings under the `zz` pseudo-locale, 9 routes | **24**   |
+|                                                                |           |
+| -------------------------------------------------------------- | --------- |
+| Catalogue keys, each with translator context                   | **1653**  |
+| Descriptor labels carrying a `labelKey`                        | **191**   |
+| Visible English strings under the `zz` pseudo-locale, 9 routes | **24–30** |
 
 Re-measure rather than quoting the table; every figure in it is a moving count:
 
@@ -54,18 +54,36 @@ That instrument has been wrong twice, both times under-reporting:
 - The prose test required letters only, so anything with a number was skipped in
   silence: the five size buckets, every date range, `2 result(s)`.
 
-### What the remaining 41 are
+### What the remaining findings are
 
-| Count | What                                                                    | Action                                                                                       |
-| ----: | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-|     9 | `Skip to main content`, hard-coded inside satori-ui's compiled template | Upstream finding 1.4 — no host-side fix exists                                               |
-|    ~6 | `Select <document title>` and three empty-state sentences               | Concatenations. INFO-144 forbids the shape; each needs rewriting as one parameterised string |
-|     5 | Theme names — Nuxeo, Dark, Kawaii, Light, Acme Brand                    | Layer 0 customer data, correctly a literal                                                   |
-|    ~6 | AI insight severities and generated sentences                           | Written by the server                                                                        |
-|  rest | Angular Material internals (`Open calendar`), adf-hx tab labels         | Their own i18n mechanisms                                                                    |
+| Count | What                                                                    | Action                                                   |
+| ----: | ----------------------------------------------------------------------- | -------------------------------------------------------- |
+|     9 | `Skip to main content`, hard-coded inside satori-ui's compiled template | Upstream finding 1.4 — no host-side fix exists           |
+|     4 | Theme names — Nuxeo, Dark, Kawaii, Light                                | Layer 0 customer data, correctly a literal               |
+|     1 | `Open calendar`                                                         | Angular Material's own i18n mechanism                    |
+|   4–6 | Repository content — document titles, type names, AI severities         | Instance data; translating it would corrupt user content |
+|   3–6 | Generated AI insight sentences                                          | Written by the server                                    |
 
-None of these is an unexamined residue. The two worth acting on are the
-concatenations, which need an author rather than a script, and upstream 1.4.
+**Nothing here is actionable from this repository.** Every one is upstream, written by the server,
+or customer data.
+
+**The total is not a stable number, and quoting one is a mistake I made twice on this page.** It
+first said 41, from a run that could not prove the pseudo-locale was active. Corrected to 24, then
+the very next run reported 30 — and the whole difference was six AI insight sentences whose wording
+the server regenerates each time: `Your workspace 'Narasimha' hasn't been updated in several weeks`
+became `… in several days`. Same finding, different prose, different count.
+
+So the figure in the table at the top of this page is one measurement, not a target, and a change of
+a few either way means the AI wrote different sentences. What is stable, and what to watch, is the
+first three rows — those are ours to the extent anything here is.
+
+I also recorded the no-active-tasks sentence as our own empty state before checking: it appears
+nowhere in `apps/` or `libs/`, so it is server-generated too. Grep before writing the row.
+
+The count is a **floor** for nine first-render routes. Dialogs, menus and empty states are covered
+by `pseudo-locale-deep.mjs`, which reports separately — most recently 5 distinct strings: the skip
+link, `Open calendar`, the `Everything` permission identifier (sent to the server, so deliberately
+untranslated), and the product names `Nuxeo Drive` and `macOS`.
 
 ### Still deliberately out of scope
 

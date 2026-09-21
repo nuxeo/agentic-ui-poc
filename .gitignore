@@ -47,8 +47,6 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 
-
-
 .nx/cache
 .nx/workspace-data
 .angular
@@ -133,3 +131,7 @@ playwright-report/
 /docs/security-next-steps.md
 apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json
 apps/nuxeo-ui/public/i18n/zz.json
+
+# Local planning scratch. A stray plan file was swept into a translation PR by 
+# and a reviewer had to catch it; these are per-developer notes, not repository content.
+.cursor/plans/

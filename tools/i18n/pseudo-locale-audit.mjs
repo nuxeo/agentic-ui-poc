@@ -26,7 +26,8 @@
  * and the two produce opposite conclusions from identical output.
  */
 import { chromium } from 'playwright';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { requireSentinel, sentinelPresent, servePseudoLocale } from './pseudo-locale-page.mjs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const BASE = process.env['APP_URL'] ?? 'http://localhost:4200';
@@ -104,31 +105,9 @@ const FORMATTED_DATE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/;
 const ASCII_PROSE = /^[A-Za-z][A-Za-z0-9 ,.'&()/-]{2,}$/;
 
 mkdirSync(OUT, { recursive: true });
-const BOOTSTRAP_ROUTE = '**/agentic-ui-config/bootstrap.json';
-const PACKAGED_BOOTSTRAP = join(
-  process.cwd(),
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
-);
-/** The packaged Layer 0 config with only `defaultLanguage` swapped, leaving branding alone. */
-const bootstrapForPseudoLocale = () => {
-  const config = JSON.parse(readFileSync(PACKAGED_BOOTSTRAP, 'utf8'));
-  config.defaultLanguage = 'zz';
-  // `availableLanguages` must advertise it too, or `checkAdvertisedLocalesShip`'s contract —
-  // default must be selectable — is violated at runtime and the loader may refuse it.
-  config.availableLanguages = [...new Set([...(config.availableLanguages ?? []), 'zz'])];
-  return JSON.stringify(config, null, 2);
-};
-
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
-await page.route(BOOTSTRAP_ROUTE, (route) =>
-  route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    headers: { 'cache-control': 'no-store' },
-    body: bootstrapForPseudoLocale(),
-  }),
-);
+await servePseudoLocale(page);
 
 const findings = [];
 let sentinelSeen = false;
@@ -137,9 +116,7 @@ for (const [name, route] of ROUTES) {
   await page.waitForTimeout(3500);
   // The pseudo-locale is either active or this audit means nothing. `⟦` can only come from
   // `zz.json`, so seeing it once proves the catalogue loaded and the override took effect.
-  if (!sentinelSeen) {
-    sentinelSeen = await page.evaluate(() => document.body.innerText.includes('\u27E6'));
-  }
+  if (!sentinelSeen) sentinelSeen = await sentinelPresent(page);
   await page.screenshot({ path: join(OUT, `${name}.png`), fullPage: false });
 
   const english = await page.evaluate((selectors) => {
@@ -185,22 +162,7 @@ await browser.close();
 
 const total = findings.reduce((n, f) => n + f.count, 0);
 
-// Refuse to report a total the run cannot support.
-//
-// Without the pseudo-locale active every string is plain English, so the "untranslated" count
-// equals the whole application and reads as a catastrophic result rather than a broken audit. The
-// two failures produce opposite conclusions from identical output, so this exits non-zero instead
-// of printing a number someone would quote.
-if (!sentinelSeen) {
-  console.error(
-    'The pseudo-locale never rendered: no `\u27E6` appeared on any route, so this run cannot ' +
-      'tell an untranslated string from an unloaded catalogue and its count means nothing.\n' +
-      '  - run `npm run i18n:pseudo` first, so apps/nuxeo-ui/public/i18n/zz.json exists\n' +
-      '  - check the dev server is serving it, and that the bootstrap route intercepted here ' +
-      'still matches the URL the app fetches',
-  );
-  process.exit(1);
-}
+requireSentinel(sentinelSeen, 'pseudo-locale-audit');
 
 console.log(`\n${total} untranslated visible string(s) across ${ROUTES.length} routes`);
 console.log(

@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -25,9 +26,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import {
+  ConfirmDialogComponent,
   SavedSearchDialogComponent,
   ShareSavedSearchDialogComponent,
-  ConfirmDialogComponent,
   type ConfirmDialogData,
 } from '@nuxeo-satori/platform/ui';
 import {
@@ -48,7 +49,6 @@ import {
   aiErrorMessage,
 } from '@agentic-ui/shared/ai-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -931,7 +931,7 @@ export class SearchComponent {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: this.translate.instant('confirm.delete-saved-search'),
-        message: `Delete saved search "${title}"?`,
+        message: this.translate.instant('confirm.delete-saved-search-named', { name: title }),
         confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });

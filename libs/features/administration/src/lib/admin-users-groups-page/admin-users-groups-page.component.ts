@@ -381,7 +381,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           width: '400px',
           data: {
             title: this.translate.instant('confirm.delete-user'),
-            message: `Delete user "${user.id}"? This cannot be undone.`,
+            message: this.translate.instant('confirm.delete-user-named', { name: user.id }),
             confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
@@ -470,7 +470,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           width: '400px',
           data: {
             title: this.translate.instant('confirm.delete-group'),
-            message: `Delete group "${group.groupname}"?`,
+            message: this.translate.instant('confirm.delete-group-named', {
+              name: group.groupname,
+            }),
             confirmLabel: this.translate.instant('confirm.delete'),
           },
         },

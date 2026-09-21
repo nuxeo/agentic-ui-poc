@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal, DestroyRef, effect } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { switchMap, map, catchError, of, tap, finalize } from 'rxjs';
@@ -22,13 +23,12 @@ import {
   type AssetAggregations,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import {
+  ConfirmDialogComponent,
   SavedSearchDialogComponent,
   ShareSavedSearchDialogComponent,
-  ConfirmDialogComponent,
   type ConfirmDialogData,
 } from '@nuxeo-satori/platform/ui';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -850,7 +850,7 @@ export class AssetSearchResultsComponent {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: this.translate.instant('confirm.delete-saved-search'),
-        message: `Delete saved search "${title}"?`,
+        message: this.translate.instant('confirm.delete-saved-search-named', { name: title }),
         confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });

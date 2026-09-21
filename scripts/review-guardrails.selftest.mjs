@@ -1278,6 +1278,84 @@ expectGreen('a dialog data object with no user-facing text', 'checkNoHardcodedDi
   'libs/features/x/src/lib/x.ts': "dialog.open(C, {\n  data: { id: 'Ab12', uid: 'X9' },\n});\n",
 });
 
+/* ------------- checkNoHardcodedDialogText: every literal form, not just one ------------- */
+
+// The first version matched single quotes only and reported green over ten template-literal dialog
+// messages. A template literal is the worst form, not an equivalent one: it interpolates, so it is
+// a concatenation a translator cannot reorder.
+
+expectRed(
+  'a template-literal dialog message',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'const d = {\n  message: `Delete group "${name}"?`,\n} as ConfirmDialogData;\n',
+    ),
+  /sets `message: `Delete group "\$\{name\}"\?`` in a dialog's data/,
+);
+
+expectRed(
+  'an interpolated dialog message is named as a concatenation, not just untranslated',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'const d = {\n  message: `Delete "${name}"?`,\n} as ConfirmDialogData;\n',
+    ),
+  /This one INTERPOLATES, so it is a concatenation as well as untranslated/,
+);
+
+expectRed(
+  'a double-quoted dialog title',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', 'const d = {\n  title: "Delete",\n} as ConfirmDialogData;\n'),
+  /sets `title: "Delete"` in a dialog's data/,
+);
+
+// A template literal that resolves a key is the CORRECT shape and must stay green, or the check
+// would push authors back to concatenation to appease it.
+falsePositiveControls += 1;
+expectGreen('a dialog message built from a resolved key', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    'const d = {\n' +
+    "  message: this.translate.instant('confirm.delete-named', { name }),\n" +
+    '} as ConfirmDialogData;\n',
+});
+
+/* ---------------- checkNoStaleAgnosticClaim: the comment must match the imports ---------------- */
+
+expectRed(
+  'a library claiming no ngx-translate dependency while importing it',
+  'checkNoStaleAgnosticClaim',
+  APP,
+  (write) => {
+    write(
+      'libs/shared/extensions/src/lib/extension-actions.ts',
+      '/**\n * Takes a resolver so this library keeps no dependency on\n * ngx-translate.\n */\n' +
+        'export const x = 1;\n',
+    );
+    write(
+      'libs/shared/extensions/src/lib/some.component.ts',
+      "import { TranslatePipe } from '@ngx-translate/core';\nexport const y = TranslatePipe;\n",
+    );
+  },
+  /keeps no dependency on ngx-translate, but 1 file\(s\) in it import/,
+);
+
+// Importing ngx-translate is allowed; it is the stale CLAIM beside it that is not.
+falsePositiveControls += 1;
+expectGreen('importing ngx-translate without claiming otherwise', 'checkNoStaleAgnosticClaim', {
+  ...APP,
+  'libs/shared/extensions/src/lib/some.component.ts':
+    "import { TranslatePipe } from '@ngx-translate/core';\nexport const y = TranslatePipe;\n",
+});
+
 /* ---------------- the generated pseudo-locale is not a shipped one ---------------- */
 
 // `zz` is derived from `en.json` by `tools/i18n/pseudo-locale.mjs` and gitignored; it exists only

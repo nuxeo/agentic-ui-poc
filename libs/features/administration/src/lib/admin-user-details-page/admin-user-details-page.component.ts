@@ -295,7 +295,7 @@ export class AdminUserDetailsPageComponent implements OnInit {
           width: '400px',
           data: {
             title: this.translate.instant('confirm.delete-user'),
-            message: `Delete user "${user.id}"? This cannot be undone.`,
+            message: this.translate.instant('confirm.delete-user-named', { name: user.id }),
             confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
@@ -352,6 +352,6 @@ export class AdminUserDetailsPageComponent implements OnInit {
   }
 
   timeFrameLabel(row: PrincipalPermissionRow): string {
-    return principalPermissionTimeFrameLabel(row);
+    return principalPermissionTimeFrameLabel(row, (key) => this.translate.instant(key));
   }
 }
