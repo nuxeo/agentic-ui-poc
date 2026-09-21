@@ -594,8 +594,40 @@ fails any source that is not.
     `en-US`. Narrower than it was, not closed.
 11. **RTL** — DS-2277. Satori needs 4–6 weeks of its own work before an app can start, and the
     target should be the "good enough" level from its spectrum, agreed explicitly.
-12. **Pluralisation** — no ICU usage anywhere; needs `ngx-translate-messageformat-compiler`.
-    Defer until a real plural string appears.
+12. **Pluralisation — the deferral has expired, and the convention is now two keys.** This entry
+    said "no ICU usage anywhere; defer until a real plural string appears". Real plural strings
+    appeared during NXSAT-284: **21 complete singular/plural pairs** exist, measured with
+
+    ```bash
+    node -e "const f=(o,p='')=>Object.entries(o).flatMap(([k,v])=>\
+      typeof v==='object'?f(v,p?p+'.'+k:k):[[p?p+'.'+k:k]]); \
+      const k=f(require('./apps/nuxeo-ui/public/i18n/en.json')).map(([x])=>x); \
+      const one=new Set(k.filter(x=>x.endsWith('-one')).map(x=>x.slice(0,-4))); \
+      console.log([...one].filter(x=>k.includes(x+'-many')).length)"
+    ```
+
+    They are **not** ICU. Each is a `*-one` / `*-many` pair chosen by a branch at the call site:
+
+    ```ts
+    translate.instant(count === 1 ? 'common.count.result-one' : 'common.count.result-many', {
+      count,
+    });
+    ```
+
+    That was a deliberate choice over adding `ngx-translate-messageformat-compiler`, and the reason
+    to know it: an `(s)` suffix assumes a language pluralises by appending one letter, which most do
+    not, so the suffix had to go either way — and two keys remove it without a new dependency.
+
+    **The limit is real and worth stating.** Two forms cover English, French and German. Polish has
+    three and Arabic six, so a locale with more than two plural forms cannot be expressed this way
+    and will need the messageformat compiler. `checkCatalogueValuesAreRenderable` rejects a new
+    `(s)`, and every pair is currently complete — no `-one` without its `-many` — but nothing yet
+    enforces that pairing, which is the gap to close when a third form is needed.
+
+    `hxpRelativeTime` is the exception that already handles all of this: it uses
+    `Intl.RelativeTimeFormat`, which ships every locale's plural rules in the browser, so there is
+    nothing to translate and nothing to mistranslate.
+
 13. `GET /nuxeo/api/v1/group/Administrator` **404s on every adf-hx drawer open** because
     `Administrator` is a user, not a group. Unrelated to i18n, currently suppressed in the
     evidence capture with a comment saying so, and it deserves its own ticket.
