@@ -1212,6 +1212,32 @@ expectGreen('a file that already carried the marker before this diff', 'checkNoR
   '.cursor/skills/pre-pr-review/SKILL.md': `# Pre-PR review\n\n<!-- ${CORPUS_MARKER} -->\n`,
 });
 
+/* ---------------- the generated pseudo-locale is not a shipped one ---------------- */
+
+// `zz` is derived from `en.json` by `tools/i18n/pseudo-locale.mjs` and gitignored; it exists only
+// while someone audits for strings no catalogue supplies. Treating it as a customer-facing language
+// demands key parity with a file regenerated from `en.json`, and Angular locale data for a locale
+// Angular has never heard of. Running the audit left it on disk and turned the whole gate red.
+falsePositiveControls += 1;
+expectGreen('a generated zz.json on disk is not a shipped locale', 'checkLocaleDataRegistered', {
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+  'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+  'apps/nuxeo-ui/public/i18n/zz.json': '{\n  "a": "\u27E6Á\u27E7"\n}\n',
+  // The tuple shape the parser reads: `['fr', localeFr],`. `en` is never registered — Angular
+  // bundles it — so a fixture registering only `fr` is the realistic minimum.
+  'apps/nuxeo-ui/src/app/i18n/register-locale-data.ts':
+    "import localeFr from '@angular/common/locales/fr';\n" +
+    'const LOCALE_DATA = [\n' +
+    "  ['fr', localeFr],\n" +
+    '];\n',
+});
+
+falsePositiveControls += 1;
+expectGreen('a generated zz.json is not held to key parity', 'checkTranslationCatalogues', {
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A",\n  "b": "B"\n}\n',
+  'apps/nuxeo-ui/public/i18n/zz.json': '{\n  "a": "\u27E6Á\u27E7"\n}\n',
+});
+
 /* ---------------- checkNoHardcodedDescriptorText: pairing is per object ---------------- */
 
 // The false negative: an unkeyed descriptor two lines below a keyed one borrowed its `labelKey`

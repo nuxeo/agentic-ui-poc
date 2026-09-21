@@ -506,6 +506,26 @@ fails any source that is not.
 
 ### Known-incomplete, and easy to read as done
 
+- **52 user-facing strings inside dialog data objects are still English**, across 16 production
+  files — `title`, `message` and `confirmLabel` on `ConfirmDialogData` and friends, concentrated in
+  `trash.component.ts` (9), `document-detail.ts` (7) and `trash-confirm.utils.ts` (7). Measured, not
+  estimated.
+
+  **No gate sees them, and one cannot simply be widened to.** `checkNoHardcodedUiText` is repo-wide
+  but reads templates only. `checkNoHardcodedDescriptorText` reads TypeScript but is diff-scoped, and
+  it deliberately excludes `title` — that field names a Nuxeo document property and a schema field at
+  least as often as it names UI chrome, so flagging it globally means arguing with a reviewer on most
+  hits, and a check that argues gets switched off. There is a control asserting `title` stays
+  unflagged; an attempt to add it during this work was caught by that control.
+
+  `message` and `confirmLabel` are not in the pattern at all. Covering this class properly needs a
+  check scoped to the `data:` object of a `MatDialog.open(...)` call, which is a different shape of
+  check from either existing one.
+
+  The saved-search dialog titles were fixed at their call sites, because the dialog's own template
+  carried a translated fallback that no caller could reach. The rest are listed here rather than
+  quietly left, because this pull request is titled "translate every user-facing string".
+
 These were carried in a temporary handover document that has been deleted — a working note that
 duplicated mutable state and went stale within a day. They are recorded here because each one is a
 place a reader will call the ticket finished and be wrong.

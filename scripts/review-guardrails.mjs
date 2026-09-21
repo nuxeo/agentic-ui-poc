@@ -1329,12 +1329,18 @@ function checkNoHardcodedUiText() {
 function checkNoHardcodedDescriptorText() {
   // `label: 'Browse'` and friends. Single-quoted only: this repo's formatter produces single
   // quotes, and a template literal usually means interpolation, which is not a fixed string.
-  // `title` is here because it was the hole. Eight `MatDialog` call sites passed
-  // `title: 'Saved Search'` while translating the `placeholder` on the same object literal — the
-  // dialog's own template had a translated fallback that no caller could ever reach. The pattern
-  // covered `placeholder` and not `title`, so the gate watched one field of the pair and not the
-  // other.
-  const DESCRIPTOR_TEXT = /\b(label|title|placeholder|ariaLabel|tooltip)\s*:\s*'([A-Z][^']*)'/g;
+  // `title` is NOT here, and that is a decision with a control behind it.
+  //
+  // Eight `MatDialog` call sites passed `title: 'Saved Search'` while translating the
+  // `placeholder` beside it, so adding `title` looked like the obvious fix. It is not: `title`
+  // names a Nuxeo document property and a schema field at least as often as it names UI chrome,
+  // so flagging it globally means arguing with a reviewer on most hits, and a check that argues
+  // gets switched off. The selftest asserts `title: 'Saved Search'` is not flagged, and that
+  // control is what caught the attempt.
+  //
+  // The dialog titles were fixed at their call sites instead. What is still uncovered is stated
+  // in docs/i18n-status.md rather than papered over with a gate that cannot hold.
+  const DESCRIPTOR_TEXT = /\b(label|placeholder|ariaLabel|tooltip)\s*:\s*'([A-Z][^']*)'/g;
 
   for (const [file, lines] of addedLinesByFile) {
     if (!/^(libs|apps)\/.+\.ts$/.test(file)) continue;
@@ -1470,7 +1476,8 @@ const isGeneratedLocale = (path) =>
   GENERATED_LOCALES.has(/(^|\/)i18n\/([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[2] ?? '');
 
 function checkTranslationCatalogues() {
-  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
   const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
 
   if (catalogues.length === 0) {
@@ -2043,7 +2050,8 @@ function checkLocaleDataRegistered() {
     return;
   }
 
-  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
   const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
   const shipped = new Set(
     catalogues
@@ -2942,7 +2950,13 @@ function checkShippedDefaultLanguage() {
   }
 
   const shipped = new Set(
-    [...walk('apps', (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path))]
+    [
+      ...walk(
+        'apps',
+        (path) =>
+          /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path),
+      ),
+    ]
       .map((path) => /([a-z]{2}(?:-[A-Za-z]{2,4})?)\.json$/.exec(path)?.[1])
       .filter((locale) => locale && !GENERATED_LOCALES.has(locale)),
   );
