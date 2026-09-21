@@ -5,6 +5,11 @@
       "toggle": "Afficher ou masquer le menu de navigation"
     }
   },
+  "login": {
+    "title": "Se connecter",
+    "panel-label": "Se connecter",
+    "skip-link": "Aller à la connexion"
+  },
   "browse": {
     "details": {
       "show": "Afficher les détails",
@@ -101,6 +106,9 @@
       "ai-features": "Fonctions IA {{ state }}",
       "state-on": "activées",
       "state-off": "désactivées"
+    },
+    "test": {
+      "platform-nav-item": "Parcourir"
     }
   }
 }

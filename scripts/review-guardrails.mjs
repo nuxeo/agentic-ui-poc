@@ -39,12 +39,16 @@ function read(path) {
   return readFileSync(join(repoRoot, path), 'utf8');
 }
 
+function toPosixRel(rel) {
+  return rel.replace(/\\/g, '/');
+}
+
 function walk(dir, predicate, acc = []) {
   const absolute = join(repoRoot, dir);
   if (!existsSync(absolute)) return acc;
   for (const entry of readdirSync(absolute)) {
     const path = join(absolute, entry);
-    const rel = relative(repoRoot, path);
+    const rel = toPosixRel(relative(repoRoot, path));
     if (entry === 'node_modules' || entry === 'dist' || entry === '.git') continue;
     if (statSync(path).isDirectory()) {
       walk(rel, predicate, acc);
