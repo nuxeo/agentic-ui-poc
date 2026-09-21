@@ -17,5 +17,7 @@ export default defineConfig(() => ({
       reportsDirectory: '../../coverage/libs/integration-tests',
       provider: 'v8' as const,
     },
+    // Setup file to initialize Angular TestBed for integration tests
+    setupFiles: ['./vitest.setup.ts'],
   },
 }));
