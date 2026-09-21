@@ -5,7 +5,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 
 import { BrowseService } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 /**
  * Resolves the current user's personal workspace and opens it in browse view,
@@ -19,6 +19,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class PersonalSpacePageComponent {
   private readonly browseService = inject(BrowseService);
+  private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -45,7 +46,9 @@ export class PersonalSpacePageComponent {
           void this.router.navigateByUrl(`/browse${workspace.path}`, { replaceUrl: true });
         },
         error: () => {
-          this.error.set('Unable to load your personal workspace.');
+          this.error.set(
+            this.translate.instant('app.message.unable-to-load-your-personal-workspace'),
+          );
           this.loading.set(false);
         },
       });

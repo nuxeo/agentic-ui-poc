@@ -351,7 +351,7 @@ export class AssetSearchResultsComponent {
           return mapped;
         }),
         catchError(() => {
-          this.error.set('Failed to load assets.');
+          this.error.set(this.translate.instant('assets.message.failed-to-load-assets'));
           return of<AssetResult[]>([]);
         }),
         tap(() => this.loading.set(false)),
@@ -750,10 +750,18 @@ export class AssetSearchResultsComponent {
                 this.readSavedSearchTitle(saved) || trimmedTitle,
               );
               this.aggregationService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('common.search-saved', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-save-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });
@@ -782,10 +790,18 @@ export class AssetSearchResultsComponent {
         next: () => {
           this.aggregationService.selectedSavedSearchTitle.set(currentTitle);
           this.aggregationService.markSavedSearchDirty();
-          this.snackBar.open(`Search "${currentTitle}" updated.`, 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('common.search-updated', { name: currentTitle }),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
         },
         error: () => {
-          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+          this.snackBar.open(
+            this.translate.instant('assets.message.failed-to-save-search'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          );
         },
       });
   }
@@ -817,12 +833,20 @@ export class AssetSearchResultsComponent {
             next: () => {
               this.aggregationService.selectedSavedSearchTitle.set(trimmedTitle);
               this.aggregationService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', {
-                duration: 3000,
-              });
+              this.snackBar.open(
+                this.translate.instant('common.search-updated', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                {
+                  duration: 3000,
+                },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-update-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });

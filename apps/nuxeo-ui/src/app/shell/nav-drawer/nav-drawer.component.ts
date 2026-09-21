@@ -1286,7 +1286,7 @@ export class NavDrawerComponent {
               action === 'copy'
                 ? 'Failed to copy clipboard items.'
                 : 'Failed to move clipboard items.',
-              'Dismiss',
+              this.translate.instant('common.dismiss'),
               { duration: 4000 },
             );
             return;
@@ -1305,7 +1305,7 @@ export class NavDrawerComponent {
           const verb = action === 'copy' ? 'Copied' : 'Moved';
           this.snackBar.open(
             `${verb} ${count} item${count === 1 ? '' : 's'} to ${target.title ?? 'folder'}.`,
-            'Dismiss',
+            this.translate.instant('common.dismiss'),
             { duration: 4000 },
           );
         },
@@ -1314,7 +1314,7 @@ export class NavDrawerComponent {
             action === 'copy'
               ? 'Failed to copy clipboard items.'
               : 'Failed to move clipboard items.',
-            'Dismiss',
+            this.translate.instant('common.dismiss'),
             { duration: 4000 },
           );
         },

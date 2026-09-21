@@ -208,7 +208,7 @@ export class TrashComponent {
           // Guarded too: a stale failure would otherwise show an error over a newer search's
           // successful results and clear its loading state.
           if (generation !== this.searchGeneration) return;
-          this.error.set('Failed to load trashed documents.');
+          this.error.set(this.translate.instant('trash.message.failed-to-load-trashed-documents'));
           this.loading.set(false);
           this.trashFilterService.resultsLoading.set(false);
         },
@@ -237,7 +237,11 @@ export class TrashComponent {
           return this.trashService.saveSearch(name.trim(), this.buildFilterParams()).pipe(
             finalize(() => this.saving.set(false)),
             catchError(() => {
-              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-save-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
               return of(null);
             }),
           );
@@ -249,7 +253,11 @@ export class TrashComponent {
         this.trashFilterService.activeSavedFilterUid.set(result.uid);
         this.trashFilterService.activeSavedFilterTitle.set(result.title);
         this.trashFilterService.markSavedSearchDirty();
-        this.snackBar.open(`Search "${result.title}" saved.`, 'OK', { duration: 3000 });
+        this.snackBar.open(
+          this.translate.instant('common.search-saved', { name: result.title }),
+          this.translate.instant('common.ok'),
+          { duration: 3000 },
+        );
       });
   }
 
@@ -264,7 +272,11 @@ export class TrashComponent {
       .pipe(
         finalize(() => this.saving.set(false)),
         catchError(() => {
-          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+          this.snackBar.open(
+            this.translate.instant('assets.message.failed-to-save-search'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          );
           return of(null);
         }),
         takeUntilDestroyed(this.destroyRef),
@@ -272,7 +284,11 @@ export class TrashComponent {
       .subscribe((result) => {
         if (!result) return;
         this.trashFilterService.markSavedSearchDirty();
-        this.snackBar.open(`Search "${title}" updated.`, 'OK', { duration: 3000 });
+        this.snackBar.open(
+          this.translate.instant('common.search-updated', { name: title }),
+          this.translate.instant('common.ok'),
+          { duration: 3000 },
+        );
       });
   }
 
@@ -305,10 +321,18 @@ export class TrashComponent {
         next: (trimmedTitle) => {
           this.trashFilterService.activeSavedFilterTitle.set(trimmedTitle);
           this.trashFilterService.markSavedSearchDirty();
-          this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('common.search-updated', { name: trimmedTitle }),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
         },
         error: () => {
-          this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
+          this.snackBar.open(
+            this.translate.instant('assets.message.failed-to-update-search'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          );
         },
       });
   }
@@ -359,10 +383,18 @@ export class TrashComponent {
             next: () => {
               this.trashFilterService.reset();
               this.trashFilterService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${title}" deleted.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('common.search-deleted', { name: title }),
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to delete search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('trash.message.failed-to-delete-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });
@@ -475,7 +507,11 @@ export class TrashComponent {
             completed++;
             if (completed === ids.length) {
               this.selectionService.clear();
-              this.snackBar.open(`${ids.length} document(s) restored.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                `${ids.length} document(s) restored.`,
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             }
           }),
           takeUntilDestroyed(this.destroyRef),
@@ -483,7 +519,11 @@ export class TrashComponent {
         .subscribe({
           next: () => this.documents.update((docs) => docs.filter((d) => d.uid !== uid)),
           error: () =>
-            this.snackBar.open('Failed to restore a document.', 'Dismiss', { duration: 3000 }),
+            this.snackBar.open(
+              this.translate.instant('trash.message.failed-to-restore-a-document'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            ),
         });
     }
   }
@@ -522,9 +562,13 @@ export class TrashComponent {
               completed++;
               if (completed === ids.length) {
                 this.selectionService.clear();
-                this.snackBar.open(`${ids.length} document(s) permanently deleted.`, 'OK', {
-                  duration: 3000,
-                });
+                this.snackBar.open(
+                  `${ids.length} document(s) permanently deleted.`,
+                  this.translate.instant('common.ok'),
+                  {
+                    duration: 3000,
+                  },
+                );
               }
             }),
             takeUntilDestroyed(this.destroyRef),
@@ -532,7 +576,11 @@ export class TrashComponent {
           .subscribe({
             next: () => this.documents.update((docs) => docs.filter((d) => d.uid !== uid)),
             error: () =>
-              this.snackBar.open('Failed to delete a document.', 'Dismiss', { duration: 3000 }),
+              this.snackBar.open(
+                this.translate.instant('trash.message.failed-to-delete-a-document'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              ),
           });
       }
     });
@@ -550,11 +598,19 @@ export class TrashComponent {
       )
       .subscribe({
         next: () => {
-          this.snackBar.open('Document restored.', 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('trash.message.document-restored'),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
           this.documents.update((docs) => docs.filter((d) => d.uid !== uid));
         },
         error: () =>
-          this.snackBar.open('Failed to restore document.', 'Dismiss', { duration: 5000 }),
+          this.snackBar.open(
+            this.translate.instant('trash.message.failed-to-restore-document'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          ),
       });
   }
 
@@ -581,11 +637,19 @@ export class TrashComponent {
         )
         .subscribe({
           next: () => {
-            this.snackBar.open('Document permanently deleted.', 'OK', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('trash.message.document-permanently-deleted'),
+              this.translate.instant('common.ok'),
+              { duration: 3000 },
+            );
             this.documents.update((docs) => docs.filter((d) => d.uid !== uid));
           },
           error: () =>
-            this.snackBar.open('Failed to delete document.', 'Dismiss', { duration: 5000 }),
+            this.snackBar.open(
+              this.translate.instant('trash.message.failed-to-delete-document'),
+              this.translate.instant('common.dismiss'),
+              { duration: 5000 },
+            ),
         });
     });
   }

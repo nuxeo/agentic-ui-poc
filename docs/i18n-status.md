@@ -114,6 +114,12 @@ Crowdin, not a developer editing a JSON file.
 
 ## Coverage, measured
 
+> **The three tables below are the NXSAT-227 measurement and are SUPERSEDED.** They say 60
+> catalogue keys and 4 of 92 templates; NXSAT-284 took those to the figures in the table at the top
+> of this page. They are kept because the before/after shape is the useful part of the Beta record,
+> not the numbers. A five-model review found them being read as current, which is a fair reading of
+> a table headed "Now".
+
 ### Translation keys
 
 ```bash
@@ -438,7 +444,7 @@ Worth recording, because it is the argument for writing controls at all:
 | Which file layout?             | The **current Hyland/CIC** one — `i18n/en.json` + `i18n/<locale>.json`, which our repo already matched. **Not** Web UI's `messages.json`; that is a Polymer-era convention needing a locale-rename table we do not need.                                                                                         |
 | Framework?                     | `ngx-translate` v17, already the portfolio norm.                                                                                                                                                                                                                                                                 |
 | Fully compliant with INFO-144? | **No — one documented deviation.** INFO-144 requires a changed source string to be flagged for translator review. The HXP standard's `update_option: update_without_changes` does not do that, mitigating with a manual Crowdin filter plus the convention _never change the meaning of a key — change the key_. |
-| Compliant on string context?   | Yes, and gated, for the 60 keys that exist.                                                                                                                                                                                                                                                                      |
+| Compliant on string context?   | Yes, and gated. (This row said "for the 60 keys that exist", which was the NXSAT-227 count.)                                                                                                                                                                                                                     |
 | Compliant on concatenation?    | Ours, yes. **Upstream's tree is not** — `(translate) + node.name` cannot be reordered by a translator. Finding 1.3.                                                                                                                                                                                              |
 
 ---

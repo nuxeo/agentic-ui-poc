@@ -26,7 +26,7 @@ import {
   NuxeoApiBase,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-task-detail',
@@ -51,6 +51,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class TaskDetailComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
   private readonly taskService = inject(TaskService);
   private readonly userService = inject(UserService);
@@ -112,7 +113,7 @@ export class TaskDetailComponent implements OnInit {
   ngOnInit(): void {
     const taskId = this.route.snapshot.paramMap.get('taskId');
     if (!taskId) {
-      this.error.set('No task ID provided.');
+      this.error.set(this.translate.instant('tasks.message.no-task-id-provided'));
       this.loading.set(false);
       return;
     }
@@ -157,7 +158,7 @@ export class TaskDetailComponent implements OnInit {
         }
       },
       error: () => {
-        this.error.set('Failed to load task details.');
+        this.error.set(this.translate.instant('tasks.message.failed-to-load-task-details'));
         this.loading.set(false);
       },
     });
@@ -230,15 +231,19 @@ export class TaskDetailComponent implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.snackBar.open(`Task "${this.taskLabel(task)}" completed successfully.`, 'Close', {
-            duration: 4000,
-          });
+          this.snackBar.open(
+            this.translate.instant('tasks.task-completed', { name: this.taskLabel(task) }),
+            this.translate.instant('common.close'),
+            {
+              duration: 4000,
+            },
+          );
           this.router.navigate(['/tasks']);
         },
         error: (err) => {
           this.submitting.set(false);
           const msg = err?.error?.message || 'Failed to complete the task.';
-          this.snackBar.open(msg, 'Close', { duration: 6000 });
+          this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
   }
@@ -251,14 +256,22 @@ export class TaskDetailComponent implements OnInit {
     this.workflowService.cancelWorkflow(task.workflowInstanceId).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.snackBar.open('Workflow abandoned.', 'Close', { duration: 4000 });
+        this.snackBar.open(
+          this.translate.instant('tasks.message.workflow-abandoned'),
+          this.translate.instant('common.close'),
+          { duration: 4000 },
+        );
         this.router.navigate(['/tasks']);
       },
       error: () => {
         this.submitting.set(false);
-        this.snackBar.open('Failed to abandon workflow.', 'Close', {
-          duration: 4000,
-        });
+        this.snackBar.open(
+          this.translate.instant('tasks.message.failed-to-abandon-workflow'),
+          this.translate.instant('common.close'),
+          {
+            duration: 4000,
+          },
+        );
       },
     });
   }

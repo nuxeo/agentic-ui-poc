@@ -1228,6 +1228,13 @@ function checkNoHardcodedUiText() {
     const OPENERS = [
       ['<!--', '-->'],
       ['<pre', '</pre>'],
+      // `<code>` holds identifiers shown to a developer — `ConfirmDialogComponent`,
+      // `Nuxeo-Drive.DMG`. The extraction codemod keyed nine Angular class names on the contracts
+      // page as translatable strings, which would have let a translator rename a class in the
+      // documentation. Restoring them as literals then made this gate flag them as hard-coded
+      // English, because it cannot tell an identifier from prose — so the element that marks
+      // something as code is what excludes it, exactly as `<pre>` already does.
+      ['<code', '</code>'],
     ];
     const chars = [...body];
     let index = 0;
@@ -1337,9 +1344,27 @@ function checkNoHardcodedUiText() {
       // the fragments either side of a value cannot move the value, and in German or Japanese it
       // does not sit where English puts it. INFO-144 forbids this outright.
       if (!offence) {
-        // U+0000 cannot occur in a template, so it marks the boundary unambiguously and keeps the
-        // words on either side from being joined into one token.
-        const blanked = remainder.replace(/\{\{[^{}]*\}\}/g, '\u0000');
+        // Marked on `trimmed`, NOT on `remainder`, and that distinction is the whole bug this
+        // replaces.
+        //
+        // `remainder` has already DELETED every translated interpolation (see above), so beside a
+        // correctly keyed value there was no interpolation left to blank, no marker appeared, and
+        // this branch never ran. The shape it therefore could not see is the worst one in the set:
+        //
+        //     <strong>{{ 'admin.nxql-search' | translate }}</strong> in the left menu for ad-hoc
+        //
+        // half the sentence keyed and half hard-coded, which INFO-144 forbids outright. I reported
+        // that exact line as fixed when it was not, because the gate agreed with me.
+        //
+        // U+0000 cannot occur in a template, so it marks a boundary unambiguously and keeps the
+        // words on either side from joining into one token.
+        const blanked = trimmed
+          // An icon element's text is a LIGATURE NAME — `refresh` renders as a glyph, not as the
+          // word — so translating it replaces the icon with a missing character. The rest of this
+          // check excludes those via `isDisplayText`'s initial-capital rule; this path does not use
+          // that rule, so it has to exclude them by element instead.
+          .replace(/<(mat-icon|hxp-icon|sat-icon)\b[^>]*>[^<]*<\/\1>/g, '\u0000')
+          .replace(/\{\{[^{}]*\}\}/g, '\u0000');
         if (blanked.includes('\u0000')) {
           const fragment = proseFragmentBesideValue(blanked);
           if (fragment) {
@@ -1997,7 +2022,7 @@ async function checkTranslatorContextPush() {
     // guardrail green while no translator context reached Crowdin at all — the gate verified the
     // doorbell and never checked whether anyone answered. The green fixture in the selftest had the
     // same gap, which is how it survived being written.
-    if (!new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}`).test(read(pushWorkflow))) {
+    if (!new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(read(pushWorkflow))) {
       fail(
         `${pushWorkflow} never runs \`node ${script}\`, so no translator context is uploaded.\n` +
           "    The catalogue goes up through the Crowdin action, but Crowdin's JSON source format " +
@@ -2853,7 +2878,7 @@ function checkPackagedConfigIsNotADemo() {
   }
 
   const shippedTitle = config['branding']?.['applicationTitle'];
-  if (shippedTitle !== undefined && shippedTitle !== compiledTitle) {
+  if (shippedTitle === undefined || shippedTitle !== compiledTitle) {
     fail(
       `${packaged} ships \`applicationTitle: "${shippedTitle}"\`, which is not the compiled ` +
         `default "${compiledTitle}".\n` +
@@ -2926,7 +2951,7 @@ function checkNoProseInComponentInputs() {
     'fontSet',
     'svgIcon',
   ]);
-  const ELEMENT = /<((?:mat|hxp|app|sat|adf|nx)-[\w-]+|[A-Z][\w-]*)\b([^>]*)>/gs;
+  const ELEMENT = /<((?:mat|hxp|app|sat|adf|nx|lib)-[\w-]+|[A-Z][\w-]*)\b([^>]*)>/gs;
   const ATTRIBUTE = /(?<![[(\w.-])([a-zA-Z][\w-]*)="([A-Z][^"<>{}]*)"/g;
 
   const templates = [
@@ -3182,11 +3207,19 @@ function checkNoHardcodedDialogText() {
    */
   const dialogRegions = (text) => {
     const spans = [];
-    for (const m of text.matchAll(/(?:as|:)\s*\w*DialogData\b/g)) {
+    // `as ConfirmDialogData` follows its object, `: ConfirmDialogData` precedes it, and the first
+    // version treated both the same way — it searched BACKWARD for a `}` from the annotation. For
+    // `const data: ConfirmDialogData = { … }` that finds the end of whatever block came before the
+    // declaration, so the object actually being annotated was never scanned.
+    for (const m of text.matchAll(/\bas\s+\w*DialogData\b/g)) {
       const close = text.lastIndexOf('}', m.index);
       if (close === -1) continue;
       const open = openingBrace(text, close);
       if (open !== -1) spans.push([open, close]);
+    }
+    for (const m of text.matchAll(/:\s*\w*DialogData\s*=\s*\{/g)) {
+      const open = text.indexOf('{', m.index);
+      spans.push([open, closingBrace(text, open)]);
     }
     for (const m of text.matchAll(/\bdata:\s*\{/g)) {
       const open = text.indexOf('{', m.index);
@@ -3257,7 +3290,21 @@ function checkNoHardcodedDialogText() {
  */
 function checkNoStaleAgnosticClaim() {
   const LIBRARY = 'libs/shared/extensions/src';
-  const CLAIM = /this library keeps no dependency on\s*\n?\s*\*?\s*ngx-translate/;
+  // A STABLE MARKER, not a sentence.
+  //
+  // The first version of this gate matched the prose `this library keeps no dependency on
+  // ngx-translate` — and the same commit that added the gate reworded that sentence, so the phrase
+  // existed nowhere and the gate could never fire. I verified it "went red" by restoring the old
+  // wording, which proved the regex worked rather than that it still matched the tree. A gate keyed
+  // to prose dies the moment someone edits the prose, silently and in the direction of passing.
+  const MARKER = '@i18n-contract:descriptor-api-is-framework-agnostic';
+
+  // What the marker actually promises, now that the claim has been narrowed truthfully: the
+  // descriptor API imposes no translation library on a CALLER. It does not promise the library has
+  // no ngx-translate import — `extension-outlet.component.ts` and `descriptor-label.pipe.ts` both
+  // have one, deliberately. So this asserts the thing that is true and load-bearing: that
+  // `descriptorLabel` takes a resolver FUNCTION and does not reach for a service itself.
+  const CONTRACT_FILE = `${LIBRARY}/lib/extension-actions.ts`;
 
   const sources = walk(LIBRARY, (path) => /\.ts$/.test(path)).filter(
     (path) => !/\.spec\.ts$/.test(path),
@@ -3267,18 +3314,186 @@ function checkNoStaleAgnosticClaim() {
     return;
   }
 
-  const importers = sources.filter((file) => /from '@ngx-translate\/core'/.test(read(file)));
-  const claimants = sources.filter((file) => CLAIM.test(read(file)));
-
-  if (claimants.length > 0 && importers.length > 0) {
+  const claimants = sources.filter((file) => read(file).includes(MARKER));
+  if (claimants.length === 0) {
     fail(
-      `${claimants.join(', ')} states that ${LIBRARY} keeps no dependency on ngx-translate, but ` +
-        `${importers.length} file(s) in it import from '@ngx-translate/core':\n` +
-        importers.map((file) => `      ${file}`).join('\n') +
-        '\n    Either move the ngx-translate usage out of this library, or narrow the claim to ' +
-        'what is actually guaranteed — that `descriptorLabel` and the descriptor data contract ' +
-        'impose no translation library on a caller, which is true and useful.',
+      `No file under ${LIBRARY} carries the \`${MARKER}\` marker, so this gate asserted nothing. ` +
+        'The marker records a documented contract; if it was deleted, restore it beside the claim ' +
+        'in extension-actions.ts rather than leaving this check inert.',
     );
+    return;
+  }
+
+  const contract = read(CONTRACT_FILE);
+  // `descriptorLabel(descriptor, translate)` — the second parameter is the resolver.
+  const signature = /export function descriptorLabel\(([^)]*)\)/.exec(contract);
+  if (!signature) {
+    fail(
+      `${CONTRACT_FILE} no longer declares \`descriptorLabel\`, so the contract the marker names ` +
+        'cannot be checked. Update this gate together with whatever replaced it.',
+    );
+    return;
+  }
+  if (!/translate\s*:\s*\(/.test(signature[1])) {
+    fail(
+      `${CONTRACT_FILE} carries the \`${MARKER}\` marker, but \`descriptorLabel\` no longer takes a ` +
+        'resolver function:\n' +
+        `      (${signature[1].replace(/\s+/g, ' ').trim()})\n` +
+        '    That marker promises the descriptor API imposes no translation library on a caller, ' +
+        'which is exactly what the resolver parameter buys. Injecting a service here instead would ' +
+        'push ngx-translate onto every consumer of Layer 1 descriptor data.',
+    );
+  }
+
+  if (/inject\(\s*TranslateService\s*\)/.test(contract)) {
+    fail(
+      `${CONTRACT_FILE} injects TranslateService while carrying the \`${MARKER}\` marker. The ` +
+        'descriptor contract is meant to take a resolver from its caller; a service here makes the ' +
+        'choice of translation library this library\'s rather than the host\'s.',
+    );
+  }
+}
+
+/**
+ * No hard-coded user-facing text built in TypeScript.
+ *
+ * ## The class eight review rounds could not see
+ *
+ * `checkNoHardcodedUiText` reads `.html`. `checkNoHardcodedDialogText` is scoped to a dialog's data.
+ * `checkNoHardcodedDescriptorText` matches descriptor properties. A snackbar message, an error
+ * signal and a toast fall through all three, and there are hundreds of them — every one shown to a
+ * user, none reachable by any gate in the set. The pseudo-locale audit could not see them either,
+ * because most are triggered by an action nobody performs during a route walk.
+ *
+ * That is why this pull request kept reporting itself complete: three checks agreed, and none of
+ * them was looking at the place the strings live.
+ *
+ * ## What counts as a sink
+ *
+ * Only calls whose argument reaches the screen. `snackBar.open(message, action)` renders both.
+ * `.error.set(...)`, `.statusMessage.set(...)` and friends are bound into templates as
+ * `{{ error() }}`. A `console.log` or a thrown `Error` is not included: the first is invisible to a
+ * user and the second is a developer diagnostic, and including them would make the check argue.
+ *
+ * Template literals are matched as well as quoted strings, because an interpolated message is a
+ * concatenation and therefore worse than a plain one, not better.
+ */
+function checkNoHardcodedImperativeUiText() {
+  const SINKS = [
+    // `snackBar.open('Saved.', 'OK')` — message and action label, both rendered.
+    /\bsnackBar\s*\.\s*open\(\s*(['"`])([A-Z][^'"`]{2,})\1/g,
+    // The action label, which is as visible as the message. `[^)]` cannot be used for the first
+    // argument: once that argument is `this.translate.instant('x.k')` it contains its own
+    // parentheses, and the pattern stopped short — so a resolved message with a literal label
+    // read as clean, which is precisely the half-fixed state this check exists to catch.
+    /\bsnackBar\s*\.\s*open\([\s\S]{0,400}?,\s*(['"])([A-Z][^'"]{1,40})\1\s*[,)]/g,
+    // A signal or property holding user-visible status, bound as `{{ error() }}`.
+    /\.\s*(?:error|errorMessage|statusMessage|message|notice|warning|status)\w*\s*\.\s*set\(\s*(['"`])([A-Z][^'"`]{2,})\1/g,
+    // A toast helper.
+    /\btoast\(\s*(['"`])([A-Z][^'"`]{2,})\1/g,
+  ];
+
+  const EXEMPT = [
+    /^apps\/nuxeo-satori-template\//,
+    /^libs\/extensions\/acme-extensions\//,
+    /^libs\/core\//,
+  ];
+
+  const sources = [
+    ...walk('apps', (path) => /\.ts$/.test(path)),
+    ...walk('libs', (path) => /\.ts$/.test(path)),
+  ].filter((path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((p) => p.test(path)));
+
+  if (sources.length === 0) {
+    fail('No TypeScript sources found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+
+  for (const file of sources) {
+    const text = read(file);
+    if (!/snackBar|\.set\(|toast\(/.test(text)) continue;
+    for (const sink of SINKS) {
+      for (const match of text.matchAll(sink)) {
+        const literal = match[2];
+        const line = text.slice(0, match.index).split('\n').length;
+        fail(
+          `${file}:${line} passes the hard-coded string \`${literal}\` to a user-facing sink — ` +
+            'text a user reads, built in TypeScript where no template pipe can reach it.\n' +
+            "    Add a key to the app catalogue and resolve it here:\n" +
+            "      this.snackBar.open(this.translate.instant('x.saved'), this.translate.instant('common.ok'))\n" +
+            '    A message assembled with `${…}` needs one parameterised key, not a lookup per ' +
+            'fragment: a translator handed the pieces cannot reorder them.',
+        );
+      }
+    }
+  }
+}
+
+/**
+ * A catalogue value must be the text a user sees.
+ *
+ * Two defects this caught, both shipped:
+ *
+ * `"Back to Users &amp; Groups"` — the extraction codemod copied the HTML SOURCE of a text node into
+ * JSON. In HTML the browser decodes `&amp;`; through `{{ … | translate }}` Angular sets
+ * `textContent` and does not, so the user read the literal characters `&amp;`. Four values, on the
+ * Users & Groups heading and two back-links. The codemod's own docstring claimed byte-identical
+ * source keeps the rendered DOM unchanged — true only while the text stays in an HTML text node.
+ *
+ * `"Choose file(s)"` — an `(s)` suffix assumes a language pluralises by appending one letter. This
+ * branch removed that shape from three other places and then created a new one in the catalogue,
+ * where nothing was looking.
+ */
+function checkCatalogueValuesAreRenderable() {
+  const ENTITY = /&(?:[a-zA-Z]+|#\d+);/;
+  const PLURAL_SUFFIX = /\(s\)/;
+
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
+  const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)].filter(
+    (path) => !/^apps\/nuxeo-satori-template\//.test(path),
+  );
+  if (catalogues.length === 0) {
+    fail('No catalogues were found, so this gate asserted nothing.');
+    return;
+  }
+
+  for (const file of catalogues) {
+    let parsed;
+    try {
+      parsed = JSON.parse(read(file));
+    } catch {
+      continue; // checkTranslationCatalogues reports malformed JSON, and names the file.
+    }
+    // A local flattener: `checkTranslationCatalogues` has one, but it is scoped inside that check
+    // and carries diagnostics this gate does not want.
+    const entries = [];
+    const collect = (node, prefix) => {
+      for (const [key, value] of Object.entries(node)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (value && typeof value === 'object') collect(value, path);
+        else entries.push([path, value]);
+      }
+    };
+    collect(parsed, '');
+
+    for (const [key, value] of entries) {
+      if (typeof value !== 'string') continue;
+      if (ENTITY.test(value)) {
+        fail(
+          `${file} maps \`${key}\` to "${value}", which contains an HTML character reference. ` +
+            'Interpolation sets `textContent`, so the user reads the reference itself rather than ' +
+            'the character it stands for. Store the decoded character.',
+        );
+      }
+      if (PLURAL_SUFFIX.test(value)) {
+        fail(
+          `${file} maps \`${key}\` to "${value}", which pluralises with an \`(s)\` suffix. That ` +
+            'assumes a language forms its plural by appending one letter, and most do not. Use a ' +
+            'key per grammatical number, chosen by a branch at the call site.',
+        );
+      }
+    }
   }
 }
 
@@ -3298,6 +3513,8 @@ const GUARDRAILS = [
   checkNoHardcodedUiText,
   checkNoHardcodedDescriptorText,
   checkNoHardcodedDialogText,
+  checkNoHardcodedImperativeUiText,
+  checkCatalogueValuesAreRenderable,
   checkNoStaleAgnosticClaim,
   checkTranslationCatalogues,
   checkAdvertisedLocalesShip,

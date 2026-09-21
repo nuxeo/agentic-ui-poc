@@ -33,7 +33,7 @@ import {
 
 import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-tasks-page',
@@ -61,6 +61,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class TasksPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
   readonly router = inject(Router);
   private readonly taskService = inject(TaskService);
   private readonly userService = inject(UserService);
@@ -454,9 +455,13 @@ export class TasksPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.snackBar.open('Task completed successfully.', 'Close', {
-            duration: 4000,
-          });
+          this.snackBar.open(
+            this.translate.instant('tasks.message.task-completed-successfully'),
+            this.translate.instant('common.close'),
+            {
+              duration: 4000,
+            },
+          );
           this.selectedTask.set(null);
           this.targetDoc.set(null);
           // Navigate to /tasks (no task ID) so loadTasks picks the next available task
@@ -468,7 +473,7 @@ export class TasksPageComponent implements OnInit {
         error: (err) => {
           this.submitting.set(false);
           const msg = err?.error?.message || 'Failed to complete the task.';
-          this.snackBar.open(msg, 'Close', { duration: 6000 });
+          this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
   }
@@ -481,7 +486,11 @@ export class TasksPageComponent implements OnInit {
     this.workflowService.cancelWorkflow(task.workflowInstanceId).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.snackBar.open('Workflow abandoned.', 'Close', { duration: 4000 });
+        this.snackBar.open(
+          this.translate.instant('tasks.message.workflow-abandoned'),
+          this.translate.instant('common.close'),
+          { duration: 4000 },
+        );
         this.selectedTask.set(null);
         this.targetDoc.set(null);
         this.router.navigate(['/tasks'], { replaceUrl: true }).then(() => {
@@ -491,9 +500,13 @@ export class TasksPageComponent implements OnInit {
       },
       error: () => {
         this.submitting.set(false);
-        this.snackBar.open('Failed to abandon workflow.', 'Close', {
-          duration: 4000,
-        });
+        this.snackBar.open(
+          this.translate.instant('tasks.message.failed-to-abandon-workflow'),
+          this.translate.instant('common.close'),
+          {
+            duration: 4000,
+          },
+        );
       },
     });
   }
@@ -560,7 +573,11 @@ export class TasksPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.snackBar.open('Task delegated successfully.', 'Close', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('tasks.message.task-delegated-successfully'),
+            this.translate.instant('common.close'),
+            { duration: 4000 },
+          );
           this.closeDelegatePanel();
           this.refreshCurrentTask();
           this.loadTasks();
@@ -569,7 +586,7 @@ export class TasksPageComponent implements OnInit {
         error: (err) => {
           this.submitting.set(false);
           const msg = err?.error?.message || 'Failed to delegate task.';
-          this.snackBar.open(msg, 'Close', { duration: 6000 });
+          this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
   }
@@ -636,7 +653,11 @@ export class TasksPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.snackBar.open('Task reassigned successfully.', 'Close', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('tasks.message.task-reassigned-successfully'),
+            this.translate.instant('common.close'),
+            { duration: 4000 },
+          );
           this.closeReassignPanel();
           this.refreshCurrentTask();
           this.loadTasks();
@@ -645,7 +666,7 @@ export class TasksPageComponent implements OnInit {
         error: (err) => {
           this.submitting.set(false);
           const msg = err?.error?.message || 'Failed to reassign task.';
-          this.snackBar.open(msg, 'Close', { duration: 6000 });
+          this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
   }

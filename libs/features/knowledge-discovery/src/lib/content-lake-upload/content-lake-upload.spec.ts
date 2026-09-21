@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -126,7 +127,7 @@ async function createComponent(): Promise<{
   fixture: ComponentFixture<ContentLakeUploadComponent>;
 }> {
   await TestBed.configureTestingModule({
-    imports: [ContentLakeUploadComponent],
+    imports: [testTranslateModule(), testTranslateModule(), ContentLakeUploadComponent],
     providers: [
       provideZonelessChangeDetection(),
       { provide: DocumentImportService, useValue: mockImportService },

@@ -132,6 +132,9 @@ playwright-report/
 apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json
 apps/nuxeo-ui/public/i18n/zz.json
 
-# Local planning scratch. A stray plan file was swept into a translation PR by 
-# and a reviewer had to catch it; these are per-developer notes, not repository content.
+# Local planning scratch. Two stray files were swept into a translation PR by `git add -A`, and
+# both had to be caught by a reviewer: a plan under `.cursor/plans/` and a 368-line prompt saved as
+# `scripts/Untitled`. Ignoring the first did not generalise, so extensionless scratch under
+# `scripts/` is ignored too — everything real in that directory has an extension.
 .cursor/plans/
+scripts/Untitled*

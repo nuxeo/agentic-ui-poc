@@ -11,7 +11,12 @@
  * a floor, not a total, and it is reported as such.
  */
 import { chromium } from 'playwright';
-import { requireSentinel, sentinelPresent, servePseudoLocale } from './pseudo-locale-page.mjs';
+import {
+  looksLikeUiText,
+  requireSentinel,
+  sentinelPresent,
+  servePseudoLocale,
+} from './pseudo-locale-page.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -96,7 +101,6 @@ const INSTANCE_DATA = new Set([
   'Folder',
 ]);
 const FORMATTED_DATE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/;
-const ASCII_PROSE = /^[A-Za-z][A-Za-z0-9 ,.'&()/-]{2,}$/;
 
 function collect(dataContainers) {
   const isData = (el) => dataContainers.some((s) => el.closest(s));
@@ -134,7 +138,7 @@ let sentinelSeen = false;
 const findings = new Map();
 const record = (where, items) => {
   for (const item of items) {
-    if (!ASCII_PROSE.test(item.text)) continue;
+    if (!looksLikeUiText(item.text)) continue;
     if (INSTANCE_DATA.has(item.text) || FORMATTED_DATE.test(item.text)) continue;
     const id = `${item.tag}\u0000${item.text}`;
     if (!findings.has(id)) findings.set(id, { ...item, where: [] });

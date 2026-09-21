@@ -73,3 +73,29 @@ export function requireSentinel(seen, audit) {
   );
   process.exit(1);
 }
+
+/**
+ * Whether a string the audit found is text a user reads.
+ *
+ * This lived in both audits as a byte-identical copy of
+ * `/^[A-Za-z][A-Za-z0-9 ,.'&()\/-]{2,}$/`, and that pattern silently discarded every string
+ * containing `?`, `!`, `:`, `"`, `%` or `\u2026`, or starting with a digit. The instrument used to
+ * claim "everything remaining is accounted for" could not see `Are you sure?`, `Company:`,
+ * `50% complete` or `Loading\u2026` — which is exactly the punctuation an interface is full of, and
+ * the reason this pull request kept reporting itself complete for eight review rounds.
+ *
+ * It is now permissive by default and exclusion is done by ORIGIN — the data containers and the
+ * instance-data list — not by spelling. A filter that admits text through a punctuation allowlist
+ * cannot be audited, because what it drops is invisible.
+ *
+ * The pseudo-locale is what separates signal from noise here: anything catalogue-sourced comes back
+ * wrapped in `\u27E6\u2026\u27E7`, so a string WITHOUT the sentinel is by definition not from a
+ * catalogue. Keeping every such string and filtering by where it renders is the honest order.
+ */
+export const looksLikeUiText = (text) => {
+  const trimmed = text.trim();
+  if (trimmed.length < 3) return false;
+  if (trimmed.includes(SENTINEL)) return false;
+  // At least three ASCII letters, so pure numbers, dates, ids and punctuation runs are not prose.
+  return (trimmed.match(/[A-Za-z]/g) ?? []).length >= 3;
+};

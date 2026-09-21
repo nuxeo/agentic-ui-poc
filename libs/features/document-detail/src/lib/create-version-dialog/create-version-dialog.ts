@@ -11,7 +11,7 @@ import {
   isPermissionDeniedError,
   PERMISSION_DENIED_MESSAGE,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface CreateVersionDialogData {
   documentUid: string;
@@ -100,6 +100,7 @@ export interface CreateVersionDialogData {
 export class CreateVersionDialogComponent {
   readonly data = inject<CreateVersionDialogData>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject(MatDialogRef<CreateVersionDialogComponent>);
+  private readonly translate = inject(TranslateService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
@@ -121,7 +122,13 @@ export class CreateVersionDialogComponent {
             this.increment === 'Major'
               ? `${this.data.currentMajor + 1}.0`
               : `${this.data.currentMajor}.${this.data.currentMinor + 1}`;
-          this.snackBar.open(`Version ${label} created`, 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('document-detail.create-version-dialog.created', {
+              version: label,
+            }),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
           this.dialogRef.close(doc);
         },
         error: (err) => {
@@ -129,7 +136,7 @@ export class CreateVersionDialogComponent {
           const message = isPermissionDeniedError(err)
             ? PERMISSION_DENIED_MESSAGE
             : 'Failed to create version';
-          this.snackBar.open(message, 'OK', { duration: 3000 });
+          this.snackBar.open(message, this.translate.instant('common.ok'), { duration: 3000 });
         },
       });
   }

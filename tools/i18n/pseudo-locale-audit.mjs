@@ -26,7 +26,12 @@
  * and the two produce opposite conclusions from identical output.
  */
 import { chromium } from 'playwright';
-import { requireSentinel, sentinelPresent, servePseudoLocale } from './pseudo-locale-page.mjs';
+import {
+  looksLikeUiText,
+  requireSentinel,
+  sentinelPresent,
+  servePseudoLocale,
+} from './pseudo-locale-page.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -102,7 +107,6 @@ const INSTANCE_DATA = new Set([
  */
 const FORMATTED_DATE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/;
 
-const ASCII_PROSE = /^[A-Za-z][A-Za-z0-9 ,.'&()/-]{2,}$/;
 
 mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
@@ -151,7 +155,7 @@ for (const [name, route] of ROUTES) {
   }, DATA_CONTAINERS);
 
   const real = english.filter(
-    (e) => ASCII_PROSE.test(e.text) && !INSTANCE_DATA.has(e.text) && !FORMATTED_DATE.test(e.text),
+    (e) => looksLikeUiText(e.text) && !INSTANCE_DATA.has(e.text) && !FORMATTED_DATE.test(e.text),
   );
   findings.push({ route: name, count: real.length, items: real.slice(0, 40) });
   console.log(`${real.length === 0 ? 'clean' : `${real.length} English`}  ${name}`);

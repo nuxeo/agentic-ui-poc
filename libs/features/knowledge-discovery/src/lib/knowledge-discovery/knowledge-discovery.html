@@ -354,9 +354,14 @@
           </div>
         } @else if (agents().length === 0) {
           <p class="kd-empty">
-            {{ 'kd.knowledge-discovery.no-agents-yet-create-one-in' | translate }}
-            <strong>{{ 'kd.knowledge-discovery.hyland-insight' | translate }}</strong> admin UI,
-            then use <em>{{ 'kd.knowledge-discovery.refresh-agents' | translate }}</em> above.
+            {{
+              'kd.knowledge-discovery.no-agents-create-in-admin'
+                | translate
+                  : {
+                      product: 'kd.knowledge-discovery.hyland-insight' | translate,
+                      action: 'kd.knowledge-discovery.refresh-agents' | translate,
+                    }
+            }}
           </p>
         } @else {
           <ul class="kd-agent-list">

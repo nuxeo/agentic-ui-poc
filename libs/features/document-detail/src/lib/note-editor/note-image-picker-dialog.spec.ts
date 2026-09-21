@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { Observable, of, throwError } from 'rxjs';
@@ -85,7 +86,7 @@ describe('NoteImagePickerDialogComponent', () => {
     mockDetailService.fetchThumbnail.mockReturnValue(of(new Blob(['t'], { type: 'image/png' })));
 
     await TestBed.configureTestingModule({
-      imports: [NoteImagePickerDialogComponent],
+      imports: [testTranslateModule(), testTranslateModule(), NoteImagePickerDialogComponent],
       providers: [
         provideZonelessChangeDetection(),
         { provide: SearchService, useValue: mockSearch },

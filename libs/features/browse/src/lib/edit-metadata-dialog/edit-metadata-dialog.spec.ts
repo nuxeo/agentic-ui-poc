@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -67,7 +68,7 @@ describe('EditMetadataDialogComponent (NXSAT-192)', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
-      imports: [EditMetadataDialogComponent],
+      imports: [testTranslateModule(), testTranslateModule(), EditMetadataDialogComponent],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -157,7 +158,7 @@ describe('EditMetadataDialogComponent vocabulary pickers and save', () => {
     close = vi.fn();
 
     await TestBed.configureTestingModule({
-      imports: [EditMetadataDialogComponent],
+      imports: [testTranslateModule(), EditMetadataDialogComponent],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: { close } },

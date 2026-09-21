@@ -129,7 +129,11 @@ export class AdminVocabulariesPageComponent implements OnInit {
           if (requestId !== this.loadRequestId) return;
           this.entries.set([]);
           this.loading.set(false);
-          this.snackBar.open('Failed to load vocabulary entries', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('admin.message.failed-to-load-vocabulary-entries'),
+            this.translate.instant('common.dismiss'),
+            { duration: 4000 },
+          );
         },
       });
   }
@@ -187,12 +191,20 @@ export class AdminVocabulariesPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.mutating.set(false);
-          this.snackBar.open('Entry deleted', 'Dismiss', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('admin.message.entry-deleted'),
+            this.translate.instant('common.dismiss'),
+            { duration: 3000 },
+          );
           this.loadEntries(directoryName);
         },
         error: () => {
           this.mutating.set(false);
-          this.snackBar.open('Failed to delete entry', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('admin.message.failed-to-delete-entry'),
+            this.translate.instant('common.dismiss'),
+            { duration: 4000 },
+          );
         },
       });
   }
@@ -241,12 +253,24 @@ export class AdminVocabulariesPageComponent implements OnInit {
       next: () => {
         this.mutating.set(false);
         const action = result.mode === 'create' ? 'created' : 'updated';
-        this.snackBar.open(`Entry ${action}`, 'Dismiss', { duration: 3000 });
+        this.snackBar.open(
+          this.translate.instant(
+            action === 'created'
+              ? 'admin.vocabularies.entry-created'
+              : 'admin.vocabularies.entry-updated',
+          ),
+          this.translate.instant('common.dismiss'),
+          { duration: 3000 },
+        );
         this.loadEntries(directoryName);
       },
       error: () => {
         this.mutating.set(false);
-        this.snackBar.open('Failed to save entry', 'Dismiss', { duration: 4000 });
+        this.snackBar.open(
+          this.translate.instant('admin.message.failed-to-save-entry'),
+          this.translate.instant('common.dismiss'),
+          { duration: 4000 },
+        );
       },
     });
   }

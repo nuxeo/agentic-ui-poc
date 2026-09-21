@@ -320,7 +320,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
             invited
               ? `Invitation sent to ${r.email}. The user will appear after they accept.`
               : 'User created',
-            'Dismiss',
+            this.translate.instant('common.dismiss'),
             { duration: invited ? 6000 : 3000 },
           );
           if (!invited) {
@@ -362,13 +362,21 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('User updated', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('admin.message.user-updated'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              );
               this.afterMutation();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
-                duration: 5000,
-              }),
+              this.snackBar.open(
+                e?.error?.message ?? 'Update failed',
+                this.translate.instant('common.dismiss'),
+                {
+                  duration: 5000,
+                },
+              ),
           });
       });
   }
@@ -391,11 +399,19 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         if (!ok) return;
         this.userService.deleteUser(user.id).subscribe({
           next: () => {
-            this.snackBar.open('User deleted', 'Dismiss', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('admin.message.user-deleted'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            );
             this.afterMutation();
           },
           error: (e) =>
-            this.snackBar.open(e?.error?.message ?? 'Delete failed', 'Dismiss', { duration: 5000 }),
+            this.snackBar.open(
+              e?.error?.message ?? 'Delete failed',
+              this.translate.instant('common.dismiss'),
+              { duration: 5000 },
+            ),
         });
       });
   }
@@ -421,16 +437,24 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('Group created', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('admin.message.group-created'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              );
               this.afterMutation();
               if (r.createAnother) {
                 this.openCreateGroupDialog();
               }
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Create failed', 'Dismiss', {
-                duration: 5000,
-              }),
+              this.snackBar.open(
+                e?.error?.message ?? 'Create failed',
+                this.translate.instant('common.dismiss'),
+                {
+                  duration: 5000,
+                },
+              ),
           });
       });
   }
@@ -451,13 +475,21 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('Group updated', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('admin.message.group-updated'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              );
               this.afterMutation();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
-                duration: 5000,
-              }),
+              this.snackBar.open(
+                e?.error?.message ?? 'Update failed',
+                this.translate.instant('common.dismiss'),
+                {
+                  duration: 5000,
+                },
+              ),
           });
       });
   }
@@ -482,11 +514,19 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         if (!ok) return;
         this.userService.deleteGroup(group.groupname).subscribe({
           next: () => {
-            this.snackBar.open('Group deleted', 'Dismiss', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('admin.message.group-deleted'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            );
             this.afterMutation();
           },
           error: (e) =>
-            this.snackBar.open(e?.error?.message ?? 'Delete failed', 'Dismiss', { duration: 5000 }),
+            this.snackBar.open(
+              e?.error?.message ?? 'Delete failed',
+              this.translate.instant('common.dismiss'),
+              { duration: 5000 },
+            ),
         });
       });
   }

@@ -271,6 +271,8 @@ export class ExtensionActionRegistry {
  * composed accessible name, and adf-core's `DataColumn.title`, which upstream's own DataTable
  * renders where we have no template at all.
  *
+ * `@i18n-contract:descriptor-api-is-framework-agnostic`
+ *
  * Takes a resolver rather than `TranslateService` so that **this function, and the descriptor
  * data contract around it, impose no translation library on a caller**: Layer 1 descriptors are
  * data, and which library renders them is the host's business. Callers pass

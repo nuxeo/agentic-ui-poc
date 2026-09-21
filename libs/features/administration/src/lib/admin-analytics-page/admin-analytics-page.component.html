@@ -131,9 +131,10 @@
           <strong>{{ searchMetricTotal() ?? '—' }}</strong>
         </p>
         <p class="body">
-          {{ 'admin.admin-analytics-page.this-metric-mirrors-a-typical-full' | translate }}
-          <strong>{{ 'admin.admin-analytics-page.nxql-search' | translate }}</strong> in the left
-          menu for ad-hoc queries.
+          {{
+            'admin.admin-analytics-page.mirrors-nxql-search'
+              | translate: { tool: 'admin.admin-analytics-page.nxql-search' | translate }
+          }}
         </p>
         <button type="button" mat-stroked-button (click)="refreshSearchMetric()">
           {{ 'admin.admin-analytics-page.refresh' | translate }}

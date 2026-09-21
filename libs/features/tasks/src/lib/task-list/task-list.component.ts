@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { NuxeoTask, TaskService, CURRENT_USERNAME } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-task-list',
@@ -16,6 +16,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class TaskListComponent implements OnInit {
   private readonly taskService = inject(TaskService);
+  private readonly translate = inject(TranslateService);
   private readonly currentUsername = inject(CURRENT_USERNAME);
   private readonly router = inject(Router);
 
@@ -38,7 +39,7 @@ export class TaskListComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Failed to load tasks.');
+        this.error.set(this.translate.instant('tasks.message.failed-to-load-tasks'));
         this.loading.set(false);
       },
     });

@@ -18,7 +18,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged, finalize, Subject, switchMap } from 'rxjs';
 
 import { NuxeoUser, UserService } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface UserFormDialogData {
   mode: 'create' | 'edit';
@@ -124,6 +124,7 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
   private readonly dialogRef = inject(
     MatDialogRef<UserFormDialogComponent, UserFormDialogResult | undefined>,
   );
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   readonly data = inject<UserFormDialogData>(MAT_DIALOG_DATA);
   private readonly userService = inject(UserService);
@@ -405,9 +406,13 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
           this.dialogRef.close(closeResult);
         },
         error: (err) => {
-          this.snackBar.open(this.createUserErrorMessage(err, invited), 'Dismiss', {
-            duration: 7000,
-          });
+          this.snackBar.open(
+            this.createUserErrorMessage(err, invited),
+            this.translate.instant('common.dismiss'),
+            {
+              duration: 7000,
+            },
+          );
         },
       });
   }

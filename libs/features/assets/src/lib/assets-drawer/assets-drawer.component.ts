@@ -459,10 +459,18 @@ export class AssetsDrawerComponent {
             next: () => {
               this.savedSearchesLoaded.set(false);
               this.loadSavedSearchesFromApi();
-              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('common.search-saved', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-save-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });

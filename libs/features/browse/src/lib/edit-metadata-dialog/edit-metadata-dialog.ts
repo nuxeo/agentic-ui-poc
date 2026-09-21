@@ -27,7 +27,7 @@ import {
   shouldShowExpiresFieldError,
   l10nEntryLabel,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface EditMetadataDialogData {
   uid: string;
@@ -147,6 +147,7 @@ export interface EditMetadataDialogData {
 })
 export class EditMetadataDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<EditMetadataDialogComponent>);
+  private readonly translate = inject(TranslateService);
   private readonly data = inject<EditMetadataDialogData>(MAT_DIALOG_DATA);
   private readonly browseService = inject(BrowseService);
   private readonly directoryService = inject(DirectoryService);
@@ -321,12 +322,20 @@ export class EditMetadataDialogComponent {
       .subscribe({
         next: (doc) => {
           this.saving.set(false);
-          this.snackBar.open('Document updated', 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('browse.message.document-updated'),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
           this.dialogRef.close(doc);
         },
         error: () => {
           this.saving.set(false);
-          this.snackBar.open('Failed to update document', 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('browse.message.failed-to-update-document'),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
         },
       });
   }

@@ -9,7 +9,7 @@ import {
   isFolderishDocument,
   type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface FolderPickerDialogData {
   /** Folder path to start from (e.g. current import target). */
@@ -51,6 +51,7 @@ export class FolderPickerDialogComponent implements OnInit {
   private readonly dialogRef = inject(
     MatDialogRef<FolderPickerDialogComponent, FolderPickerDialogResult>,
   );
+  private readonly translate = inject(TranslateService);
   readonly data = inject<FolderPickerDialogData>(MAT_DIALOG_DATA);
   private readonly browse = inject(BrowseService);
 
@@ -88,7 +89,9 @@ export class FolderPickerDialogComponent implements OnInit {
     this.browse.getByPath(path).subscribe({
       next: (doc) => {
         if (!isFolderishDocument(doc)) {
-          this.error.set('Selected path is not a folder. Choose a folder or go up one level.');
+          this.error.set(
+            this.translate.instant('browse.message.selected-path-is-not-a-folder-choose'),
+          );
           this.loading.set(false);
           return;
         }
@@ -103,13 +106,15 @@ export class FolderPickerDialogComponent implements OnInit {
             this.loading.set(false);
           },
           error: () => {
-            this.error.set('Could not load folder contents.');
+            this.error.set(this.translate.instant('browse.message.could-not-load-folder-contents'));
             this.loading.set(false);
           },
         });
       },
       error: () => {
-        this.error.set('Could not resolve this path. Try another folder.');
+        this.error.set(
+          this.translate.instant('browse.message.could-not-resolve-this-path-try-another'),
+        );
         this.loading.set(false);
       },
     });

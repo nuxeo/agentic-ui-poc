@@ -72,7 +72,11 @@ export class BulkDeleteActionService implements ExtensionActionHandler {
             next: () => this.browseContext.requestTreeRefresh(),
             error: (err) => {
               console.error('Failed to delete selected documents', err);
-              this.snackBar.open(deleteErrorMessage(err), 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                deleteErrorMessage(err),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
               this.selection.clear();
             },
           });
@@ -84,6 +88,7 @@ export class BulkDeleteActionService implements ExtensionActionHandler {
 @Injectable({ providedIn: 'root' })
 export class BulkPublishActionService implements ExtensionActionHandler {
   private readonly selection = inject(SelectionService);
+  private readonly translate = inject(TranslateService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly detail = inject(DocumentDetailService);
@@ -95,9 +100,13 @@ export class BulkPublishActionService implements ExtensionActionHandler {
 
     const first = selected[0];
     if (selected.length > 1) {
-      this.snackBar.open('Opening publish dialog for the first selected item.', 'Dismiss', {
-        duration: 3000,
-      });
+      this.snackBar.open(
+        this.translate.instant('app.message.opening-publish-dialog-for-the-first-selected'),
+        this.translate.instant('common.dismiss'),
+        {
+          duration: 3000,
+        },
+      );
     }
 
     const openDialog = async (versions: NuxeoDocument[]) => {
@@ -134,6 +143,7 @@ export class BulkPublishActionService implements ExtensionActionHandler {
 @Injectable({ providedIn: 'root' })
 export class BulkAddToClipboardActionService implements ExtensionActionHandler {
   private readonly selection = inject(SelectionService);
+  private readonly translate = inject(TranslateService);
   private readonly snackBar = inject(MatSnackBar);
 
   execute(): void {
@@ -157,7 +167,7 @@ export class BulkAddToClipboardActionService implements ExtensionActionHandler {
       additions.length > 0
         ? `Added ${additions.length} item(s) to clipboard.`
         : 'Selected items are already in clipboard.',
-      'Dismiss',
+      this.translate.instant('common.dismiss'),
       { duration: 3000 },
     );
   }
@@ -167,6 +177,7 @@ export class BulkAddToClipboardActionService implements ExtensionActionHandler {
 @Injectable({ providedIn: 'root' })
 export class BulkAddToCollectionActionService implements ExtensionActionHandler {
   private readonly selection = inject(SelectionService);
+  private readonly translate = inject(TranslateService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly detail = inject(DocumentDetailService);
@@ -193,9 +204,18 @@ export class BulkAddToCollectionActionService implements ExtensionActionHandler 
               .pipe(takeUntilDestroyed(this.destroyRef))
               .subscribe((results) => {
                 const success = results.filter((result) => !!result).length;
-                this.snackBar.open(`Added ${success} item(s) to collection.`, 'Dismiss', {
-                  duration: 3000,
-                });
+                this.snackBar.open(
+                  this.translate.instant(
+                    success === 1
+                      ? 'common.count.added-to-collection-one'
+                      : 'common.count.added-to-collection-many',
+                    { count: success },
+                  ),
+                  this.translate.instant('common.dismiss'),
+                  {
+                    duration: 3000,
+                  },
+                );
               });
           });
       },
@@ -207,6 +227,7 @@ export class BulkAddToCollectionActionService implements ExtensionActionHandler 
 @Injectable({ providedIn: 'root' })
 export class BulkDownloadZipActionService implements ExtensionActionHandler {
   private readonly selection = inject(SelectionService);
+  private readonly translate = inject(TranslateService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly detail = inject(DocumentDetailService);
   private readonly destroyRef = inject(DestroyRef);
@@ -232,9 +253,13 @@ export class BulkDownloadZipActionService implements ExtensionActionHandler {
           URL.revokeObjectURL(url);
         },
         error: () =>
-          this.snackBar.open('Failed to download selected documents as ZIP.', 'Dismiss', {
-            duration: 4000,
-          }),
+          this.snackBar.open(
+            this.translate.instant('app.message.failed-to-download-selected-documents-as-zip'),
+            this.translate.instant('common.dismiss'),
+            {
+              duration: 4000,
+            },
+          ),
       });
   }
 }
@@ -243,15 +268,20 @@ export class BulkDownloadZipActionService implements ExtensionActionHandler {
 @Injectable({ providedIn: 'root' })
 export class BulkCompareActionService implements ExtensionActionHandler {
   private readonly selection = inject(SelectionService);
+  private readonly translate = inject(TranslateService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
   execute(): void {
     const selected = this.selection.selectedItems();
     if (selected.length < 2) {
-      this.snackBar.open('Select at least two documents to compare.', 'Dismiss', {
-        duration: 3000,
-      });
+      this.snackBar.open(
+        this.translate.instant('app.message.select-at-least-two-documents-to-compare'),
+        this.translate.instant('common.dismiss'),
+        {
+          duration: 3000,
+        },
+      );
       return;
     }
     openDocumentCompareDialog(this.dialog, selected);

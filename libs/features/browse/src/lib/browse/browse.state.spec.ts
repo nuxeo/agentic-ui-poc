@@ -1,4 +1,5 @@
 import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -115,7 +116,7 @@ describe('BrowseComponent — listing state', () => {
 
     manifest.set({});
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent],
+      imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([{ path: '**', children: [] }], withDisabledInitialNavigation()),
@@ -743,7 +744,7 @@ describe('BrowseComponent — listing state', () => {
 
     component.deleteDocument();
 
-    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item(s) without delete permission', 'OK', {
+    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item without delete permission', 'OK', {
       duration: 5000,
     });
     expect(detail.trashDocument).toHaveBeenCalledTimes(1);
@@ -775,7 +776,7 @@ describe('BrowseComponent — listing state', () => {
     component.deleteDocument();
 
     expect(snackBar).toHaveBeenCalledWith('Moved to trash', 'OK', { duration: 3000 });
-    expect(snackBar).toHaveBeenCalledWith('Failed to delete 1 item(s)', 'OK', { duration: 5000 });
+    expect(snackBar).toHaveBeenCalledWith('Failed to delete 1 item', 'OK', { duration: 5000 });
   });
 
   it('reports a wholly failed bulk delete and keeps the selection', () => {
@@ -878,7 +879,7 @@ describe('BrowseComponent — listing state', () => {
 
     component.deleteDocument();
 
-    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item(s) that could not be loaded', 'OK', {
+    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item that could not be loaded', 'OK', {
       duration: 5000,
     });
     expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });

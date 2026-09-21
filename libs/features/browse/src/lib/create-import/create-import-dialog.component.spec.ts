@@ -2175,7 +2175,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
         component.uploadFiles(),
         expect.objectContaining({ onProgress: expect.any(Function) }),
       );
-      expect(m.snackOpen).toHaveBeenCalledWith('Created 1 file(s).', 'Close', { duration: 4000 });
+      expect(m.snackOpen).toHaveBeenCalledWith('Created 1 file.', 'Close', { duration: 4000 });
       expect(m.close).toHaveBeenCalledWith({
         refreshed: true,
         path: WS_PATH,

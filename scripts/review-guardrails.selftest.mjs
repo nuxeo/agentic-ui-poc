@@ -1337,6 +1337,114 @@ expectGreen('a fully parameterised sentence', 'checkNoHardcodedUiText', {
     "<p>{{ 'x.slot-empty' | translate: { name: item.label } }}</p>\n",
 });
 
+/* ---------------- imperative UI text, built in TypeScript ---------------- */
+
+// The class that survived eight review rounds: 333 strings in snackbars, status signals and toasts.
+// Three checks agreed the tree was clean and none of them read the place these live.
+
+expectRed(
+  'a hard-coded snackbar message',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "this.snackBar.open('Document restored.', 'OK');\n"),
+  /passes the hard-coded string `Document restored\.` to a user-facing sink/,
+);
+
+expectRed(
+  "a hard-coded snackbar ACTION label, which is as visible as the message",
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "this.snackBar.open(this.translate.instant('x.k'), 'Dismiss');\n"),
+  /passes the hard-coded string `Dismiss` to a user-facing sink/,
+);
+
+expectRed(
+  'a hard-coded error signal, which a template renders',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "this.error.set('Failed to load folder contents.');\n"),
+  /passes the hard-coded string `Failed to load folder contents\.` to a user-facing sink/,
+);
+
+// A resolved message must stay green, or the check pushes authors back to literals.
+falsePositiveControls += 1;
+expectGreen('a snackbar resolved from the catalogue', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "this.snackBar.open(this.translate.instant('x.restored'), this.translate.instant('common.ok'));\n",
+});
+
+// `console` and `throw` are developer diagnostics, not UI. Including them would make the check
+// argue with its reviewer on most hits, which is how a check gets switched off.
+falsePositiveControls += 1;
+expectGreen('a console message and a thrown error', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "console.warn('Could not parse the response.');\nthrow new Error('Unreachable state.');\n",
+});
+
+/* ---------------- a catalogue value must be what a user sees ---------------- */
+
+expectRed(
+  'an HTML character reference in a catalogue value',
+  'checkCatalogueValuesAreRenderable',
+  APP,
+  (write) => write('apps/nuxeo-ui/public/i18n/en.json', '{\n  "a": "Users &amp; Groups"\n}\n'),
+  /contains an HTML character reference/,
+);
+
+expectRed(
+  'an (s) plural suffix in a catalogue value',
+  'checkCatalogueValuesAreRenderable',
+  APP,
+  (write) => write('apps/nuxeo-ui/public/i18n/en.json', '{\n  "a": "Choose file(s)"\n}\n'),
+  /pluralises with an `\(s\)` suffix/,
+);
+
+falsePositiveControls += 1;
+expectGreen('an ampersand stored as itself', 'checkCatalogueValuesAreRenderable', {
+  ...APP,
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "Users & Groups"\n}\n',
+});
+
+/* ---------------- the contract marker, not the prose around it ---------------- */
+
+// The first version of this gate matched a sentence, and the commit that added it reworded that
+// sentence — so the gate could never fire. Both halves need a control: the marker must exist, and
+// what it promises must still be true.
+
+expectRed(
+  'the contract marker deleted, leaving the gate inert',
+  'checkNoStaleAgnosticClaim',
+  APP,
+  (write) =>
+    write(
+      'libs/shared/extensions/src/lib/extension-actions.ts',
+      'export function descriptorLabel(\n' +
+        '  descriptor: { readonly label: string },\n' +
+        '  translate: (key: string) => string,\n' +
+        '): string {\n  return translate(descriptor.label);\n}\n',
+    ),
+  /marker, so this gate asserted nothing/,
+);
+
+expectRed(
+  'the resolver parameter removed while the marker still claims it',
+  'checkNoStaleAgnosticClaim',
+  APP,
+  (write) =>
+    write(
+      'libs/shared/extensions/src/lib/extension-actions.ts',
+      '/** @i18n-contract:descriptor-api-is-framework-agnostic */\n' +
+        'export function descriptorLabel(descriptor: { readonly label: string }): string {\n' +
+        '  return descriptor.label;\n}\n',
+    ),
+  /no longer takes a resolver function/,
+);
+
 /* ------------- checkNoHardcodedDialogText: every literal form, not just one ------------- */
 
 // The first version matched single quotes only and reported green over ten template-literal dialog
@@ -1390,30 +1498,18 @@ expectGreen('a dialog message built from a resolved key', 'checkNoHardcodedDialo
 /* ---------------- checkNoStaleAgnosticClaim: the comment must match the imports ---------------- */
 
 expectRed(
-  'a library claiming no ngx-translate dependency while importing it',
+  'the contract claimed while descriptorLabel no longer honours it',
   'checkNoStaleAgnosticClaim',
   APP,
-  (write) => {
+  (write) =>
     write(
       'libs/shared/extensions/src/lib/extension-actions.ts',
-      '/**\n * Takes a resolver so this library keeps no dependency on\n * ngx-translate.\n */\n' +
-        'export const x = 1;\n',
-    );
-    write(
-      'libs/shared/extensions/src/lib/some.component.ts',
-      "import { TranslatePipe } from '@ngx-translate/core';\nexport const y = TranslatePipe;\n",
-    );
-  },
-  /keeps no dependency on ngx-translate, but 1 file\(s\) in it import/,
+      '/** @i18n-contract:descriptor-api-is-framework-agnostic */\n' +
+        'export function descriptorLabel(descriptor: { readonly label: string }): string {\n' +
+        '  return descriptor.label;\n}\n',
+    ),
+  /no longer takes a resolver function/,
 );
-
-// Importing ngx-translate is allowed; it is the stale CLAIM beside it that is not.
-falsePositiveControls += 1;
-expectGreen('importing ngx-translate without claiming otherwise', 'checkNoStaleAgnosticClaim', {
-  ...APP,
-  'libs/shared/extensions/src/lib/some.component.ts':
-    "import { TranslatePipe } from '@ngx-translate/core';\nexport const y = TranslatePipe;\n",
-});
 
 /* ---------------- the generated pseudo-locale is not a shipped one ---------------- */
 

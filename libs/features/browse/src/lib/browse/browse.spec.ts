@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { TranslateService } from '@ngx-translate/core';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
@@ -126,7 +127,7 @@ describe('BrowseComponent', () => {
     vi.clearAllMocks();
     mockDocumentDetailService.getDocumentPermissions.mockReturnValue(EMPTY);
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent],
+      imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -727,11 +728,9 @@ describe('BrowseComponent', () => {
 
     component.deleteDocument();
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(
-      'Skipped 1 item(s) that could not be loaded',
-      'OK',
-      { duration: 5000 },
-    );
+    expect(snackBarOpenSpy).toHaveBeenCalledWith('Skipped 1 item that could not be loaded', 'OK', {
+      duration: 5000,
+    });
     expect(mockDocumentDetailService.trashDocument).toHaveBeenCalledWith('doc-1');
     expect(snackBarOpenSpy).toHaveBeenCalledWith('Moved to trash', 'OK', { duration: 3000 });
   });

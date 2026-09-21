@@ -229,9 +229,15 @@ export class NoteEditorComponent {
           .map((doc) => notePictureInsertUrl(doc))
           .filter((url): url is string => !!url);
         if (!urls.length) {
-          this.snackBar.open('Selected documents have no insertable image URL', 'OK', {
-            duration: 4000,
-          });
+          this.snackBar.open(
+            this.translate.instant(
+              'document-detail.message.selected-documents-have-no-insertable-image-url',
+            ),
+            this.translate.instant('common.ok'),
+            {
+              duration: 4000,
+            },
+          );
           return;
         }
         queueMicrotask(() => this.insertImagesAtSelection(urls));
@@ -423,7 +429,13 @@ export class NoteEditorComponent {
     const parentPath = this.uploadParentPath();
     if (!editorQuill || this.imageUploading()) return;
     if (!parentPath) {
-      this.snackBar.open('Cannot upload image: parent folder is unknown', 'OK', { duration: 4000 });
+      this.snackBar.open(
+        this.translate.instant(
+          'document-detail.message.cannot-upload-image-parent-folder-is-unknown',
+        ),
+        this.translate.instant('common.ok'),
+        { duration: 4000 },
+      );
       return;
     }
 
@@ -447,12 +459,20 @@ export class NoteEditorComponent {
       .subscribe((doc) => {
         this.imageUploading.set(false);
         if (!doc || !this.quill) {
-          this.snackBar.open('Failed to upload image', 'OK', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('document-detail.message.failed-to-upload-image'),
+            this.translate.instant('common.ok'),
+            { duration: 4000 },
+          );
           return;
         }
         const url = notePictureInsertUrl(doc);
         if (!url) {
-          this.snackBar.open('Uploaded image has no display URL yet', 'OK', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('document-detail.message.uploaded-image-has-no-display-url-yet'),
+            this.translate.instant('common.ok'),
+            { duration: 4000 },
+          );
           return;
         }
         this.insertImagesAtSelection([url]);

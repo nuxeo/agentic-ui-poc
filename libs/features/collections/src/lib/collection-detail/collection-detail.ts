@@ -356,7 +356,9 @@ export class CollectionDetailComponent {
           // stale failure would otherwise show an error over a newer collection's results. The
           // superseding call already set `loading` true for itself.
           if (generation !== this.memberGeneration || requestedUid !== this.collectionUid) return;
-          this.error.set('Failed to load collection contents.');
+          this.error.set(
+            this.translate.instant('collections.message.failed-to-load-collection-contents'),
+          );
           this.loading.set(false);
         },
       });
@@ -447,7 +449,7 @@ export class CollectionDetailComponent {
         if (updatedDoc) {
           this.collection.set(updatedDoc);
           this.browseContext.requestTreeRefresh();
-          this.toast('Collection updated');
+          this.toast(this.translate.instant('browse.message.collection-updated'));
         }
       });
   }
@@ -473,7 +475,7 @@ export class CollectionDetailComponent {
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Action failed');
+        this.toast(this.translate.instant('browse.message.action-failed'));
       },
     });
   }
@@ -494,7 +496,7 @@ export class CollectionDetailComponent {
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Action failed');
+        this.toast(this.translate.instant('browse.message.action-failed'));
       },
     });
   }
@@ -527,7 +529,7 @@ export class CollectionDetailComponent {
           .subscribe({
             next: () => {
               this.actionInProgress.set(null);
-              this.toast('Collection moved to trash');
+              this.toast(this.translate.instant('browse.message.collection-moved-to-trash'));
               this.browseContext.requestTreeRefresh();
               const col = this.collection();
               const redirectUrl = col?.path ? postTrashBrowseRouterUrl(col.path) : '/collections';
@@ -554,12 +556,12 @@ export class CollectionDetailComponent {
       const updated = current.filter((c) => c.uid !== this.collectionUid);
       this.clipboardDocs.set(updated);
       writeClipboardDocs(updated);
-      this.toast('Removed from clipboard');
+      this.toast(this.translate.instant('collections.message.removed-from-clipboard'));
     } else {
       const updated = [...current, { uid: col.uid, title: col.title, type: col.type }];
       this.clipboardDocs.set(updated);
       writeClipboardDocs(updated);
-      this.toast('Added to clipboard');
+      this.toast(this.translate.instant('collections.message.added-to-clipboard'));
     }
     window.dispatchEvent(new Event('clipboard-changed'));
   }
@@ -636,7 +638,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
       if (created) {
         this.loadCollection();
-        this.toast('Permission added');
+        this.toast(this.translate.instant('browse.message.permission-added'));
       }
     });
   }
@@ -650,7 +652,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
       if (updated) {
         this.loadCollection();
-        this.toast('Permission updated');
+        this.toast(this.translate.instant('browse.message.permission-updated'));
       }
     });
   }
@@ -669,7 +671,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((deleted: boolean | undefined) => {
       if (deleted) {
         this.loadCollection();
-        this.toast('Permission deleted');
+        this.toast(this.translate.instant('browse.message.permission-deleted'));
       }
     });
   }
@@ -691,7 +693,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
       if (updated) {
         this.loadCollection();
-        this.toast('Permission updated');
+        this.toast(this.translate.instant('browse.message.permission-updated'));
       }
     });
   }
@@ -703,7 +705,7 @@ export class CollectionDetailComponent {
     this.detailService.sendNotificationEmailForPermission(this.collectionUid, ace.id).subscribe({
       next: () => {
         this.actionInProgress.set(null);
-        this.toast('Notification email sent');
+        this.toast(this.translate.instant('browse.message.notification-email-sent'));
       },
       error: (err) => {
         this.actionInProgress.set(null);
@@ -723,7 +725,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
       if (created) {
         this.loadCollection();
-        this.toast('Shared with external user');
+        this.toast(this.translate.instant('browse.message.shared-with-external-user'));
       }
     });
   }
@@ -745,7 +747,7 @@ export class CollectionDetailComponent {
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Action failed');
+        this.toast(this.translate.instant('browse.message.action-failed'));
       },
     });
   }
@@ -885,7 +887,7 @@ export class CollectionDetailComponent {
   avatarColor = avatarColor;
 
   private toast(message: string): void {
-    this.snackBar.open(message, 'OK', {
+    this.snackBar.open(message, this.translate.instant('common.ok'), {
       duration: 3000,
       horizontalPosition: 'center',
       verticalPosition: 'bottom',

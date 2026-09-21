@@ -731,7 +731,7 @@ export class BrowseAdfHxPocComponent {
       error: () => {
         this.loading.set(false);
         this.listLoading.set(false);
-        this.error.set('Failed to load folder contents.');
+        this.error.set(this.translate.instant('browse.message.failed-to-load-folder-contents'));
       },
     });
   }

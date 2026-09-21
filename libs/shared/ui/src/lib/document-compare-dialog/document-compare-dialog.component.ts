@@ -17,7 +17,7 @@ import {
   type CompareRow,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { CompareIconImageComponent } from './compare-icon-image.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface DocumentCompareDialogData {
   items: Array<{ id: string; name: string }>;
@@ -43,6 +43,7 @@ export interface DocumentCompareDialogData {
 })
 export class DocumentCompareDialogComponent {
   private readonly detailService = inject(DocumentDetailService);
+  private readonly translate = inject(TranslateService);
   readonly data = inject<DocumentCompareDialogData>(MAT_DIALOG_DATA);
 
   readonly leftId = signal(this.data.items[0]?.id ?? '');
@@ -72,7 +73,9 @@ export class DocumentCompareDialogComponent {
       if (!leftId || !rightId || leftId === rightId) {
         this.leftDoc.set(null);
         this.rightDoc.set(null);
-        this.error.set('Select two different documents to compare.');
+        this.error.set(
+          this.translate.instant('shared-ui.message.select-two-different-documents-to-compare'),
+        );
         this.loading.set(false);
         return;
       }
@@ -88,7 +91,9 @@ export class DocumentCompareDialogComponent {
         .pipe(
           catchError(() => {
             if (!cancelled) {
-              this.error.set('Failed to load documents for comparison.');
+              this.error.set(
+                this.translate.instant('shared-ui.message.failed-to-load-documents-for-comparison'),
+              );
             }
             return of(null);
           }),

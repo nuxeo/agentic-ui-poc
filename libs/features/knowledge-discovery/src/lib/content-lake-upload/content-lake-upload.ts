@@ -226,7 +226,7 @@ export class ContentLakeUploadComponent {
     this.errorMessage.set(null);
     this.uploadedDocuments.set([]);
     this.ingestProcessedCount.set(0);
-    this.statusMessage.set('Uploading to Nuxeo...');
+    this.statusMessage.set(this.translate.instant('kd.message.uploading-to-nuxeo'));
 
     this.importService
       .importFiles(parentPath, files)
@@ -236,7 +236,9 @@ export class ContentLakeUploadComponent {
           const uploads = documents.map((doc) => this.toUploadedDocument(doc));
           this.uploadedDocuments.set(uploads);
           this.phase.set('ingesting');
-          this.statusMessage.set('Sending documents to Content Lake...');
+          this.statusMessage.set(
+            this.translate.instant('kd.message.sending-documents-to-content-lake'),
+          );
           return this.ingestService.startIngest(uploads.map((doc) => doc.uid));
         }),
         switchMap((command) => this.ingestService.waitUntilComplete(command.commandId)),
@@ -310,11 +312,11 @@ export class ContentLakeUploadComponent {
   }
 
   private showSuccessToast(message: string): void {
-    this.snackBar.open(message, 'OK', { duration: 5000 });
+    this.snackBar.open(message, this.translate.instant('common.ok'), { duration: 5000 });
   }
 
   private showFailureToast(message: string): void {
-    this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+    this.snackBar.open(message, this.translate.instant('common.dismiss'), { duration: 7000 });
   }
 
   private refreshFolderSuggestions(path: string): void {

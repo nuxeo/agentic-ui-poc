@@ -106,7 +106,7 @@ export class AdminUserDetailsPageComponent implements OnInit {
 
   load(): void {
     if (!this.userId) {
-      this.error.set('Missing user id.');
+      this.error.set(this.translate.instant('admin.message.missing-user-id'));
       return;
     }
     this.loading.set(true);
@@ -238,13 +238,21 @@ export class AdminUserDetailsPageComponent implements OnInit {
         if (!newPassword) return;
         this.userService.updateUser(user.id, { password: newPassword }).subscribe({
           next: () => {
-            this.snackBar.open('Password updated', 'Dismiss', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('admin.message.password-updated'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            );
             this.load();
           },
           error: (e) =>
-            this.snackBar.open(e?.error?.message ?? 'Password update failed', 'Dismiss', {
-              duration: 5000,
-            }),
+            this.snackBar.open(
+              e?.error?.message ?? 'Password update failed',
+              this.translate.instant('common.dismiss'),
+              {
+                duration: 5000,
+              },
+            ),
         });
       });
   }
@@ -274,13 +282,21 @@ export class AdminUserDetailsPageComponent implements OnInit {
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('User updated', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('admin.message.user-updated'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              );
               this.load();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
-                duration: 5000,
-              }),
+              this.snackBar.open(
+                e?.error?.message ?? 'Update failed',
+                this.translate.instant('common.dismiss'),
+                {
+                  duration: 5000,
+                },
+              ),
           });
       });
   }
@@ -305,11 +321,19 @@ export class AdminUserDetailsPageComponent implements OnInit {
         if (!ok) return;
         this.userService.deleteUser(user.id).subscribe({
           next: () => {
-            this.snackBar.open('User deleted', 'Dismiss', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('admin.message.user-deleted'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            );
             this.router.navigate(['/administration/users-groups']);
           },
           error: (e) =>
-            this.snackBar.open(e?.error?.message ?? 'Delete failed', 'Dismiss', { duration: 5000 }),
+            this.snackBar.open(
+              e?.error?.message ?? 'Delete failed',
+              this.translate.instant('common.dismiss'),
+              { duration: 5000 },
+            ),
         });
       });
   }
@@ -320,13 +344,21 @@ export class AdminUserDetailsPageComponent implements OnInit {
     const nextGroups = (user.properties.groups ?? []).filter((g) => g !== groupId);
     this.userService.updateUser(user.id, { groups: nextGroups }).subscribe({
       next: () => {
-        this.snackBar.open('Group removed from user', 'Dismiss', { duration: 2500 });
+        this.snackBar.open(
+          this.translate.instant('admin.message.group-removed-from-user'),
+          this.translate.instant('common.dismiss'),
+          { duration: 2500 },
+        );
         this.load();
       },
       error: (e) =>
-        this.snackBar.open(e?.error?.message ?? 'Could not update user groups', 'Dismiss', {
-          duration: 5000,
-        }),
+        this.snackBar.open(
+          e?.error?.message ?? 'Could not update user groups',
+          this.translate.instant('common.dismiss'),
+          {
+            duration: 5000,
+          },
+        ),
     });
   }
 
@@ -339,15 +371,23 @@ export class AdminUserDetailsPageComponent implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.snackBar.open('Permission removed', 'Dismiss', { duration: 2500 });
+          this.snackBar.open(
+            this.translate.instant('admin.message.permission-removed'),
+            this.translate.instant('common.dismiss'),
+            { duration: 2500 },
+          );
           this.loadLocalPerms();
           const u = this.user();
           if (u) this.loadAllGroupPerms(u);
         },
         error: (e) =>
-          this.snackBar.open(e?.error?.message ?? 'Could not remove permission', 'Dismiss', {
-            duration: 5000,
-          }),
+          this.snackBar.open(
+            e?.error?.message ?? 'Could not remove permission',
+            this.translate.instant('common.dismiss'),
+            {
+              duration: 5000,
+            },
+          ),
       });
   }
 

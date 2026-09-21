@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { NuxeoDocument, DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface PublishDialogData {
   documentUid: string;
@@ -220,6 +220,7 @@ interface FlatSection {
 export class PublishDialogComponent implements OnInit {
   readonly data = inject<PublishDialogData>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject(MatDialogRef<PublishDialogComponent>);
+  private readonly translate = inject(TranslateService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -308,14 +309,22 @@ export class PublishDialogComponent implements OnInit {
       .subscribe({
         next: () => {
           this.publishing.set(false);
-          this.snackBar.open(`"${this.data.documentTitle}" published successfully`, 'OK', {
-            duration: 3000,
-          });
+          this.snackBar.open(
+            `"${this.data.documentTitle}" published successfully`,
+            this.translate.instant('common.ok'),
+            {
+              duration: 3000,
+            },
+          );
           this.dialogRef.close(true);
         },
         error: () => {
           this.publishing.set(false);
-          this.snackBar.open('Failed to publish document', 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('document-detail.message.failed-to-publish-document'),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
         },
       });
   }

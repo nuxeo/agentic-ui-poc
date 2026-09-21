@@ -1036,7 +1036,16 @@ export class CreateImportDialogComponent implements OnInit {
       )
       .subscribe({
         next: (docs) => {
-          this.snackBar.open(`Created ${docs.length} document(s).`, 'Close', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant(
+              docs.length === 1
+                ? 'common.count.created-document-one'
+                : 'common.count.created-document-many',
+              { count: docs.length },
+            ),
+            this.translate.instant('common.close'),
+            { duration: 4000 },
+          );
           this.dialogRef.close({
             refreshed: true,
             path,
@@ -1210,7 +1219,14 @@ export class CreateImportDialogComponent implements OnInit {
   ): void {
     this.mainFile.set(null);
     if (!hadFile) {
-      this.snackBar.open(`Created ${docTypeName} “${title}”`, 'Close', { duration: 4000 });
+      this.snackBar.open(
+        this.translate.instant('browse.create-import-dialog.created-named', {
+          type: docTypeName,
+          title,
+        }),
+        this.translate.instant('common.close'),
+        { duration: 4000 },
+      );
     }
     this.dialogRef.close({
       refreshed: true,
@@ -1362,7 +1378,7 @@ export class CreateImportDialogComponent implements OnInit {
   private selectCsvFile(file: File): void {
     if (!file.name.toLowerCase().endsWith('.csv')) {
       this.csvFile.set(null);
-      this.error.set('Please select a .csv file.');
+      this.error.set(this.translate.instant('browse.message.please-select-a-csv-file'));
       return;
     }
     this.csvFile.set(file);
@@ -1407,7 +1423,16 @@ export class CreateImportDialogComponent implements OnInit {
       )
       .subscribe({
         next: (docs) => {
-          this.snackBar.open(`Created ${docs.length} file(s).`, 'Close', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant(
+              docs.length === 1
+                ? 'common.count.created-file-one'
+                : 'common.count.created-file-many',
+              { count: docs.length },
+            ),
+            this.translate.instant('common.close'),
+            { duration: 4000 },
+          );
           this.dialogRef.close({
             refreshed: true,
             path,
@@ -1450,7 +1475,7 @@ export class CreateImportDialogComponent implements OnInit {
           this.busy.set(false);
           if (err?.status === 404) {
             this.error.set(
-              'CSV import is not available. Install the Nuxeo CSV addon on the server.',
+              this.translate.instant('browse.message.csv-import-is-not-available-install-the'),
             );
             return;
           }

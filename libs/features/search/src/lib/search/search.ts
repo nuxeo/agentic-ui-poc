@@ -350,7 +350,7 @@ export class SearchComponent {
         catchError(() => {
           this.searchAggregationService.aggregations.set({});
           this.searchAggregationService.items.set([]);
-          this.error.set('Failed to load search results.');
+          this.error.set(this.translate.instant('search.message.failed-to-load-search-results'));
           this.loading.set(false);
           return of<SearchResultItem[]>([]);
         }),
@@ -665,9 +665,16 @@ export class SearchComponent {
         window.dispatchEvent(new Event('favorites-changed'));
       },
       error: (err) => {
-        this.snackBar.open(this.getApiErrorMessage(err, 'Failed to update favorites.'), 'Dismiss', {
-          duration: 5000,
-        });
+        this.snackBar.open(
+          this.getApiErrorMessage(
+            err,
+            this.translate.instant('search.message.failed-to-update-favorites'),
+          ),
+          this.translate.instant('common.dismiss'),
+          {
+            duration: 5000,
+          },
+        );
       },
     });
   }
@@ -715,8 +722,11 @@ export class SearchComponent {
         },
         error: (err) => {
           this.snackBar.open(
-            this.getApiErrorMessage(err, 'Failed to download document.'),
-            'Dismiss',
+            this.getApiErrorMessage(
+              err,
+              this.translate.instant('search.message.failed-to-download-document'),
+            ),
+            this.translate.instant('common.dismiss'),
             {
               duration: 5000,
             },
@@ -831,10 +841,18 @@ export class SearchComponent {
                 this.readSavedSearchTitle(saved) || trimmedTitle,
               );
               this.searchAggregationService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('common.search-saved', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-save-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });
@@ -863,10 +881,18 @@ export class SearchComponent {
         next: () => {
           this.searchAggregationService.selectedSavedSearchTitle.set(currentTitle);
           this.searchAggregationService.markSavedSearchDirty();
-          this.snackBar.open(`Search "${currentTitle}" updated.`, 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('common.search-updated', { name: currentTitle }),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
         },
         error: () => {
-          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+          this.snackBar.open(
+            this.translate.instant('assets.message.failed-to-save-search'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          );
         },
       });
   }
@@ -898,12 +924,20 @@ export class SearchComponent {
             next: () => {
               this.searchAggregationService.selectedSavedSearchTitle.set(trimmedTitle);
               this.searchAggregationService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', {
-                duration: 3000,
-              });
+              this.snackBar.open(
+                this.translate.instant('common.search-updated', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                {
+                  duration: 3000,
+                },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-update-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });

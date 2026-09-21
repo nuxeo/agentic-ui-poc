@@ -24,7 +24,7 @@ import {
   isMailSendError,
   permissionCreateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface AddPermissionDialogData {
   documentUid: string;
@@ -151,6 +151,7 @@ const PERMISSION_OPTIONS = [
 })
 export class AddPermissionDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<AddPermissionDialogComponent>);
+  private readonly translate = inject(TranslateService);
   private readonly data = inject<AddPermissionDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
@@ -228,19 +229,27 @@ export class AddPermissionDialogComponent {
           const message = this.successMessage(result.notificationSent, result.notificationError);
           if (andAddAnother) {
             if (message) {
-              this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+              this.snackBar.open(message, this.translate.instant('common.dismiss'), {
+                duration: 7000,
+              });
             }
             this.resetForm();
           } else {
             if (message) {
-              this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+              this.snackBar.open(message, this.translate.instant('common.dismiss'), {
+                duration: 7000,
+              });
             }
             this.dialogRef.close(true);
           }
         },
         error: (err) => {
           this.saving.set(false);
-          this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
+          this.snackBar.open(
+            this.permissionErrorMessage(err),
+            this.translate.instant('common.dismiss'),
+            { duration: 7000 },
+          );
         },
       });
   }

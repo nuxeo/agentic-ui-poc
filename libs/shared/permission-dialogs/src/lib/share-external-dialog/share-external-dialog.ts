@@ -18,7 +18,7 @@ import {
   isMailSendError,
   permissionCreateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface ShareExternalDialogData {
   documentUid: string;
@@ -113,6 +113,7 @@ const PERMISSION_OPTIONS = [
 })
 export class ShareExternalDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ShareExternalDialogComponent, boolean>);
+  private readonly translate = inject(TranslateService);
   private readonly data = inject<ShareExternalDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
@@ -160,7 +161,9 @@ export class ShareExternalDialogComponent {
           this.createdAny = true;
           const message = this.successMessage(result.notificationSent, result.notificationError);
           if (message) {
-            this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+            this.snackBar.open(message, this.translate.instant('common.dismiss'), {
+              duration: 7000,
+            });
           }
           if (andAddAnother) {
             this.resetForm();
@@ -170,7 +173,11 @@ export class ShareExternalDialogComponent {
         },
         error: (err) => {
           this.saving.set(false);
-          this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
+          this.snackBar.open(
+            this.permissionErrorMessage(err),
+            this.translate.instant('common.dismiss'),
+            { duration: 7000 },
+          );
         },
       });
   }
