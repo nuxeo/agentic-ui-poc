@@ -1225,16 +1225,24 @@ function checkNoHardcodedUiText() {
    * the markup, and the patterns above see it unchanged.
    */
   function blankSkippableSpans(body) {
+    // Each opener lists EVERY terminator the HTML parser accepts, not just the common one.
+    //
+    // `-->` alone is wrong: the spec's comment-end-bang state makes `--!>` a valid terminator too,
+    // so `<!-- note --!>Delete</div>` closes the comment and `Delete` is visible text. With one
+    // terminator this function read the comment as unterminated and blanked to end of file —
+    // taking every hard-coded string after it out of the gate's sight. CodeQL flagged the same
+    // pattern in `extract.mjs`, where it only skips an extraction; here it silently disables the
+    // check for the rest of the file, which is the worse direction.
     const OPENERS = [
-      ['<!--', '-->'],
-      ['<pre', '</pre>'],
+      ['<!--', ['-->', '--!>']],
+      ['<pre', ['</pre>']],
       // `<code>` holds identifiers shown to a developer — `ConfirmDialogComponent`,
       // `Nuxeo-Drive.DMG`. The extraction codemod keyed nine Angular class names on the contracts
       // page as translatable strings, which would have let a translator rename a class in the
       // documentation. Restoring them as literals then made this gate flag them as hard-coded
       // English, because it cannot tell an identifier from prose — so the element that marks
       // something as code is what excludes it, exactly as `<pre>` already does.
-      ['<code', '</code>'],
+      ['<code', ['</code>']],
     ];
     const chars = [...body];
     let index = 0;
@@ -1245,11 +1253,21 @@ function checkNoHardcodedUiText() {
         index += 1;
         continue;
       }
-      const [, close] = opener;
-      const end = body.indexOf(close, index);
+      const [, closers] = opener;
+      // The EARLIEST terminator wins, so a `-->` later in the file cannot extend a span that
+      // `--!>` already closed.
+      let end = -1;
+      let closeLength = 0;
+      for (const close of closers) {
+        const at = body.indexOf(close, index + 1);
+        if (at !== -1 && (end === -1 || at < end)) {
+          end = at;
+          closeLength = close.length;
+        }
+      }
       // An unterminated comment or `<pre>` runs to end of file. Blanking to the end is the safe
       // reading: the rest of the file is inside it as far as a browser is concerned.
-      const stop = end === -1 ? chars.length : end + close.length;
+      const stop = end === -1 ? chars.length : end + closeLength;
       for (let at = index; at < stop; at += 1) {
         if (chars[at] !== '\n') chars[at] = ' ';
       }

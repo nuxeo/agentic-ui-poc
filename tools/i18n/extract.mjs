@@ -259,7 +259,11 @@ for (const target of targets) {
       // The opening tag immediately before this text decides whether it is prose at all.
       const openTag = body.slice(Math.max(0, offset - 200), offset + 1);
       if (NON_PROSE_ELEMENTS.test(openTag)) return whole;
-      if (/<!--/.test(openTag) && !/-->/.test(openTag)) return whole;
+      // `--!>` is a comment terminator as well as `-->` (the spec's comment-end-bang state), so
+      // testing only for `-->` reads a closed comment as open and skips text that is in fact
+      // visible. That is an under-extraction, which is the failure this whole codemod exists to
+      // avoid. Flagged by CodeQL as a bad HTML-filtering regexp.
+      if (/<!--/.test(openTag) && !/--!?>/.test(openTag)) return whole;
 
       const text = raw.trim();
       const key = keyFor(text, `Visible text in ${component}. Rendered in ${file}.`);

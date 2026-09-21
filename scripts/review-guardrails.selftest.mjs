@@ -1337,6 +1337,31 @@ expectGreen('a fully parameterised sentence', 'checkNoHardcodedUiText', {
     "<p>{{ 'x.slot-empty' | translate: { name: item.label } }}</p>\n",
 });
 
+/* ---------------- a comment may end with --!> as well as --> ---------------- */
+
+// `--!>` is a valid comment terminator (the spec's comment-end-bang state). Recognising only `-->`
+// made `blankSkippableSpans` read a CLOSED comment as open and blank to end of file, which removed
+// every string after it from this gate's sight. CodeQL flagged the same pattern in `extract.mjs`,
+// where it merely skips an extraction; here it disables the check for the rest of the file.
+expectRed(
+  'a hard-coded string after a comment closed with --!>',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<!-- a note --!>\n<button title="Recently Edited"></button>\n',
+    ),
+  /title="Recently Edited"/,
+);
+
+// The ordinary terminator must still work, and the comment's own prose must stay exempt.
+falsePositiveControls += 1;
+expectGreen('prose inside a comment closed with --!>', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html': '<!-- Explains the slot in prose. --!>\n<div></div>\n',
+});
+
 /* ---------------- imperative UI text, built in TypeScript ---------------- */
 
 // The class that survived eight review rounds: 333 strings in snackbars, status signals and toasts.
