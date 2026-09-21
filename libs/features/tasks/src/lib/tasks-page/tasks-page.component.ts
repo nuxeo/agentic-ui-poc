@@ -236,7 +236,7 @@ export class TasksPageComponent implements OnInit {
         }
       },
       error: () => {
-        this.listError.set('Failed to load tasks.');
+        this.listError.set(this.translate.instant('tasks.message.failed-to-load-tasks'));
         this.listLoading.set(false);
       },
     });

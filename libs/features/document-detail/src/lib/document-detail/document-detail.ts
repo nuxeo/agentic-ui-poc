@@ -91,7 +91,7 @@ import {
   mergeDocumentPermissionsContext,
   auditActivityLabel,
   resolveAcePrincipal,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   isPermissionDeniedError,
   isBlobHoldingDocType,
   isFolderishDocument,
@@ -1120,7 +1120,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiSummaryLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(aiErrorMessage(err, 'Summary generation failed'));
+        this.aiError.set(
+          aiErrorMessage(
+            err,
+            this.translate.instant('document-detail.message.summary-generation-failed'),
+          ),
+        );
         this.aiSummaryLoading.set(false);
       },
     });
@@ -1136,7 +1141,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiTagsLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(aiErrorMessage(err, 'Tag suggestion failed'));
+        this.aiError.set(
+          aiErrorMessage(
+            err,
+            this.translate.instant('document-detail.message.tag-suggestion-failed'),
+          ),
+        );
         this.aiTagsLoading.set(false);
       },
     });
@@ -1273,7 +1283,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiClassifyLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(aiErrorMessage(err, 'Classification failed'));
+        this.aiError.set(
+          aiErrorMessage(
+            err,
+            this.translate.instant('document-detail.message.classification-failed'),
+          ),
+        );
         this.aiClassifyLoading.set(false);
       },
     });
@@ -1289,7 +1304,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiSimilarLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(aiErrorMessage(err, 'Similar doc search failed'));
+        this.aiError.set(
+          aiErrorMessage(
+            err,
+            this.translate.instant('document-detail.message.similar-doc-search-failed'),
+          ),
+        );
         this.aiSimilarLoading.set(false);
       },
     });
@@ -3436,7 +3456,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         error: (err) => {
           this.noteSaving.set(false);
           this.toast(
-            isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to save note',
+            isPermissionDeniedError(err)
+              ? this.translate.instant(PERMISSION_DENIED_KEY)
+              : 'Failed to save note',
           );
         },
       });
@@ -3478,13 +3500,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private requireWritePermission(): boolean {
     if (canWriteDocument(this.doc())) return true;
-    this.toast(PERMISSION_DENIED_MESSAGE);
+    this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
     return false;
   }
 
   private requireRemovePermission(): boolean {
     if (canRemoveDocument(this.doc())) return true;
-    this.toast(PERMISSION_DENIED_MESSAGE);
+    this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
     return false;
   }
 

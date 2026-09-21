@@ -1123,7 +1123,12 @@ export class SearchComponent {
         },
         error: (err) => {
           if (generation !== this.aiRequestGeneration) return;
-          this.aiError.set(aiErrorMessage(err, 'AI search failed. Try again.'));
+          this.aiError.set(
+            aiErrorMessage(
+              err,
+              this.translate.instant('search.message.ai-search-failed-try-again'),
+            ),
+          );
           this.aiLoading.set(false);
         },
       });
@@ -1184,7 +1189,11 @@ export class SearchComponent {
           // Guarded too: a stale failure would otherwise replace a newer query's results with an
           // error banner and clear its loading state.
           if (generation !== this.aiRequestGeneration) return;
-          this.aiError.set('NXQL query execution failed. The generated query may be invalid.');
+          this.aiError.set(
+            this.translate.instant(
+              'search.message.nxql-query-execution-failed-the-generated-query',
+            ),
+          );
           this.aiNxqlLoading.set(false);
           this.aiLoading.set(false);
         },

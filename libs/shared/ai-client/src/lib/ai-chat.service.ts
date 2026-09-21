@@ -1,4 +1,5 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { aiErrorMessage } from './ai-error';
 import { AiGatewayService } from './ai-gateway.service';
 import type { ChatMessage, DocRef } from './ai.models';
@@ -13,6 +14,7 @@ export interface ChatEntry {
 @Injectable({ providedIn: 'root' })
 export class AiChatService {
   private readonly ai = inject(AiGatewayService);
+  private readonly translate = inject(TranslateService);
 
   readonly messages = signal<ChatEntry[]>([]);
   readonly loading = signal(false);
@@ -62,7 +64,12 @@ export class AiChatService {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(aiErrorMessage(err, 'AI service unavailable'));
+        this.error.set(
+          aiErrorMessage(
+            err,
+            this.translate.instant('shared-ai-client.message.ai-service-unavailable'),
+          ),
+        );
         this.loading.set(false);
       },
     });

@@ -78,7 +78,7 @@ import {
   isDomainParentType,
   isRepositoryRootPath,
   isRestrictedImportParentPath,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   isPermissionDeniedError,
   isMailSendError,
   mailSendFailureMessage,
@@ -1309,9 +1309,13 @@ export class BrowseComponent {
       return;
     }
     if (!canAddChildren(doc)) {
-      this.snackBar.open(PERMISSION_DENIED_MESSAGE, this.translate.instant('common.ok'), {
-        duration: 4000,
-      });
+      this.snackBar.open(
+        this.translate.instant(PERMISSION_DENIED_KEY),
+        this.translate.instant('common.ok'),
+        {
+          duration: 4000,
+        },
+      );
       return;
     }
     if (isDomainParentType(doc.type) || isRestrictedImportParentPath(doc.path)) {
@@ -1378,9 +1382,13 @@ export class BrowseComponent {
     const doc = this.currentDoc();
     if (!doc) return;
     if (!canWriteDocument(doc)) {
-      this.snackBar.open(PERMISSION_DENIED_MESSAGE, this.translate.instant('common.ok'), {
-        duration: 4000,
-      });
+      this.snackBar.open(
+        this.translate.instant(PERMISSION_DENIED_KEY),
+        this.translate.instant('common.ok'),
+        {
+          duration: 4000,
+        },
+      );
       return;
     }
     const data: EditMetadataDialogData = {
@@ -1441,9 +1449,13 @@ export class BrowseComponent {
       .subscribe({
         next: (fullDoc) => {
           if (!canWriteDocument(fullDoc)) {
-            this.snackBar.open(PERMISSION_DENIED_MESSAGE, this.translate.instant('common.ok'), {
-              duration: 4000,
-            });
+            this.snackBar.open(
+              this.translate.instant(PERMISSION_DENIED_KEY),
+              this.translate.instant('common.ok'),
+              {
+                duration: 4000,
+              },
+            );
             return;
           }
           const ref = this.dialog.open(EditCollectionDialogComponent, {
@@ -1467,7 +1479,9 @@ export class BrowseComponent {
         },
         error: (err) =>
           this.snackBar.open(
-            isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to load collection',
+            isPermissionDeniedError(err)
+              ? this.translate.instant(PERMISSION_DENIED_KEY)
+              : this.translate.instant('browse.message.failed-to-load-collection'),
             this.translate.instant('common.ok'),
             { duration: isPermissionDeniedError(err) ? 4000 : 3000 },
           ),
@@ -1481,9 +1495,13 @@ export class BrowseComponent {
       .subscribe({
         next: (fullDoc) => {
           if (!canRemoveDocument(fullDoc)) {
-            this.snackBar.open(PERMISSION_DENIED_MESSAGE, this.translate.instant('common.ok'), {
-              duration: 4000,
-            });
+            this.snackBar.open(
+              this.translate.instant(PERMISSION_DENIED_KEY),
+              this.translate.instant('common.ok'),
+              {
+                duration: 4000,
+              },
+            );
             return;
           }
           const dialogRef = this.dialog.open(ConfirmDialogComponent, {
@@ -1517,8 +1535,8 @@ export class BrowseComponent {
                   error: (err) =>
                     this.snackBar.open(
                       isPermissionDeniedError(err)
-                        ? PERMISSION_DENIED_MESSAGE
-                        : 'Failed to delete collection',
+                        ? this.translate.instant(PERMISSION_DENIED_KEY)
+                        : this.translate.instant('browse.message.failed-to-delete-collection'),
                       this.translate.instant('common.ok'),
                       { duration: isPermissionDeniedError(err) ? 4000 : 3000 },
                     ),
@@ -1527,7 +1545,9 @@ export class BrowseComponent {
         },
         error: (err) =>
           this.snackBar.open(
-            isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to load collection',
+            isPermissionDeniedError(err)
+              ? this.translate.instant(PERMISSION_DENIED_KEY)
+              : this.translate.instant('browse.message.failed-to-load-collection'),
             this.translate.instant('common.ok'),
             { duration: isPermissionDeniedError(err) ? 4000 : 3000 },
           ),
@@ -1591,9 +1611,13 @@ export class BrowseComponent {
 
   private proceedToTrashDocument(doc: NuxeoDocument): void {
     if (!canRemoveDocument(doc)) {
-      this.snackBar.open(PERMISSION_DENIED_MESSAGE, this.translate.instant('common.ok'), {
-        duration: 4000,
-      });
+      this.snackBar.open(
+        this.translate.instant(PERMISSION_DENIED_KEY),
+        this.translate.instant('common.ok'),
+        {
+          duration: 4000,
+        },
+      );
       return;
     }
     this.openTrashConfirmDialog(doc);
@@ -1610,7 +1634,7 @@ export class BrowseComponent {
   }
 
   private confirmTrashDocument(doc: NuxeoDocument): void {
-    if (doc.type === 'Collections') {
+    if (doc.type === this.translate.instant('search.search-filters-drawer.collections')) {
       this.guardCollectionsFolderDelete(doc);
       return;
     }
@@ -1645,7 +1669,9 @@ export class BrowseComponent {
             },
             error: (err) =>
               this.snackBar.open(
-                isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to delete',
+                isPermissionDeniedError(err)
+                  ? this.translate.instant(PERMISSION_DENIED_KEY)
+                  : this.translate.instant('browse.message.failed-to-delete'),
                 this.translate.instant('common.ok'),
                 { duration: isPermissionDeniedError(err) ? 4000 : 3000 },
               ),
@@ -1681,7 +1707,9 @@ export class BrowseComponent {
             if (loadFailedCount > 0) {
               this.snackBar.open(
                 resolved.length === 0
-                  ? 'Failed to load selected documents for deletion'
+                  ? this.translate.instant(
+                      'browse.message.failed-to-load-selected-documents-for-deletion',
+                    )
                   : this.translate.instant(
                       loadFailedCount === 1
                         ? 'common.count.skipped-unloadable-one'
@@ -1693,9 +1721,13 @@ export class BrowseComponent {
               );
             }
             if (resolved.length > 0) {
-              this.snackBar.open(PERMISSION_DENIED_MESSAGE, this.translate.instant('common.ok'), {
-                duration: 4000,
-              });
+              this.snackBar.open(
+                this.translate.instant(PERMISSION_DENIED_KEY),
+                this.translate.instant('common.ok'),
+                {
+                  duration: 4000,
+                },
+              );
             }
             return EMPTY;
           }
@@ -1777,7 +1809,9 @@ export class BrowseComponent {
           }
           this.selectionService.clear();
           this.snackBar.open(
-            trashed === 1 ? 'Moved to trash' : `${trashed} documents moved to trash`,
+            trashed === 1
+              ? this.translate.instant('browse.message.moved-to-trash')
+              : `${trashed} documents moved to trash`,
             this.translate.instant('common.ok'),
             { duration: 3000 },
           );
@@ -1852,7 +1886,9 @@ export class BrowseComponent {
           next: (d) => this.currentDoc.set(d),
         });
         this.snackBar.open(
-          wasSubscribed ? 'Unsubscribed' : 'Subscribed to notifications',
+          wasSubscribed
+            ? this.translate.instant('browse.message.unsubscribed')
+            : this.translate.instant('browse.message.subscribed-to-notifications'),
           this.translate.instant('common.ok'),
           {
             duration: 3000,
@@ -2141,7 +2177,9 @@ export class BrowseComponent {
         this.actionInProgress.set(null);
         this.reloadPermissions();
         this.snackBar.open(
-          blocked ? 'Inheritance unblocked' : 'Inheritance blocked',
+          blocked
+            ? this.translate.instant('browse.message.inheritance-unblocked')
+            : this.translate.instant('browse.message.inheritance-blocked'),
           this.translate.instant('common.ok'),
           {
             duration: 3000,

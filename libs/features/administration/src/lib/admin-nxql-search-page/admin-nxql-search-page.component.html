@@ -35,7 +35,7 @@
           <input
             matInput
             [(ngModel)]="aiNlQuery"
-            placeholder="e.g. All PDFs created last month"
+            [placeholder]="'admin.admin-nxql-search-page.query-example' | translate"
             (keydown.enter)="generateFromNl()"
           />
           <mat-icon matPrefix class="ai-prefix-icon">auto_awesome</mat-icon>

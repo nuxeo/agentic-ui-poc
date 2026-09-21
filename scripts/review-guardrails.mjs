@@ -1142,6 +1142,30 @@ function checkNoHardcodedUiText() {
   }
 
   /**
+   * Whether a text-bearing attribute's value is text a user reads.
+   *
+   * No initial-capital rule: the attribute name has already established that the value is prose, so
+   * the only question left is whether it is words rather than a token. A date mask like
+   * `mm/dd/yyyy` IS words for this purpose — it tells the user what format to type and differs by
+   * locale, which is precisely why it must be translatable.
+   */
+  function isAttributeText(value) {
+    const text = value
+      .trim()
+      .replace(/^(['"])(.*)\1$/, '$2')
+      .trim();
+    if (text.length < 2) return false;
+    // A binding expression or an interpolation is handled by the other branches.
+    if (/[{}]/.test(text)) return false;
+    // A repository path or a URL is STRUCTURE, not prose: `/default-domain/workspaces/MyWorkspace`
+    // tells the user the shape of a path, and translating a path segment would make the example
+    // wrong. Excluded by shape rather than by a capital letter, which is the distinction this
+    // predicate exists to draw.
+    if (/^(?:\/|[a-z]+:\/\/)/.test(text)) return false;
+    return (text.match(/[A-Za-z]/g) ?? []).length >= 2;
+  }
+
+  /**
    * Templates exempt from the repo-wide sweep, and why each one is.
    *
    * `apps/nuxeo-satori-template` is the customer starter template and its 122 strings are
@@ -1302,7 +1326,15 @@ function checkNoHardcodedUiText() {
       let offence = null;
 
       for (const [, attribute, value] of remainder.matchAll(TEXT_ATTRIBUTES)) {
-        if (!isDisplayText(value)) continue;
+        // A TEXT attribute is judged on its own terms, not by `isDisplayText`.
+        //
+        // That predicate requires an initial capital, which is right where it has to separate prose
+        // from CSS values and icon ligatures in text position. But `placeholder`, `matTooltip`,
+        // `alt`, `aria-label` and `title` can only ever hold text a user reads — the attribute name
+        // has already settled that — so the capital rule adds nothing and subtracts
+        // `placeholder="e.g. All PDFs created last month"` and `placeholder="mm/dd/yyyy"`, which
+        // are exactly the shapes that stayed English while this gate reported the sweep clean.
+        if (!isAttributeText(value)) continue;
         offence = { what: `${attribute}="${value}"`, value };
         break;
       }
@@ -3397,16 +3429,36 @@ function checkNoStaleAgnosticClaim() {
  * concatenation and therefore worse than a plain one, not better.
  */
 function checkNoHardcodedImperativeUiText() {
+  /**
+   * Names that hold text a template renders.
+   *
+   * The first version matched `error|status|message|...` as a PREFIX, which missed every signal
+   * whose name ends in one — `recentlyEditedError`, `documentError`, `aiAnomalySummary`,
+   * `referenceDataError`. That is the more common naming in this repository, so the check
+   * substantiated far less than the count I quoted from it. Matched anywhere in the identifier now.
+   */
+  const SINK_NAME = /(?:error|status|message|notice|warning|summary|hint)/i;
+
   const SINKS = [
-    // `snackBar.open('Saved.', 'OK')` — message and action label, both rendered.
-    /\bsnackBar\s*\.\s*open\(\s*(['"`])([A-Z][^'"`]{2,})\1/g,
+    // `snackBar.open('Saved.', 'OK')` — message and action label, both rendered. The literal is
+    // matched ANYWHERE in the first argument, not only as the whole of it: the argument is often a
+    // ternary, and `isPermissionDeniedError(err) ? DENIED : 'Failed to update collection'` had a
+    // hard-coded branch the direct-argument form could not see.
+    /\bsnackBar\s*\.\s*open\([\s\S]{0,300}?(['"`])([A-Z][^'"`]{2,})\1/g,
     // The action label, which is as visible as the message. `[^)]` cannot be used for the first
     // argument: once that argument is `this.translate.instant('x.k')` it contains its own
     // parentheses, and the pattern stopped short — so a resolved message with a literal label
     // read as clean, which is precisely the half-fixed state this check exists to catch.
     /\bsnackBar\s*\.\s*open\([\s\S]{0,400}?,\s*(['"])([A-Z][^'"]{1,40})\1\s*[,)]/g,
-    // A signal or property holding user-visible status, bound as `{{ error() }}`.
-    /\.\s*(?:error|errorMessage|statusMessage|message|notice|warning|status)\w*\s*\.\s*set\(\s*(['"`])([A-Z][^'"`]{2,})\1/g,
+    // A signal or property holding user-visible status, bound as `{{ error() }}`. The name is
+    // tested with `SINK_NAME`, so `documentError` and `aiAnomalySummary` count as well as `error`.
+    // The literal is matched ANYWHERE in the argument, for the same reason as the snackbar above:
+    // `agentsError.set(err?.error?.detail ?? 'Failed to load agents.')` puts a server message
+    // first and the hard-coded fallback second, and the direct-argument form saw neither.
+    // NOT case-insensitive. The `i` flag was added for the sink NAME and quietly made the
+    // `[A-Z]` in the literal meaningless too, so the check started flagging the catalogue keys
+    // it had just introduced. The name's capitalisation is spelled out in the class instead.
+    /\.\s*(\w*(?:[Ee]rror|[Ss]tatus|[Mm]essage|[Nn]otice|[Ww]arning|[Ss]ummary|[Hh]int)\w*)\s*\.\s*set\((?:[^;]{0,200}?)(['"`])([A-Z][^'"`]{2,})\2/g,
     // A toast helper.
     /\btoast\(\s*(['"`])([A-Z][^'"`]{2,})\1/g,
   ];
@@ -3432,7 +3484,27 @@ function checkNoHardcodedImperativeUiText() {
     if (!/snackBar|\.set\(|toast\(/.test(text)) continue;
     for (const sink of SINKS) {
       for (const match of text.matchAll(sink)) {
-        const literal = match[2];
+        // The signal pattern captures the NAME first, so the literal is the last group either way.
+        const literal = match[match.length - 1];
+        if (match.length === 4 && !SINK_NAME.test(match[1])) continue;
+
+        // Matching anywhere in the argument is what lets the ternary and `??` fallbacks be seen, and
+        // it costs two false positives that have to be excluded precisely:
+        //
+        //   agentsErrorDetail.set(this.captureError('HylandKnowledgeDiscovery.getAllAgents', err))
+        //   error.set(message.startsWith('Cannot sort by') ? message : '…')
+        //
+        // The first is an operation name handed to a NESTED call; the second is a comparison. The
+        // exclusion looks only at the ARGUMENT text — between the sink's own `(` and the literal —
+        // because an earlier version tested the whole match and so excluded `set('…')` itself, which
+        // silently switched the check off for the plainest shape it exists to catch.
+        const whole = match[0];
+        const openParen = whole.indexOf('(');
+        const quotedAt = whole.lastIndexOf(literal);
+        const argumentPrefix = whole.slice(openParen + 1, quotedAt).replace(/['"`]\s*$/, '');
+        if (/\w\s*\(\s*$/.test(argumentPrefix)) continue;
+        if (/[=!]==?\s*$/.test(argumentPrefix)) continue;
+
         const line = text.slice(0, match.index).split('\n').length;
         fail(
           `${file}:${line} passes the hard-coded string \`${literal}\` to a user-facing sink — ` +
@@ -3515,6 +3587,53 @@ function checkCatalogueValuesAreRenderable() {
   }
 }
 
+/**
+ * A class that uses `this.translate` must actually inject it.
+ *
+ * Five classes reached CI using `this.translate.instant(...)` with no
+ * `translate = inject(TranslateService)` — a runtime crash on the first error path, not a compile
+ * error, because `this.translate` on a class with an index signature or a loose `any` in the chain
+ * type-checks fine. `nx typecheck` was green; three Knowledge Discovery specs failed with
+ * `expected null` because the error callback threw before it could set anything.
+ *
+ * `bulk-action.services.ts` showed the variant: one file, six classes, and a bulk edit that injected
+ * into the first only. So this counts per CLASS, not per file.
+ */
+function checkTranslateIsInjectedWhereUsed() {
+  const sources = [
+    ...walk('apps', (path) => /\.ts$/.test(path)),
+    ...walk('libs', (path) => /\.ts$/.test(path)),
+  ].filter((path) => !/\.spec\.ts$/.test(path));
+
+  if (sources.length === 0) {
+    fail('No TypeScript sources found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+
+  for (const file of sources) {
+    const text = read(file);
+    if (!text.includes('this.translate.')) continue;
+
+    // Split on class boundaries so a file with several classes is judged class by class.
+    const classes = [...text.matchAll(/(?:export\s+)?class\s+(\w+)[^{]*\{/g)];
+    if (classes.length === 0) continue;
+    for (let at = 0; at < classes.length; at += 1) {
+      const start = classes[at].index;
+      const end = at + 1 < classes.length ? classes[at + 1].index : text.length;
+      const body = text.slice(start, end);
+      if (!body.includes('this.translate.')) continue;
+      if (/\btranslate\s*=\s*inject\(\s*TranslateService\s*\)/.test(body)) continue;
+      const line = text.slice(0, start).split('\n').length;
+      fail(
+        `${file}:${line} class \`${classes[at][1]}\` uses \`this.translate\` but never injects it.\n` +
+          '    Add `private readonly translate = inject(TranslateService);` to THIS class. A bulk ' +
+          'edit that injects into the first class in a file leaves the rest crashing on their first ' +
+          'error path, and `typecheck` does not catch it — only a spec that exercises that path does.',
+      );
+    }
+  }
+}
+
 const GUARDRAILS = [
   checkThemeTokens,
   checkDocsNumbering,
@@ -3532,6 +3651,7 @@ const GUARDRAILS = [
   checkNoHardcodedDescriptorText,
   checkNoHardcodedDialogText,
   checkNoHardcodedImperativeUiText,
+  checkTranslateIsInjectedWhereUsed,
   checkCatalogueValuesAreRenderable,
   checkNoStaleAgnosticClaim,
   checkTranslationCatalogues,

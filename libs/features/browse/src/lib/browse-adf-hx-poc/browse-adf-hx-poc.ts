@@ -660,7 +660,7 @@ export class BrowseAdfHxPocComponent {
         },
         error: () => {
           this.csvExporting.set(false);
-          this.scopeNotice.set('CSV export failed.');
+          this.scopeNotice.set(this.translate.instant('browse.message.csv-export-failed'));
         },
       });
   }
@@ -684,7 +684,7 @@ export class BrowseAdfHxPocComponent {
           anchor.click();
           URL.revokeObjectURL(url);
         },
-        error: () => this.scopeNotice.set('Download failed.'),
+        error: () => this.scopeNotice.set(this.translate.instant('browse.message.download-failed')),
       });
   }
 

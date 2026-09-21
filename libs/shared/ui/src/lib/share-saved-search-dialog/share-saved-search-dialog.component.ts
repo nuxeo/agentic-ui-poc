@@ -555,8 +555,8 @@ export class ShareSavedSearchDialogComponent implements OnInit {
     end: string | null | undefined,
   ): string {
     if (!begin && !end) return this.translate.instant('permissions.time-frame.permanent');
-    if (!begin && end) return `Until ${end}`;
-    if (begin && !end) return `From ${begin}`;
-    return `${begin} - ${end}`;
+    if (!begin && end) return this.translate.instant('permissions.time-frame.until', { end });
+    if (begin && !end) return this.translate.instant('permissions.time-frame.from', { begin });
+    return this.translate.instant('permissions.time-frame.range', { begin, end });
   }
 }

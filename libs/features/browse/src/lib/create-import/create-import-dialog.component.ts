@@ -426,7 +426,7 @@ export class CreateImportDialogComponent implements OnInit {
           },
           error: () => {
             this.pathError.set(
-              'Could not resolve a default folder. Open a folder in Browse first.',
+              this.translate.instant('browse.message.could-not-resolve-a-default-folder-open'),
             );
             this.resolvingPath.set(false);
           },
@@ -1053,7 +1053,11 @@ export class CreateImportDialogComponent implements OnInit {
           });
         },
         error: (err: { error?: { message?: string }; message?: string }) => {
-          this.importError.set(err?.error?.message ?? err?.message ?? 'Create failed');
+          this.importError.set(
+            err?.error?.message ??
+              err?.message ??
+              this.translate.instant('admin.message.create-failed'),
+          );
         },
       });
   }
@@ -1158,12 +1162,16 @@ export class CreateImportDialogComponent implements OnInit {
     const hasBlob = isBlobHoldingDocType(docType.type);
 
     if (hasBlob && !mainFile) {
-      this.contentError.set('A file is required for this document type.');
+      this.contentError.set(
+        this.translate.instant('browse.message.a-file-is-required-for-this-document'),
+      );
       return;
     }
 
     if (hasBlob && mainFile && this.mainFileUploadPending()) {
-      this.contentError.set('Please wait for the file upload to finish.');
+      this.contentError.set(
+        this.translate.instant('browse.message.please-wait-for-the-file-upload-to'),
+      );
       return;
     }
 
@@ -1316,7 +1324,11 @@ export class CreateImportDialogComponent implements OnInit {
           this.mainFile.set(null);
           this.mainFileBatchId = null;
           this.mainFileUploadPercent.set(0);
-          this.contentError.set(err?.error?.message ?? err?.message ?? 'File upload failed');
+          this.contentError.set(
+            err?.error?.message ??
+              err?.message ??
+              this.translate.instant('browse.message.file-upload-failed'),
+          );
         },
       });
   }
@@ -1440,7 +1452,11 @@ export class CreateImportDialogComponent implements OnInit {
           });
         },
         error: (err: { error?: { message?: string }; message?: string }) => {
-          this.importError.set(err?.error?.message ?? err?.message ?? 'Upload failed');
+          this.importError.set(
+            err?.error?.message ??
+              err?.message ??
+              this.translate.instant('browse.message.upload-failed'),
+          );
         },
       });
   }
@@ -1479,7 +1495,11 @@ export class CreateImportDialogComponent implements OnInit {
             );
             return;
           }
-          this.error.set(err?.error?.message ?? err?.message ?? 'CSV import failed');
+          this.error.set(
+            err?.error?.message ??
+              err?.message ??
+              this.translate.instant('browse.message.csv-import-failed'),
+          );
         },
       });
   }

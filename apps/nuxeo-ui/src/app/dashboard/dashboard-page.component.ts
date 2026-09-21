@@ -100,7 +100,9 @@ export class DashboardPageComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.recentlyEditedError.set('Failed to load recently edited documents.');
+        this.recentlyEditedError.set(
+          this.translate.instant('app.message.failed-to-load-recently-edited-documents'),
+        );
         this.recentlyEditedLoading.set(false);
       },
     });
@@ -111,7 +113,7 @@ export class DashboardPageComponent {
         this.tasksLoading.set(false);
       },
       error: () => {
-        this.tasksError.set('Failed to load tasks.');
+        this.tasksError.set(this.translate.instant('tasks.message.failed-to-load-tasks'));
         this.tasksLoading.set(false);
       },
     });
@@ -123,7 +125,9 @@ export class DashboardPageComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.recentlyViewedError.set('Failed to load recently viewed documents.');
+        this.recentlyViewedError.set(
+          this.translate.instant('app.message.failed-to-load-recently-viewed-documents'),
+        );
         this.recentlyViewedLoading.set(false);
       },
     });
@@ -135,7 +139,9 @@ export class DashboardPageComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.favoritesError.set('Failed to load favorite items.');
+        this.favoritesError.set(
+          this.translate.instant('app.message.failed-to-load-favorite-items'),
+        );
         this.favoritesLoading.set(false);
       },
     });
@@ -146,7 +152,9 @@ export class DashboardPageComponent {
         this.aiInsightsLoading.set(false);
       },
       error: (err) => {
-        this.aiInsightsError.set(aiErrorMessage(err, 'AI insights unavailable.'));
+        this.aiInsightsError.set(
+          aiErrorMessage(err, this.translate.instant('app.message.ai-insights-unavailable')),
+        );
         this.aiInsightsLoading.set(false);
       },
     });

@@ -39,7 +39,7 @@ import {
   canShowWriteDocumentAction,
   canShowRemoveDocumentAction,
   hasDocumentPermissionsEnricher,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   isPermissionDeniedError,
   NON_CONTENT_DOCUMENT_TYPES,
   isMailSendError,
@@ -433,7 +433,7 @@ export class CollectionDetailComponent {
     const col = this.collection();
     if (!col) return;
     if (hasDocumentPermissionsEnricher(col) && !canWriteDocument(col)) {
-      this.toast(PERMISSION_DENIED_MESSAGE);
+      this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
       return;
     }
 
@@ -505,7 +505,7 @@ export class CollectionDetailComponent {
     const col = this.collection();
     if (this.actionInProgress()) return;
     if (col && hasDocumentPermissionsEnricher(col) && !canRemoveDocument(col)) {
-      this.toast(PERMISSION_DENIED_MESSAGE);
+      this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
       return;
     }
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
@@ -539,7 +539,7 @@ export class CollectionDetailComponent {
               this.actionInProgress.set(null);
               this.toast(
                 isPermissionDeniedError(err)
-                  ? PERMISSION_DENIED_MESSAGE
+                  ? this.translate.instant(PERMISSION_DENIED_KEY)
                   : 'Failed to delete collection',
               );
             },

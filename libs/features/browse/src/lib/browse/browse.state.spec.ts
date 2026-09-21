@@ -1,4 +1,5 @@
 import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -15,7 +16,7 @@ import {
   CURRENT_USERNAME,
   DirectoryService,
   DocumentDetailService,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   SelectionService,
   TagService,
   type AuditEntry,
@@ -759,7 +760,11 @@ describe('BrowseComponent — listing state', () => {
     component.deleteDocument();
 
     expect(detail.trashDocument).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('reports the count that failed when a bulk delete only partly succeeds', () => {
@@ -841,7 +846,11 @@ describe('BrowseComponent — listing state', () => {
 
     expect(dialogOpen).not.toHaveBeenCalled();
     expect(detail.trashDocument).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('reports a failed check for child collections instead of deleting the folder', () => {
@@ -882,7 +891,11 @@ describe('BrowseComponent — listing state', () => {
     expect(snackBar).toHaveBeenCalledWith('Skipped 1 item that could not be loaded', 'OK', {
       duration: 5000,
     });
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
     expect(detail.trashDocument).not.toHaveBeenCalled();
   });
 
@@ -902,7 +915,11 @@ describe('BrowseComponent — listing state', () => {
     component.openEditCollectionDialog(collection);
 
     expect(dialogOpen).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('openEditCollectionDialog reloads the listing after a confirmed edit', () => {
@@ -939,7 +956,11 @@ describe('BrowseComponent — listing state', () => {
 
     expect(dialogOpen).not.toHaveBeenCalled();
     expect(detail.trashDocument).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('deleteCollectionEntry reports a non-permission trash failure distinctly', () => {

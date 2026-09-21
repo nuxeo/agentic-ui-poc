@@ -192,7 +192,14 @@ export class ContentLakeUploadComponent {
     this.duplicateMatches.set([]);
     if (files.length > 0) {
       this.statusMessage.set(
-        files.length === 1 ? `Selected "${files[0].name}".` : `Selected ${files.length} files.`,
+        files.length === 1
+          ? `Selected "${files[0].name}".`
+          : this.translate.instant(
+              files.length === 1
+                ? 'kd.content-lake-upload.selected-one'
+                : 'kd.content-lake-upload.selected-many',
+              { count: files.length },
+            ),
       );
       this.refreshDuplicateCheck();
     }
@@ -342,7 +349,7 @@ export class ContentLakeUploadComponent {
     const normalized = normalizeFolderPath(parentPath);
     if (!normalized) {
       this.filteredFolderOptions.set([]);
-      this.folderBrowseError.set('Enter a Nuxeo folder path.');
+      this.folderBrowseError.set(this.translate.instant('kd.message.enter-a-nuxeo-folder-path'));
       return;
     }
 
@@ -372,7 +379,7 @@ export class ContentLakeUploadComponent {
           if (!list) {
             this.filteredFolderOptions.set([]);
             this.folderBrowseError.set(
-              'Could not load subfolders for this path. Check the path or your permissions.',
+              this.translate.instant('kd.message.could-not-load-subfolders-for-this-path'),
             );
             return;
           }
@@ -391,7 +398,7 @@ export class ContentLakeUploadComponent {
           this.filteredFolderOptions.set(filtered);
           if (options.length === 0) {
             this.folderBrowseError.set(
-              'No subfolders here. Upload into this folder or go up one level.',
+              this.translate.instant('kd.message.no-subfolders-here-upload-into-this-folder'),
             );
           } else if (filtered.length > 0) {
             queueMicrotask(() => {

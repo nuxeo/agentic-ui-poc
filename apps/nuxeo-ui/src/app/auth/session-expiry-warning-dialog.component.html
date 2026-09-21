@@ -1,7 +1,10 @@
 <h2 mat-dialog-title>{{ 'app.session-expiry-warning-dialog.session-expiring' | translate }}</h2>
 <mat-dialog-content class="session-expiry-warning-dialog__message">
   {{
-    'app.session-expiry-warning-dialog.expiry-message' | translate: { minutes: data.warningMinutes }
+    (data.warningMinutes === 1
+      ? 'app.session-expiry-warning-dialog.expiry-message-one'
+      : 'app.session-expiry-warning-dialog.expiry-message-many'
+    ) | translate: { minutes: data.warningMinutes }
   }}
 </mat-dialog-content>
 <mat-dialog-actions align="end" class="session-expiry-warning-dialog__actions">

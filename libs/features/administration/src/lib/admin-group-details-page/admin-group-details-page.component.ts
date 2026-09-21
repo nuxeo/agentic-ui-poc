@@ -102,7 +102,9 @@ export class AdminGroupDetailsPageComponent implements OnInit {
         this.loadLocalPerms();
       },
       error: (e) => {
-        this.error.set(e?.error?.message ?? 'Could not load group details.');
+        this.error.set(
+          e?.error?.message ?? this.translate.instant('admin.message.could-not-load-group-details'),
+        );
         this.loading.set(false);
       },
     });
@@ -138,7 +140,7 @@ export class AdminGroupDetailsPageComponent implements OnInit {
             },
             error: (e) =>
               this.snackBar.open(
-                e?.error?.message ?? 'Update failed',
+                e?.error?.message ?? this.translate.instant('admin.message.update-failed'),
                 this.translate.instant('common.dismiss'),
                 {
                   duration: 5000,
@@ -179,7 +181,7 @@ export class AdminGroupDetailsPageComponent implements OnInit {
           },
           error: (e) =>
             this.snackBar.open(
-              e?.error?.message ?? 'Delete failed',
+              e?.error?.message ?? this.translate.instant('admin.message.delete-failed'),
               this.translate.instant('common.dismiss'),
               { duration: 5000 },
             ),
@@ -202,7 +204,7 @@ export class AdminGroupDetailsPageComponent implements OnInit {
       },
       error: (e) =>
         this.snackBar.open(
-          e?.error?.message ?? 'Could not remove member',
+          e?.error?.message ?? this.translate.instant('admin.message.could-not-remove-member'),
           this.translate.instant('common.dismiss'),
           {
             duration: 5000,
@@ -256,7 +258,8 @@ export class AdminGroupDetailsPageComponent implements OnInit {
         },
         error: (e) =>
           this.snackBar.open(
-            e?.error?.message ?? 'Could not remove permission',
+            e?.error?.message ??
+              this.translate.instant('admin.message.could-not-remove-permission'),
             this.translate.instant('common.dismiss'),
             {
               duration: 5000,
@@ -284,7 +287,8 @@ export class AdminGroupDetailsPageComponent implements OnInit {
       },
       error: (e) =>
         this.snackBar.open(
-          e?.error?.message ?? 'Could not update nested groups',
+          e?.error?.message ??
+            this.translate.instant('admin.message.could-not-update-nested-groups'),
           this.translate.instant('common.dismiss'),
           {
             duration: 5000,

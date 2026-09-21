@@ -139,7 +139,7 @@ export class SearchAdfHxComponent {
           });
         }),
         catchError((err) => {
-          this.error.set(err.message ?? 'Search failed');
+          this.error.set(err.message ?? this.translate.instant('browse.message.search-failed'));
           return of<QueryResult>({ documents: [], count: 0, limit: 0, offset: 0, totalCount: 0 });
         }),
         takeUntilDestroyed(),

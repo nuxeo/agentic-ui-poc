@@ -491,7 +491,9 @@ export class NavDrawerComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.expiredError.set('Failed to load expired documents.');
+        this.expiredError.set(
+          this.translate.instant('app.message.failed-to-load-expired-documents'),
+        );
         this.expiredLoading.set(false);
         this.expiredLoaded = false;
       },
@@ -532,7 +534,9 @@ export class NavDrawerComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.recentlyViewedError.set('Failed to load recently viewed documents.');
+        this.recentlyViewedError.set(
+          this.translate.instant('app.message.failed-to-load-recently-viewed-documents'),
+        );
         this.recentlyViewedLoading.set(false);
         this.recentlyViewedLoaded = false;
       },
@@ -942,12 +946,16 @@ export class NavDrawerComponent {
                 rootNode.loaded = true;
                 rootNode.children = [];
                 this.personalSpaceNodes.update((nodes) => [...nodes]);
-                this.personalSpaceError.set('Failed to load workspace folders.');
+                this.personalSpaceError.set(
+                  this.translate.instant('app.message.failed-to-load-workspace-folders'),
+                );
               },
             });
         },
         error: () => {
-          this.personalSpaceError.set('Failed to load personal workspace.');
+          this.personalSpaceError.set(
+            this.translate.instant('app.message.failed-to-load-personal-workspace'),
+          );
           this.personalSpaceLoading.set(false);
           this.personalSpaceLoaded = false;
         },
@@ -1084,7 +1092,7 @@ export class NavDrawerComponent {
         this.tasksLoading.set(false);
       },
       error: () => {
-        this.tasksError.set('Failed to load tasks.');
+        this.tasksError.set(this.translate.instant('tasks.message.failed-to-load-tasks'));
         this.tasksLoading.set(false);
       },
     });
@@ -1284,8 +1292,8 @@ export class NavDrawerComponent {
           if (results.length === 0) {
             this.snackBar.open(
               action === 'copy'
-                ? 'Failed to copy clipboard items.'
-                : 'Failed to move clipboard items.',
+                ? this.translate.instant('app.message.failed-to-copy-clipboard-items')
+                : this.translate.instant('app.message.failed-to-move-clipboard-items'),
               this.translate.instant('common.dismiss'),
               { duration: 4000 },
             );
@@ -1312,8 +1320,8 @@ export class NavDrawerComponent {
         error: () => {
           this.snackBar.open(
             action === 'copy'
-              ? 'Failed to copy clipboard items.'
-              : 'Failed to move clipboard items.',
+              ? this.translate.instant('app.message.failed-to-copy-clipboard-items')
+              : this.translate.instant('app.message.failed-to-move-clipboard-items'),
             this.translate.instant('common.dismiss'),
             { duration: 4000 },
           );

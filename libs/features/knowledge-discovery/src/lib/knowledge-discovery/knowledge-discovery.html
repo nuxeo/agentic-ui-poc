@@ -149,7 +149,7 @@
             [ngModel]="questionText()"
             (ngModelChange)="questionText.set($event)"
             [disabled]="isAwaitingResponse()"
-            placeholder="e.g. Which contracts mention renewal clauses?"
+            [placeholder]="'kd.knowledge-discovery.question-example' | translate"
           ></textarea>
         </mat-form-field>
 

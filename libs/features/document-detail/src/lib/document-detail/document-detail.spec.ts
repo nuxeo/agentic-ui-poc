@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
@@ -21,7 +22,7 @@ import {
   DocumentDetailService,
   mailSendFailureMessage,
   NuxeoApiBase,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   type NuxeoComment,
   type NuxeoDocument,
   TagService,
@@ -430,7 +431,7 @@ describe('DocumentDetailComponent', () => {
 
       expect(updateSpy).not.toHaveBeenCalled();
       expect(snackBarOpenSpy).toHaveBeenCalledWith(
-        PERMISSION_DENIED_MESSAGE,
+        TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
         'OK',
         expect.objectContaining({ duration: 3000 }),
       );
@@ -444,7 +445,7 @@ describe('DocumentDetailComponent', () => {
 
       expect(dialogSpy).not.toHaveBeenCalled();
       expect(snackBarOpenSpy).toHaveBeenCalledWith(
-        PERMISSION_DENIED_MESSAGE,
+        TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
         'OK',
         expect.objectContaining({ duration: 3000 }),
       );
@@ -457,7 +458,7 @@ describe('DocumentDetailComponent', () => {
       component.submitComment();
 
       expect(snackBarOpenSpy).toHaveBeenCalledWith(
-        PERMISSION_DENIED_MESSAGE,
+        TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
         'OK',
         expect.objectContaining({ duration: 3000 }),
       );

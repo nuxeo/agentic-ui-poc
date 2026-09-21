@@ -5,7 +5,13 @@
 <mat-dialog-content>
   <mat-form-field appearance="outline" class="full-width">
     <mat-label>{{ 'permissions.share-external-dialog.email' | translate }}</mat-label>
-    <input matInput type="email" placeholder="name@company.com" [(ngModel)]="email" required />
+    <input
+      matInput
+      type="email"
+      [placeholder]="'common.email-example' | translate"
+      [(ngModel)]="email"
+      required
+    />
   </mat-form-field>
 
   <mat-form-field appearance="outline" class="full-width">

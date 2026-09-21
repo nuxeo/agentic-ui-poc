@@ -28,7 +28,7 @@ import {
   type KdModelInfo,
   type KdQuestionHistoryItem,
 } from '@agentic-ui/shared/kd-client';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 /**
  * Structured snapshot of a failed KD HTTP call, surfaced inline on the page
@@ -75,6 +75,7 @@ export interface KdDebugError {
 })
 export class KnowledgeDiscoveryComponent {
   private readonly kdClient = inject(KdClientService);
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
@@ -181,7 +182,9 @@ export class KnowledgeDiscoveryComponent {
           this.loadingReferenceData.set(false);
         },
         error: (err) => {
-          this.referenceDataError.set('Failed to load Knowledge Discovery models and guardrails.');
+          this.referenceDataError.set(
+            this.translate.instant('kd.message.failed-to-load-knowledge-discovery-models-and'),
+          );
           if (this.debugMode()) {
             this.referenceDataErrorDetail.set(
               this.captureError('listModels + listGuardrails (forkJoin)', err),
@@ -211,7 +214,10 @@ export class KnowledgeDiscoveryComponent {
           }
         },
         error: (err) => {
-          this.agentsError.set(err?.error?.detail ?? 'Failed to load Knowledge Discovery agents.');
+          this.agentsError.set(
+            err?.error?.detail ??
+              this.translate.instant('kd.message.failed-to-load-knowledge-discovery-agents'),
+          );
           if (this.debugMode()) {
             this.agentsErrorDetail.set(
               this.captureError('HylandKnowledgeDiscovery.getAllAgents', err),
@@ -239,7 +245,9 @@ export class KnowledgeDiscoveryComponent {
           this.loadHistory(agent.id);
         },
         error: (err) => {
-          this.agentDetailsError.set(err?.error?.detail ?? 'Failed to load agent details.');
+          this.agentDetailsError.set(
+            err?.error?.detail ?? this.translate.instant('kd.message.failed-to-load-agent-details'),
+          );
           if (this.debugMode()) {
             this.agentDetailsErrorDetail.set(
               this.captureError(`HylandKnowledgeDiscovery.Invoke /agent/agents/${agentId}`, err),
@@ -295,7 +303,9 @@ export class KnowledgeDiscoveryComponent {
                   this.questionError.set(
                     this.resolveQuestionError(
                       err,
-                      'Failed to retrieve the Knowledge Discovery answer.',
+                      this.translate.instant(
+                        'kd.message.failed-to-retrieve-the-knowledge-discovery-answer',
+                      ),
                     ),
                   );
                 },
@@ -316,7 +326,12 @@ export class KnowledgeDiscoveryComponent {
         },
         error: (err) => {
           this.questionError.set(
-            this.resolveQuestionError(err, 'Failed to submit the Knowledge Discovery question.'),
+            this.resolveQuestionError(
+              err,
+              this.translate.instant(
+                'kd.message.failed-to-submit-the-knowledge-discovery-question',
+              ),
+            ),
           );
           this.submittingQuestion.set(false);
         },
@@ -379,7 +394,9 @@ export class KnowledgeDiscoveryComponent {
         },
         error: () => {
           this.feedbackInFlight.set(null);
-          this.questionError.set('Failed to submit Knowledge Discovery feedback.');
+          this.questionError.set(
+            this.translate.instant('kd.message.failed-to-submit-knowledge-discovery-feedback'),
+          );
         },
       });
   }
@@ -412,7 +429,10 @@ export class KnowledgeDiscoveryComponent {
           this.kdClient.getAnswer(questionId).pipe(
             catchError((err) => {
               this.questionError.set(
-                err?.error?.detail ?? 'Failed to retrieve the Knowledge Discovery answer.',
+                err?.error?.detail ??
+                  this.translate.instant(
+                    'kd.message.failed-to-retrieve-the-knowledge-discovery-answer',
+                  ),
               );
               this.pollingAnswer.set(false);
               return of(null);

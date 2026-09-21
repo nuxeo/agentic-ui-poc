@@ -28,7 +28,7 @@ import {
   isExpiresFieldValid,
   shouldShowExpiresFieldError,
   l10nEntryLabel,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   isPermissionDeniedError,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -257,8 +257,8 @@ export class EditCollectionDialogComponent implements OnInit {
           this.saving.set(false);
           this.snackBar.open(
             isPermissionDeniedError(err)
-              ? PERMISSION_DENIED_MESSAGE
-              : 'Failed to update collection',
+              ? this.translate.instant(PERMISSION_DENIED_KEY)
+              : this.translate.instant('shared-ui.message.failed-to-update-collection'),
             this.translate.instant('common.ok'),
             { duration: 4000 },
           );

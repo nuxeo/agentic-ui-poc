@@ -21,7 +21,7 @@ import {
   TagService,
   CURRENT_USERNAME,
   ADMIN_ACCESS_CHECKS,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { trashSelectedDocumentsConfirmData } from '@nuxeo-satori/platform/ui';
 
@@ -590,9 +590,13 @@ describe('BrowseComponent', () => {
 
     component.openEditCollectionDialog(collection);
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
-      duration: 4000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      {
+        duration: 4000,
+      },
+    );
     expect(dialogOpenSpy).not.toHaveBeenCalled();
   });
 
@@ -616,9 +620,13 @@ describe('BrowseComponent', () => {
 
     component.deleteCollectionEntry(collection);
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
-      duration: 4000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      {
+        duration: 4000,
+      },
+    );
   });
 
   it('deleteDocument shows permission denied when single-item trash returns 403', () => {
@@ -637,9 +645,13 @@ describe('BrowseComponent', () => {
 
     component.deleteDocument();
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
-      duration: 4000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      {
+        duration: 4000,
+      },
+    );
   });
 
   it('deleteDocument confirms bulk trash for selected children, not the browsed folder', () => {

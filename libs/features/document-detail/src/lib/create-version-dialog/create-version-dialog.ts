@@ -9,7 +9,7 @@ import { FormsModule } from '@angular/forms';
 import {
   DocumentDetailService,
   isPermissionDeniedError,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
@@ -134,7 +134,7 @@ export class CreateVersionDialogComponent {
         error: (err) => {
           this.saving.set(false);
           const message = isPermissionDeniedError(err)
-            ? PERMISSION_DENIED_MESSAGE
+            ? this.translate.instant(PERMISSION_DENIED_KEY)
             : 'Failed to create version';
           this.snackBar.open(message, this.translate.instant('common.ok'), { duration: 3000 });
         },

@@ -1378,7 +1378,7 @@ interface NuxeoWorkflowModelList {
     entries: NuxeoWorkflowModel[];
     }
 }
-const PERMISSION_DENIED_MESSAGE = "You do not have permission to perform this action";
+const PERMISSION_DENIED_KEY = "common.permission-denied";
 const PERMISSION_NOTIFICATION_MAIL_HINT = "Requires outbound mail (SMTP) configured on the Nuxeo server.";
 interface PaginatedListMeta {
     totalSize?: number;

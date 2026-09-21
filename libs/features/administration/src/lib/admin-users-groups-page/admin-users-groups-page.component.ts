@@ -133,13 +133,17 @@ export class AdminUsersGroupsPageComponent implements OnInit {
     forkJoin({
       users: this.userService.searchUsersPaged(query, this.pageSize, 0).pipe(
         catchError((err) => {
-          this.usersError.set(err?.message ?? 'Could not load users.');
+          this.usersError.set(
+            err?.message ?? this.translate.instant('admin.message.could-not-load-users'),
+          );
           return of({ 'entity-type': 'users', entries: [], totalSize: 0 } satisfies NuxeoUserList);
         }),
       ),
       groups: this.userService.searchGroupsPaged(query, this.pageSize, 0).pipe(
         catchError((err) => {
-          this.groupsError.set(err?.message ?? 'Could not load groups.');
+          this.groupsError.set(
+            err?.message ?? this.translate.instant('admin.message.could-not-load-groups'),
+          );
           return of({
             'entity-type': 'groups',
             entries: [],
@@ -207,7 +211,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           this.usersLoading.set(false);
         },
         error: (err) => {
-          this.usersError.set(err?.message ?? 'Could not load users.');
+          this.usersError.set(
+            err?.message ?? this.translate.instant('admin.message.could-not-load-users'),
+          );
           this.usersLoading.set(false);
         },
       });
@@ -227,7 +233,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           this.groupsLoading.set(false);
         },
         error: (err) => {
-          this.groupsError.set(err?.message ?? 'Could not load groups.');
+          this.groupsError.set(
+            err?.message ?? this.translate.instant('admin.message.could-not-load-groups'),
+          );
           this.groupsLoading.set(false);
         },
       });
@@ -318,8 +326,8 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           }
           this.snackBar.open(
             invited
-              ? `Invitation sent to ${r.email}. The user will appear after they accept.`
-              : 'User created',
+              ? this.translate.instant('admin.invitation-sent', { email: r.email })
+              : this.translate.instant('admin.message.user-created'),
             this.translate.instant('common.dismiss'),
             { duration: invited ? 6000 : 3000 },
           );
@@ -371,7 +379,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
             },
             error: (e) =>
               this.snackBar.open(
-                e?.error?.message ?? 'Update failed',
+                e?.error?.message ?? this.translate.instant('admin.message.update-failed'),
                 this.translate.instant('common.dismiss'),
                 {
                   duration: 5000,
@@ -408,7 +416,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           },
           error: (e) =>
             this.snackBar.open(
-              e?.error?.message ?? 'Delete failed',
+              e?.error?.message ?? this.translate.instant('admin.message.delete-failed'),
               this.translate.instant('common.dismiss'),
               { duration: 5000 },
             ),
@@ -449,7 +457,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
             },
             error: (e) =>
               this.snackBar.open(
-                e?.error?.message ?? 'Create failed',
+                e?.error?.message ?? this.translate.instant('admin.message.create-failed'),
                 this.translate.instant('common.dismiss'),
                 {
                   duration: 5000,
@@ -484,7 +492,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
             },
             error: (e) =>
               this.snackBar.open(
-                e?.error?.message ?? 'Update failed',
+                e?.error?.message ?? this.translate.instant('admin.message.update-failed'),
                 this.translate.instant('common.dismiss'),
                 {
                   duration: 5000,
@@ -523,7 +531,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           },
           error: (e) =>
             this.snackBar.open(
-              e?.error?.message ?? 'Delete failed',
+              e?.error?.message ?? this.translate.instant('admin.message.delete-failed'),
               this.translate.instant('common.dismiss'),
               { duration: 5000 },
             ),

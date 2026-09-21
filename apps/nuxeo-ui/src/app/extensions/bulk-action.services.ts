@@ -165,8 +165,13 @@ export class BulkAddToClipboardActionService implements ExtensionActionHandler {
 
     this.snackBar.open(
       additions.length > 0
-        ? `Added ${additions.length} item(s) to clipboard.`
-        : 'Selected items are already in clipboard.',
+        ? this.translate.instant(
+            additions.length === 1
+              ? 'common.count.added-to-clipboard-one'
+              : 'common.count.added-to-clipboard-many',
+            { count: additions.length },
+          )
+        : this.translate.instant('app.message.selected-items-are-already-in-clipboard'),
       this.translate.instant('common.dismiss'),
       { duration: 3000 },
     );

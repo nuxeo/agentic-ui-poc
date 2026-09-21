@@ -121,7 +121,9 @@ export class AdminUserDetailsPageComponent implements OnInit {
         this.loadAllGroupPerms(user);
       },
       error: (e) => {
-        this.error.set(e?.error?.message ?? 'Could not load user details.');
+        this.error.set(
+          e?.error?.message ?? this.translate.instant('admin.message.could-not-load-user-details'),
+        );
         this.loading.set(false);
       },
     });
@@ -247,7 +249,7 @@ export class AdminUserDetailsPageComponent implements OnInit {
           },
           error: (e) =>
             this.snackBar.open(
-              e?.error?.message ?? 'Password update failed',
+              e?.error?.message ?? this.translate.instant('admin.message.password-update-failed'),
               this.translate.instant('common.dismiss'),
               {
                 duration: 5000,
@@ -291,7 +293,7 @@ export class AdminUserDetailsPageComponent implements OnInit {
             },
             error: (e) =>
               this.snackBar.open(
-                e?.error?.message ?? 'Update failed',
+                e?.error?.message ?? this.translate.instant('admin.message.update-failed'),
                 this.translate.instant('common.dismiss'),
                 {
                   duration: 5000,
@@ -330,7 +332,7 @@ export class AdminUserDetailsPageComponent implements OnInit {
           },
           error: (e) =>
             this.snackBar.open(
-              e?.error?.message ?? 'Delete failed',
+              e?.error?.message ?? this.translate.instant('admin.message.delete-failed'),
               this.translate.instant('common.dismiss'),
               { duration: 5000 },
             ),
@@ -353,7 +355,7 @@ export class AdminUserDetailsPageComponent implements OnInit {
       },
       error: (e) =>
         this.snackBar.open(
-          e?.error?.message ?? 'Could not update user groups',
+          e?.error?.message ?? this.translate.instant('admin.message.could-not-update-user-groups'),
           this.translate.instant('common.dismiss'),
           {
             duration: 5000,
@@ -382,7 +384,8 @@ export class AdminUserDetailsPageComponent implements OnInit {
         },
         error: (e) =>
           this.snackBar.open(
-            e?.error?.message ?? 'Could not remove permission',
+            e?.error?.message ??
+              this.translate.instant('admin.message.could-not-remove-permission'),
             this.translate.instant('common.dismiss'),
             {
               duration: 5000,

@@ -142,6 +142,7 @@
       "nxql-query-ctrl-enter-to-run": "NXQL Query (Ctrl + Enter to run)",
       "nxql-search": "NXQL Search",
       "path": "Path",
+      "query-example": "e.g. All PDFs created last month",
       "search": "Search",
       "size": "Size",
       "type": "Type"
@@ -248,9 +249,22 @@
       "pick-from-search-or-enter-a": "Pick from search or enter a username and press Enter",
       "save": "Save"
     },
+    "invitation-sent": "Invitation sent to {{ email }}. The user will appear after they accept.",
     "message": {
+      "ai-generation-failed": "AI generation failed",
+      "could-not-load-group-details": "Could not load group details.",
+      "could-not-load-groups": "Could not load groups.",
+      "could-not-load-user-details": "Could not load user details.",
+      "could-not-load-users": "Could not load users.",
+      "could-not-remove-member": "Could not remove member",
+      "could-not-remove-permission": "Could not remove permission",
+      "could-not-update-nested-groups": "Could not update nested groups",
+      "could-not-update-user-groups": "Could not update user groups",
+      "create-failed": "Create failed",
+      "delete-failed": "Delete failed",
       "entry-deleted": "Entry deleted",
       "failed-to-delete-entry": "Failed to delete entry",
+      "failed-to-detect-anomalies": "Failed to detect anomalies",
       "failed-to-load-vocabulary-entries": "Failed to load vocabulary entries",
       "failed-to-save-entry": "Failed to save entry",
       "group-created": "Group created",
@@ -261,8 +275,12 @@
       "missing-group-id": "Missing group id.",
       "missing-user-id": "Missing user id.",
       "nested-group-removed": "Nested group removed",
+      "password-update-failed": "Password update failed",
       "password-updated": "Password updated",
       "permission-removed": "Permission removed",
+      "query-failed": "Query failed.",
+      "update-failed": "Update failed",
+      "user-created": "User created",
       "user-deleted": "User deleted",
       "user-updated": "User updated"
     },
@@ -426,10 +444,20 @@
       "username-required": "Username (required)"
     },
     "message": {
+      "ai-insights-unavailable": "AI insights unavailable.",
       "failed-to-change-password-please-check-your": "Failed to change password. Please check your current password and try again.",
+      "failed-to-copy-clipboard-items": "Failed to copy clipboard items.",
       "failed-to-download-selected-documents-as-zip": "Failed to download selected documents as ZIP.",
+      "failed-to-load-expired-documents": "Failed to load expired documents.",
+      "failed-to-load-favorite-items": "Failed to load favorite items.",
+      "failed-to-load-personal-workspace": "Failed to load personal workspace.",
+      "failed-to-load-recently-edited-documents": "Failed to load recently edited documents.",
+      "failed-to-load-recently-viewed-documents": "Failed to load recently viewed documents.",
+      "failed-to-load-workspace-folders": "Failed to load workspace folders.",
+      "failed-to-move-clipboard-items": "Failed to move clipboard items.",
       "opening-publish-dialog-for-the-first-selected": "Opening publish dialog for the first selected item.",
       "select-at-least-two-documents-to-compare": "Select at least two documents to compare.",
+      "selected-items-are-already-in-clipboard": "Selected items are already in clipboard.",
       "unable-to-load-your-personal-workspace": "Unable to load your personal workspace.",
       "your-session-has-expired-please-sign-in": "Your session has expired. Please sign in again."
     },
@@ -492,6 +520,8 @@
     },
     "session-expiry-warning-dialog": {
       "expiry-message": "Your session will expire in {{ minutes }} minutes due to inactivity. Stay signed in to continue working.",
+      "expiry-message-many": "Your session will expire in {{ minutes }} minutes due to inactivity. Stay signed in to continue working.",
+      "expiry-message-one": "Your session will expire in {{ minutes }} minute due to inactivity. Stay signed in to continue working.",
       "session-expiring": "Session expiring",
       "sign-out": "Sign out",
       "stay-signed-in": "Stay signed in"
@@ -786,25 +816,34 @@
     },
     "hide-details": "Hide details",
     "message": {
+      "a-file-is-required-for-this-document": "A file is required for this document type.",
       "action-failed": "Action failed",
       "collection-moved-to-trash": "Collection moved to trash",
       "collection-updated": "Collection updated",
       "could-not-load-folder-contents": "Could not load folder contents.",
+      "could-not-resolve-a-default-folder-open": "Could not resolve a default folder. Open a folder in Browse first.",
       "could-not-resolve-this-path-try-another": "Could not resolve this path. Try another folder.",
-      "csv-export-failed": "CSV export failed",
+      "csv-export-failed": "CSV export failed.",
       "csv-exported-successfully": "CSV exported successfully",
+      "csv-import-failed": "CSV import failed",
       "csv-import-is-not-available-install-the": "CSV import is not available. Install the Nuxeo CSV addon on the server.",
       "document-updated": "Document updated",
-      "download-failed": "Download failed",
+      "download-failed": "Download failed.",
       "failed-to-add-tag": "Failed to add tag",
       "failed-to-delete": "Failed to delete",
+      "failed-to-delete-collection": "Failed to delete collection",
+      "failed-to-load-collection": "Failed to load collection",
       "failed-to-load-folder-contents": "Failed to load folder contents.",
       "failed-to-load-permissions": "Failed to load permissions",
+      "failed-to-load-selected-documents-for-deletion": "Failed to load selected documents for deletion",
       "failed-to-remove-tag": "Failed to remove tag",
-      "failed-to-restore-document": "Failed to restore document",
+      "failed-to-restore-document": "Failed to restore document.",
       "failed-to-update-document": "Failed to update document",
       "failed-to-update-notifications": "Failed to update notifications",
       "failed-to-verify-folder-contents": "Failed to verify folder contents",
+      "file-upload-failed": "File upload failed",
+      "inheritance-blocked": "Inheritance blocked",
+      "inheritance-unblocked": "Inheritance unblocked",
       "moved-to-trash": "Moved to trash",
       "notification-email-sent": "Notification email sent",
       "open-a-folder-to-create-or-import": "Open a folder to create or import content.",
@@ -812,10 +851,15 @@
       "permission-deleted": "Permission deleted",
       "permission-updated": "Permission updated",
       "please-select-a-csv-file": "Please select a .csv file.",
+      "please-wait-for-the-file-upload-to": "Please wait for the file upload to finish.",
       "remove-all-collections-from-this-folder-before": "Remove all collections from this folder before deleting it.",
+      "search-failed": "Search failed",
       "selected-path-is-not-a-folder-choose": "Selected path is not a folder. Choose a folder or go up one level.",
       "shared-with-external-user": "Shared with external user",
-      "starting-csv-export": "Starting CSV export..."
+      "starting-csv-export": "Starting CSV export...",
+      "subscribed-to-notifications": "Subscribed to notifications",
+      "unsubscribed": "Unsubscribed",
+      "upload-failed": "Upload failed"
     },
     "scope": {
       "create-import": "Create / Import",
@@ -943,6 +987,8 @@
     "count": {
       "actionable-item-many": "{{ count }} actionable items",
       "actionable-item-one": "{{ count }} actionable item",
+      "added-to-clipboard-many": "Added {{ count }} items to clipboard.",
+      "added-to-clipboard-one": "Added {{ count }} item to clipboard.",
       "added-to-collection-many": "Added {{ count }} items to collection.",
       "added-to-collection-one": "Added {{ count }} item to collection.",
       "all-selected-many": "All {{ count }} items selected",
@@ -974,10 +1020,13 @@
       "trashed-document-many": "{{ count }} trashed documents",
       "trashed-document-one": "{{ count }} trashed document"
     },
+    "date-mask": "mm/dd/yyyy",
     "dismiss": "Dismiss",
+    "email-example": "name@company.com",
     "ok": "OK",
     "page-number": "Page {{ page }}",
     "page-of": "Page {{ page }} of {{ total }}",
+    "permission-denied": "You do not have permission to perform this action",
     "search-deleted": "Search \"{{ name }}\" deleted.",
     "search-saved": "Search \"{{ name }}\" saved.",
     "search-updated": "Search \"{{ name }}\" updated.",
@@ -1244,18 +1293,19 @@
       "added-to-collection": "Added to collection",
       "all-publications-removed": "All publications removed",
       "cannot-upload-image-parent-folder-is-unknown": "Cannot upload image: parent folder is unknown",
+      "classification-failed": "Classification failed",
       "comment-deleted": "Comment deleted",
       "document-moved-to-trash": "Document moved to trash",
-      "document-permanently-deleted": "Document permanently deleted",
+      "document-permanently-deleted": "Document permanently deleted.",
       "document-published": "Document published",
       "document-republished": "Document republished",
-      "document-restored": "Document restored",
-      "failed-to-abandon-workflow": "Failed to abandon workflow",
+      "document-restored": "Document restored.",
+      "failed-to-abandon-workflow": "Failed to abandon workflow.",
       "failed-to-add-comment": "Failed to add comment",
       "failed-to-add-reply": "Failed to add reply",
       "failed-to-add-to-collection": "Failed to add to collection",
       "failed-to-apply-tag": "Failed to apply tag",
-      "failed-to-delete-document": "Failed to delete document",
+      "failed-to-delete-document": "Failed to delete document.",
       "failed-to-download-document": "Failed to download document",
       "failed-to-load-document": "Failed to load document.",
       "failed-to-load-preview": "Failed to load preview",
@@ -1284,10 +1334,14 @@
       "note-saved": "Note saved",
       "publication-removed": "Publication removed",
       "reply-deleted": "Reply deleted",
+      "search-failed-try-again": "Search failed. Try again.",
       "section-not-found": "Section not found",
       "selected-documents-have-no-insertable-image-url": "Selected documents have no insertable image URL",
+      "similar-doc-search-failed": "Similar doc search failed",
+      "summary-generation-failed": "Summary generation failed",
+      "tag-suggestion-failed": "Tag suggestion failed",
       "uploaded-image-has-no-display-url-yet": "Uploaded image has no display URL yet",
-      "workflow-abandoned": "Workflow abandoned",
+      "workflow-abandoned": "Workflow abandoned.",
       "workflow-started-successfully": "Workflow started successfully"
     },
     "mmmm-d-yyyy": "MMMM d, yyyy",
@@ -1506,6 +1560,8 @@
       "loading": "Loading",
       "nuxeo-folder-path": "Nuxeo folder path",
       "open-existing-document": "Open existing document",
+      "selected-many": "Selected {{ count }} files.",
+      "selected-one": "Selected {{ count }} file.",
       "these-files-match-documents-already-indexed": "These files match documents already indexed in Content Lake elsewhere in Nuxeo:",
       "type-to-browse-subfolders": "Type / to browse subfolders",
       "up-one-folder-level": "Up one folder level",
@@ -1544,6 +1600,7 @@
       "no-models-loaded": "No models loaded.",
       "no-recent-questions": "No recent questions.",
       "not-helpful": "Not helpful",
+      "question-example": "e.g. Which contracts mention renewal clauses?",
       "recent-questions": "Recent questions",
       "reference-data": "Reference data",
       "refresh-agents": "Refresh agents",
@@ -1559,7 +1616,19 @@
       "your-question": "Your question"
     },
     "message": {
+      "could-not-load-subfolders-for-this-path": "Could not load subfolders for this path. Check the path or your permissions.",
+      "enter-a-nuxeo-folder-path": "Enter a Nuxeo folder path.",
+      "failed-to-load-agent-details": "Failed to load agent details.",
+      "failed-to-load-knowledge-discovery-agents": "Failed to load Knowledge Discovery agents.",
+      "failed-to-load-knowledge-discovery-models-and": "Failed to load Knowledge Discovery models and guardrails.",
+      "failed-to-load-the-source-document-from": "Failed to load the source document from Nuxeo.",
+      "failed-to-retrieve-the-knowledge-discovery-answer": "Failed to retrieve the Knowledge Discovery answer.",
+      "failed-to-submit-knowledge-discovery-feedback": "Failed to submit Knowledge Discovery feedback.",
+      "failed-to-submit-the-knowledge-discovery-question": "Failed to submit the Knowledge Discovery question.",
+      "no-reference-is-available-for-this-citation": "No reference is available for this citation.",
+      "no-subfolders-here-upload-into-this-folder": "No subfolders here. Upload into this folder or go up one level.",
       "sending-documents-to-content-lake": "Sending documents to Content Lake...",
+      "this-citation-does-not-map-to-a": "This citation does not map to a Nuxeo document.",
       "uploading-to-nuxeo": "Uploading to Nuxeo..."
     }
   },
@@ -1694,7 +1763,10 @@
       "to": "To"
     },
     "time-frame": {
-      "permanent": "Permanent"
+      "from": "From {{ begin }}",
+      "permanent": "Permanent",
+      "range": "{{ begin }} - {{ end }}",
+      "until": "Until {{ end }}"
     },
     "update-permission-dialog": {
       "cancel": "Cancel",
@@ -1760,9 +1832,11 @@
     },
     "hide-query": "Hide Query",
     "message": {
+      "ai-search-failed-try-again": "AI search failed. Try again.",
       "failed-to-download-document": "Failed to download document.",
       "failed-to-load-search-results": "Failed to load search results.",
-      "failed-to-update-favorites": "Failed to update favorites."
+      "failed-to-update-favorites": "Failed to update favorites.",
+      "nxql-query-execution-failed-the-generated-query": "NXQL query execution failed. The generated query may be invalid."
     },
     "no-results-for": "No results for {{ term }}",
     "quick-filter": {
@@ -1869,6 +1943,11 @@
     "remove-tag": "Remove tag {{ name }}",
     "view-citation": "View citation {{ number }}"
   },
+  "shared-ai-client": {
+    "message": {
+      "ai-service-unavailable": "AI service unavailable"
+    }
+  },
   "shared-ui": {
     "confirm-dialog": {
       "cancel": "Cancel"
@@ -1939,6 +2018,7 @@
       "failed-to-copy-link": "Failed to copy link",
       "failed-to-load-documents-for-comparison": "Failed to load documents for comparison.",
       "failed-to-load-vocabulary-options": "Failed to load vocabulary options",
+      "failed-to-update-collection": "Failed to update collection",
       "link-copied-to-clipboard": "Link copied to clipboard",
       "select-two-different-documents-to-compare": "Select two different documents to compare."
     },

@@ -1088,7 +1088,7 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       component.abandonWorkflow(workflow());
 
       expect(component.abandoningWorkflow()).toBe(false);
-      expect(snack).toHaveBeenCalledWith('Failed to abandon workflow', 'OK', expect.anything());
+      expect(snack).toHaveBeenCalledWith('Failed to abandon workflow.', 'OK', expect.anything());
     });
 
     it('turns an i18n task key into a readable label', async () => {

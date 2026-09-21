@@ -1337,6 +1337,127 @@ expectGreen('a fully parameterised sentence', 'checkNoHardcodedUiText', {
     "<p>{{ 'x.slot-empty' | translate: { name: item.label } }}</p>\n",
 });
 
+/* ---------------- the sink holes a reviewer had to find ---------------- */
+
+// Three shapes the first version of `checkNoHardcodedImperativeUiText` reported clean, each of which
+// made the "333 strings" count I quoted from it an understatement.
+
+expectRed(
+  'a literal in a TERNARY, not the direct first argument',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'this.snackBar.open(\n' +
+        "  denied(err) ? KEY : 'Failed to update collection',\n" +
+        "  this.translate.instant('common.ok'),\n" +
+        ');\n',
+    ),
+  /passes the hard-coded string `Failed to update collection`/,
+);
+
+expectRed(
+  'a signal whose name ENDS in Error rather than beginning with it',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "this.recentlyEditedError.set('Failed to load documents.');\n"),
+  /passes the hard-coded string `Failed to load documents\.`/,
+);
+
+expectRed(
+  'a literal reached through a ?? fallback',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.agentsError.set(err?.error?.detail ?? 'Failed to load agents.');\n",
+    ),
+  /passes the hard-coded string `Failed to load agents\.`/,
+);
+
+// Matching anywhere in the argument costs two false positives, and both must stay green or the
+// check starts arguing with its reviewer.
+falsePositiveControls += 1;
+expectGreen('an operation name handed to a nested call', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "this.agentsErrorDetail.set(this.captureError('HylandKnowledgeDiscovery.getAllAgents', err));\n",
+});
+
+falsePositiveControls += 1;
+expectGreen('a literal used in a comparison', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "this.error.set(message.startsWith('Cannot sort by') ? message : this.translate.instant('x.k'));\n",
+});
+
+/* ---------------- a text attribute is prose whatever its first letter ---------------- */
+
+// `isDisplayText` requires an initial capital, which is right in text position and wrong for an
+// attribute whose NAME already establishes that the value is prose. It hid every lowercase
+// placeholder, including the date masks that differ by locale.
+expectRed(
+  'a lowercase placeholder',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) => write('libs/features/x/src/lib/x.html', '<input placeholder="mm/dd/yyyy" />\n'),
+  /placeholder="mm\/dd\/yyyy"/,
+);
+
+expectRed(
+  'a lowercase example placeholder',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.html', '<input placeholder="e.g. All PDFs created last month" />\n'),
+  /placeholder="e\.g\. All PDFs created last month"/,
+);
+
+// A repository path is structure: translating a segment would make the example wrong.
+falsePositiveControls += 1;
+expectGreen('a path placeholder', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html': '<input placeholder="/default-domain/workspaces/MyWorkspace" />\n',
+});
+
+/* ---------------- this.translate must be injected, per class ---------------- */
+
+expectRed(
+  'a class using this.translate without injecting it',
+  'checkTranslateIsInjectedWhereUsed',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'export class XComponent {\n' +
+        "  fail() { this.error.set(this.translate.instant('x.k')); }\n" +
+        '}\n',
+    ),
+  /uses `this\.translate` but never injects it/,
+);
+
+// The variant that actually happened: one file, several classes, the injection added to the first.
+expectRed(
+  'a second class in the same file missing the injection',
+  'checkTranslateIsInjectedWhereUsed',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'export class FirstService {\n' +
+        '  private readonly translate = inject(TranslateService);\n' +
+        "  a() { return this.translate.instant('x.a'); }\n" +
+        '}\n' +
+        'export class SecondService {\n' +
+        "  b() { return this.translate.instant('x.b'); }\n" +
+        '}\n',
+    ),
+  /class `SecondService` uses `this\.translate` but never injects it/,
+);
+
 /* ---------------- a comment may end with --!> as well as --> ---------------- */
 
 // `--!>` is a valid comment terminator (the spec's comment-end-bang state). Recognising only `-->`

@@ -13,7 +13,13 @@
       <mat-label>{{
         'shared-ui.share-saved-search-external-dialog.email-2' | translate
       }}</mat-label>
-      <input matInput type="email" placeholder="name@company.com" [(ngModel)]="email" required />
+      <input
+        matInput
+        type="email"
+        [placeholder]="'common.email-example' | translate"
+        [(ngModel)]="email"
+        required
+      />
     </mat-form-field>
   }
 
