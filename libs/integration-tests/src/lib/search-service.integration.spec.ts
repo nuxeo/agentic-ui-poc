@@ -21,11 +21,13 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { SearchService } from '@agentic-ui/shared/nuxeo-client';
+import { SearchService } from '@nuxeo-satori/platform/nuxeo-client';
 import { setupIntegrationHarness, createTestDocument } from './integration-harness';
 
 describe('SearchService Integration Tests', () => {
-  const harness = setupIntegrationHarness();
+  const harness = setupIntegrationHarness({
+    allowDefaultCredentials: true, // For local Docker testing
+  });
   let searchService: SearchService;
 
   // Set up Angular TestBed with real HTTP
