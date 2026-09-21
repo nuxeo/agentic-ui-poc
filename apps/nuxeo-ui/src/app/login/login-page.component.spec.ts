@@ -2,8 +2,8 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
-import { of, Observable } from 'rxjs';
+import { TranslateLoader, TranslateModule, TranslateService } from '@ngx-translate/core';
+import { firstValueFrom, of, Observable } from 'rxjs';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -11,7 +11,7 @@ import { AuthService } from '../auth/auth.service';
 import { LoginPageComponent } from './login-page.component';
 
 class LoginTranslateLoader implements TranslateLoader {
-  getTranslation() {
+  getTranslation(_lang: string) {
     return of({
       'login.title': 'Log in',
       'login.panel-label': 'Log in',
@@ -49,6 +49,8 @@ describe('LoginPageComponent', () => {
         { provide: AuthService, useValue: auth },
       ],
     }).compileComponents();
+
+    await firstValueFrom(TestBed.inject(TranslateService).use('en'));
 
     fixture = TestBed.createComponent(LoginPageComponent);
     component = fixture.componentInstance;
