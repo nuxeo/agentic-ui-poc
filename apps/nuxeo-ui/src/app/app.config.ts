@@ -20,7 +20,14 @@ import {
 import { CONTEXT_MENU_ACTIONS_PROVIDERS } from '@alfresco/adf-hx-content-services/ui';
 import { routes } from './app.routes';
 import { AppTranslateLoader } from './i18n/app-translate-loader';
+import { registerShippedLocaleData } from './i18n/register-locale-data';
 import { AppThemeService } from './theme/app-theme.service';
+
+// At module load rather than in an `APP_INITIALIZER`, because `registerLocaleData` populates a
+// global registry that `DatePipe` reads on its first evaluation — which can happen in a
+// component that renders before, or concurrently with, the initializers. Registration is a
+// synchronous map write with no dependencies, so there is nothing to sequence.
+registerShippedLocaleData();
 
 /** `APP_INITIALIZER` values are invoked as `fn()` at startup; the factory must return that `fn`. */
 export function initializeAppTheme(theme: AppThemeService) {

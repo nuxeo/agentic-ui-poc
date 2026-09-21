@@ -121,6 +121,40 @@ test.describe('authentication and authorisation', () => {
     await assertInViewport(password, 'password input');
   });
 
+  test('login form stays usable in forced-colors (Windows high contrast) (NXENG-751)', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
+    await page.goto('/#/login', { waitUntil: 'networkidle' });
+
+    const username = page.getByLabel('Username (required)', { exact: true });
+    const password = page.getByLabel('Password (required)', { exact: true });
+    const submit = page.locator('button.login-submit');
+
+    await expect(username).toBeVisible();
+    await expect(password).toBeVisible();
+    await expect(submit).toBeVisible();
+
+    const heroImg = page.locator('img.login-hero-image');
+    await expect(heroImg).toHaveAttribute('alt', '');
+    const heroOpacity = await heroImg.evaluate((el) => getComputedStyle(el).opacity);
+    expect(heroOpacity, 'forced-colors hides decorative hero art').toBe('0');
+
+    for (let i = 0; i < 4; i += 1) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(submit).toBeFocused();
+
+    const focusRing = await submit.evaluate((el) => {
+      const style = getComputedStyle(el);
+      const outlineWidthPx = Number.parseFloat(style.outlineWidth) || 0;
+      return { outlineWidthPx, outlineStyle: style.outlineStyle };
+    });
+    expect(focusRing.outlineStyle).not.toBe('none');
+    expect(focusRing.outlineWidthPx).toBeGreaterThanOrEqual(2);
+  });
+
   test('Log in shows a visible focus indicator when reached via Tab (NXENG-750)', async ({
     page,
   }) => {

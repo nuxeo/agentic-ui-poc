@@ -6,7 +6,7 @@ import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { TranslateModule } from '@ngx-translate/core';
 
 /**
- * Regression test for NXENG-758 — the keyboard focus indicator on the sidebar nav links.
+ * Regression test for NXENG-761 — the keyboard focus indicator on the sidebar nav links.
  *
  * ## What is asserted, and why it is measured rather than inspected
  *
@@ -62,13 +62,7 @@ const LINK =
 @Component({
   standalone: true,
   imports: [SatPlatformNavModule],
-  template: `
-    <sat-platform-nav>
-      <sat-platform-nav-list-item [active]="active()" data-nav-id="app.navbar.browseAdfHx">
-        Browse (adf-hx POC)
-      </sat-platform-nav-list-item>
-    </sat-platform-nav>
-  `,
+  templateUrl: './nav-focus-ring-contrast.host.html',
 })
 class NavHostComponent {
   readonly active = signal(false);
@@ -119,7 +113,7 @@ function paintedBackdrop(element: Element): number[] {
   throw new Error('no painted ancestor found; the nav panel did not render');
 }
 
-describe('sidebar nav focus ring contrast (NXENG-758)', () => {
+describe('sidebar nav focus ring contrast (NXENG-761)', () => {
   /** WCAG 2.1 SC 1.4.11 Non-text Contrast: a focus indicator needs 3:1 against its neighbours. */
   const MINIMUM_RATIO = 3;
 
@@ -198,7 +192,7 @@ describe('sidebar nav focus ring contrast (NXENG-758)', () => {
     // Focusing has to change the element's appearance: an unfocused item reports no outline
     // at all. That is the *precondition* IBM's `style_focus_visible` puts in front of a human
     // reviewer, not a substitute for the re-scan itself — no assertion here can produce an
-    // IBM verdict, and the ticket's AC-2 is tracked as outstanding on NXENG-758.
+    // IBM verdict.
     link.blur();
     expect(getComputedStyle(link).outlineStyle).toBe('none');
   });

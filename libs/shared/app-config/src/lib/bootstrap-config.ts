@@ -197,7 +197,10 @@ export const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig = {
   defaultThemeId: 'nuxeo',
   themes: DEFAULT_APP_THEMES,
   defaultLanguage: 'en',
-  availableLanguages: ['en'],
+  // The locales a catalogue actually ships for, in `apps/nuxeo-ui/public/i18n/`. Listing a
+  // locale here that has no catalogue would advertise a language the application cannot
+  // render; `checkTranslationCatalogues` keeps each of these at full key parity with `en`.
+  availableLanguages: ['en', 'fr', 'de'],
   integrations: {
     arender: null,
     knowledgeDiscoveryOperations: {},
