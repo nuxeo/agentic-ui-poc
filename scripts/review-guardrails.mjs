@@ -1340,19 +1340,69 @@ function checkNoHardcodedDescriptorText() {
     // contract — see `NavItemDescriptor.labelKey`. Read from the file rather than the diff
     // because the two lines are separate additions and a line-at-a-time check cannot see the
     // pair.
-    const body = fileExists(file) ? read(file).split('\n') : [];
-    const pairedWithKey = (lineNumber) => {
-      const near = body.slice(Math.max(0, lineNumber - 3), lineNumber + 2).join('\n');
-      return /\blabelKey\s*:/.test(near);
+    // Paired within the SAME object, not within a few lines of it.
+    //
+    // This was a `±3` line window, which borrows a neighbour's key: in a compact array an unkeyed
+    // `{ label: 'Delete' }` two lines below a keyed object saw that object's `labelKey` and was
+    // skipped, so the gate had a false negative on exactly the shape it exists to catch. The
+    // window cannot tell "this descriptor has a key" from "some descriptor nearby does".
+    //
+    // The enclosing object is found by walking back to the innermost unmatched `{` and forward to
+    // its match. Braces inside string literals are not tracked — a brace in a descriptor's text
+    // would mis-scope this, which is a smaller and louder failure than borrowing a key, and no
+    // descriptor in the repository has one.
+    const source = fileExists(file) ? read(file) : '';
+    const lineStarts = [0];
+    for (let at = source.indexOf('\n'); at !== -1; at = source.indexOf('\n', at + 1)) {
+      lineStarts.push(at + 1);
+    }
+    // Takes the PROPERTY as well as the line, because the walk has to start inside the object.
+    //
+    // Neither line boundary works. From the line START, a single-line descriptor's own `{` is
+    // ahead of the cursor and gets skipped. From the line END, its `}` and `{` are balanced, so the
+    // object reads as nested and the walk runs off the top of the file. Starting at the matched
+    // property puts the cursor inside the braces, where the first unmatched `{` is the object's own.
+    const pairedWithKey = (lineNumber, property) => {
+      const lineStart = lineStarts[lineNumber - 1];
+      if (lineStart === undefined) return false;
+      const lineEnd = (lineStarts[lineNumber] ?? source.length + 1) - 1;
+      const found = source.indexOf(`${property}:`, lineStart);
+      if (found === -1 || found > lineEnd) return false;
+      const offset = found;
+      let depth = 0;
+      let open = -1;
+      for (let at = offset; at >= 0; at -= 1) {
+        if (source[at] === '}') depth += 1;
+        else if (source[at] === '{') {
+          if (depth === 0) {
+            open = at;
+            break;
+          }
+          depth -= 1;
+        }
+      }
+      if (open === -1) return false;
+      depth = 0;
+      let close = source.length;
+      for (let at = open; at < source.length; at += 1) {
+        if (source[at] === '{') depth += 1;
+        else if (source[at] === '}') {
+          depth -= 1;
+          if (depth === 0) {
+            close = at;
+            break;
+          }
+        }
+      }
+      return /\blabelKey\s*:/.test(source.slice(open, close + 1));
     };
 
     for (const { line, text } of lines) {
       const trimmed = text.trim();
       if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('*')) continue;
-      if (pairedWithKey(line)) continue;
-
       for (const [, property, value] of trimmed.matchAll(DESCRIPTOR_TEXT)) {
         if ((value.match(/[A-Za-z]/g) ?? []).length < 2) continue;
+        if (pairedWithKey(line, property)) continue;
         fail(
           `${file}:${line} introduces \`${property}: '${value}'\` — a user-facing string in a ` +
             'descriptor.\n' +

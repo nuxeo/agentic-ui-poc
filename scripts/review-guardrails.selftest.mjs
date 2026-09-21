@@ -1212,6 +1212,40 @@ expectGreen('a file that already carried the marker before this diff', 'checkNoR
   '.cursor/skills/pre-pr-review/SKILL.md': `# Pre-PR review\n\n<!-- ${CORPUS_MARKER} -->\n`,
 });
 
+/* ---------------- checkNoHardcodedDescriptorText: pairing is per object ---------------- */
+
+// The false negative: an unkeyed descriptor two lines below a keyed one borrowed its `labelKey`
+// under the old ±3-line window, so the gate passed on exactly the shape it exists to catch.
+expectRed(
+  'an unkeyed descriptor sitting next to a keyed one',
+  'checkNoHardcodedDescriptorText',
+  { 'libs/features/x/src/lib/x.ts': 'export const ITEMS = [];\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'export const ITEMS = [\n' +
+        "  { labelKey: 'x.keep', label: 'Keep', path: '/keep' },\n" +
+        "  { label: 'Delete', path: '/delete' },\n" +
+        '];\n',
+    ),
+  /introduces `label: 'Delete'`/,
+);
+
+// And the pairing still works, single-line and multi-line, or the fix would flag 89 correctly
+// keyed descriptors — which the first two attempts at this walk did.
+falsePositiveControls += 1;
+expectGreen('descriptors keyed on one line and across lines', 'checkNoHardcodedDescriptorText', {
+  'libs/features/x/src/lib/x.ts':
+    'export const ITEMS = [\n' +
+    "  { labelKey: 'x.one', label: 'One', path: '/one' },\n" +
+    '  {\n' +
+    "    labelKey: 'x.two',\n" +
+    "    label: 'Two',\n" +
+    "    path: '/two',\n" +
+    '  },\n' +
+    '];\n',
+});
+
 /* ---------------- checkNoHardcodedUiText: parameterised translate spans ---------------- */
 
 // A parameterised pipe's own braces ended the interpolation pattern, so `| translate` survived
