@@ -64,6 +64,23 @@ describe('LoginPageComponent', () => {
     expect(usernameInput.getAttribute('aria-required')).toBeNull();
   });
 
+  it('disconnects the username aria-required observer on destroy (NXENG-753)', () => {
+    const usernameInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement;
+    const disconnectSpy = spyOn(
+      (component as unknown as { usernameAriaRequiredObserver: MutationObserver })
+        .usernameAriaRequiredObserver as MutationObserver,
+      'disconnect',
+    ).and.callThrough();
+
+    fixture.destroy();
+
+    expect(disconnectSpy).toHaveBeenCalled();
+    usernameInput.setAttribute('aria-required', 'true');
+    expect(usernameInput.getAttribute('aria-required')).toBe('true');
+  });
+
   it('groups username and password in a credentials fieldset (NXENG-752)', () => {
     const el = fixture.nativeElement as HTMLElement;
     const fieldset = el.querySelector('fieldset.login-credentials');

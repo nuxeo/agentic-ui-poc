@@ -20,6 +20,7 @@ import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
+import { observeStripRedundantMatInputAriaRequired } from './login-mat-input-required-a11y';
 
 const LAST_USER_KEY = 'agentic_ui_last_username';
 
@@ -108,29 +109,12 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  /**
-   * MatInput sets both native `required` and `aria-required`; IBM Equal Access flags the
-   * duplicate on the username field (NXENG-753). Keep HTML required, drop the redundant ARIA.
-   */
+  /** NXENG-753: keep native required, drop MatInput's duplicate aria-required on username. */
   private watchUsernameRequiredAccessibility(): void {
-    const { usernameInput } = this.getCredentialInputs();
-    if (!usernameInput) {
-      return;
-    }
-
-    const stripRedundantAriaRequired = (): void => {
-      if (usernameInput.required && usernameInput.getAttribute('aria-required') === 'true') {
-        usernameInput.removeAttribute('aria-required');
-      }
-    };
-
-    stripRedundantAriaRequired();
     this.usernameAriaRequiredObserver?.disconnect();
-    this.usernameAriaRequiredObserver = new MutationObserver(stripRedundantAriaRequired);
-    this.usernameAriaRequiredObserver.observe(usernameInput, {
-      attributes: true,
-      attributeFilter: ['aria-required', 'required'],
-    });
+    this.usernameAriaRequiredObserver = observeStripRedundantMatInputAriaRequired(
+      this.getCredentialInputs().usernameInput,
+    );
   }
 
   private getCredentialInputs(): {
