@@ -41,10 +41,17 @@
 
         @if (showRenditions) {
           <div class="inline-group">
-            <span class="inline-label">{{
+            <span class="inline-label" id="publish-renditions-label">{{
               'document-detail.publish-dialog.renditions' | translate
             }}</span>
-            <select class="inline-select rendition-select" [(ngModel)]="selectedRendition">
+            <!-- A <span> has no labelling relationship to a control, so the select was unnamed.
+                 `aria-labelledby` is the association a <label for> would give, and a <label> is
+                 wrong here: this span also heads a group rather than one field. -->
+            <select
+              class="inline-select rendition-select"
+              [(ngModel)]="selectedRendition"
+              aria-labelledby="publish-renditions-label"
+            >
               <option value="">{{ 'document-detail.publish-dialog.none' | translate }}</option>
               <option value="__default__">
                 {{ 'document-detail.publish-dialog.default-rendition' | translate }}
@@ -57,10 +64,14 @@
         }
 
         <div class="inline-group">
-          <span class="inline-label">{{
+          <span class="inline-label" id="publish-version-label">{{
             'document-detail.publish-dialog.version' | translate
           }}</span>
-          <select class="inline-select version-select" [(ngModel)]="selectedVersion">
+          <select
+            class="inline-select version-select"
+            [(ngModel)]="selectedVersion"
+            aria-labelledby="publish-version-label"
+          >
             <option [value]="data.versionLabel">{{ data.versionLabel }}</option>
             @for (v of data.versions; track v.uid) {
               <option [value]="versionStr(v)">{{ versionStr(v) }}</option>

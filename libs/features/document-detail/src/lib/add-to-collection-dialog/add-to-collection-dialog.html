@@ -25,9 +25,14 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+      <!-- A placeholder is not an accessible name: it is announced inconsistently and
+           disappears the moment the user types, leaving the field unnamed. -->
       <input
         matInput
         [placeholder]="
+          'document-detail.add-to-collection-dialog.search-or-create-collection' | translate
+        "
+        [attr.aria-label]="
           'document-detail.add-to-collection-dialog.search-or-create-collection' | translate
         "
         [ngModel]="searchTerm()"

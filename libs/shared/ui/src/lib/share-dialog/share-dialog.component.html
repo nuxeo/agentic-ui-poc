@@ -1,9 +1,17 @@
 <h2 mat-dialog-title>{{ 'shared-ui.share-dialog.share-the-document' | translate }}</h2>
 
 <mat-dialog-content>
-  <p class="share-subtitle">Internal Access link to {{ data.title }}.</p>
+  <p class="share-subtitle">
+    {{ 'shared-ui.share-dialog.internal-access-link-to' | translate: { name: data.title } }}
+  </p>
   <div class="share-link-row">
-    <input class="share-link-input" readonly [value]="data.url" #linkInput />
+    <input
+      class="share-link-input"
+      readonly
+      [value]="data.url"
+      #linkInput
+      [attr.aria-label]="'shared-ui.share-dialog.share-link' | translate"
+    />
     <button
       mat-icon-button
       class="copy-btn"

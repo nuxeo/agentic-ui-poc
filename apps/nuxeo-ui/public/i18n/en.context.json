@@ -1429,6 +1429,8 @@
   "shared-ui.selection-topbar.selected-items": "Visible text in selection-topbar. Rendered in libs/shared/ui/src/lib/selection-topbar/selection-topbar.component.html.",
   "shared-ui.share-dialog.close": "Visible text in share-dialog. Rendered in libs/shared/ui/src/lib/share-dialog/share-dialog.component.html.",
   "shared-ui.share-dialog.copy-link": "Accessible name (aria-label) of a control in share-dialog. Rendered in libs/shared/ui/src/lib/share-dialog/share-dialog.component.html.",
+  "shared-ui.share-dialog.internal-access-link-to": "Explains what the link below it is. {{ name }} is the DOCUMENT TITLE — server data, never translated. \"Internal\" means inside the organisation, as opposed to an external share.",
+  "shared-ui.share-dialog.share-link": "Accessible name of the read-only box holding the share URL. A NOUN phrase naming what the field contains, since a screen reader otherwise announces an unnamed text box.",
   "shared-ui.share-dialog.share-the-document": "Visible text in share-dialog. Rendered in libs/shared/ui/src/lib/share-dialog/share-dialog.component.html.",
   "shared-ui.share-saved-search-add-permission-dialog.cancel": "Visible text in share-saved-search-add-permission-dialog. Rendered in libs/shared/ui/src/lib/share-saved-search-add-permission-dialog/share-saved-search-add-permission-dialog.component.html.",
   "shared-ui.share-saved-search-add-permission-dialog.create": "Visible text in share-saved-search-add-permission-dialog. Rendered in libs/shared/ui/src/lib/share-saved-search-add-permission-dialog/share-saved-search-add-permission-dialog.component.html.",

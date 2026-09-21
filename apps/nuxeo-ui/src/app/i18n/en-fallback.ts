@@ -326,6 +326,7 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'shared-ui.selection-topbar.close': 'Close',
   'shared-ui.selection-topbar.close-selected-items-popup': 'Close selected items popup',
   'shared-ui.share-dialog.copy-link': 'Copy link',
+  'shared-ui.share-dialog.share-link': 'Share link',
   'shared-ui.share-saved-search-add-permission-dialog.hi-could-you-comment-on-this':
     'Hi! Could you comment on this document and...',
   'shared-ui.share-saved-search-add-permission-dialog.search-for-users-and-groups':

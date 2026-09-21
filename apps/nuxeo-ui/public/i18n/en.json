@@ -1734,6 +1734,8 @@
     "share-dialog": {
       "close": "Close",
       "copy-link": "Copy link",
+      "internal-access-link-to": "Internal access link to {{ name }}.",
+      "share-link": "Share link",
       "share-the-document": "Share the Document"
     },
     "share-saved-search-add-permission-dialog": {
