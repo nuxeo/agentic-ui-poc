@@ -853,8 +853,32 @@
   "common": {
     "select-item": "Select {{ name }}"
   },
+  "confirm": {
+    "add-a-permission": "Add a Permission",
+    "delete": "Delete",
+    "delete-collection": "Delete Collection",
+    "delete-collection-question": "Are you sure you want to delete this collection?",
+    "delete-document": "Delete Document",
+    "delete-document-question": "Are you sure you want to delete this document?",
+    "delete-group": "Delete group",
+    "delete-saved-search": "Delete Saved Search",
+    "delete-selected-documents": "Delete {{ count }} selected documents?",
+    "delete-the-document": "Delete the document?",
+    "delete-user": "Delete user",
+    "delete-vocabulary-entry": "Delete vocabulary entry",
+    "got-it": "Got it",
+    "move-named-to-trash": "Move \"{{ name }}\" to trash?",
+    "move-to-trash": "Move to Trash",
+    "permanently-delete-document": "Permanently Delete Document",
+    "permanently-delete-documents": "Permanently Delete Documents",
+    "permanently-delete-warning": "Permanently delete this document? This cannot be undone.",
+    "update": "Update"
+  },
   "contracts": {
-    "saved-search-placeholder": "e.g., \"Q3 Contracts Pending Review\""
+    "sample-document-title": "Contract ABC-123.pdf",
+    "saved-search-placeholder": "e.g., \"Q3 Contracts Pending Review\"",
+    "showcase-dialog-message": "This dialog is imported from @nuxeo-satori/platform/ui. Customers can use it for confirmation prompts, warnings, and destructive actions.",
+    "showcase-dialog-title": "Component Showcase Demo"
   },
   "dashboard": {
     "favorite-items": "Favorite Items",

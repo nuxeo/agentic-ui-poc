@@ -52,10 +52,9 @@ export class ContractsPageComponent {
 
   openConfirmDialog() {
     const data: ConfirmDialogData = {
-      title: 'Component Showcase Demo',
-      message:
-        'This dialog is imported from @nuxeo-satori/platform/ui. Customers can use it for confirmation prompts, warnings, and destructive actions.',
-      confirmLabel: 'Got it',
+      title: this.translate.instant('contracts.showcase-dialog-title'),
+      message: this.translate.instant('contracts.showcase-dialog-message'),
+      confirmLabel: this.translate.instant('confirm.got-it'),
     };
 
     this.dialog.open(ConfirmDialogComponent, {
@@ -66,7 +65,7 @@ export class ContractsPageComponent {
 
   openShareDialog() {
     const data: ShareDialogData = {
-      title: 'Contract ABC-123.pdf',
+      title: this.translate.instant('contracts.sample-document-title'),
       url: 'https://example.com/nuxeo/ui/#/doc/contract-abc-123',
     };
 

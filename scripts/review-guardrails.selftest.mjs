@@ -1212,6 +1212,72 @@ expectGreen('a file that already carried the marker before this diff', 'checkNoR
   '.cursor/skills/pre-pr-review/SKILL.md': `# Pre-PR review\n\n<!-- ${CORPUS_MARKER} -->\n`,
 });
 
+/* ---------------- checkNoHardcodedDialogText: scope, not field list ---------------- */
+
+// This gate exists because the two nearby ones cannot reach a dialog's text: the template sweep
+// reads templates and this is built in TypeScript, and the descriptor check excludes `title`
+// deliberately. Its whole correctness rests on SCOPE — strict inside a dialog's data, silent
+// outside it — so both halves of that need a control.
+
+expectRed(
+  'a hard-coded title in a ConfirmDialogData',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "const data = {\n  title: 'Delete Document',\n} as ConfirmDialogData;\n",
+    ),
+  /sets `title: 'Delete Document'` in a dialog's data/,
+);
+
+expectRed(
+  'a hard-coded message in the data: of an open() call',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "dialog.open(C, {\n  data: { message: 'Are you sure?' },\n});\n"),
+  /sets `message: 'Are you sure\?'` in a dialog's data/,
+);
+
+expectRed(
+  'a hard-coded confirmLabel in a function returning DialogData',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/shared/ui/src/lib/y.ts',
+      "export function d(): ConfirmDialogData {\n  return { confirmLabel: 'Delete' };\n}\n",
+    ),
+  /sets `confirmLabel: 'Delete'` in a dialog's data/,
+);
+
+// The false positive that made widening `checkNoHardcodedDescriptorText` the wrong fix. A
+// synthetic Nuxeo document has a `title` and is not prose; `browse.service.ts` builds one with
+// `title: 'Root'`. If this gate ever flags that, it has stopped being scope-anchored and will be
+// switched off like any check that argues with its reviewer.
+falsePositiveControls += 1;
+expectGreen('a synthetic document title outside any dialog', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/shared/nuxeo-client/src/lib/services/z.service.ts':
+    "export const root = {\n  uid: 'virtual-root',\n  title: 'Root',\n  type: 'Root',\n};\n",
+});
+
+falsePositiveControls += 1;
+expectGreen('a dialog title read from a catalogue', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "const data = {\n  title: this.translate.instant('confirm.delete-document'),\n} as ConfirmDialogData;\n",
+});
+
+// A `data:` object carrying an id or a uid is the common shape and must stay silent: only the
+// text-bearing fields are in the pattern.
+falsePositiveControls += 1;
+expectGreen('a dialog data object with no user-facing text', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts': "dialog.open(C, {\n  data: { id: 'Ab12', uid: 'X9' },\n});\n",
+});
+
 /* ---------------- the generated pseudo-locale is not a shipped one ---------------- */
 
 // `zz` is derived from `en.json` by `tools/i18n/pseudo-locale.mjs` and gitignored; it exists only

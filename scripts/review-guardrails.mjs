@@ -2997,6 +2997,122 @@ function checkShippedDefaultLanguage() {
   }
 }
 
+/**
+ * No hard-coded user-facing text inside a dialog's data object.
+ *
+ * ## Why this is its own check rather than a wider `checkNoHardcodedDescriptorText`
+ *
+ * `checkNoHardcodedUiText` is repo-wide but reads templates, and a dialog's title, message and
+ * confirm label are built in TypeScript, so it never sees them.
+ * `checkNoHardcodedDescriptorText` reads TypeScript but deliberately excludes `title` — that field
+ * names a Nuxeo document property and a schema field at least as often as UI chrome, and there is a
+ * control asserting it stays unflagged. Widening that check was tried during this work and the
+ * control refused it, correctly: `browse.service.ts` builds a synthetic document with
+ * `title: 'Root'`, and flagging that would be arguing with the reviewer on most hits.
+ *
+ * The difference is SCOPE, not the field list. Inside a `ConfirmDialogData` — or the `data:` of a
+ * `MatDialog.open(...)` — `title` and `message` are unambiguously text a user reads. So this check
+ * is anchored on the dialog context and can then afford to be strict about fields the other check
+ * cannot touch at all.
+ *
+ * It is repo-wide, because 48 of these predate any diff and a diff-scoped version would certify
+ * them by never looking.
+ */
+function checkNoHardcodedDialogText() {
+  const FIELD = /\b(title|message|confirmLabel|cancelLabel|confirmText|cancelText)\s*:\s*'([A-Z][^']*)'/g;
+
+  // Same exemptions as the template sweep, for the same reasons.
+  const EXEMPT = [
+    /^apps\/nuxeo-satori-template\//,
+    /^libs\/extensions\/acme-extensions\//,
+    /^libs\/core\//,
+  ];
+
+  /** The matching `}` for the `{` at `open`, or the end of the file. */
+  const closingBrace = (text, open) => {
+    let depth = 0;
+    for (let at = open; at < text.length; at += 1) {
+      if (text[at] === '{') depth += 1;
+      else if (text[at] === '}') {
+        depth -= 1;
+        if (depth === 0) return at;
+      }
+    }
+    return text.length;
+  };
+
+  /** The `{` opening the object that ends at `close`. */
+  const openingBrace = (text, close) => {
+    let depth = 0;
+    for (let at = close; at >= 0; at -= 1) {
+      if (text[at] === '}') depth += 1;
+      else if (text[at] === '{') {
+        depth -= 1;
+        if (depth === 0) return at;
+      }
+    }
+    return -1;
+  };
+
+  /**
+   * Character ranges that are dialog DATA.
+   *
+   * Three shapes, all of them present in this repository: an object annotated
+   * `as ConfirmDialogData`, the `data: { … }` of an `open(...)` call, and a function declared to
+   * return a `*DialogData`.
+   */
+  const dialogRegions = (text) => {
+    const spans = [];
+    for (const m of text.matchAll(/(?:as|:)\s*\w*DialogData\b/g)) {
+      const close = text.lastIndexOf('}', m.index);
+      if (close === -1) continue;
+      const open = openingBrace(text, close);
+      if (open !== -1) spans.push([open, close]);
+    }
+    for (const m of text.matchAll(/\bdata:\s*\{/g)) {
+      const open = text.indexOf('{', m.index);
+      spans.push([open, closingBrace(text, open)]);
+    }
+    for (const m of text.matchAll(/\):\s*\w*DialogData\s*\{/g)) {
+      const open = text.indexOf('{', m.index + m[0].length - 2);
+      spans.push([open, closingBrace(text, open)]);
+    }
+    return spans;
+  };
+
+  const sources = [
+    ...walk('apps', (path) => /\.ts$/.test(path)),
+    ...walk('libs', (path) => /\.ts$/.test(path)),
+  ].filter(
+    (path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)),
+  );
+
+  if (sources.length === 0) {
+    fail('No TypeScript sources were found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+
+  for (const file of sources) {
+    const text = read(file);
+    if (!/DialogData\b|\bdata:\s*\{/.test(text)) continue;
+    const spans = dialogRegions(text);
+    if (spans.length === 0) continue;
+
+    for (const match of text.matchAll(FIELD)) {
+      if (!spans.some(([open, close]) => open <= match.index && match.index <= close)) continue;
+      const line = text.slice(0, match.index).split('\n').length;
+      fail(
+        `${file}:${line} sets \`${match[1]}: '${match[2]}'\` in a dialog's data — user-facing ` +
+          'text a user reads, built in TypeScript where no template pipe can reach it.\n' +
+          "    Add a key to the owning project's `i18n/en.json` and resolve it at the call site:\n" +
+          `      ${match[1]}: this.translate.instant('confirm.delete-document.${match[1]}')\n` +
+          '    A dialog is the one place `title` is unambiguously prose, which is why this gate ' +
+          'can be strict about a field `checkNoHardcodedDescriptorText` must leave alone.',
+      );
+    }
+  }
+}
+
 const GUARDRAILS = [
   checkThemeTokens,
   checkDocsNumbering,
@@ -3012,6 +3128,7 @@ const GUARDRAILS = [
   checkNoAdfHxInPublicApi,
   checkNoHardcodedUiText,
   checkNoHardcodedDescriptorText,
+  checkNoHardcodedDialogText,
   checkTranslationCatalogues,
   checkAdvertisedLocalesShip,
   checkCrowdinConfig,

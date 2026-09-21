@@ -26,7 +26,7 @@ import {
   GroupFormDialogData,
   GroupFormDialogResult,
 } from '../group-form-dialog/group-form-dialog.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-admin-group-details-page',
@@ -48,6 +48,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class AdminGroupDetailsPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
   private readonly permService = inject(PrincipalPermissionsService);
@@ -148,9 +149,9 @@ export class AdminGroupDetailsPageComponent implements OnInit {
         {
           width: '400px',
           data: {
-            title: 'Delete group',
+            title: this.translate.instant('confirm.delete-group'),
             message: `Delete group "${group.groupname}"?`,
-            confirmLabel: 'Delete',
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )

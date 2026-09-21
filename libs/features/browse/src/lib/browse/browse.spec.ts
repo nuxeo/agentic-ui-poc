@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
@@ -669,7 +670,12 @@ describe('BrowseComponent', () => {
     expect(dialogOpenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        data: trashSelectedDocumentsConfirmData(3),
+        // Resolved through the same service the component uses, so this asserts the BULK shape
+        // was chosen for three selected children rather than pinning any English wording — the
+        // strings now come from the catalogue and are not this test's subject.
+        data: trashSelectedDocumentsConfirmData(3, (key, params) =>
+          TestBed.inject(TranslateService).instant(key, params),
+        ),
       }),
     );
     expect(mockDocumentDetailService.trashDocument).not.toHaveBeenCalled();

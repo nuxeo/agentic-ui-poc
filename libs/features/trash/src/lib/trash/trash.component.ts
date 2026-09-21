@@ -223,7 +223,7 @@ export class TrashComponent {
     const dialogRef = this.dialog.open(SavedSearchDialogComponent, {
       ...SAVED_SEARCH_DIALOG_OPTIONS,
       data: {
-        title: 'Saved Search',
+        title: this.translate.instant('ui.saved-search'),
         placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
       },
     });
@@ -285,7 +285,7 @@ export class TrashComponent {
       .open(SavedSearchDialogComponent, {
         ...SAVED_SEARCH_DIALOG_OPTIONS,
         data: {
-          title: 'Edit Saved Search',
+          title: this.translate.instant('ui.edit-saved-search'),
           placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: title.trim(),
         },
@@ -334,9 +334,9 @@ export class TrashComponent {
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Saved Search',
+        title: this.translate.instant('confirm.delete-saved-search'),
         message: `Delete saved search "${title.trim()}"?`,
-        confirmLabel: 'Delete',
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -492,9 +492,9 @@ export class TrashComponent {
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Permanently Delete Documents',
+        title: this.translate.instant('confirm.permanently-delete-documents'),
         message: `Permanently delete ${ids.length} document(s)? This cannot be undone.`,
-        confirmLabel: 'Delete',
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -557,9 +557,9 @@ export class TrashComponent {
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Permanently Delete Document',
-        message: 'Permanently delete this document? This cannot be undone.',
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.permanently-delete-document'),
+        message: this.translate.instant('confirm.permanently-delete-warning'),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 

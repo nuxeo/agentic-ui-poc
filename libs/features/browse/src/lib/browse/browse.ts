@@ -1439,9 +1439,9 @@ export class BrowseComponent {
           }
           const dialogRef = this.dialog.open(ConfirmDialogComponent, {
             data: {
-              title: 'Delete Collection',
+              title: this.translate.instant('confirm.delete-collection'),
               message: `Are you sure you want to delete "${fullDoc.title}"?`,
-              confirmLabel: 'Delete',
+              confirmLabel: this.translate.instant('confirm.delete'),
             } as ConfirmDialogData,
           });
           dialogRef
@@ -1554,7 +1554,9 @@ export class BrowseComponent {
 
   private openTrashConfirmDialog(doc: NuxeoDocument): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: trashDocumentConfirmData(doc.title),
+      data: trashDocumentConfirmData(doc.title, (key, params) =>
+        this.translate.instant(key, params),
+      ),
     });
 
     dialogRef
@@ -1587,7 +1589,9 @@ export class BrowseComponent {
     if (ids.length === 0) return;
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: trashSelectedDocumentsConfirmData(ids.length),
+      data: trashSelectedDocumentsConfirmData(ids.length, (key, params) =>
+        this.translate.instant(key, params),
+      ),
     });
 
     dialogRef

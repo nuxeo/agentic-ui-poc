@@ -37,7 +37,7 @@ import {
   UserFormDialogData,
   UserFormDialogResult,
 } from '../user-form-dialog/user-form-dialog.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface RecentUserGroupRow {
   kind: 'user' | 'group';
@@ -70,6 +70,7 @@ export interface RecentUserGroupRow {
 })
 export class AdminUsersGroupsPageComponent implements OnInit {
   private readonly userService = inject(UserService);
+  private readonly translate = inject(TranslateService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
@@ -379,9 +380,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         {
           width: '400px',
           data: {
-            title: 'Delete user',
+            title: this.translate.instant('confirm.delete-user'),
             message: `Delete user "${user.id}"? This cannot be undone.`,
-            confirmLabel: 'Delete',
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )
@@ -468,9 +469,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         {
           width: '400px',
           data: {
-            title: 'Delete group',
+            title: this.translate.instant('confirm.delete-group'),
             message: `Delete group "${group.groupname}"?`,
-            confirmLabel: 'Delete',
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )

@@ -359,7 +359,7 @@ export class ShareSavedSearchDialogComponent implements OnInit {
         ShareSavedSearchAddPermissionResult[] | null
       >(ShareSavedSearchAddPermissionDialogComponent, {
         width: '720px',
-        data: { title: 'Add a Permission' },
+        data: { title: this.translate.instant('confirm.add-a-permission') },
       })
       .afterClosed()
       .subscribe((result) => {
@@ -442,7 +442,7 @@ export class ShareSavedSearchDialogComponent implements OnInit {
       >(ShareSavedSearchAddPermissionDialogComponent, {
         width: '720px',
         data: {
-          title: 'Update',
+          title: this.translate.instant('confirm.update'),
           initialData: row,
         },
       })

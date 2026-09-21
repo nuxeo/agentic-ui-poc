@@ -930,9 +930,9 @@ export class SearchComponent {
     const title = this.selectedSavedSearchTitle().trim() || 'this saved search';
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Saved Search',
+        title: this.translate.instant('confirm.delete-saved-search'),
         message: `Delete saved search "${title}"?`,
-        confirmLabel: 'Delete',
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 

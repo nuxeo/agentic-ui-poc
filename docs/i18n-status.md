@@ -506,54 +506,27 @@ fails any source that is not.
 
 ### Known-incomplete, and easy to read as done
 
-- **52 user-facing strings inside dialog data objects are still English**, across 16 production
-  files — `title`, `message` and `confirmLabel` on `ConfirmDialogData` and friends, concentrated in
-  `trash.component.ts` (9), `document-detail.ts` (7) and `trash-confirm.utils.ts` (7). Measured, not
-  estimated.
+- **Dialog text — 48 strings, now keyed and gated.** `title`, `message` and `confirmLabel` on
+  `ConfirmDialogData` and the `data:` of a `MatDialog.open(...)` were English literals across 13
+  production files, concentrated in `trash.component.ts` (9), `document-detail.ts` (7) and
+  `trash-confirm.utils.ts` (7).
 
-  **No gate sees them, and one cannot simply be widened to.** `checkNoHardcodedUiText` is repo-wide
-  but reads templates only. `checkNoHardcodedDescriptorText` reads TypeScript but is diff-scoped, and
-  it deliberately excludes `title` — that field names a Nuxeo document property and a schema field at
-  least as often as it names UI chrome, so flagging it globally means arguing with a reviewer on most
-  hits, and a check that argues gets switched off. There is a control asserting `title` stays
-  unflagged; an attempt to add it during this work was caught by that control.
+  **Why it needed a new gate rather than a wider old one.** `checkNoHardcodedUiText` is repo-wide
+  but reads templates, and this text is built in TypeScript.
+  `checkNoHardcodedDescriptorText` reads TypeScript but excludes `title` deliberately — that field
+  names a Nuxeo document property as often as UI chrome, and `browse.service.ts` builds a synthetic
+  document with `title: 'Root'` that must not be flagged. Widening it was tried here and a selftest
+  control refused it, correctly.
 
-  `message` and `confirmLabel` are not in the pattern at all. Covering this class properly needs a
-  check scoped to the `data:` object of a `MatDialog.open(...)` call, which is a different shape of
-  check from either existing one.
+  `checkNoHardcodedDialogText` is anchored on SCOPE instead: inside a dialog's data object `title`
+  and `message` are unambiguously prose, so it can be strict about fields the descriptor check must
+  leave alone. It is repo-wide, because all 48 predate any diff and a diff-scoped version would have
+  certified them by never looking. Six controls, including the `title: 'Root'` false positive.
 
-  The saved-search dialog titles were fixed at their call sites, because the dialog's own template
-  carried a translated fallback that no caller could reach. The rest are listed here rather than
-  quietly left, because this pull request is titled "translate every user-facing string".
-
-These were carried in a temporary handover document that has been deleted — a working note that
-duplicated mutable state and went stale within a day. They are recorded here because each one is a
-place a reader will call the ticket finished and be wrong.
-
-- **Literal `aria-label` selectors in `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` will break
-  silently when NXSAT-284 reaches them — one of them already can.** An earlier version of this
-  bullet said all the labels they select on "are now translated". That was wrong, and measured
-  rather than assumed it is one in six: of `Card view`, `List view`, `Manage columns`, `Grid view`,
-  `Close panel` and `Toggle details panel`, only the last has a catalogue key
-  (`browse.details.toggle`). The other five are still literal English in feature and shared
-  templates that this PR deliberately excludes.
-
-  So the risk is latent rather than live: those selectors match today because the DOM really does
-  contain those English words. The moment NXSAT-284 localises those libraries, a non-English run
-  matches nothing and the harness goes **green having asserted less** — silence, not a red, which
-  is why it belongs on this list rather than in a backlog. They want `data-testid` before the
-  strings move, not after.
-
-- **Roughly 160 user-facing strings are still built in TypeScript** — snackbar messages, dialog
-  titles, error text. Surveyed, not extracted. Outside AC1's wording, which is about templates, so
-  the ticket can close with all of them still hard-coded.
-- **`NXSAT-284`'s Jira state and the work in flight are not the same thing, and neither is "mostly
-  done".** An earlier version of this bullet, carried over from a working note, said most of
-  NXSAT-284 had shipped. That contradicts this page's own status row (`not started`) and its own
-  measurement of what is left — 1,350 template strings and 257 descriptor strings. What is actually
-  true: the descriptor-label slice is built and in review on
-  [#215](https://github.com/nuxeo/agentic-ui-poc/pull/215), which is not merged; the bulk extraction
-  has not begun. Jira says `Open`, and for once that is the accurate summary.
+  Two of the 48 were worse than untranslated: `trash-confirm.utils.ts` built its messages by
+  interpolation — `Move "${title}" to trash?` and `Delete ${count} selected document(s)?`. The `(s)`
+  suffix assumes a language pluralises by appending one letter. Both are parameterised keys now, and
+  the singular case is its own key rather than a suffix.
 
 ### Separate stories, not part of either ticket
 

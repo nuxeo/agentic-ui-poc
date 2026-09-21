@@ -3200,9 +3200,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (this.actionInProgress() || !this.requireRemovePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Document',
-        message: 'Are you sure you want to delete this document?',
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.delete-document'),
+        message: this.translate.instant('confirm.delete-document-question'),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -3253,9 +3253,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (this.actionInProgress() || !this.requireRemovePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Permanently Delete Document',
-        message: 'Permanently delete this document? This cannot be undone.',
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.permanently-delete-document'),
+        message: this.translate.instant('confirm.permanently-delete-warning'),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -3701,7 +3701,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       data: {
         title: isReply ? 'Delete Reply' : 'Delete Comment',
         message: isReply ? 'Delete this reply?' : 'Delete this comment?',
-        confirmLabel: 'Delete',
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 

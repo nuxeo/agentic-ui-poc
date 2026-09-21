@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
+import { TranslateService } from '@ngx-translate/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { catchError, forkJoin, of } from 'rxjs';
 
@@ -44,13 +45,18 @@ export class BulkDeleteActionService implements ExtensionActionHandler {
   private readonly snackBar = inject(MatSnackBar);
   private readonly browseContext = inject(BrowseContextService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
 
   execute(): void {
     const count = this.selection.selectedCount();
     if (count === 0) return;
 
     this.dialog
-      .open(ConfirmDialogComponent, { data: trashSelectedDocumentsConfirmData(count) })
+      .open(ConfirmDialogComponent, {
+        data: trashSelectedDocumentsConfirmData(count, (key, params) =>
+          this.translate.instant(key, params),
+        ),
+      })
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((confirmed) => {

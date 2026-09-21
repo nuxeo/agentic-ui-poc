@@ -32,7 +32,7 @@ import {
   ChangePasswordDialogComponent,
   ChangePasswordDialogData,
 } from '../change-password-dialog/change-password-dialog.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 const PERM_PAGE_SIZE = 10;
 
@@ -56,6 +56,7 @@ const PERM_PAGE_SIZE = 10;
 })
 export class AdminUserDetailsPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
   private readonly permService = inject(PrincipalPermissionsService);
@@ -293,9 +294,9 @@ export class AdminUserDetailsPageComponent implements OnInit {
         {
           width: '400px',
           data: {
-            title: 'Delete user',
+            title: this.translate.instant('confirm.delete-user'),
             message: `Delete user "${user.id}"? This cannot be undone.`,
-            confirmLabel: 'Delete',
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )

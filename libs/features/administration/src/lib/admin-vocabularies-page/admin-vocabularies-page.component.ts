@@ -28,7 +28,7 @@ import {
   VocabularyEntryFormDialogData,
   VocabularyEntryFormDialogResult,
 } from '../vocabulary-entry-form-dialog/vocabulary-entry-form-dialog.component';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-admin-vocabularies-page',
@@ -51,6 +51,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class AdminVocabulariesPageComponent implements OnInit {
   private readonly directoryService = inject(DirectoryService);
+  private readonly translate = inject(TranslateService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
@@ -165,9 +166,9 @@ export class AdminVocabulariesPageComponent implements OnInit {
         ConfirmDialogComponent,
         {
           data: {
-            title: 'Delete vocabulary entry',
+            title: this.translate.instant('confirm.delete-vocabulary-entry'),
             message: `Permanently delete "${entry.id}" from ${directoryName}? This cannot be undone.`,
-            confirmLabel: 'Delete',
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )

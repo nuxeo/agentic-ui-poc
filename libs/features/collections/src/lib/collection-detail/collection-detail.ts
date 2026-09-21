@@ -508,9 +508,9 @@ export class CollectionDetailComponent {
     }
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Collection',
-        message: 'Are you sure you want to delete this collection?',
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.delete-collection'),
+        message: this.translate.instant('confirm.delete-collection-question'),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
