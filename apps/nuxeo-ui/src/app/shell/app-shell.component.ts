@@ -362,8 +362,14 @@ export class AppShellComponent implements OnDestroy {
       return null;
     }
     const count = this.clipboardCount();
-    // Use the existing suffix-based pluralization pattern (common.count.*)
-    // When ICU MessageFormat is added (Phase 3C), this can be migrated to a single key
+    // The catalogue's established two-key pluralisation, as used by every `common.count.*` pair.
+    //
+    // NOT a placeholder for ICU MessageFormat. `docs/i18n-status.md` records the decision that ICU
+    // is not adopted: en, fr and de each need exactly two plural forms, which this expresses, and
+    // the migration would cost a dependency, a compiler in `app.config.ts` and 22 key rewrites for
+    // no behavioural gain. The condition that would reverse it is adding a locale needing three or
+    // more forms — Polish, Russian, Arabic, Czech — and then ICU has to land BEFORE translation
+    // starts, or every plural string is paid for twice.
     const key = count === 1 ? 'nav.clipboard.aria-label-one' : 'nav.clipboard.aria-label-many';
     return this.translate.instant(key, { name: this.navText(item), count });
   }

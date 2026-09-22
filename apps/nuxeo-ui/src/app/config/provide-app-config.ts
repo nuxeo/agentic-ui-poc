@@ -1,4 +1,4 @@
-import { APP_INITIALIZER, Provider, inject } from '@angular/core';
+import { APP_INITIALIZER, LOCALE_ID, Provider, inject } from '@angular/core';
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { UserPreferenceValues, UserPreferencesService } from '@alfresco/adf-core';
 import { TranslateService } from '@ngx-translate/core';
@@ -123,9 +123,20 @@ export function initialiseAppConfigAndLanguage(
      * purpose. Strings follow the configuration; formatting follows the configuration
      * only where we have the data to honour it.
      */
-    const formattingLocale = REGISTERED_LOCALES.includes(defaultLanguage) ? defaultLanguage : 'en';
-    userPreferences.set(UserPreferenceValues.Locale, formattingLocale);
+    userPreferences.set(UserPreferenceValues.Locale, resolveFormattingLocale(defaultLanguage));
   };
+}
+
+/**
+ * The configured language, narrowed to one Angular can actually format in.
+ *
+ * Extracted so the `APP_INITIALIZER` above and the `LOCALE_ID` provider below cannot disagree.
+ * They are two consumers of one decision, and inlining it twice is how adf-core's formatting
+ * locale and Angular's would drift apart — the failure being a page where an adf-hx surface
+ * formats in French and the shell beside it formats in English.
+ */
+export function resolveFormattingLocale(defaultLanguage: string): string {
+  return REGISTERED_LOCALES.includes(defaultLanguage) ? defaultLanguage : 'en';
 }
 
 export function provideAppConfig(): Provider[] {
@@ -139,6 +150,31 @@ export function provideAppConfig(): Provider[] {
       ) => initialiseAppConfigAndLanguage(config, translate, userPreferences),
       deps: [AppConfigService, TranslateService, UserPreferencesService],
       multi: true,
+    },
+    /*
+     * Angular's OWN formatting locale, which is a different mechanism from the two above.
+     *
+     * `translate.use()` sets the string language and `UserPreferencesService` sets adf-core's
+     * formatting locale. Neither touches `LOCALE_ID`, so without this Angular keeps its built-in
+     * default of `en-US` and every `DatePipe`, `DecimalPipe`, `CurrencyPipe` and
+     * `inject(LOCALE_ID)` call site formats in English no matter what Layer 0 configures.
+     *
+     * That was the live state of this application: `docs/i18n-status.md` recorded it as gap 10,
+     * "what is still missing is providing `LOCALE_ID` itself from configuration", and a change
+     * that threaded `locale` through a dozen date helpers was merged against that default —
+     * correct plumbing feeding a constant. Threading the parameter is necessary and not
+     * sufficient; this provider is the other half.
+     *
+     * Resolved on first injection rather than in the initializer, which is what makes it safe:
+     * `APP_INITIALIZER` completes before the root component is created, so `bootstrap()` has the
+     * loaded configuration by the time anything injects this. Same idiom as `NUXEO_API_ORIGIN`
+     * below. Nothing in the initializer chain injects `LOCALE_ID`, which is the one thing that
+     * would resolve — and permanently cache — a pre-configuration value.
+     */
+    {
+      provide: LOCALE_ID,
+      useFactory: () =>
+        resolveFormattingLocale(inject(AppConfigService).bootstrap().defaultLanguage),
     },
     {
       provide: NUXEO_API_ORIGIN,

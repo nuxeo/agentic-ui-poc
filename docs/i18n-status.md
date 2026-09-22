@@ -61,7 +61,22 @@ That instrument has been wrong twice, both times under-reporting:
 ## Locale-aware date formatting — closed 2026-09-22
 
 Eleven call sites formatted dates with a hardcoded `'en-US'` or a bare `toLocaleDateString()`
-(which reads the **host machine's** locale, not the user's choice). All now take `LOCALE_ID`.
+(which reads the **host machine's** locale, not the user's choice). All now take `LOCALE_ID`,
+**and `LOCALE_ID` is now provided from Layer 0 configuration** — see gap 10 below, which this
+closes.
+
+That second half is the one that makes the first half mean anything, and it was nearly shipped
+missing. An earlier revision of this section claimed closure while `LOCALE_ID` had no provider at
+all, so Angular supplied its built-in `en-US` to every injection and a French or German
+deployment still rendered every one of these dates in English. Correct plumbing feeding a
+constant. Gap 10, six hundred lines below on this same page, said so at the time.
+
+The provider is in `provide-app-config.ts` and shares `resolveFormattingLocale()` with the
+`APP_INITIALIZER` that sets adf-core's locale, so Angular's formatting locale and adf-core's
+cannot drift apart. Proven by `LOCALE_ID provider` in `provide-app-config.spec.ts`, which
+asserts `fr` and `de` resolve from configuration and an unregistered locale falls back to `en`;
+deleting the provider turns all four red.
+
 The grep that must stay empty:
 
 ```bash
@@ -668,11 +683,14 @@ fails any source that is not.
 
 9. **A language picker.** `availableLanguages` is validated, unit-tested and read by nothing.
    adf-core ships `LanguagePickerComponent`.
-10. **`LOCALE_ID`.** Locale _data_ is now registered for `fr` and `de`, and adf-core's
-    formatting locale follows the configuration — so dates format per locale instead of
-    throwing. What is still missing is providing `LOCALE_ID` itself from configuration, so
-    anything relying on Angular's default locale rather than adf-core's explicit one is still
-    `en-US`. Narrower than it was, not closed.
+10. **`LOCALE_ID` — CLOSED 2026-09-22.** Locale _data_ is registered for `fr` and `de`, adf-core's
+    formatting locale follows the configuration, and `LOCALE_ID` is now **provided** from it too,
+    in `provide-app-config.ts`. Both consumers share `resolveFormattingLocale()`, so Angular's
+    formatting locale and adf-core's cannot diverge. Before that provider existed, anything
+    reading Angular's locale — every `DatePipe`, `DecimalPipe`, `CurrencyPipe` and
+    `inject(LOCALE_ID)` — got the built-in `en-US` regardless of configuration. Covered by
+    `LOCALE_ID provider` in `provide-app-config.spec.ts`; deleting the provider turns four tests
+    red. See "Locale-aware date formatting" above.
 11. **RTL** — DS-2277. Satori needs 4–6 weeks of its own work before an app can start, and the
     target should be the "good enough" level from its spectrum, agreed explicitly.
 12. **Pluralisation — the deferral has expired, and the convention is now two keys.** This entry
