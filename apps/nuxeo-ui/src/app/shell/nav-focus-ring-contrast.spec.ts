@@ -55,6 +55,7 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
 const NAV_ITEMS_UNDER_TEST = [
   { navId: 'app.navbar.browseAdfHx', ticket: 'NXENG-758' },
   { navId: 'app.navbar.search', ticket: 'NXENG-785' },
+  { navId: 'app.navbar.administration', ticket: 'NXENG-795' },
 ] as const;
 
 /** Focusable anchor inside the list item under test — never a bare `.sat-platform-nav-item`. */
