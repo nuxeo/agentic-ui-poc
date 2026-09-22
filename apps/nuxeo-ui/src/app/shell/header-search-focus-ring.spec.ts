@@ -40,6 +40,9 @@
 import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatIconModule } from '@angular/material/icon';
+import { TranslateModule } from '@ngx-translate/core';
+
+import { testTranslateModule } from '../i18n/translate-testing';
 
 /** WCAG 2.1 relative luminance. */
 function relativeLuminance([r, g, b]: [number, number, number]): number {
@@ -63,7 +66,7 @@ function rgb(css: string): [number, number, number] {
 
 @Component({
   standalone: true,
-  imports: [MatIconModule],
+  imports: [MatIconModule, TranslateModule],
   // The real stylesheet under test. Emulated encapsulation scopes it to this template,
   // which is exactly what we want: the declarations are the shell's, the markup mirrors
   // app-shell.component.html.
@@ -79,7 +82,7 @@ describe('header global search — keyboard focus indicator', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [HeaderSearchHostComponent],
+      imports: [HeaderSearchHostComponent, testTranslateModule()],
       providers: [provideZonelessChangeDetection()],
     }).compileComponents();
 
