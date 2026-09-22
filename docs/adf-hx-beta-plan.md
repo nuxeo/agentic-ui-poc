@@ -432,7 +432,7 @@ Largely built. Remaining:
 - Add Nx generators for "new extension component", "new action", "new rule".
 - Package the guardrail script for customer use.
 
-## Phase 6 — Beta quality bar and proof (**all 7 steps done**, 2026-08-31)
+## Phase 6 — Beta quality bar and proof (**6 of 7 steps done**; step 6 reopened 2026-09-22)
 
 - NXENG-615's checklist, assessed against the slice: unit coverage above 90% (the bridge has 11
   tests for 2,949 lines today), ~~Playwright E2E on critical paths~~ (**done** — `npm run beta:e2e`,
@@ -474,11 +474,11 @@ and `browse.ts` held 707 of 1,175, so `browse` went 56.72% → 99.02% and `docum
 document list during change detection for any document with no `dc:lastContributor`.
 
 **The caveat, which must travel with the number.** These are percentages of the _measured_
-subset. Re-measured 2026-09-22: **10,203 source lines across 48 files** are imported by no test at
-all, so they contribute no statements and cannot lower any percentage — **6,171 of those lines are
+subset. Re-measured 2026-09-22: **10,155 source lines across 48 files** are imported by no test at
+all, so they contribute no statements and cannot lower any percentage — **6,137 of those lines are
 in-scope**. `ui` reports 97.68% with 1,523 lines outside the measurement; `search` reports 93.41%
 with a 1,330-line filters drawer outside it; `nuxeo-client` reports 90.28% with 1,835. The worst is
-`assets` at 97.44%, which measures 78 statements while 1,646 lines of its two components sit
+`assets` at 97.44%, which measures 78 statements while 1,644 lines of its two components sit
 outside — a figure that is arithmetically true and evidence of nothing.
 
 `npm run beta:coverage` prints an `excluded` column beside every percentage for exactly this
@@ -486,14 +486,17 @@ reason, and the entries are dated to 2026-11-30 in
 `.ai/state/coverage-uninstrumented-allowlist.json`. Regenerate rather than quoting these:
 
 ```bash
+# Counts NEWLINES, matching `wc -l` and the per-file figures in the allowlist. `split('\n').length`
+# counts the empty segment after a trailing newline too, which inflated this by one per file — 48
+# lines across the set, and it is how the assets pair was recorded as 1,646 when 995 + 649 = 1,644.
 node -e "const fs=require('fs');const a=require('./.ai/state/coverage-uninstrumented-allowlist.json');\
   let f=0,l=0;for(const p of Object.keys(a.files||{})){if(!fs.existsSync(p))continue;\
-  f++;l+=fs.readFileSync(p,'utf8').split('\n').length;}console.log(f+' files, '+l+' lines');"
+  f++;l+=(fs.readFileSync(p,'utf8').match(/\n/g)||[]).length;}console.log(f+' files, '+l+' lines');"
 ```
 
 So "10 of 11 in-scope projects meet the 90% bar" is true and is the bar as defined. It is not
 the same claim as "the in-scope code is 90% tested", and it should not be quoted as though it
-were. Closing the remaining 6,171 in-scope lines is comparable in size to the work just completed.
+were. Closing the remaining 6,137 in-scope lines is comparable in size to the work just completed.
 
 **The figure was 10 of 10 until 2026-09-22, and it was the denominator that moved, not the code.**
 `assets`, `tasks` and `shared-ai-client` had never appeared in a coverage report, so nothing

@@ -64,11 +64,11 @@
     },
     "libs/features/assets/src/lib/asset-search-results/asset-search-results.component.ts": {
       "until": "2026-11-30",
-      "reason": "Untested component, 995 lines, no spec imports it — so it sits in the coverage report with an empty statement map and is omitted from the denominator. Accepted debt, NOT a file with nothing to measure: excluding it OVERSTATES assets. assets reports 97.44% from only 78 measured statements while 1,646 lines across this file and assets-drawer are invisible here. Writing the first spec will make the reported percentage FALL, which the gate classifies as expanded-honestly rather than a regression."
+      "reason": "Untested component, 995 lines, no spec imports it — so it sits in the coverage report with an empty statement map and is omitted from the denominator. Accepted debt, NOT a file with nothing to measure: excluding it OVERSTATES assets. assets reports 97.44% from only 78 measured statements while 1,644 lines across this file and assets-drawer are invisible here. Writing the first spec will make the reported percentage FALL, which the gate classifies as expanded-honestly rather than a regression."
     },
     "libs/features/assets/src/lib/assets-drawer/assets-drawer.component.ts": {
       "until": "2026-11-30",
-      "reason": "Untested component, 649 lines, no spec imports it — so it sits in the coverage report with an empty statement map and is omitted from the denominator. Accepted debt, NOT a file with nothing to measure: excluding it OVERSTATES assets. assets reports 97.44% from only 78 measured statements while 1,646 lines across this file and asset-search-results are invisible here. Writing the first spec will make the reported percentage FALL, which the gate classifies as expanded-honestly rather than a regression."
+      "reason": "Untested component, 649 lines, no spec imports it — so it sits in the coverage report with an empty statement map and is omitted from the denominator. Accepted debt, NOT a file with nothing to measure: excluding it OVERSTATES assets. assets reports 97.44% from only 78 measured statements while 1,644 lines across this file and asset-search-results are invisible here. Writing the first spec will make the reported percentage FALL, which the gate classifies as expanded-honestly rather than a regression."
     },
     "libs/features/browse/src/lib/adf-hx-columns.ts": {
       "until": "2026-11-30",
