@@ -21,7 +21,7 @@ const PERSONAL_SPACE_LINK =
 
 @Component({
   standalone: true,
-  imports: [SatPlatformNavModule],
+  imports: [SatPlatformNavModule, TranslateModule],
   templateUrl: './personal-space-nav-focus-visible.host.html',
 })
 class PersonalSpaceNavHostComponent {
