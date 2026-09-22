@@ -456,7 +456,7 @@ Largely built. Remaining:
 | 3 — WCAG 2.1 AA met         | **done** — 7 rule classes fixed (77 nodes), `KNOWN_VIOLATIONS` empty, 15 cases scanned                                                            |
 | 4 — SAST + SCA              | **done** — but SAST already existed and was reporting 21 unread alerts, 6 high. Two gates now read the output: `supply-chain` and `code-scanning` |
 | 5 — Safari/WebKit           | **done** — 34 specs (17 × 2 engines), 5 new specs target engine divergence; WebKit not Safari, distinction recorded                               |
-| 6 — coverage to 90%         | **done** — **10 of 10** in-scope projects meet the bar. Read the caveat below before quoting it                                                   |
+| 6 — coverage to 90%         | **10 of 11** in-scope projects meet the bar as of 2026-09-22 (was 10 of 10). Read the caveat below before quoting it                              |
 
 Step 6 closed on 2026-08-31, and all seven steps are now done. The debt was two files rather
 than two libraries: `document-detail.ts` held 1,606 of its library's 1,615 uncovered statements
@@ -472,9 +472,21 @@ reports 100% with 1,528 lines outside the measurement; `search` reports 91.16% w
 beside every percentage for exactly this reason, and the entries are dated to 2026-11-30 in
 `.ai/state/coverage-uninstrumented-allowlist.json`.
 
-So "10 of 10 in-scope projects meet the 90% bar" is true and is the bar as defined. It is not
+So "10 of 11 in-scope projects meet the 90% bar" is true and is the bar as defined. It is not
 the same claim as "the in-scope code is 90% tested", and it should not be quoted as though it
 were. Closing the remaining 6,911 lines is comparable in size to the work just completed.
+
+**The figure was 10 of 10 until 2026-09-22, and it was the denominator that moved, not the code.**
+`assets`, `tasks` and `shared-ai-client` had never appeared in a coverage report, so nothing
+ratcheted them and they were absent from the count in both directions. Reconciling the baseline
+brought them in, and `shared-ai-client` arrived at **15.98%** — in scope, because the excluded set
+above names KD/KE but not the AI client, and `search` and `document-detail` both consume
+`AiGatewayService`.
+
+It was briefly added to `OUT_OF_SCOPE`, which returned the reported figure to 10 of 10 without a
+line of production code changing. That was reverted. The reasoning had argued from KD/KE being
+excluded — an analogy rather than this document, and this document is the scope contract. The
+honest number is 10 of 11, and a project cannot be argued out of scope by editing the gate.
 
 ---
 

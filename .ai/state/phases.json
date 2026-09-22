@@ -296,7 +296,7 @@
         "The platform has never been published to a registry, and no test resolves its peer dependencies from a clean install. The first real publish is to be tagged alpha for exactly that reason.",
         "The adopted upstream permissions panel represents 3 of Nuxeo's 12 permission levels. Documents holding any other now have their ACL write REFUSED rather than silently stripped \u2014 including, on a stock instance, the `sections` root and any Comments container. Correct behaviour, but the panel cannot edit those documents at all."
       ],
-      "$note": "Coverage, WCAG and SAST entries were removed from notCovered on 2026-09-01: all three had become false and contradicted this phase's own deviations list. WCAG 2.1 AA is met with KNOWN_VIOLATIONS empty; SAST is CodeQL via the 17th gate with all 21 alerts fixed; coverage is 10 of 10 in-scope projects. A stale notCovered reads as an unmet bar and understates the phase."
+      "$note": "Coverage, WCAG and SAST entries were removed from notCovered on 2026-09-01: all three had become false and contradicted this phase's own deviations list. WCAG 2.1 AA is met with KNOWN_VIOLATIONS empty; SAST is CodeQL via the 17th gate with all 21 alerts fixed; coverage is 10 of 11 in-scope projects as of 2026-09-22 \u2014 it was 10 of 10 until the baseline was reconciled and brought assets, tasks and shared-ai-client into the measurement for the first time; shared-ai-client is in scope at 15.98%. A stale notCovered reads as an unmet bar and understates the phase."
     }
   ]
 }

@@ -120,20 +120,50 @@ Three lessons from it, each of which cost something:
   `Cannot initialize local storage without a --localstorage-file path`. Under the pinned Node 20
   (`nvm use 20`) all three are green. Always confirm on 20 before believing a red.
 
-### Decided 2026-09-22: ICU MessageFormat is NOT needed — en/fr/de only
+### Pluralisation 2026-09-22: ICU deferred, but French is wrong today — and the first reason given was false
 
-The catalogue holds **22** `-one`/`-many` key pairs (`grep -c '\-one":' apps/nuxeo-ui/public/i18n/en.json`).
-A recurring recommendation is to migrate these to ICU MessageFormat via
-`ngx-translate-messageformat-compiler`. **Do not, unless the locale set changes.**
+The catalogue holds **22** `-one`/`-many` key pairs (`grep -c '\-one":' apps/nuxeo-ui/public/i18n/en.json`),
+selected by `count === 1 ? '…-one' : '…-many'` at each call site.
 
-English, French and German each need exactly **two** plural forms, which is what the suffix pattern
-expresses. ICU buys nothing for them and costs a dependency, a compiler in `app.config.ts`, and
-22 key migrations touching 42+ call sites.
+**The original justification for deferring ICU was that "en, fr and de each need exactly two plural
+forms". That is false, and it was asserted without being measured.** What `Intl.PluralRules`
+actually reports:
 
-The trade-off is real but conditional: Polish, Russian, Arabic and Czech need **3–6** forms and
-cannot be served by two suffixed keys. **If a fourth locale is ever added, ICU must land before
-translation starts, not after** — otherwise every plural string is paid for twice. That is the only
-reason to revisit this, and it is a locale-roadmap decision rather than an engineering one.
+```bash
+node -e "for (const l of ['en','fr','de']) { const p = new Intl.PluralRules(l);
+  console.log(l, p.resolvedOptions().pluralCategories.join(','),
+    '| 0 ->', p.select(0), '| 1e6 ->', p.select(1000000)); }"
+```
+
+| Locale | CLDR categories      | `0`     | `1000000` |
+| ------ | -------------------- | ------- | --------- |
+| `en`   | one, other           | other   | other     |
+| `de`   | one, other           | other   | other     |
+| `fr`   | **one, many, other** | **one** | **many**  |
+
+French has **three** categories and treats **zero as singular**. So `count === 1` is the wrong
+test for French:
+
+- **Zero is a live defect.** `search.html` renders `resultCount() === 1 ? 'common.count.result-one' : '…-many'`,
+  and a search with no hits therefore reads **`0 résultats`** in French where CLDR requires
+  **`0 résultat`**. The same applies to every `common.count.*` pair that can render zero.
+- **A million is theoretical here**, but `found-result-many` would take French's `other` form where
+  CLDR asks for `many`.
+
+`nav.clipboard.aria-label-*` is **not** affected, and for a reason worth stating rather than
+assuming: `clipboardNavAriaLabel()` returns `null` for a non-positive count, so zero never reaches
+a key, and a clipboard cannot hold a million items.
+
+**ICU remains deferred, on the corrected premise.** Two keys plus a `=== 1` test is not
+CLDR-correct for French, so the honest position is that this is known debt rather than a
+sufficient design. The cheap partial fix is to select the singular for `0` **and** `1` in French —
+which is locale-dependent branching in 22 call sites, i.e. the thing ICU exists to remove. Adopting
+`ngx-translate-messageformat-compiler` costs a dependency, a compiler in `app.config.ts` and 22 key
+migrations, and it is the only option that is actually correct.
+
+Escalate this before the Crowdin spend, not after: translators asked for two French forms will
+supply two, and a later ICU migration re-opens every plural string. Adding any locale needing 3–6
+forms (Polish, Russian, Arabic, Czech) makes ICU unavoidable.
 
 ### `aria-labelledby` is not a translatable string — do not "fix" it
 

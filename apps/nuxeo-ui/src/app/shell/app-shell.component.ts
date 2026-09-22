@@ -364,12 +364,22 @@ export class AppShellComponent implements OnDestroy {
     const count = this.clipboardCount();
     // The catalogue's established two-key pluralisation, as used by every `common.count.*` pair.
     //
-    // NOT a placeholder for ICU MessageFormat. `docs/i18n-status.md` records the decision that ICU
-    // is not adopted: en, fr and de each need exactly two plural forms, which this expresses, and
-    // the migration would cost a dependency, a compiler in `app.config.ts` and 22 key rewrites for
-    // no behavioural gain. The condition that would reverse it is adding a locale needing three or
-    // more forms — Polish, Russian, Arabic, Czech — and then ICU has to land BEFORE translation
-    // starts, or every plural string is paid for twice.
+    // This maps `1` to the singular and EVERY other count to the plural. That is not the same
+    // thing as "these locales have two plural forms", which an earlier version of this comment
+    // claimed. Measured with `Intl.PluralRules`:
+    //
+    //   en -> one, other          (0 -> other)
+    //   de -> one, other          (0 -> other)
+    //   fr -> one, many, other    (0 -> ONE, 1_000_000 -> many)
+    //
+    // So French has three categories and treats zero as singular. This call site is unaffected on
+    // both counts: it returns `null` above when the count is not positive, so zero never reaches a
+    // key, and a clipboard cannot hold a million items. The narrowing is what makes two keys
+    // correct HERE, not a property of the languages.
+    //
+    // `docs/i18n-status.md` records the ICU decision and the same measurement, including the
+    // `common.count.*` pairs where the zero case is NOT narrowed away and French is therefore
+    // wrong today.
     const key = count === 1 ? 'nav.clipboard.aria-label-one' : 'nav.clipboard.aria-label-many';
     return this.translate.instant(key, { name: this.navText(item), count });
   }
