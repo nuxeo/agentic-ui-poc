@@ -7,13 +7,28 @@
   "// targets": "to see all targets run: nx show project integration-tests --web",
   "targets": {
     "integration": {
-      "executor": "@nx/vitest:test",
+      "executor": "nx:run-commands",
       "$comment": "Named `integration`, not `test`, so no `-t test` invocation can reach it. These specs require a live Nuxeo; CI runners have none, so `nx affected -t test` and `nx run-many -t test` would fail every one of them on a precondition. An exclusion list in each workflow would work only for as long as everyone remembers to extend it — the name cannot be forgotten.",
+      "$preflightComment": "Preflight first, so an absent or empty Nuxeo reports as a precondition rather than as sixty-five product failures. Same shape as nuxeo-ui-e2e's `e2e`. Note that `nx` normalises a failed command to exit 1, so the preflight's exit 2 does NOT survive `nx run integration-tests:integration` — `npm run beta:integration` chains the same two commands with `&&` and does preserve it. That is why both exist, exactly as `beta:e2e` exists beside `nuxeo-ui-e2e:e2e`.",
+      "$cacheComment": "Deliberately NOT cached: the result depends on a live Nuxeo's contents, and a cached green would assert something about a server state that has since changed.",
       "cache": false,
-      "$cacheComment": "`@nx/vitest:test` is cached by default via nx.json targetDefaults. Not here: the result depends on a live Nuxeo's contents, and a cached green would assert something about a server state that has since changed. Same reasoning as nuxeo-ui-e2e's `e2e`.",
-      "outputs": ["{options.reportsDirectory}"],
       "options": {
-        "reportsDirectory": "coverage/libs/integration-tests"
+        "cwd": "{workspaceRoot}",
+        "commands": [
+          "npx tsx libs/integration-tests/src/preflight-cli.ts",
+          "npx vitest run --config libs/integration-tests/vitest.config.mts"
+        ],
+        "parallel": false
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "$comment": "`preflight-cli.ts` is neither a spec nor part of any bundle, so `spec-typecheck.mjs` does not reach it and there is no `build` target that would. Without this target the one file in the repository whose job is to exit with the right code would be the one file nothing type-checks.",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "tsc -p libs/integration-tests/tsconfig.lib.json --noEmit"
       }
     },
     "lint": {

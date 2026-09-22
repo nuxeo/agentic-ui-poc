@@ -1,9 +1,20 @@
 /**
  * Integration test preflight checks.
  *
- * Refuses to run the integration suite when preconditions are not met. Exit code 2 means
- * "fix the environment, don't iterate on the code" — the convention from e2e-preflight.mjs
- * and phase-runner.mjs.
+ * Refuses to run the integration suite when preconditions are not met.
+ *
+ * ## Where exit 2 actually happens
+ *
+ * Not here. This module contains no `process.exit` and cannot: `checkIntegrationPreconditions`
+ * runs inside `setupIntegrationHarness`'s `beforeAll`, and vitest intercepts `process.exit` in
+ * the worker and turns it into a failing test, so the run exits 1 whatever this code asks for.
+ * For a while this file's header claimed the exit-2 convention regardless, which made a
+ * precondition failure and a product defect indistinguishable at the only place a caller looks.
+ *
+ * `src/preflight-cli.ts` is the gate that does exit 2 — it imports `runPreflightChecks` below
+ * and runs as a step before vitest, the way `apps/nuxeo-ui-e2e` chains `e2e-preflight.mjs`
+ * ahead of `playwright test`. The throw here remains as the backstop for anyone invoking
+ * vitest directly.
  *
  * ## Preconditions (from audit §11 Stage 4)
  *
@@ -15,18 +26,14 @@
  *
  * 3. **Default credentials require opt-in.** `Administrator` / `Administrator` is the Docker
  *    default, so pointing a test at an arbitrary Nuxeo without checking destroys production
- *    data. The flag `--allow-default-credentials` makes the risk explicit.
- *
- * Exit codes:
- *   0 - All preconditions met, tests can run
- *   2 - Precondition not met (fix environment)
+ *    data. `ALLOW_DEFAULT_CREDENTIALS=true` makes the risk explicit.
  *
  * Usage:
  *   ```ts
  *   import { checkIntegrationPreconditions } from '@agentic-ui/integration-tests';
  *
  *   beforeAll(async () => {
- *     await checkIntegrationPreconditions();
+ *     await checkIntegrationPreconditions();   // throws; vitest reports exit 1
  *   });
  *   ```
  */
@@ -101,13 +108,16 @@ export async function runPreflightChecks(
       `Integration tests refuse to run with default Administrator/Administrator credentials\n` +
       `  without explicit opt-in. This prevents accidentally running against production.\n\n` +
       `  If you are CERTAIN this is a disposable Docker instance:\n` +
-      `    npm run beta:integration -- --allow-default-credentials\n\n` +
+      `    ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration\n\n` +
+      `  The env var, not \`-- --allow-default-credentials\`: npm appends extra arguments to\n` +
+      `  the END of the script, and this script is a two-command chain, so the flag lands on\n` +
+      `  vitest instead of the preflight and the message you are reading repeats forever.\n\n` +
       `  Or set non-default credentials:\n` +
       `    export NUXEO_USER=testuser\n` +
       `    export NUXEO_PASS=testpass`,
     );
   } else if (isDefaultCreds) {
-    satisfied.push('default credentials allowed by --allow-default-credentials flag');
+    satisfied.push('default credentials allowed by explicit opt-in');
   } else {
     satisfied.push(`non-default credentials (user: ${user})`);
   }
