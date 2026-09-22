@@ -18,7 +18,9 @@ describe('Integration Test Example', () => {
   const harness = setupIntegrationHarness();
 
   it('has a unique runId', () => {
-    expect(harness.runId).toMatch(/^\d{8}-\d{6}-[a-z0-9]{3}$/);
+    // Four hex characters: the suffix is `randomBytes(2)`, not `Math.random().toString(36)`.
+    // This assertion caught the change, which is the test working.
+    expect(harness.runId).toMatch(/^\d{8}-\d{6}-[0-9a-f]{4}$/);
     console.log(`[example] Running with runId: ${harness.runId}`);
   });
 

@@ -30,6 +30,7 @@
  * ```
  */
 
+import { randomBytes } from 'node:crypto';
 import { afterAll, beforeAll } from 'vitest';
 import {
   checkIntegrationPreconditions,
@@ -84,7 +85,12 @@ export function setupIntegrationHarness(config: IntegrationTestConfig = {}): Int
     .replace(/T/, '-')
     .replace(/\..+/, '')
     .slice(0, 15); // YYYYMMDD-HHMMSS
-  const random = Math.random().toString(36).slice(2, 5); // 3 chars
+  // `randomBytes`, not `Math.random`: SonarCloud reports the latter as `typescript:S2245`,
+  // which is the only new-code security finding on this branch. The suffix is what keeps two
+  // concurrent runs from sharing a data root, and a data root is the boundary every
+  // destructive operation here is contained by, so a stronger source costs nothing and the
+  // rule is right to ask.
+  const random = randomBytes(2).toString('hex'); // 4 chars
   const runId = `${timestamp}-${random}`;
 
   const dataRoot = `/default-domain/workspaces/it-${runId}`;
