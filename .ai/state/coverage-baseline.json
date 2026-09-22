@@ -129,12 +129,12 @@
       "sCovered": 459
     },
     "acme-extensions": {
-      "lines": 53.47,
-      "statements": 53.47,
-      "branches": 75,
-      "functions": 38.46,
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 84.62,
       "sTotal": 101,
-      "sCovered": 54
+      "sCovered": 101
     },
     "assets": {
       "lines": 97.44,
