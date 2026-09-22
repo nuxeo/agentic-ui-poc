@@ -125,6 +125,9 @@ describe('Knowledge Discovery sidebar nav focus ring (NXENG-780)', () => {
       if (!dashboard.classList.contains(ACTIVE_CLASS)) {
         throw new Error('Dashboard must render as the current route item for this ticket scenario');
       }
+      expect(kd.classList.contains(ACTIVE_CLASS))
+        .withContext('Knowledge Discovery must stay inactive on the dashboard route')
+        .toBe(false);
 
       kd.focus({ focusVisible: true } as FocusOptions);
       expect(kd.matches(':focus-visible'))
