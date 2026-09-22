@@ -177,6 +177,31 @@ html {
   );
 }
 
+/*
+ * App shell skip link — NXENG-783 (IBM element_tabbable_visible / WCAG 2.4.7).
+ *
+ * Satori's `SatSkipToContent` hides the anchor off-screen and toggles
+ * `.sat-skip-to-content-button-visible` from a `(focus)` handler on an OnPush component.
+ * Accessibility scanners read computed styles as soon as focus moves, before Angular
+ * applies that class, so the link still reads as invisible during the check.
+ *
+ * Mirror the login bypass link (NXENG-745): reveal the control from CSS on `:focus` and
+ * `:focus-visible`, not only from the vendor class. Include plain `:focus` because IBM Equal
+ * Access inspects `:focus` styles and does not resolve `:focus-visible` selector lists.
+ *
+ * Also replace Satori's invalid `opacity: 100` with `opacity: 1` when the visible class
+ * does land after change detection.
+ */
+html body a.sat-skip-to-content-button:focus,
+html body a.sat-skip-to-content-button:focus-visible,
+html body a.sat-skip-to-content-button.sat-skip-to-content-button-visible {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 2000;
+  opacity: 1;
+}
+
 /* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */
 sat-platform-nav .sat-platform-nav-list {
   overflow-y: auto;
