@@ -1,0 +1,29 @@
+<div class="replace-dialog">
+  <h2>{{ 'document-detail.replace-attachment-dialog.replace-file' | translate }}</h2>
+
+  <label
+    class="upload-zone"
+    [class.has-file]="selectedFile()"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+    (drop)="onDrop($event)"
+  >
+    @if (selectedFile(); as file) {
+      <span class="file-chosen">{{ file.name }}</span>
+    } @else {
+      <span class="upload-link">{{
+        'document-detail.replace-attachment-dialog.upload-main-file' | translate
+      }}</span>
+    }
+    <input #fileInput type="file" hidden (change)="onFileSelected($event)" />
+  </label>
+
+  <div class="dialog-actions">
+    <button class="btn-cancel" (click)="cancel()">
+      {{ 'document-detail.replace-attachment-dialog.cancel' | translate }}
+    </button>
+    <button class="btn-replace" [disabled]="!selectedFile()" (click)="confirm()">
+      {{ 'document-detail.replace-attachment-dialog.replace' | translate }}
+    </button>
+  </div>
+</div>

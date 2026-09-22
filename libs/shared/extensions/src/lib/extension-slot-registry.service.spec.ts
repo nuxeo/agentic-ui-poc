@@ -13,6 +13,8 @@ import { EXTENSION_SLOTS, type ExtensionElement } from './extension-slots';
 
 interface TestAction extends ExtensionElement {
   readonly label?: string;
+  /** Mirrors `NavItemDescriptor.labelKey`, so the override-precedence specs are type-checked. */
+  readonly labelKey?: string;
   readonly rule?: string;
 }
 
@@ -184,6 +186,40 @@ describe('ExtensionSlotRegistry', () => {
       ['acme.navbar.contracts', 'Contracts'],
       ['app.navbar.browse', 'Repository'],
     ]);
+  });
+
+  /**
+   * `docs/extension-reference.md` promises that a manifest `label` wins over the packaged
+   * `labelKey`. Without clearing the key, the renderer would keep preferring it and the
+   * override would silently do nothing — the single most confusing way this could fail, and a
+   * documented guarantee with no line enforcing it.
+   */
+  it('clears labelKey when a manifest supplies a literal label, so the override wins', () => {
+    registry.register<TestAction>(EXTENSION_SLOTS.navbar, [
+      { id: 'app.navbar.browse', label: 'Browse', labelKey: 'nav.item.browse', order: 10 },
+    ]);
+
+    const [resolved] = registry.resolve<TestAction>(
+      EXTENSION_SLOTS.navbar,
+      overrides({ byId: { 'app.navbar.browse': { label: 'Repository' } } }),
+    );
+
+    expect(resolved.label).toBe('Repository');
+    expect(resolved.labelKey).toBeUndefined();
+  });
+
+  it('leaves labelKey intact when an override does not touch the label', () => {
+    registry.register<TestAction>(EXTENSION_SLOTS.navbar, [
+      { id: 'app.navbar.browse', label: 'Browse', labelKey: 'nav.item.browse', order: 10 },
+    ]);
+
+    const [resolved] = registry.resolve<TestAction>(
+      EXTENSION_SLOTS.navbar,
+      overrides({ byId: { 'app.navbar.browse': { order: 99 } } }),
+    );
+
+    expect(resolved.labelKey).toBe('nav.item.browse');
+    expect(resolved.order).toBe(99);
   });
 
   it('honours the upstream `disabled` flag', () => {

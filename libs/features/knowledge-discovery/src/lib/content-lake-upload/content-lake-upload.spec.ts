@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -126,7 +127,7 @@ async function createComponent(): Promise<{
   fixture: ComponentFixture<ContentLakeUploadComponent>;
 }> {
   await TestBed.configureTestingModule({
-    imports: [ContentLakeUploadComponent],
+    imports: [testTranslateModule(), testTranslateModule(), ContentLakeUploadComponent],
     providers: [
       provideZonelessChangeDetection(),
       { provide: DocumentImportService, useValue: mockImportService },
@@ -243,7 +244,9 @@ describe('ContentLakeUploadComponent', () => {
     expect(component.phase()).toBe('complete');
     expect(component.uploadedDocuments()).toHaveLength(1);
     expect(mockSnackBar.open).toHaveBeenCalledWith(
-      'Uploaded and ingested 1 document(s) to Content Lake.',
+      // Singular, because one document was ingested — the old text said `document(s)` whatever
+      // the count, which is the suffix this change removed.
+      'Uploaded and ingested 1 document to Content Lake.',
       'OK',
       { duration: 5000 },
     );

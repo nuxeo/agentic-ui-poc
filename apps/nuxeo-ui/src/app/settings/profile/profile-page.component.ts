@@ -28,17 +28,25 @@ import {
 import { AuthService } from '../../auth/auth.service';
 import { ChangePasswordDialogComponent } from './change-password-dialog/change-password-dialog.component';
 import { GroupPermLazyLoadDirective } from './group-perm-lazy-load.directive';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 const GROUP_PERM_PAGE_SIZE = 25;
 
 @Component({
   standalone: true,
-  imports: [NgTemplateOutlet, MatIconModule, MatButtonModule, GroupPermLazyLoadDirective],
+  imports: [
+    TranslatePipe,
+    NgTemplateOutlet,
+    MatIconModule,
+    MatButtonModule,
+    GroupPermLazyLoadDirective,
+  ],
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.scss',
 })
 export class ProfilePageComponent {
   private readonly auth = inject(AuthService);
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly userService = inject(UserService);
   private readonly settingsService = inject(SettingsService);
@@ -164,7 +172,9 @@ export class ProfilePageComponent {
     if (!page) {
       return [];
     }
-    return page.rows.map((row) => principalPermissionToLocalRow(row));
+    return page.rows.map((row) =>
+      principalPermissionToLocalRow(row, (key) => this.translate.instant(key)),
+    );
   }
 
   groupPermTotalPages(groupId: string): number {

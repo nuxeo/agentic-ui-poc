@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -25,9 +26,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import {
+  ConfirmDialogComponent,
   SavedSearchDialogComponent,
   ShareSavedSearchDialogComponent,
-  ConfirmDialogComponent,
   type ConfirmDialogData,
 } from '@nuxeo-satori/platform/ui';
 import {
@@ -47,6 +48,7 @@ import {
   AiFeatureFlagService,
   aiErrorMessage,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -54,33 +56,42 @@ export type ViewMode = 'grid' | 'table' | 'list';
 interface ColumnDef {
   key: string;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   width: string;
 }
 
 interface QuickFilterOption {
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   value: string;
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'name', label: 'Title', width: '2fr' },
-  { key: 'type', label: 'Type', width: '1fr' },
-  { key: 'modified', label: 'Modified', width: '1fr' },
-  { key: 'contributor', label: 'Last contributor', width: '1.2fr' },
-  { key: 'state', label: 'State', width: '1fr' },
-  { key: 'version', label: 'Version', width: '0.8fr' },
-  { key: 'created', label: 'Created', width: '1fr' },
-  { key: 'author', label: 'Author', width: '1fr' },
-  { key: 'nature', label: 'Nature', width: '1fr' },
-  { key: 'coverage', label: 'Coverage', width: '1fr' },
-  { key: 'subjects', label: 'Subjects', width: '1fr' },
-  { key: 'flags', label: 'Flags', width: '1fr' },
+  { key: 'name', labelKey: 'search.column.name', label: 'Title', width: '2fr' },
+  { key: 'type', labelKey: 'search.column.type', label: 'Type', width: '1fr' },
+  { key: 'modified', labelKey: 'search.column.modified', label: 'Modified', width: '1fr' },
+  {
+    key: 'contributor',
+    labelKey: 'search.column.contributor',
+    label: 'Last contributor',
+    width: '1.2fr',
+  },
+  { key: 'state', labelKey: 'search.column.state', label: 'State', width: '1fr' },
+  { key: 'version', labelKey: 'search.column.version', label: 'Version', width: '0.8fr' },
+  { key: 'created', labelKey: 'search.column.created', label: 'Created', width: '1fr' },
+  { key: 'author', labelKey: 'search.column.author', label: 'Author', width: '1fr' },
+  { key: 'nature', labelKey: 'search.column.nature', label: 'Nature', width: '1fr' },
+  { key: 'coverage', labelKey: 'search.column.coverage', label: 'Coverage', width: '1fr' },
+  { key: 'subjects', labelKey: 'search.column.subjects', label: 'Subjects', width: '1fr' },
+  { key: 'flags', labelKey: 'search.column.flags', label: 'Flags', width: '1fr' },
 ];
 
 const QUICK_FILTER_OPTIONS: QuickFilterOption[] = [
-  { label: 'No Containers', value: 'noFolder' },
-  { label: 'Most Recent', value: 'mostRecent' },
-  { label: 'Validated', value: 'onlyValidated' },
+  { labelKey: 'search.quick-filter.no-containers', label: 'No Containers', value: 'noFolder' },
+  { labelKey: 'search.quick-filter.most-recent', label: 'Most Recent', value: 'mostRecent' },
+  { labelKey: 'search.quick-filter.validated', label: 'Validated', value: 'onlyValidated' },
 ];
 
 // Map display column keys to API field names
@@ -149,6 +160,8 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
   selector: 'lib-search',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
@@ -164,6 +177,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
   styleUrl: './search.scss',
 })
 export class SearchComponent {
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
@@ -336,7 +350,7 @@ export class SearchComponent {
         catchError(() => {
           this.searchAggregationService.aggregations.set({});
           this.searchAggregationService.items.set([]);
-          this.error.set('Failed to load search results.');
+          this.error.set(this.translate.instant('search.message.failed-to-load-search-results'));
           this.loading.set(false);
           return of<SearchResultItem[]>([]);
         }),
@@ -651,9 +665,16 @@ export class SearchComponent {
         window.dispatchEvent(new Event('favorites-changed'));
       },
       error: (err) => {
-        this.snackBar.open(this.getApiErrorMessage(err, 'Failed to update favorites.'), 'Dismiss', {
-          duration: 5000,
-        });
+        this.snackBar.open(
+          this.getApiErrorMessage(
+            err,
+            this.translate.instant('search.message.failed-to-update-favorites'),
+          ),
+          this.translate.instant('common.dismiss'),
+          {
+            duration: 5000,
+          },
+        );
       },
     });
   }
@@ -701,8 +722,11 @@ export class SearchComponent {
         },
         error: (err) => {
           this.snackBar.open(
-            this.getApiErrorMessage(err, 'Failed to download document.'),
-            'Dismiss',
+            this.getApiErrorMessage(
+              err,
+              this.translate.instant('search.message.failed-to-download-document'),
+            ),
+            this.translate.instant('common.dismiss'),
             {
               duration: 5000,
             },
@@ -793,8 +817,8 @@ export class SearchComponent {
     this.dialog
       .open(SavedSearchDialogComponent, {
         data: {
-          title: 'Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          title: this.translate.instant('ui.saved-search'),
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
       .afterClosed()
@@ -817,10 +841,18 @@ export class SearchComponent {
                 this.readSavedSearchTitle(saved) || trimmedTitle,
               );
               this.searchAggregationService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('common.search-saved', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-save-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });
@@ -849,10 +881,18 @@ export class SearchComponent {
         next: () => {
           this.searchAggregationService.selectedSavedSearchTitle.set(currentTitle);
           this.searchAggregationService.markSavedSearchDirty();
-          this.snackBar.open(`Search "${currentTitle}" updated.`, 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('common.search-updated', { name: currentTitle }),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
         },
         error: () => {
-          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+          this.snackBar.open(
+            this.translate.instant('assets.message.failed-to-save-search'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          );
         },
       });
   }
@@ -864,8 +904,8 @@ export class SearchComponent {
     this.dialog
       .open(SavedSearchDialogComponent, {
         data: {
-          title: 'Edit Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          title: this.translate.instant('ui.edit-saved-search'),
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: this.selectedSavedSearchTitle(),
         },
       })
@@ -884,12 +924,20 @@ export class SearchComponent {
             next: () => {
               this.searchAggregationService.selectedSavedSearchTitle.set(trimmedTitle);
               this.searchAggregationService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', {
-                duration: 3000,
-              });
+              this.snackBar.open(
+                this.translate.instant('common.search-updated', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                {
+                  duration: 3000,
+                },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-update-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });
@@ -903,7 +951,7 @@ export class SearchComponent {
       width: '95vw',
       maxWidth: '1080px',
       data: {
-        title: this.selectedSavedSearchTitle().trim() || 'Saved Search',
+        title: this.selectedSavedSearchTitle().trim() || this.translate.instant('ui.saved-search'),
         id,
       },
     });
@@ -916,9 +964,9 @@ export class SearchComponent {
     const title = this.selectedSavedSearchTitle().trim() || 'this saved search';
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Saved Search',
-        message: `Delete saved search "${title}"?`,
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.delete-saved-search'),
+        message: this.translate.instant('confirm.delete-saved-search-named', { name: title }),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -1075,7 +1123,12 @@ export class SearchComponent {
         },
         error: (err) => {
           if (generation !== this.aiRequestGeneration) return;
-          this.aiError.set(aiErrorMessage(err, 'AI search failed. Try again.'));
+          this.aiError.set(
+            aiErrorMessage(
+              err,
+              this.translate.instant('search.message.ai-search-failed-try-again'),
+            ),
+          );
           this.aiLoading.set(false);
         },
       });
@@ -1136,7 +1189,11 @@ export class SearchComponent {
           // Guarded too: a stale failure would otherwise replace a newer query's results with an
           // error banner and clear its loading state.
           if (generation !== this.aiRequestGeneration) return;
-          this.aiError.set('NXQL query execution failed. The generated query may be invalid.');
+          this.aiError.set(
+            this.translate.instant(
+              'search.message.nxql-query-execution-failed-the-generated-query',
+            ),
+          );
           this.aiNxqlLoading.set(false);
           this.aiLoading.set(false);
         },

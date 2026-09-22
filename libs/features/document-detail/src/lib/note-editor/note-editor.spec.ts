@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
@@ -192,7 +193,13 @@ describe('NoteEditorComponent (NXSAT-163)', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      imports: [
+        testTranslateModule(),
+        testTranslateModule(),
+        NoteEditorComponent,
+        NoopAnimationsModule,
+        HttpClientTestingModule,
+      ],
       providers: [
         provideZonelessChangeDetection(),
         {
@@ -317,7 +324,7 @@ describe('NoteEditorComponent source sync (NXSAT-174)', () => {
     quillHarness.instances.length = 0;
 
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, HttpClientTestingModule],
+      imports: [testTranslateModule(), NoteEditorComponent, HttpClientTestingModule],
       providers: [
         provideZonelessChangeDetection(),
         {
@@ -404,7 +411,12 @@ describe('NoteEditorComponent visual HTML editor', () => {
     quillHarness.instances.length = 0;
 
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      imports: [
+        testTranslateModule(),
+        NoteEditorComponent,
+        NoopAnimationsModule,
+        HttpClientTestingModule,
+      ],
       providers: [
         provideZonelessChangeDetection(),
         {
@@ -794,7 +806,12 @@ describe('NoteEditorComponent markdown notes', () => {
     quillHarness.instances.length = 0;
 
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      imports: [
+        testTranslateModule(),
+        NoteEditorComponent,
+        NoopAnimationsModule,
+        HttpClientTestingModule,
+      ],
       providers: [
         provideZonelessChangeDetection(),
         {
@@ -850,7 +867,12 @@ describe('NoteEditorComponent plain text editing', () => {
     quillHarness.instances.length = 0;
 
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      imports: [
+        testTranslateModule(),
+        NoteEditorComponent,
+        NoopAnimationsModule,
+        HttpClientTestingModule,
+      ],
       providers: [
         provideZonelessChangeDetection(),
         {

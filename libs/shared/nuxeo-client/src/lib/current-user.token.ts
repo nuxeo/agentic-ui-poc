@@ -5,10 +5,7 @@ import { InjectionToken } from '@angular/core';
  * The app shell provides this value from AuthService so that
  * feature libraries can access the current user without importing AuthService directly.
  */
-export const CURRENT_USERNAME = new InjectionToken<() => string | null>(
-  'CURRENT_USERNAME',
-  {
-    providedIn: 'root',
-    factory: () => () => null,
-  },
-);
+export const CURRENT_USERNAME = new InjectionToken<() => string | null>('CURRENT_USERNAME', {
+  providedIn: 'root',
+  factory: () => () => null,
+});

@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import {
   ActivatedRoute,
@@ -223,7 +224,7 @@ describe('CollectionDetailComponent', () => {
     mockDetailService.fetchThumbnail.mockReturnValue(of(null));
 
     await TestBed.configureTestingModule({
-      imports: [CollectionDetailComponent],
+      imports: [testTranslateModule(), testTranslateModule(), CollectionDetailComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
