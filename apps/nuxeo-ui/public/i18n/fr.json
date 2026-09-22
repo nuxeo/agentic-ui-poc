@@ -126,8 +126,7 @@
       "menu": "Menu des paramètres"
     },
     "test": {
-      "platform-nav-item": "Parcourir",
-      "collections-nav-item": "Collections"
+      "platform-nav-item": "Parcourir"
     }
   }
 }

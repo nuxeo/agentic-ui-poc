@@ -1,8 +1,11 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { TranslateModule } from '@ngx-translate/core';
 import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
+import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 
+import { testTranslateModule } from '../i18n/translate-testing';
 import { COMPILED_THEME_BASES } from '../theme/app-theme';
 
 /**
@@ -280,4 +283,106 @@ describe('platform sidebar nav — keyboard focus ring (NXENG-761)', () => {
     expect(el.matches(':focus-visible')).toBe(false);
     expect(getComputedStyle(el).outlineStyle).toBe('none');
   });
+});
+
+/**
+ * NXENG-777 — IBM Equal Access Issue 317808202 on `a[aria-label="Collections"]`.
+ * Reuses the contrast matrix above; only the host layout and nav id differ.
+ */
+@Component({
+  standalone: true,
+  imports: [SatPlatformNavModule, TranslateModule],
+  templateUrl: './platform-nav-collections-focus-ring.host.html',
+})
+class CollectionsNavHostComponent {}
+
+const COLLECTIONS_NAV_ID = 'app.navbar.collections';
+
+describe('platform sidebar nav — Collections link (NXENG-777)', () => {
+  let fixture: ComponentFixture<CollectionsNavHostComponent>;
+  let originalTheme: string | null;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [
+        CollectionsNavHostComponent,
+        testTranslateModule({ 'shell.test.collections-nav-item': 'Collections' }),
+      ],
+      providers: [provideSatori(), provideNoopAnimations()],
+    }).compileComponents();
+    originalTheme = document.documentElement.getAttribute('data-app-theme');
+    fixture = TestBed.createComponent(CollectionsNavHostComponent);
+    fixture.detectChanges();
+    document.body.appendChild(fixture.nativeElement);
+  });
+
+  afterEach(() => {
+    fixture.nativeElement.remove();
+    if (originalTheme === null) {
+      document.documentElement.removeAttribute('data-app-theme');
+    } else {
+      document.documentElement.setAttribute('data-app-theme', originalTheme);
+    }
+  });
+
+  function collectionsLink(): HTMLElement {
+    const el = fixture.nativeElement.querySelector(
+      `sat-platform-nav-list-item[data-nav-id="${COLLECTIONS_NAV_ID}"] .sat-platform-nav-item`,
+    );
+    expect(el).withContext('Collections nav link renders').toBeTruthy();
+    return el as HTMLElement;
+  }
+
+  function measuredCollectionsRing() {
+    const el = collectionsLink();
+    expect(el.classList.contains('sat-platform-nav-item-active'))
+      .withContext('Collections is the current route — IBM flagged the active highlight')
+      .toBe(true);
+
+    el.focus({ focusVisible: true } as FocusOptions);
+    expect(el.matches(':focus-visible'))
+      .withContext('keyboard focus must be visible before contrast is measured')
+      .toBe(true);
+
+    const panel = fixture.nativeElement.querySelector('.sat-platform-nav-panel') as HTMLElement;
+    const panelRgb = parseColor(getComputedStyle(panel).backgroundColor).rgb;
+    const style = getComputedStyle(el);
+    expect(style.outlineStyle).not.toBe('none');
+    expect(parseFloat(style.outlineWidth)).toBeGreaterThan(0);
+
+    const own = flatten(style.backgroundColor, panelRgb);
+    const ring = flatten(style.outlineColor, own);
+
+    return { ring, panel: panelRgb, own, style };
+  }
+
+  it('exposes the accessible name IBM flagged', () => {
+    expect(collectionsLink().getAttribute('aria-label')).toBe('Collections');
+  });
+
+  for (const theme of SHIPPED_THEMES) {
+    const label = theme ?? 'no data-app-theme (first paint)';
+
+    it(`draws a ${WCAG_1411_MIN_RATIO}:1 focus ring on the Collections link — ${label}`, () => {
+      if (theme === null) {
+        document.documentElement.removeAttribute('data-app-theme');
+      } else {
+        document.documentElement.setAttribute('data-app-theme', theme);
+      }
+      fixture.detectChanges();
+
+      const measured = measuredCollectionsRing();
+      for (const [what, colour] of Object.entries({
+        'the panel': measured.panel,
+        "the focused item's own background": measured.own,
+      })) {
+        const ratio = contrastRatio(measured.ring, colour);
+        expect(ratio)
+          .withContext(
+            `Collections focus ring against ${what} (${label}) — IBM 317808202 / WCAG 1.4.11`,
+          )
+          .toBeGreaterThanOrEqual(WCAG_1411_MIN_RATIO);
+      }
+    });
+  }
 });

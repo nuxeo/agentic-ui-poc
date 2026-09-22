@@ -126,8 +126,7 @@
       "menu": "Einstellungsmenü"
     },
     "test": {
-      "platform-nav-item": "Durchsuchen",
-      "collections-nav-item": "Sammlungen"
+      "platform-nav-item": "Durchsuchen"
     }
   }
 }
