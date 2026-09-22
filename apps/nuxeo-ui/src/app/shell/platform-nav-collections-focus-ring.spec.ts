@@ -14,6 +14,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
  * the report to the Collections entry so a regression cannot hide behind a generic browse link.
  */
 
+const ACTIVE_CLASS = 'sat-platform-nav-item-active';
+
 const COLLECTIONS_LINK =
   'sat-platform-nav-list-item[data-nav-id="app.navbar.collections"] a.sat-platform-nav-item';
 
@@ -54,6 +56,10 @@ function compositeOver(
   return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
 }
 
+function flatten(value: string, backdrop: readonly number[]): number[] {
+  return compositeOver(parseColor(value), backdrop);
+}
+
 function paintedBackdrop(element: Element): number[] {
   for (let node = element.parentElement; node; node = node.parentElement) {
     const background = getComputedStyle(node).backgroundColor;
@@ -66,17 +72,25 @@ function paintedBackdrop(element: Element): number[] {
 
 describe('platform sidebar nav — Collections link focus (NXENG-777)', () => {
   const MINIMUM_RATIO = 3;
+  let originalTheme: string | null;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CollectionsNavHostComponent, TranslateModule.forRoot()],
       providers: [provideSatori(), provideNoopAnimations()],
     }).compileComponents();
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', {
+      shell: { test: { 'collections-nav-item': 'Collections' } },
+    });
+    translate.use('en');
+    originalTheme = document.documentElement.getAttribute('data-app-theme');
     document.documentElement.setAttribute('data-app-theme', 'nuxeo');
   });
 
   afterEach(() => {
-    document.documentElement.removeAttribute('data-app-theme');
+    if (originalTheme === null) document.documentElement.removeAttribute('data-app-theme');
+    else document.documentElement.setAttribute('data-app-theme', originalTheme);
   });
 
   it('exposes the accessible name IBM flagged', () => {
@@ -92,6 +106,11 @@ describe('platform sidebar nav — Collections link focus (NXENG-777)', () => {
     fixture.detectChanges();
     const anchor = fixture.nativeElement.querySelector(COLLECTIONS_LINK) as HTMLElement | null;
     if (!anchor) throw new Error(`Satori did not render ${COLLECTIONS_LINK}`);
+    expect(anchor.classList.contains(ACTIVE_CLASS))
+      .withContext(
+        'Collections renders as the current route — the IBM failure was on the active highlight',
+      )
+      .toBe(true);
 
     anchor.focus({ focusVisible: true } as FocusOptions);
     expect(anchor.matches(':focus-visible')).toBe(true);
@@ -103,13 +122,17 @@ describe('platform sidebar nav — Collections link focus (NXENG-777)', () => {
     const panel = paintedBackdrop(anchor);
     const ownFill = parseColor(styles.backgroundColor);
     const interior = ownFill.alpha > 0 ? compositeOver(ownFill, panel) : panel;
-    const ring = parseColor(styles.outlineColor);
-    const ratioVsInterior = contrastRatio(compositeOver(ring, interior), interior);
+    const ring = flatten(styles.outlineColor, interior);
+    const ratioVsInterior = contrastRatio(ring, interior);
+    const ratioVsPanel = contrastRatio(ring, panel);
 
     expect(ratioVsInterior)
       .withContext(
-        `Collections focus ring ${styles.outlineColor} on item fill — IBM 317808202 / WCAG 1.4.11`,
+        `Collections focus ring ${styles.outlineColor} on current-route fill — IBM 317808202 / WCAG 1.4.11`,
       )
+      .toBeGreaterThanOrEqual(MINIMUM_RATIO);
+    expect(ratioVsPanel)
+      .withContext(`Collections focus ring on nav panel (${styles.outlineColor})`)
       .toBeGreaterThanOrEqual(MINIMUM_RATIO);
   });
 });
