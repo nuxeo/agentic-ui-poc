@@ -269,15 +269,17 @@ describe('platform sidebar nav — keyboard focus ring (NXENG-761)', () => {
   });
 
   /**
-   * The indicator must stay keyboard-only. Satori's rule is `:focus-visible`, and this fix
-   * only supplies the colour it reads — but a later "fix" that reached for `:focus` would ring
-   * every mouse click, which is the regression this pins down.
+   * NXENG-794 — IBM Equal Access reads `:focus` only, so `styles.scss` mirrors Satori's ring on
+   * `:focus` as well. Programmatic focus without `:focus-visible` must still paint the ring so
+   * the scanner and keyboard users see the same indicator.
    */
-  it('does not draw the ring when the link is focused without a keyboard', () => {
+  it('draws the ring on :focus even when :focus-visible is false (IBM style_focus_visible)', () => {
     const el = link('idle');
     el.focus({ focusVisible: false } as FocusOptions);
     expect(el.matches(':focus')).toBe(true);
     expect(el.matches(':focus-visible')).toBe(false);
-    expect(getComputedStyle(el).outlineStyle).toBe('none');
+    const style = getComputedStyle(el);
+    expect(style.outlineStyle).not.toBe('none');
+    expect(parseFloat(style.outlineWidth)).toBeGreaterThan(0);
   });
 });

@@ -53,6 +53,7 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
  * behind a sibling item's measurements.
  */
 const NAV_ITEMS_UNDER_TEST = [
+  { navId: 'app.navbar.browse', ticket: 'NXENG-794' },
   { navId: 'app.navbar.browseAdfHx', ticket: 'NXENG-758' },
   { navId: 'app.navbar.search', ticket: 'NXENG-785' },
 ] as const;
@@ -243,6 +244,28 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
       });
     });
   }
+
+  it('declares a standalone :focus rule on nav links that IBM Equal Access can read (NXENG-794)', () => {
+    const focusSelectors: string[] = [];
+    for (const sheet of Array.from(document.styleSheets)) {
+      let sheetRules: CSSRuleList;
+      try {
+        sheetRules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      for (const rule of Array.from(sheetRules)) {
+        const selector = (rule as CSSStyleRule).selectorText;
+        if (selector?.includes('.sat-platform-nav-item') && selector.includes(':focus')) {
+          focusSelectors.push(selector);
+        }
+      }
+    }
+    const canonical = focusSelectors.map((selector) =>
+      selector.replace(/\[_ngcontent-[^\]]+\]/g, '').trim(),
+    );
+    expect(canonical).toContain('sat-platform-nav .sat-platform-nav-item:focus');
+  });
 
   it('takes the ring colour from --agentic-nav-focus-outline-color when it is set', () => {
     // A custom property written onto `<html>` is exactly how `AppThemeService.applyTheme`
