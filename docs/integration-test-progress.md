@@ -127,7 +127,7 @@ Created `libs/integration-tests` library with complete test harness:
 
 **4. npm Script**
 - Added `beta:integration` to package.json
-- Runs: `npx nx test integration-tests`
+- Runs: `npx nx run integration-tests:integration`
 
 ### Design Highlights
 
