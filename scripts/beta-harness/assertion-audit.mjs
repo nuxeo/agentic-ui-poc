@@ -57,6 +57,14 @@ try {
 const CONDITION_AT_1 = new Set(['check', 'requirePrecondition']);
 /** Helpers that assert against the live page — always falsifiable by construction. */
 const PAGE_ASSERTIONS = new Set(['expectVisible', 'expectText', 'expectNoConsoleErrors', 'expectNoA11yViolations']);
+/** Expression forms that evaluate to a fresh object, so they are truthy whatever they contain. */
+const ALWAYS_TRUTHY = {
+  ObjectExpression: 'an object literal',
+  ArrayExpression: 'an array literal',
+  FunctionExpression: 'a function expression',
+  ArrowFunctionExpression: 'an arrow function',
+  ClassExpression: 'a class expression',
+};
 
 const files = explicit.length ? explicit.map((p) => resolve(process.cwd(), p)) : await defaultTargets();
 
@@ -217,9 +225,31 @@ function auditFile(rel, src, ast) {
  */
 function classify(node, src, bindings) {
   if (node.type === 'Literal') {
+    // A regex literal is an object, so it is truthy whether or not the parser filled in
+    // `value` — which it leaves null when the pattern uses a flag it cannot model.
+    if (node.regex) return { kind: 'literal-true', why: `asserts the regex \`${text(src, node)}\`` };
     return node.value
       ? { kind: 'literal-true', why: `asserts the literal \`${JSON.stringify(node.value)}\`` }
       : { kind: 'literal-false', why: 'asserts a literal falsy value, so it always fails' };
+  }
+
+  // Expressions whose *syntax* makes them truthy. `if ({})` is `if (true)` in another
+  // spelling, and so is `if (() => false)` — the arrow is an object, its body never runs.
+  // Without these the guard exemption below launders precisely what `literal-false` exists
+  // to catch: six of these seven shapes were verified to make an unconditional
+  // `check(name, false)` exempt. See `assertion-audit.selftest.mjs`.
+  const truthyByConstruction = ALWAYS_TRUTHY[node.type];
+  if (truthyByConstruction) {
+    return { kind: 'constant-truthy', why: `asserts ${truthyByConstruction}, which is always truthy` };
+  }
+
+  // A template with nothing to interpolate is a string literal written with backticks.
+  // One that interpolates could be empty, so it is left alone.
+  if (node.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    const value = node.quasis.map((q) => q.value.cooked ?? '').join('');
+    return value
+      ? { kind: 'literal-true', why: `asserts the constant template \`${text(src, node)}\`` }
+      : { kind: 'literal-false', why: 'asserts an empty template literal, so it always fails' };
   }
 
   // `!0`, `!!true`, `!''`

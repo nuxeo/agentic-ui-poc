@@ -17,18 +17,21 @@ Implemented comprehensive integration tests for write paths and destructive oper
 ### Trash Operations (3 tests) ✅
 
 **Test:** `can trash a document`
+
 - Creates File document
 - Trashes via `Document.Trash` automation
 - Verifies `isTrashed=true` via follow-up API query
 - **Status:** ✅ PASSING
 
 **Test:** `trashed documents do not appear in regular queries`
+
 - Creates and trashes a document
 - Queries for non-trashed documents in data root
 - Verifies trashed document excluded from results
 - **Status:** ✅ PASSING
 
 **Test:** `can restore a trashed document`
+
 - Creates document, trashes it
 - Verifies `isTrashed=true`
 - Restores via `Document.Untrash` automation
@@ -38,6 +41,7 @@ Implemented comprehensive integration tests for write paths and destructive oper
 ### Permanent Delete (2 tests) ✅
 
 **Test:** `can permanently delete a document`
+
 - Creates document
 - Permanently deletes via `DELETE /nuxeo/api/v1/id/{uid}`
 - Expects 204 No Content
@@ -45,6 +49,7 @@ Implemented comprehensive integration tests for write paths and destructive oper
 - **Status:** ✅ PASSING
 
 **Test:** `delete is truly permanent - document cannot be restored`
+
 - Creates and deletes document
 - Attempts to restore via `Document.Untrash`
 - Expects 404 (cannot restore deleted document)
@@ -53,12 +58,14 @@ Implemented comprehensive integration tests for write paths and destructive oper
 ### Update Operations (2 tests) ✅
 
 **Test:** `can update document properties`
+
 - Creates document with initial properties
 - Updates via `PUT` with new title and description
 - Verifies changes via follow-up query
 - **Status:** ✅ PASSING
 
 **Test:** `can move a document to a different location`
+
 - Creates source and target folders
 - Creates document in source folder
 - Moves via `Document.Move` automation
@@ -69,6 +76,7 @@ Implemented comprehensive integration tests for write paths and destructive oper
 ### Bulk Operations (1 test) ✅
 
 **Test:** `can delete multiple documents in one operation`
+
 - Creates 3 documents
 - Bulk deletes via `Document.Delete` automation with comma-separated UIDs
 - Verifies all 3 return 404 on subsequent queries
@@ -77,6 +85,7 @@ Implemented comprehensive integration tests for write paths and destructive oper
 ### Data Root Isolation (1 test) ✅
 
 **Test:** `destructive operations are isolated to data root only`
+
 - Counts documents outside data root (before)
 - Performs destructive operation inside data root
 - Counts again (after)
@@ -90,6 +99,7 @@ Implemented comprehensive integration tests for write paths and destructive oper
 ### 1. Nuxeo Trash Operations Require Automation
 
 **Cannot just set `isTrashed` property:**
+
 ```typescript
 // ❌ Does NOT work - Nuxeo ignores this
 await fetch(`/nuxeo/api/v1/id/${uid}`, {
@@ -99,6 +109,7 @@ await fetch(`/nuxeo/api/v1/id/${uid}`, {
 ```
 
 **Must use automation operations:**
+
 ```typescript
 // ✅ Correct - trash a document
 await fetch(`/nuxeo/api/v1/automation/Document.Trash`, {
@@ -116,11 +127,13 @@ await fetch(`/nuxeo/api/v1/automation/Document.Untrash`, {
 ### 2. All Operations Verified with Follow-up API Queries
 
 Every test follows the pattern:
+
 1. Perform operation (trash, delete, update, move)
 2. Verify via follow-up API query (not UI assertion)
 3. Assert on the queried result
 
 **Example:**
+
 ```typescript
 // Perform operation
 await fetch(`/nuxeo/api/v1/automation/Document.Trash`, { ... });
@@ -136,6 +149,7 @@ expect(doc.isTrashed).toBe(true);
 ### 3. Each Operation Creates Its Own Fixture
 
 No shared state between tests. Each test:
+
 - Creates its own document(s)
 - Performs operation
 - Cleanup happens automatically via harness
@@ -143,6 +157,7 @@ No shared state between tests. Each test:
 ### 4. Guaranteed Cleanup Works for Destructive Operations
 
 The harness's `afterAll` cleanup runs even when tests delete documents:
+
 ```
 [integration-harness] Created data root: /default-domain/workspaces/it-20260921-071634-5pa
 [write-ops] Trashed document: 1f25f279-8f0c-47c7-ae56-cfa9dbe72e7a
@@ -161,6 +176,7 @@ Even though tests deleted 5+ documents, the harness still cleaned up the data ro
 All criteria met:
 
 ✅ **Every operation verified by follow-up API query** (not UI assertion)
+
 - Trash → query isTrashed
 - Delete → expect 404
 - Update → query properties
@@ -168,14 +184,23 @@ All criteria met:
 - All operations verified via fetch, not UI
 
 ✅ **Each operation creates its own fixture and tears it down**
+
 - Every test creates new document(s)
 - No shared state
 - Harness cleanup guaranteed
 
 ✅ **Destructive operations isolated in data root (cleanup verified)**
+
 - All tests run in `/default-domain/workspaces/it-<runid>`
 - Isolation test verifies no impact outside data root
-- Cleanup logs confirm data root deleted
+- `deleteDataRoot` re-reads the data root after the `DELETE` and **throws** unless it is
+  gone, so a leaked workspace fails the run
+
+  This line previously read "cleanup logs confirm data root deleted", and that was not a
+  verification: every path through `deleteDataRoot` was a `console.warn`, so the run stayed
+  green whatever happened and the log was the only record. A `DELETE` answering 2xx is also
+  not the same as the workspace being absent, which is why the check is a re-read rather
+  than a status code.
 
 ---
 
@@ -242,6 +267,7 @@ Test Files  1 passed (1)
 ### Harness Integration ✅
 
 Uses the same harness as Stage 4 (example tests) and Stage 5 (SearchService tests):
+
 ```typescript
 import { setupIntegrationHarness, createTestDocument } from './integration-harness';
 
@@ -260,6 +286,7 @@ const harness = setupIntegrationHarness({
 ### Demonstrates Write Path Pattern ✅
 
 Other services can follow this pattern:
+
 1. Create fixture with `createTestDocument`
 2. Perform write operation
 3. Verify with follow-up API query
@@ -271,33 +298,40 @@ Other services can follow this pattern:
 ## Nuxeo Automation Operations Used
 
 ### Document.Trash
+
 ```json
 POST /nuxeo/api/v1/automation/Document.Trash
 {
   "input": "doc:<uid>"
 }
 ```
+
 Returns: 200 with trashed document
 
 ### Document.Untrash
+
 ```json
 POST /nuxeo/api/v1/automation/Document.Untrash
 {
   "input": "doc:<uid>"
 }
 ```
+
 Returns: 200 with restored document
 
 ### Document.Delete
+
 ```json
 POST /nuxeo/api/v1/automation/Document.Delete
 {
   "input": "docs:<uid1>,<uid2>,<uid3>"
 }
 ```
+
 Returns: 200 (documents permanently deleted)
 
 ### Document.Move
+
 ```json
 POST /nuxeo/api/v1/automation/Document.Move
 {
@@ -307,17 +341,18 @@ POST /nuxeo/api/v1/automation/Document.Move
   }
 }
 ```
+
 Returns: 200 with moved document
 
 ---
 
 ## Comparison to Other Stages
 
-| Stage | Tests | Status | Notes |
-|-------|-------|--------|-------|
-| Stage 4 (Harness) | 5 | 4/5 passing | 1 expected failure (index lag) |
-| Stage 5 (SearchService) | 19 | Written | Pending TestBed setup |
-| **Stage 6 (Write Ops)** | **9** | **9/9 passing ✅** | **All working** |
+| Stage                   | Tests | Status             | Notes                          |
+| ----------------------- | ----- | ------------------ | ------------------------------ |
+| Stage 4 (Harness)       | 5     | 4/5 passing        | 1 expected failure (index lag) |
+| Stage 5 (SearchService) | 19    | Written            | Pending TestBed setup          |
+| **Stage 6 (Write Ops)** | **9** | **9/9 passing ✅** | **All working**                |
 
 Stage 6 is the first stage with 100% of tests passing and verified.
 
@@ -326,6 +361,7 @@ Stage 6 is the first stage with 100% of tests passing and verified.
 ## File Created
 
 **`libs/integration-tests/src/lib/write-operations.integration.spec.ts`**
+
 - 426 lines
 - 9 tests across 5 describe blocks
 - Comprehensive coverage of write paths

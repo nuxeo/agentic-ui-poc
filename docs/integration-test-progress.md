@@ -68,15 +68,18 @@ Both documented in `DECISIONS-NEEDED.md` with options, tradeoffs, recommendation
 Created `libs/shared/testing` library with typed NuxeoDocument and NuxeoAce factories:
 
 **Fixtures Created:**
+
 - `nuxeoDocument()` — complete NuxeoDocument with sensible defaults
 - `nuxeoAce()` — complete NuxeoAce with all required fields
 
 **Migrations Completed:**
+
 - Eliminated 6 duplicate builders across 5 files
 - 3 `nuxeoDoc` builders → `nuxeoDocument`
 - 3 `nuxeoAce`/`ace` builders → `nuxeoAce`
 
 **Design Principles Achieved:**
+
 1. Every field required (no `Partial<>` escape hatch)
 2. One factory per model (not a god-object)
 3. Type-safe overrides via spread
@@ -106,12 +109,14 @@ Created `libs/shared/testing` library with typed NuxeoDocument and NuxeoAce fact
 Created `libs/integration-tests` library with complete test harness:
 
 **1. Precondition Checker** (`integration-preflight.ts`, 185 lines)
+
 - Refuses absent Nuxeo (exit 2)
 - Refuses empty Nuxeo (exit 2)
 - Refuses default credentials without `--allow-default-credentials` flag
 - Closes audit §5.4 (prevents production data loss)
 
 **2. Test Harness** (`integration-harness.ts`, 232 lines)
+
 - `setupIntegrationHarness()` for describe blocks
 - Per-run data root: `/default-domain/workspaces/it-<runid>`
 - Unique runId format: `YYYYMMDD-HHMMSS-XXX`
@@ -121,11 +126,13 @@ Created `libs/integration-tests` library with complete test harness:
 - `createTestDocument()` helper
 
 **3. Example Test** (`example.integration.spec.ts`, 107 lines)
+
 - Demonstrates full pattern
 - Creates documents, queries via NXQL
 - Verifies isolation and cleanup
 
 **4. npm Script**
+
 - Added `beta:integration` to package.json
 - Runs: `npx nx run integration-tests:integration`
 
@@ -139,6 +146,7 @@ Created `libs/integration-tests` library with complete test harness:
 ### Verification (Ready to Run)
 
 4 negative controls implemented, ready for verification with Nuxeo:
+
 1. No Nuxeo → exit 2 ✅ (implemented)
 2. Empty Nuxeo → exit 2 ✅ (implemented)
 3. Default credentials without flag → exit 2 ✅ (implemented)
@@ -160,32 +168,39 @@ Created `libs/integration-tests` library with complete test harness:
 Created `search-service.integration.spec.ts` (435 lines) with comprehensive coverage:
 
 **1. Basic Search**
+
 - Simple query execution
 - Empty results handling
 
 **2. HXQL Injection Guard**
+
 - Apostrophe handling (O'Brien case from hxql-literal.ts)
 - Quote handling in search terms
 - Verifies escaping prevents query injection
 
 **3. Filters**
+
 - Quick filters (by type)
 - Author filter
 - Tag filter
 
 **4. Sorting and Pagination**
+
 - Sort by title (asc)
 - Sort by modified date (desc)
 - Page navigation with overlap detection
 
 **5. Autocomplete Suggestions**
+
 - Suggest with term
 - Empty query handling
 
 **6. Collections**
+
 - Get user collections
 
 **7. Saved Searches (Full CRUD)**
+
 - Create saved search
 - List saved searches
 - Get saved search by ID
@@ -193,6 +208,7 @@ Created `search-service.integration.spec.ts` (435 lines) with comprehensive cove
 - Delete saved search
 
 **8. Error Handling**
+
 - Invalid NXQL handling (4xx case)
 - Graceful degradation
 
@@ -267,6 +283,7 @@ verify HXQL escaping works correctly.
 17 commits on `docs/integration-test-audit` branch:
 
 **Stage 2 (Stop the Bleeding):**
+
 - 627c084d: test(document-detail): add HTTP verification
 - 93dcd2d3: test(e2e): add bogus-credentials negative control
 - 81a04b13: fix(trash): remove broken test target
@@ -275,16 +292,20 @@ verify HXQL escaping works correctly.
 - be07ec04: docs(integration-test): Stage 2 complete
 
 **Stage 3 (Shared Testing):**
+
 - f6155b13: feat(testing): create libs/shared/testing with typed fixtures
 - 8460c041: docs(integration-test): Stage 3 complete
 
 **Stage 4 (Integration Harness):**
+
 - 8cff7123: feat(integration-tests): create integration test harness
 
 **Stage 5 (Search Service):**
+
 - 3195b3be: feat(integration-tests): add SearchService integration tests
 
 **Documentation:**
+
 - This progress document commit (pending)
 
 ---
@@ -294,18 +315,28 @@ verify HXQL escaping works correctly.
 ### Immediate (Verification)
 
 1. **Run integration tests with live Nuxeo**
+
    ```bash
    # Start Nuxeo
    docker compose up nuxeo
 
    # Run integration tests
-   npm run beta:integration -- --allow-default-credentials
+   export NUXEO_USER=Administrator NUXEO_PASS=Administrator
+   ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration
    ```
+
+   The environment variable, **not** `-- --allow-default-credentials`. `beta:integration` is
+   a two-command chain and npm appends extra arguments to the end of it, so the flag lands on
+   vitest and the preflight never sees it. `libs/integration-tests/README.md` has the same
+   command; this one used to disagree with it.
+
+   `NUXEO_USER` and `NUXEO_PASS` have no defaults — the harness refuses rather than falling
+   back to a credential pair compiled into the repository.
 
 2. **Verify Stage 4 negative controls**
    - No Nuxeo → exit 2 with specific message
    - Empty Nuxeo → exit 2 with specific message
-   - Default credentials without flag → exit 2
+   - Default credentials without the opt-in → exit 2
    - Test creates documents → none remain after run
 
 3. **Verify Stage 5 HXQL injection guard (Task 5.7)**
@@ -317,6 +348,7 @@ verify HXQL escaping works correctly.
 ### Short-term (Remaining Stages)
 
 **Stage 6 — Write paths and destructive operations** (P0, Large)
+
 - Upload (uploadFileToBatch end to end)
 - Download
 - Trash/restore/permanent-delete
@@ -325,6 +357,7 @@ verify HXQL escaping works correctly.
 - Every operation verified by follow-up API query
 
 **Stage 7 — RBAC and guards** (P1, Large)
+
 - authGuard, loginGuard, adminGuard, themingGuard unit specs
 - Integration for principal-permissions.service.ts
 - ACL read/write against real inherited-vs-local ACLs
@@ -332,6 +365,7 @@ verify HXQL escaping works correctly.
 - Every guard has redirect test
 
 **Stage 8 — Feature-level workflows** (P1, Large)
+
 - Collections membership
 - Document-detail write paths (versions, publish, ACL)
 - Notes
@@ -340,6 +374,7 @@ verify HXQL escaping works correctly.
 - AiFeatureFlagService opt-out and migration
 
 **Stage 9 — Fold in orphans and harness** (P2, Medium)
+
 - Promote session-timeout.mjs and clipboard-move-scenarios.mjs
 - Convert note-document-scenarios.mjs
 - Delete the other two
@@ -351,12 +386,14 @@ verify HXQL escaping works correctly.
 From audit §12:
 
 **Add to PR gate:**
+
 - `npm run beta:coverage` (after Stage 1, already done)
 - Recorded-fixture integration subset (§11.1, once Stage 5 exists)
 - Typecheck-specs gate (AC4)
 - NOT Playwright (needs live Nuxeo, forces red gate)
 
 **Nightly runs:**
+
 - Full integration suite against live Nuxeo
 - Full E2E suite (both engines)
 - Evidence collection runs

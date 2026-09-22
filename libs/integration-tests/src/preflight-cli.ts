@@ -32,17 +32,16 @@
  *   npm run beta:integration-preflight
  *   npm run beta:integration                  # this, then vitest
  *
- * `NUXEO_URL` selects the server, matching `setupIntegrationHarness`. The default-credentials
- * opt-in is read here, from the flag or `ALLOW_DEFAULT_CREDENTIALS=true`, and passed in
- * explicitly — the library's own resolution of it at `integration-preflight.ts:88-90` chains
- * `??` after a boolean and so can never reach its env branch. That defect is tracked
- * separately and is deliberately not touched here; reading the env in this file is what keeps
- * this entry point from depending on it.
+ * `resolveConnection` selects the server and the credentials, so this entry point and
+ * `setupIntegrationHarness` cannot disagree about which Nuxeo is being checked.
+ *
+ * The `--allow-default-credentials` flag is read here and passed in as a `PreflightOptions`,
+ * because a flag is something a CLI can legitimately take and a spec file cannot. The library
+ * itself reads only `ALLOW_DEFAULT_CREDENTIALS`.
  */
 
-import { runPreflightChecks } from './lib/integration-preflight';
+import { resolveConnection, runPreflightChecks } from './lib/integration-preflight';
 
-const nuxeoUrl = process.env['NUXEO_URL'] ?? 'http://localhost:8080';
 const allowDefaultCredentials =
   process.argv.includes('--allow-default-credentials') ||
   process.env['ALLOW_DEFAULT_CREDENTIALS'] === 'true';
@@ -52,7 +51,8 @@ const allowDefaultCredentials =
 // `await` outright. A `.mts` extension would fix that and fall out of `tsconfig.lib.json`'s
 // `src/**/*.ts` include, which is the one thing type-checking this file.
 async function main(): Promise<void> {
-  const result = await runPreflightChecks({ nuxeoUrl, allowDefaultCredentials });
+  const { nuxeoUrl } = resolveConnection();
+  const result = await runPreflightChecks({ nuxeoUrl }, { allowDefaultCredentials });
 
   if (!result.ok) {
     console.error(

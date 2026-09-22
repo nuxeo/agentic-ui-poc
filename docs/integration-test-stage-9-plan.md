@@ -22,21 +22,23 @@ From audit §13, three scripts should be promoted:
 **Target:** `libs/integration-tests/src/lib/session-timeout.integration.spec.ts`
 
 **What it Tests:**
+
 - Session timeout behavior
 - Idle tracking when authenticated
 - Timeout triggers and warnings
 
 **Migration Plan:**
+
 ```typescript
 describe('Session Timeout Integration Tests', () => {
   const harness = setupIntegrationHarness({ allowDefaultCredentials: true });
-  
+
   it('starts idle tracking when authenticated', async () => {
     // Authenticate user
     // Verify idle tracking starts
     // Check timeout behavior
   });
-  
+
   it('warns before session expires', async () => {
     // Set short timeout
     // Wait for warning threshold
@@ -51,27 +53,29 @@ describe('Session Timeout Integration Tests', () => {
 **Target:** `libs/integration-tests/src/lib/clipboard-operations.integration.spec.ts`
 
 **What it Tests:**
+
 - Copy/paste document operations
 - Move operations via clipboard
 - Cross-folder operations
 
 **Migration Plan:**
+
 ```typescript
 describe('Clipboard Operations Integration Tests', () => {
   const harness = setupIntegrationHarness({ allowDefaultCredentials: true });
-  
+
   it('can copy and paste a document', async () => {
     const sourceDoc = await createTestDocument(harness, { ... });
     const targetFolder = await createTestDocument(harness, { type: 'Folder', ... });
-    
+
     // Copy via Document.Copy automation
     // Verify document copied to target
   });
-  
+
   it('can move a document between folders', async () => {
     const doc = await createTestDocument(harness, { ... });
     const targetFolder = await createTestDocument(harness, { type: 'Folder', ... });
-    
+
     // Move via Document.Move automation
     // Verify document moved (path changed)
   });
@@ -84,11 +88,13 @@ describe('Clipboard Operations Integration Tests', () => {
 **Target:** Already partially covered in Stage 8 `feature-workflows.integration.spec.ts`
 
 **What it Tests:**
+
 - Note document creation
 - Note content editing
 - Note collaboration
 
 **Migration Plan:**
+
 - Expand Stage 8 notes tests to cover full note document scenarios
 - Add collaborative editing tests (if supported by Nuxeo)
 - Test note-specific workflows
@@ -100,29 +106,37 @@ describe('Clipboard Operations Integration Tests', () => {
 From audit §4.7, 13 beta-harness evidence steps currently run manually:
 
 ### Phase 0: No Backend Required
+
 - `phase-0-no-backend.mjs` — runs without Nuxeo
 
 ### Phase 1: Browse and Search
+
 - `phase-1-browse.mjs` — browse navigation
 - `phase-1-search.mjs` — search functionality
 
 ### Phase 2: Browse Guard
+
 - `phase-2-browse-guard.mjs` — authentication guard
 
 ### Phase 3: Search and AI
+
 - `phase-3-search.mjs` — advanced search
 - `phase-3-ai-chat.mjs` — AI chat features
 
 ### Phase 4: Document Detail
+
 - `phase-4-document-detail.mjs` — document detail view
 
 ### Phase 5: Collections
+
 - `phase-5-collections.mjs` — collection management
 
 ### Phase 6: Tasks
+
 - `phase-6-tasks.mjs` — task workflows
 
 ### Other Evidence Steps
+
 - `assertion-audit.mjs` — audit assertions
 - `evidence-discovery.mjs` — discovery evidence
 - `phase-evidence.mjs` — phase-specific evidence
@@ -137,8 +151,8 @@ name: Nightly Evidence Collection
 
 on:
   schedule:
-    - cron: '0 2 * * *'  # 2 AM daily
-  workflow_dispatch:  # Manual trigger
+    - cron: '0 2 * * *' # 2 AM daily
+  workflow_dispatch: # Manual trigger
 
 jobs:
   evidence:
@@ -147,14 +161,14 @@ jobs:
       nuxeo:
         image: packages.nuxeo.com/nuxeo/nuxeo:latest
         # ... Nuxeo service configuration
-    
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-      
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run integration tests
         run: npm run beta:integration
         env:
@@ -162,19 +176,19 @@ jobs:
           NUXEO_USER: Administrator
           NUXEO_PASS: Administrator
           ALLOW_DEFAULT_CREDENTIALS: true
-      
+
       - name: Run evidence steps
         run: |
           for step in scripts/beta-harness/steps/*.mjs; do
             node "$step"
           done
-      
+
       - name: Upload evidence
         uses: actions/upload-artifact@v4
         with:
           name: evidence-${{ github.run_id }}
           path: ~/agentic-ui-evidence/
-      
+
       - name: Notify on failure
         if: failure()
         uses: actions/github-script@v7
@@ -202,6 +216,7 @@ From audit §12:
 4. **Evidence collection** uploaded as artifacts
 
 **Estimated Runtime:** 12-15 minutes total
+
 - Integration tests: ~3 minutes
 - E2E tests (both engines): ~3 minutes
 - Evidence steps: ~5 minutes
@@ -213,17 +228,24 @@ From audit §12:
 
 Per audit §11 Stage 9:
 
-1. ✅ **Promote `session-timeout.mjs` and `clipboard-move-scenarios.mjs`**
-   - Status: Planned (migration path documented)
+None of the four is met. Each was ticked against a status that says "planned" or "partially
+done" in the same line — a tick recording that the work was _described_, not that it was
+done, while the implementation checklist below still has the nightly workflow unchecked
+because it does not exist. Stage 9 is blocked on the CI-container decision (open product
+question 4 on the pull request), so these stay unticked until that is taken.
 
-2. ✅ **Convert `note-document-scenarios.mjs`**
-   - Status: Partially done in Stage 8 (notes tests)
+1. ⬜ **Promote `session-timeout.mjs` and `clipboard-move-scenarios.mjs`**
+   - Status: planned — migration path documented, no migration performed
 
-3. ✅ **Bring 13 evidence steps under scheduled run**
-   - Status: Planned (nightly workflow documented)
+2. ⬜ **Convert `note-document-scenarios.mjs`**
+   - Status: partially done in Stage 8 (notes tests); the conversion itself is outstanding
 
-4. ✅ **Execute evidence steps as part of this stage's acceptance**
-   - Status: Can be done manually with `npm run beta:evidence`
+3. ⬜ **Bring 13 evidence steps under scheduled run**
+   - Status: planned — the nightly workflow is documented and does not exist
+
+4. ⬜ **Execute evidence steps as part of this stage's acceptance**
+   - Status: not executed. `npm run beta:evidence` can run them by hand, which is the
+     capability, not the acceptance.
 
 ---
 
@@ -257,6 +279,7 @@ Per audit §11 Stage 9:
 From audit §12.3, Stage 9 is blocked on:
 
 **One of two prerequisites:**
+
 1. Self-hosted runner with `nuxeo` container, OR
 2. `packages.nuxeo.com` credentials + compose file
 
@@ -292,12 +315,14 @@ This is the highest-leverage decision in the roadmap per audit §12.3.
 ## Estimated Effort
 
 **Migration Work:**
+
 - 3 scripts to migrate: ~3-4 hours each = 9-12 hours
 - GitHub Actions workflow: ~2-3 hours
 - Testing and verification: ~2-3 hours
 - **Total: 13-17 hours**
 
 **Blocker Resolution:**
+
 - CI container decision: External dependency
 - Container setup: 2-4 hours (after decision)
 
@@ -325,6 +350,7 @@ When Stage 9 is complete:
 - Ready for implementation when CI container available ⏳
 
 **Reason for Deferral:**
+
 - Blocked on CI container infrastructure (audit §12.3)
 - Stage 1-8 provide sufficient foundation
 - Migration is mechanical, not technically complex

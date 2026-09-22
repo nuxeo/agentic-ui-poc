@@ -30,9 +30,7 @@ import {
 } from './user-fixtures';
 
 describe('RBAC and Permissions Integration Tests', () => {
-  const harness = setupIntegrationHarness({
-    allowDefaultCredentials: true, // For local Docker testing
-  });
+  const harness = setupIntegrationHarness();
 
   // Track created users for cleanup
   const createdUsers: string[] = [];
@@ -74,7 +72,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       // Try to authenticate as this user
       const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/user/${user.username}`, {
         headers: {
-          'Authorization': user.auth,
+          Authorization: user.auth,
         },
       });
 
@@ -98,7 +96,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       // Verify user is gone - should get 404
       const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/user/${user.username}`, {
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
         },
       });
 
@@ -130,7 +128,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@op/Document.SetACL`, {
         method: 'POST',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -242,7 +240,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       // Read ACL via API
       const aclRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@acl`, {
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
         },
       });
 
@@ -279,7 +277,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       const child: any = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${parentFolder.path}`, {
         method: 'POST',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -290,12 +288,12 @@ describe('RBAC and Permissions Integration Tests', () => {
             'dc:title': 'Child Document',
           },
         }),
-      }).then(r => r.json());
+      }).then((r) => r.json());
 
       // Read child's ACL
       const childAclRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${child.uid}/@acl`, {
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
         },
       });
 
@@ -309,7 +307,9 @@ describe('RBAC and Permissions Integration Tests', () => {
       const childReadable = await canRead(harness, testUser.auth, child.uid);
       expect(childReadable).toBe(true);
 
-      console.log(`[rbac] Child document inherits permissions from parent (${allAces.length} total ACEs)`);
+      console.log(
+        `[rbac] Child document inherits permissions from parent (${allAces.length} total ACEs)`,
+      );
     });
 
     it('can add local ACL entry on child that overrides inherited', async () => {
@@ -326,7 +326,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       const child: any = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${parentFolder.path}`, {
         method: 'POST',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -337,7 +337,7 @@ describe('RBAC and Permissions Integration Tests', () => {
             'dc:title': 'Override Child',
           },
         }),
-      }).then(r => r.json());
+      }).then((r) => r.json());
 
       // Initially child inherits Read from parent
       expect(await canRead(harness, testUser.auth, child.uid)).toBe(true);
@@ -374,7 +374,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       // Admin can read and write
       const readRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
         },
       });
 
@@ -383,7 +383,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       const writeRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         method: 'PUT',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -455,7 +455,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': nonAdminUser.auth,
+          Authorization: nonAdminUser.auth,
         },
       });
 
@@ -465,7 +465,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       // Verify document still exists (query as admin)
       const verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
         },
       });
 
@@ -492,7 +492,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': nonAdminUser.auth,
+          Authorization: nonAdminUser.auth,
         },
       });
 
@@ -502,7 +502,7 @@ describe('RBAC and Permissions Integration Tests', () => {
         // Verify document is gone
         const verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
           headers: {
-            'Authorization': harness.auth,
+            Authorization: harness.auth,
           },
         });
 
@@ -510,7 +510,9 @@ describe('RBAC and Permissions Integration Tests', () => {
         console.log(`[rbac] Non-admin with Remove permission successfully deleted document`);
       } else {
         // If still denied, at least verify we tried with the right permission
-        console.log(`[rbac] Note: Remove permission granted but delete still denied (server config)`);
+        console.log(
+          `[rbac] Note: Remove permission granted but delete still denied (server config)`,
+        );
         expect([204, 403]).toContain(deleteRes.status);
       }
     });
@@ -528,7 +530,7 @@ describe('RBAC and Permissions Integration Tests', () => {
       // Verify user exists
       const checkRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/user/${user.username}`, {
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
         },
       });
 

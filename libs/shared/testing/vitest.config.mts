@@ -10,6 +10,10 @@ export default defineConfig(() => ({
     name: 'testing',
     watch: false,
     globals: true,
+    // This library is fixtures, not behaviour, so it has no specs of its own — but it now
+    // has a `test` target, and without this the run fails on "no test files found".
+    // `review-guardrails.mjs` reads the flag from here, not from `project.json`.
+    passWithNoTests: true,
     environment: 'node',
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     reporters: ['default'],

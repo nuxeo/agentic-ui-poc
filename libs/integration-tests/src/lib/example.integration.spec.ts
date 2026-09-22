@@ -11,13 +11,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { setupIntegrationHarness, createTestDocument } from './integration-harness';
+import { setupIntegrationHarness, createTestDocument, waitForIndexed } from './integration-harness';
 
 describe('Integration Test Example', () => {
   // Set up harness - runs preflight checks, creates data root, registers cleanup
-  const harness = setupIntegrationHarness({
-    allowDefaultCredentials: true, // For local Docker testing
-  });
+  const harness = setupIntegrationHarness();
 
   it('has a unique runId', () => {
     expect(harness.runId).toMatch(/^\d{8}-\d{6}-[a-z0-9]{3}$/);
@@ -53,6 +51,12 @@ describe('Integration Test Example', () => {
       title: 'Queryable Document',
     });
 
+    // `/search/lang/NXQL/execute` is OpenSearch-backed here and lags the write by about a
+    // second, so this read-back used to fail with "expected [] to have a length of 1".
+    // `waitForIndexed` queries by `ecm:uuid` alone — never by the predicate the assertion
+    // is about, which is how the trash-exclusion test came to pass for the wrong reason.
+    await waitForIndexed(harness, created.uid);
+
     // Query it back via NXQL
     const url = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
     url.searchParams.set(
@@ -63,7 +67,7 @@ describe('Integration Test Example', () => {
 
     const res = await fetch(url, {
       headers: {
-        'Authorization': harness.auth,
+        Authorization: harness.auth,
         'X-NXproperties': '*',
       },
     });
@@ -81,7 +85,7 @@ describe('Integration Test Example', () => {
   it('isolates test data in its own workspace', async () => {
     // Verify the data root itself exists
     const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${harness.dataRoot}`, {
-      headers: { 'Authorization': harness.auth },
+      headers: { Authorization: harness.auth },
     });
 
     expect(res.status).toBe(200);

@@ -13,6 +13,24 @@
  *   await deleteUser(harness, user.username);
  */
 
+import { randomBytes } from 'node:crypto';
+
+/**
+ * A password for one test user, for one run.
+ *
+ * The default used to be the literal `TestPass123!`, which is a working credential in the
+ * repository for every account this library creates. `deleteUser` can fail — and until this
+ * pass it failed quietly — so the combination was a predictable username *and* a predictable
+ * password left active on a shared instance.
+ *
+ * Random per user, so a leaked account is not a usable one. The fixed prefix keeps it inside
+ * any password policy that wants an upper, a lower, a digit and a symbol; the entropy is the
+ * 24 random bytes after it.
+ */
+function generatePassword(): string {
+  return `Tp1!${randomBytes(24).toString('base64url')}`;
+}
+
 export interface TestUser {
   username: string;
   password: string;
@@ -28,7 +46,7 @@ export interface TestUser {
 export interface CreateUserOptions {
   /** Username (will be prefixed with runId for uniqueness). Default: 'testuser' */
   username?: string;
-  /** Password. Default: 'TestPass123!' */
+  /** Password. Default: a fresh random one per user — see `generatePassword`. */
   password?: string;
   /** Email. Default: {username}@test.local */
   email?: string;
@@ -58,7 +76,7 @@ export async function createNonAdminUser(
 ): Promise<TestUser> {
   const {
     username = 'testuser',
-    password = 'TestPass123!',
+    password = generatePassword(),
     email,
     firstName = 'Test',
     lastName = 'User',
@@ -73,7 +91,7 @@ export async function createNonAdminUser(
   const createRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/user`, {
     method: 'POST',
     headers: {
-      'Authorization': harness.auth,
+      Authorization: harness.auth,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -116,9 +134,16 @@ export async function createNonAdminUser(
 }
 
 /**
- * Delete a test user from Nuxeo.
+ * Delete a test user from Nuxeo, and **throw** if it could not be deleted.
  *
  * Should be called in test cleanup to remove users created with `createNonAdminUser()`.
+ *
+ * A failure used to be a `console.warn`, so `afterEach` could not enforce the user-cleanup
+ * criterion the plan records as met: an account left active on a shared instance reported
+ * green. A caller that genuinely wants to tolerate that can `catch` — which is a decision
+ * written at the call site, rather than one this helper makes for every caller silently.
+ *
+ * 404 is not a failure: the user is gone, which is the outcome asked for.
  *
  * @param harness Integration test harness (provides nuxeoUrl, auth)
  * @param username Username to delete (the scoped username, not the base name)
@@ -130,19 +155,19 @@ export async function deleteUser(
   const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/user/${username}`, {
     method: 'DELETE',
     headers: {
-      'Authorization': harness.auth,
+      Authorization: harness.auth,
     },
   });
 
   if (!deleteRes.ok && deleteRes.status !== 404) {
-    // 404 is ok - user already deleted or never existed
-    const errorText = await deleteRes.text();
-    console.warn(
-      `[user-fixtures] Failed to delete user '${username}': ${deleteRes.status} ${errorText}`,
+    throw new Error(
+      `[user-fixtures] Failed to delete test user '${username}': ${deleteRes.status} ` +
+        `${await deleteRes.text()}\n` +
+        `  The account may still be active on ${harness.nuxeoUrl}. Remove it before the next run.`,
     );
-  } else {
-    console.log(`[user-fixtures] Deleted test user: ${username}`);
   }
+
+  console.log(`[user-fixtures] Deleted test user: ${username}`);
 }
 
 /**
@@ -159,19 +184,22 @@ export async function grantPermission(
   username: string,
   permission: string,
 ): Promise<void> {
-  const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docId}/@op/Document.AddPermission`, {
-    method: 'POST',
-    headers: {
-      'Authorization': harness.auth,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      params: {
-        username,
-        permission,
+  const res = await fetch(
+    `${harness.nuxeoUrl}/nuxeo/api/v1/id/${docId}/@op/Document.AddPermission`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: harness.auth,
+        'Content-Type': 'application/json',
       },
-    }),
-  });
+      body: JSON.stringify({
+        params: {
+          username,
+          permission,
+        },
+      }),
+    },
+  );
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -198,7 +226,7 @@ export async function revokePermission(
   // Get current ACLs
   const getRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docId}/@acl`, {
     headers: {
-      'Authorization': harness.auth,
+      Authorization: harness.auth,
     },
   });
 
@@ -221,7 +249,7 @@ export async function revokePermission(
     {
       method: 'POST',
       headers: {
-        'Authorization': harness.auth,
+        Authorization: harness.auth,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -243,14 +271,34 @@ export async function revokePermission(
 }
 
 /**
- * Check if a user can read a document.
+ * Turn an HTTP status into "the server denied this" or an error.
  *
- * Performs a GET request as the user and returns true if successful, false if 403/404.
+ * `return res.ok` mapped **every** non-2xx to "permission denied": a 500 from a broken
+ * server, a 401 from a fixture whose credentials never worked, and a 503 from a Nuxeo still
+ * starting all read as a successful RBAC denial. So an `expect(await canRead(...)).toBe(false)`
+ * passed hardest exactly when the server was least able to answer — the shape of vacuous pass
+ * this library was written to remove.
+ *
+ * 403 and 404 are the two the permission model actually produces: forbidden, and "you cannot
+ * see it, so it does not exist for you". Anything else is the environment, and it throws.
+ */
+function deniedOrThrow(res: Response, what: string): boolean {
+  if (res.ok) return true;
+  if (res.status === 403 || res.status === 404) return false;
+  throw new Error(
+    `[user-fixtures] ${what} answered ${res.status} ${res.statusText}. That is not a permission\n` +
+      `  decision, so it cannot be reported as one — a denial and a broken server must not\n` +
+      `  look the same to an RBAC assertion.`,
+  );
+}
+
+/**
+ * Check if a user can read a document.
  *
  * @param harness Integration test harness (only needs nuxeoUrl)
  * @param userAuth User's auth header (from TestUser.auth)
  * @param docId Document UID to check
- * @returns true if user can read, false otherwise
+ * @returns true if the read succeeded, false if the server forbade it; throws otherwise
  */
 export async function canRead(
   harness: { nuxeoUrl: string },
@@ -259,22 +307,22 @@ export async function canRead(
 ): Promise<boolean> {
   const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docId}`, {
     headers: {
-      'Authorization': userAuth,
+      Authorization: userAuth,
     },
   });
 
-  return res.ok;
+  return deniedOrThrow(res, `read of ${docId}`);
 }
 
 /**
  * Check if a user can write to a document.
  *
- * Performs a property update as the user and returns true if successful, false if 403/404.
+ * Performs a property update as the user.
  *
  * @param harness Integration test harness (only needs nuxeoUrl)
  * @param userAuth User's auth header (from TestUser.auth)
  * @param docId Document UID to check
- * @returns true if user can write, false otherwise
+ * @returns true if the write succeeded, false if the server forbade it; throws otherwise
  */
 export async function canWrite(
   harness: { nuxeoUrl: string },
@@ -285,7 +333,7 @@ export async function canWrite(
   const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docId}`, {
     method: 'PUT',
     headers: {
-      'Authorization': userAuth,
+      Authorization: userAuth,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -296,5 +344,5 @@ export async function canWrite(
     }),
   });
 
-  return res.ok;
+  return deniedOrThrow(res, `write to ${docId}`);
 }

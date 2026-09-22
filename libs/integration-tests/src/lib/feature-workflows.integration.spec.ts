@@ -20,9 +20,7 @@ import { describe, it, expect } from 'vitest';
 import { setupIntegrationHarness, createTestDocument } from './integration-harness';
 
 describe('Feature Workflows Integration Tests', () => {
-  const harness = setupIntegrationHarness({
-    allowDefaultCredentials: true, // For local Docker testing
-  });
+  const harness = setupIntegrationHarness();
 
   describe('Collections', () => {
     it('can create a collection', async () => {
@@ -32,7 +30,7 @@ describe('Feature Workflows Integration Tests', () => {
         {
           method: 'POST',
           headers: {
-            'Authorization': harness.auth,
+            Authorization: harness.auth,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -61,7 +59,7 @@ describe('Feature Workflows Integration Tests', () => {
         {
           method: 'POST',
           headers: {
-            'Authorization': harness.auth,
+            Authorization: harness.auth,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -88,7 +86,7 @@ describe('Feature Workflows Integration Tests', () => {
         {
           method: 'POST',
           headers: {
-            'Authorization': harness.auth,
+            Authorization: harness.auth,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -102,46 +100,74 @@ describe('Feature Workflows Integration Tests', () => {
 
       expect(addRes.status).toBe(200);
 
+      // A 200 is Nuxeo accepting the operation, not evidence that membership changed, and
+      // this file's own header requires repository modifications to be verified by a
+      // follow-up read. `collectionMember:collectionIds` is on the document itself, so this
+      // is a direct `/id/:uid` read — the repository, not the index, and therefore not
+      // exposed to the lag that hollowed out the trash-exclusion test.
+      const memberRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
+        headers: { Authorization: harness.auth, 'X-NXproperties': '*' },
+      });
+      expect(memberRes.status).toBe(200);
+      const member: any = await memberRes.json();
+      expect(member.properties['collectionMember:collectionIds']).toContain(collection.uid);
+
       console.log(`[feature-workflows] Added document ${doc.uid} to collection ${collection.uid}`);
     });
   });
 
+  // The three tests below each used to read `if (status === 200) { assert } else { log }`,
+  // which turns a missing or broken capability into a pass — a test that claims it can
+  // create a note, and reports green when the server says it cannot.
+  //
+  // That was not hypothetical here. Probing this Nuxeo directly showed the reason those
+  // branches existed: two of the three endpoints do not exist at all.
+  //
+  //   POST /api/v1/automation/Comment.CreateComment       -> 404, no such operation
+  //   GET  /api/v1/id/<uid>/@comment                      -> 200
+  //   GET  /api/v1/id/<uid>/@workflows                    -> 404, the adapter is @workflow
+  //   POST /api/v1/automation/ResultSet.PageProviderToCsv -> 404, no such operation
+  //
+  // So the `else` branch was not tolerating an optional capability; it was hiding three
+  // wrong endpoint names. Each test now uses the endpoint the product actually uses and
+  // asserts the status unconditionally.
   describe('Notes and Annotations', () => {
     it('can create a note on a document', async () => {
-      // Create a document
       const doc: any = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-with-note',
         title: 'Document with Note',
       });
 
-      // Add note via Comment.CreateComment automation
-      const noteRes = await fetch(
-        `${harness.nuxeoUrl}/nuxeo/api/v1/automation/Comment.CreateComment`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': harness.auth,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            input: `doc:${doc.uid}`,
-            params: {
-              text: 'This is a test note from integration tests',
-            },
-          }),
+      // The `@comment` adapter, not `Comment.CreateComment` — that operation is not in this
+      // Nuxeo's automation registry, and never was.
+      const noteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@comment`, {
+        method: 'POST',
+        headers: {
+          Authorization: harness.auth,
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          'entity-type': 'comment',
+          parentId: doc.uid,
+          text: 'This is a test note from integration tests',
+        }),
+      });
 
-      if (noteRes.status === 200) {
-        const note: any = await noteRes.json();
-        expect(note.text).toContain('test note');
+      expect(noteRes.status).toBe(201);
+      const note: any = await noteRes.json();
+      expect(note.text).toBe('This is a test note from integration tests');
 
-        console.log(`[feature-workflows] Created note on document ${doc.uid}`);
-      } else {
-        // Note: Comment operations might not be available in all Nuxeo configs
-        console.log(`[feature-workflows] Note: Comment operations not available (status ${noteRes.status})`);
-      }
+      // Read it back, so the assertion is about the repository and not about the response
+      // body the write echoed.
+      const readRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@comment`, {
+        headers: { Authorization: harness.auth },
+      });
+      expect(readRes.status).toBe(200);
+      const comments: any = await readRes.json();
+      expect(comments.entries.map((c: any) => c.id)).toContain(note.id);
+
+      console.log(`[feature-workflows] Created and read back note ${note.id} on ${doc.uid}`);
     });
 
     it('can query comments on a document', async () => {
@@ -151,22 +177,19 @@ describe('Feature Workflows Integration Tests', () => {
         title: 'Document with Comments',
       });
 
-      // Query comments via @comment adapter
       const commentsRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@comment`, {
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
         },
       });
 
-      // Should return empty comments array initially
-      if (commentsRes.status === 200) {
-        const comments: any = await commentsRes.json();
-        expect(comments).toBeDefined();
+      expect(commentsRes.status).toBe(200);
+      const comments: any = await commentsRes.json();
+      // A fresh document has no comments. `toBeDefined()` would have passed on an error body.
+      expect(comments['entity-type']).toBe('comments');
+      expect(comments.entries).toEqual([]);
 
-        console.log(`[feature-workflows] Queried comments on ${doc.uid}`);
-      } else {
-        console.log(`[feature-workflows] Note: @comment adapter not available`);
-      }
+      console.log(`[feature-workflows] Queried comments on ${doc.uid}`);
     });
   });
 
@@ -187,7 +210,7 @@ describe('Feature Workflows Integration Tests', () => {
         {
           method: 'POST',
           headers: {
-            'Authorization': harness.auth,
+            Authorization: harness.auth,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -218,7 +241,7 @@ describe('Feature Workflows Integration Tests', () => {
       await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.CreateVersion`, {
         method: 'POST',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -230,14 +253,11 @@ describe('Feature Workflows Integration Tests', () => {
       });
 
       // Get version history
-      const historyRes = await fetch(
-        `${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@versions`,
-        {
-          headers: {
-            'Authorization': harness.auth,
-          },
+      const historyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@versions`, {
+        headers: {
+          Authorization: harness.auth,
         },
-      );
+      });
 
       expect(historyRes.status).toBe(200);
 
@@ -245,7 +265,9 @@ describe('Feature Workflows Integration Tests', () => {
       expect(Array.isArray(history.entries)).toBe(true);
       expect(history.entries.length).toBeGreaterThan(0);
 
-      console.log(`[feature-workflows] Retrieved ${history.entries.length} version(s) for ${doc.uid}`);
+      console.log(
+        `[feature-workflows] Retrieved ${history.entries.length} version(s) for ${doc.uid}`,
+      );
     });
   });
 
@@ -265,34 +287,39 @@ describe('Feature Workflows Integration Tests', () => {
         }),
       ]);
 
-      // Export via ResultSet.PageProviderToCsv automation
+      // `Bulk.RunAction` with `action: csvExport` — the path `BrowseService.startCsvExport`
+      // uses. `ResultSet.PageProviderToCsv`, which this test called before, is not in this
+      // Nuxeo's automation registry; the `else` branch below is why that never showed up.
+      //
+      // Only the *start* of the export is asserted. Completing it means polling
+      // `/@async/<id>/status` and downloading the blob, which is a longer test than this
+      // file should carry — recorded as a limitation rather than implied by a green tick.
       const exportRes = await fetch(
-        `${harness.nuxeoUrl}/nuxeo/api/v1/automation/ResultSet.PageProviderToCsv`,
+        `${harness.nuxeoUrl}/nuxeo/api/v1/automation/Bulk.RunAction/@async`,
         {
           method: 'POST',
           headers: {
-            'Authorization': harness.auth,
+            Authorization: harness.auth,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             params: {
+              action: 'csvExport',
               query: `SELECT * FROM Document WHERE ecm:path STARTSWITH '${harness.dataRoot}'`,
-              pageSize: 100,
-              schemas: 'dublincore',
             },
+            context: {},
           }),
         },
       );
 
-      if (exportRes.status === 200) {
-        const csv = await exportRes.text();
-        expect(csv).toContain('dc:title');
-        expect(csv.length).toBeGreaterThan(0);
+      expect(exportRes.status).toBe(202);
 
-        console.log(`[feature-workflows] Exported CSV (${csv.length} bytes)`);
-      } else {
-        console.log(`[feature-workflows] Note: CSV export not available (status ${exportRes.status})`);
-      }
+      // The execution ID comes back in `Location`, and `startCsvExport` depends on it being
+      // there — an accepted request with no ID to poll is a failure, not a success.
+      const location = exportRes.headers.get('Location') ?? '';
+      expect(location).toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+
+      console.log(`[feature-workflows] Started CSV export: ${location}`);
     });
   });
 
@@ -304,24 +331,21 @@ describe('Feature Workflows Integration Tests', () => {
         title: 'Workflow Document',
       });
 
-      // Query workflows via @workflows adapter
-      const workflowsRes = await fetch(
-        `${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@workflows`,
-        {
-          headers: {
-            'Authorization': harness.auth,
-          },
+      // `@workflow`, singular. The plural spelling answers 404 "Service workflows not
+      // found", which the `else` branch below reported as "adapter not available".
+      const workflowsRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@workflow`, {
+        headers: {
+          Authorization: harness.auth,
         },
-      );
+      });
 
-      if (workflowsRes.status === 200) {
-        const workflows: any = await workflowsRes.json();
-        expect(workflows).toBeDefined();
+      expect(workflowsRes.status).toBe(200);
+      const workflows: any = await workflowsRes.json();
+      expect(workflows['entity-type']).toBe('workflows');
+      // A document nobody has started a workflow on has none running.
+      expect(workflows.entries).toEqual([]);
 
-        console.log(`[feature-workflows] Queried workflows for ${doc.uid}`);
-      } else {
-        console.log(`[feature-workflows] Note: @workflows adapter not available`);
-      }
+      console.log(`[feature-workflows] Queried workflows for ${doc.uid}`);
     });
   });
 
@@ -341,7 +365,7 @@ describe('Feature Workflows Integration Tests', () => {
       const updateRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         method: 'PUT',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -358,7 +382,7 @@ describe('Feature Workflows Integration Tests', () => {
       // Verify via follow-up query
       const verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'X-NXproperties': '*',
         },
       });

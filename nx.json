@@ -61,7 +61,8 @@
       "options": {
         "testTargetName": "vitest:test",
         "ciTargetName": "test-ci",
-        "testMode": "watch"
+        "$comment": "`run`, not `watch`. @nx/vitest/src/plugins/plugin.js turns `watch` into a bare `vitest`, so the inferred target starts an interactive watcher and never exits — a trap for the first script or agent that invokes it.",
+        "testMode": "run"
       }
     }
   ],

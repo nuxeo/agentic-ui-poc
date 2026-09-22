@@ -42,13 +42,28 @@ const DEFAULT_USER = 'Administrator';
 const DEFAULT_PASS = 'Administrator';
 
 export interface IntegrationTestConfig {
-  /** Nuxeo base URL. Default: http://localhost:8080 */
+  /** Nuxeo base URL. Default: NUXEO_URL env, then http://localhost:8080 */
   nuxeoUrl?: string;
-  /** Nuxeo username. Default: NUXEO_USER env or 'Administrator' */
+  /** Nuxeo username. Default: NUXEO_USER env. There is no fallback — see `resolveConnection`. */
   user?: string;
-  /** Nuxeo password. Default: NUXEO_PASS env or 'Administrator' */
+  /** Nuxeo password. Default: NUXEO_PASS env. There is no fallback — see `resolveConnection`. */
   password?: string;
-  /** Allow running against default Administrator/Administrator credentials. Default: false */
+}
+
+/**
+ * The opt-in that lets the suite run against `Administrator`/`Administrator`.
+ *
+ * **Not** part of `IntegrationTestConfig`, and that is the point. It used to be, and all six
+ * suites in this library set it to `true`, so the guard below never fired in any code path
+ * that existed — a control two status documents recorded as implemented. A per-suite knob is
+ * a constant compiled into the spec; the decision belongs at the point of invocation, where
+ * whoever is pointing the run at a server is the one making it.
+ *
+ * So the suites cannot reach it: `setupIntegrationHarness` reads `ALLOW_DEFAULT_CREDENTIALS`
+ * from the environment and nothing else, and this parameter exists for `preflight-cli.ts`,
+ * which is a CLI and can legitimately take a flag.
+ */
+export interface PreflightOptions {
   allowDefaultCredentials?: boolean;
 }
 
@@ -58,6 +73,56 @@ export interface PreflightResult {
   satisfied: string[];
 }
 
+/** Nuxeo connection values, resolved once so every consumer uses the same ones. */
+export interface ResolvedConnection {
+  nuxeoUrl: string;
+  user: string;
+  password: string;
+}
+
+/**
+ * Resolve the Nuxeo connection from explicit config, then the environment. Credentials have
+ * **no** fallback, and the URL is resolved here rather than by each caller.
+ *
+ * Two defects this closes, both reported on the pull request.
+ *
+ * `.cursor/rules/security.mdc`: "NEVER use Basic auth with hardcoded fallback defaults". The
+ * harness carried `?? 'Administrator'` on both the user and the password, which is a working
+ * credential pair compiled into a library whose job is to issue `DELETE` against a live
+ * repository. It also made the guard below unreachable from the other direction: an absent
+ * environment *selected* the default credentials rather than refusing, so "default
+ * credentials require an opt-in" was enforced only against someone who had typed them out.
+ * `apps/nuxeo-ui-e2e/src/fixtures.ts` throws for exactly this reason, and this library should
+ * not make the opposite trade against a more dangerous surface.
+ *
+ * The URL is resolved once because the harness used to resolve `NUXEO_URL` for itself and
+ * then hand the *raw* config to the preflight, which resolved only `config.nuxeoUrl`. With
+ * `NUXEO_URL` set and no explicit config — every suite here — the preflight certified
+ * `localhost:8080` and the tests then ran destructively against the environment's server.
+ */
+export function resolveConnection(config: IntegrationTestConfig = {}): ResolvedConnection {
+  const user = config.user ?? process.env['NUXEO_USER'];
+  const password = config.password ?? process.env['NUXEO_PASS'];
+
+  if (!user || !password) {
+    throw new Error(
+      'NUXEO_USER and NUXEO_PASS must both be set to run the integration suite.\n\n' +
+        '  There is deliberately no default. This library issues DELETE and Document.Trash\n' +
+        '  against whatever server it is pointed at, and a hardcoded Administrator pair is\n' +
+        '  both a credential in the repository and a default that is silently wrong on every\n' +
+        '  instance but a local Docker one.\n\n' +
+        '    export NUXEO_USER=Administrator NUXEO_PASS=Administrator\n' +
+        '    ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration',
+    );
+  }
+
+  return {
+    nuxeoUrl: config.nuxeoUrl ?? process.env['NUXEO_URL'] ?? 'http://localhost:8080',
+    user,
+    password,
+  };
+}
+
 /**
  * Check integration test preconditions and throw if any fail.
  * Follows the exit-2 convention: precondition failures should fix environment, not code.
@@ -65,16 +130,20 @@ export interface PreflightResult {
 export async function checkIntegrationPreconditions(
   config: IntegrationTestConfig = {},
 ): Promise<void> {
+  // No `PreflightOptions` argument on purpose: the in-test path takes its opt-in from the
+  // environment only, so no spec can switch the default-credentials guard off.
   const result = await runPreflightChecks(config);
 
   if (!result.ok) {
     const message = [
       '\nintegration-preflight: PRECONDITION NOT MET',
       `${result.problems.length} problem(s):\n`,
-      ...result.problems.map(p => `  - ${p}`),
+      ...result.problems.map((p) => `  - ${p}`),
       '',
       result.satisfied.length > 0 ? `Satisfied: ${result.satisfied.join('; ')}` : '',
-    ].filter(Boolean).join('\n');
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     // In a test context, throw instead of process.exit
     // The test runner will report this as a setup failure
@@ -88,13 +157,16 @@ export async function checkIntegrationPreconditions(
  */
 export async function runPreflightChecks(
   config: IntegrationTestConfig = {},
+  options: PreflightOptions = {},
 ): Promise<PreflightResult> {
-  const nuxeoUrl = config.nuxeoUrl ?? 'http://localhost:8080';
-  const user = config.user ?? process.env['NUXEO_USER'] ?? DEFAULT_USER;
-  const password = config.password ?? process.env['NUXEO_PASS'] ?? DEFAULT_PASS;
-  const allowDefault = config.allowDefaultCredentials ??
-    process.argv.includes('--allow-default-credentials') ??
-    process.env['ALLOW_DEFAULT_CREDENTIALS'] === 'true';
+  const { nuxeoUrl, user, password } = resolveConnection(config);
+  // `||`, not `??`. `Array.prototype.includes` returns a boolean and is never nullish, so the
+  // `??` chain this replaces could never reach its `ALLOW_DEFAULT_CREDENTIALS` branch — the
+  // opt-in the guard's own message tells you to use was unreachable from the library. The
+  // flag is read by `preflight-cli.ts` and arrives here through `options`; it is not read
+  // from `process.argv` here, because inside a vitest worker that argv belongs to vitest.
+  const allowDefault =
+    options.allowDefaultCredentials === true || process.env['ALLOW_DEFAULT_CREDENTIALS'] === 'true';
 
   const problems: string[] = [];
   const satisfied: string[] = [];
@@ -106,15 +178,15 @@ export async function runPreflightChecks(
   if (isDefaultCreds && !allowDefault) {
     problems.push(
       `Integration tests refuse to run with default Administrator/Administrator credentials\n` +
-      `  without explicit opt-in. This prevents accidentally running against production.\n\n` +
-      `  If you are CERTAIN this is a disposable Docker instance:\n` +
-      `    ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration\n\n` +
-      `  The env var, not \`-- --allow-default-credentials\`: npm appends extra arguments to\n` +
-      `  the END of the script, and this script is a two-command chain, so the flag lands on\n` +
-      `  vitest instead of the preflight and the message you are reading repeats forever.\n\n` +
-      `  Or set non-default credentials:\n` +
-      `    export NUXEO_USER=testuser\n` +
-      `    export NUXEO_PASS=testpass`,
+        `  without explicit opt-in. This prevents accidentally running against production.\n\n` +
+        `  If you are CERTAIN this is a disposable Docker instance:\n` +
+        `    ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration\n\n` +
+        `  The env var, not \`-- --allow-default-credentials\`: npm appends extra arguments to\n` +
+        `  the END of the script, and this script is a two-command chain, so the flag lands on\n` +
+        `  vitest instead of the preflight and the message you are reading repeats forever.\n\n` +
+        `  Or set non-default credentials:\n` +
+        `    export NUXEO_USER=testuser\n` +
+        `    export NUXEO_PASS=testpass`,
     );
   } else if (isDefaultCreds) {
     satisfied.push('default credentials allowed by explicit opt-in');
@@ -137,19 +209,18 @@ export async function runPreflightChecks(
     } else if (res.status === 401) {
       problems.push(
         `Nuxeo rejected credentials at ${nuxeoUrl} (401 Unauthorized).\n` +
-        `  Check NUXEO_USER and NUXEO_PASS are correct.`,
+          `  Check NUXEO_USER and NUXEO_PASS are correct.`,
       );
     } else {
       problems.push(
-        `Nuxeo answered ${res.status} at ${nuxeoUrl}.\n` +
-        `  Expected 200 for path lookup.`,
+        `Nuxeo answered ${res.status} at ${nuxeoUrl}.\n` + `  Expected 200 for path lookup.`,
       );
     }
   } catch (error) {
     problems.push(
       `Cannot reach Nuxeo at ${nuxeoUrl}:\n` +
-      `  ${error instanceof Error ? error.message : String(error)}\n\n` +
-      `  Start Nuxeo with: docker compose up nuxeo`,
+        `  ${error instanceof Error ? error.message : String(error)}\n\n` +
+        `  Start Nuxeo with: docker compose up nuxeo`,
     );
   }
 
@@ -178,8 +249,8 @@ export async function runPreflightChecks(
         } else {
           problems.push(
             'Nuxeo is reachable but holds no File documents.\n' +
-            '  Integration tests assert repository data. An empty repository is not a pass —\n' +
-            '  it is a run that tested nothing. Import a document first.',
+              '  Integration tests assert repository data. An empty repository is not a pass —\n' +
+              '  it is a run that tested nothing. Import a document first.',
           );
         }
       } else {

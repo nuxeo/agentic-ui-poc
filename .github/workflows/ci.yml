@@ -97,6 +97,11 @@ jobs:
           # Fails if an evidence step asserts something it cannot observe. Phase 1 shipped
           # a dead feature past two checks that certified properties they could not see.
           npm run beta:audit
+          # And its own negative controls, for the same reason the sanitizer pair below has
+          # them: this audit's guard exemption has been wrong twice, and both times the hole
+          # was found by someone trying an input rather than by anything that runs. The line
+          # above verifies the audit runs; this one verifies it can still report.
+          npm run beta:audit-selftest
           # The only customer-facing document nothing checked. When first measured it was
           # wrong in both directions.
           npm run beta:reference

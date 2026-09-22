@@ -21,9 +21,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { setupIntegrationHarness, createTestDocument, waitForIndexed } from './integration-harness';
 
 describe('Write Operations Integration Tests', () => {
-  const harness = setupIntegrationHarness({
-    allowDefaultCredentials: true, // For local Docker testing
-  });
+  const harness = setupIntegrationHarness();
 
   describe('Trash Operations', () => {
     it('can trash a document', async () => {
@@ -41,7 +39,7 @@ describe('Write Operations Integration Tests', () => {
       const trashRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Trash`, {
         method: 'POST',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -53,7 +51,7 @@ describe('Write Operations Integration Tests', () => {
 
       // Verify document is trashed via follow-up API query
       const verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
 
       expect(verifyRes.status).toBe(200);
@@ -77,7 +75,7 @@ describe('Write Operations Integration Tests', () => {
       const trashRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Trash`, {
         method: 'POST',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -107,7 +105,7 @@ describe('Write Operations Integration Tests', () => {
       );
 
       const queryRes = await fetch(queryUrl, {
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
 
       expect(queryRes.status).toBe(200);
@@ -125,7 +123,7 @@ describe('Write Operations Integration Tests', () => {
         `SELECT * FROM Document WHERE ecm:path STARTSWITH '${harness.dataRoot}'`,
       );
       const unfilteredRes = await fetch(unfilteredUrl, {
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
       expect(unfilteredRes.status).toBe(200);
       const unfiltered: any = await unfilteredRes.json();
@@ -149,7 +147,7 @@ describe('Write Operations Integration Tests', () => {
       await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Trash`, {
         method: 'POST',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -159,28 +157,31 @@ describe('Write Operations Integration Tests', () => {
 
       // Verify it's trashed
       let verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
       let state: any = await verifyRes.json();
       expect(state.isTrashed).toBe(true);
 
       // Restore it via Document.Untrash automation
-      const restoreRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Untrash`, {
-        method: 'POST',
-        headers: {
-          'Authorization': harness.auth,
-          'Content-Type': 'application/json',
+      const restoreRes = await fetch(
+        `${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Untrash`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: harness.auth,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            input: `doc:${doc.uid}`,
+          }),
         },
-        body: JSON.stringify({
-          input: `doc:${doc.uid}`,
-        }),
-      });
+      );
 
       expect(restoreRes.status).toBe(200);
 
       // Verify via follow-up query
       verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
 
       state = await verifyRes.json();
@@ -205,14 +206,14 @@ describe('Write Operations Integration Tests', () => {
       const deleteUrl = `${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`;
       const deleteRes = await fetch(deleteUrl, {
         method: 'DELETE',
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
 
       expect(deleteRes.status).toBe(204); // No Content
 
       // Verify via follow-up query - should get 404
       const verifyRes = await fetch(deleteUrl, {
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
 
       expect(verifyRes.status).toBe(404);
@@ -230,14 +231,14 @@ describe('Write Operations Integration Tests', () => {
 
       await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         method: 'DELETE',
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
 
       // Try to restore (should fail)
       const restoreRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         method: 'PUT',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -268,7 +269,7 @@ describe('Write Operations Integration Tests', () => {
       const updateRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         method: 'PUT',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -284,7 +285,7 @@ describe('Write Operations Integration Tests', () => {
 
       // Verify via follow-up query
       const verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
-        headers: { 'Authorization': harness.auth, 'X-NXproperties': '*' },
+        headers: { Authorization: harness.auth, 'X-NXproperties': '*' },
       });
 
       const updated: any = await verifyRes.json();
@@ -312,7 +313,7 @@ describe('Write Operations Integration Tests', () => {
       const doc: any = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${sourceFolder.path}`, {
         method: 'POST',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -323,7 +324,7 @@ describe('Write Operations Integration Tests', () => {
             'dc:title': 'Document to Move',
           },
         }),
-      }).then(r => r.json());
+      }).then((r) => r.json());
 
       expect(doc.path).toContain('/source-folder');
 
@@ -331,7 +332,7 @@ describe('Write Operations Integration Tests', () => {
       const moveRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Move`, {
         method: 'POST',
         headers: {
-          'Authorization': harness.auth,
+          Authorization: harness.auth,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -346,7 +347,7 @@ describe('Write Operations Integration Tests', () => {
 
       // Verify via follow-up query
       const verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
 
       const moved: any = await verifyRes.json();
@@ -381,30 +382,33 @@ describe('Write Operations Integration Tests', () => {
       const docIds = docs.map((d: any) => d.uid);
 
       // Bulk delete via Document.Delete automation
-      const bulkDeleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Delete`, {
-        method: 'POST',
-        headers: {
-          'Authorization': harness.auth,
-          'Content-Type': 'application/json',
+      const bulkDeleteRes = await fetch(
+        `${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Delete`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: harness.auth,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            input: `docs:${docIds.join(',')}`,
+          }),
         },
-        body: JSON.stringify({
-          input: `docs:${docIds.join(',')}`,
-        }),
-      });
+      );
 
       expect(bulkDeleteRes.status).toBe(200);
 
       // Verify all deleted via follow-up queries
       const verifications = await Promise.all(
-        docIds.map(uid =>
+        docIds.map((uid) =>
           fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${uid}`, {
-            headers: { 'Authorization': harness.auth },
-          })
-        )
+            headers: { Authorization: harness.auth },
+          }),
+        ),
       );
 
       // All should be 404
-      verifications.forEach(res => {
+      verifications.forEach((res) => {
         expect(res.status).toBe(404);
       });
 
@@ -429,7 +433,7 @@ describe('Write Operations Integration Tests', () => {
       countUrl.searchParams.set(
         'query',
         "SELECT * FROM Document WHERE ecm:primaryType = 'File' AND ecm:isTrashed = 0 " +
-        `AND NOT (ecm:path STARTSWITH '${harness.dataRoot}')`,
+          `AND NOT (ecm:path STARTSWITH '${harness.dataRoot}')`,
       );
       countUrl.searchParams.set('pageSize', '1000');
 
@@ -437,7 +441,7 @@ describe('Write Operations Integration Tests', () => {
       // server error into a pass, so a missing `resultsCount` must now fail the test rather
       // than be read as a count of nothing.
       const countOutsideRoot = async (): Promise<number> => {
-        const res = await fetch(countUrl, { headers: { 'Authorization': harness.auth } });
+        const res = await fetch(countUrl, { headers: { Authorization: harness.auth } });
         expect(res.status).toBe(200);
         const data: any = await res.json();
         expect(data.resultsCount).toBeTypeOf('number');
@@ -459,7 +463,7 @@ describe('Write Operations Integration Tests', () => {
 
       const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docInRoot.uid}`, {
         method: 'DELETE',
-        headers: { 'Authorization': harness.auth },
+        headers: { Authorization: harness.auth },
       });
       expect(deleteRes.status).toBe(204);
 
@@ -468,7 +472,9 @@ describe('Write Operations Integration Tests', () => {
 
       expect(afterCount).toBe(beforeCount);
 
-      console.log(`[write-ops] Isolation verified: ${beforeCount} docs outside root before, ${afterCount} after`);
+      console.log(
+        `[write-ops] Isolation verified: ${beforeCount} docs outside root before, ${afterCount} after`,
+      );
     });
   });
 });

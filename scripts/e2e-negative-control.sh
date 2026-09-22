@@ -25,13 +25,37 @@ set -euo pipefail
 # console phrasing, and an absent file is treated as an environment failure rather than
 # as zero failures — the same mistake in a different place.
 #
+# ## Why a bare failure count is not the measurement
+#
+# `NUXEO_PASS` is read in three places, not one: this suite's `signedIn` fixture, the
+# `httpCredentials` in `playwright.config.ts`, and `newNuxeoApiContext()` in `fixtures.ts`.
+# So a wrong password does not only make repository-data assertions fail — it also makes
+# `aRootChild()` throw `API query failed: 401` before the spec body runs at all.
+#
+# A spec that died there proves nothing about whether its assertions check anything: it
+# would have failed identically if its body were empty. Counting those toward the threshold
+# is the same defect as the reporter mismatch above, one level up — a control whose number
+# does not measure what its message claims. On the run this script was last verified
+# against, 4 of 13 failures were exactly that.
+#
+# So failures are classified by where the run says the error happened. Only a failure
+# located in a `*.spec.ts` file counts: that is a line the spec itself wrote, reached
+# because the spec got far enough to check something. Everything else — fixtures, hooks,
+# shared helpers — is reported separately and excluded.
+#
+# The classification is deliberately conservative in the direction that can only make the
+# threshold harder to meet. `expectSurfaceWithData()` lives in `fixtures.ts`, so a failure
+# inside it is excluded even though it is a genuine repository-data assertion. Under-counting
+# cannot manufacture a pass; over-counting is how this control became meaningless the first
+# time.
+#
 # Usage:
 #   ./scripts/e2e-negative-control.sh [min-expected-failures]
 #
 # Default: expects at least 5 failures (conservative - should be higher once fixed)
 #
 # Exit codes:
-#   0 - Control passed (enough specs failed, as expected)
+#   0 - Control passed (enough specs failed at their own assertions, as expected)
 #   1 - Control FAILED (too few failures = vacuous assertions present)
 #   2 - Environment issue (no Nuxeo, preflight failed, no results file)
 
@@ -72,42 +96,92 @@ if [ ! -f "$RESULTS_FILE" ]; then
   exit 2
 fi
 
-# Count specs the run reports as not ok. `spec.ok` is false when every attempt failed,
-# so a spec that only passed on retry is not counted as a failure here.
-ACTUAL_FAILURES=$(node -e '
+# Classify the specs the run reports as not ok. `spec.ok` is false when every attempt
+# failed, so a spec that only passed on retry is not counted as a failure here.
+#
+# The location is read from the FINAL attempt: a retry can fail somewhere else than the
+# first try did, and the final attempt is the one `spec.ok` reflects.
+CLASSIFIED=$(node -e '
   const report = require("fs").readFileSync(process.argv[1], "utf8");
   const { suites = [] } = JSON.parse(report);
-  let failed = 0;
+  const atAssertion = [];
+  const beforeAssertion = [];
+
   const walk = (list) => {
     for (const suite of list) {
-      for (const spec of suite.specs ?? []) if (spec.ok === false) failed += 1;
+      for (const spec of suite.specs ?? []) {
+        if (spec.ok !== false) continue;
+        const attempts = (spec.tests ?? []).flatMap((t) => t.results ?? []);
+        const last = attempts[attempts.length - 1];
+        const location = last?.errorLocation ?? last?.errors?.[0]?.location ?? null;
+        const file = location?.file ?? "";
+        const where = location ? `${file.split("/").pop()}:${location.line}` : "unknown";
+        const row = { title: spec.title, where };
+        if (/\.spec\.ts$/.test(file)) atAssertion.push(row);
+        else beforeAssertion.push(row);
+      }
       walk(suite.suites ?? []);
     }
   };
   walk(suites);
-  process.stdout.write(String(failed));
+
+  process.stdout.write(JSON.stringify({ atAssertion, beforeAssertion }));
 ' "$RESULTS_FILE")
+
+ACTUAL_FAILURES=$(printf "%s" "$CLASSIFIED" | node -e '
+  let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+    process.stdout.write(String(JSON.parse(s).atAssertion.length));
+  });
+')
+SETUP_FAILURES=$(printf "%s" "$CLASSIFIED" | node -e '
+  let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+    const { beforeAssertion } = JSON.parse(s);
+    process.stdout.write(String(beforeAssertion.length));
+  });
+')
 
 echo ""
 echo "=== Results ==="
 echo "Playwright exit code: ${PLAYWRIGHT_EXIT}"
-echo "Actual failures: ${ACTUAL_FAILURES}"
+echo "Failures at a spec's own assertion: ${ACTUAL_FAILURES}   (these are what count)"
+echo "Failures before the spec body:      ${SETUP_FAILURES}   (fixtures/hooks — excluded)"
 echo "Expected minimum: ${MIN_FAILURES}"
+echo ""
+printf "%s" "$CLASSIFIED" | node -e '
+  let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+    const { atAssertion, beforeAssertion } = JSON.parse(s);
+    const list = (rows) => rows.map((r) => `    ${r.where.padEnd(32)} ${r.title}`).join("\n");
+    if (atAssertion.length) console.log("  Counted — failed at a line the spec wrote:\n" + list(atAssertion));
+    if (beforeAssertion.length) {
+      console.log("\n  Excluded — failed outside any spec file, so the body never ran its checks:\n" + list(beforeAssertion));
+    }
+  });
+'
 echo ""
 
 if [ "$ACTUAL_FAILURES" -ge "$MIN_FAILURES" ]; then
   echo "✅ PASS: Negative control succeeded"
-  echo "Specs correctly fail when credentials are wrong"
-  echo "This proves they actually check repository data"
+  echo "${ACTUAL_FAILURES} spec(s) failed at their own assertions when the credentials were wrong,"
+  echo "so those assertions depend on repository data rather than on constants."
+  echo ""
+  echo "It says nothing about the specs that still PASSED with a wrong password, or about"
+  echo "the ${SETUP_FAILURES} that never reached their body. Both are gaps, not evidence."
   exit 0
 else
   echo "❌ FAIL: Negative control FAILED"
-  echo "Too few specs failed with wrong credentials"
+  echo "Only ${ACTUAL_FAILURES} spec(s) failed at an assertion of their own, below the ${MIN_FAILURES} expected."
   echo ""
-  echo "This means some specs pass vacuously - they assert constants"
-  echo "or never actually verify repository data arrived."
+  if [ "$SETUP_FAILURES" -gt 0 ]; then
+    echo "${SETUP_FAILURES} further spec(s) failed before their body ran. Those do not count: a spec"
+    echo "that dies in a fixture would have failed identically with an empty body, so it"
+    echo "demonstrates nothing about what it asserts."
+    echo ""
+  fi
+  echo "Either some specs pass vacuously — asserting constants rather than verifying that"
+  echo "repository data arrived — or the run collapsed in setup before it could tell."
   echo ""
-  echo "Fix: Review specs that passed and ensure they use API-discovered"
-  echo "values, not hardcoded constants like 'Root'"
+  echo "Fix: review the specs that passed and ensure they use API-discovered values, not"
+  echo "hardcoded constants like 'Root'. If the setup count is high, fix that first: the"
+  echo "control cannot measure anything through a harness that fell over."
   exit 1
 fi

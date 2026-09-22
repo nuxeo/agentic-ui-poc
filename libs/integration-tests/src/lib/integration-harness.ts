@@ -31,7 +31,11 @@
  */
 
 import { afterAll, beforeAll } from 'vitest';
-import { checkIntegrationPreconditions, type IntegrationTestConfig } from './integration-preflight';
+import {
+  checkIntegrationPreconditions,
+  resolveConnection,
+  type IntegrationTestConfig,
+} from './integration-preflight';
 
 export interface IntegrationHarness {
   /** Unique ID for this test run (timestamp-based) */
@@ -62,15 +66,20 @@ export interface IntegrationHarness {
  * The harness runs precondition checks before tests and creates/destroys the data root.
  */
 export function setupIntegrationHarness(config: IntegrationTestConfig = {}): IntegrationHarness {
-  const nuxeoUrl = config.nuxeoUrl ?? process.env['NUXEO_URL'] ?? 'http://localhost:8080';
-  const user = config.user ?? process.env['NUXEO_USER'] ?? 'Administrator';
-  const password = config.password ?? process.env['NUXEO_PASS'] ?? 'Administrator';
+  // Resolved once, and the *resolved* values are what the preflight checks below. The harness
+  // used to resolve `NUXEO_URL` here and pass the raw `config` to the preflight, which read
+  // only `config.nuxeoUrl` — so with `NUXEO_URL` set the preflight certified localhost while
+  // the destructive calls went somewhere else. Credentials have no fallback; see
+  // `resolveConnection`.
+  const resolved = resolveConnection(config);
+  const { nuxeoUrl, user, password } = resolved;
   const auth = `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
 
   // Generate unique run ID: timestamp + random suffix
   // Format: YYYYMMDD-HHMMSS-XXX (e.g., 20260921-143022-a3f)
   const now = new Date();
-  const timestamp = now.toISOString()
+  const timestamp = now
+    .toISOString()
     .replace(/[-:]/g, '')
     .replace(/T/, '-')
     .replace(/\..+/, '')
@@ -94,7 +103,7 @@ export function setupIntegrationHarness(config: IntegrationTestConfig = {}): Int
 
   // Run preconditions and setup before all tests
   beforeAll(async () => {
-    await checkIntegrationPreconditions(config);
+    await checkIntegrationPreconditions(resolved);
     await createDataRoot(nuxeoUrl, auth, dataRoot, runId);
   }, 30000); // 30s timeout for setup
 
@@ -119,7 +128,7 @@ async function createDataRoot(
     const res = await fetch(`${nuxeoUrl}/nuxeo/api/v1/path/default-domain/workspaces`, {
       method: 'POST',
       headers: {
-        'Authorization': auth,
+        Authorization: auth,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -144,15 +153,26 @@ async function createDataRoot(
   } catch (error) {
     throw new Error(
       `Failed to create integration test data root:\n` +
-      `  ${error instanceof Error ? error.message : String(error)}\n\n` +
-      `  This prevents the test run. Fix Nuxeo connectivity or permissions.`,
+        `  ${error instanceof Error ? error.message : String(error)}\n\n` +
+        `  This prevents the test run. Fix Nuxeo connectivity or permissions.`,
     );
   }
 }
 
 /**
- * Delete the data root workspace and all its contents.
- * Guaranteed to run even if tests fail.
+ * Delete the data root workspace and all its contents, and **verify it is gone**.
+ *
+ * Every path through the previous version was a `console.warn`: a 404 on the pre-delete read
+ * returned early, a non-OK read continued, a failed `DELETE` warned, and the whole body sat
+ * inside a `try`/`catch` that warned and returned. So `afterAll` always resolved, and a run
+ * that leaked its workspace onto a shared instance reported green — while a status document
+ * recorded "Test creates documents -> none remain (cleanup confirmed)".
+ *
+ * Fixture leakage is the problem this harness exists to prevent, and it compounds: the next
+ * run's presence assertions can pass on the leftovers. A cleanup failure is therefore the
+ * loudest thing in the file, not the quietest. The re-read afterwards is the part that makes
+ * it a verification rather than a request — a `DELETE` answering 2xx is Nuxeo accepting the
+ * call, not evidence the workspace is gone.
  */
 async function deleteDataRoot(
   nuxeoUrl: string,
@@ -160,47 +180,40 @@ async function deleteDataRoot(
   dataRoot: string,
   runId: string,
 ): Promise<void> {
-  try {
-    // First, verify the data root exists and is ours (safety check)
-    const getRes = await fetch(`${nuxeoUrl}/nuxeo/api/v1/path${dataRoot}`, {
-      headers: { Authorization: auth },
-    });
-
-    if (getRes.status === 404) {
-      console.log(`[integration-harness] Data root ${dataRoot} not found (already deleted or never created)`);
-      return;
-    }
-
-    if (!getRes.ok) {
-      console.warn(`[integration-harness] Could not verify data root before deletion: ${getRes.status}`);
-      // Continue anyway - better to try deletion than leave garbage
-    }
-
-    // Delete the workspace (and all its children)
-    const deleteRes = await fetch(`${nuxeoUrl}/nuxeo/api/v1/path${dataRoot}`, {
-      method: 'DELETE',
-      headers: { Authorization: auth },
-    });
-
-    if (deleteRes.ok) {
-      console.log(`[integration-harness] Deleted data root: ${dataRoot}`);
-    } else if (deleteRes.status === 404) {
-      console.log(`[integration-harness] Data root ${dataRoot} not found (already deleted)`);
-    } else {
-      const body = await deleteRes.text();
-      console.warn(
-        `[integration-harness] Failed to delete data root ${dataRoot}: ${deleteRes.status}\n${body}\n` +
-        `  This may leave test fixtures in the repository. Clean up manually if needed.`,
-      );
-    }
-  } catch (error) {
-    // Log but don't throw - cleanup failures shouldn't fail the test run
-    console.warn(
-      `[integration-harness] Error during cleanup of ${dataRoot}:\n` +
-      `  ${error instanceof Error ? error.message : String(error)}\n` +
-      `  Test fixtures may remain in the repository.`,
+  const url = `${nuxeoUrl}/nuxeo/api/v1/path${dataRoot}`;
+  const leaked = (detail: string) =>
+    new Error(
+      `[integration-harness] Cleanup of ${dataRoot} (run ${runId}) failed: ${detail}\n` +
+        `  The workspace may still be on ${nuxeoUrl}. Delete it before the next run: a later\n` +
+        `  presence assertion can pass on these leftovers, which is the failure this harness\n` +
+        `  exists to prevent.`,
     );
+
+  const getRes = await fetch(url, { headers: { Authorization: auth } });
+
+  // Nothing to delete. The usual cause is a `beforeAll` that failed before creating it.
+  if (getRes.status === 404) {
+    console.log(
+      `[integration-harness] Data root ${dataRoot} not found (already deleted or never created)`,
+    );
+    return;
   }
+  if (!getRes.ok) {
+    throw leaked(`could not read it back before deleting (HTTP ${getRes.status})`);
+  }
+
+  const deleteRes = await fetch(url, { method: 'DELETE', headers: { Authorization: auth } });
+  if (!deleteRes.ok && deleteRes.status !== 404) {
+    throw leaked(`DELETE answered ${deleteRes.status}\n  ${await deleteRes.text()}`);
+  }
+
+  // The verification. Nuxeo answering the DELETE is not the same as the workspace being gone.
+  const confirmRes = await fetch(url, { headers: { Authorization: auth } });
+  if (confirmRes.status !== 404) {
+    throw leaked(`it is still readable after the DELETE (HTTP ${confirmRes.status})`);
+  }
+
+  console.log(`[integration-harness] Deleted data root: ${dataRoot} (confirmed absent)`);
 }
 
 /**
@@ -269,7 +282,7 @@ export async function createTestDocument(
   const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${harness.dataRoot}`, {
     method: 'POST',
     headers: {
-      'Authorization': harness.auth,
+      Authorization: harness.auth,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
