@@ -14,6 +14,8 @@ import { chromium } from 'playwright';
 import {
   looksLikeUiText,
   requireSentinel,
+  routeReached,
+  signIn,
   sentinelPresent,
   servePseudoLocale,
 } from './pseudo-locale-page.mjs';
@@ -133,6 +135,9 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
 // Without this the deep pass reads an ENGLISH application and every string looks untranslated.
 await servePseudoLocale(page);
+// Sign in BEFORE the walk, or `adminGuard` silently redirects the administration routes.
+const auditUser = await signIn(page, BASE);
+console.log(`signed in as ${auditUser}`);
 let sentinelSeen = false;
 
 const findings = new Map();
@@ -150,6 +155,7 @@ const record = (where, items) => {
 let opened = 0;
 let skipped = 0;
 let clickFailures = 0;
+const redirected = [];
 
 /**
  * Visible overlay panes, which is what "an overlay opened" actually means.
@@ -164,6 +170,16 @@ for (const [route, interactions] of SURFACES) {
   await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3000);
   const name = route.replace(/[#/]+/g, '-').replace(/^-|-$/g, '') || 'root';
+
+  // Same guard problem as the shallow pass, and worse here: most of these surfaces are behind a
+  // guard, so a redirect means this pass repeatedly opens overlays on the page it was sent to while
+  // reporting them against the route it asked for.
+  const reached = routeReached(page, route);
+  if (!reached.ok) {
+    redirected.push({ route, landed: reached.landed });
+    continue;
+  }
+
   await page.screenshot({ path: join(OUT, `${name}.png`) });
   record(route, await page.evaluate(collect, DATA_CONTAINERS));
   if (!sentinelSeen) sentinelSeen = await sentinelPresent(page);
@@ -201,6 +217,21 @@ writeFileSync(join(OUT, 'findings.json'), `${JSON.stringify(rows, null, 2)}\n`);
 await browser.close();
 
 requireSentinel(sentinelSeen, 'pseudo-locale-deep');
+
+if (redirected.length > 0) {
+  console.error(
+    `${redirected.length} of ${SURFACES.length} route(s) redirected before they could be read, so ` +
+      'their surfaces were NOT opened:',
+  );
+  for (const { route, landed } of redirected) {
+    console.error(`  asked ${route}  landed ${landed}`);
+  }
+  console.error(
+    '  Run as a user with access to those routes — `adminGuard` needs an administrator — or drop ' +
+      'them from SURFACES and say so.',
+  );
+  process.exit(1);
+}
 
 console.log(
   `${SURFACES.length} routes, ${opened} overlay(s) opened, ${skipped} interaction(s) unavailable` +

@@ -19,6 +19,17 @@ import { join } from 'node:path';
 /** The Layer 0 config request the application makes at startup. */
 export const BOOTSTRAP_ROUTE = '**/agentic-ui-config/bootstrap.json';
 
+/**
+ * The keys `apps/nuxeo-ui/src/app/auth` reads, and that `scripts/beta-harness/helpers.mjs` writes.
+ *
+ * Duplicated here rather than imported because `scripts/` and `tools/` are separate trees, and a
+ * cross-tree import is a module-boundary violation. If the application renames either key, both
+ * this file and the harness go silently non-authenticating — which is exactly the failure that let
+ * `/#/administration` audit the dashboard for weeks, so it is worth knowing they are coupled.
+ */
+const SESSION_STORAGE_KEY = 'agentic_ui_nuxeo_session';
+const SIGNED_OUT_STORAGE_KEY = 'agentic_ui_signed_out';
+
 /** `⟦` — it can only come from a generated `zz` catalogue, so seeing it proves one loaded. */
 export const SENTINEL = '\u27E6';
 
@@ -93,9 +104,71 @@ export function requireSentinel(seen, audit) {
  * catalogue. Keeping every such string and filtering by where it renders is the honest order.
  */
 export const looksLikeUiText = (text) => {
-  const trimmed = text.trim();
-  if (trimmed.length < 3) return false;
-  if (trimmed.includes(SENTINEL)) return false;
+  // Strip COMPLETE `⟦…⟧` spans and judge what is left, rather than rejecting the whole string.
+  //
+  // Rejecting on `includes(SENTINEL)` hid the primary target. `⟦Šáṽë⟧ untranslated suffix` and
+  // `Delete ⟦Ḟïłë⟧ now` both returned false, so every MIXED-language string — a keyed fragment
+  // beside a hard-coded one, which is the concatenation class this audit exists to expose — was
+  // invisible. That is a worse filter than the punctuation allowlist it replaced: the old one
+  // dropped strings that happened to contain `?`, this one dropped the ones we were looking for.
+  const remaining = text.replace(/\u27E6[^\u27E7]*\u27E7/g, ' ').trim();
+  if (remaining.length < 3) return false;
   // At least three ASCII letters, so pure numbers, dates, ids and punctuation runs are not prose.
-  return (trimmed.match(/[A-Za-z]/g) ?? []).length >= 3;
+  return (remaining.match(/[A-Za-z]/g) ?? []).length >= 3;
 };
+
+/**
+ * Whether a page ended up where it was sent.
+ *
+ * `authGuard` redirects an unauthenticated user to `/login` and `adminGuard` sends a non-admin to
+ * `/dashboard`, silently. Measured on this instance: the audit runs as `Anonymous`, so eight of the
+ * nine routes resolve but `/#/administration` lands on `/#/dashboard` — and every finding attributed
+ * to administration was really the dashboard, counted a second time under the wrong name. The global
+ * sentinel cannot catch it, because the page it was redirected TO renders the pseudo-locale too.
+ */
+export function routeReached(page, requested) {
+  const landed = page.url().replace(/^https?:\/\/[^/]+/, '');
+  const wanted = requested.replace(/^#?\/?#?/, '').replace(/^\//, '');
+  return { ok: landed.includes(wanted), landed };
+}
+
+/**
+ * Signs the audit in, so a guarded route is actually reachable.
+ *
+ * Neither audit authenticated. Both still resolved eight of nine routes, because the dev proxy
+ * supplies credentials for the API — but the APPLICATION saw no session and fell back to
+ * `Anonymous`, so `adminGuard` bounced `/#/administration` to `/#/dashboard` and every finding
+ * there was the dashboard's, counted twice under the wrong name.
+ *
+ * This writes the same `sessionStorage` shape `scripts/beta-harness/helpers.mjs` writes, because a
+ * second way of constructing a session is a second thing to keep in step. The page is reloaded
+ * afterwards: `withHashLocation()` makes a `goto('/#/x')` same-document, so `APP_INITIALIZER` would
+ * not otherwise re-run and the session would not be picked up.
+ */
+export async function signIn(page, baseUrl) {
+  const user = process.env['NUXEO_USER'] ?? 'Administrator';
+  const pass = process.env['NUXEO_PASS'] ?? 'Administrator';
+
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(800);
+  await page.evaluate(
+    ({ key, value, signedOutKey }) => {
+      sessionStorage.setItem(key, value);
+      sessionStorage.removeItem(signedOutKey);
+    },
+    {
+      key: SESSION_STORAGE_KEY,
+      signedOutKey: SIGNED_OUT_STORAGE_KEY,
+      value: JSON.stringify({
+        kind: 'basic',
+        username: user,
+        basic: Buffer.from(`${user}:${pass}`).toString('base64'),
+        isAdministrator: user.toLowerCase() === 'administrator',
+        groups: [],
+      }),
+    },
+  );
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(1200);
+  return user;
+}

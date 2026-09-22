@@ -29,6 +29,8 @@ import { chromium } from 'playwright';
 import {
   looksLikeUiText,
   requireSentinel,
+  routeReached,
+  signIn,
   sentinelPresent,
   servePseudoLocale,
 } from './pseudo-locale-page.mjs';
@@ -112,12 +114,27 @@ mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
 await servePseudoLocale(page);
+// Sign in BEFORE the walk, or `adminGuard` silently redirects the administration routes.
+const auditUser = await signIn(page, BASE);
+console.log(`signed in as ${auditUser}`);
 
 const findings = [];
+const redirected = [];
 let sentinelSeen = false;
 for (const [name, route] of ROUTES) {
   await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(3500);
+
+  // A guard can send us somewhere else without saying so. `adminGuard` redirects a non-admin to
+  // `/dashboard`, and this audit runs as whatever user the proxy supplies — measured as `Anonymous`
+  // — so `/#/administration` lands on the dashboard and its findings get attributed to the route we
+  // asked for rather than the one we read. The sentinel cannot catch it: the page we were sent to
+  // renders the pseudo-locale too.
+  const reached = routeReached(page, route);
+  if (!reached.ok) {
+    redirected.push({ route, landed: reached.landed });
+    continue;
+  }
   // The pseudo-locale is either active or this audit means nothing. `⟦` can only come from
   // `zz.json`, so seeing it once proves the catalogue loaded and the override took effect.
   if (!sentinelSeen) sentinelSeen = await sentinelPresent(page);
@@ -167,6 +184,23 @@ await browser.close();
 const total = findings.reduce((n, f) => n + f.count, 0);
 
 requireSentinel(sentinelSeen, 'pseudo-locale-audit');
+
+// A route we never reached is not a route we audited, and counting it as clean is the failure this
+// reports rather than hides.
+if (redirected.length > 0) {
+  console.error(
+    `${redirected.length} of ${ROUTES.length} route(s) redirected before they could be read, so ` +
+      'they were NOT audited:',
+  );
+  for (const { route, landed } of redirected) {
+    console.error(`  asked ${route}  landed ${landed}`);
+  }
+  console.error(
+    '  A guard sent the browser elsewhere. Run as a user with access to those routes — ' +
+      '`adminGuard` needs an administrator — or drop them from ROUTES and say so.',
+  );
+  process.exit(1);
+}
 
 console.log(`\n${total} untranslated visible string(s) across ${ROUTES.length} routes`);
 console.log(

@@ -285,6 +285,12 @@
       "user-updated": "User updated"
     },
     "no-permissions-for": "{{ name }} does not have permissions.",
+    "page-title": {
+      "administration": "Administration",
+      "cloud-services": "Cloud Services",
+      "group-named": "Group: {{ name }}",
+      "user-named": "User: {{ name }}"
+    },
     "user-form-dialog": {
       "cancel": "Cancel",
       "company": "Company",

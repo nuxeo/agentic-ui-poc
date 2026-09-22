@@ -180,23 +180,31 @@ export class AppShellComponent implements OnDestroy {
   readonly pageTitle = computed(() => {
     const url = this.currentUrl();
     const parts = url.split('/').filter(Boolean);
+    // Administration returns BEFORE the descriptor lookup below, so none of these titles ever
+    // reached `navText` and all of them stayed English in every locale. The route is guarded by
+    // `adminGuard`, so the pseudo-locale audit was redirected away from it and could not see them
+    // either — which is how they survived being reported as fixed. Keyed here, at the only place
+    // they are produced.
     if (parts[0] === 'administration') {
       const seg = parts[1] ?? 'analytics';
       if (seg === 'users-groups' && parts[2] === 'user' && parts[3]) {
-        return `User: ${parts[3]}`;
+        return this.translate.instant('admin.page-title.user-named', { name: parts[3] });
       }
       if (seg === 'users-groups' && parts[2] === 'group' && parts[3]) {
-        return `Group: ${parts[3]}`;
+        return this.translate.instant('admin.page-title.group-named', { name: parts[3] });
       }
+      // The drawer already owns a key for each of these pages, so they are reused rather than
+      // duplicated: the same concept in the same product, which INFO-144 permits. Only the two
+      // titles with no drawer entry need keys of their own.
       const titles: Record<string, string> = {
-        analytics: 'Analytics',
-        'users-groups': 'Users & Groups',
-        vocabularies: 'Vocabularies',
-        audit: 'Audit',
-        'cloud-services': 'Cloud Services',
-        'nxql-search': 'NXQL Search',
+        analytics: 'drawer.administration-analytics',
+        'users-groups': 'drawer.administration-users-groups',
+        vocabularies: 'drawer.administration-vocabularies',
+        audit: 'drawer.administration-audit',
+        'cloud-services': 'admin.page-title.cloud-services',
+        'nxql-search': 'drawer.administration-nxql-search',
       };
-      return titles[seg] ?? 'Administration';
+      return this.translate.instant(titles[seg] ?? 'admin.page-title.administration');
     }
     // Resolved entries first so a manifest relabel wins, then the packaged list
     // as a fallback. Matching only against `navItems()` — which is filtered —
