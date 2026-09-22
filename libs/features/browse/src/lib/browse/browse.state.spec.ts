@@ -347,10 +347,16 @@ describe('BrowseComponent — listing state', () => {
     // implementation also produced — so none of them could distinguish a forwarded locale from an
     // ignored one. Rebuilding with `de` and asserting the German literal can only pass if
     // `getCellValue` reads the injected token.
+    // LOCAL-time fixtures, with no `Z` and a midday clock, so the calendar day is the same in
+    // every host time zone. `getCellValue` renders browse columns as instants in the host zone —
+    // correct for a modification timestamp — so a UTC-midnight fixture would render as the
+    // PREVIOUS day anywhere west of UTC. An earlier version of this test used
+    // `2026-03-01T00:00:00.000Z` and asserted `1.3.2026`, which passes in Europe and fails in
+    // `America/Los_Angeles` as `28.2.2026` — a host-time-zone assertion wearing a locale label.
     const entry = doc({
       uid: 'a',
-      lastModified: '2026-03-01T00:00:00.000Z',
-      properties: { 'dc:created': '2026-02-01T00:00:00.000Z' },
+      lastModified: '2026-03-01T12:00:00',
+      properties: { 'dc:created': '2026-02-01T12:00:00' },
     });
 
     expect(component.getCellValue(entry, 'modified')).toBe('3/1/2026');
@@ -358,8 +364,8 @@ describe('BrowseComponent — listing state', () => {
     await buildComponent([{ provide: LOCALE_ID, useValue: 'de' }]);
 
     // German orders the parts day-first and uses dots. Written as literals rather than computed
-    // from `toLocaleDateString('de')`, so the assertion states the expected output instead of
-    // re-deriving it from the same API the implementation calls.
+    // from the same API the implementation calls, so the assertion states the expected output
+    // instead of re-deriving it.
     expect(component.getCellValue(entry, 'modified')).toBe('1.3.2026');
     expect(component.getCellValue(entry, 'created')).toBe('1.2.2026');
   });

@@ -20,14 +20,27 @@ describe('formatPermissionTimeFrame', () => {
   });
 
   it('formats begin and end with localized labels, consulting no key', () => {
-    const begin = '2026-01-01T00:00:00.000Z';
-    const end = '2026-12-31T23:59:59.000Z';
-    const label = formatPermissionTimeFrame(begin, end, echoKey, 'en-US');
-    expect(label).toContain(new Date(begin).toLocaleString('en-US'));
-    expect(label).toContain(new Date(end).toLocaleString('en-US'));
-    expect(label).toContain('–');
+    // Literals, not values recomputed from the same API the implementation calls. The recomputed
+    // form asserted host-zone output and so broke the moment the implementation was corrected to
+    // format in UTC — it was measuring the machine, not the function.
+    const label = formatPermissionTimeFrame(
+      '2026-01-01T00:00:00.000Z',
+      '2026-12-31T23:59:59.000Z',
+      echoKey,
+      'en-US',
+    );
+    expect(label).toBe('1/1/2026, 12:00:00 AM – 12/31/2026, 11:59:59 PM');
     // The dated branch localises through `Intl`, so a catalogue lookup here would be a mistake.
     expect(label).not.toContain('permissions.time-frame');
+  });
+
+  it('renders the calendar date the user picked, whatever the host time zone', () => {
+    // The permission dialogs send a date-only `YYYY-MM-DD` built from the picker's LOCAL calendar
+    // date, which `new Date()` reads as UTC midnight. Formatting in the host zone therefore shows
+    // the day before anywhere west of UTC: pick 1 July in Los Angeles, save, read 30 June.
+    // Asserting the literal pins the UTC formatting that prevents it — this test fails in a
+    // negative-offset zone if `timeZone: 'UTC'` is dropped.
+    expect(formatPermissionTimeFrame('2026-07-01', null, echoKey, 'en-US')).toContain('7/1/2026');
   });
 
   it('renders the same instant differently per locale', () => {
@@ -69,6 +82,14 @@ describe('formatAceDateRange', () => {
     expect(formatAceDateRange('2026-07-01T00:00:00.000Z', null, echoParams, 'en-US')).toMatch(
       /^permissions\.time-frame\.from\(begin=\w{3} \d{2}, 2026\)$/,
     );
+  });
+
+  it('renders the picked calendar date rather than shifting it by the host offset', () => {
+    // Same defect as `formatPermissionTimeFrame` above, and the reason both now format in UTC:
+    // `2026-07-01` is a calendar date, not an instant. Without `timeZone: 'UTC'` this reads
+    // `Jun 30, 2026` in any zone west of UTC.
+    expect(formatAceDateRange('2026-07-01', null, echoParams, 'en-US')).toContain('Jul 01, 2026');
+    expect(formatAceDateRange(null, '2026-01-01', echoParams, 'en-US')).toContain('Jan 01, 2026');
   });
 
   it('formats the dates in the locale it is given', () => {

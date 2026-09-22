@@ -12,18 +12,39 @@ export function formatPermissionTimeFrame(
   // producing the untranslated answer turns every forgotten call site into a silent no-op, where a
   // required parameter turns it into a compile error.
   translate: (key: string) => string,
-  // Required for the same reason `translate` is: `toLocaleString()` with no argument reads the
-  // host's locale, not the one the user picked in the app, so the two disagree whenever they
-  // differ. A default here would reintroduce exactly that silent mismatch.
+  // Required for the same reason `translate` is: the Intl date methods, called with no locale
+  // argument, read the host's locale rather than the one the user picked in the app, so the two
+  // disagree whenever they differ. A default here would reintroduce exactly that silent mismatch.
+  //
+  // Deliberately describes the call rather than spelling it out: `docs/i18n-status.md` and
+  // `CHANGELOG.md` both advertise a grep for the argument-less form that "must stay empty", and a
+  // comment containing that expression is a hit, which makes the advertised check unusable.
   locale: string,
 ): string {
   if (!begin && !end) {
     return translate('permissions.time-frame.permanent');
   }
 
-  const beginLabel = begin ? new Date(begin).toLocaleString(locale) : '—';
-  const endLabel = end ? new Date(end).toLocaleString(locale) : '—';
+  const beginLabel = begin ? formatAceInstant(begin, locale) : '—';
+  const endLabel = end ? formatAceInstant(end, locale) : '—';
   return `${beginLabel} – ${endLabel}`;
+}
+
+/**
+ * `timeZone: 'UTC'` is load-bearing, not tidiness.
+ *
+ * The permission dialogs emit these boundaries as a date-only `YYYY-MM-DD` built from the
+ * picker's **local** calendar date (`add-permission-dialog.ts`, `update-permission-dialog.ts`,
+ * `share-external-dialog.ts` all do `${y}-${m}-${day}`). `new Date('2026-07-01')` parses that as
+ * UTC midnight, so formatting it in a host zone west of UTC renders the day before: a user in Los
+ * Angeles picks 1 July, saves, and the table reads 30 June. Formatting in UTC makes the calendar
+ * date the user chose round-trip, and the locale still decides the ordering and the month name.
+ *
+ * `formatCompareDate` in `document-compare.utils.ts` already did this; these two did not, which is
+ * the inconsistency rather than the rule.
+ */
+function formatAceInstant(iso: string, locale: string): string {
+  return new Date(iso).toLocaleString(locale, { timeZone: 'UTC' });
 }
 
 /**
@@ -48,8 +69,15 @@ export function formatAceDateRange(
     return translate('permissions.time-frame.permanent');
   }
 
+  // `timeZone: 'UTC'` for the reason given on `formatAceInstant` above: these are calendar dates
+  // the user picked, not instants, and formatting them in the host zone moves the day west of UTC.
   const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
+    new Date(iso).toLocaleDateString(locale, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
 
   if (begin && end) {
     return translate('permissions.time-frame.range', { begin: fmt(begin), end: fmt(end) });
