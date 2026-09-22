@@ -81,7 +81,24 @@ function usage() {
     console.log(`    ${name.padEnd(width)}  ${c.describe}`);
   }
   console.log('\n  Extra arguments are passed through, e.g.:');
-  console.log('    npm run a11y:scan -- journey --project=journey-1-login --headed\n');
+  console.log('    npm run a11y:scan -- journey --project=journey-1-login --headed');
+  console.log('    npm run a11y:scan -- states --headed --grep "column picker"\n');
+}
+
+/**
+ * Merge the command's own argv with whatever the caller appended.
+ *
+ * `--project` needs special handling and this was found the hard way: Playwright treats
+ * repeated `--project` flags as a UNION, so `journey --project=journey-1-login` ran the
+ * wildcard AND the named screen — all four, when one was asked for. A caller naming a project
+ * is narrowing, never widening, so their flag replaces ours rather than joining it.
+ */
+function mergeArgs(own, extra) {
+  const callerPickedProject = extra.some((a) => a === '--project' || a.startsWith('--project='));
+  if (!callerPickedProject) return [...own, ...extra];
+
+  const withoutOurProject = own.filter((a) => !a.startsWith('--project'));
+  return [...withoutOurProject, ...extra];
 }
 
 const [command, ...passthrough] = process.argv.slice(2);
@@ -114,5 +131,5 @@ if (entry.preflight) {
   if (pre.status !== 0) process.exit(pre.status ?? 2);
 }
 
-const result = run([...entry.argv, ...passthrough]);
+const result = run(mergeArgs(entry.argv, passthrough));
 process.exit(result.status ?? 1);

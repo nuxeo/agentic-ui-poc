@@ -310,7 +310,29 @@ the application measured so far**, now at 15 blockers, 15 of them `color-contras
 matters for a different reason: `app.routes.ts` redirects `path: ''` to it, so it is the first
 screen every signed-in user sees, and it was absent from `SURFACES`.
 
-### Seven of those blockers are already fixed — re-measured 2026-09-21
+### The whole journey re-measured 2026-09-22, and most of it is fixed
+
+Re-run against `main` after the `NXSAT-227` accessible-name and login work landed. The
+16 September column is the first measurement; the 22 September column is current:
+
+| Screen          | Findings    | Blockers    |
+| --------------- | ----------- | ----------- |
+| Login           | 12 → **3**  | 2 → 2       |
+| Dashboard       | 3 → **4**   | 1 → **2**   |
+| Browse          | 11 → **8**  | 7 → **5**   |
+| Document detail | 24 → **16** | 22 → **14** |
+| **total**       | **50 → 31** | **32 → 23** |
+
+Login lost four whole rule classes — `bypass`, `landmark-one-main`, `page-has-heading-one` and
+`region` — so the sign-in page gained the document structure it had none of. Dashboard moved
+the other way by one, which is the reminder that these numbers are a measurement and not a
+ratchet: nothing gates them, so they can go up.
+
+**These figures were produced with a live HAIP key and are still axe-plus-keyboard only.** Every
+content-quality call returned 403 and all four screens reported `aiGenerated: 0`, so the eleven
+AI-judged criteria remain unmeasured rather than clean. See `a11y/README.md`.
+
+### Seven of those blockers were fixed first — re-measured 2026-09-21
 
 The `button-name` findings on this screen were the nav drawer's folder-tree toggles: seven
 buttons whose only content is a `mat-icon`, which Angular Material marks `aria-hidden`, leaving

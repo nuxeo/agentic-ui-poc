@@ -70,6 +70,24 @@ eleven WCAG criteria (1.1.1, 1.3.3, 2.4.2, 2.4.4, 2.5.3, 3.3.1, 3.3.2 at A; 1.3.
 3.1.2, 3.3.3 at AA). An empty semantic result means _not measured_, not _clean_. The preflight
 prints which mode you are in for exactly that reason.
 
+**A key that connects is not yet a key that works.** Measured on 2026-09-22 with a real key:
+`a11y-scout doctor` reported `Active: haip, Mode: READY`, every report recorded
+`provider: haip`, and the cost meter billed 15 calls — but every content-quality call returned
+**403** and all four screens produced `aiGenerated: 0`. The eleven criteria were still
+unmeasured, and the only signal was a `LLM call failed … 403` line on stderr; the report header
+looked like a successful AI run.
+
+The agents that need a key — `content-quality`, `aaa-semantic`, `fix-html`, `fix-preview` — all
+request the **reasoner** model, which defaults to `openai.gpt-oss-120b-1:0`. If a key is not
+entitled to that model, point it at one it can reach:
+
+```bash
+export HAIP_MODEL_REASONER=<a model the key is allowed>
+```
+
+Until findings actually appear, read `aiGenerated: 0` as _not measured_, exactly as in mock
+mode. Cost is not the constraint: a full four-screen journey billed **$0.0059**.
+
 ## Running it
 
 ```bash
