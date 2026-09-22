@@ -54,6 +54,8 @@ private readonly locale = inject(LOCALE_ID);
 - ACE time frames no longer build their text by interpolation (`from ${begin} to ${end}`).
   A string assembled at runtime has no catalogue entry, so no translation could reach it; these
   now resolve the `permissions.time-frame.*` keys, which already existed in `en.json` and were
-  unused.
+  already in use by `share-saved-search-dialog` — so this is the fourth copy of that shape
+  selection rather than the first consumer of a dormant path. That dialog keeps its own copy
+  deliberately: it re-parses its own label, so its dates must stay unformatted.
 - The Clipboard navigation item's accessible name and the `hxp-document-cards` selection
   checkbox label are translated rather than concatenated (INFO-144).

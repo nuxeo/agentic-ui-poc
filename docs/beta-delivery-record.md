@@ -28,15 +28,15 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 
 ## 1. Where the programme stands
 
-| Phase                                   | Status                                   | Evidence                 |
-| --------------------------------------- | ---------------------------------------- | ------------------------ |
-| 0 — Unblock and verify                  | **complete**                             | `phase-0-baseline` 14/14 |
-| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below      | `phase-1-config` 39/39   |
-| 2 — Layer 1: extension registry         | **complete**, carry-forward named        | `phase-2-registry` 46/46 |
-| 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted | `phase-3-adf-hx` 55/55   |
-| 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded     | `phase-4-platform` 25/25 |
-| 5 — Layer 3: agent harness              | **complete**                             | `phase-5-harness` 27/27  |
-| 6 — Beta quality bar                    | **in progress** — steps 0-4 of 7         | `phase-6-a11y` 27/27     |
+| Phase                                   | Status                                               | Evidence                 |
+| --------------------------------------- | ---------------------------------------------------- | ------------------------ |
+| 0 — Unblock and verify                  | **complete**                                         | `phase-0-baseline` 14/14 |
+| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below                  | `phase-1-config` 39/39   |
+| 2 — Layer 1: extension registry         | **complete**, carry-forward named                    | `phase-2-registry` 46/46 |
+| 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted             | `phase-3-adf-hx` 55/55   |
+| 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded                 | `phase-4-platform` 25/25 |
+| 5 — Layer 3: agent harness              | **complete**                                         | `phase-5-harness` 27/27  |
+| 6 — Beta quality bar                    | **in progress** — 6 of 7; step 6 reopened 2026-09-22 | `phase-6-a11y` 27/27     |
 
 Branch `feature/adf-hx-browse-poc`, 103 commits ahead of `main`, **draft PR #145**. CI is
 green on both the `push` and `pull_request` paths.

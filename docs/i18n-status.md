@@ -91,7 +91,10 @@ Three lessons from it, each of which cost something:
   `formatAceDateRange` and `permissionRightLabel` in `nuxeo-client`. The date half was a bug; the
   **English half was unfixable** — `from ${begin} to ${end}` is assembled at runtime, so no
   catalogue entry can reach it and no translation could ever have applied. The
-  `permissions.time-frame.*` keys it now uses were already in `en.json` and unused.
+  `permissions.time-frame.*` keys it now uses were already in `en.json` **and already used** by
+  `share-saved-search-dialog`, which has a fourth copy of the same four-shape branching. That one
+  stays: `parseTimeFrame` reads its own label back by splitting on the `range` separator, so its
+  dates must remain unformatted.
 - **A test asserting `toLocaleDateString()` against `toLocaleDateString()` proves nothing.**
   `browse.state.spec.ts` compared `getCellValue` to a bare `toLocaleDateString()`, so it agreed
   with the hardcoded implementation on every machine and could not have caught the defect. On a
