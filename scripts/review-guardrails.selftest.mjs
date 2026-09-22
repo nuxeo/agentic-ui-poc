@@ -178,6 +178,32 @@ function expectRed(label, guardrail, files, mutate, expected) {
   });
 }
 
+/**
+ * Asserts the guardrail stays green but *warns*, naming the reason.
+ *
+ * Needed once missing-locale-key parity became a warning rather than a failure: a missing key
+ * falls back to English and is handled, so failing would force whoever runs the extraction to
+ * also invent the translations. Green-and-silent and green-with-a-warning are different
+ * outcomes, and a control that only checks the exit code cannot tell them apart — which is how
+ * a demoted check quietly becomes no check at all.
+ */
+function expectWarn(label, guardrail, files, mutate, expected) {
+  negative += 1;
+  withFixture(files, mutate, (runGuardrail) => {
+    const { code, out } = runGuardrail(guardrail);
+    if (code !== 0) {
+      failures.push(`${label}: ${guardrail} failed, but this should only warn.\n    ${out.trim()}`);
+      return;
+    }
+    if (!expected.test(out)) {
+      failures.push(
+        `${label}: ${guardrail} was green but did not warn about it.\n` +
+          `    expected /${expected.source}/\n    got: ${out.trim()}`,
+      );
+    }
+  });
+}
+
 /** Asserts a correct tree is green — the control that stops a guardrail failing on everything. */
 function expectGreen(label, guardrail, files) {
   positive += 1;
@@ -223,8 +249,8 @@ expectRed(
   /has no trailing newline/,
 );
 
-expectRed(
-  'locale missing a key the reference has',
+expectWarn(
+  'locale missing a key the reference has — warns, because English is the fallback',
   'checkTranslationCatalogues',
   APP,
   (write) =>
@@ -536,6 +562,215 @@ expectRed(
     ),
   /introduces `label: 'Knowledge Discovery'` — a user-facing string in a descriptor/,
 );
+
+const SHELL = (title) =>
+  `<!doctype html>\n<html lang="en">\n  <head>\n    <title>${title}</title>\n  </head>\n` +
+  `  <body><app-root></app-root></body>\n</html>\n`;
+
+expectRed(
+  'an Angular interpolation in the document shell',
+  'checkNoTemplateSyntaxInDocumentShell',
+  { 'apps/nuxeo-ui/src/index.html': SHELL("{{ 'app.title' | translate }}") },
+  null,
+  /document shell/,
+);
+
+expectGreen('a static document title', 'checkNoTemplateSyntaxInDocumentShell', {
+  'apps/nuxeo-ui/src/index.html': SHELL('Nuxeo Platform'),
+});
+
+// The comment in index.html that explains this rule quotes the syntax it forbids. The first
+// run of the check failed on that comment, so the exemption is a control rather than a note.
+expectGreen('the syntax quoted inside an HTML comment', 'checkNoTemplateSyntaxInDocumentShell', {
+  'apps/nuxeo-ui/src/index.html':
+    `<!doctype html>\n<html lang="en">\n  <head>\n` +
+    `    <!-- Static on purpose: {{ 'x' | translate }} would render literally here. -->\n` +
+    `    <title>Nuxeo Platform</title>\n  </head>\n  <body><app-root></app-root></body>\n</html>\n`,
+});
+
+// A gate that finds no file to read must say so rather than pass.
+expectRed(
+  'no document shell to check at all',
+  'checkNoTemplateSyntaxInDocumentShell',
+  { 'apps/nuxeo-ui/src/main.ts': 'export const x = 1;\n' },
+  null,
+  /asserted nothing/,
+);
+
+expectRed(
+  'prose in a plain attribute on a component',
+  'checkNoProseInComponentInputs',
+  { 'libs/features/x/src/lib/x.html': '<mat-tab label="Permissions"></mat-tab>\n' },
+  null,
+  /component input holding user-facing text/,
+);
+
+expectGreen('a bound and translated component input', 'checkNoProseInComponentInputs', {
+  'libs/features/x/src/lib/x.html': `<mat-tab [label]="'x.tab.permissions' | translate"></mat-tab>\n`,
+});
+
+// The element pattern deliberately matches components, not HTML. `title` on a <button> is an
+// HTML attribute and belongs to checkNoHardcodedUiText, which is diff-scoped; reporting it
+// here as well would make every pre-existing one a blocker.
+expectGreen('a plain attribute on an HTML element', 'checkNoProseInComponentInputs', {
+  'libs/features/x/src/lib/x.html': '<button title="Save">x</button>\n',
+});
+
+// A non-text input that happens to start with a capital must not be flagged.
+expectGreen('a non-text input with a capitalised value', 'checkNoProseInComponentInputs', {
+  'libs/features/x/src/lib/x.html': '<mat-icon fontSet="Material Icons">home</mat-icon>\n',
+});
+
+const BOOTSTRAP = (defaultLanguage, available = ['en', 'fr']) =>
+  `${JSON.stringify({ defaultLanguage, availableLanguages: available }, null, 2)}\n`;
+const CATALOGUES = {
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+  'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+};
+
+expectRed(
+  'the generated pseudo-locale shipped as the default',
+  'checkShippedDefaultLanguage',
+  {
+    ...CATALOGUES,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('zz', ['en', 'fr']),
+  },
+  null,
+  /GENERATED pseudo-locale/,
+);
+
+expectRed(
+  'a default language with no catalogue behind it',
+  'checkShippedDefaultLanguage',
+  {
+    ...CATALOGUES,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('de', ['en', 'fr', 'de']),
+  },
+  null,
+  /no catalogue exists for it/,
+);
+
+expectRed(
+  'a default absent from availableLanguages',
+  'checkShippedDefaultLanguage',
+  {
+    ...CATALOGUES,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('fr', ['en']),
+  },
+  null,
+  /absent from/,
+);
+
+expectGreen('a real shipped default', 'checkShippedDefaultLanguage', {
+  ...CATALOGUES,
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('en', ['en', 'fr']),
+});
+
+// A gate that cannot find the file it checks must say so, not pass.
+expectRed(
+  'no packaged bootstrap.json at all',
+  'checkShippedDefaultLanguage',
+  { ...CATALOGUES },
+  null,
+  /asserted nothing/,
+);
+
+// ── slice 12: the sweep is repo-wide, so it must see an UNCHANGED file ──────────────────
+
+expectRed(
+  'a hard-coded string in a file the change never touched',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<button>Regression Bait</button>\n' },
+  // No mutation: the file is in the baseline commit, so a diff-scoped check would not look.
+  null,
+  /Regression Bait/,
+);
+
+expectGreen('prose inside a multi-line HTML comment', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html': '<!--\n  Some explanation in prose.\n-->\n<div></div>\n',
+});
+
+expectGreen('a code sample inside a pre block', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html':
+    '<pre class="code-block">\nImport The Component From Somewhere\n</pre>\n',
+});
+
+// ── the three blind spots found reviewing NXSAT-227 ──────────────────────────────────────
+//
+// Each of these passed before the fix, and each was a shape the check was written to catch.
+
+expectRed(
+  'prose alone on its own line, as Prettier and Angular control flow write it',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div>placeholder</div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<button>\n  @if (saving()) {\n    <mat-spinner />\n  } @else {\n    Create\n  }\n</button>\n',
+    ),
+  /hard-coded English/,
+);
+
+expectRed(
+  'literal text beside a translated attribute on the same line',
+  'checkNoHardcodedUiText',
+  { 'libs/features/x/src/lib/x.html': '<div>placeholder</div>\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      `<button [attr.aria-label]="'x.y' | translate">Show details</button>\n`,
+    ),
+  /hard-coded English/,
+);
+
+// The exemption must still apply to what actually earned it.
+expectGreen('a fully translated element across several lines', 'checkNoHardcodedUiText', {
+  'libs/features/x/src/lib/x.html': `<button [attr.aria-label]="'x.y' | translate">\n  {{ 'x.z' | translate }}\n</button>\n`,
+});
+
+expectRed(
+  'a catalogue value that is null rather than a string',
+  'checkTranslationCatalogues',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": null\n}\n',
+    'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+  },
+  null,
+  // Must name en.json. It used to drop the key and then blame fr.json for an "extra" one.
+  /en\.json maps `a` to null/,
+);
+
+expectRed(
+  'translator context that is an empty string',
+  'checkTranslationContext',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': '{\n  "a": ""\n}\n',
+  },
+  null,
+  /same as saying nothing/,
+);
+
+expectRed(
+  'translator context that is only whitespace',
+  'checkTranslationContext',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': '{\n  "a": "   "\n}\n',
+  },
+  null,
+  /same as saying nothing/,
+);
+
+expectGreen('a label paired with a labelKey', 'checkNoHardcodedDescriptorText', {
+  ...WITH_DESCRIPTORS,
+  'libs/shared/extensions/src/lib/nav-items.ts':
+    `${GOOD_DESCRIPTORS}export const PAIRED = [
+` +
+    `  { id: 'x', labelKey: 'nav.browse', label: 'Browse' },
+];
+`,
+});
 
 expectRed(
   'a hard-coded descriptor placeholder',
@@ -977,6 +1212,511 @@ expectGreen('a file that already carried the marker before this diff', 'checkNoR
   '.cursor/skills/pre-pr-review/SKILL.md': `# Pre-PR review\n\n<!-- ${CORPUS_MARKER} -->\n`,
 });
 
+/* ---------------- checkNoHardcodedDialogText: scope, not field list ---------------- */
+
+// This gate exists because the two nearby ones cannot reach a dialog's text: the template sweep
+// reads templates and this is built in TypeScript, and the descriptor check excludes `title`
+// deliberately. Its whole correctness rests on SCOPE — strict inside a dialog's data, silent
+// outside it — so both halves of that need a control.
+
+expectRed(
+  'a hard-coded title in a ConfirmDialogData',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "const data = {\n  title: 'Delete Document',\n} as ConfirmDialogData;\n",
+    ),
+  /sets `title: 'Delete Document'` in a dialog's data/,
+);
+
+expectRed(
+  'a hard-coded message in the data: of an open() call',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "dialog.open(C, {\n  data: { message: 'Are you sure?' },\n});\n"),
+  /sets `message: 'Are you sure\?'` in a dialog's data/,
+);
+
+expectRed(
+  'a hard-coded confirmLabel in a function returning DialogData',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/shared/ui/src/lib/y.ts',
+      "export function d(): ConfirmDialogData {\n  return { confirmLabel: 'Delete' };\n}\n",
+    ),
+  /sets `confirmLabel: 'Delete'` in a dialog's data/,
+);
+
+// The false positive that made widening `checkNoHardcodedDescriptorText` the wrong fix. A
+// synthetic Nuxeo document has a `title` and is not prose; `browse.service.ts` builds one with
+// `title: 'Root'`. If this gate ever flags that, it has stopped being scope-anchored and will be
+// switched off like any check that argues with its reviewer.
+falsePositiveControls += 1;
+expectGreen('a synthetic document title outside any dialog', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/shared/nuxeo-client/src/lib/services/z.service.ts':
+    "export const root = {\n  uid: 'virtual-root',\n  title: 'Root',\n  type: 'Root',\n};\n",
+});
+
+falsePositiveControls += 1;
+expectGreen('a dialog title read from a catalogue', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "const data = {\n  title: this.translate.instant('confirm.delete-document'),\n} as ConfirmDialogData;\n",
+});
+
+// A `data:` object carrying an id or a uid is the common shape and must stay silent: only the
+// text-bearing fields are in the pattern.
+falsePositiveControls += 1;
+expectGreen('a dialog data object with no user-facing text', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts': "dialog.open(C, {\n  data: { id: 'Ab12', uid: 'X9' },\n});\n",
+});
+
+/* ---------------- the mixed-language sentence, either side of a value ---------------- */
+
+// Fifty-one of these were in the tree with the whole sweep green: `ELEMENT_TEXT` needs `>` and `<`
+// with no braces between them, and `BARE_PROSE_LINE` rejects `{`, so English beside an interpolated
+// value was judged by nothing.
+
+expectRed(
+  'prose before an interpolated value',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) => write('libs/features/x/src/lib/x.html', '<h2>Create Version for {{ title }}</h2>\n'),
+  /the text `Create Version for` beside an interpolated value/,
+);
+
+// The load-bearing control. A sentence CONTINUATION is lowercase, and `isDisplayText` requires an
+// initial capital — so the predicate that guards the rest of this check would have excluded exactly
+// the half of the sentence this case exists to find.
+expectRed(
+  'prose after an interpolated value, which is lowercase',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.html', '<p><strong>{{ name }}</strong> workflow on this document.</p>\n'),
+  /the text `workflow on this document\.` beside an interpolated value/,
+);
+
+// `BARE_PROSE_LINE` rejects `"`, which hid this shape specifically.
+expectRed(
+  'prose quoting an interpolated value',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.html', '<p>Content for "{{ item }}" will appear here.</p>\n'),
+  /beside an interpolated value/,
+);
+
+// Prettier splits an element across lines, leaving a partial tag on each. Without stripping those,
+// `{{ x }}</span` reported the fragment `/span` and the check looked broken rather than useful.
+falsePositiveControls += 1;
+expectGreen('a partial tag left by Prettier is not prose', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html': "<span class=\"c\"\n  >{{ 'a.b' | translate }}</span\n>\n",
+});
+
+// Units beside a bound number are not translatable prose, and a shape heuristic cannot tell them
+// from short English words, so they are listed explicitly.
+falsePositiveControls += 1;
+expectGreen('a unit beside an interpolated number', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html': '<span>{{ rate() }} fps</span>\n',
+});
+
+falsePositiveControls += 1;
+expectGreen('a fully parameterised sentence', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html':
+    "<p>{{ 'x.slot-empty' | translate: { name: item.label } }}</p>\n",
+});
+
+/* ---------------- the sink holes a reviewer had to find ---------------- */
+
+// Three shapes the first version of `checkNoHardcodedImperativeUiText` reported clean, each of which
+// made the "333 strings" count I quoted from it an understatement.
+
+expectRed(
+  'a literal in a TERNARY, not the direct first argument',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'this.snackBar.open(\n' +
+        "  denied(err) ? KEY : 'Failed to update collection',\n" +
+        "  this.translate.instant('common.ok'),\n" +
+        ');\n',
+    ),
+  /passes the hard-coded string `Failed to update collection`/,
+);
+
+expectRed(
+  'a signal whose name ENDS in Error rather than beginning with it',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "this.recentlyEditedError.set('Failed to load documents.');\n"),
+  /passes the hard-coded string `Failed to load documents\.`/,
+);
+
+expectRed(
+  'a literal reached through a ?? fallback',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.agentsError.set(err?.error?.detail ?? 'Failed to load agents.');\n",
+    ),
+  /passes the hard-coded string `Failed to load agents\.`/,
+);
+
+// Matching anywhere in the argument costs two false positives, and both must stay green or the
+// check starts arguing with its reviewer.
+falsePositiveControls += 1;
+expectGreen('an operation name handed to a nested call', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "this.agentsErrorDetail.set(this.captureError('HylandKnowledgeDiscovery.getAllAgents', err));\n",
+});
+
+falsePositiveControls += 1;
+expectGreen('a literal used in a comparison', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "this.error.set(message.startsWith('Cannot sort by') ? message : this.translate.instant('x.k'));\n",
+});
+
+/* ---------------- a text attribute is prose whatever its first letter ---------------- */
+
+// `isDisplayText` requires an initial capital, which is right in text position and wrong for an
+// attribute whose NAME already establishes that the value is prose. It hid every lowercase
+// placeholder, including the date masks that differ by locale.
+expectRed(
+  'a lowercase placeholder',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) => write('libs/features/x/src/lib/x.html', '<input placeholder="mm/dd/yyyy" />\n'),
+  /placeholder="mm\/dd\/yyyy"/,
+);
+
+expectRed(
+  'a lowercase example placeholder',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.html', '<input placeholder="e.g. All PDFs created last month" />\n'),
+  /placeholder="e\.g\. All PDFs created last month"/,
+);
+
+// A repository path is structure: translating a segment would make the example wrong.
+falsePositiveControls += 1;
+expectGreen('a path placeholder', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html': '<input placeholder="/default-domain/workspaces/MyWorkspace" />\n',
+});
+
+/* ---------------- this.translate must be injected, per class ---------------- */
+
+expectRed(
+  'a class using this.translate without injecting it',
+  'checkTranslateIsInjectedWhereUsed',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'export class XComponent {\n' +
+        "  fail() { this.error.set(this.translate.instant('x.k')); }\n" +
+        '}\n',
+    ),
+  /uses `this\.translate` but never injects it/,
+);
+
+// The variant that actually happened: one file, several classes, the injection added to the first.
+expectRed(
+  'a second class in the same file missing the injection',
+  'checkTranslateIsInjectedWhereUsed',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'export class FirstService {\n' +
+        '  private readonly translate = inject(TranslateService);\n' +
+        "  a() { return this.translate.instant('x.a'); }\n" +
+        '}\n' +
+        'export class SecondService {\n' +
+        "  b() { return this.translate.instant('x.b'); }\n" +
+        '}\n',
+    ),
+  /class `SecondService` uses `this\.translate` but never injects it/,
+);
+
+/* ---------------- a comment may end with --!> as well as --> ---------------- */
+
+// `--!>` is a valid comment terminator (the spec's comment-end-bang state). Recognising only `-->`
+// made `blankSkippableSpans` read a CLOSED comment as open and blank to end of file, which removed
+// every string after it from this gate's sight. CodeQL flagged the same pattern in `extract.mjs`,
+// where it merely skips an extraction; here it disables the check for the rest of the file.
+expectRed(
+  'a hard-coded string after a comment closed with --!>',
+  'checkNoHardcodedUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<!-- a note --!>\n<button title="Recently Edited"></button>\n',
+    ),
+  /title="Recently Edited"/,
+);
+
+// The ordinary terminator must still work, and the comment's own prose must stay exempt.
+falsePositiveControls += 1;
+expectGreen('prose inside a comment closed with --!>', 'checkNoHardcodedUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.html': '<!-- Explains the slot in prose. --!>\n<div></div>\n',
+});
+
+/* ---------------- imperative UI text, built in TypeScript ---------------- */
+
+// The class that survived eight review rounds: 333 strings in snackbars, status signals and toasts.
+// Three checks agreed the tree was clean and none of them read the place these live.
+
+expectRed(
+  'a hard-coded snackbar message',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "this.snackBar.open('Document restored.', 'OK');\n"),
+  /passes the hard-coded string `Document restored\.` to a user-facing sink/,
+);
+
+expectRed(
+  "a hard-coded snackbar ACTION label, which is as visible as the message",
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "this.snackBar.open(this.translate.instant('x.k'), 'Dismiss');\n"),
+  /passes the hard-coded string `Dismiss` to a user-facing sink/,
+);
+
+expectRed(
+  'a hard-coded error signal, which a template renders',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', "this.error.set('Failed to load folder contents.');\n"),
+  /passes the hard-coded string `Failed to load folder contents\.` to a user-facing sink/,
+);
+
+// A resolved message must stay green, or the check pushes authors back to literals.
+falsePositiveControls += 1;
+expectGreen('a snackbar resolved from the catalogue', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "this.snackBar.open(this.translate.instant('x.restored'), this.translate.instant('common.ok'));\n",
+});
+
+// `console` and `throw` are developer diagnostics, not UI. Including them would make the check
+// argue with its reviewer on most hits, which is how a check gets switched off.
+falsePositiveControls += 1;
+expectGreen('a console message and a thrown error', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "console.warn('Could not parse the response.');\nthrow new Error('Unreachable state.');\n",
+});
+
+/* ---------------- a catalogue value must be what a user sees ---------------- */
+
+expectRed(
+  'an HTML character reference in a catalogue value',
+  'checkCatalogueValuesAreRenderable',
+  APP,
+  (write) => write('apps/nuxeo-ui/public/i18n/en.json', '{\n  "a": "Users &amp; Groups"\n}\n'),
+  /contains an HTML character reference/,
+);
+
+expectRed(
+  'an (s) plural suffix in a catalogue value',
+  'checkCatalogueValuesAreRenderable',
+  APP,
+  (write) => write('apps/nuxeo-ui/public/i18n/en.json', '{\n  "a": "Choose file(s)"\n}\n'),
+  /pluralises with an `\(s\)` suffix/,
+);
+
+falsePositiveControls += 1;
+expectGreen('an ampersand stored as itself', 'checkCatalogueValuesAreRenderable', {
+  ...APP,
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "Users & Groups"\n}\n',
+});
+
+/* ---------------- the contract marker, not the prose around it ---------------- */
+
+// The first version of this gate matched a sentence, and the commit that added it reworded that
+// sentence — so the gate could never fire. Both halves need a control: the marker must exist, and
+// what it promises must still be true.
+
+expectRed(
+  'the contract marker deleted, leaving the gate inert',
+  'checkNoStaleAgnosticClaim',
+  APP,
+  (write) =>
+    write(
+      'libs/shared/extensions/src/lib/extension-actions.ts',
+      'export function descriptorLabel(\n' +
+        '  descriptor: { readonly label: string },\n' +
+        '  translate: (key: string) => string,\n' +
+        '): string {\n  return translate(descriptor.label);\n}\n',
+    ),
+  /marker, so this gate asserted nothing/,
+);
+
+expectRed(
+  'the resolver parameter removed while the marker still claims it',
+  'checkNoStaleAgnosticClaim',
+  APP,
+  (write) =>
+    write(
+      'libs/shared/extensions/src/lib/extension-actions.ts',
+      '/** @i18n-contract:descriptor-api-is-framework-agnostic */\n' +
+        'export function descriptorLabel(descriptor: { readonly label: string }): string {\n' +
+        '  return descriptor.label;\n}\n',
+    ),
+  /no longer takes a resolver function/,
+);
+
+/* ------------- checkNoHardcodedDialogText: every literal form, not just one ------------- */
+
+// The first version matched single quotes only and reported green over ten template-literal dialog
+// messages. A template literal is the worst form, not an equivalent one: it interpolates, so it is
+// a concatenation a translator cannot reorder.
+
+expectRed(
+  'a template-literal dialog message',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'const d = {\n  message: `Delete group "${name}"?`,\n} as ConfirmDialogData;\n',
+    ),
+  /sets `message: `Delete group "\$\{name\}"\?`` in a dialog's data/,
+);
+
+expectRed(
+  'an interpolated dialog message is named as a concatenation, not just untranslated',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'const d = {\n  message: `Delete "${name}"?`,\n} as ConfirmDialogData;\n',
+    ),
+  /This one INTERPOLATES, so it is a concatenation as well as untranslated/,
+);
+
+expectRed(
+  'a double-quoted dialog title',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write('libs/features/x/src/lib/x.ts', 'const d = {\n  title: "Delete",\n} as ConfirmDialogData;\n'),
+  /sets `title: "Delete"` in a dialog's data/,
+);
+
+// A template literal that resolves a key is the CORRECT shape and must stay green, or the check
+// would push authors back to concatenation to appease it.
+falsePositiveControls += 1;
+expectGreen('a dialog message built from a resolved key', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    'const d = {\n' +
+    "  message: this.translate.instant('confirm.delete-named', { name }),\n" +
+    '} as ConfirmDialogData;\n',
+});
+
+/* ---------------- checkNoStaleAgnosticClaim: the comment must match the imports ---------------- */
+
+expectRed(
+  'the contract claimed while descriptorLabel no longer honours it',
+  'checkNoStaleAgnosticClaim',
+  APP,
+  (write) =>
+    write(
+      'libs/shared/extensions/src/lib/extension-actions.ts',
+      '/** @i18n-contract:descriptor-api-is-framework-agnostic */\n' +
+        'export function descriptorLabel(descriptor: { readonly label: string }): string {\n' +
+        '  return descriptor.label;\n}\n',
+    ),
+  /no longer takes a resolver function/,
+);
+
+/* ---------------- the generated pseudo-locale is not a shipped one ---------------- */
+
+// `zz` is derived from `en.json` by `tools/i18n/pseudo-locale.mjs` and gitignored; it exists only
+// while someone audits for strings no catalogue supplies. Treating it as a customer-facing language
+// demands key parity with a file regenerated from `en.json`, and Angular locale data for a locale
+// Angular has never heard of. Running the audit left it on disk and turned the whole gate red.
+falsePositiveControls += 1;
+expectGreen('a generated zz.json on disk is not a shipped locale', 'checkLocaleDataRegistered', {
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
+  'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
+  'apps/nuxeo-ui/public/i18n/zz.json': '{\n  "a": "\u27E6Á\u27E7"\n}\n',
+  // The tuple shape the parser reads: `['fr', localeFr],`. `en` is never registered — Angular
+  // bundles it — so a fixture registering only `fr` is the realistic minimum.
+  'apps/nuxeo-ui/src/app/i18n/register-locale-data.ts':
+    "import localeFr from '@angular/common/locales/fr';\n" +
+    'const LOCALE_DATA = [\n' +
+    "  ['fr', localeFr],\n" +
+    '];\n',
+});
+
+falsePositiveControls += 1;
+expectGreen('a generated zz.json is not held to key parity', 'checkTranslationCatalogues', {
+  'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A",\n  "b": "B"\n}\n',
+  'apps/nuxeo-ui/public/i18n/zz.json': '{\n  "a": "\u27E6Á\u27E7"\n}\n',
+});
+
+/* ---------------- checkNoHardcodedDescriptorText: pairing is per object ---------------- */
+
+// The false negative: an unkeyed descriptor two lines below a keyed one borrowed its `labelKey`
+// under the old ±3-line window, so the gate passed on exactly the shape it exists to catch.
+expectRed(
+  'an unkeyed descriptor sitting next to a keyed one',
+  'checkNoHardcodedDescriptorText',
+  { 'libs/features/x/src/lib/x.ts': 'export const ITEMS = [];\n' },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'export const ITEMS = [\n' +
+        "  { labelKey: 'x.keep', label: 'Keep', path: '/keep' },\n" +
+        "  { label: 'Delete', path: '/delete' },\n" +
+        '];\n',
+    ),
+  /introduces `label: 'Delete'`/,
+);
+
+// And the pairing still works, single-line and multi-line, or the fix would flag 89 correctly
+// keyed descriptors — which the first two attempts at this walk did.
+falsePositiveControls += 1;
+expectGreen('descriptors keyed on one line and across lines', 'checkNoHardcodedDescriptorText', {
+  'libs/features/x/src/lib/x.ts':
+    'export const ITEMS = [\n' +
+    "  { labelKey: 'x.one', label: 'One', path: '/one' },\n" +
+    '  {\n' +
+    "    labelKey: 'x.two',\n" +
+    "    label: 'Two',\n" +
+    "    path: '/two',\n" +
+    '  },\n' +
+    '];\n',
+});
+
 /* ---------------- checkNoHardcodedUiText: parameterised translate spans ---------------- */
 
 // A parameterised pipe's own braces ended the interpolation pattern, so `| translate` survived
@@ -1322,6 +2062,22 @@ expectRed(
     ),
   /binds aria-label to `app\.nav\.toggle`.*omits/s,
 );
+
+// A fallback value Prettier wrapped and double-quoted, because it contains an apostrophe. The
+// parser read single-quoted one-line entries only, so this entry was invisible and the gate
+// reported a key as absent from the very file that defines it — 317 of 318 entries seen, and
+// `fallback.size === 0` cannot catch a partial parse.
+falsePositiveControls += 1;
+expectGreen('a double-quoted, wrapped fallback entry', 'checkAccessibleNameFallbacks', {
+  'apps/nuxeo-ui/public/i18n/en.json':
+    '{\n  "search": { "search": { "ask": "Ask e.g. \'PDFs from last week\'" } }\n}\n',
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts':
+    'export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {\n' +
+    "  'search.search.ask':\n" +
+    '    "Ask e.g. \'PDFs from last week\'",\n};\n',
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html':
+    `<input [placeholder]="'search.search.ask' | translate" />\n`,
+});
 
 falsePositiveControls += 1;
 expectGreen(

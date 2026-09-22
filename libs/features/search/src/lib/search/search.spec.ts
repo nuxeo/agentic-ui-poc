@@ -21,6 +21,7 @@ import {
   SelectionService,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { AiFeatureFlagService, AiGatewayService } from '@agentic-ui/shared/ai-client';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 type SearchResponseLike = { items: SearchResultItem[]; aggregations: Record<string, unknown> };
 
@@ -185,7 +186,10 @@ describe('SearchComponent', () => {
   /** Rebuild the TestBed with a given query-param map. */
   async function configure(queryParams: Record<string, string> = {}): Promise<void> {
     await TestBed.configureTestingModule({
-      imports: [SearchComponent],
+      // `resetTestingModule()` in three of these tests discards what test-setup.ts provides
+      // globally, and the component now injects TranslateService for the saved-search dialog
+      // placeholder.
+      imports: [SearchComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -225,7 +229,10 @@ describe('SearchComponent', () => {
     mockSearchAggregationService.items.set([]);
 
     await TestBed.configureTestingModule({
-      imports: [SearchComponent],
+      // `resetTestingModule()` in three of these tests discards what test-setup.ts provides
+      // globally, and the component now injects TranslateService for the saved-search dialog
+      // placeholder.
+      imports: [SearchComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),

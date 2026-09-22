@@ -28,11 +28,13 @@ import {
   VocabularyEntryFormDialogData,
   VocabularyEntryFormDialogResult,
 } from '../vocabulary-entry-form-dialog/vocabulary-entry-form-dialog.component';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-admin-vocabularies-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatFormFieldModule,
     MatSelectModule,
@@ -49,6 +51,7 @@ import {
 })
 export class AdminVocabulariesPageComponent implements OnInit {
   private readonly directoryService = inject(DirectoryService);
+  private readonly translate = inject(TranslateService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
@@ -126,7 +129,11 @@ export class AdminVocabulariesPageComponent implements OnInit {
           if (requestId !== this.loadRequestId) return;
           this.entries.set([]);
           this.loading.set(false);
-          this.snackBar.open('Failed to load vocabulary entries', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('admin.message.failed-to-load-vocabulary-entries'),
+            this.translate.instant('common.dismiss'),
+            { duration: 4000 },
+          );
         },
       });
   }
@@ -163,9 +170,12 @@ export class AdminVocabulariesPageComponent implements OnInit {
         ConfirmDialogComponent,
         {
           data: {
-            title: 'Delete vocabulary entry',
-            message: `Permanently delete "${entry.id}" from ${directoryName}? This cannot be undone.`,
-            confirmLabel: 'Delete',
+            title: this.translate.instant('confirm.delete-vocabulary-entry'),
+            message: this.translate.instant('confirm.delete-vocabulary-entry-named', {
+              name: entry.id,
+              directory: directoryName,
+            }),
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )
@@ -181,12 +191,20 @@ export class AdminVocabulariesPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.mutating.set(false);
-          this.snackBar.open('Entry deleted', 'Dismiss', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('admin.message.entry-deleted'),
+            this.translate.instant('common.dismiss'),
+            { duration: 3000 },
+          );
           this.loadEntries(directoryName);
         },
         error: () => {
           this.mutating.set(false);
-          this.snackBar.open('Failed to delete entry', 'Dismiss', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('admin.message.failed-to-delete-entry'),
+            this.translate.instant('common.dismiss'),
+            { duration: 4000 },
+          );
         },
       });
   }
@@ -235,12 +253,24 @@ export class AdminVocabulariesPageComponent implements OnInit {
       next: () => {
         this.mutating.set(false);
         const action = result.mode === 'create' ? 'created' : 'updated';
-        this.snackBar.open(`Entry ${action}`, 'Dismiss', { duration: 3000 });
+        this.snackBar.open(
+          this.translate.instant(
+            action === 'created'
+              ? 'admin.vocabularies.entry-created'
+              : 'admin.vocabularies.entry-updated',
+          ),
+          this.translate.instant('common.dismiss'),
+          { duration: 3000 },
+        );
         this.loadEntries(directoryName);
       },
       error: () => {
         this.mutating.set(false);
-        this.snackBar.open('Failed to save entry', 'Dismiss', { duration: 4000 });
+        this.snackBar.open(
+          this.translate.instant('admin.message.failed-to-save-entry'),
+          this.translate.instant('common.dismiss'),
+          { duration: 4000 },
+        );
       },
     });
   }

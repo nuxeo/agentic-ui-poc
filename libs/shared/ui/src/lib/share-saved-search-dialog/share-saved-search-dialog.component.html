@@ -1,10 +1,12 @@
 <div class="dialog-header">
-  <h2 mat-dialog-title>Share Saved Search</h2>
+  <h2 mat-dialog-title>
+    {{ 'shared-ui.share-saved-search-dialog.share-saved-search' | translate }}
+  </h2>
   <button
     mat-icon-button
     class="close-btn"
     type="button"
-    aria-label="Close dialog"
+    [attr.aria-label]="'shared-ui.share-saved-search-dialog.close-dialog' | translate"
     (click)="dialogRef.close(null)"
   >
     <mat-icon>close</mat-icon>
@@ -14,13 +16,18 @@
 <mat-dialog-content>
   @if (loading()) {
     <div class="loading-container">
-      <mat-spinner diameter="40" aria-label="Loading"></mat-spinner>
-      <p>Loading permissions...</p>
+      <mat-spinner
+        diameter="40"
+        [attr.aria-label]="'shared-ui.share-saved-search-dialog.loading' | translate"
+      ></mat-spinner>
+      <p>{{ 'shared-ui.share-saved-search-dialog.loading-permissions' | translate }}</p>
     </div>
   } @else {
     <section class="permissions-section">
       <div class="table-header-row">
-        <h3 class="table-title">Permissions defined locally</h3>
+        <h3 class="table-title">
+          {{ 'shared-ui.share-saved-search-dialog.permissions-defined-locally' | translate }}
+        </h3>
         <button
           mat-stroked-button
           type="button"
@@ -28,7 +35,7 @@
           (click)="openAddPermissionDialog()"
           [disabled]="saving()"
         >
-          <mat-icon>add</mat-icon> New
+          <mat-icon>add</mat-icon> {{ 'shared-ui.share-saved-search-dialog.new' | translate }}
         </button>
       </div>
 
@@ -36,11 +43,11 @@
         <table class="permissions-table">
           <thead>
             <tr>
-              <th>User / Group</th>
-              <th>Right</th>
-              <th>Time Frame</th>
-              <th>Granted By</th>
-              <th>Actions</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.user-group' | translate }}</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.right' | translate }}</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.time-frame' | translate }}</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.granted-by' | translate }}</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.actions' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -55,7 +62,9 @@
                     mat-icon-button
                     type="button"
                     class="edit-btn"
-                    aria-label="Edit permission"
+                    [attr.aria-label]="
+                      'shared-ui.share-saved-search-dialog.edit-permission' | translate
+                    "
                     (click)="editRow(row.id)"
                   >
                     <mat-icon>edit</mat-icon>
@@ -64,7 +73,9 @@
                     mat-icon-button
                     type="button"
                     class="delete-btn"
-                    aria-label="Remove permission"
+                    [attr.aria-label]="
+                      'shared-ui.share-saved-search-dialog.remove-permission' | translate
+                    "
                     (click)="removeRow(row.id)"
                   >
                     <mat-icon>delete_outline</mat-icon>
@@ -74,7 +85,10 @@
             } @empty {
               <tr>
                 <td colspan="5" class="empty-row">
-                  No permissions defined. Click "Add" to create one.
+                  {{
+                    'shared-ui.share-saved-search-dialog.no-permissions-defined-click-add-to'
+                      | translate
+                  }}
                 </td>
               </tr>
             }
@@ -85,7 +99,12 @@
 
     <section class="permissions-section muted-section">
       <div class="table-header-row">
-        <h3 class="table-title">Permissions inherited from upper levels</h3>
+        <h3 class="table-title">
+          {{
+            'shared-ui.share-saved-search-dialog.permissions-inherited-from-upper-levels'
+              | translate
+          }}
+        </h3>
         <button
           mat-button
           type="button"
@@ -93,19 +112,19 @@
           [disabled]="saving()"
           (click)="togglePermissionInheritance()"
         >
-          {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+          {{ isInheritanceBlocked() ? ('ui.unblock' | translate) : ('ui.block' | translate) }}
         </button>
       </div>
       @if (!isInheritanceBlocked()) {
         <p class="section-note">
-          If you want to explicitly control access to this saved search, block permission
-          inheritance. Any change made on parent level permissions will not affect this saved
-          search.
+          {{ 'shared-ui.share-saved-search-dialog.if-you-want-to-explicitly-control' | translate }}
         </p>
       } @else {
         <p class="empty-row">
-          Only local permissions are applied. Unblock to restore the permissions inheritance from
-          upper levels.
+          {{
+            'shared-ui.share-saved-search-dialog.only-local-permissions-are-applied-unblock'
+              | translate
+          }}
         </p>
       }
 
@@ -114,10 +133,10 @@
           <table class="permissions-table readonly-table">
             <thead>
               <tr>
-                <th>User / Group</th>
-                <th>Right</th>
-                <th>Time Frame</th>
-                <th>Granted By</th>
+                <th>{{ 'shared-ui.share-saved-search-dialog.user-group' | translate }}</th>
+                <th>{{ 'shared-ui.share-saved-search-dialog.right' | translate }}</th>
+                <th>{{ 'shared-ui.share-saved-search-dialog.time-frame' | translate }}</th>
+                <th>{{ 'shared-ui.share-saved-search-dialog.granted-by' | translate }}</th>
               </tr>
             </thead>
             <tbody>
@@ -137,7 +156,11 @@
 
     <section class="permissions-section muted-section">
       <div class="table-header-row">
-        <h3 class="table-title">Permissions Assigned to External Users</h3>
+        <h3 class="table-title">
+          {{
+            'shared-ui.share-saved-search-dialog.permissions-assigned-to-external-users' | translate
+          }}
+        </h3>
         <button
           mat-button
           type="button"
@@ -145,23 +168,22 @@
           [disabled]="saving()"
           (click)="openExternalPermissionDialog()"
         >
-          New
+          {{ 'shared-ui.share-saved-search-dialog.new' | translate }}
         </button>
       </div>
       <p class="section-note">
-        Sharing with external users does not create new user accounts. External users are provided a
-        link to access this saved search.
+        {{ 'shared-ui.share-saved-search-dialog.sharing-with-external-users-does-not' | translate }}
       </p>
 
       <div class="table-wrap">
         <table class="permissions-table readonly-table">
           <thead>
             <tr>
-              <th>User / Group</th>
-              <th>Right</th>
-              <th>Time Frame</th>
-              <th>Granted By</th>
-              <th>Actions</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.user-group' | translate }}</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.right' | translate }}</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.time-frame' | translate }}</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.granted-by' | translate }}</th>
+              <th>{{ 'shared-ui.share-saved-search-dialog.actions' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -175,7 +197,9 @@
                   <button
                     mat-icon-button
                     type="button"
-                    aria-label="Edit external permission"
+                    [attr.aria-label]="
+                      'shared-ui.share-saved-search-dialog.edit-external-permission' | translate
+                    "
                     [disabled]="saving()"
                     (click)="editExternalPermission(row)"
                   >
@@ -184,7 +208,9 @@
                   <button
                     mat-icon-button
                     type="button"
-                    aria-label="Send notification"
+                    [attr.aria-label]="
+                      'shared-ui.share-saved-search-dialog.send-notification' | translate
+                    "
                     [disabled]="saving()"
                     (click)="sendExternalNotification(row)"
                   >
@@ -194,7 +220,9 @@
                     mat-icon-button
                     type="button"
                     class="delete-btn"
-                    aria-label="Remove external permission"
+                    [attr.aria-label]="
+                      'shared-ui.share-saved-search-dialog.remove-external-permission' | translate
+                    "
                     [disabled]="saving()"
                     (click)="removeExternalPermission(row)"
                   >
@@ -205,7 +233,9 @@
             } @empty {
               <tr>
                 <td colspan="5" class="empty-row">
-                  The saved search is not shared with any external user.
+                  {{
+                    'shared-ui.share-saved-search-dialog.the-saved-search-is-not-shared' | translate
+                  }}
                 </td>
               </tr>
             }
@@ -218,6 +248,6 @@
 
 <mat-dialog-actions align="start">
   <button mat-stroked-button type="button" (click)="dialogRef.close(null)" [disabled]="saving()">
-    Close
+    {{ 'shared-ui.share-saved-search-dialog.close' | translate }}
   </button>
 </mat-dialog-actions>

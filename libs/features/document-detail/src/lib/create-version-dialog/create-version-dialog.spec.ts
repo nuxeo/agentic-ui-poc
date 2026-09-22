@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -7,7 +9,7 @@ import { vi } from 'vitest';
 
 import {
   DocumentDetailService,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -62,7 +64,7 @@ describe('CreateVersionDialogComponent', () => {
     mockDetailService.createVersion.mockReturnValue(of(versionDoc));
 
     await TestBed.configureTestingModule({
-      imports: [CreateVersionDialogComponent],
+      imports: [testTranslateModule(), testTranslateModule(), CreateVersionDialogComponent],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -125,9 +127,13 @@ describe('CreateVersionDialogComponent', () => {
 
     component.create();
 
-    expect(mockSnackBar.open).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
-      duration: 3000,
-    });
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      {
+        duration: 3000,
+      },
+    );
     // Releasing `saving` is what allows a retry; leaving it set disables the button for good.
     expect(component.saving()).toBe(false);
     expect(mockDialogRef.close).not.toHaveBeenCalled();

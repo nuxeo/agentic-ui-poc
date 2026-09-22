@@ -1,4 +1,5 @@
 import { Component, inject, signal, computed, OnInit, effect, untracked } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,11 +19,14 @@ import {
   type UserGroupSuggestion,
   type SavedSearch,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 interface SizeOption {
   key: string;
   value: string;
   label: string;
+  /** Translation key for `label`; the five buckets are shared with the search drawer. */
+  labelKey?: string;
   count: number;
 }
 
@@ -31,6 +35,14 @@ interface AuthorOption {
   label: string;
   count: number;
 }
+
+const SIZE_LABEL_KEYS: Record<string, string> = {
+  tiny: 'search.filter.option.less-than-100-kb',
+  small: 'search.filter.option.between-100-kb-and-1-mb',
+  medium: 'search.filter.option.between-1-mb-and-10-mb',
+  large: 'search.filter.option.between-10-mb-and-100-mb',
+  huge: 'search.filter.option.more-than-100-mb',
+};
 
 const SIZE_LABELS: Record<string, string> = {
   tiny: 'Less than 100 KB',
@@ -44,6 +56,8 @@ const SIZE_LABELS: Record<string, string> = {
   selector: 'lib-trash-filters-drawer',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
     FormsModule,
     MatIconModule,
     MatButtonModule,
@@ -167,6 +181,7 @@ export class TrashFiltersDrawerComponent implements OnInit {
       Object.entries(SIZE_LABELS).map(([key, label]) => ({
         key,
         value: key,
+        labelKey: SIZE_LABEL_KEYS[key],
         label,
         count: counts[key] ?? 0,
       })),

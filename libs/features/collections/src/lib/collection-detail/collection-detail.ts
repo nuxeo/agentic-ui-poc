@@ -39,7 +39,7 @@ import {
   canShowWriteDocumentAction,
   canShowRemoveDocumentAction,
   hasDocumentPermissionsEnricher,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   isPermissionDeniedError,
   NON_CONTENT_DOCUMENT_TYPES,
   isMailSendError,
@@ -77,11 +77,13 @@ import {
   UpdatePermissionDialogComponent,
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-collection-detail',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     FormsModule,
     MatIconModule,
@@ -108,6 +110,7 @@ import {
   styleUrl: './collection-detail.scss',
 })
 export class CollectionDetailComponent {
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly collectionService = inject(CollectionService);
@@ -353,7 +356,9 @@ export class CollectionDetailComponent {
           // stale failure would otherwise show an error over a newer collection's results. The
           // superseding call already set `loading` true for itself.
           if (generation !== this.memberGeneration || requestedUid !== this.collectionUid) return;
-          this.error.set('Failed to load collection contents.');
+          this.error.set(
+            this.translate.instant('collections.message.failed-to-load-collection-contents'),
+          );
           this.loading.set(false);
         },
       });
@@ -428,7 +433,7 @@ export class CollectionDetailComponent {
     const col = this.collection();
     if (!col) return;
     if (hasDocumentPermissionsEnricher(col) && !canWriteDocument(col)) {
-      this.toast(PERMISSION_DENIED_MESSAGE);
+      this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
       return;
     }
 
@@ -444,7 +449,7 @@ export class CollectionDetailComponent {
         if (updatedDoc) {
           this.collection.set(updatedDoc);
           this.browseContext.requestTreeRefresh();
-          this.toast('Collection updated');
+          this.toast(this.translate.instant('browse.message.collection-updated'));
         }
       });
   }
@@ -470,7 +475,7 @@ export class CollectionDetailComponent {
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Action failed');
+        this.toast(this.translate.instant('browse.message.action-failed'));
       },
     });
   }
@@ -491,7 +496,7 @@ export class CollectionDetailComponent {
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Action failed');
+        this.toast(this.translate.instant('browse.message.action-failed'));
       },
     });
   }
@@ -500,14 +505,14 @@ export class CollectionDetailComponent {
     const col = this.collection();
     if (this.actionInProgress()) return;
     if (col && hasDocumentPermissionsEnricher(col) && !canRemoveDocument(col)) {
-      this.toast(PERMISSION_DENIED_MESSAGE);
+      this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
       return;
     }
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Collection',
-        message: 'Are you sure you want to delete this collection?',
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.delete-collection'),
+        message: this.translate.instant('confirm.delete-collection-question'),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -524,7 +529,7 @@ export class CollectionDetailComponent {
           .subscribe({
             next: () => {
               this.actionInProgress.set(null);
-              this.toast('Collection moved to trash');
+              this.toast(this.translate.instant('browse.message.collection-moved-to-trash'));
               this.browseContext.requestTreeRefresh();
               const col = this.collection();
               const redirectUrl = col?.path ? postTrashBrowseRouterUrl(col.path) : '/collections';
@@ -534,7 +539,7 @@ export class CollectionDetailComponent {
               this.actionInProgress.set(null);
               this.toast(
                 isPermissionDeniedError(err)
-                  ? PERMISSION_DENIED_MESSAGE
+                  ? this.translate.instant(PERMISSION_DENIED_KEY)
                   : 'Failed to delete collection',
               );
             },
@@ -551,12 +556,12 @@ export class CollectionDetailComponent {
       const updated = current.filter((c) => c.uid !== this.collectionUid);
       this.clipboardDocs.set(updated);
       writeClipboardDocs(updated);
-      this.toast('Removed from clipboard');
+      this.toast(this.translate.instant('collections.message.removed-from-clipboard'));
     } else {
       const updated = [...current, { uid: col.uid, title: col.title, type: col.type }];
       this.clipboardDocs.set(updated);
       writeClipboardDocs(updated);
-      this.toast('Added to clipboard');
+      this.toast(this.translate.instant('collections.message.added-to-clipboard'));
     }
     window.dispatchEvent(new Event('clipboard-changed'));
   }
@@ -610,7 +615,7 @@ export class CollectionDetailComponent {
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    if (!ace.begin && !ace.end) return 'Permanent';
+    if (!ace.begin && !ace.end) return this.translate.instant('permissions.time-frame.permanent');
     const fmt = (iso: string) =>
       new Date(iso).toLocaleDateString('en-US', {
         day: '2-digit',
@@ -633,7 +638,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
       if (created) {
         this.loadCollection();
-        this.toast('Permission added');
+        this.toast(this.translate.instant('browse.message.permission-added'));
       }
     });
   }
@@ -647,7 +652,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
       if (updated) {
         this.loadCollection();
-        this.toast('Permission updated');
+        this.toast(this.translate.instant('browse.message.permission-updated'));
       }
     });
   }
@@ -666,7 +671,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((deleted: boolean | undefined) => {
       if (deleted) {
         this.loadCollection();
-        this.toast('Permission deleted');
+        this.toast(this.translate.instant('browse.message.permission-deleted'));
       }
     });
   }
@@ -688,7 +693,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
       if (updated) {
         this.loadCollection();
-        this.toast('Permission updated');
+        this.toast(this.translate.instant('browse.message.permission-updated'));
       }
     });
   }
@@ -700,7 +705,7 @@ export class CollectionDetailComponent {
     this.detailService.sendNotificationEmailForPermission(this.collectionUid, ace.id).subscribe({
       next: () => {
         this.actionInProgress.set(null);
-        this.toast('Notification email sent');
+        this.toast(this.translate.instant('browse.message.notification-email-sent'));
       },
       error: (err) => {
         this.actionInProgress.set(null);
@@ -720,7 +725,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
       if (created) {
         this.loadCollection();
-        this.toast('Shared with external user');
+        this.toast(this.translate.instant('browse.message.shared-with-external-user'));
       }
     });
   }
@@ -742,7 +747,7 @@ export class CollectionDetailComponent {
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Action failed');
+        this.toast(this.translate.instant('browse.message.action-failed'));
       },
     });
   }
@@ -882,7 +887,7 @@ export class CollectionDetailComponent {
   avatarColor = avatarColor;
 
   private toast(message: string): void {
-    this.snackBar.open(message, 'OK', {
+    this.snackBar.open(message, this.translate.instant('common.ok'), {
       duration: 3000,
       horizontalPosition: 'center',
       verticalPosition: 'bottom',

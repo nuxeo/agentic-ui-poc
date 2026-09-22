@@ -1,0 +1,10 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+<mat-dialog-content class="msg">{{ data.message }}</mat-dialog-content>
+<mat-dialog-actions align="end" class="actions">
+  <button type="button" mat-button mat-dialog-close>
+    {{ 'shared-ui.confirm-dialog.cancel' | translate }}
+  </button>
+  <button type="button" mat-flat-button color="warn" [mat-dialog-close]="true">
+    {{ data.confirmLabel ?? ('ui.confirm' | translate) }}
+  </button>
+</mat-dialog-actions>

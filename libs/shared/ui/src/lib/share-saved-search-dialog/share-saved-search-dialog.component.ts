@@ -22,6 +22,7 @@ import {
   type ShareSavedSearchAddPermissionResult,
 } from '../share-saved-search-add-permission-dialog/share-saved-search-add-permission-dialog.component';
 import { ShareSavedSearchExternalDialogComponent } from '../share-saved-search-external-dialog/share-saved-search-external-dialog.component';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface PermissionEntry {
   id: string;
@@ -65,6 +66,7 @@ export interface ShareSavedSearchDialogData {
   selector: 'lib-share-saved-search-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
@@ -75,6 +77,7 @@ export interface ShareSavedSearchDialogData {
   styleUrl: './share-saved-search-dialog.component.scss',
 })
 export class ShareSavedSearchDialogComponent implements OnInit {
+  private readonly translate = inject(TranslateService);
   readonly dialogRef = inject(
     MatDialogRef<ShareSavedSearchDialogComponent, PermissionEntry[] | null>,
   );
@@ -356,7 +359,7 @@ export class ShareSavedSearchDialogComponent implements OnInit {
         ShareSavedSearchAddPermissionResult[] | null
       >(ShareSavedSearchAddPermissionDialogComponent, {
         width: '720px',
-        data: { title: 'Add a Permission' },
+        data: { title: this.translate.instant('confirm.add-a-permission') },
       })
       .afterClosed()
       .subscribe((result) => {
@@ -439,7 +442,7 @@ export class ShareSavedSearchDialogComponent implements OnInit {
       >(ShareSavedSearchAddPermissionDialogComponent, {
         width: '720px',
         data: {
-          title: 'Update',
+          title: this.translate.instant('confirm.update'),
           initialData: row,
         },
       })
@@ -551,9 +554,9 @@ export class ShareSavedSearchDialogComponent implements OnInit {
     begin: string | null | undefined,
     end: string | null | undefined,
   ): string {
-    if (!begin && !end) return 'Permanent';
-    if (!begin && end) return `Until ${end}`;
-    if (begin && !end) return `From ${begin}`;
-    return `${begin} - ${end}`;
+    if (!begin && !end) return this.translate.instant('permissions.time-frame.permanent');
+    if (!begin && end) return this.translate.instant('permissions.time-frame.until', { end });
+    if (begin && !end) return this.translate.instant('permissions.time-frame.from', { begin });
+    return this.translate.instant('permissions.time-frame.range', { begin, end });
   }
 }
