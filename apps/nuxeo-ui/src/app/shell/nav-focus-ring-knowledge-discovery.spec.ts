@@ -5,6 +5,9 @@ import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { TranslateModule } from '@ngx-translate/core';
 
+import { testTranslateModule } from '../i18n/translate-testing';
+import { COMPILED_THEME_BASES } from '../theme/app-theme';
+
 /**
  * NXENG-780 — IBM issue 548995131 flags the **Knowledge Discovery** sidebar link on
  * `/#/dashboard`, `/#/doc/:uid`, and `/#/browse`. The underlying token override landed in
@@ -23,6 +26,13 @@ const DASHBOARD_LINK =
 
 const ACTIVE_CLASS = 'sat-platform-nav-item-active';
 const MINIMUM_RATIO = 3;
+
+const SHIPPED_THEMES: readonly (string | null)[] = [null, ...COMPILED_THEME_BASES];
+
+const KD_TEST_LABELS = {
+  'shell.test.knowledge-discovery-nav-item': 'Knowledge Discovery',
+  'shell.test.dashboard-nav-item': 'Dashboard',
+} as const;
 
 @Component({
   standalone: true,
@@ -80,7 +90,7 @@ describe('Knowledge Discovery sidebar nav focus ring (NXENG-780)', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [KdNavHostComponent, TranslateModule.forRoot()],
+      imports: [KdNavHostComponent, testTranslateModule({ ...KD_TEST_LABELS })],
       providers: [provideSatori(), provideNoopAnimations()],
     }).compileComponents();
     originalTheme = document.documentElement.getAttribute('data-app-theme');
@@ -91,38 +101,58 @@ describe('Knowledge Discovery sidebar nav focus ring (NXENG-780)', () => {
     else document.documentElement.setAttribute('data-app-theme', originalTheme);
   });
 
-  function measureKnowledgeDiscovery(theme: string) {
-    document.documentElement.setAttribute('data-app-theme', theme);
+  function applyTheme(theme: string | null): void {
+    if (theme === null) {
+      document.documentElement.removeAttribute('data-app-theme');
+    } else {
+      document.documentElement.setAttribute('data-app-theme', theme);
+    }
+  }
+
+  function measureKnowledgeDiscovery(theme: string | null) {
+    applyTheme(theme);
 
     const fixture = TestBed.createComponent(KdNavHostComponent);
     fixture.detectChanges();
+    document.body.appendChild(fixture.nativeElement);
 
-    const kd = fixture.nativeElement.querySelector(KD_LINK) as HTMLElement | null;
-    const dashboard = fixture.nativeElement.querySelector(DASHBOARD_LINK) as HTMLElement | null;
-    if (!kd || !dashboard) {
-      throw new Error('Satori did not render the Knowledge Discovery / Dashboard nav items');
+    try {
+      const kd = fixture.nativeElement.querySelector(KD_LINK) as HTMLElement | null;
+      const dashboard = fixture.nativeElement.querySelector(DASHBOARD_LINK) as HTMLElement | null;
+      if (!kd || !dashboard) {
+        throw new Error('Satori did not render the Knowledge Discovery / Dashboard nav items');
+      }
+      if (!dashboard.classList.contains(ACTIVE_CLASS)) {
+        throw new Error('Dashboard must render as the current route item for this ticket scenario');
+      }
+
+      kd.focus({ focusVisible: true } as FocusOptions);
+      expect(kd.matches(':focus-visible'))
+        .withContext('keyboard focus must be visible before contrast is measured')
+        .toBe(true);
+
+      const styles = getComputedStyle(kd);
+      expect(styles.outlineStyle).not.toBe('none');
+      expect(Number.parseFloat(styles.outlineWidth)).toBeGreaterThan(0);
+
+      const panel = paintedBackdrop(kd);
+      const ownFill = parseColor(styles.backgroundColor);
+      const interior = ownFill.alpha > 0 ? compositeOver(ownFill, panel) : panel;
+      const neighbourFill = parseColor(getComputedStyle(dashboard).backgroundColor);
+      const neighbour = compositeOver(neighbourFill, panel);
+      const ringOpaque = flatten(styles.outlineColor, interior);
+
+      return {
+        outlineStyle: styles.outlineStyle,
+        outlineWidth: Number.parseFloat(styles.outlineWidth),
+        ringColor: styles.outlineColor,
+        ratioVsInterior: contrastRatio(ringOpaque, interior),
+        ratioVsPanel: contrastRatio(ringOpaque, panel),
+        ratioVsNeighbour: contrastRatio(ringOpaque, neighbour),
+      };
+    } finally {
+      fixture.nativeElement.remove();
     }
-    if (!dashboard.classList.contains(ACTIVE_CLASS)) {
-      throw new Error('Dashboard must render as the current route item for this ticket scenario');
-    }
-
-    kd.focus({ focusVisible: true } as FocusOptions);
-    const styles = getComputedStyle(kd);
-    const panel = paintedBackdrop(kd);
-    const ownFill = parseColor(styles.backgroundColor);
-    const interior = ownFill.alpha > 0 ? compositeOver(ownFill, panel) : panel;
-    const neighbourFill = parseColor(getComputedStyle(dashboard).backgroundColor);
-    const neighbour = compositeOver(neighbourFill, panel);
-    const ringOpaque = flatten(styles.outlineColor, interior);
-
-    return {
-      outlineStyle: styles.outlineStyle,
-      outlineWidth: Number.parseFloat(styles.outlineWidth),
-      ringColor: styles.outlineColor,
-      ratioVsInterior: contrastRatio(ringOpaque, interior),
-      ratioVsPanel: contrastRatio(ringOpaque, panel),
-      ratioVsNeighbour: contrastRatio(ringOpaque, neighbour),
-    };
   }
 
   it('draws a visible keyboard focus indicator on the Knowledge Discovery link', () => {
@@ -131,17 +161,19 @@ describe('Knowledge Discovery sidebar nav focus ring (NXENG-780)', () => {
     expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
   });
 
-  for (const theme of ['nuxeo', 'dark', 'kawaii', 'light']) {
-    it(`clears ${MINIMUM_RATIO}:1 on the reported link with Dashboard active — ${theme}`, () => {
+  for (const theme of SHIPPED_THEMES) {
+    const label = theme ?? 'no data-app-theme (first paint)';
+
+    it(`clears ${MINIMUM_RATIO}:1 on the reported link with Dashboard active — ${label}`, () => {
       const measured = measureKnowledgeDiscovery(theme);
       expect(measured.ratioVsInterior)
-        .withContext(`ring on KD item interior (${theme})`)
+        .withContext(`ring on KD item interior (${label})`)
         .toBeGreaterThanOrEqual(MINIMUM_RATIO);
       expect(measured.ratioVsPanel)
-        .withContext(`ring on nav panel (${theme})`)
+        .withContext(`ring on nav panel (${label})`)
         .toBeGreaterThanOrEqual(MINIMUM_RATIO);
       expect(measured.ratioVsNeighbour)
-        .withContext(`ring against active Dashboard neighbour (${theme})`)
+        .withContext(`ring against active Dashboard neighbour (${label})`)
         .toBeGreaterThanOrEqual(MINIMUM_RATIO);
     });
   }

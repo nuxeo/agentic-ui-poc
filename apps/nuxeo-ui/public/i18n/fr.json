@@ -126,9 +126,7 @@
       "menu": "Menu des paramètres"
     },
     "test": {
-      "platform-nav-item": "Parcourir",
-      "knowledge-discovery-nav-item": "Knowledge Discovery",
-      "dashboard-nav-item": "Tableau de bord"
+      "platform-nav-item": "Parcourir"
     }
   }
 }

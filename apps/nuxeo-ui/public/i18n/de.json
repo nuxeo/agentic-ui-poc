@@ -126,9 +126,7 @@
       "menu": "Einstellungsmenü"
     },
     "test": {
-      "platform-nav-item": "Durchsuchen",
-      "knowledge-discovery-nav-item": "Knowledge Discovery",
-      "dashboard-nav-item": "Dashboard"
+      "platform-nav-item": "Durchsuchen"
     }
   }
 }
