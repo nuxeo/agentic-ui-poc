@@ -589,6 +589,10 @@ describe('SearchComponent', () => {
       expect(component.getCellValue(rowWithNulls, 'state')).toBe('—');
       expect(component.getCellValue(rowWithNulls, 'version')).toBe('—');
       expect(component.getCellValue(rowWithNulls, 'created')).toBe('—');
+      expect(component.getCellValue(rowWithNulls, 'nature')).toBe('—');
+      expect(component.getCellValue(rowWithNulls, 'coverage')).toBe('—');
+      expect(component.getCellValue(rowWithNulls, 'subjects')).toBe('—');
+      expect(component.getCellValue(rowWithNulls, 'flags')).toBe('—');
     });
 
     it('should return empty string for unknown columns', () => {
@@ -647,6 +651,24 @@ describe('SearchComponent', () => {
       const event = { stopPropagation: vi.fn() } as unknown as Event;
       component.toggleFavorite('doc1', event);
       expect(event.stopPropagation).toHaveBeenCalled();
+    });
+  });
+
+  describe('onImageError', () => {
+    it('should replace image src with fallback on error', () => {
+      const mockImg = { src: '' } as HTMLImageElement;
+      const event = { target: mockImg } as Event;
+
+      component.onImageError(event);
+
+      expect(mockImg.src).toBe('/images/Login-background.svg');
+    });
+
+    it('should do nothing when target is not an image', () => {
+      const event = { target: null } as Event;
+
+      // Should not throw
+      expect(() => component.onImageError(event)).not.toThrow();
     });
   });
 
@@ -1051,6 +1073,17 @@ describe('SearchComponent', () => {
       mockSelectionService.selectedCount.mockReturnValue(3);
       expect(component.selectedCount()).toBe(3);
     });
+
+    it('should compute isIndeterminate from selection service and displayResults', () => {
+      const displaySpy = vi.spyOn(component, 'displayResults');
+      displaySpy.mockReturnValue([row({ id: '1' }), row({ id: '2' })]);
+      mockSelectionService.isIndeterminate.mockReturnValue(true);
+
+      // Call isIndeterminate which will call displayResults and isIndeterminate
+      const result = component.isIndeterminate();
+      expect(result).toBe(true);
+      expect(mockSelectionService.isIndeterminate).toHaveBeenCalledWith(['1', '2']);
+    });
   });
   describe('the results pipeline', () => {
     /**
@@ -1304,6 +1337,34 @@ describe('SearchComponent', () => {
       );
       expect(mockSearchAggregationService.selectedSavedSearchId()).toBe('ss-9');
       expect(mockSearchAggregationService.markSavedSearchDirty).toHaveBeenCalled();
+    });
+
+    it('trims filter values and excludes empty ones when saving search', () => {
+      mockDialog.open.mockReturnValue({ afterClosed: () => of('Test Search') });
+      mockSearchService.saveSavedSearch.mockReturnValue(of({ id: 'ss-10', title: 'Test Search' }));
+      mockSearchAggregationService.drawerFilters.set({
+        dc_creator: '  admin  ',
+        dc_title: '',
+        path: '   ',
+        dc_modified: 'today',
+      });
+
+      component.openSaveAsDialog();
+
+      // saveSavedSearch is called with params that have been trimmed
+      expect(mockSearchService.saveSavedSearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Test Search',
+          params: expect.objectContaining({
+            dc_creator: 'admin',
+            dc_modified: 'today',
+          }),
+        }),
+      );
+      // Verify empty/whitespace values were excluded
+      const savedCall = mockSearchService.saveSavedSearch.mock.calls[0][0] as Record<string, any>;
+      expect(savedCall.params.dc_title).toBeUndefined();
+      expect(savedCall.params.path).toBeUndefined();
     });
 
     it('does not save when the dialog is dismissed or the title is blank', () => {

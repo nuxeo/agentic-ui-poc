@@ -73,12 +73,12 @@
       "sCovered": 4318
     },
     "search": {
-      "lines": 93.41,
-      "statements": 93.41,
-      "branches": 82.76,
-      "functions": 90.28,
+      "lines": 94.69,
+      "statements": 94.69,
+      "branches": 84.8,
+      "functions": 91.67,
       "sTotal": 1016,
-      "sCovered": 949
+      "sCovered": 962
     },
     "shared-app-config": {
       "lines": 99.58,
