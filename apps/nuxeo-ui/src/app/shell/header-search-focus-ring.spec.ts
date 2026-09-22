@@ -42,6 +42,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslateModule } from '@ngx-translate/core';
 
+import { testTranslateModule } from '../i18n/translate-testing';
+
 /** WCAG 2.1 relative luminance. */
 function relativeLuminance([r, g, b]: [number, number, number]): number {
   const channel = (v: number): number => {
@@ -80,7 +82,7 @@ describe('header global search — keyboard focus indicator', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [HeaderSearchHostComponent, TranslateModule.forRoot()],
+      imports: [HeaderSearchHostComponent, testTranslateModule()],
       providers: [provideZonelessChangeDetection()],
     }).compileComponents();
 
