@@ -23,7 +23,7 @@
  * - libs/shared/adf-hx-bridge/src/lib/services/nuxeo-acl-write.spec.ts (lines 271-281, 341-351)
  */
 
-import type { NuxeoDocument, NuxeoAce } from '@agentic-ui/shared/nuxeo-client';
+import type { NuxeoDocument, NuxeoAce } from '@nuxeo-satori/platform/nuxeo-client';
 
 /**
  * One complete Nuxeo document. Every optional-looking field on `NuxeoDocument` is in fact

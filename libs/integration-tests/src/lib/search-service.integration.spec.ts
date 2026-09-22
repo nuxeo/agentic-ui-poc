@@ -21,7 +21,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { SearchService } from '@nuxeo-satori/platform/nuxeo-client';
+import { SearchService, type SearchResponse } from '@nuxeo-satori/platform/nuxeo-client';
 import { setupIntegrationHarness, createTestDocument } from './integration-harness';
 
 describe('SearchService Integration Tests', () => {
@@ -55,7 +55,7 @@ describe('SearchService Integration Tests', () => {
       });
 
       // Execute search
-      const result = await new Promise((resolve, reject) => {
+      const result = await new Promise<SearchResponse>((resolve, reject) => {
         searchService.search({
           q: 'Searchable',
           pageSize: 10,
