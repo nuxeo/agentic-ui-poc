@@ -113,7 +113,6 @@ describe('Knowledge Discovery sidebar nav focus ring (NXENG-780)', () => {
     const interior = ownFill.alpha > 0 ? compositeOver(ownFill, panel) : panel;
     const neighbourFill = parseColor(getComputedStyle(dashboard).backgroundColor);
     const neighbour = compositeOver(neighbourFill, panel);
-    const ring = parseColor(styles.outlineColor);
     const ringOpaque = flatten(styles.outlineColor, interior);
 
     return {
@@ -121,8 +120,8 @@ describe('Knowledge Discovery sidebar nav focus ring (NXENG-780)', () => {
       outlineWidth: Number.parseFloat(styles.outlineWidth),
       ringColor: styles.outlineColor,
       ratioVsInterior: contrastRatio(ringOpaque, interior),
-      ratioVsPanel: contrastRatio(compositeOver(ring, panel), panel),
-      ratioVsNeighbour: contrastRatio(flatten(styles.outlineColor, neighbour), neighbour),
+      ratioVsPanel: contrastRatio(ringOpaque, panel),
+      ratioVsNeighbour: contrastRatio(ringOpaque, neighbour),
     };
   }
 
