@@ -108,7 +108,8 @@
       "state-off": "Off"
     },
     "test": {
-      "platform-nav-item": "Browse"
+      "platform-nav-item": "Browse",
+      "personal-space-nav-item": "Personal Space"
     }
   }
 }
