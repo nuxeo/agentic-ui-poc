@@ -40,10 +40,10 @@
             <button
               type="button"
               class="hxp-browse-page__preview-btn"
-              title="Preview document"
+              [title]="'browse.browse-adf-hx-poc.preview-document' | translate"
               (click)="openViewer()"
             >
-              Preview
+              {{ 'browse.browse-adf-hx-poc.preview' | translate }}
             </button>
           }
         }
@@ -82,22 +82,24 @@
           @if (error()) {
             <div class="hxp-poc-error">
               <p role="alert">{{ error() }}</p>
-              <button type="button" (click)="reload()">Retry</button>
+              <button type="button" (click)="reload()">
+                {{ 'browse.browse-adf-hx-poc.retry' | translate }}
+              </button>
             </div>
           } @else if (!loading() && !listLoading() && filteredDocuments().length === 0) {
             <div class="hxp-poc-empty">
-              <p>This folder is empty</p>
+              <p>{{ 'browse.browse-adf-hx-poc.this-folder-is-empty' | translate }}</p>
             </div>
           } @else if (viewMode() === 'list') {
             <div class="hxp-poc-list">
               <button
                 type="button"
                 class="hxp-poc-column-btn"
-                aria-label="Manage columns"
-                title="Manage columns"
+                [attr.aria-label]="'browse.browse-adf-hx-poc.manage-columns' | translate"
+                [title]="'browse.browse-adf-hx-poc.manage-columns' | translate"
                 (click)="openColumnPicker()"
               >
-                Columns
+                {{ 'browse.browse-adf-hx-poc.columns' | translate }}
               </button>
               @if (columnPickerOpen()) {
                 <hxp-column-picker
@@ -154,8 +156,7 @@
           } @else {
             <div class="hxp-poc-empty">
               <p>
-                The repository root carries no access control list. Open a domain or folder to see
-                and manage its permissions.
+                {{ 'browse.browse-adf-hx-poc.the-repository-root-carries-no-access' | translate }}
               </p>
             </div>
           }
@@ -172,7 +173,7 @@
             </div>
           } @else {
             <div class="hxp-poc-empty">
-              <p>Select a single document in the View tab to see its properties.</p>
+              <p>{{ 'browse.browse-adf-hx-poc.select-a-single-document-in-the' | translate }}</p>
             </div>
           }
         } @else if (activeTab() === 'versions') {
@@ -189,7 +190,7 @@
             </div>
           } @else {
             <div class="hxp-poc-empty">
-              <p>Select a single document in the View tab to see its versions.</p>
+              <p>{{ 'browse.browse-adf-hx-poc.select-a-single-document-in-the-2' | translate }}</p>
             </div>
           }
         } @else if (activeTab() === 'history') {

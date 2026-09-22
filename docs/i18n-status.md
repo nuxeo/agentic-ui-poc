@@ -1,0 +1,661 @@
+# i18n — where we actually are
+
+**Dated 16 September 2026.** Measured, not estimated: every number below comes from a command
+that is quoted next to it, so it can be re-run rather than believed.
+
+This is the status page. The **plan** is [`docs/i18n-localization-plan.md`](i18n-localization-plan.md);
+the two are separate on purpose, because a plan that carries its own progress report goes stale
+silently and gets believed anyway.
+
+|              |                                                                                                                                                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beta ticket  | [NXSAT-227](https://hyland.atlassian.net/browse/NXSAT-227) — delivered, in review                                                                                                                                                 |
+| GA ticket    | [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284) — delivered, in review. This row said **not started** while the branch implementing it was open, and the same page measured its output two sections below.             |
+| Pull request | [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198) (NXSAT-227, merged) · [#217](https://github.com/nuxeo/agentic-ui-poc/pull/217) (NXSAT-284)                                                                               |
+| Branch       | `feature/nxsat-227a-i18n` (merged) · `feature/nxsat-284-descriptor-labels`                                                                                                                                                        |
+| Gate         | **23 of 23 green**, `code-scanning` included. Re-measure rather than reading this: `npm run beta:gate`. This row said 21 of 22 and named a blocker that no longer exists — the gate count grew and CodeQL now runs on the branch. |
+
+---
+
+## Where extraction stands — measured by rendering, not by grepping
+
+Last measured 2026-09-21 on branch `feature/nxsat-284-descriptor-labels`, by an audit that now
+**selects** the pseudo-locale and refuses to report a total unless the `⟦` sentinel rendered. The
+previous figure of 41 came from a run that could not prove the pseudo-locale was active at all.
+
+|                                                                |           |
+| -------------------------------------------------------------- | --------- |
+| Catalogue keys, each with translator context                   | **1653**  |
+| Descriptor labels carrying a `labelKey`                        | **191**   |
+| Visible English strings under the `zz` pseudo-locale, 9 routes | **24–30** |
+
+Re-measure rather than quoting the table; every figure in it is a moving count:
+
+```bash
+npm run i18n:audit                        # the 24, and the deep pass over dialogs and menus
+node -e "const c=o=>Object.values(o).reduce((n,v)=>n+(v&&typeof v=='object'?c(v):1),0);\
+  console.log(c(require('./apps/nuxeo-ui/public/i18n/en.json')))"   # catalogue keys
+git ls-files '*.ts' | grep -v spec | xargs grep -oh "labelKey: '" | wc -l   # keyed descriptors
+```
+
+The third number is the only one that means "finished", and it is the only one
+that was not available until recently. Key and call-site counts measure what was
+extracted; they cannot see what was missed, because a hard-coded string is
+invisible to a catalogue by definition. Rendering the application in a locale
+where every catalogue-sourced string comes back accented is what makes a missed
+one show up — `npm run i18n:audit`.
+
+That instrument has been wrong twice, both times under-reporting:
+
+- `<mat-icon>` text is a ligature NAME, so `settings` reads as English and is not.
+  60 phantom findings, burying the real ones.
+- Upstream ships only `en`, `fr` and `de`, so every adf-core and satori-ui string
+  read as a miss until the generator produced a `zz` for those catalogues too — 22 more.
+- The prose test required letters only, so anything with a number was skipped in
+  silence: the five size buckets, every date range, `2 result(s)`.
+
+### What the remaining findings are
+
+| Count | What                                                                    | Action                                                   |
+| ----: | ----------------------------------------------------------------------- | -------------------------------------------------------- |
+|     9 | `Skip to main content`, hard-coded inside satori-ui's compiled template | Upstream finding 1.4 — no host-side fix exists           |
+|     4 | Theme names — Nuxeo, Dark, Kawaii, Light                                | Layer 0 customer data, correctly a literal               |
+|     1 | `Open calendar`                                                         | Angular Material's own i18n mechanism                    |
+|   4–6 | Repository content — document titles, type names, AI severities         | Instance data; translating it would corrupt user content |
+|   3–6 | Generated AI insight sentences                                          | Written by the server                                    |
+
+**Nothing here is actionable from this repository.** Every one is upstream, written by the server,
+or customer data.
+
+**The total is not a stable number, and quoting one is a mistake I made twice on this page.** It
+first said 41, from a run that could not prove the pseudo-locale was active. Corrected to 24, then
+the very next run reported 30 — and the whole difference was six AI insight sentences whose wording
+the server regenerates each time: `Your workspace 'Narasimha' hasn't been updated in several weeks`
+became `… in several days`. Same finding, different prose, different count.
+
+So the figure in the table at the top of this page is one measurement, not a target, and a change of
+a few either way means the AI wrote different sentences. What is stable, and what to watch, is the
+first three rows — those are ours to the extent anything here is.
+
+I also recorded the no-active-tasks sentence as our own empty state before checking: it appears
+nowhere in `apps/` or `libs/`, so it is server-generated too. Grep before writing the row.
+
+The count is a **floor** for nine first-render routes. Dialogs, menus and empty states are covered
+by `pseudo-locale-deep.mjs`, which reports separately — most recently 5 distinct strings: the skip
+link, `Open calendar`, the `Everything` permission identifier (sent to the server, so deliberately
+untranslated), and the product names `Nuxeo Drive` and `macOS`.
+
+### Still deliberately out of scope
+
+`apps/nuxeo-satori-template` — 105 template strings and 26 descriptors. It is the
+customer starter template, deferred by an explicit earlier decision.
+
+## How to read this page
+
+Three distinctions do most of the work here, and conflating any of them produces a wrong answer
+about how far along we are.
+
+**Internationalization is not localization.** i18n is the machinery — a key/value lookup, a way
+to choose a language, a fallback when a key is missing. l10n is the content: the actual
+translated strings. The Hyland Crowdin RFC governs only the second and says so in its Scope
+section. **Our machinery has been done since Phase 1. The content is barely started.** Every
+number that looks bad below is a content number.
+
+**Mechanism working is not application translated.** The French screenshot in the evidence shows
+a French search placeholder inside an otherwise English page. That is a true and useful result —
+it proves a customer can change language with no rebuild — and it is not a localised product.
+
+**Extraction is not translation.** Converting `>Show details<` into
+`{{ 'browse.details.show' | translate }}` makes a string _translatable_. Somebody still has to
+translate it, and per the standard that somebody is the Hyland translation crew working in
+Crowdin, not a developer editing a JSON file.
+
+---
+
+## Coverage, measured
+
+> **The three tables below are the NXSAT-227 measurement and are SUPERSEDED.** They say 60
+> catalogue keys and 4 of 92 templates; NXSAT-284 took those to the figures in the table at the top
+> of this page. They are kept because the before/after shape is the useful part of the Beta record,
+> not the numbers. A five-model review found them being read as current, which is a fair reading of
+> a table headed "Now".
+
+### Translation keys
+
+```bash
+# flattened key count per catalogue
+python3 -c "import json;d=json.load(open('apps/nuxeo-ui/public/i18n/en.json'));..."
+```
+
+|                              | Before (on `main`) | Now                  |
+| ---------------------------- | ------------------ | -------------------- |
+| Keys in the app catalogue    | **16**             | **60**               |
+| Locales shipped              | 1 (`en`)           | 3 (`en`, `fr`, `de`) |
+| Locales at full key parity   | n/a                | 3 of 3, gated        |
+| Keys with translator context | 0                  | 60 of 60, gated      |
+
+### Call sites
+
+```bash
+git grep -c "| translate" origin/main -- '*.html' | awk -F: '{s+=$3} END {print s}'
+git grep -c "| translate" HEAD        -- '*.html' | awk -F: '{s+=$3} END {print s}'
+```
+
+|                           | Before  | Now     |
+| ------------------------- | ------- | ------- |
+| `\| translate` call sites | **7**   | **55**  |
+| Templates using it        | 3 of 92 | 4 of 92 |
+
+| Still hard-coded                 | Count         |
+| -------------------------------- | ------------- |
+| Template strings                 | **1350**      |
+| Descriptor strings in TypeScript | **257**       |
+| Passed imperatively in `.ts`     | never counted |
+
+Four of ninety-two is the honest headline. It went up by one template because the work was
+deliberately deep rather than wide: `app-shell.component.html` is at **zero** remaining
+hard-coded strings, which no template in this repository was before.
+
+`nav-drawer.component.html` is **not** at zero, and this passage claimed both templates were.
+One string is left — `isOverdue(task) ? 'Overdue' : 'Due'` at line 266 — a quoted literal inside an
+Angular expression, which `checkNoHardcodedUiText` does not inspect: the interpolation braces mean it
+matches neither the element-text pattern nor the bare-prose one. It predates this diff, and the gate
+is diff-scoped, so **the gate cannot certify either template as fully extracted** — it can only say
+nothing new was added. That distinction is the honest version of this row.
+
+Verified rather than asserted, twice over. The claim was false when first written — twelve strings
+were left, all of them prose alone on its own line, the shape `checkNoHardcodedUiText` could not see
+until this PR fixed it. A reviewer found those, not the gate that existed to. The ternary is the
+thirteenth, found the same way.
+
+### What is still hard-coded
+
+Counting element text starting with a capital and `aria-label` / `title` / `placeholder` /
+`matTooltip` / `alt` attributes with a literal value, excluding lines already using the pipe.
+
+| Project                             | Templates | Text    | `aria-label` | `title` | Other attrs | **Total** |
+| ----------------------------------- | --------- | ------- | ------------ | ------- | ----------- | --------- |
+| `libs/features/document-detail`     | 4         | 96      | 85           | 24      | 31          | **236**   |
+| `libs/features/administration`      | 12        | 125     | 46           | 0       | 20          | **191**   |
+| `libs/features/browse`              | 5         | 106     | 51           | 2       | 25          | **184**   |
+| `libs/shared/ui`                    | 12        | 75      | 25           | 0       | 16          | **116**   |
+| `apps/nuxeo-ui`                     | 15        | 89      | 10           | 7       | 1           | **107**   |
+| `apps/nuxeo-satori-template`        | 11        | 89      | 3            | 13      | 0           | **105**   |
+| `libs/features/search`              | 3         | 44      | 16           | 0       | 13          | **73**    |
+| `libs/shared/adf-hx-bridge`         | 13        | 35      | 19           | 10      | 3           | **67**    |
+| `libs/features/tasks`               | 3         | 43      | 11           | 2       | 9           | **65**    |
+| `libs/features/collections`         | 1         | 39      | 13           | 0       | 12          | **64**    |
+| `libs/features/trash`               | 2         | 30      | 17           | 0       | 16          | **63**    |
+| `libs/features/knowledge-discovery` | 3         | 30      | 14           | 1       | 2           | **47**    |
+| `libs/features/assets`              | 3         | 16      | 7            | 0       | 4           | **27**    |
+| `libs/extensions/acme-extensions`   | 2         | 3       | 0            | 0       | 0           | **3**     |
+| others                              | 2         | 2       | 0            | 0       | 0           | **2**     |
+| **Total**                           |           | **822** | **317**      | **59**  | **152**     | **1350**  |
+
+`libs/shared/nuxeo-client` is the only project with no remaining strings, and it has one
+template.
+
+**`apps/nuxeo-ui` still shows 107** because two of its fifteen templates were extracted. The
+rest, in descending size: `contracts-page` (24), `dashboard-page` (20), `profile-page` (17),
+`nuxeo-drive-page` (15), `change-password-dialog` (8), `cloud-services-page` (7), `login-page`
+(7), three smaller pages and `index.html`.
+
+### Descriptors — a whole category the template count missed
+
+**257 more user-facing strings live in TypeScript descriptors**, not templates. Nav entries,
+packaged actions, column definitions and drawer links are data:
+
+```ts
+{ id: 'app.navbar.browse', label: 'Browse', icon: 'folder' }
+```
+
+rendered as `{{ item.label }}`.
+
+| Project                         | Descriptor strings |
+| ------------------------------- | ------------------ |
+| `libs/shared/extensions`        | 59                 |
+| `libs/features/assets`          | 35                 |
+| `libs/features/search`          | 31                 |
+| `apps/nuxeo-satori-template`    | 26                 |
+| `libs/features/document-detail` | 25                 |
+| `apps/nuxeo-ui`                 | 19                 |
+| others (10 projects)            | 62                 |
+| **Total**                       | **257**            |
+
+Three things follow, and the first two are why this was invisible until someone looked at a
+screenshot and asked whether the application was really in French.
+
+**No amount of template extraction reaches them.** The translate pipe cannot be applied at a
+descriptor definition, because the descriptor is Layer 1 data rather than markup.
+
+**`checkNoHardcodedUiText` is structurally blind to them.** It reads added lines in `.html` and
+sees `{{ item.label }}`, which is exactly the shape it asks for. `checkNoHardcodedDescriptorText`
+now covers the gap, diff-scoped, over `label`, `placeholder`, `ariaLabel` and `tooltip`. `title`
+and `description` are deliberately excluded — they name Nuxeo document properties and schema
+documentation as often as UI chrome, and a check that argues with the reviewer gets disabled.
+
+**This is the most visible text in the product.** The entire left navigation is in this category.
+A demo of the application in French shows a French search box beside a wholly English nav, which
+is the single biggest reason the French screenshots read worse than the mechanism deserves.
+
+The fix is not a sweep: the descriptor must carry a translation **key** and the pipe must move to
+the render site — `{ label: 'nav.browse' }` with `{{ item.label | translate }}`. That keeps the
+descriptor manifest-addressable _and_ makes the string translatable, which the current shape
+allows only one of. It is a change to the Layer 1 descriptor contract, so it wants doing
+deliberately and early in NXSAT-284 rather than being folded into a per-project sweep.
+
+### The number nobody has measured
+
+**The remaining `.ts` strings are still not counted.** The 257 descriptor strings above are
+object-literal `label`/`placeholder`/`ariaLabel`/`tooltip` properties. Strings passed
+imperatively — snackbar messages, dialog titles opened in code, error text, confirmation
+prompts — are in neither figure. A discovery pass is
+scoped as the first thing in NXSAT-284, precisely so the estimate for the rest is not built on
+an unknown.
+
+### Locale coverage is uneven upstream, and that bites
+
+| Catalogue source                          | Locales shipped                    |
+| ----------------------------------------- | ---------------------------------- |
+| `@alfresco/adf-core`                      | 19                                 |
+| `@hylandsoftware/satori-ui`               | 15                                 |
+| `adf-hx-content-services` (ui + services) | **7** — `de es fr it pl pt` + `en` |
+| ours                                      | 3                                  |
+
+**A locale outside adf-hx's seven gets English adf-hx strings inside an otherwise translated
+application.** That is why `fr` and `de` were chosen for the first pass: both are covered by
+every catalogue we seed, so switching locale exercises the whole stack rather than our own file
+alone.
+
+---
+
+## What existed before this work
+
+Delivered by Phase 1 and Phase 3, and all of it still stands:
+
+- **`ngx-translate` v17**, one hoisted copy, matching the `ngx-translate 16/17` norm across the
+  CIC portfolio. No transloco remnants.
+- **`AppTranslateLoader`** — merges N catalogue folders, then the app's own catalogue, then the
+  manifest's `labels`. That last layer is a shipped **Layer 0** capability: a customer relabels
+  the product with a JSON edit and no rebuild.
+- **Four upstream catalogues seeded** — `adf-core`, both adf-hx bundles, `satori-ui` — because
+  adf-hx registers its own catalogues at _component construction_, long after the language has
+  loaded, so registration landed and the strings never arrived (`W6`).
+- **`defaultLanguage` and `availableLanguages`** as Layer 0 bootstrap keys, validated and
+  unit-tested.
+- A compiled-in English fallback for a failed catalogue fetch.
+
+Two things that were _not_ true, despite the ticket saying so:
+
+- adf-hx translations were described as unwired. They were wired, and gated by the `bundle` gate.
+- The raw-key defect was attributed to those unwired assets. It was an upstream typo.
+
+---
+
+## What was done now
+
+### The defect that started it
+
+`HxpDocumentTreeComponent` binds its folder toggle's accessible name to
+
+```
+('DOCUMENT_TREE.TOGGLE_ARIA-LABEL ' | translate) + node.name
+```
+
+— a **trailing space inside the key literal**. The catalogue ships the key without one, so the
+lookup missed a key that was present, ngx-translate fell through to its key passthrough, and
+every folder toggle in the tree was announced as `DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined`
+— on **every surface**, because the tree is the app shell's nav drawer.
+
+`undefined`, not the folder name. `Default domain` is only the label rendered _beside_ the toggle;
+the toggle itself appends `node.name`, which upstream's node wrapper does not have. Writing the
+folder name here obscured why the W13 alias alone was never going to be enough, and W15 is what
+supplies a real name.
+
+A WCAG 4.1.2 failure, and **axe cannot detect it**: axe checks that a control _has_ an accessible
+name, not that the name is words. The blank-name variant of the same defect (upstream finding
+4.6) was caught by axe in a single scan. This one sat through the same audit untouched.
+
+Fixed by aliasing, which copies the _resolved_ value so a translated catalogue still yields a
+translated name, and which yields to an upstream-shipped key so it becomes inert rather than
+authoritative if upstream fixes it. Recorded as `W13` and as upstream finding 1.3, whose ask is
+one character plus an interpolation parameter.
+
+A **second instance of the same class** turned up on the way: `settings.themes.search` is the
+themes search button's `aria-label`, it was in the catalogue and missing from the fallback, so a
+failed fetch named that control with the raw key. Its catalogue value was also literally
+`"Search (placeholder)"` — shipping as a real accessible name.
+
+### Four gates, and the first controls any guardrail here has had
+
+| Guardrail                      | Enforces                                                                 | Scope    |
+| ------------------------------ | ------------------------------------------------------------------------ | -------- |
+| `checkNoHardcodedUiText`       | a newly added hard-coded user-facing string                              | **diff** |
+| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, key parity across locales | repo     |
+| `checkTranslationContext`      | translator context exists for every string and for no deleted one        | repo     |
+| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch          | repo     |
+
+Plus `checkAngularDevAssets` extended to compare the `ignore` list, which it did not before — an
+entry excluding a file in the base array and not in `development` read as identical while the two
+configurations served different files.
+
+`review-guardrails.selftest.mjs`. **Its totals are not restated here** — the suite prints them,
+`npm run review:guardrails-selftest`, and a number copied into prose next to a list it does not
+come from goes stale silently: this sentence said 58, then 71, while the suite held 78. It builds a
+throwaway git repository per control under `os.tmpdir()`, so unlike the sanitizer selftest a hard
+kill cannot leave a dirty tree. Registered as gate `guardrails-selftest`, as an npm script, in
+`review:preflight` and in CI.
+
+Eleven guardrails shipped before this with **no tests at all**.
+
+### Extraction and locales
+
+48 occurrences across the app shell and nav drawer, taking both templates to zero. `fr` and `de`
+catalogues at full key parity. `en.context.json` carrying part of speech, surrounding UI, expanded
+acronyms and do-not-translate flags for all 60 keys — 44 at the first extraction, and sixteen more
+since, each added with its context because `checkTranslationContext` fails a key without one.
+
+### Evidence
+
+`npm run beta:evidence -- nxsat-227-i18n` → **PASS, 38/38 across 10 steps**, read from that run's
+`manifest.json` rather than transcribed. Re-run it rather than trusting this line: the figure here
+was `25/25 across 9 steps` from the 16 September run, which **predated five of the assertions it
+was being cited as proving** — the adf-hx language check, the translated suggestion payload, the
+French axe scan, route reachability and the date-formatting check were all added after it.
+
+Asserts off the rendered DOM: no raw key in any `aria-label`, `title` or leaf text node on all
+eight routes; the toggle named `Toggle <folder>`; `fr` and `de` differing from each other; an
+unshipped locale degrading to English rather than to keys, and still rendering dates rather than
+leaving them blank; a suggestion click sending the French string rather than the English one behind
+its label; and **no axe violation at any impact** on the French shell — `failOn` is
+`[minor, moderate, serious, critical]`, not the helper's serious-and-critical default — with no
+ignore list.
+
+Every language switch goes through a real `page.reload()`, because `withHashLocation()` makes
+`goto()` same-document and without it `APP_INITIALIZER` never re-runs.
+
+Six of those checks were failing when the assertions were first run honestly, and four of the six
+were defects in the evidence rather than the application — a raw-key sweep reading `<style>`
+elements, a route-reached check that rejected a legitimate child route, and a date check measuring
+a surface that renders no date cells. The fourth was real: the French axe scan found the navigation
+tree's folder toggles had no accessible name at all.
+
+### Two defects found by running the application, which the controls did not catch
+
+Recorded prominently because they are the more interesting failure: a capture that reported
+**25/25 PASS** was live at the time, and both of these were present.
+
+**`W14` — adf-hx surfaces silently reverted the language to English.** adf-core's
+`TranslationService` reads the locale from its own `UserPreferencesService` and calls
+`translate.use(...)` on the shared ngx-translate instance when it constructs. So
+`defaultLanguage: 'fr'` held on the seven ordinary shell routes and reverted the moment the
+`/#/browse-adf-hx` route or the adf-hx nav drawer rendered — no page reload involved,
+`performance.getEntriesByType('navigation')` stayed at one entry, and all five catalogues were
+re-fetched for `en`.
+
+The capture missed it because step 5 navigated to `/#/browse` before asserting French — a `goTo`
+added to get away from a drawer an earlier step had opened, which happens to be exactly the
+navigation that avoids the bug. **The evidence was true and incomplete.** Fixed by re-asserting
+our Layer 0 language into adf-core's preference on every boot, with a regression step that drives
+the adf-hx surfaces explicitly.
+
+A side effect worth knowing: upstream's own catalogues now resolve too. The document tree root
+renders `Accueil` rather than `Home`, because adf-hx ships `fr` and was previously being fetched
+as `en`.
+
+**Missing Angular locale data — and the first bug was hiding it.** Once the locale actually
+applied, `DatePipe` was handed `fr` for the first time and threw `NG0701: Missing locale data`,
+thirty-six times on one pass. Translating strings and formatting dates are separate mechanisms;
+only `en-US` locale data is built into Angular. Fixed by registering `fr` and `de`, gated by
+`checkLocaleDataRegistered` so a catalogue cannot be added without its data — the symptom
+otherwise appears as a pipe error on an unrelated page.
+
+Then the same run showed eleven more for the deliberately-unshipped `xx` locale: strings degraded
+to English correctly, dates threw. A customer mistyping `defaultLanguage` would get readable text
+and a broken date in every list. Fixed by only handing adf-core a locale we have data for, so the
+string language and the formatting locale are allowed to differ.
+
+**The order matters and is the lesson: the i18n bug was hiding the l10n bug.** A half-applied
+locale looks like a working one right up until it works.
+
+### Defects found by the controls, not by review
+
+Worth recording, because it is the argument for writing controls at all:
+
+1. An unguarded `JSON.parse` in a new guardrail **crashed the whole script**, discarding every
+   other guardrail's diagnostics. A trailing comma in `en.json` produced a stack trace and no
+   guardrail report.
+2. A parity branch reported "no en.json" for a file that was present but unparseable — a wrong
+   message, which is worse than none.
+3. A `.first()` selector read an adf-hx input instead of the header search box, which looked
+   exactly like "the locale did not apply". Instrumentation recording the `defaultLanguage` the
+   interception actually served is what separated the two explanations.
+4. **CI caught one that every local run missed.** The selftest passed `--base` but not `--head`;
+   CI sets `NX_HEAD`, so each fixture repo tried to diff against the real repo's SHA and all 33
+   controls failed for one unrelated reason. Locally `NX_HEAD` is unset and everything was green.
+
+---
+
+## Standards position
+
+| Question                       | Answer                                                                                                                                                                                                                                                                                                           |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which translation tool?        | **Crowdin.** INFO-144's Weblate mandate is scoped to BitBucket; we are on GitHub, and Weblate is being retired on the Hyland Experience side.                                                                                                                                                                    |
+| Which file layout?             | The **current Hyland/CIC** one — `i18n/en.json` + `i18n/<locale>.json`, which our repo already matched. **Not** Web UI's `messages.json`; that is a Polymer-era convention needing a locale-rename table we do not need.                                                                                         |
+| Framework?                     | `ngx-translate` v17, already the portfolio norm.                                                                                                                                                                                                                                                                 |
+| Fully compliant with INFO-144? | **No — one documented deviation.** INFO-144 requires a changed source string to be flagged for translator review. The HXP standard's `update_option: update_without_changes` does not do that, mitigating with a manual Crowdin filter plus the convention _never change the meaning of a key — change the key_. |
+| Compliant on string context?   | Yes, and gated. (This row said "for the 60 keys that exist", which was the NXSAT-227 count.)                                                                                                                                                                                                                     |
+| Compliant on concatenation?    | Ours, yes. **Upstream's tree is not** — `(translate) + node.name` cannot be reordered by a translator. Finding 1.3.                                                                                                                                                                                              |
+
+---
+
+## Next steps
+
+### Immediate — what [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198) is actually waiting on
+
+**One thing: a human approval.** CI is green, every review thread is resolved, and nothing here
+needs a repo admin.
+
+`copilot-pull-request-reviewer` **never submits `APPROVED`** — it has not once in this repository,
+across every pull request it has reviewed — so `reviewDecision` stays `REVIEW_REQUIRED` however many
+rounds run. The query to verify that, and the exit condition it implies, are in
+`AGENTS/09-pr-feedback.md`. Branch protection needs a human, and that is the only step left.
+
+Both items this section used to list are **done**, and leaving them here contradicted the 23/23 gate
+row twelve lines above:
+
+- ~~Approve the `pull_request` workflow runs so CodeQL can analyse `refs/pull/198/merge`.~~ The runs
+  have fired and `code-scanning` is green. No admin action outstanding.
+- **Whether RTL is in scope does not block this PR**, which is why it has moved out of this section
+  rather than being ticked off. Decision **Q3 in the plan is still formally open**, with a
+  recommendation of _no_ for both Beta and the GA extraction — so calling it "answered" would be
+  wrong in the other direction. Nothing in #198 implements or depends on RTL; it is tracked as
+  [DS-2277](https://hyland.atlassian.net/browse/DS-2277) and listed under separate stories below.
+- ~~Answer who owns the daily Crowdin translation PR.~~ Retired on 20 September 2026 — the premise
+  that an unowned one rots is contradicted by the measurement in D8b of
+  `docs/i18n-localization-plan.md`.
+
+### Slice S6 — the Crowdin pipeline is BUILT and dormant; what is left is external
+
+This section used to tell the reader to write the pipeline. It is written, in this pull request,
+and the distinction that matters now is between what the repository contains and what only a Crowdin
+admin can do.
+
+**In the repository, gated off.** `crowdin-conf.yml`, `.github/workflows/crowdin-push.yaml` and
+`crowdin-pull.yaml`, and `tools/i18n/crowdin-push-context.mjs` for the translator context the JSON
+source format cannot carry. Both workflows are gated on `vars.CROWDIN_SYNC_ENABLED`, so merging
+this changes no behaviour: nothing runs until that variable is set. `checkCrowdinConfig` and
+`checkTranslatorContextPush` hold the shape.
+
+**Not in the repository, and nobody here can do it.**
+
+3. **The Crowdin project itself**, requested as
+   [INTERN-1346](https://hyland.atlassian.net/browse/INTERN-1346). Created manually by global
+   admins; the project name must match the repository, `agentic-ui-poc`.
+4. **Set the secrets and then the variable**, in that order —
+   `CROWDIN_PROJECT_ID`, `CROWDIN_PERSONAL_TOKEN`, `CROWDIN_BOT_GITHUB_TOKEN`, and the bot GPG
+   pair. `crowdin-pull.yaml` refuses to run on a half-configured activation rather than quietly
+   committing unsigned or opening a pull request with no CI, so a missing secret is a red job with
+   a message naming it, not a silent downgrade.
+5. **The first sync has never run.** `tools/i18n/crowdin-push-context.mjs` has never made a real
+   HTTP call, and its pure parts being covered is not the same as having worked. Treat the first
+   push as a thing to watch, and check what reached Crowdin against the repository before letting
+   the daily pull open anything.
+
+One trap is already handled and must stay handled: the standard's `/**/**/i18n/en.json` glob, with
+`base_path: "."`, sweeps `node_modules` and its 48 upstream catalogues — which would push
+Alfresco's and Satori's strings into our project and bill the translation crew for work another team
+has already paid for. `crowdin-conf.yml` is scoped to `apps/` and `libs/`, and `checkCrowdinConfig`
+fails any source that is not.
+
+### NXSAT-284 — GA extraction: 1350 template strings, 257 descriptor strings, plus an unknown number passed imperatively
+
+> **Delivered in [#217](https://github.com/nuxeo/agentic-ui-poc/pull/217).** What follows is the
+> PLAN as it was written, kept because the decisions and the corrected assumptions in it are the
+> record of why the work took the shape it did. For what actually shipped, read the measured
+> table at the top of this page — not the counts here, which are the estimate this planning
+> produced.
+
+6. **~~B0 first, and it blocks everything after it.~~ Corrected 19 Sep 2026 — it is not a
+   blocker.** The claim was that translating the nine literal English `aria-label` values that
+   `phase-6-a11y.mjs` and `phase-1-tag-styles.mjs` select on would turn both harnesses red, so
+   the selectors had to move to `data-testid` first.
+
+   That is wrong, and a live counter-example was already in the repository.
+   `browse.details.toggle` has been bound through the pipe in `browse-adf-hx-poc.html` since
+   before this work, and `phase-1-tag-styles.mjs` selects it as
+   `button[aria-label="Toggle details panel"]`. That harness **passes 21/21**. Angular resolves
+   the pipe and sets the attribute to the resolved string, so in English the DOM is byte-identical
+   to the literal it replaced, and a literal selector still matches.
+
+   The real constraint is narrower and belongs to the extraction rather than to a prerequisite
+   slice: **the English catalogue value must be byte-identical to the literal it replaces.**
+   Change the wording while extracting and the selector breaks — not because it was translated,
+   but because the string changed.
+
+   Migrating the selectors to `data-testid` is still worth doing, because the harnesses remain
+   locale-coupled and would break if ever run in `fr`. It is cleanup with a real payoff, not a
+   gate. **Per-project extraction can start immediately.**
+
+7. Then one PR per project, largest first: document-detail (236, and the `.ts` discovery pass),
+   administration (191), browse (184), `shared/ui` (116, shared so run the blast-radius check),
+   then the smaller features.
+8. **B6:** per-library catalogues, so `libs/platform` ships its own strings — it is a publishable
+   package and strings in `apps/nuxeo-ui/public/i18n/` do not travel with it. This needs **no
+   loader change**: `AppTranslateLoader` already merges N folders and exposes
+   `registerProvider`. Then flip `checkNoHardcodedUiText` to repo-wide.
+
+### Known-incomplete, and easy to read as done
+
+- **Library catalogues are not packaged, so a package consumer sees raw keys.** `libs/shared/ui` and
+  `libs/shared/extensions` reference **120 distinct keys** (`shared-ui.*`, `extensions.*`) that exist
+  only in `apps/nuxeo-ui/public/i18n/en.json`. Neither library ships an `i18n/` directory and
+  `libs/platform/ng-package.json` packages no catalogue, so someone installing
+  `@nuxeo-satori/platform/ui` gets templates asking for keys nothing supplies.
+
+  Adding `@ngx-translate/core` as a peer dependency made the pipe resolvable; it did not make the
+  STRINGS available, and those are two different problems that look like one.
+
+  Closing it needs per-library catalogues, a loader that merges them with the host's, a documented
+  loader path, and a gate asserting every key a library references is in a catalogue that library
+  ships. That is an architectural change and belongs in its own pull request — this page already
+  required per-library catalogues, so the requirement is not new, only unmet.
+
+- **Dialog text — 48 strings, now keyed and gated.** `title`, `message` and `confirmLabel` on
+  `ConfirmDialogData` and the `data:` of a `MatDialog.open(...)` were English literals across 13
+  production files, concentrated in `trash.component.ts` (9), `document-detail.ts` (7) and
+  `trash-confirm.utils.ts` (7).
+
+  **Why it needed a new gate rather than a wider old one.** `checkNoHardcodedUiText` is repo-wide
+  but reads templates, and this text is built in TypeScript.
+  `checkNoHardcodedDescriptorText` reads TypeScript but excludes `title` deliberately — that field
+  names a Nuxeo document property as often as UI chrome, and `browse.service.ts` builds a synthetic
+  document with `title: 'Root'` that must not be flagged. Widening it was tried here and a selftest
+  control refused it, correctly.
+
+  `checkNoHardcodedDialogText` is anchored on SCOPE instead: inside a dialog's data object `title`
+  and `message` are unambiguously prose, so it can be strict about fields the descriptor check must
+  leave alone. It is repo-wide, because all 48 predate any diff and a diff-scoped version would have
+  certified them by never looking. Six controls, including the `title: 'Root'` false positive.
+
+  Two of the 48 were worse than untranslated: `trash-confirm.utils.ts` built its messages by
+  interpolation — `Move "${title}" to trash?` and `Delete ${count} selected document(s)?`. The `(s)`
+  suffix assumes a language pluralises by appending one letter. Both are parameterised keys now, and
+  the singular case is its own key rather than a suffix.
+
+### Separate stories, not part of either ticket
+
+9. **A language picker.** `availableLanguages` is validated, unit-tested and read by nothing.
+   adf-core ships `LanguagePickerComponent`.
+10. **`LOCALE_ID`.** Locale _data_ is now registered for `fr` and `de`, and adf-core's
+    formatting locale follows the configuration — so dates format per locale instead of
+    throwing. What is still missing is providing `LOCALE_ID` itself from configuration, so
+    anything relying on Angular's default locale rather than adf-core's explicit one is still
+    `en-US`. Narrower than it was, not closed.
+11. **RTL** — DS-2277. Satori needs 4–6 weeks of its own work before an app can start, and the
+    target should be the "good enough" level from its spectrum, agreed explicitly.
+12. **Pluralisation — the deferral has expired, and the convention is now two keys.** This entry
+    said "no ICU usage anywhere; defer until a real plural string appears". Real plural strings
+    appeared during NXSAT-284: **21 complete singular/plural pairs** exist, measured with
+
+    ```bash
+    node -e "const f=(o,p='')=>Object.entries(o).flatMap(([k,v])=>\
+      typeof v==='object'?f(v,p?p+'.'+k:k):[[p?p+'.'+k:k]]); \
+      const k=f(require('./apps/nuxeo-ui/public/i18n/en.json')).map(([x])=>x); \
+      const one=new Set(k.filter(x=>x.endsWith('-one')).map(x=>x.slice(0,-4))); \
+      console.log([...one].filter(x=>k.includes(x+'-many')).length)"
+    ```
+
+    They are **not** ICU. Each is a `*-one` / `*-many` pair chosen by a branch at the call site:
+
+    ```ts
+    translate.instant(count === 1 ? 'common.count.result-one' : 'common.count.result-many', {
+      count,
+    });
+    ```
+
+    That was a deliberate choice over adding `ngx-translate-messageformat-compiler`, and the reason
+    to know it: an `(s)` suffix assumes a language pluralises by appending one letter, which most do
+    not, so the suffix had to go either way — and two keys remove it without a new dependency.
+
+    **The limit is real and worth stating.** Two forms cover English, French and German. Polish has
+    three and Arabic six, so a locale with more than two plural forms cannot be expressed this way
+    and will need the messageformat compiler. `checkCatalogueValuesAreRenderable` rejects a new
+    `(s)`, and every pair is currently complete — no `-one` without its `-many` — but nothing yet
+    enforces that pairing, which is the gap to close when a third form is needed.
+
+    `hxpRelativeTime` is the exception that already handles all of this: it uses
+    `Intl.RelativeTimeFormat`, which ships every locale's plural rules in the browser, so there is
+    nothing to translate and nothing to mistranslate.
+
+13. `GET /nuxeo/api/v1/group/Administrator` **404s on every adf-hx drawer open** because
+    `Administrator` is a user, not a group. Unrelated to i18n, currently suppressed in the
+    evidence capture with a comment saying so, and it deserves its own ticket.
+14. The Nuxeo platform's [Crowdin Integration page](https://hyland.atlassian.net/wiki/spaces/NuxEng/pages/3148546309)
+    **publishes a live Crowdin API token in plaintext**, against the HXP standard's explicit MUST.
+    Belongs to `nuxeo-lts`, so hand it off — but rotate it before we add a second token.
+
+---
+
+## If you only remember four things
+
+1. **The machinery is done and has been since Phase 1.** Everything that looks unfinished is
+   content, and content was descoped from Beta on 21 August.
+2. **That GA-sized work has been done.** This point used to read "4 of 92 templates use the
+   translate pipe, 1350 template strings and 257 descriptor strings remain" — the measurement
+   taken before NXSAT-284 ran. Measured 2026-09-21: **86 of 103** templates use the pipe, **1653**
+   catalogue keys with **1654** context entries, and **191** descriptors carry a `labelKey`.
+
+   Do not quote these from here. Two of the three numbers in the table above were stale when this
+   correction was written, because six commits had added keys since anyone re-measured, and my
+   first pass at this paragraph copied them from the pull request description rather than counting.
+   A prose summary of a moving count goes stale silently and is believed anyway — the commands are
+   in the row below the table.
+
+3. **The French screenshot proves the mechanism, not a localised product.** Say that when you
+   show it, before someone else points at the English nav — and note the nav is English for a
+   structural reason, not because it was skipped: those labels are descriptors, not templates.
+4. **Never hand-edit a non-English catalogue.** Crowdin owns them and overwrites edits on the
+   next pull. And never change the meaning of an existing key — change the key, because
+   `update_without_changes` will otherwise keep the old translation and it will be wrong in every
+   locale.

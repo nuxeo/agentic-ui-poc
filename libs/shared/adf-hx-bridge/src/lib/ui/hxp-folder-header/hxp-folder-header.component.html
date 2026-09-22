@@ -20,18 +20,18 @@
         <button
           type="button"
           class="hxp-header-btn hxp-header-btn--primary"
-          title="Create folder, upload files, or import CSV"
+          [title]="'hxp.hxp-folder-header.create-folder-upload-files-or-import' | translate"
           (click)="createImport.emit()"
         >
           <hxp-icon name="add" size="sm" [decorative]="true" />
-          Create / Import
+          {{ 'hxp.hxp-folder-header.create-import' | translate }}
         </button>
       }
       <button
         type="button"
         class="hxp-header-btn hxp-header-btn--icon"
-        title="Upload with Nuxeo Drive"
-        aria-label="Upload with Nuxeo Drive"
+        [title]="'hxp.hxp-folder-header.upload-with-nuxeo-drive' | translate"
+        [attr.aria-label]="'hxp.hxp-folder-header.upload-with-nuxeo-drive' | translate"
         (click)="drive.emit()"
       >
         <hxp-icon name="cloud-upload" size="md" [decorative]="true" />
@@ -40,8 +40,8 @@
         <button
           type="button"
           class="hxp-header-btn hxp-header-btn--icon"
-          title="Edit"
-          aria-label="Edit"
+          [title]="'hxp.hxp-folder-header.edit' | translate"
+          [attr.aria-label]="'hxp.hxp-folder-header.edit' | translate"
           (click)="edit.emit()"
         >
           <hxp-icon name="edit" size="md" [decorative]="true" />
@@ -51,8 +51,8 @@
         <button
           type="button"
           class="hxp-header-btn hxp-header-btn--icon"
-          title="Delete"
-          aria-label="Delete"
+          [title]="'hxp.hxp-folder-header.delete' | translate"
+          [attr.aria-label]="'hxp.hxp-folder-header.delete' | translate"
           (click)="deleteDoc.emit()"
         >
           <hxp-icon name="delete" size="md" [decorative]="true" />
@@ -61,8 +61,8 @@
       <button
         type="button"
         class="hxp-header-btn hxp-header-btn--icon"
-        title="Download All"
-        aria-label="Download All"
+        [title]="'hxp.hxp-folder-header.download-all' | translate"
+        [attr.aria-label]="'hxp.hxp-folder-header.download-all' | translate"
         (click)="downloadAll.emit()"
       >
         <hxp-icon name="download" size="md" [decorative]="true" />
@@ -71,8 +71,8 @@
         <button
           type="button"
           class="hxp-header-btn hxp-header-btn--icon"
-          title="More actions"
-          aria-label="More actions"
+          [title]="'hxp.hxp-folder-header.more-actions' | translate"
+          [attr.aria-label]="'hxp.hxp-folder-header.more-actions' | translate"
           aria-haspopup="true"
           [attr.aria-expanded]="moreMenuOpen()"
           (click)="toggleMoreMenu($event)"
@@ -83,7 +83,7 @@
           <button
             type="button"
             class="hxp-header-more__backdrop"
-            aria-label="Close menu"
+            [attr.aria-label]="'hxp.hxp-folder-header.close-menu' | translate"
             (click)="closeMoreMenu()"
           ></button>
           <div class="hxp-header-more__menu" role="menu">
@@ -94,7 +94,7 @@
               (click)="share.emit(); closeMoreMenu()"
             >
               <hxp-icon name="share" size="sm" [decorative]="true" />
-              Share
+              {{ 'hxp.hxp-folder-header.share' | translate }}
             </button>
             <button
               type="button"
@@ -107,7 +107,11 @@
                 size="sm"
                 [decorative]="true"
               />
-              {{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}
+              {{
+                isSubscribed()
+                  ? ('adf-hx-bridge.unsubscribe' | translate)
+                  : ('adf-hx-bridge.notify-me' | translate)
+              }}
             </button>
             <button
               type="button"
@@ -116,7 +120,7 @@
               (click)="exportDoc.emit(); closeMoreMenu()"
             >
               <hxp-icon name="export" size="sm" [decorative]="true" />
-              Export
+              {{ 'hxp.hxp-folder-header.export' | translate }}
             </button>
           </div>
         }

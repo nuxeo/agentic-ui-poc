@@ -22,7 +22,7 @@
         [attr.aria-label]="clipboardNavAriaLabel(item)"
       >
         <sat-platform-nav-avatar [item]="item" />
-        {{ item.label }}
+        {{ navText(item) }}
       </sat-platform-nav-list-item>
     }
 
@@ -59,7 +59,7 @@
           <input
             type="text"
             class="header-search-input"
-            placeholder="Search documents, users or groups"
+            [placeholder]="'shell.search.placeholder' | translate"
             [value]="globalSearchTerm()"
             (focus)="onGlobalSearchFocus()"
             (input)="onGlobalSearchInput($any($event.target).value)"
@@ -69,11 +69,11 @@
         @if (globalSearchOpen()) {
           <div class="header-search-dropdown">
             @if (globalSearchLoading()) {
-              <div class="header-search-state">Searching…</div>
+              <div class="header-search-state">{{ 'shell.search.searching' | translate }}</div>
             } @else if (globalSearchError()) {
               <div class="header-search-state">{{ globalSearchError() }}</div>
             } @else if (globalSearchResults().length === 0) {
-              <div class="header-search-state">No results found</div>
+              <div class="header-search-state">{{ 'shell.search.no-results' | translate }}</div>
             } @else {
               @for (result of globalSearchResults(); track result.kind + ':' + result.id) {
                 <button
@@ -140,7 +140,7 @@
           <button
             type="button"
             mat-icon-button
-            aria-label="AI Assistant"
+            [attr.aria-label]="'shell.ai.open' | translate"
             (click)="toggleAiChat()"
             class="ai-chat-toggle"
             [class.active]="aiChatOpen()"
@@ -151,7 +151,7 @@
         <button
           type="button"
           mat-icon-button
-          aria-label="Settings menu"
+          [attr.aria-label]="'shell.settings.menu' | translate"
           [matMenuTriggerFor]="headerSettingsMenu"
         >
           <mat-icon>settings</mat-icon>
@@ -163,22 +163,30 @@
       @if (themingFlags.themingEnabled()) {
         <a mat-menu-item routerLink="/settings/themes">
           <mat-icon>palette</mat-icon>
-          Themes
+          {{ 'shell.menu.themes' | translate }}
         </a>
       }
       <button mat-menu-item type="button" (click)="featureFlags.toggle()">
         <mat-icon [style.color]="featureFlags.aiEnabled() ? '#4caf50' : '#9e9e9e'">{{
           featureFlags.aiEnabled() ? 'toggle_on' : 'toggle_off'
         }}</mat-icon>
-        AI Features {{ featureFlags.aiEnabled() ? 'On' : 'Off' }}
+        {{
+          'shell.menu.ai-features'
+            | translate
+              : {
+                  state:
+                    (featureFlags.aiEnabled() ? 'shell.menu.state-on' : 'shell.menu.state-off')
+                    | translate,
+                }
+        }}
       </button>
       <button mat-menu-item type="button">
         <mat-icon>help_outline</mat-icon>
-        Help
+        {{ 'shell.menu.help' | translate }}
       </button>
       <button mat-menu-item type="button">
         <mat-icon>info_outline</mat-icon>
-        About
+        {{ 'shell.menu.about' | translate }}
       </button>
     </mat-menu>
 
@@ -208,16 +216,20 @@
         <div class="ai-chat-panel">
           <div class="ai-chat-header">
             <mat-icon class="ai-chat-header-icon">auto_awesome</mat-icon>
-            <span class="ai-chat-header-title">AI Assistant</span>
+            <span class="ai-chat-header-title">{{ 'shell.ai.title' | translate }}</span>
             <button
               mat-icon-button
               class="ai-chat-clear"
               (click)="clearAiChat()"
-              aria-label="Clear chat"
+              [attr.aria-label]="'shell.ai.clear' | translate"
             >
               <mat-icon>delete_sweep</mat-icon>
             </button>
-            <button mat-icon-button (click)="aiChatOpen.set(false)" aria-label="Close chat">
+            <button
+              mat-icon-button
+              (click)="aiChatOpen.set(false)"
+              [attr.aria-label]="'shell.ai.close' | translate"
+            >
               <mat-icon>close</mat-icon>
             </button>
           </div>
@@ -226,31 +238,26 @@
             @if (!aiChat.hasMessages()) {
               <div class="ai-chat-welcome">
                 <mat-icon class="ai-chat-welcome-icon">auto_awesome</mat-icon>
-                <h3>Nuxeo AI Assistant</h3>
-                <p>
-                  Ask me about your documents, search the repository, or get insights about
-                  workflows and tasks.
-                </p>
+                <h3>{{ 'shell.ai.heading' | translate }}</h3>
+                <p>{{ 'shell.ai.empty-state' | translate }}</p>
                 <div class="ai-chat-suggestions">
                   <button
                     class="ai-chat-suggestion"
-                    (click)="
-                      aiChatInput.set('What documents were modified today?'); sendAiMessage()
-                    "
+                    (click)="sendAiSuggestion('shell.ai.suggestion.modified-today')"
                   >
-                    What documents were modified today?
+                    {{ 'shell.ai.suggestion.modified-today' | translate }}
                   </button>
                   <button
                     class="ai-chat-suggestion"
-                    (click)="aiChatInput.set('Summarize my pending tasks'); sendAiMessage()"
+                    (click)="sendAiSuggestion('shell.ai.suggestion.summarize-tasks')"
                   >
-                    Summarize my pending tasks
+                    {{ 'shell.ai.suggestion.summarize-tasks' | translate }}
                   </button>
                   <button
                     class="ai-chat-suggestion"
-                    (click)="aiChatInput.set('Show me recent uploads'); sendAiMessage()"
+                    (click)="sendAiSuggestion('shell.ai.suggestion.recent-uploads')"
                   >
-                    Show me recent uploads
+                    {{ 'shell.ai.suggestion.recent-uploads' | translate }}
                   </button>
                 </div>
               </div>
@@ -276,7 +283,7 @@
                     <div class="ai-msg-sources">
                       <div class="ai-sources-label">
                         <mat-icon>link</mat-icon>
-                        Sources
+                        {{ 'shell.ai.sources' | translate }}
                       </div>
                       @for (source of msg.sources!; track source.uid) {
                         <button
@@ -285,6 +292,13 @@
                           matTooltipPosition="above"
                           (click)="openAiSource(source.uid, source.type, source.path)"
                         >
+                          <!--
+                            `'File'` is a Nuxeo SCHEMA TYPE, not display text: `docTypeIcon` keys
+                            its map on `File`, `Folder`, `Workspace`. The extraction codemod keyed
+                            this fallback, so in French it became `Fichier`, the lookup missed and
+                            every untyped AI source fell back to the generic icon. Domain values
+                            must not be translated.
+                          -->
                           <mat-icon class="ai-source-card-icon">{{
                             docTypeIcon(source.type ?? 'File')
                           }}</mat-icon>
@@ -322,7 +336,7 @@
             <input
               class="ai-chat-input"
               type="text"
-              placeholder="Ask anything about your documents..."
+              [placeholder]="'shell.ai.input-placeholder' | translate"
               [ngModel]="aiChatInput()"
               (ngModelChange)="aiChatInput.set($event)"
               (keydown.enter)="sendAiMessage()"
@@ -331,7 +345,7 @@
             <button
               mat-icon-button
               class="ai-chat-send"
-              aria-label="Send message"
+              [attr.aria-label]="'shell.ai.send' | translate"
               (click)="sendAiMessage()"
               [disabled]="!aiChatInput().trim() || aiChat.loading()"
             >

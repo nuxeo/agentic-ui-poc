@@ -15,7 +15,15 @@ export const READ_WRITE_DOCUMENT = 'ReadWrite';
 export const ADD_CHILDREN = 'AddChildren';
 export const REMOVE_DOCUMENT = 'Remove';
 
-export const PERMISSION_DENIED_MESSAGE = 'You do not have permission to perform this action';
+/**
+ * The catalogue KEY for the permission-denied message, not the message.
+ *
+ * This was the English sentence, exported and used directly at nine call sites, so every one of them
+ * rendered English whatever the locale — and no gate could see it, because a bare constant is not a
+ * sink. Exporting the key instead means a caller has to resolve it, which is a compile-time nudge
+ * toward the resolver rather than a silent literal.
+ */
+export const PERMISSION_DENIED_KEY = 'common.permission-denied';
 
 export function hasDocumentPermission(
   doc: NuxeoDocument | null | undefined,

@@ -5,10 +5,15 @@
       <div class="ai-banner-header">
         <div class="ai-banner-title-row">
           <mat-icon class="ai-banner-icon">auto_awesome</mat-icon>
-          <span class="ai-banner-title">AI Insights</span>
+          <span class="ai-banner-title">{{ 'app.dashboard-page.ai-insights' | translate }}</span>
         </div>
         @if (!aiInsightsLoading() && aiInsights().length > 0) {
-          <span class="ai-banner-count">{{ aiInsights().length }} actionable items</span>
+          <span class="ai-banner-count">{{
+            (aiInsights().length === 1
+              ? 'common.count.actionable-item-one'
+              : 'common.count.actionable-item-many'
+            ) | translate: { count: aiInsights().length }
+          }}</span>
         }
       </div>
 
@@ -29,7 +34,7 @@
       } @else if (aiInsights().length === 0) {
         <div class="ai-banner-empty">
           <mat-icon>check_circle</mat-icon>
-          All clear — no insights right now.
+          {{ 'app.dashboard-page.all-clear-no-insights-right-now' | translate }}
         </div>
       } @else {
         <div class="ai-kpi-row">
@@ -51,7 +56,7 @@
               </div>
               <p class="ai-kpi-text">{{ insight.text }}</p>
               <span class="ai-kpi-action">
-                View details
+                {{ 'app.dashboard-page.view-details' | translate }}
                 <mat-icon class="ai-kpi-arrow">arrow_forward</mat-icon>
               </span>
             </button>
@@ -63,25 +68,25 @@
 
   <lib-widget-grid [columns]="2">
     <lib-widget-container
-      [title]="'Recently Edited'"
+      [title]="'dashboard.recently-edited' | translate"
       icon="edit"
       iconColor="var(--mat-sys-primary)"
     >
       @if (recentlyEditedLoading()) {
         <div class="widget-loading">
-          <mat-spinner diameter="28" aria-label="Loading" />
+          <mat-spinner diameter="28" [attr.aria-label]="'app.dashboard-page.loading' | translate" />
         </div>
       } @else if (recentlyEditedError()) {
         <div class="widget-error">{{ recentlyEditedError() }}</div>
       } @else if (recentlyEdited().length === 0) {
-        <div class="widget-empty">No recent edits</div>
+        <div class="widget-empty">{{ 'app.dashboard-page.no-recent-edits' | translate }}</div>
       } @else {
         <table class="widget-table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Modified</th>
-              <th>Last Contributor</th>
+              <th>{{ 'app.dashboard-page.title' | translate }}</th>
+              <th>{{ 'app.dashboard-page.modified' | translate }}</th>
+              <th>{{ 'app.dashboard-page.last-contributor' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -117,15 +122,19 @@
       }
     </lib-widget-container>
 
-    <lib-widget-container [title]="'Tasks'" icon="assignment" iconColor="var(--mat-sys-error)">
+    <lib-widget-container
+      [title]="'dashboard.tasks' | translate"
+      icon="assignment"
+      iconColor="var(--mat-sys-error)"
+    >
       @if (tasksLoading()) {
         <div class="widget-loading">
-          <mat-spinner diameter="28" aria-label="Loading" />
+          <mat-spinner diameter="28" [attr.aria-label]="'app.dashboard-page.loading' | translate" />
         </div>
       } @else if (tasksError()) {
         <div class="widget-error">{{ tasksError() }}</div>
       } @else if (tasks().length === 0) {
-        <div class="widget-empty">No pending tasks</div>
+        <div class="widget-empty">{{ 'app.dashboard-page.no-pending-tasks' | translate }}</div>
       } @else {
         <div class="task-list">
           @for (task of tasks(); track task.id) {
@@ -135,7 +144,8 @@
                 <div class="task-doc-title">{{ taskDocTitle(task) }}</div>
               }
               <div class="task-due" [class.task-overdue]="isOverdue(task)">
-                Due <span class="task-due-value">{{ relativeTime(task.dueDate) }}</span>
+                {{ 'app.dashboard-page.due' | translate }}
+                <span class="task-due-value">{{ relativeTime(task.dueDate) }}</span>
               </div>
               <div class="task-workflow">{{ taskWorkflow(task) }}</div>
             </div>
@@ -145,25 +155,27 @@
     </lib-widget-container>
 
     <lib-widget-container
-      [title]="'Recently Viewed'"
+      [title]="'dashboard.recently-viewed' | translate"
       icon="visibility"
       iconColor="var(--mat-sys-secondary)"
     >
       @if (recentlyViewedLoading()) {
         <div class="widget-loading">
-          <mat-spinner diameter="28" aria-label="Loading" />
+          <mat-spinner diameter="28" [attr.aria-label]="'app.dashboard-page.loading' | translate" />
         </div>
       } @else if (recentlyViewedError()) {
         <div class="widget-error">{{ recentlyViewedError() }}</div>
       } @else if (recentlyViewed().length === 0) {
-        <div class="widget-empty">No recently viewed items</div>
+        <div class="widget-empty">
+          {{ 'app.dashboard-page.no-recently-viewed-items' | translate }}
+        </div>
       } @else {
         <table class="widget-table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Type</th>
-              <th>Last Viewed</th>
+              <th>{{ 'app.dashboard-page.title' | translate }}</th>
+              <th>{{ 'app.dashboard-page.type' | translate }}</th>
+              <th>{{ 'app.dashboard-page.last-viewed' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -191,25 +203,27 @@
     </lib-widget-container>
 
     <lib-widget-container
-      [title]="'Favorite Items'"
+      [title]="'dashboard.favorite-items' | translate"
       icon="star"
       iconColor="var(--mat-sys-tertiary)"
     >
       @if (favoritesLoading()) {
         <div class="widget-loading">
-          <mat-spinner diameter="28" aria-label="Loading" />
+          <mat-spinner diameter="28" [attr.aria-label]="'app.dashboard-page.loading' | translate" />
         </div>
       } @else if (favoritesError()) {
         <div class="widget-error">{{ favoritesError() }}</div>
       } @else if (favorites().length === 0) {
-        <div class="widget-empty">You haven't starred documents yet.</div>
+        <div class="widget-empty">
+          {{ 'app.dashboard-page.you-havent-starred-documents-yet' | translate }}
+        </div>
       } @else {
         <table class="widget-table">
           <thead>
             <tr>
-              <th>Title</th>
-              <th>Modified</th>
-              <th>Last Contributor</th>
+              <th>{{ 'app.dashboard-page.title' | translate }}</th>
+              <th>{{ 'app.dashboard-page.modified' | translate }}</th>
+              <th>{{ 'app.dashboard-page.last-contributor' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -252,10 +266,10 @@
     type="button"
     class="dashboard-create-fab"
     (click)="openCreateImport()"
-    matTooltip="Create or import"
+    [matTooltip]="'app.dashboard-page.create-or-import' | translate"
     matTooltipPosition="above"
     matTooltipShowDelay="300"
-    aria-label="Create or import"
+    [attr.aria-label]="'app.dashboard-page.create-or-import' | translate"
   >
     <mat-icon>add</mat-icon>
   </button>

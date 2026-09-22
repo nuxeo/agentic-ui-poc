@@ -22,6 +22,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { BrowseComponent } from './browse';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 // jsdom does not implement it; the Satori breadcrumbs and the Material menu both
 // observe their host element on construction.
@@ -155,7 +156,7 @@ describe('BrowseComponent — rendered document list', () => {
     manifest.set({});
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent, TranslateModule.forRoot()],
+      imports: [BrowseComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -236,7 +237,7 @@ describe('BrowseComponent — rendered document list', () => {
 
     expect(component.loading()).toBe(false);
     expect(rowTitles()).toEqual(['Budget.xlsx', 'Notes.txt']);
-    expect(query('.result-count')?.textContent).toContain('2 result(s)');
+    expect(query('.result-count')?.textContent).toContain('2 results');
     expect(query('.browse-empty')).toBeNull();
   });
 
@@ -432,7 +433,7 @@ describe('BrowseComponent — rendered document list', () => {
     await settle();
 
     expect(rowTitles()).toEqual(['Q1 Report', 'Q2 Report']);
-    expect(query('.result-count')?.textContent).toContain('2 result(s)');
+    expect(query('.result-count')?.textContent).toContain('2 results');
   });
 
   it('adds a column to the rendered header when the user switches it on in the picker', async () => {

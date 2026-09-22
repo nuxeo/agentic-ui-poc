@@ -2,13 +2,14 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
 import type { AuditEntry, DirectoryEntry } from '@nuxeo-satori/platform/nuxeo-client';
 import { HxpSpinnerComponent } from '../hxp-spinner/hxp-spinner.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'hxp-browse-history',
   standalone: true,
   templateUrl: './hxp-browse-history.component.html',
   styleUrl: './hxp-browse-history.component.scss',
-  imports: [DatePipe, HxpSpinnerComponent],
+  imports: [TranslatePipe, DatePipe, HxpSpinnerComponent],
 })
 export class HxpBrowseHistoryComponent {
   readonly loading = input(false);

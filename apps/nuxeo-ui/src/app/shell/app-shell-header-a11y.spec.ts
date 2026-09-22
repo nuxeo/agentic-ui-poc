@@ -60,7 +60,7 @@ function canTakeFocus(element: Element): boolean {
  * boundary and `aria-hidden` on the host does hide the shadow content beneath it.
  */
 function ariaHiddenAncestorOf(el: Element): Element | null {
-  for (let n: Element | null = el; n; ) {
+  for (let n: Element | null = el; n;) {
     if (n.getAttribute('aria-hidden') === 'true') return n;
     const root = n.getRootNode();
     n = n.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
@@ -263,7 +263,9 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
       .toBeGreaterThan(0);
 
     expect(focusableInsideHiddenSubtrees(header).map((el) => el.tagName.toLowerCase()))
-      .withContext('a keyboard user must not be able to land inside a subtree screen readers cannot see')
+      .withContext(
+        'a keyboard user must not be able to land inside a subtree screen readers cannot see',
+      )
       .toEqual([]);
   });
 
@@ -279,7 +281,8 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
   it('control: the graphic census crosses an open shadow boundary, in both directions', () => {
     const host = document.createElement('div');
     header.append(host);
-    host.attachShadow({ mode: 'open' }).innerHTML = '<svg viewBox="0 0 1 1"><path d="M0 0" /></svg>';
+    host.attachShadow({ mode: 'open' }).innerHTML =
+      '<svg viewBox="0 0 1 1"><path d="M0 0" /></svg>';
 
     // Seen: `querySelectorAll('svg')` on the header would return nothing for this graphic.
     expect(exposedUnnamedGraphics(header).length)
@@ -302,9 +305,7 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
     // above 675px. `focus()` does nothing to an unrendered element, so a probe planted there
     // would report "not focusable" for a reason that has nothing to do with the census.
     const hidden = header.querySelector('sat-word-mark-logo[aria-hidden="true"]');
-    expect(hidden)
-      .withContext('the control plants into the subtree this fix hides')
-      .toBeTruthy();
+    expect(hidden).withContext('the control plants into the subtree this fix hides').toBeTruthy();
 
     const details = document.createElement('details');
     details.innerHTML = '<summary>probe</summary><p>body</p>';

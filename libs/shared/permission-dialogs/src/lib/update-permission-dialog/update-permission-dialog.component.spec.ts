@@ -1,4 +1,5 @@
 import { provideZonelessChangeDetection } from '@angular/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -46,7 +47,7 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
       .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
 
     await TestBed.configureTestingModule({
-      imports: [UpdatePermissionDialogComponent],
+      imports: [testTranslateModule(), testTranslateModule(), UpdatePermissionDialogComponent],
       providers: [
         provideZonelessChangeDetection(),
         {
@@ -153,7 +154,7 @@ describe('UpdatePermissionDialogComponent external (NXSAT-159)', () => {
       .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
 
     await TestBed.configureTestingModule({
-      imports: [UpdatePermissionDialogComponent],
+      imports: [testTranslateModule(), UpdatePermissionDialogComponent],
       providers: [
         provideZonelessChangeDetection(),
         {

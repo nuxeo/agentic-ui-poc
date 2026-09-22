@@ -2,7 +2,7 @@ import { Component, DestroyRef, computed, effect, inject, signal } from '@angula
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, map, Subject } from 'rxjs';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 import {
   auditActivityLabel,
@@ -198,13 +198,33 @@ export class BrowseAdfHxPocComponent {
    * `pickableColumns.key` *is* `ExtensionColumnDescriptor.field`, so the visible subset
    * is mapped straight back onto descriptor shape for the translator.
    */
+  private readonly translate = inject(TranslateService);
+
+  /**
+   * The active language as a signal, so `schema` recomputes when it changes.
+   *
+   * `TranslateService.currentLang` is a plain getter and `instant()` is not reactive, so a
+   * `computed()` reading either would never recompute. `onLangChange` is the only reactive
+   * surface ngx-translate offers.
+   */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.currentLang },
+  );
+
   protected readonly schema = computed<DataColumn[]>(() => {
     const visible = new Set(
       this.pickableColumns()
         .filter((column) => column.visible)
         .map((column) => column.key),
     );
-    return toDataColumns(this.columnDescriptors().filter((c) => visible.has(c.field)));
+    // Reading `currentLang` makes this recompute on a language change; `translate.instant` alone
+    // is not reactive, so the headers would keep whichever language was active first.
+    this.currentLang();
+    return toDataColumns(
+      this.columnDescriptors().filter((c) => visible.has(c.field)),
+      (key) => this.translate.instant(key),
+    );
   });
 
   /** Row click, previously the local component's own `onRowClick`. */
@@ -640,7 +660,7 @@ export class BrowseAdfHxPocComponent {
         },
         error: () => {
           this.csvExporting.set(false);
-          this.scopeNotice.set('CSV export failed.');
+          this.scopeNotice.set(this.translate.instant('browse.message.csv-export-failed'));
         },
       });
   }
@@ -664,7 +684,7 @@ export class BrowseAdfHxPocComponent {
           anchor.click();
           URL.revokeObjectURL(url);
         },
-        error: () => this.scopeNotice.set('Download failed.'),
+        error: () => this.scopeNotice.set(this.translate.instant('browse.message.download-failed')),
       });
   }
 
@@ -711,7 +731,7 @@ export class BrowseAdfHxPocComponent {
       error: () => {
         this.loading.set(false);
         this.listLoading.set(false);
-        this.error.set('Failed to load folder contents.');
+        this.error.set(this.translate.instant('browse.message.failed-to-load-folder-contents'));
       },
     });
   }

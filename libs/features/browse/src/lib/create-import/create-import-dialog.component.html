@@ -4,7 +4,11 @@
   [class.success-view]="view() === 'success'"
 >
   @if (view() !== 'success') {
-    <div class="tab-header" role="tablist" aria-label="Create or import">
+    <div
+      class="tab-header"
+      role="tablist"
+      [attr.aria-label]="'browse.create-import-dialog.create-or-import' | translate"
+    >
       <button
         type="button"
         role="tab"
@@ -13,7 +17,7 @@
         [attr.aria-selected]="activeTab() === 'create'"
         (click)="setActiveTab('create')"
       >
-        Create
+        {{ 'browse.create-import-dialog.create' | translate }}
       </button>
       <button
         type="button"
@@ -23,7 +27,7 @@
         [attr.aria-selected]="activeTab() === 'import'"
         (click)="setActiveTab('import')"
       >
-        Import
+        {{ 'browse.create-import-dialog.import' | translate }}
       </button>
       <button
         type="button"
@@ -33,7 +37,7 @@
         [attr.aria-selected]="activeTab() === 'csv'"
         (click)="setActiveTab('csv')"
       >
-        CSV
+        {{ 'browse.create-import-dialog.csv' | translate }}
       </button>
     </div>
   }
@@ -45,16 +49,22 @@
   >
     @if (resolvingPath()) {
       <div class="state-row">
-        <mat-spinner diameter="32" aria-label="Loading" />
-        <span>Resolving target folder…</span>
+        <mat-spinner
+          diameter="32"
+          [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
+        />
+        <span>{{ 'browse.create-import-dialog.resolving-target-folder' | translate }}</span>
       </div>
     } @else if (pathError()) {
       <p class="error-text">{{ pathError() }}</p>
     } @else {
       @if (busy()) {
         <div class="state-row">
-          <mat-spinner diameter="32" aria-label="Loading" />
-          <span>Working…</span>
+          <mat-spinner
+            diameter="32"
+            [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
+          />
+          <span>{{ 'browse.create-import-dialog.working' | translate }}</span>
         </div>
       }
 
@@ -65,13 +75,15 @@
       @switch (view()) {
         @case ('main') {
           <div class="location-bar" [class.location-bar--restricted]="locationRestricted()">
-            <span class="location-label">Location</span>
+            <span class="location-label">{{
+              'browse.create-import-dialog.location' | translate
+            }}</span>
             <div class="location-input-wrap">
               <input
                 type="text"
                 class="location-input"
                 [(ngModel)]="locationInput"
-                aria-label="Location"
+                [attr.aria-label]="'browse.create-import-dialog.location' | translate"
                 [disabled]="busy()"
                 (focus)="onLocationFocus()"
                 (input)="onLocationInput()"
@@ -81,11 +93,18 @@
               @if (locationDropdownOpen()) {
                 @if (loadingLocationSuggestions()) {
                   <div class="location-dropdown location-dropdown--loading">
-                    <mat-spinner diameter="20" aria-label="Loading" />
-                    <span>Loading folders…</span>
+                    <mat-spinner
+                      diameter="20"
+                      [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
+                    />
+                    <span>{{ 'browse.create-import-dialog.loading-folders' | translate }}</span>
                   </div>
                 } @else if (locationSuggestions().length > 0) {
-                  <ul class="location-dropdown" role="listbox" aria-label="Available folders">
+                  <ul
+                    class="location-dropdown"
+                    role="listbox"
+                    [attr.aria-label]="'browse.create-import-dialog.available-folders' | translate"
+                  >
                     @for (s of locationSuggestions(); track s.path; let i = $index) {
                       <li role="presentation">
                         <button
@@ -117,15 +136,19 @@
             @if (!locationRestricted()) {
               @if (loadingContext()) {
                 <div class="state-row state-row--compact">
-                  <mat-spinner diameter="24" aria-label="Loading" />
-                  <span>Loading document types…</span>
+                  <mat-spinner
+                    diameter="24"
+                    [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
+                  />
+                  <span>{{
+                    'browse.create-import-dialog.loading-document-types' | translate
+                  }}</span>
                 </div>
               } @else if (typesLoadError()) {
                 <p class="error-text types-error">{{ typesLoadError() }}</p>
               } @else if (creatableTypes().length === 0) {
                 <p class="empty-hint">
-                  No document types can be created at this location. Open Sections, Templates, or
-                  Workspaces, then create content inside those folders.
+                  {{ 'browse.create-import-dialog.no-document-types-can-be-created' | translate }}
                 </p>
               } @else {
                 <div class="doctype-grid" role="list">
@@ -148,7 +171,7 @@
             @if (importRestricted()) {
               <p class="empty-hint">
                 @if (isAtRepositoryRoot()) {
-                  File import is not available at the repository root. Create a domain first, or
+                  {{ 'browse.create-import-dialog.file-import-is-not-available-at' | translate }}
                   choose a folder below.
                 } @else {
                   {{ importLocationHint() }}
@@ -180,13 +203,17 @@
                       [disabled]="busy()"
                       (click)="openImportFilePicker()"
                     >
-                      <span class="dropzone-text"
-                        >Drag and drop, or click to select files to upload.</span
-                      >
+                      <span class="dropzone-text">{{
+                        'browse.create-import-dialog.drag-and-drop-or-click-to' | translate
+                      }}</span>
                     </button>
                   } @else {
                     <div class="import-staged-files">
-                      <ul class="import-staged-grid" role="list" aria-label="Selected files">
+                      <ul
+                        class="import-staged-grid"
+                        role="list"
+                        [attr.aria-label]="'browse.create-import-dialog.selected-files' | translate"
+                      >
                         @for (f of uploadFiles(); track $index) {
                           <li class="import-staged-card" role="listitem">
                             <div class="import-staged-card__info">
@@ -201,7 +228,7 @@
                               class="import-staged-card__remove"
                               [disabled]="busy()"
                               (click)="removeUploadAt($index)"
-                              [attr.aria-label]="'Remove ' + f.name"
+                              [attr.aria-label]="'shared.remove-item' | translate: { name: f.name }"
                             >
                               <mat-icon>close</mat-icon>
                             </button>
@@ -214,7 +241,7 @@
                         [disabled]="busy()"
                         (click)="openImportFilePicker()"
                       >
-                        Add more files
+                        {{ 'browse.create-import-dialog.add-more-files' | translate }}
                       </button>
                     </div>
                   }
@@ -261,9 +288,9 @@
                   [disabled]="busy()"
                   (click)="csvInput.click()"
                 >
-                  <span class="dropzone-text"
-                    >Click to select a csv file or drag it to upload.</span
-                  >
+                  <span class="dropzone-text">{{
+                    'browse.create-import-dialog.click-to-select-a-csv-file' | translate
+                  }}</span>
                 </button>
               </div>
 
@@ -276,7 +303,7 @@
                       type="button"
                       [disabled]="busy()"
                       (click)="clearCsvFile()"
-                      aria-label="Remove CSV file"
+                      [attr.aria-label]="'browse.create-import-dialog.remove-csv-file' | translate"
                     >
                       <mat-icon>close</mat-icon>
                     </button>
@@ -290,14 +317,14 @@
                   [disabled]="busy()"
                   (change)="csvSendReport.set($event.checked)"
                 >
-                  Receive the import report by email.
+                  {{ 'browse.create-import-dialog.receive-the-import-report-by-email' | translate }}
                 </mat-slide-toggle>
                 <mat-slide-toggle
                   [checked]="csvDocumentMode()"
                   [disabled]="busy()"
                   (change)="csvDocumentMode.set($event.checked)"
                 >
-                  Apply Date, Author and Dublin Core properties.
+                  {{ 'browse.create-import-dialog.apply-date-author-and-dublin-core' | translate }}
                 </mat-slide-toggle>
               </div>
             }
@@ -316,7 +343,9 @@
           @if (selectedDocType(); as dt) {
             <div class="type-form-header">
               <mat-icon class="type-form-icon" aria-hidden="true">{{ dt.icon }}</mat-icon>
-              <span class="type-form-title">New {{ dt.label }}</span>
+              <span class="type-form-title">
+                {{ 'browse.create-import-dialog.new-of-type' | translate: { type: dt.label } }}
+              </span>
             </div>
 
             <div class="create-form">
@@ -324,13 +353,15 @@
                 class="location-bar location-bar--form"
                 [class.location-bar--restricted]="locationRestricted()"
               >
-                <span class="location-label">Location</span>
+                <span class="location-label">{{
+                  'browse.create-import-dialog.location' | translate
+                }}</span>
                 <div class="location-input-wrap">
                   <input
                     type="text"
                     class="location-input"
                     [(ngModel)]="locationInput"
-                    aria-label="Location"
+                    [attr.aria-label]="'browse.create-import-dialog.location' | translate"
                     [disabled]="busy()"
                     (focus)="onLocationFocus()"
                     (input)="onLocationInput()"
@@ -340,11 +371,20 @@
                   @if (locationDropdownOpen()) {
                     @if (loadingLocationSuggestions()) {
                       <div class="location-dropdown location-dropdown--loading">
-                        <mat-spinner diameter="20" aria-label="Loading" />
-                        <span>Loading folders…</span>
+                        <mat-spinner
+                          diameter="20"
+                          [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
+                        />
+                        <span>{{ 'browse.create-import-dialog.loading-folders' | translate }}</span>
                       </div>
                     } @else if (locationSuggestions().length > 0) {
-                      <ul class="location-dropdown" role="listbox" aria-label="Available folders">
+                      <ul
+                        class="location-dropdown"
+                        role="listbox"
+                        [attr.aria-label]="
+                          'browse.create-import-dialog.available-folders' | translate
+                        "
+                      >
                         @for (s of locationSuggestions(); track s.path; let i = $index) {
                           <li role="presentation">
                             <button
@@ -373,20 +413,22 @@
               </div>
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
-                <mat-label>Title</mat-label>
+                <mat-label>{{ 'browse.create-import-dialog.title' | translate }}</mat-label>
                 <input matInput [(ngModel)]="docTitle" required />
               </mat-form-field>
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
-                <mat-label>Description</mat-label>
+                <mat-label>{{ 'browse.create-import-dialog.description' | translate }}</mat-label>
                 <input matInput [(ngModel)]="description" />
               </mat-form-field>
 
               @if (hasContentField()) {
-                <div class="field-label">Content</div>
+                <div class="field-label">
+                  {{ 'browse.create-import-dialog.content' | translate }}
+                </div>
                 @if (createMissingMainFile()) {
                   <p class="error-text content-required-hint" role="alert">
-                    Upload a main file to create this document.
+                    {{ 'browse.create-import-dialog.upload-a-main-file-to-create' | translate }}
                   </p>
                 }
                 @if (contentError()) {
@@ -422,9 +464,12 @@
                           />
                           <span class="content-file-progress-label">
                             @if (mainFileUploading()) {
-                              Uploading… {{ mainFileUploadPercent() }}%
+                              {{
+                                'browse.create-import-dialog.uploading-percent'
+                                  | translate: { percent: mainFileUploadPercent() }
+                              }}
                             } @else {
-                              Upload complete
+                              {{ 'browse.create-import-dialog.upload-complete' | translate }}
                             }
                           </span>
                         }
@@ -432,7 +477,7 @@
                       <button
                         mat-icon-button
                         type="button"
-                        aria-label="Remove file"
+                        [attr.aria-label]="'browse.create-import-dialog.remove-file' | translate"
                         [disabled]="busy() || mainFileUploading()"
                         (click)="$event.stopPropagation(); clearMainFile()"
                       >
@@ -445,7 +490,7 @@
                       class="content-upload-btn"
                       (click)="mainFileInput.click()"
                     >
-                      Upload main file
+                      {{ 'browse.create-import-dialog.upload-main-file' | translate }}
                     </button>
                   }
                 </div>
@@ -453,7 +498,7 @@
 
               @if (isNoteType()) {
                 <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
-                  <mat-label>Format</mat-label>
+                  <mat-label>{{ 'browse.create-import-dialog.format' | translate }}</mat-label>
                   <mat-select [(ngModel)]="noteFormat">
                     @for (opt of noteFormatOptions; track opt.value) {
                       <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
@@ -467,7 +512,7 @@
                 subscriptSizing="dynamic"
                 class="full-width vocab-field"
               >
-                <mat-label>Nature</mat-label>
+                <mat-label>{{ 'browse.create-import-dialog.nature' | translate }}</mat-label>
                 <mat-select
                   #natureSelect
                   [(ngModel)]="nature"
@@ -483,7 +528,9 @@
                           <button
                             type="button"
                             matChipRemove
-                            [attr.aria-label]="'Remove ' + naturePillLabel(natureId)"
+                            [attr.aria-label]="
+                              'shared.remove-item' | translate: { name: naturePillLabel(natureId) }
+                            "
                             (click)="$event.stopPropagation(); clearNature()"
                           >
                             <mat-icon>cancel</mat-icon>
@@ -495,7 +542,7 @@
                   <div class="vocab-panel__search">
                     <input
                       type="text"
-                      placeholder="Search…"
+                      [placeholder]="'browse.create-import-dialog.search' | translate"
                       [(ngModel)]="naturePanelSearch"
                       [ngModelOptions]="{ standalone: true }"
                       (click)="$event.stopPropagation()"
@@ -515,7 +562,7 @@
                 subscriptSizing="dynamic"
                 class="full-width vocab-field subjects-field"
               >
-                <mat-label>Subjects</mat-label>
+                <mat-label>{{ 'browse.create-import-dialog.subjects' | translate }}</mat-label>
                 <mat-select
                   multiple
                   [(ngModel)]="subjects"
@@ -530,7 +577,9 @@
                           <button
                             type="button"
                             matChipRemove
-                            [attr.aria-label]="'Remove ' + subjectPillLabel(id)"
+                            [attr.aria-label]="
+                              'shared.remove-item' | translate: { name: subjectPillLabel(id) }
+                            "
                             (click)="$event.stopPropagation()"
                           >
                             <mat-icon>cancel</mat-icon>
@@ -542,7 +591,7 @@
                   <div class="vocab-panel__search">
                     <input
                       type="text"
-                      placeholder="Search…"
+                      [placeholder]="'browse.create-import-dialog.search' | translate"
                       [(ngModel)]="subjectsPanelSearch"
                       [ngModelOptions]="{ standalone: true }"
                       (click)="$event.stopPropagation()"
@@ -568,7 +617,7 @@
                 subscriptSizing="dynamic"
                 class="full-width vocab-field"
               >
-                <mat-label>Coverage</mat-label>
+                <mat-label>{{ 'browse.create-import-dialog.coverage' | translate }}</mat-label>
                 <mat-select
                   #coverageSelect
                   [(ngModel)]="coverage"
@@ -584,7 +633,10 @@
                           <button
                             type="button"
                             matChipRemove
-                            [attr.aria-label]="'Remove ' + coveragePillLabel(coverageId)"
+                            [attr.aria-label]="
+                              'shared.remove-item'
+                                | translate: { name: coveragePillLabel(coverageId) }
+                            "
                             (click)="$event.stopPropagation(); clearCoverage()"
                           >
                             <mat-icon>cancel</mat-icon>
@@ -596,7 +648,7 @@
                   <div class="vocab-panel__search">
                     <input
                       type="text"
-                      placeholder="Search…"
+                      [placeholder]="'browse.create-import-dialog.search' | translate"
                       [(ngModel)]="coveragePanelSearch"
                       [ngModelOptions]="{ standalone: true }"
                       (click)="$event.stopPropagation()"
@@ -623,7 +675,7 @@
                 class="full-width"
                 [class.expires-field-invalid]="showExpiresError()"
               >
-                <mat-label>Expires</mat-label>
+                <mat-label>{{ 'browse.create-import-dialog.expires' | translate }}</mat-label>
                 <input
                   matInput
                   name="expires"
@@ -633,12 +685,14 @@
                   (ngModelChange)="onExpiresChange($event)"
                   (input)="onExpiresInput($event)"
                   #expiresInput="ngModel"
-                  placeholder="mm/dd/yyyy"
+                  [placeholder]="'common.date-mask' | translate"
                 />
                 <mat-datepicker-toggle matIconSuffix [for]="expiresPicker" />
                 <mat-datepicker #expiresPicker />
                 @if (showExpiresError()) {
-                  <mat-error>Enter a valid date</mat-error>
+                  <mat-error>{{
+                    'browse.create-import-dialog.enter-a-valid-date' | translate
+                  }}</mat-error>
                 }
               </mat-form-field>
             </div>
@@ -651,13 +705,15 @@
                 class="location-bar location-bar--form"
                 [class.location-bar--restricted]="locationRestricted()"
               >
-                <span class="location-label">Location</span>
+                <span class="location-label">{{
+                  'browse.create-import-dialog.location' | translate
+                }}</span>
                 <div class="location-input-wrap">
                   <input
                     type="text"
                     class="location-input"
                     [(ngModel)]="locationInput"
-                    aria-label="Location"
+                    [attr.aria-label]="'browse.create-import-dialog.location' | translate"
                     [disabled]="busy()"
                     (focus)="onLocationFocus()"
                     (input)="onLocationInput()"
@@ -668,13 +724,15 @@
               </div>
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
-                <mat-label>Type</mat-label>
+                <mat-label>{{ 'browse.create-import-dialog.type' | translate }}</mat-label>
                 <mat-select
                   [ngModel]="importDocType()"
                   (ngModelChange)="importDocType.set($event)"
                   [disabled]="busy()"
                 >
-                  <mat-option value="">Select a value</mat-option>
+                  <mat-option value="">{{
+                    'browse.create-import-dialog.select-a-value' | translate
+                  }}</mat-option>
                   @for (dt of importBlobTypeOptions(); track dt.type) {
                     <mat-option [value]="dt.type">{{ dt.label }}</mat-option>
                   }
@@ -684,12 +742,14 @@
               @if (showImportBlobMetadataFields()) {
                 <div class="import-detail-fields">
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
-                    <mat-label>Title</mat-label>
+                    <mat-label>{{ 'browse.create-import-dialog.title' | translate }}</mat-label>
                     <input matInput [(ngModel)]="docTitle" required />
                   </mat-form-field>
 
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
-                    <mat-label>Description</mat-label>
+                    <mat-label>{{
+                      'browse.create-import-dialog.description' | translate
+                    }}</mat-label>
                     <input matInput [(ngModel)]="description" />
                   </mat-form-field>
 
@@ -698,7 +758,7 @@
                     subscriptSizing="dynamic"
                     class="full-width vocab-field"
                   >
-                    <mat-label>Nature</mat-label>
+                    <mat-label>{{ 'browse.create-import-dialog.nature' | translate }}</mat-label>
                     <mat-select
                       #importNatureSelect
                       [(ngModel)]="nature"
@@ -714,7 +774,10 @@
                               <button
                                 type="button"
                                 matChipRemove
-                                [attr.aria-label]="'Remove ' + naturePillLabel(natureId)"
+                                [attr.aria-label]="
+                                  'shared.remove-item'
+                                    | translate: { name: naturePillLabel(natureId) }
+                                "
                                 (click)="$event.stopPropagation(); clearNature()"
                               >
                                 <mat-icon>cancel</mat-icon>
@@ -726,7 +789,7 @@
                       <div class="vocab-panel__search">
                         <input
                           type="text"
-                          placeholder="Search…"
+                          [placeholder]="'browse.create-import-dialog.search' | translate"
                           [(ngModel)]="naturePanelSearch"
                           [ngModelOptions]="{ standalone: true }"
                           (click)="$event.stopPropagation()"
@@ -748,7 +811,7 @@
                     subscriptSizing="dynamic"
                     class="full-width vocab-field subjects-field"
                   >
-                    <mat-label>Subjects</mat-label>
+                    <mat-label>{{ 'browse.create-import-dialog.subjects' | translate }}</mat-label>
                     <mat-select
                       multiple
                       [(ngModel)]="subjects"
@@ -763,7 +826,9 @@
                               <button
                                 type="button"
                                 matChipRemove
-                                [attr.aria-label]="'Remove ' + subjectPillLabel(id)"
+                                [attr.aria-label]="
+                                  'shared.remove-item' | translate: { name: subjectPillLabel(id) }
+                                "
                                 (click)="$event.stopPropagation()"
                               >
                                 <mat-icon>cancel</mat-icon>
@@ -775,7 +840,7 @@
                       <div class="vocab-panel__search">
                         <input
                           type="text"
-                          placeholder="Search…"
+                          [placeholder]="'browse.create-import-dialog.search' | translate"
                           [(ngModel)]="subjectsPanelSearch"
                           [ngModelOptions]="{ standalone: true }"
                           (click)="$event.stopPropagation()"
@@ -801,7 +866,7 @@
                     subscriptSizing="dynamic"
                     class="full-width vocab-field"
                   >
-                    <mat-label>Coverage</mat-label>
+                    <mat-label>{{ 'browse.create-import-dialog.coverage' | translate }}</mat-label>
                     <mat-select
                       #importCoverageSelect
                       [(ngModel)]="coverage"
@@ -817,7 +882,10 @@
                               <button
                                 type="button"
                                 matChipRemove
-                                [attr.aria-label]="'Remove ' + coveragePillLabel(coverageId)"
+                                [attr.aria-label]="
+                                  'shared.remove-item'
+                                    | translate: { name: coveragePillLabel(coverageId) }
+                                "
                                 (click)="$event.stopPropagation(); clearCoverage()"
                               >
                                 <mat-icon>cancel</mat-icon>
@@ -829,7 +897,7 @@
                       <div class="vocab-panel__search">
                         <input
                           type="text"
-                          placeholder="Search…"
+                          [placeholder]="'browse.create-import-dialog.search' | translate"
                           [(ngModel)]="coveragePanelSearch"
                           [ngModelOptions]="{ standalone: true }"
                           (click)="$event.stopPropagation()"
@@ -856,7 +924,7 @@
                     class="full-width"
                     [class.expires-field-invalid]="showExpiresError()"
                   >
-                    <mat-label>Expires</mat-label>
+                    <mat-label>{{ 'browse.create-import-dialog.expires' | translate }}</mat-label>
                     <input
                       matInput
                       name="importExpires"
@@ -865,12 +933,14 @@
                       [errorStateMatcher]="expiresErrorMatcher"
                       (ngModelChange)="onExpiresChange($event)"
                       (input)="onExpiresInput($event)"
-                      placeholder="mm/dd/yyyy"
+                      [placeholder]="'common.date-mask' | translate"
                     />
                     <mat-datepicker-toggle matIconSuffix [for]="importExpiresPicker" />
                     <mat-datepicker #importExpiresPicker />
                     @if (showExpiresError()) {
-                      <mat-error>Enter a valid date</mat-error>
+                      <mat-error>{{
+                        'browse.create-import-dialog.enter-a-valid-date' | translate
+                      }}</mat-error>
                     }
                   </mat-form-field>
                 </div>
@@ -891,8 +961,13 @@
               }
             </div>
 
-            <aside class="import-properties-sidebar" aria-label="Files to import">
-              <p class="import-sidebar-hint">Unchecked files will be discarded.</p>
+            <aside
+              class="import-properties-sidebar"
+              [attr.aria-label]="'browse.create-import-dialog.files-to-import' | translate"
+            >
+              <p class="import-sidebar-hint">
+                {{ 'browse.create-import-dialog.unchecked-files-will-be-discarded' | translate }}
+              </p>
               <ul class="import-file-list" role="list">
                 @for (entry of importEntries(); track $index; let i = $index) {
                   <li
@@ -903,7 +978,7 @@
                       [checked]="entry.checked"
                       [disabled]="busy()"
                       (change)="toggleImportFileChecked(i, $event.checked)"
-                      [aria-label]="'Include ' + entry.file.name"
+                      [aria-label]="'shared.include-file' | translate: { name: entry.file.name }"
                     />
                     <button
                       type="button"
@@ -926,7 +1001,9 @@
         @case ('success') {
           <div class="success-panel" role="status" aria-live="polite">
             <mat-icon class="success-icon" aria-hidden="true">check_circle</mat-icon>
-            <h2 mat-dialog-title class="success-heading">Done</h2>
+            <h2 mat-dialog-title class="success-heading">
+              {{ 'browse.create-import-dialog.done' | translate }}
+            </h2>
             <p class="success-message">{{ successMessage() }}</p>
           </div>
         }
@@ -944,14 +1021,16 @@
           [disabled]="busy()"
           (click)="close()"
         >
-          Cancel
+          {{ 'browse.create-import-dialog.cancel' | translate }}
         </button>
       }
       <span class="footer-spacer"></span>
       @if (view() === 'success') {
-        <button mat-button type="button" (click)="close()">Close</button>
+        <button mat-button type="button" (click)="close()">
+          {{ 'browse.create-import-dialog.close' | translate }}
+        </button>
         <button mat-flat-button color="primary" type="button" (click)="doneNavigateBrowse()">
-          OK
+          {{ 'browse.create-import-dialog.ok' | translate }}
         </button>
       } @else if (view() === 'templateForm') {
         <button
@@ -961,7 +1040,7 @@
           [disabled]="busy()"
           (click)="goMain()"
         >
-          Back
+          {{ 'browse.create-import-dialog.back' | translate }}
         </button>
         <button
           mat-flat-button
@@ -977,7 +1056,7 @@
           "
           (click)="createDocument()"
         >
-          Create
+          {{ 'browse.create-import-dialog.create' | translate }}
         </button>
       } @else if (view() === 'main' && activeTab() === 'import' && uploadFiles().length > 0) {
         <button
@@ -987,7 +1066,7 @@
           [disabled]="busy() || importRestricted()"
           (click)="startImportProperties()"
         >
-          Add Properties
+          {{ 'browse.create-import-dialog.add-properties' | translate }}
         </button>
         <button
           mat-flat-button
@@ -996,7 +1075,7 @@
           [disabled]="busy() || importRestricted()"
           (click)="runUpload()"
         >
-          Create
+          {{ 'browse.create-import-dialog.create' | translate }}
         </button>
       } @else if (view() === 'importProperties') {
         <div class="import-footer-nav">
@@ -1008,7 +1087,7 @@
             (click)="editImportPrevious()"
           >
             <mat-icon aria-hidden="true">chevron_left</mat-icon>
-            Edit Previous
+            {{ 'browse.create-import-dialog.edit-previous' | translate }}
           </button>
           <button
             mat-button
@@ -1017,7 +1096,7 @@
             [disabled]="!canEditImportNext() || busy()"
             (click)="editImportNext()"
           >
-            Edit Next
+            {{ 'browse.create-import-dialog.edit-next' | translate }}
             <mat-icon aria-hidden="true">chevron_right</mat-icon>
           </button>
           <button
@@ -1027,7 +1106,7 @@
             [disabled]="busy() || !canApplyImportToAll()"
             (click)="applyImportToAll()"
           >
-            Apply To All
+            {{ 'browse.create-import-dialog.apply-to-all' | translate }}
           </button>
         </div>
         <span class="footer-spacer"></span>
@@ -1038,7 +1117,7 @@
           [disabled]="busy() || !canCreateImportWithProperties()"
           (click)="runImportWithProperties()"
         >
-          Create
+          {{ 'browse.create-import-dialog.create' | translate }}
         </button>
       } @else if (view() === 'main' && activeTab() === 'csv') {
         <button
@@ -1048,7 +1127,7 @@
           [disabled]="busy() || !csvFile() || csvImportRestricted()"
           (click)="runCsvImport()"
         >
-          Import
+          {{ 'browse.create-import-dialog.import' | translate }}
         </button>
       }
     </mat-dialog-actions>

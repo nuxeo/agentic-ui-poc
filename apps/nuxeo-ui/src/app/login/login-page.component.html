@@ -1,7 +1,11 @@
 <div class="login-page">
-  <main class="login-panel" aria-label="Log in">
+  <main class="login-panel" [attr.aria-label]="'app.login-page.log-in' | translate">
     <div class="login-panel-inner">
-      <a routerLink="/login" class="login-brand" aria-label="Hyland">
+      <a
+        routerLink="/login"
+        class="login-brand"
+        [attr.aria-label]="'app.login-page.hyland' | translate"
+      >
         <!--
           The lockup is decorative: this link already carries the name "Hyland". Each mark is a
           vendor component whose <svg> we cannot label from here, so the whole lockup is hidden
@@ -14,49 +18,54 @@
         </sat-logo>
       </a>
 
-      <h1 class="login-title">Log in</h1>
+      <h1 class="login-title">{{ 'app.login-page.log-in' | translate }}</h1>
 
       <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
-        <mat-form-field
-          appearance="outline"
-          subscriptSizing="dynamic"
-          class="login-field-full login-field-username"
-          hideRequiredMarker
-        >
-          <mat-label>Username (required)</mat-label>
-          <input
-            matInput
-            formControlName="username"
-            autocomplete="username"
-            (input)="onCredentialInput()"
-            (change)="onCredentialInput()"
-            (animationstart)="onAutofillAnimation($event)"
-          />
-          @if (form.controls.username.hasError('required') && form.controls.username.touched) {
-            <mat-error>Username is required</mat-error>
-          }
-        </mat-form-field>
+        <fieldset class="login-credentials">
+          <legend class="cdk-visually-hidden">
+            {{ 'app.login-page.sign-in-credentials' | translate }}
+          </legend>
+          <mat-form-field
+            appearance="outline"
+            subscriptSizing="dynamic"
+            class="login-field-full login-field-username"
+            hideRequiredMarker
+          >
+            <mat-label>{{ 'app.login-page.username-required' | translate }}</mat-label>
+            <input
+              matInput
+              formControlName="username"
+              autocomplete="username"
+              (input)="onCredentialInput()"
+              (change)="onCredentialInput()"
+              (animationstart)="onAutofillAnimation($event)"
+            />
+            @if (form.controls.username.hasError('required') && form.controls.username.touched) {
+              <mat-error>{{ 'app.login-page.username-is-required' | translate }}</mat-error>
+            }
+          </mat-form-field>
 
-        <mat-form-field
-          appearance="outline"
-          subscriptSizing="dynamic"
-          class="login-field-full"
-          hideRequiredMarker
-        >
-          <mat-label>Password (required)</mat-label>
-          <input
-            matInput
-            type="password"
-            formControlName="password"
-            autocomplete="current-password"
-            (input)="onCredentialInput()"
-            (change)="onCredentialInput()"
-            (animationstart)="onAutofillAnimation($event)"
-          />
-          @if (form.controls.password.hasError('required') && form.controls.password.touched) {
-            <mat-error>Password is required</mat-error>
-          }
-        </mat-form-field>
+          <mat-form-field
+            appearance="outline"
+            subscriptSizing="dynamic"
+            class="login-field-full login-field-password"
+            hideRequiredMarker
+          >
+            <mat-label>{{ 'app.login-page.password-required' | translate }}</mat-label>
+            <input
+              matInput
+              type="password"
+              formControlName="password"
+              autocomplete="current-password"
+              (input)="onCredentialInput()"
+              (change)="onCredentialInput()"
+              (animationstart)="onAutofillAnimation($event)"
+            />
+            @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+              <mat-error>{{ 'app.login-page.password-is-required' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        </fieldset>
 
         <div class="login-actions-row login-actions-row--single">
           <button
@@ -70,7 +79,7 @@
             @if (submitting()) {
               <mat-spinner diameter="20" />
             } @else {
-              Log in
+              {{ 'app.login-page.log-in' | translate }}
             }
           </button>
         </div>
@@ -79,7 +88,7 @@
       @if (samlEndpoints().length > 0) {
         <div class="login-or">
           <span class="login-or-line"></span>
-          <span class="login-or-text">OR</span>
+          <span class="login-or-text">{{ 'app.login-page.or' | translate }}</span>
           <span class="login-or-line"></span>
         </div>
 
@@ -98,13 +107,13 @@
       }
     </div>
 
-    <footer class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</footer>
+    <footer class="login-footer">
+      {{ 'app.login-page.copyright-c-1992-2026-hyland-software' | translate }}
+    </footer>
   </main>
 
-  <div
-    class="login-hero"
-    role="presentation"
-    aria-hidden="true"
-    [style.background-image]="heroBackgroundImage()"
-  ></div>
+  <div class="login-hero" role="presentation" aria-hidden="true">
+    <!-- Decorative hero: img avoids CSS background-image for HC review; SCSS hides it in forced-colors (NXENG-751). -->
+    <img class="login-hero-image" [src]="heroImagePath" alt="" />
+  </div>
 </div>

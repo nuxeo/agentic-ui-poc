@@ -109,6 +109,33 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/review-guardrails.mjs', '--base', base],
   },
+  // The i18n guardrails' negative controls, registered for the same reason as
+  // `sanitizer-selftest` below: the controls are the entire basis for trusting the guardrail, so
+  // running them must not be optional.
+  //
+  // Eleven guardrails shipped before this existed with no tests at all, and two of the three it
+  // covers were written with a defect the controls found — an unguarded `JSON.parse` that crashed
+  // the whole script, discarding every other guardrail's diagnostics, and a parity branch that
+  // reported "no en.json" for a file that was present but unparseable.
+  //
+  // Unlike `sanitizer-selftest` this touches nothing tracked: it builds a throwaway git repository
+  // per control under `os.tmpdir()`, so it is safe to run concurrently with anything.
+  {
+    id: 'guardrails-selftest',
+    label: 'i18n guardrail negative controls',
+    cmd: 'node',
+    argv: ['scripts/review-guardrails.selftest.mjs'],
+    // The negative/positive split is the evidence, so surface it on a pass too.
+    echoOnPass: true,
+  },
+  {
+    id: 'crowdin-selftest',
+    label: 'Crowdin context push controls',
+    cmd: 'node',
+    argv: ['tools/i18n/crowdin-push-context.selftest.mjs'],
+    // The negative/positive split is the evidence, so surface it on a pass too.
+    echoOnPass: true,
+  },
   // SonarCloud security remediation harness (section 5 of docs/sonarcloud-security-remediation-plan.md).
   // Enforces that every DomSanitizer.bypassSecurityTrust* call is registered in
   // .ai/state/sanitizer-allowlist.json with a written justification. Catches unregistered bypasses,

@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
@@ -268,7 +269,7 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
     installDefaults();
 
     await TestBed.configureTestingModule({
-      imports: [DocumentDetailComponent],
+      imports: [testTranslateModule(), testTranslateModule(), DocumentDetailComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -1087,7 +1088,7 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       component.abandonWorkflow(workflow());
 
       expect(component.abandoningWorkflow()).toBe(false);
-      expect(snack).toHaveBeenCalledWith('Failed to abandon workflow', 'OK', expect.anything());
+      expect(snack).toHaveBeenCalledWith('Failed to abandon workflow.', 'OK', expect.anything());
     });
 
     it('turns an i18n task key into a readable label', async () => {

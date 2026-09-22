@@ -22,6 +22,7 @@ import {
 import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
 
 import { TasksPageComponent } from './tasks-page.component';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 /**
  * Asserts which MIME type the tasks preview actually *binds* to the document viewer.
@@ -79,7 +80,7 @@ describe('TasksPageComponent — the MIME type bound to the viewer', () => {
     await TestBed.configureTestingModule({
       // `TranslateModule` is bootstrapped by the app, not the feature: the Satori breadcrumbs inside
       // this template inject `TranslateService`. Same pattern as `document-detail-slots.spec.ts`.
-      imports: [TasksPageComponent, NoopAnimationsModule, TranslateModule.forRoot()],
+      imports: [TasksPageComponent, NoopAnimationsModule, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),

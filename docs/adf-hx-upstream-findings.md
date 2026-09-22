@@ -116,7 +116,145 @@ than absorbed.
 divs, and move the `aria-live` announcer out of the row (a sibling `<span aria-live>` outside the
 grid is the usual pattern). This is an attribute-level change to one template.
 
+### 1.3 `HxpDocumentTreeComponent` asks for a translation key it does not ship, and renders the raw key as an accessible name
+
+**Package:** `@alfresco/adf-hx-content-services@7.20.0-automate.292`
+**File:** `ui/fesm2022/alfresco-adf-hx-content-services-ui.mjs`, the `HxpDocumentTreeComponent` template
+**Rule:** WCAG 4.1.2 Name, Role, Value / 2.4.6 Headings and Labels
+
+The node toggle binds its accessible name to a key with a **trailing space inside the key
+literal**:
+
+```html
+<button
+  mat-icon-button
+  [attr.aria-label]="('DOCUMENT_TREE.TOGGLE_ARIA-LABEL ' | translate) + node.name"
+  matTreeNodeToggle
+></button>
+```
+
+The catalogue shipped in the same package has no such key. It has the key without the space:
+
+```json
+"DOCUMENT_TREE": { "ROOT": "Home", "TOGGLE_ARIA-LABEL": "Toggle" }
+```
+
+So the lookup misses, ngx-translate falls through to its key passthrough, and every folder
+toggle in the tree is announced as **`DOCUMENT_TREE.TOGGLE_ARIA-LABEL undefined`**.
+
+`undefined`, not the folder name — and this example said `… Home` until the third defect below was
+found, which is what made the trailing space look like the whole story. `node.name` does not exist;
+the concatenation appends the string `"undefined"` whatever the key resolves to.
+
+The sibling binding one block down is correct — `'DOCUMENT_TREE.CONTEXT_MENU.TRIGGER_ARIA_LABEL' |
+translate`, no trailing space — which is what makes the space look like a slip rather than a
+convention.
+
+**Reproduce**
+
+```bash
+npm i @alfresco/adf-hx-content-services@7.20.0-automate.292
+# the key the template asks for, with its trailing space:
+grep -o "TOGGLE_ARIA-LABEL[^\"']\{0,4\}" \
+  node_modules/@alfresco/adf-hx-content-services/fesm2022/alfresco-adf-hx-content-services-ui.mjs
+# -> TOGGLE_ARIA-LABEL      (note the space before the closing quote)
+# the key the catalogue ships:
+grep -n "TOGGLE_ARIA" \
+  node_modules/@alfresco/adf-hx-content-services/ui/assets/adf-enterprise-adf-hx-content-services-ui/i18n/en.json
+# -> "TOGGLE_ARIA-LABEL": "Toggle"
+```
+
+**Why this survived an accessibility audit, and why it is worth its own finding.** axe does not
+flag it. The control **has** a non-empty accessible name; the name is simply not words. That is
+the opposite failure mode to 4.6, where the name was empty and axe caught it immediately, and it
+is why 1.2 can still be described as the only machine-detectable WCAG violation left in our
+application. A raw key in visible text gets noticed by whoever looks at the screen. A raw key in
+an `aria-label` is invisible to everyone who is not using a screen reader.
+
+**Impact.** Every surface of our application, because the tree is our shell's navigation drawer.
+A screen-reader user hears a namespaced identifier read out before each folder name.
+
+**Second defect in the same line: the name is concatenated.** `(… | translate) + node.name`
+builds a string from two pieces. Hyland's internationalization standard (INFO-144) forbids this
+outright, because languages differ in word order and a translator handed only the prefix cannot
+move it. Even with the key resolved, no locale can render this as anything but `<prefix><name>`.
+
+**Our mitigation.** We alias the whitespace key onto the canonical one in our translation loader,
+copying the resolved value so a French catalogue still yields a French name. It is recorded as
+W13 in `docs/adf-hx-workarounds.md` and it yields to an upstream-shipped key, so it becomes inert
+rather than authoritative if this is fixed.
+
+**The concatenation is mitigated too, by W15**, and this paragraph said it could not be. W15 is a
+host-side directive that sets the whole `aria-label` from the row's rendered label through our own
+`nav.tree.toggle`, which takes the folder as an interpolation parameter — so at the host boundary
+there is no concatenation left and a translator can reorder. What we cannot do is fix it _inside_
+upstream's template, which is why the ask below still stands.
+
+**There is a third defect here, and it makes the other two moot on their own.** `node.name` does
+not exist. `node` is a wrapper — the same template reads `node.document`, `node.isLoading` and
+`node.isSelectable`, and renders the visible label as
+`{{ node.document | breadcrumbLabel: 'DOCUMENT_TREE.ROOT' }}`. So the concatenation appends the
+string `"undefined"`, for every consumer of the component, and no catalogue entry can change it.
+Measured on a real application against `7.20.0-automate.292`:
+
+```
+tree aria-labels: ["Toggleundefined", "Toggleundefined"]
+```
+
+Fixing only the trailing space yields `Toggle undefined`. That is why our own mitigation is a
+directive that sets the attribute outright (W15), rather than the alias alone (W13).
+
+**Ask:** delete the trailing space from the key literal, and pass the **label the row already
+renders** through an interpolation parameter rather than concatenating a property the node does not
+have — `'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' | translate: { name: (node.document | breadcrumbLabel:
+'DOCUMENT_TREE.ROOT') }`, with the catalogue value carrying the placeholder. The trailing space is a
+one-character change; using `node.document` is what makes the name a name at all; and the
+interpolation parameter is what makes it translatable, since a concatenated string cannot be
+reordered for a language that needs the noun first.
+
 ---
+
+### 1.4 `SatSkipToContent` hard-codes its own text, so the accessibility skip link cannot be translated
+
+**Package:** `@hylandsoftware/satori-ui`
+**File:** `fesm2022/hylandsoftware-satori-ui-platform-nav.mjs`, the `SatSkipToContent` template
+**Rule:** WCAG 2.4.1 Bypass Blocks, read together with 3.1.1 Language of Page
+
+The skip link's text is a literal in the template rather than a catalogue lookup:
+
+```html
+<a class="sat-skip-to-content-button" (focus)="display()" (blur)="hide()"> Skip to main content </a>
+```
+
+Every other string in the package goes through `i18n/en.json`; this one does not, and the
+catalogue has no key for it. A host cannot override it, because there is no key to override.
+
+The consequence is narrow and unusually bad. The skip link is the **first** thing a keyboard or
+screen-reader user reaches on every page, and it is the one control whose entire purpose is to
+serve users who need it most. In a French or German deployment that user meets an English
+instruction before anything else on the page, and the page declares itself as French — so a
+screen reader set to French will attempt to pronounce English words with French phonemes.
+
+**Reproduce**
+
+Generate a pseudo-locale and run the app in it. Every catalogue-sourced string renders
+accented; this one stays plain English on all nine routes:
+
+```bash
+node tools/i18n/pseudo-locale.mjs
+node tools/i18n/pseudo-locale-audit.mjs   # reports "Skip to main content" x9
+```
+
+**What we would like**
+
+`SatSkipToContent` to read its text from a key — `SAT.SKIP_TO_CONTENT` or similar — shipped in
+`i18n/en.json` alongside the other `sat.*` strings, so a host's catalogue can translate it.
+
+**Workaround**
+
+None that is not worse than the defect. The text lives inside a compiled template we do not
+own; reaching it would mean either patching `node_modules` or replacing the component, and
+replacing a skip link with our own risks having two or none. Recorded rather than worked around.
 
 ## Severity 2 — dependency and contract problems that break a clean install
 
@@ -411,9 +549,14 @@ tooltip string should not be able to produce an unnamed control.
 2. **Valid `role` structure in `DataTableComponent`** (1.2). An attribute-level change to one
    template, and it is the single remaining WCAG 2.1 AA violation in our entire application. It is
    the only finding here that no host can work around without patching your DOM.
-3. **Bounded peer ranges** (2.1) and **declared imports** (2.2). Together they are the difference
+3. **One space out of the document tree's `aria-label` key, and the node name into an
+   interpolation parameter** (1.3). The cheapest fix in this document by a wide margin — one
+   character — and until it lands every folder in the tree is announced to screen-reader users as
+   a namespaced identifier. Ranked this high because of the cost-to-impact ratio, not the blast
+   radius.
+4. **Bounded peer ranges** (2.1) and **declared imports** (2.2). Together they are the difference
    between a clean install working and not.
-4. **Ports resolvable outside the root injector** (3.1). This is worth 1.79 MB of initial bundle to
+5. **Ports resolvable outside the root injector** (3.1). This is worth 1.79 MB of initial bundle to
    us and no host can fix it.
-5. **A sufficient exported provider array, documented** (3.3). Cheap to do, and it removes an entire
+6. **A sufficient exported provider array, documented** (3.3). Cheap to do, and it removes an entire
    class of onboarding failure.

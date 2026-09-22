@@ -1,4 +1,6 @@
 import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -14,7 +16,7 @@ import {
   CURRENT_USERNAME,
   DirectoryService,
   DocumentDetailService,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   SelectionService,
   TagService,
   type AuditEntry,
@@ -115,7 +117,7 @@ describe('BrowseComponent — listing state', () => {
 
     manifest.set({});
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent],
+      imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([{ path: '**', children: [] }], withDisabledInitialNavigation()),
@@ -343,15 +345,19 @@ describe('BrowseComponent — listing state', () => {
     expect(component.getCellValue(entry, 'version')).toBe('1.0');
   });
 
+  // The wording moved when this switched to `Intl.RelativeTimeFormat`: "now" rather than
+  // "just now", "yesterday" rather than "a day ago". Both are what English actually says, and
+  // the reason for the change is that the old phrasing was built by concatenation and so could
+  // not be translated at all. See `formatRelativeTime`.
   it('relativeTime describes minutes, hours and days, and blanks an absent date', () => {
     const now = Date.now();
 
     expect(component.relativeTime('')).toBe('');
-    expect(component.relativeTime(new Date(now - 30_000).toISOString())).toBe('just now');
+    expect(component.relativeTime(new Date(now - 30_000).toISOString())).toBe('now');
     expect(component.relativeTime(new Date(now - 5 * 60_000).toISOString())).toBe('5 minutes ago');
-    expect(component.relativeTime(new Date(now - 3_600_000).toISOString())).toBe('an hour ago');
+    expect(component.relativeTime(new Date(now - 3_600_000).toISOString())).toBe('1 hour ago');
     expect(component.relativeTime(new Date(now - 5 * 3_600_000).toISOString())).toBe('5 hours ago');
-    expect(component.relativeTime(new Date(now - 86_400_000).toISOString())).toBe('a day ago');
+    expect(component.relativeTime(new Date(now - 86_400_000).toISOString())).toBe('yesterday');
     expect(component.relativeTime(new Date(now - 3 * 86_400_000).toISOString())).toBe('3 days ago');
   });
 
@@ -739,7 +745,7 @@ describe('BrowseComponent — listing state', () => {
 
     component.deleteDocument();
 
-    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item(s) without delete permission', 'OK', {
+    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item without delete permission', 'OK', {
       duration: 5000,
     });
     expect(detail.trashDocument).toHaveBeenCalledTimes(1);
@@ -754,7 +760,11 @@ describe('BrowseComponent — listing state', () => {
     component.deleteDocument();
 
     expect(detail.trashDocument).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('reports the count that failed when a bulk delete only partly succeeds', () => {
@@ -771,7 +781,7 @@ describe('BrowseComponent — listing state', () => {
     component.deleteDocument();
 
     expect(snackBar).toHaveBeenCalledWith('Moved to trash', 'OK', { duration: 3000 });
-    expect(snackBar).toHaveBeenCalledWith('Failed to delete 1 item(s)', 'OK', { duration: 5000 });
+    expect(snackBar).toHaveBeenCalledWith('Failed to delete 1 item', 'OK', { duration: 5000 });
   });
 
   it('reports a wholly failed bulk delete and keeps the selection', () => {
@@ -836,7 +846,11 @@ describe('BrowseComponent — listing state', () => {
 
     expect(dialogOpen).not.toHaveBeenCalled();
     expect(detail.trashDocument).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('reports a failed check for child collections instead of deleting the folder', () => {
@@ -874,10 +888,14 @@ describe('BrowseComponent — listing state', () => {
 
     component.deleteDocument();
 
-    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item(s) that could not be loaded', 'OK', {
+    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item that could not be loaded', 'OK', {
       duration: 5000,
     });
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
     expect(detail.trashDocument).not.toHaveBeenCalled();
   });
 
@@ -897,7 +915,11 @@ describe('BrowseComponent — listing state', () => {
     component.openEditCollectionDialog(collection);
 
     expect(dialogOpen).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('openEditCollectionDialog reloads the listing after a confirmed edit', () => {
@@ -934,7 +956,11 @@ describe('BrowseComponent — listing state', () => {
 
     expect(dialogOpen).not.toHaveBeenCalled();
     expect(detail.trashDocument).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('deleteCollectionEntry reports a non-permission trash failure distinctly', () => {

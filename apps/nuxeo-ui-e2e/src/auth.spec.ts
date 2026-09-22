@@ -63,6 +63,98 @@ test.describe('authentication and authorisation', () => {
     await expect(page.locator('button, input[type="submit"]').first()).toBeVisible();
   });
 
+  test('password field stays visible when focused via keyboard (NXENG-749)', async ({ page }) => {
+    await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
+    await page.goto('/#/login', { waitUntil: 'networkidle' });
+
+    const username = page.locator('input[formcontrolname="username"]');
+    const password = page.locator('input[formcontrolname="password"]');
+    const passwordLabel = page.locator('mat-form-field.login-field-password mat-label');
+
+    await username.focus();
+    await page.keyboard.press('Tab');
+    await expect(password).toBeFocused();
+    await expect(passwordLabel).toBeVisible();
+
+    const labelBox = await passwordLabel.boundingBox();
+    const pwdBox = await password.boundingBox();
+    expect(labelBox, 'password label should have layout box').not.toBeNull();
+    expect(pwdBox, 'password input should have layout box').not.toBeNull();
+    expect(labelBox!.y).toBeLessThan(pwdBox!.y);
+
+    const usernameField = page.locator('mat-form-field').filter({ has: username });
+    const passwordField = page.locator('mat-form-field.login-field-password');
+    const usernameZ = await usernameField.evaluate((el) => getComputedStyle(el).zIndex);
+    const passwordZ = await passwordField.evaluate((el) => getComputedStyle(el).zIndex);
+    expect(Number(passwordZ)).toBeGreaterThan(Number(usernameZ) || 0);
+  });
+
+  test('password field stays unobscured when Tab-focused on a short viewport (NXENG-749)', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 800, height: 320 });
+    await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
+    await page.goto('/#/login', { waitUntil: 'networkidle' });
+
+    const username = page.locator('input[formcontrolname="username"]');
+    const password = page.locator('input[formcontrolname="password"]');
+    const passwordLabel = page.locator('mat-form-field.login-field-password mat-label');
+
+    await username.focus();
+    await page.keyboard.press('Tab');
+    await expect(password).toBeFocused();
+
+    const viewport = page.viewportSize();
+    expect(viewport).not.toBeNull();
+
+    const assertInViewport = async (locator: ReturnType<typeof page.locator>, name: string) => {
+      const box = await locator.boundingBox();
+      expect(box, `${name} should have layout box`).not.toBeNull();
+      expect(box!.y, `${name} should not be clipped above viewport`).toBeGreaterThanOrEqual(0);
+      expect(
+        box!.y + box!.height,
+        `${name} should not be clipped below viewport`,
+      ).toBeLessThanOrEqual(viewport!.height);
+    };
+
+    await assertInViewport(passwordLabel, 'password label');
+    await assertInViewport(password, 'password input');
+  });
+
+  test('login form stays usable in forced-colors (Windows high contrast) (NXENG-751)', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ forcedColors: 'active' });
+    await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
+    await page.goto('/#/login', { waitUntil: 'networkidle' });
+
+    const username = page.getByLabel('Username (required)', { exact: true });
+    const password = page.getByLabel('Password (required)', { exact: true });
+    const submit = page.locator('button.login-submit');
+
+    await expect(username).toBeVisible();
+    await expect(password).toBeVisible();
+    await expect(submit).toBeVisible();
+
+    const heroImg = page.locator('img.login-hero-image');
+    await expect(heroImg).toHaveAttribute('alt', '');
+    const heroOpacity = await heroImg.evaluate((el) => getComputedStyle(el).opacity);
+    expect(heroOpacity, 'forced-colors hides decorative hero art').toBe('0');
+
+    for (let i = 0; i < 4; i += 1) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(submit).toBeFocused();
+
+    const focusRing = await submit.evaluate((el) => {
+      const style = getComputedStyle(el);
+      const outlineWidthPx = Number.parseFloat(style.outlineWidth) || 0;
+      return { outlineWidthPx, outlineStyle: style.outlineStyle };
+    });
+    expect(focusRing.outlineStyle).not.toBe('none');
+    expect(focusRing.outlineWidthPx).toBeGreaterThanOrEqual(2);
+  });
+
   test('Log in shows a visible focus indicator when reached via Tab (NXENG-750)', async ({
     page,
   }) => {
@@ -105,8 +197,8 @@ test.describe('authentication and authorisation', () => {
      * visitor reaches the app as `Anonymous` — so this is the assertion that keeps that from
      * meaning "reaches administration".
      *
-     * `httpCredentials` off, or the Administrator credentials in the config would grant exactly
-     * the access this test exists to deny.
+     * `httpCredentials` off, or the dev-server basic-auth credentials in the Playwright config would
+     * grant exactly the access this test exists to deny.
      */
     await page.goto('/#/administration', { waitUntil: 'networkidle' });
     await page.waitForTimeout(1500);

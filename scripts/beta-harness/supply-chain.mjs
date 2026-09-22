@@ -40,12 +40,14 @@
  *   node scripts/beta-harness/supply-chain.mjs --today 2027-01-01   # test allowlist expiry
  *
  * Exit 1 on a production high/critical, an unallowlisted or expired production finding, an
- * unreferenced production dependency, or an exception that is no longer needed.
+ * unreferenced production dependency, an exception that is no longer needed, or an acceptance
+ * whose cited mitigation no longer exists in the code it names.
  */
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import ts from 'typescript';
 
 const repoRoot = resolve(import.meta.dirname, '..', '..');
 const argv = process.argv.slice(2);
@@ -383,6 +385,253 @@ for (const dep of Object.keys(exceptions)) {
   }
 }
 
+/* ------------------------------------------- 5. the cited mitigations still exist ---- */
+
+/**
+ * Does the code an acceptance points at still exist, and does it still contain the guard?
+ *
+ * ## Why
+ *
+ * An acceptance's prose carries its whole argument and nothing verified a word of it. The `quill`
+ * entry has been re-reviewed four times and every pass found at least one source pointer stale —
+ * naming an unrelated line, or sanitised code sitting in a branch the advisory cannot reach. By the
+ * fifth review three of its four pointers had drifted again: the `DOMPurify` call it cited at
+ * 502-503 had moved to 525-526, and 502 had become an unrelated method signature. `advisory` and
+ * `affects` moved part of the entry's burden onto this gate; this moves the source pointers too.
+ *
+ * Line numbers are the part that rots, because they shift whenever anyone inserts a method above
+ * them and nothing complains. So an entry cites a `declaration` — the literal text of the
+ * declaration line — plus an optional `guard` that must appear inside that declaration's body.
+ *
+ * ## What this does NOT do
+ *
+ * It does not check that the claim is true. It checks that the code the claim names still exists
+ * and still contains the mitigation it credits. A reviewer must still read the argument; what they
+ * no longer have to do is work out whether the pointers were ever right in the first place.
+ *
+ * ## Why this parses instead of counting braces
+ *
+ * The first version of this check found the anchor with `indexOf`, matched braces by counting
+ * them, and tested the guard with `includes` on the raw text. Review found two holes in it, and
+ * the second was demonstrated rather than argued: **commenting out** `DOMPurify.sanitize(...)`
+ * left the gate green, because the guard string was still present — in a comment. That is not a
+ * contrived input, it is what removing a line during a refactor actually looks like, and it is
+ * precisely the regression this check exists to catch. The first hole was the same shape: a `{`
+ * inside a string literal unbalances a brace counter, so the "body" runs on past the end of the
+ * function and an unrelated later occurrence of the guard satisfies it.
+ *
+ * So the file is parsed. The body comes from the AST, and the guard is matched against source
+ * with comments and literals blanked out.
+ *
+ * ## Consequences worth knowing before you write an entry
+ *
+ * - **A `guard` must be executable code**, because the text it is matched against has string and
+ *   template literals blanked. `expect(x).not.toContain(` is a usable guard; `'<script'` is not.
+ * - **An anchor may contain a string literal** — `it('…', () => {` has to work — so anchors are
+ *   matched against source with only comments blanked. An anchor therefore cannot resolve to a
+ *   declaration quoted inside a doc comment, which matters in a repository whose comments quote
+ *   code as often as this one's do.
+ *
+ * ## Fail-closed choices, each for a reason
+ *
+ * - The anchor must be UNIQUE in the file. A bare symbol name is not enough: `readQuillHtml`
+ *   appears three times in note-editor.ts, twice as a call, so anchoring on the first occurrence
+ *   would resolve a *caller's* body and hunt for the guard in the wrong function.
+ * - An anchor that resolves to no function body fails rather than being skipped.
+ * - `mitigations` is optional, exactly as `affects` is: an acceptance can legitimately rest on
+ *   something with no code to point at. But a field that is PRESENT must be a non-empty array of
+ *   usable entries, so it cannot quietly opt out of its own verification.
+ */
+
+/**
+ * `text` with every range in `ranges` replaced by spaces, preserving length and line structure so
+ * offsets stay usable.
+ *
+ * @param {string} text
+ * @param {[number, number][]} ranges
+ */
+function blankOut(text, ranges) {
+  if (ranges.length === 0) return text;
+  const chars = text.split('');
+  for (const [start, end] of ranges) {
+    for (let i = Math.max(0, start); i < Math.min(end, chars.length); i += 1) {
+      if (chars[i] !== '\n' && chars[i] !== '\r') chars[i] = ' ';
+    }
+  }
+  return chars.join('');
+}
+
+/**
+ * Every comment range in the file, taken from the parser rather than a scanner.
+ *
+ * A raw scanner mis-tokenises a regex containing an escaped slash and can then report part of it
+ * as a comment, which would blank real code and fail an honest entry.
+ *
+ * @param {ts.SourceFile} sourceFile
+ * @param {string} text
+ * @returns {[number, number][]}
+ */
+function commentRanges(sourceFile, text) {
+  /** @type {[number, number][]} */
+  const ranges = [];
+  const visit = (node) => {
+    for (const r of ts.getLeadingCommentRanges(text, node.getFullStart()) ?? []) {
+      ranges.push([r.pos, r.end]);
+    }
+    for (const r of ts.getTrailingCommentRanges(text, node.getEnd()) ?? []) {
+      ranges.push([r.pos, r.end]);
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+  return ranges;
+}
+
+/**
+ * Every string, template and regex literal range inside `node`.
+ *
+ * A template expression blanks only its literal spans, so a guard inside `${…}` still counts as
+ * code — blanking the whole template would fail honest entries.
+ *
+ * @param {ts.Node} node
+ * @param {ts.SourceFile} sourceFile
+ * @returns {[number, number][]}
+ */
+function literalRanges(node, sourceFile) {
+  /** @type {[number, number][]} */
+  const ranges = [];
+  const visit = (n) => {
+    if (ts.isStringLiteralLike(n) || ts.isRegularExpressionLiteral(n)) {
+      ranges.push([n.getStart(sourceFile), n.getEnd()]);
+      return;
+    }
+    if (ts.isTemplateExpression(n)) {
+      ranges.push([n.head.getStart(sourceFile), n.head.getEnd()]);
+      for (const span of n.templateSpans) {
+        ranges.push([span.literal.getStart(sourceFile), span.literal.getEnd()]);
+        visit(span.expression);
+      }
+      return;
+    }
+    n.forEachChild(visit);
+  };
+  visit(node);
+  return ranges;
+}
+
+/**
+ * The function body an anchor points at, or the reason it could not be resolved.
+ *
+ * The anchor need not be the function itself: `readonly htmlReadonlyView = computed(() => {`
+ * anchors on a property whose initializer holds the arrow function. So the innermost nodes
+ * containing the anchor are tried from the inside out, and the first function body found within
+ * one of them wins. Working outwards is what makes a modifier keyword (`private`, `readonly`) a
+ * usable starting point, since the anchor's offset lands on it.
+ *
+ * @param {string} filePath
+ * @param {string} text
+ * @param {string} anchor
+ * @returns {{ body: string, error?: undefined } | { body?: undefined, error: string }}
+ */
+function bodyAtAnchor(filePath, text, anchor) {
+  const sourceFile = ts.createSourceFile(filePath, text, ts.ScriptTarget.Latest, true);
+
+  // Anchors are matched with comments blanked but literals intact: a test name lives in a string
+  // literal and must still be anchorable, while a declaration quoted in a doc comment must not be.
+  const searchable = blankOut(text, commentRanges(sourceFile, text));
+  const at = searchable.indexOf(anchor);
+  if (at === -1) return { error: 'no such code is in the file (comments are not searched)' };
+  if (searchable.indexOf(anchor, at + anchor.length) !== -1) {
+    return { error: 'it appears more than once, so the anchor is ambiguous' };
+  }
+
+  /** @type {ts.Node[]} */
+  const containing = [];
+  const collect = (node) => {
+    if (node.getStart(sourceFile) <= at && at < node.getEnd()) {
+      containing.push(node);
+      node.forEachChild(collect);
+    }
+  };
+  sourceFile.forEachChild(collect);
+
+  const firstBody = (node) => {
+    if (ts.isFunctionLike(node) && node.body) return node.body;
+    let found = null;
+    node.forEachChild((child) => {
+      found ??= firstBody(child);
+    });
+    return found;
+  };
+
+  for (let i = containing.length - 1; i >= 0; i -= 1) {
+    const body = firstBody(containing[i]);
+    if (body) {
+      const start = body.getStart(sourceFile);
+      // Blank comments and literals so a guard can only be satisfied by executable code.
+      const code = blankOut(text, [
+        ...commentRanges(sourceFile, text),
+        ...literalRanges(body, sourceFile),
+      ]);
+      return { body: code.slice(start, body.getEnd()) };
+    }
+  }
+  return { error: 'it does not resolve to anything with a function body' };
+}
+
+let mitigationsChecked = 0;
+
+for (const [name, entry] of Object.entries(allowlist.advisories ?? {})) {
+  if (!Object.hasOwn(entry, 'mitigations')) continue;
+  if (!Array.isArray(entry.mitigations) || entry.mitigations.length === 0) {
+    fail(
+      `the allowlist entry for ${name} supplies "mitigations" but it is not a non-empty array ` +
+        `(got ${JSON.stringify(entry.mitigations)}). Remove the field or populate it.`,
+    );
+    continue;
+  }
+  for (const [i, m] of entry.mitigations.entries()) {
+    const where = `${name} mitigations[${i}]`;
+    const str = (v) => typeof v === 'string' && v.trim() !== '';
+    if (!m || !str(m.file) || !str(m.declaration) || !str(m.claim)) {
+      fail(`${where} needs non-empty "file", "declaration" and "claim" strings.`);
+      continue;
+    }
+    const abs = resolve(repoRoot, m.file);
+    if (!existsSync(abs)) {
+      fail(
+        `${where} points at ${m.file}, which does not exist. The file was moved or deleted, so ` +
+          'the acceptance rests on code nobody can find — re-review it.',
+      );
+      continue;
+    }
+    const { body, error } = bodyAtAnchor(abs, readFileSync(abs, 'utf8'), m.declaration);
+    if (error) {
+      fail(
+        `${where} anchors on "${m.declaration}" in ${m.file}, but ${error}. Do not just repair the ` +
+          'pointer: a mitigation that was renamed or removed is a reason to re-review the acceptance.',
+      );
+      continue;
+    }
+    if (Object.hasOwn(m, 'guard')) {
+      if (!str(m.guard)) {
+        fail(`${where} supplies "guard" but it is not a non-empty string.`);
+        continue;
+      }
+      if (!body.includes(m.guard)) {
+        fail(
+          `${where} credits "${m.guard}" inside "${m.declaration}" in ${m.file}, and it is no ` +
+            'longer there as executable code — commenting it out counts as removing it. The ' +
+            'mitigation this acceptance rests on is gone; the acceptance is void until it is ' +
+            'restored or re-argued.',
+        );
+        continue;
+      }
+    }
+    mitigationsChecked += 1;
+  }
+}
+
 /* ------------------------------------------------------------------------ report ---- */
 
 function relative(p) {
@@ -400,6 +649,7 @@ if (asJson) {
         productionFindings: prodFindings,
         productionDependencies: prodDeps.length,
         unreferenced,
+        mitigationsChecked,
         problems,
         notes,
       },
@@ -420,6 +670,7 @@ console.log(
     `${fullCounts.moderate ?? 0} moderate, ${fullCounts.low ?? 0} low   (reported, not gated)`,
 );
 console.log(`  production deps     ${prodDeps.length}, of which ${unreferenced.length} unreferenced`);
+console.log(`  mitigations         ${mitigationsChecked} cited pointer(s) resolved in the source`);
 console.log(`  date                ${today}`);
 for (const n of notes) console.log(`\n  - ${n}`);
 

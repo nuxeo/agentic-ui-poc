@@ -12,6 +12,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { SettingsService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 function passwordsMatch(control: AbstractControl): ValidationErrors | null {
   const newPwd = control.get('newPassword')?.value;
@@ -23,6 +24,7 @@ function passwordsMatch(control: AbstractControl): ValidationErrors | null {
   selector: 'app-change-password-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -35,6 +37,7 @@ function passwordsMatch(control: AbstractControl): ValidationErrors | null {
 })
 export class ChangePasswordDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ChangePasswordDialogComponent>);
+  private readonly translate = inject(TranslateService);
   private readonly settingsService = inject(SettingsService);
   private readonly fb = inject(FormBuilder);
 
@@ -63,7 +66,7 @@ export class ChangePasswordDialogComponent {
       next: () => this.dialogRef.close(true),
       error: () => {
         this.error.set(
-          'Failed to change password. Please check your current password and try again.',
+          this.translate.instant('app.message.failed-to-change-password-please-check-your'),
         );
         this.saving.set(false);
       },

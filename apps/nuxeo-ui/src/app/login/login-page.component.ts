@@ -20,12 +20,14 @@ import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 const LAST_USER_KEY = 'agentic_ui_last_username';
 
 @Component({
   selector: 'app-login-page',
   imports: [
+    TranslatePipe,
     RouterLink,
     ReactiveFormsModule,
     MatButtonModule,
@@ -40,6 +42,7 @@ const LAST_USER_KEY = 'agentic_ui_last_username';
 })
 export class LoginPageComponent implements AfterViewInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
+  private readonly translate = inject(TranslateService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -63,9 +66,13 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       if (params.get('reason') === 'session-expired') {
-        this.snackBar.open('Your session has expired. Please sign in again.', 'Dismiss', {
-          duration: 8000,
-        });
+        this.snackBar.open(
+          this.translate.instant('app.message.your-session-has-expired-please-sign-in'),
+          this.translate.instant('common.dismiss'),
+          {
+            duration: 8000,
+          },
+        );
       }
     });
   }
@@ -143,13 +150,7 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  /**
-   * Right-panel art from `apps/nuxeo-ui/public/images/Login-background.svg`.
-   */
-  heroBackgroundImage(): string {
-    return `url("${this.heroImagePath}")`;
-  }
-
+  /** Right-panel art from `apps/nuxeo-ui/public/images/Login-background.svg`. */
   protected readonly heroImagePath = '/images/Login-background.svg';
 
   submit(): void {
@@ -173,7 +174,9 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
       },
       error: (err: Error) => {
         this.submitting.set(false);
-        this.snackBar.open(err.message, 'Dismiss', { duration: 6000 });
+        this.snackBar.open(err.message, this.translate.instant('common.dismiss'), {
+          duration: 6000,
+        });
       },
     });
   }

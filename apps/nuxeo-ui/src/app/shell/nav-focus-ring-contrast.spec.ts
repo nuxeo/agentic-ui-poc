@@ -6,7 +6,7 @@ import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { TranslateModule } from '@ngx-translate/core';
 
 /**
- * Regression test for NXENG-758 — the keyboard focus indicator on the sidebar nav links.
+ * Regression test for NXENG-761 — the keyboard focus indicator on the sidebar nav links.
  *
  * ## What is asserted, and why it is measured rather than inspected
  *
@@ -47,30 +47,30 @@ import { TranslateModule } from '@ngx-translate/core';
 const ACTIVE_CLASS = 'sat-platform-nav-item-active';
 
 /**
- * The focusable anchor **inside the list item** — scoped deliberately.
- *
- * `sat-platform-nav` renders a second element carrying the same `.sat-platform-nav-item` class
- * for its own title-container toggle, and it comes first in the DOM. A bare
- * `querySelector('.sat-platform-nav-item')` therefore measured the toggle: the panel-contrast
- * numbers came out right by coincidence, because the toggle sits on the same fill, while the
- * current-item assertions were measuring an element that is never a current item and could not
- * have failed. Keep this scoped to the item under test.
+ * Packaged nav entries IBM has flagged individually. The ring mechanism is global
+ * (`--sat-platform-nav-outline` on `html`, NXENG-761), but batch a11y tickets name a
+ * specific `data-nav-id` — each one gets its own row here so a regression cannot hide
+ * behind a sibling item's measurements.
  */
-const LINK = 'sat-platform-nav-list-item[data-nav-id="app.navbar.browseAdfHx"] .sat-platform-nav-item';
+const NAV_ITEMS_UNDER_TEST = [
+  { navId: 'app.navbar.browseAdfHx', ticket: 'NXENG-758' },
+  { navId: 'app.navbar.search', ticket: 'NXENG-785' },
+] as const;
+
+/** Focusable anchor inside the list item under test — never a bare `.sat-platform-nav-item`. */
+function linkSelector(navId: string): string {
+  return `sat-platform-nav-list-item[data-nav-id="${navId}"] .sat-platform-nav-item`;
+}
 
 @Component({
   standalone: true,
   imports: [SatPlatformNavModule],
-  template: `
-    <sat-platform-nav>
-      <sat-platform-nav-list-item [active]="active()" data-nav-id="app.navbar.browseAdfHx">
-        Browse (adf-hx POC)
-      </sat-platform-nav-list-item>
-    </sat-platform-nav>
-  `,
+  templateUrl: './nav-focus-ring-contrast.host.html',
 })
 class NavHostComponent {
   readonly active = signal(false);
+  readonly navId = signal<string>(NAV_ITEMS_UNDER_TEST[0].navId);
+  readonly label = signal('Nav item under test');
 }
 
 /** WCAG relative luminance of an opaque sRGB colour. */
@@ -100,7 +100,10 @@ function parseColor(value: string): { rgb: number[]; alpha: number } {
 }
 
 /** Composite a translucent colour over an opaque backdrop — what the eye actually sees. */
-function compositeOver(fg: { rgb: number[]; alpha: number }, backdrop: readonly number[]): number[] {
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+  backdrop: readonly number[],
+): number[] {
   return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
 }
 
@@ -115,7 +118,7 @@ function paintedBackdrop(element: Element): number[] {
   throw new Error('no painted ancestor found; the nav panel did not render');
 }
 
-describe('sidebar nav focus ring contrast (NXENG-758)', () => {
+describe('sidebar nav focus ring contrast (NXENG-761)', () => {
   /** WCAG 2.1 SC 1.4.11 Non-text Contrast: a focus indicator needs 3:1 against its neighbours. */
   const MINIMUM_RATIO = 3;
 
@@ -141,18 +144,20 @@ describe('sidebar nav focus ring contrast (NXENG-758)', () => {
    * Render the nav under one theme and focus the link, optionally as the current route.
    * Returns the ring colour and the two surfaces it sits between.
    */
-  function measure(theme: string, asCurrentRoute: boolean) {
+  function measure(navId: string, theme: string, asCurrentRoute: boolean) {
     document.documentElement.setAttribute('data-app-theme', theme);
 
     const fixture = TestBed.createComponent(NavHostComponent);
     // Driven through the same input `app-shell.component.html` binds, rather than by adding
     // Satori's class by hand — otherwise a rename of that class would leave this spec
     // measuring a plain item while still reporting on the current one.
+    fixture.componentInstance.navId.set(navId);
     fixture.componentInstance.active.set(asCurrentRoute);
     fixture.detectChanges();
 
-    const anchor = fixture.nativeElement.querySelector(LINK) as HTMLElement | null;
-    if (!anchor) throw new Error(`Satori did not render ${LINK}`);
+    const selector = linkSelector(navId);
+    const anchor = fixture.nativeElement.querySelector(selector) as HTMLElement | null;
+    if (!anchor) throw new Error(`Satori did not render ${selector}`);
     link = anchor;
     // Both directions, not just the one this call wants. A missing class on `[active]="true"`
     // measures a plain item and calls it the current one; a *lingering* class on
@@ -186,62 +191,69 @@ describe('sidebar nav focus ring contrast (NXENG-758)', () => {
     };
   }
 
-  it('draws a focus indicator at all when the link is focused', () => {
-    const measured = measure('nuxeo', false);
+  for (const { navId, ticket } of NAV_ITEMS_UNDER_TEST) {
+    describe(`${navId} (${ticket})`, () => {
+      it('draws a focus indicator at all when the link is focused', () => {
+        const measured = measure(navId, 'nuxeo', false);
 
-    expect(measured.outlineStyle).not.toBe('none');
-    expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
-    // Focusing has to change the element's appearance: an unfocused item reports no outline
-    // at all. That is the *precondition* IBM's `style_focus_visible` puts in front of a human
-    // reviewer, not a substitute for the re-scan itself — no assertion here can produce an
-    // IBM verdict, and the ticket's AC-2 is tracked as outstanding on NXENG-758.
-    link.blur();
-    expect(getComputedStyle(link).outlineStyle).toBe('none');
-  });
+        expect(measured.outlineStyle).not.toBe('none');
+        expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
+        // Focusing has to change the element's appearance: an unfocused item reports no outline
+        // at all. That is the *precondition* IBM's `style_focus_visible` puts in front of a human
+        // reviewer, not a substitute for the re-scan itself — no assertion here can produce an
+        // IBM verdict.
+        link.blur();
+        expect(getComputedStyle(link).outlineStyle).toBe('none');
+      });
 
-  // Every packaged palette in `styles.scss`. The nav panel is `--mat-sys-primary` and the ring
-  // is our override of `--sat-platform-nav-outline`, so each theme is a different pairing and
-  // has to be measured rather than reasoned about.
-  for (const theme of ['nuxeo', 'dark', 'kawaii', 'light']) {
-    it(`clears ${MINIMUM_RATIO}:1 against the nav panel in the ${theme} theme`, () => {
-      const measured = measure(theme, false);
-      expect(measured.ratioVsPanel)
-        .withContext(`ring ${measured.ringColor} on the ${theme} nav panel`)
-        .toBeGreaterThanOrEqual(MINIMUM_RATIO);
-    });
+      // Every packaged palette in `styles.scss`. The nav panel is `--mat-sys-primary` and the ring
+      // is our override of `--sat-platform-nav-outline`, so each theme is a different pairing and
+      // has to be measured rather than reasoned about.
+      for (const theme of ['nuxeo', 'dark', 'kawaii', 'light']) {
+        it(`clears ${MINIMUM_RATIO}:1 against the nav panel in the ${theme} theme`, () => {
+          const measured = measure(navId, theme, false);
+          expect(measured.ratioVsPanel)
+            .withContext(`ring ${measured.ringColor} on the ${theme} nav panel`)
+            .toBeGreaterThanOrEqual(MINIMUM_RATIO);
+        });
 
-    it(`clears ${MINIMUM_RATIO}:1 on both sides of the ring on the current item in the ${theme} theme`, () => {
-      // The state the defect was in: Satori lightens the current item with a 12% white
-      // overlay, and measured 2.87:1 on the default theme before the token was overridden.
-      const measured = measure(theme, true);
+        it(`clears ${MINIMUM_RATIO}:1 on both sides of the ring on the current item in the ${theme} theme`, () => {
+          // The state the defect was in: Satori lightens the current item with a 12% white
+          // overlay, and measured 2.87:1 on the default theme before the token was overridden.
+          const measured = measure(navId, theme, true);
 
-      // A 2px ring inset by 2px has two neighbours, and WCAG 1.4.11 is about the indicator
-      // being distinguishable from what is next to it — so both are asserted. Checking only
-      // the interior would let an override pass against the lighter overlay while vanishing
-      // against the panel at the item's outer edge.
-      expect(measured.ratioVsInterior)
-        .withContext(`ring ${measured.ringColor} on the ${theme} current-item fill`)
-        .toBeGreaterThanOrEqual(MINIMUM_RATIO);
-      expect(measured.ratioVsPanel)
-        .withContext(`ring ${measured.ringColor} on the ${theme} nav panel, current item`)
-        .toBeGreaterThanOrEqual(MINIMUM_RATIO);
+          // A 2px ring inset by 2px has two neighbours, and WCAG 1.4.11 is about the indicator
+          // being distinguishable from what is next to it — so both are asserted. Checking only
+          // the interior would let an override pass against the lighter overlay while vanishing
+          // against the panel at the item's outer edge.
+          expect(measured.ratioVsInterior)
+            .withContext(`ring ${measured.ringColor} on the ${theme} current-item fill`)
+            .toBeGreaterThanOrEqual(MINIMUM_RATIO);
+          expect(measured.ratioVsPanel)
+            .withContext(`ring ${measured.ringColor} on the ${theme} nav panel, current item`)
+            .toBeGreaterThanOrEqual(MINIMUM_RATIO);
+        });
+      }
+
+      it("keeps Satori's negative outline-offset, so the ring stays inside the item's box", () => {
+        measure(navId, 'nuxeo', false);
+        // Why that matters: `.sat-platform-nav-list` sets `overflow-x: hidden`, so a ring drawn
+        // outside the box would be cut off at the rail edges. The fix changes colour only.
+        expect(Number.parseFloat(getComputedStyle(link).outlineOffset)).toBeLessThan(0);
+      });
     });
   }
-
-  it("keeps Satori's negative outline-offset, so the ring stays inside the item's box", () => {
-    measure('nuxeo', false);
-    // Why that matters: `.sat-platform-nav-list` sets `overflow-x: hidden`, so a ring drawn
-    // outside the box would be cut off at the rail edges. The fix changes colour only.
-    expect(Number.parseFloat(getComputedStyle(link).outlineOffset)).toBeLessThan(0);
-  });
 
   it('takes the ring colour from --agentic-nav-focus-outline-color when it is set', () => {
     // A custom property written onto `<html>` is exactly how `AppThemeService.applyTheme`
     // applies a Layer 0 `themes[].tokens` entry, so this is the customer's path, not a
     // test-only shortcut. The value is a sentinel rather than a colour we would ship.
-    document.documentElement.style.setProperty('--agentic-nav-focus-outline-color', 'rgb(255, 0, 0)');
+    document.documentElement.style.setProperty(
+      '--agentic-nav-focus-outline-color',
+      'rgb(255, 0, 0)',
+    );
     try {
-      const measured = measure('nuxeo', false);
+      const measured = measure(NAV_ITEMS_UNDER_TEST[0].navId, 'nuxeo', false);
       expect(measured.ringColor).toBe('rgb(255, 0, 0)');
     } finally {
       document.documentElement.style.removeProperty('--agentic-nav-focus-outline-color');
