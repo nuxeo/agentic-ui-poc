@@ -1188,13 +1188,20 @@ function checkNoHardcodedUiText() {
     // A standalone debug page, not referenced by `angular.json` and not copied as an asset, so
     // it is never served to anyone.
     /^apps\/nuxeo-ui\/src\/diagnostic\.html$/,
-    // Spec fixtures. A `*.host.html` is the template of a test host component, compiled only by
-    // the spec that names it and served by no build config — verified for all three: each is
-    // referenced by exactly one `.spec.ts` and appears in no `assets` glob. Their text is test
-    // DATA, chosen to reproduce a rendering bug, so keying it would make the fixture describe
-    // something other than the case under test. They arrived from `main` after this sweep went
-    // repo-wide, which is why the list did not already cover them.
+    // Spec fixtures. A `*.host.html` is the template of a test host component, and a
+    // `*.spec.html` is the markup a spec compiles directly; both are loaded only by the spec
+    // that names them and served by no build config — verified for all five: each is
+    // referenced by exactly one `.spec.ts` and appears in no `assets` glob, no
+    // `project.json` and no `angular.json`. Their text is test DATA, chosen to reproduce a
+    // rendering bug, so keying it would make the fixture describe something other than the
+    // case under test. They arrived from `main` after this sweep went repo-wide, which is
+    // why the list did not already cover them.
+    //
+    // `.spec.html` was added for `apps/nuxeo-ui/src/app/shell/header-search-focus-ring.spec.html`
+    // and `libs/shared/ui/src/lib/document-viewer/angular-security-context.spec.html`, which
+    // arrived from `main` the same way `.host.html` did and carry the identical argument.
     /\.host\.html$/,
+    /\.spec\.html$/,
     // The document shell. `checkNoTemplateSyntaxInDocumentShell` REQUIRES its title to be a
     // literal — Angular never compiles this file, so a pipe there renders as visible braces.
     // Without this exemption the two gates contradict each other and one of them has to be
