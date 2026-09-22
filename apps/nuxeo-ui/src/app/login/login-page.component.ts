@@ -1,5 +1,4 @@
 import {
-  AfterViewChecked,
   AfterViewInit,
   ChangeDetectorRef,
   Component,
@@ -19,9 +18,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
+import { observeStripRedundantMatInputAriaRequired } from '@nuxeo-satori/platform/ui';
 
 import { AuthService } from '../auth/auth.service';
-import { stripRedundantMatInputAriaRequired } from './login-mat-input-required-a11y';
 
 const LAST_USER_KEY = 'agentic_ui_last_username';
 
@@ -40,7 +39,7 @@ const LAST_USER_KEY = 'agentic_ui_last_username';
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
 })
-export class LoginPageComponent implements AfterViewInit, AfterViewChecked, OnDestroy {
+export class LoginPageComponent implements AfterViewInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -49,6 +48,7 @@ export class LoginPageComponent implements AfterViewInit, AfterViewChecked, OnDe
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly autofillSyncTimeouts: ReturnType<typeof setTimeout>[] = [];
+  private passwordAriaRequiredObserver: MutationObserver | null = null;
 
   readonly submitting = signal(false);
   /** SSO entry points from `nuxeo-sso.providers.ts` / app config. */
@@ -75,16 +75,23 @@ export class LoginPageComponent implements AfterViewInit, AfterViewChecked, OnDe
   ngAfterViewInit(): void {
     // Password managers often autofill after first paint without updating reactive form state.
     this.scheduleAutofillSync();
-  }
-
-  ngAfterViewChecked(): void {
-    stripRedundantMatInputAriaRequired(this.getCredentialInputs().passwordInput);
+    this.watchPasswordRequiredAccessibility();
   }
 
   ngOnDestroy(): void {
+    this.passwordAriaRequiredObserver?.disconnect();
+    this.passwordAriaRequiredObserver = null;
     for (const timeoutId of this.autofillSyncTimeouts) {
       clearTimeout(timeoutId);
     }
+  }
+
+  /** NXENG-755: keep native required, drop MatInput's duplicate aria-required on password. */
+  private watchPasswordRequiredAccessibility(): void {
+    this.passwordAriaRequiredObserver?.disconnect();
+    this.passwordAriaRequiredObserver = observeStripRedundantMatInputAriaRequired(
+      this.getCredentialInputs().passwordInput,
+    );
   }
 
   private scheduleAutofillSync(): void {

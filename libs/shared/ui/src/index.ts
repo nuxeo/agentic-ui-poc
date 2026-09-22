@@ -48,3 +48,7 @@ export {
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
 } from './lib/confirm-dialog/trash-confirm.utils';
+export {
+  observeStripRedundantMatInputAriaRequired,
+  stripRedundantMatInputAriaRequired,
+} from './lib/login-mat-input-required-a11y';

@@ -43,16 +43,41 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
-  it('omits redundant aria-required on password when HTML required is set (NXENG-755)', () => {
+  it('does not expose redundant aria-required on password when HTML required is set (NXENG-755)', async () => {
     const passwordInput = fixture.nativeElement.querySelector(
       'input[formcontrolname="password"]',
     ) as HTMLInputElement;
 
     expect(passwordInput.required).toBe(true);
-    passwordInput.setAttribute('aria-required', 'true');
-    fixture.detectChanges();
-
     expect(passwordInput.getAttribute('aria-required')).toBeNull();
+
+    const strippedAfterMaterialRestore = new Promise<void>((resolve) => {
+      const watch = new MutationObserver(() => {
+        if (passwordInput.getAttribute('aria-required') === null) {
+          watch.disconnect();
+          resolve();
+        }
+      });
+      watch.observe(passwordInput, {
+        attributes: true,
+        attributeFilter: ['aria-required'],
+      });
+      passwordInput.setAttribute('aria-required', 'true');
+    });
+
+    await strippedAfterMaterialRestore;
+    expect(passwordInput.getAttribute('aria-required')).toBeNull();
+  });
+
+  it('disconnects the password aria-required observer on destroy (NXENG-755)', async () => {
+    const passwordInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="password"]',
+    ) as HTMLInputElement;
+
+    fixture.destroy();
+    passwordInput.setAttribute('aria-required', 'true');
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(passwordInput.getAttribute('aria-required')).toBe('true');
   });
 
   it('keeps the credential field above siblings when focused (NXENG-749)', () => {
