@@ -70,6 +70,7 @@ const findings = [];
 let totalAssertions = 0;
 let constantAssertions = 0;
 const allowlists = [];
+const guardedFailures = [];
 
 for (const file of files) {
   const src = await readFile(file, 'utf8');
@@ -123,6 +124,8 @@ function auditFile(rel, src, ast) {
   const steps = [];
   let current = null;
 
+  const parents = parentMap(ast);
+
   walk(ast, (node) => {
     if (node.type !== 'CallExpression') return;
     const name = calleeName(node);
@@ -167,16 +170,28 @@ function auditFile(rel, src, ast) {
     }
 
     const verdict = classify(condition, src, literalBindings);
-    if (verdict) {
-      constantAssertions += 1;
-      findings.push({
-        file: rel,
-        line,
-        kind: verdict.kind,
-        severity: 'fail',
-        message: `\`${name}("${label}")\` ${verdict.why}. It cannot fail, so it is not evidence.`,
-      });
+    if (!verdict) return;
+
+    // `if (!scene.criterion) check('scene names an acceptance criterion', false, …)` is the
+    // deliberate report-this-as-failed idiom: the literal `false` is the verdict and the
+    // enclosing `if` is the assertion. Reported as a constant, the idiom's only escape was to
+    // stop making the claim, so it was recorded instead — and a gate nobody can satisfy is one
+    // that gets suppressed. The guard is still listed below, because an exemption nobody has
+    // to look at is how a real one hides.
+    const guard = guardedBy(node, parents, src, literalBindings);
+    if (verdict.kind === 'literal-false' && guard) {
+      guardedFailures.push({ file: rel, line, label, guard });
+      return;
     }
+
+    constantAssertions += 1;
+    findings.push({
+      file: rel,
+      line,
+      kind: verdict.kind,
+      severity: 'fail',
+      message: `\`${name}("${label}")\` ${verdict.why}. It cannot fail, so it is not evidence.`,
+    });
   });
 
   for (const s of steps) {
@@ -257,6 +272,86 @@ function classify(node, src, bindings) {
 }
 
 /**
+ * The condition a `check(_, false)` exists to report, or `null` if there is not one.
+ *
+ * Narrow on purpose, in two directions, because the first cut of this was not and both
+ * failures showed up the moment it was tested against a deliberate violation.
+ *
+ * It climbs only through wrappers that add nothing — `await`, an expression statement, a
+ * `return`, and a block whose *sole* statement is the one it came from — and stops at the
+ * first conditional. So `if (!scene.criterion) check(n, false)` qualifies, while a
+ * `check(n, false)` buried among twenty other statements inside some outer `if` does not: the
+ * enclosing block is doing plenty besides reporting, so the `if` is not this call's guard.
+ * Climbing the whole ancestor chain made every statement inside a top-level `if (declarative)`
+ * exempt, which is the rule relaxed until it passes.
+ *
+ * The guard's own test must also not be a constant, or `if (true) check(n, false)` would
+ * launder precisely what `literal-false` exists to catch.
+ *
+ * @param {object} node
+ * @param {Map<object, object>} parents
+ * @param {string} src
+ * @param {Map<string, unknown>} bindings
+ * @returns {string | null} the guard's source text, for the report
+ */
+function guardedBy(node, parents, src, bindings) {
+  let child = node;
+  let parent = parents.get(child);
+  while (parent) {
+    if (parent.type === 'IfStatement' || parent.type === 'ConditionalExpression') {
+      if (child !== parent.consequent && child !== parent.alternate) return null;
+      return classify(parent.test, src, bindings) ? null : text(src, parent.test);
+    }
+    if (parent.type === 'LogicalExpression') {
+      if (child !== parent.right) return null;
+      return classify(parent.left, src, bindings) ? null : text(src, parent.left);
+    }
+    if (!isTransparentWrapper(parent, child)) return null;
+    child = parent;
+    parent = parents.get(child);
+  }
+  return null;
+}
+
+/** A node that neither guards nor accompanies its child — see `guardedBy`. */
+function isTransparentWrapper(parent, child) {
+  if (parent.type === 'AwaitExpression') return parent.argument === child;
+  if (parent.type === 'ExpressionStatement') return parent.expression === child;
+  if (parent.type === 'ReturnStatement') return parent.argument === child;
+  if (parent.type === 'BlockStatement') return parent.body.length === 1 && parent.body[0] === child;
+  return false;
+}
+
+/**
+ * Child node -> its nearest node ancestor, so a finding can be read in the context that
+ * reaches it. Arrays are traversed through rather than recorded, so an element's parent is
+ * the node holding the array.
+ *
+ * @param {object} ast
+ * @returns {Map<object, object>}
+ */
+function parentMap(ast) {
+  const parents = new Map();
+  const descend = (node, parent) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      for (const n of node) descend(n, parent);
+      return;
+    }
+    if (typeof node.type === 'string') {
+      if (parent) parents.set(node, parent);
+      parent = node;
+    }
+    for (const key of Object.keys(node)) {
+      if (key === 'loc' || key === 'range') continue;
+      descend(node[key], parent);
+    }
+  };
+  descend(ast, null);
+  return parents;
+}
+
+/**
  * Record every console-error suppression so they are visible in one place.
  * Not a failure — some are legitimately environmental — but a suppression that
  * nobody has to look at is how a real regression stays invisible.
@@ -296,6 +391,7 @@ function report() {
           totalAssertions,
           constantAssertions,
           findings,
+          guardedFailures,
           consoleErrorAllowlists: allowlists,
         },
         null,
@@ -314,6 +410,17 @@ function report() {
   for (const f of warns) {
     console.log(`  [warn] ${f.file}:${f.line}  (${f.kind})`);
     console.log(`         ${f.message}`);
+  }
+
+  if (guardedFailures.length) {
+    console.log(
+      '\n  Guarded failure reports — a literal `false` reached only when its guard holds,\n' +
+        '  so the guard is the assertion. Listed because the exemption is real:',
+    );
+    for (const g of guardedFailures) {
+      console.log(`    ${g.file}:${g.line}  "${g.label}"`);
+      console.log(`      reached only when: ${g.guard.replace(/\s+/g, ' ').slice(0, 90)}`);
+    }
   }
 
   if (allowlists.length) {
