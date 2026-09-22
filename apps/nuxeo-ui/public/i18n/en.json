@@ -108,7 +108,8 @@
       "state-off": "Off"
     },
     "test": {
-      "platform-nav-item": "Browse"
+      "platform-nav-item": "Browse",
+      "collections-nav-item": "Collections"
     }
   }
 }

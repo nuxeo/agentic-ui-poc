@@ -108,7 +108,8 @@
       "state-off": "aus"
     },
     "test": {
-      "platform-nav-item": "Durchsuchen"
+      "platform-nav-item": "Durchsuchen",
+      "collections-nav-item": "Sammlungen"
     }
   }
 }

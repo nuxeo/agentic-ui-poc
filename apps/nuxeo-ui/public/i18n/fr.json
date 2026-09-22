@@ -108,7 +108,8 @@
       "state-off": "désactivées"
     },
     "test": {
-      "platform-nav-item": "Parcourir"
+      "platform-nav-item": "Parcourir",
+      "collections-nav-item": "Collections"
     }
   }
 }
