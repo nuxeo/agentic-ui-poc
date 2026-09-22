@@ -77,6 +77,14 @@ const OUT_OF_SCOPE = Object.freeze({
   'knowledge-discovery': 'KD feature, not part of the core slice',
   'shared-kd-client': 'KD client, not part of the core slice',
   'shared-ke-client': 'KE client, not part of the core slice',
+  // Omitted until 2026-09-22, while its KD and KE siblings were both here from the start. The
+  // omission was invisible because the project had never been measured at all: it entered the
+  // report for the first time when the coverage baseline was reconciled, arrived at 15.98%, and
+  // took the in-scope Beta bar from 10 of 10 to 10 of 11. Excluded rather than scheduled for
+  // specs because the AI backend is not in this repository — the features are `AI.*` Nuxeo
+  // Automation operations from a separate marketplace package, so the core slice cannot exercise
+  // them. The ratchet still applies, so this cannot be used to let it rot.
+  'shared-ai-client': 'AI client, not part of the core slice',
   assets: 'asset search, not part of the core slice',
   trash: 'trash, not part of the core slice',
   'acme-extensions': 'reference customer extension — example code, not product',
