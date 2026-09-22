@@ -204,6 +204,55 @@ async function deleteDataRoot(
 }
 
 /**
+ * Block until a document is visible to `/search/lang/NXQL/execute`, or throw.
+ *
+ * `/search/lang/NXQL/execute` is OpenSearch-backed on this deployment and lags a write by
+ * roughly a second. Every index-backed read-back in this library is exposed to that, and the
+ * two failure modes are not equally visible: a test asserting the document is **present**
+ * fails honestly, while a test asserting it is **absent** passes for a reason that has nothing
+ * to do with what it claims. The trash-exclusion test above was the second kind — it asserted
+ * `AND ecm:isTrashed = 0` excluded a just-trashed document, and stayed green with the
+ * predicate deleted, because at that moment the document was not in the index either way.
+ *
+ * So the wait deliberately queries by `ecm:uuid` **alone**. Adding any lifecycle predicate
+ * would reintroduce the problem: the wait would return once the document matched the same
+ * filter the assertion is about, and the assertion would again be testing nothing.
+ *
+ * A direct `/nuxeo/api/v1/id/:uid` read does not need this — it goes to the repository, not
+ * the index, which is why the seven genuine write-operation tests here do not use it.
+ */
+export async function waitForIndexed(
+  harness: IntegrationHarness,
+  uid: string,
+  options: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<void> {
+  const timeoutMs = options.timeoutMs ?? 20000;
+  const intervalMs = options.intervalMs ?? 250;
+  const deadline = Date.now() + timeoutMs;
+
+  const url = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
+  url.searchParams.set('query', `SELECT * FROM Document WHERE ecm:uuid = '${uid}'`);
+
+  let lastStatus = 0;
+  while (Date.now() < deadline) {
+    const res = await fetch(url, { headers: { Authorization: harness.auth } });
+    lastStatus = res.status;
+    if (res.status === 200) {
+      const body = await res.json();
+      if ((body.entries ?? []).some((entry: { uid?: string }) => entry.uid === uid)) return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(
+    `waitForIndexed: ${uid} did not appear in the search index within ${timeoutMs}ms ` +
+      `(last HTTP ${lastStatus}).\n` +
+      `  This is a precondition failure, not the assertion under test — an absence assertion\n` +
+      `  that ran anyway would have passed for the wrong reason.`,
+  );
+}
+
+/**
  * Helper: Create a document in the test's data root.
  *
  * Convenience wrapper that ensures documents are created in the right place.

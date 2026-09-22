@@ -20,6 +20,7 @@ export {
 export {
   setupIntegrationHarness,
   createTestDocument,
+  waitForIndexed,
   type IntegrationHarness,
 } from './lib/integration-harness';
 

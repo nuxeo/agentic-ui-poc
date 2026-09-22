@@ -18,7 +18,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setupIntegrationHarness, createTestDocument } from './integration-harness';
+import { setupIntegrationHarness, createTestDocument, waitForIndexed } from './integration-harness';
 
 describe('Write Operations Integration Tests', () => {
   const harness = setupIntegrationHarness({
@@ -71,8 +71,10 @@ describe('Write Operations Integration Tests', () => {
         title: 'Should Not Appear',
       });
 
-      // Trash it via Document.Trash automation
-      await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Trash`, {
+      // Trash it via Document.Trash automation, and read the response — an ignored 500 here
+      // would leave the document untrashed and the assertion below would then be the only
+      // thing standing between that and a green run.
+      const trashRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Trash`, {
         method: 'POST',
         headers: {
           'Authorization': harness.auth,
@@ -82,6 +84,20 @@ describe('Write Operations Integration Tests', () => {
           input: `doc:${doc.uid}`,
         }),
       });
+      expect(trashRes.status).toBe(200);
+
+      // The document must be IN the index before absence means anything.
+      //
+      // Without this the test asserted index lag rather than trash semantics: the query ran
+      // roughly 100ms after the write, the document was not indexed either way, and the
+      // `AND ecm:isTrashed = 0` predicate contributed nothing. Verified by deleting the
+      // predicate and running the sequence in-process five times — it stayed green 5/5,
+      // while the same query after a settle found the document 5/5. It cannot be reproduced
+      // with sequential curl calls; the inter-process latency exceeds the index window.
+      //
+      // `waitForIndexed` queries by uuid only, deliberately carrying no lifecycle predicate,
+      // so what it waits for is not what the assertion is about.
+      await waitForIndexed(harness, doc.uid);
 
       // Query for non-trashed documents in our data root
       const queryUrl = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
@@ -101,7 +117,24 @@ describe('Write Operations Integration Tests', () => {
       const found = results.entries?.find((d: any) => d.uid === doc.uid);
       expect(found).toBeUndefined();
 
-      console.log(`[write-ops] Verified trashed document excluded from queries`);
+      // And the index really is answering this query, rather than answering nothing. Without
+      // it, an index that had dropped the whole data root would satisfy the line above.
+      const unfilteredUrl = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
+      unfilteredUrl.searchParams.set(
+        'query',
+        `SELECT * FROM Document WHERE ecm:path STARTSWITH '${harness.dataRoot}'`,
+      );
+      const unfilteredRes = await fetch(unfilteredUrl, {
+        headers: { 'Authorization': harness.auth },
+      });
+      expect(unfilteredRes.status).toBe(200);
+      const unfiltered: any = await unfilteredRes.json();
+      expect(unfiltered.entries?.find((d: any) => d.uid === doc.uid)).toBeDefined();
+
+      console.log(
+        `[write-ops] Trashed ${doc.uid} is in the index and visible without the predicate, ` +
+          `absent with it — the predicate is the only variable`,
+      );
     });
 
     it('can restore a trashed document', async () => {
@@ -384,20 +417,38 @@ describe('Write Operations Integration Tests', () => {
       // This test verifies that our destructive operations only affect
       // documents in the test data root, not the wider repository
 
-      // Count total documents in repository (outside our data root)
-      const beforeUrl = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
-      beforeUrl.searchParams.set(
+      // Count total documents in repository (outside our data root).
+      //
+      // `ecm:path NOT STARTSWITH` was here, and it is not NXQL — Nuxeo answered HTTP 400 with
+      // an exception body carrying neither `resultsCount` nor `entries`, so the `?? 0`
+      // fallbacks turned a rejected query into `expect(0).toBe(0)` and the test logged
+      // "0 docs outside root" against a repository holding 484 File documents. It would have
+      // passed if the harness had deleted `/default-domain` wholesale. `NOT (… STARTSWITH …)`
+      // negates the whole predicate, which NXQL does accept.
+      const countUrl = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
+      countUrl.searchParams.set(
         'query',
         "SELECT * FROM Document WHERE ecm:primaryType = 'File' AND ecm:isTrashed = 0 " +
-        `AND ecm:path NOT STARTSWITH '${harness.dataRoot}'`,
+        `AND NOT (ecm:path STARTSWITH '${harness.dataRoot}')`,
       );
-      beforeUrl.searchParams.set('pageSize', '1000');
+      countUrl.searchParams.set('pageSize', '1000');
 
-      const beforeRes = await fetch(beforeUrl, {
-        headers: { 'Authorization': harness.auth },
-      });
-      const beforeData: any = await beforeRes.json();
-      const beforeCount = beforeData.resultsCount ?? beforeData.entries?.length ?? 0;
+      // The status is asserted, and the `?? 0` fallbacks are gone. They are what converted a
+      // server error into a pass, so a missing `resultsCount` must now fail the test rather
+      // than be read as a count of nothing.
+      const countOutsideRoot = async (): Promise<number> => {
+        const res = await fetch(countUrl, { headers: { 'Authorization': harness.auth } });
+        expect(res.status).toBe(200);
+        const data: any = await res.json();
+        expect(data.resultsCount).toBeTypeOf('number');
+        return data.resultsCount;
+      };
+
+      const beforeCount = await countOutsideRoot();
+
+      // Belt and braces: an empty or rejected result must not be able to satisfy this test.
+      // Preflight already refuses an empty repository, so zero here means the query is wrong.
+      expect(beforeCount).toBeGreaterThan(0);
 
       // Perform destructive operation INSIDE our data root
       const docInRoot: any = await createTestDocument(harness, {
@@ -406,17 +457,14 @@ describe('Write Operations Integration Tests', () => {
         title: 'Delete Test',
       });
 
-      await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docInRoot.uid}`, {
+      const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docInRoot.uid}`, {
         method: 'DELETE',
         headers: { 'Authorization': harness.auth },
       });
+      expect(deleteRes.status).toBe(204);
 
       // Count again - should be unchanged outside our root
-      const afterRes = await fetch(beforeUrl, {
-        headers: { 'Authorization': harness.auth },
-      });
-      const afterData: any = await afterRes.json();
-      const afterCount = afterData.resultsCount ?? afterData.entries?.length ?? 0;
+      const afterCount = await countOutsideRoot();
 
       expect(afterCount).toBe(beforeCount);
 
