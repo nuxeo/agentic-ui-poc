@@ -1890,7 +1890,7 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void;
 
 ## @nuxeo-satori/platform/ui
 
-33 exported symbol(s).
+35 exported symbol(s).
 
 ```ts
 class ConfirmDialogComponent {
@@ -2221,7 +2221,9 @@ class WidgetGridComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<WidgetGridComponent, "lib-widget-grid", never, { "columns": { "alias": "columns"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
     }
 }
+function observeStripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): MutationObserver | null;
 function openDocumentCompareDialog(dialog: MatDialog, items: DocumentCompareDialogData['items']): void;
+function stripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): void;
 function trashDocumentConfirmData(title: string, translate: TranslateFn): ConfirmDialogData;
 function trashSelectedDocumentsConfirmData(count: number, translate: TranslateFn): ConfirmDialogData;
 ```

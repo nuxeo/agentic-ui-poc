@@ -2,25 +2,14 @@
   Fixture markup for header-search-focus-ring.spec.ts. It mirrors the header search block in
   app-shell.component.html, and is external for the same reason every other template here is
   (AGENTS/08-bug-patterns.md pattern 10) — the rule does not carve out test fixtures.
-
-  ## No `placeholder` here, deliberately
-
-  It carried `placeholder="Search documents, users or groups"` — the English value of
-  `shell.search.placeholder`, hard-coded. The guardrail failed on it and was right to: the rule
-  does not carve out test fixtures, which is the same reason this file exists at all.
-
-  It is simply removed rather than bound with `| translate`, because the spec asserts focus-ring
-  contrast and never reads the placeholder — it resolves `.header-search-input` and
-  `.header-search-input-wrap` and measures colours. What this fixture has to mirror is the class
-  structure the stylesheet targets, not the copy. Binding the pipe would pull `TranslateModule`
-  and a catalogue loader into a test that renders no translated text.
-
-  Do not restore it for fidelity with `app-shell.component.html`; that reintroduces the
-  guardrail failure and buys the test nothing.
 -->
 <div class="header-search">
   <div class="header-search-input-wrap">
     <mat-icon class="header-search-icon">search</mat-icon>
-    <input type="text" class="header-search-input" />
+    <input
+      type="text"
+      class="header-search-input"
+      [placeholder]="'shell.search.placeholder' | translate"
+    />
   </div>
 </div>
