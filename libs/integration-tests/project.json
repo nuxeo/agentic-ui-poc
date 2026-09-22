@@ -3,7 +3,8 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/integration-tests/src",
   "projectType": "library",
-  "tags": ["scope:shared", "type:integration-test"],
+  "tags": ["type:integration-test"],
+  "$tagsComment": "`scope:shared` was here alongside `type:integration-test`. Nx permits a dependency when ANY tag matches, so `scope:shared` let any feature library import a harness that issues `DELETE /nuxeo/api/v1/path/...` and `Document.Trash`, while `type:integration-test` appeared in no rule in `eslint.config.mjs` and governed nothing. The single tag is now the only one, and `eslint.config.mjs` names it as a source but never as a permitted target — so this library may read the platform it drives and nothing may depend on it. Verified by importing it from a feature library and watching lint reject the edge.",
   "// targets": "to see all targets run: nx show project integration-tests --web",
   "targets": {
     "integration": {
