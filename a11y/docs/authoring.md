@@ -12,40 +12,47 @@ not a contribution.
 
 ## 0. Where the file goes
 
-```
-apps/nuxeo-ui-e2e/
-  playwright.config.ts              critical path        testIgnore: '**/a11y/**'
-  playwright.a11y.config.ts         accessibility        testDir:    './src/a11y'
-  src/
-    fixtures.ts                     shared auth — installSession, expectSurfaceWithData
-    auth.spec.ts                    functional e2e
-    browse.spec.ts
-    …
-    a11y/
-      a11y-fixtures.ts              the shared a11y fixture, built on ../fixtures
-      surfaces.a11y.spec.ts         pages, default state
-      interaction-states.a11y.spec.ts   components and overlays, behind a click
-      display-modes.a11y.spec.ts    the same pages under dark / forced-colors / reduced-motion
-      journey.a11y.spec.ts          workflows, one self-contained report per screen
+Everything lives under `a11y/`, and nothing outside it is modified. That is not tidiness — it
+is what makes the folder removable in one command. See `../README.md`.
 
-scripts/
-  a11y-axe-differential.mjs         standalone diagnostics, one npm script each
-  a11y-reflow-probe.mjs
-  a11y-route-render-check.mjs
 ```
+a11y/
+  run.mjs                           the only entry point; suites and diagnostics are subcommands
+  preflight.mjs                     refuses to scan a stack that is not there
+  playwright.config.ts              testDir: './specs'
+  fixtures.ts                       test object, installSession, expectSurfaceUsable, REPORT_DIR
+  env.mjs                           required Nuxeo credentials for the Node-side tooling
+  package.json  tsconfig.json  .gitignore
+  specs/
+    journey.screens.ts              single source: screen id -> project name, tag, report name
+    surfaces.a11y.spec.ts           pages, default state
+    interaction-states.a11y.spec.ts components and overlays, behind a click
+    display-modes.a11y.spec.ts      dark / forced-colors / reduced-motion
+    journey.a11y.spec.ts            workflows, one self-contained report per screen
+  diagnostics/
+    axe-differential.mjs
+    reflow-probe.mjs
+    route-render-check.mjs
+  docs/          authoring.md (this file) · a11y-scout.md
+  reports/  artifacts/              gitignored output
+```
+
+`apps/nuxeo-ui-e2e/` is the **critical-path** suite and is byte-identical to main. It needs no
+`testIgnore` for us, because nothing of ours is under its `testDir`.
 
 Three rules, and each is enforced by something rather than by goodwill:
 
-1. **An accessibility spec goes in `src/a11y/` and carries the `.a11y.spec.ts` suffix.** The
-   directory is what both configs key on — `testDir` selects it, `testIgnore` excludes it — so a
-   spec placed outside it will be collected by the critical-path suite and take it down with
-   `ERR_MODULE_NOT_FOUND`, because that suite does not have the a11y-scout tarballs. The suffix
-   is redundant to the tooling and kept anyway, so a spec is self-describing in a stack trace.
+1. **An accessibility spec goes in `a11y/specs/` and carries the `.a11y.spec.ts` suffix.**
+   `testDir: './specs'` is what collects it, so a spec anywhere else simply never runs — and
+   `a11y:scan` would report a green suite that silently skipped it. The suffix is redundant to
+   the tooling and kept anyway, so a spec is self-describing in a stack trace and a report.
 2. **Group by what the scan looks at, not by WCAG rule** — pages, states, modes, workflows. The
    reports already group by rule; a directory that did the same would answer a question you can
    already answer.
-3. **A standalone diagnostic goes flat in `scripts/` with an npm script.** That is the repo-wide
-   convention for tooling: a flat script is expected to have an entry point.
+3. **A standalone diagnostic goes in `a11y/diagnostics/` and gets a subcommand in `run.mjs`.**
+   The repo-wide convention is that a script has an entry point; here the entry point is the
+   dispatcher rather than its own `package.json` line, so that removing the folder is still a
+   one-line change at the root.
 
 ### The four extension points, and what each costs
 
@@ -155,7 +162,7 @@ await page.reload({ waitUntil: 'networkidle' });
 ```
 
 In a **spec**, do not hand-roll this — the `signedIn` fixture already does it, and
-`a11y-fixtures.ts` rebases it onto a11y-scout's `test` so both are available in one spec:
+`fixtures.ts` rebases it onto a11y-scout's `test` so both are available in one spec:
 
 ```23:28:a11y/fixtures.ts
 export const test = a11yBase.extend<{ signedIn: Page }>({
@@ -202,11 +209,11 @@ render, so you do not spend an afternoon scanning a dead one.
 
 ## 3. Style A — an a11y-scout spec
 
-Import from `./a11y-fixtures`, never from `@a11y-scout/playwright` or `./fixtures` directly;
+Import from `../fixtures`, never from `@a11y-scout/playwright` or `./fixtures` directly;
 two `test` objects cannot coexist in one spec.
 
 ```ts
-import { expect, test } from './a11y-fixtures';
+import { expect, test } from '../fixtures';
 
 test('scans the upload dialog', async ({ signedIn: page, a11y }) => {
   await page.goto('/#/browse', { waitUntil: 'networkidle' });
@@ -365,7 +372,7 @@ assuming a fresh route means a fresh state.
 | Plain `npm install <tarball>` | Writes `file:C:\Users\you\…` into the lockfile, breaking `npm ci` for everyone | Always `--no-save`                                                               |
 | a11y-scout is ESM-only        | `No "exports" main defined` — Playwright transpiles specs to CJS               | `apps/nuxeo-ui-e2e/package.json` sets `"type": "module"` for that directory only |
 | Hash routing                  | `goto('/#/x')` is **same-document**, so `APP_INITIALIZER` never re-runs        | Use a real `page.reload()` when asserting reloaded-app behaviour                 |
-| Keyboard walk is slow         | Up to 150 steps per direction; browse takes 8.8 minutes                        | Per-test timeout is 600s in `playwright.a11y.config.ts`                          |
+| Keyboard walk is slow         | Up to 150 steps per direction; browse takes 8.8 minutes                        | Per-test timeout is 600s in `a11y/playwright.config.ts`                          |
 | A failing test                | Fragments the worker-scoped report                                             | Assert `pagesScanned.length`                                                     |
 | Dev proxy                     | `proxy.conf.json` is **not** hot-reloaded                                      | Restart `nx serve` after editing it                                              |
 | Node 22+                      | A built-in `localStorage` shadows jsdom's                                      | Node is pinned to 20 in `.nvmrc`                                                 |

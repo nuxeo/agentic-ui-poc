@@ -1,4 +1,4 @@
-import { expect, REPORT_DIR, test } from '../fixtures';
+import { expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
 
 /**
  * WCAG 2.1 AA scan of the authenticated surfaces, through `@a11y-scout/playwright`.
@@ -72,12 +72,12 @@ test.describe('accessibility: authenticated surfaces', () => {
 
       // A surface that did not render scans clean, and a clean scan of nothing is the
       // vacuous pass this repository keeps getting caught by — `phase-6-a11y.mjs` shipped
-      // a step labelled "Login surface" that actually scanned the dashboard. Asserting the
-      // host component is present first is what makes the scan's subject match its label.
-      await expect(
-        page.locator(host),
-        `${host} must render before ${label} is scanned, or the scan proves nothing`,
-      ).toBeVisible();
+      // a step labelled "Login surface" that actually scanned the dashboard.
+      //
+      // `expectSurfaceUsable` rather than a bare `toBeVisible` on the host: a failed load
+      // renders the same host with an error panel, which is visible. See its own comment for
+      // what it proves and what it still does not.
+      await expectSurfaceUsable(page, host, label);
 
       await a11y.scanPage({
         level: 'AA',

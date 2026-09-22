@@ -406,7 +406,7 @@ route while the drawer tree is loading is undercounting `button-name` by the sam
 The a11y-scout accumulator is worker-scoped and `finalizeAndEmit` does **not** clear `pageScans`
 when it emits — it only flips `reportEmitted`. Four `generateReport()` calls in one worker would
 emit login, then login+dashboard, then login+dashboard+browse: each labelled with one screen and
-containing several. A project gets its own worker, so `playwright.a11y.config.ts` declares one
+containing several. A project gets its own worker, so `a11y/playwright.config.ts` declares one
 per screen. `emitScreenReport()` asserts `pagesScanned.length === 1`, and that assertion has been
 **seen to fail on purpose** — scanning a second page in the login test produced
 `Expected: 1, Received: 2`.
@@ -477,12 +477,12 @@ Both are diagnostics rather than gates, both run in well under a minute, and bot
 a claim about accessibility should be reproducible on demand rather than remembered from a run
 three weeks ago.
 
-| Script                                         | Answers                                                                                                                                                                                                                   | Exit                                               |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `node a11y/diagnostics/axe-differential.mjs`   | Runs the one shared axe engine under both harnesses' tag sets, back to back in the same page visit, so the tag list is the only variable. Compares against the newest `a11y-reports/nuxeo-satori-surfaces-*/report.json`. | 0 measured, 2 could not measure                    |
-| `node a11y/diagnostics/route-render-check.mjs` | Does every route a scan visits actually render its feature host?                                                                                                                                                          | 0 all rendered, 1 one did not, 2 could not measure |
+| Script                                         | Answers                                                                                                                                                                                                                                                                                | Exit                                               |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `node a11y/diagnostics/axe-differential.mjs`   | Runs the one shared axe engine under both harnesses' tag sets, back to back in the same page visit, so the tag list is the only variable. Compares against the newest `a11y/reports/nuxeo-satori-surfaces-*/report.json`, and exits 2 rather than comparing against an empty baseline. | 0 measured, 2 could not measure                    |
+| `node a11y/diagnostics/route-render-check.mjs` | Does every route a scan visits actually render its feature host?                                                                                                                                                                                                                       | 0 all rendered, 1 one did not, 2 could not measure |
 
-The differential resolves the newest **surfaces** report rather than `a11y-reports/latest/`,
+The differential resolves the newest **surfaces** report rather than `a11y/reports/latest/`,
 which is a rolling pointer that every a11y-scout run overwrites — including `a11y:scan -- states`, whose
 findings come from overlays on a single route. Pointing a per-route comparison at one of those
 makes it report every interaction-state finding as "did not reproduce" and every route finding as

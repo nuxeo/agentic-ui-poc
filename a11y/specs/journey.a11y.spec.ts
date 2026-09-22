@@ -211,6 +211,22 @@ async function emitScreenReport(a11y: A11yFixture, reportName: string): Promise<
     .map((s) => `${s}=${findings.filter((f) => f.source === s).length}`)
     .join(' ');
 
+  /**
+   * Whether the AI content-quality checks actually produced anything.
+   *
+   * Printed on its own line because `provider: haip` is not evidence that they ran. Measured
+   * on 2026-09-22: the provider reported READY, the cost meter billed 15 calls, and every
+   * content-quality call returned 403 — `aiGenerated` stayed 0 on all four screens while the
+   * header read like a successful AI run. Zero here means eleven WCAG criteria (1.1.1, 1.3.3,
+   * 2.4.2, 2.4.4, 2.5.3, 3.3.1, 3.3.2 at A; 1.3.5, 2.4.6, 3.1.2, 3.3.3 at AA) were **not
+   * measured**, which is not the same as clean.
+   */
+  const aiCount = findings.filter((f) => f.aiGenerated).length;
+  const aiNote =
+    aiCount > 0
+      ? `${aiCount}`
+      : `0 — the 11 AI-judged criteria are UNMEASURED, not clean${state.meta.llmMockMode ? ' (mock mode)' : ' (provider selected but produced nothing; check stderr for LLM errors)'}`;
+
   // eslint-disable-next-line no-console
   console.log(
     [
@@ -220,7 +236,8 @@ async function emitScreenReport(a11y: A11yFixture, reportName: string): Promise<
       `  findings  : ${findings.length} (${bySource})`,
       `  blockers  : ${findings.filter((f) => f.severity === 'blocker').length}`,
       `  rules     : ${[...new Set(findings.map((f) => f.ruleId))].sort().join(', ') || '—'}`,
-      `  provider  : ${state.meta.llmProvider}${state.meta.llmMockMode ? ' (MOCK — AI content-quality checks skipped)' : ''}`,
+      `  provider  : ${state.meta.llmProvider}${state.meta.llmMockMode ? ' (MOCK)' : ''}`,
+      `  ai findings: ${aiNote}`,
       `  report    : ${reportPaths.html}`,
       '',
     ].join('\n'),

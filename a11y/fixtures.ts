@@ -1,5 +1,5 @@
 import { test as a11yBase } from '@a11y-scout/playwright';
-import type { Page } from '@playwright/test';
+import { expect as expectFn, type Page } from '@playwright/test';
 
 /**
  * The `test` object for the accessibility suite, and the session helper it needs.
@@ -32,6 +32,37 @@ import type { Page } from '@playwright/test';
  */
 export const REPORT_DIR = 'a11y/reports';
 
+/**
+ * Nuxeo credentials, required rather than defaulted.
+ *
+ * `.cursor/rules/security.mdc`: no hardcoded credentials, "NEVER use Basic auth with hardcoded
+ * fallback defaults", environment only, "with startup validation". This folder previously
+ * wrote `?? 'Administrator'`, copying the pattern in `apps/nuxeo-ui-e2e`; that the pattern
+ * exists elsewhere is not a defence the rule admits, and review on PR #225 said so.
+ *
+ * Beyond the rule: against a server that happens to accept `Administrator`, a default silently
+ * scans as the wrong identity and the report never mentions it.
+ *
+ * `env.mjs` holds the same eight lines for the Node-side tooling. One copy per language rather
+ * than a cross-language import, which would mean loosening the compiler settings for the whole
+ * folder to allow a `.ts` file to import a `.mjs` one.
+ */
+export function requireNuxeoCredentials(): { username: string; password: string } {
+  const username = process.env['NUXEO_USER'];
+  const password = process.env['NUXEO_PASS'];
+
+  const missing = [...(username ? [] : ['NUXEO_USER']), ...(password ? [] : ['NUXEO_PASS'])];
+  if (missing.length > 0) {
+    throw new Error(
+      `${missing.join(' and ')} must be set. This folder does not default them: a default ` +
+        'would scan as the wrong identity against any server that accepts it, and the report ' +
+        'would not say so. Run `npm run a11y:scan -- preflight` for the exact commands.',
+    );
+  }
+
+  return { username: username as string, password: password as string };
+}
+
 /** Mirrors `STORAGE_KEY` in `apps/nuxeo-ui/src/app/auth/auth.service.ts`. */
 const SESSION_KEY = 'agentic_ui_nuxeo_session';
 /** Mirrors `SIGNED_OUT_KEY` in the same file. Set by `AuthService.markSignedOut()`. */
@@ -59,8 +90,7 @@ function sessionFor(username: string, password: string) {
  * Credentials come from the environment. Never hardcoded, never in a URL.
  */
 export async function installSession(page: Page): Promise<void> {
-  const username = process.env['NUXEO_USER'] ?? 'Administrator';
-  const password = process.env['NUXEO_PASS'] ?? 'Administrator';
+  const { username, password } = requireNuxeoCredentials();
 
   await page.addInitScript(
     ({ key, signedOutKey, value }) => {
@@ -73,6 +103,66 @@ export async function installSession(page: Page): Promise<void> {
       value: JSON.stringify(sessionFor(username, password)),
     },
   );
+}
+
+/**
+ * Every error-state class the scanned features actually render, collected from their
+ * templates rather than invented. There is no shared error component in this application —
+ * each feature rolls its own — so this list is the closest thing to one.
+ */
+const ERROR_STATE_SELECTOR = [
+  '.browse-error',
+  '.detail-error',
+  '.results-error',
+  '.task-error',
+  '.tab-error',
+  '.kd-error',
+  '.kd-banner--error',
+  '.gd-error',
+  '.hxp-poc-error',
+  '.cpd-error',
+  '.nxql-error',
+  '.picker-error',
+].join(', ');
+
+/**
+ * Assert a surface is worth scanning: rendered, not empty, and not showing an error.
+ *
+ * ## What this fixes
+ *
+ * The specs used to assert only that the host component was visible. That is not enough, and
+ * this suite documented why itself: `openBrowse()` in `interaction-states.a11y.spec.ts` notes
+ * that "an unauthenticated or failed load renders the same component with an error panel,
+ * which is visible and would let every scan below report a clean overlay that never opened".
+ * The stricter standard existed in this PR and was not applied uniformly — review on PR #225
+ * caught the inconsistency.
+ *
+ * ## What it proves, and what it does not
+ *
+ * It proves the host rendered, that it has real text rather than an empty shell, and that no
+ * **known** error state is visible. It does **not** prove the repository data arrived: a
+ * feature that fails silently, with no error class and a plausible empty layout, still passes.
+ * Route-specific loaded-state evidence is stronger, and `openBrowse()` uses it where the
+ * selector is known — `.browse-row, .doc-card-wrapper`. This is the general check for the
+ * surfaces where no such selector has been established, and it is deliberately named for the
+ * weaker claim it makes.
+ */
+export async function expectSurfaceUsable(page: Page, host: string, label: string): Promise<void> {
+  await expectFn(
+    page.locator(host),
+    `${host} must render before ${label} is scanned`,
+  ).toBeVisible();
+
+  await expectFn(
+    page.locator(`${host} :is(${ERROR_STATE_SELECTOR})`),
+    `${label} is showing an error state — scanning it would measure the error, not the surface`,
+  ).toHaveCount(0);
+
+  await expectFn
+    .poll(async () => (await page.locator(host).innerText()).trim().length, {
+      message: `${label} rendered an empty shell, so a clean scan of it would prove nothing`,
+    })
+    .toBeGreaterThan(0);
 }
 
 /** A page that is already past the route guard. */

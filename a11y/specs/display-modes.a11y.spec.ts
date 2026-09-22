@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, REPORT_DIR, test } from '../fixtures';
+import { expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
 
 /**
  * WCAG scan of the three **display modes** the application has never been rendered in by any
@@ -217,7 +217,10 @@ test.describe('accessibility: dark theme', () => {
   for (const [label, route, host] of ROUTES) {
     test(`scans ${label} in dark theme`, async ({ signedIn: page, a11y }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
-      await expect(page.locator(host), `${host} must render`).toBeVisible();
+      // Not a bare host check: a failed load renders the same host with an error panel, and a
+      // dark-themed error panel would be scanned and counted as the route. See
+      // `expectSurfaceUsable`.
+      await expectSurfaceUsable(page, host, `${label} (dark theme)`);
 
       // Two assertions, because either alone is satisfiable while dark mode is not actually on:
       // the attribute can be set by something that failed to load a palette, and a dark
@@ -259,7 +262,7 @@ test.describe('accessibility: forced colors', () => {
   for (const [label, route, host] of ROUTES) {
     test(`scans ${label} in forced-colors mode`, async ({ signedIn: page, a11y }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
-      await expect(page.locator(host), `${host} must render`).toBeVisible();
+      await expectSurfaceUsable(page, host, `${label} (forced colors)`);
 
       // Prove the emulation reached the page. Without this the whole describe could silently
       // run in normal colours and report a clean high-contrast pass.

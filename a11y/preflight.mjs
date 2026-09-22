@@ -16,13 +16,25 @@
  * fix the environment, do not iterate on the code.
  */
 
+import { nuxeoBasicAuthHeader } from './env.mjs';
+
 const BASE = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
-const USER = process.env['NUXEO_USER'] ?? 'Administrator';
-const PASS = process.env['NUXEO_PASS'] ?? 'Administrator';
-const auth = `Basic ${Buffer.from(`${USER}:${PASS}`).toString('base64')}`;
 
 const problems = [];
 const ok = [];
+
+/**
+ * Credentials first, because this is the "startup validation" the security rule asks for and
+ * because every later check depends on them. Reported as a problem rather than thrown, so one
+ * run lists everything that is wrong instead of one thing at a time.
+ */
+let auth = null;
+try {
+  auth = nuxeoBasicAuthHeader();
+  ok.push('NUXEO_USER and NUXEO_PASS are set');
+} catch (error) {
+  problems.push(error instanceof Error ? error.message : String(error));
+}
 
 const INSTALL = [
   '    npm install --no-save @playwright/test @axe-core/playwright \\',
@@ -93,7 +105,7 @@ try {
  * lists and dialogs that are empty without content, and `journey.a11y.spec.ts` resolves a real
  * `File` uid to open the document-detail screen at all.
  */
-if (appStatus !== null) {
+if (appStatus !== null && auth) {
   try {
     const url = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', BASE);
     url.searchParams.set(
@@ -112,14 +124,27 @@ if (appStatus !== null) {
       );
     } else {
       const body = await res.json();
-      const count = body.resultsCount ?? body.entries?.length ?? 0;
-      if (count > 0) ok.push(`Nuxeo has ${count} File document(s) to scan against`);
-      else
+      // Existence comes from the returned entries, not from `resultsCount`.
+      //
+      // `resultsCount` is not a plain count: Nuxeo returns negative sentinels for "unknown"
+      // — notably with an elasticsearch page provider — and `resultsCount ?? entries.length`
+      // selects the sentinel, because -2 is neither null nor undefined. A populated
+      // repository then reads as empty and every scan is refused. Flagged in review on
+      // PR #225; it does not reproduce on this instance, which returns a real count, but the
+      // ordering is wrong regardless and `entries` answers the question being asked.
+      const returned = Array.isArray(body.entries) ? body.entries.length : 0;
+      if (returned > 0) {
+        const total = typeof body.resultsCount === 'number' && body.resultsCount >= 0
+          ? `${body.resultsCount} File document(s)`
+          : 'File documents (exact count not reported by this page provider)';
+        ok.push(`Nuxeo has ${total} to scan against`);
+      } else {
         problems.push(
-          'Nuxeo is reachable but holds no File documents.\n' +
+          'Nuxeo is reachable but returned no File documents.\n' +
             '  A scan of an empty list is clean and proves nothing, and the document-detail\n' +
             '  screen cannot be reached at all. Import a document first.',
         );
+      }
     }
   } catch (error) {
     problems.push(
@@ -139,7 +164,10 @@ if (appStatus !== null) {
  */
 ok.push(
   process.env['HAIP_API_KEY']
-    ? 'HAIP_API_KEY is set — AI content-quality checks will run'
+    ? 'HAIP_API_KEY is set — AI content-quality checks will be ATTEMPTED. A key is not proof ' +
+        'they ran: on 2026-09-22 the provider reported READY, billed 15 calls, and every ' +
+        'content-quality call still returned 403. Check `aiGenerated` in the report; 0 means ' +
+        'unmeasured, not clean.'
     : 'HAIP_API_KEY is NOT set — scan runs in mock mode, AI content-quality checks skipped ' +
         '(11 WCAG criteria unmeasured, not clean)',
 );

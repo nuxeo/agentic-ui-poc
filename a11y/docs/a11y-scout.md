@@ -2,7 +2,7 @@
 
 `npm run a11y:scan -- surfaces` runs a11y-scout — an internal Hyland WCAG scanner, distributed as tarballs
 rather than published — over the authenticated surfaces, and writes one consolidated
-HTML/Markdown/JSON report to `a11y-reports/`.
+HTML/Markdown/JSON report to `a11y/reports/`.
 
 > **`docs/accessibility.md` is the source of truth** for how accessibility is measured here —
 > which layer owns which verdict, the baseline shape, the cadence, and the recorded decisions.
@@ -48,7 +48,7 @@ Three things about that command are load-bearing:
 - **Both tarballs together.** The fixture declares `a11y-scout` as an ordinary dependency;
   install it alone and npm goes looking in the registry for an engine that is not there.
 
-`npm run a11y:scan -- surfaces` runs `e2e-preflight.mjs --a11y`, which checks both are importable and
+`npm run a11y:scan -- surfaces` runs `a11y/preflight.mjs`, which checks both are importable and
 prints this command if either is missing.
 
 ## LLM configuration is optional
@@ -128,7 +128,7 @@ auto-finalizes what it had, a fresh worker starts empty, and `generateReport()` 
 the pages scanned since the last failure.
 
 The first full run demonstrated it exactly. Eight surfaces, one failure at position five, and
-`a11y-reports/` came out with three folders instead of one — two auto-finalized stubs named
+`a11y/reports/` came out with three folders instead of one — two auto-finalized stubs named
 after the project (`chromium-<timestamp>`) and a final report covering only the last three
 surfaces. `state.meta.pagesScanned` said **3** while the console said seven surfaces passed.
 

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { requireNuxeoCredentials } from './fixtures';
 import { JOURNEY_SCREENS, journeyProjectName, journeyTag } from './specs/journey.screens';
 
 /**
@@ -40,7 +41,11 @@ const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
  * Authentication needs **both** mechanisms and this was established the hard way: injecting a
  * session into `sessionStorage` satisfies the route guard so pages render, but does not
  * reliably authenticate XHRs, which surfaces as intermittent 403s on `/nuxeo/api` paths.
- * `httpCredentials` is the other half. Credentials come from the environment, never hardcoded.
+ * `httpCredentials` is the other half.
+ *
+ * Credentials are **required**, not defaulted — `requireNuxeoCredentials()` throws when either
+ * variable is unset, so the config fails to load rather than scanning as a guessed identity.
+ * Both halves read the same function, so they cannot diverge.
  *
  * Hoisted so every project shares it by reference — a new project cannot pick up a different
  * browser by copy-pasting the wrong line.
@@ -50,8 +55,7 @@ const CHROMIUM = {
   baseURL,
   viewport: { width: 1440, height: 900 },
   httpCredentials: {
-    username: process.env['NUXEO_USER'] ?? 'Administrator',
-    password: process.env['NUXEO_PASS'] ?? 'Administrator',
+    ...requireNuxeoCredentials(),
     origin: baseURL,
   },
   trace: 'retain-on-failure' as const,

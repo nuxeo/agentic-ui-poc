@@ -30,9 +30,11 @@
  *
  * Exit codes: 0 every route rendered, 1 at least one rendered nothing, 2 could not measure.
  */
+import { requireNuxeoCredentials } from '../env.mjs';
+
 const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
-const user = process.env['NUXEO_USER'] ?? 'Administrator';
-const pass = process.env['NUXEO_PASS'] ?? 'Administrator';
+// Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
+const { username: user, password: pass } = requireNuxeoCredentials();
 
 const SESSION_KEY = 'agentic_ui_nuxeo_session';
 const SIGNED_OUT_KEY = 'agentic_ui_signed_out';

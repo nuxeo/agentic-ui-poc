@@ -57,6 +57,19 @@ npx playwright install chromium
 npm run beta:backend && npx nx serve nuxeo-ui
 ```
 
+**`NUXEO_USER` and `NUXEO_PASS` are required, not defaulted.**
+
+```powershell
+$env:NUXEO_USER = "<user>"; $env:NUXEO_PASS = "<password>"   # PowerShell
+export NUXEO_USER=<user> NUXEO_PASS=<password>               # bash
+```
+
+`.cursor/rules/security.mdc` prohibits hardcoded credential fallbacks, and a default is also
+worse than an error in practice: against a server that happens to accept `Administrator`, it
+scans as the wrong identity and the report never says so. Both the Playwright config and the
+Node tooling throw when either is unset, so a run fails at load rather than silently
+mis-authenticating.
+
 `npm run a11y:scan -- preflight` checks all of it and changes nothing.
 
 Because everything is `--no-save`, **`package-lock.json` is untouched by this folder** — there

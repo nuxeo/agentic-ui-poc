@@ -46,15 +46,28 @@
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
+import { requireNuxeoCredentials } from '../env.mjs';
 
-const repoRoot = resolve(import.meta.dirname, '..');
+/**
+ * This file lives at `a11y/diagnostics/`, so the repository root is two levels up.
+ *
+ * It was one level when this script sat in `scripts/`, and the move did not update it. The
+ * result was silent rather than loud: `resolveScoutReport()` looked under `a11y/a11y-reports`,
+ * `existsSync` said no, and the differential compared against an empty baseline while still
+ * printing a clean verdict — the exact vacuous pass this diagnostic exists to catch. Caught in
+ * review on PR #225.
+ */
+const repoRoot = resolve(import.meta.dirname, '..', '..');
+
+/** Where the suites write their consolidated reports. Mirrors `REPORT_DIR` in `../fixtures.ts`. */
+const REPORTS_DIR = resolve(repoRoot, 'a11y', 'reports');
 const args = process.argv.slice(2);
 const jsonAt = args.includes('--json') ? args[args.indexOf('--json') + 1] : null;
 const only = args.reduce((acc, a, i) => (a === '--surface' ? [...acc, args[i + 1]] : acc), []);
 
 const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
-const user = process.env['NUXEO_USER'] ?? 'Administrator';
-const pass = process.env['NUXEO_PASS'] ?? 'Administrator';
+// Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
+const { username: user, password: pass } = requireNuxeoCredentials();
 
 const SESSION_KEY = 'agentic_ui_nuxeo_session';
 const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
@@ -105,13 +118,12 @@ function resolveScoutReport() {
   const override = process.env['A11Y_SCOUT_REPORT'];
   if (override) return resolve(repoRoot, override);
 
-  const reportsDir = resolve(repoRoot, 'a11y-reports');
-  if (!existsSync(reportsDir)) return null;
-  const surfaceRuns = readdirSync(reportsDir)
+  if (!existsSync(REPORTS_DIR)) return null;
+  const surfaceRuns = readdirSync(REPORTS_DIR)
     .filter((d) => d.startsWith('nuxeo-satori-surfaces-'))
     .sort();
   const newest = surfaceRuns.at(-1);
-  return newest ? resolve(reportsDir, newest, 'report.json') : null;
+  return newest ? resolve(REPORTS_DIR, newest, 'report.json') : null;
 }
 
 // What a11y-scout claimed, so the reproduction can be judged against it rather than against memory.
@@ -129,13 +141,22 @@ if (reportPath && existsSync(reportPath)) {
       claimed.set(key, (claimed.get(key) ?? 0) + 1);
     }
   } catch {
-    console.warn(`axe-differential: ${reportPath} unreadable; comparing to nothing.`);
+    console.error(`axe-differential: ${reportPath} unreadable, so there is nothing to compare.`);
+    process.exit(2);
   }
 } else {
-  console.warn(
-    'axe-differential: no nuxeo-satori-surfaces-* report found; comparing to nothing.\n' +
-      '  Run `npm run a11y:scan -- surfaces` first, or set A11Y_SCOUT_REPORT to a report.json.\n',
+  // Exit 2 — "precondition not met" — rather than warning and continuing. The whole output of
+  // this script is a comparison, and with an empty baseline every measured finding reports as
+  // "not claimed by a11y-scout" while the run still looks successful. That is how a broken
+  // path went unnoticed through a directory move; the check now cannot pass without a subject.
+  console.error(
+    'axe-differential: no nuxeo-satori-surfaces-* report under a11y/reports, so there is\n' +
+      '  nothing to compare against. A differential with an empty baseline is not a clean\n' +
+      '  result, it is an unmeasured one.\n\n' +
+      '    npm run a11y:scan -- surfaces\n\n' +
+      '  or point A11Y_SCOUT_REPORT at a report.json.\n',
   );
+  process.exit(2);
 }
 
 const browser = await chromium.launch({ headless: process.env['A11Y_HEADED'] !== '1' });

@@ -224,10 +224,18 @@ test.describe('accessibility: interaction states', () => {
   for (const tab of ['Permissions', 'History', 'Trash'] as const) {
     test(`${tab.toLowerCase()} tab`, async ({ signedIn: page, a11y }) => {
       await openBrowse(page);
+      // Evidence is the requested tab reporting `aria-selected="true"`, NOT the presence of
+      // `.mat-mdc-tab-body-active`.
+      //
+      // That element already exists for the View tab before the click, so it satisfied
+      // `enterState` whether or not activation happened — and a failed click would then have
+      // scanned the View tab under the Permissions, History or Trash label. Exactly the
+      // mislabelling this file's `enterState` was written to prevent, reintroduced one line
+      // later. Flagged in review on PR #225.
       await enterState(
         `${tab} tab`,
         page.getByRole('tab', { name: tab }),
-        page.locator('.mat-mdc-tab-body-active'),
+        page.getByRole('tab', { name: tab, selected: true }),
       );
       // The tab body is present before its content resolves; assert something inside it so the
       // scan does not race an empty panel.

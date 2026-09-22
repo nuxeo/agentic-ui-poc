@@ -35,7 +35,7 @@
  * Run:  node a11y/diagnostics/reflow-probe.mjs
  */
 
-import { resolve } from 'node:path';
+import { nuxeoBasicAuthHeader, requireNuxeoCredentials } from '../env.mjs';
 
 const REFLOW_WIDTH = 320;
 const REFLOW_HEIGHT = 256;
@@ -43,9 +43,47 @@ const TOLERANCE = 4;
 const EXEMPT = ['table', 'pre', 'svg', '[role="img"]', '[role="application"]'];
 
 const baseUrl = process.env['A11Y_BASE_URL'] ?? 'http://localhost:4200';
-const user = process.env['NUXEO_USER'] ?? 'Administrator';
-const pass = process.env['NUXEO_PASS'] ?? 'Administrator';
-const repoRoot = resolve(import.meta.dirname, '..');
+// Required, never defaulted — see `../env.mjs` for why a default is worse than an error here.
+const { username: user, password: pass } = requireNuxeoCredentials();
+
+/**
+ * Refuse to measure a backend that is not answering.
+ *
+ * `run.mjs` skips the shared preflight for the diagnostics, on the grounds that a 20-second
+ * answer should not wait on a document query. That reasoning holds for the other two, which
+ * assert something about the page they load — but this one measures *geometry*, and an error
+ * panel has perfectly good geometry. A route whose data failed to load would be measured as a
+ * clean layout and reported as `fits`. Flagged in review on PR #225.
+ *
+ * Cheap enough to always run: one request, and it is the difference between measuring the app
+ * and measuring its error state.
+ */
+async function requireBackend() {
+  const url = new URL('/nuxeo/api/v1/me', baseUrl);
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: nuxeoBasicAuthHeader() },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.status !== 200) {
+      console.error(
+        `reflow-probe: Nuxeo answered ${res.status} at ${url}. Every route would render an\n` +
+          '  error panel, and an error panel has a perfectly measurable layout — the probe\n' +
+          '  would report "fits" for surfaces it never saw.\n',
+      );
+      process.exit(2);
+    }
+  } catch (error) {
+    console.error(
+      `reflow-probe: could not reach Nuxeo through ${baseUrl}: ` +
+        `${error instanceof Error ? error.message : String(error)}\n\n` +
+        '    npm run beta:backend && npx nx serve nuxeo-ui\n',
+    );
+    process.exit(2);
+  }
+}
+
+await requireBackend();
 
 /** Same seven surfaces `surfaces.a11y.spec.ts` scans, so the comparison is like for like. */
 const ROUTES = [
@@ -127,21 +165,39 @@ for (const [label, route, host] of ROUTES) {
               }`;
           offenders.push({ sel, exempt: !!el.closest(exemptSel), right: Math.round(r.right) });
         }
-        return { scrollWidth: sw, offenders: offenders.slice(0, 200) };
+
+        // Classify BEFORE truncating, and count in the page rather than outside it.
+        //
+        // This previously returned `offenders.slice(0, 200)` and the caller filtered for
+        // non-exempt afterwards. On a page with more than 200 overflowing elements — which
+        // the exemption list below exists precisely because this app has — a single
+        // non-exempt offender in DOM position 201 was discarded, `nonExempt.length` came out
+        // 0, and the verdict printed `exempt` instead of `VIOLATION`. A diagnostic that
+        // under-reports the thing it exists to find is worse than no diagnostic. Flagged in
+        // review on PR #225.
+        //
+        // The cap now applies only to the sample carried out for display.
+        const nonExempt = offenders.filter((o) => !o.exempt);
+        return {
+          scrollWidth: sw,
+          total: offenders.length,
+          nonExemptCount: nonExempt.length,
+          firstNonExempt: nonExempt[0]?.sel,
+          sample: nonExempt.slice(0, 20),
+        };
       },
       { width: REFLOW_WIDTH, exempt: EXEMPT, tol: TOLERANCE },
     );
 
     const overflows = m.scrollWidth > REFLOW_WIDTH + TOLERANCE;
-    const nonExempt = m.offenders.filter((o) => !o.exempt);
     rows.push({
       label,
       scrollWidth: m.scrollWidth,
       overflows,
-      total: m.offenders.length,
-      nonExempt: nonExempt.length,
-      firstNonExempt: nonExempt[0]?.sel,
-      verdict: overflows && nonExempt.length > 0 ? 'VIOLATION' : overflows ? 'exempt' : 'fits',
+      total: m.total,
+      nonExempt: m.nonExemptCount,
+      firstNonExempt: m.firstNonExempt,
+      verdict: overflows && m.nonExemptCount > 0 ? 'VIOLATION' : overflows ? 'exempt' : 'fits',
     });
   } catch (err) {
     couldNotMeasure += 1;
