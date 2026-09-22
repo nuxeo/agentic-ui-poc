@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,6 +18,7 @@ import {
   DocumentDetailService,
   type UserGroupSuggestion,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ShareSavedSearchAddPermissionDialogData {
   title?: string;
@@ -36,16 +38,18 @@ export interface ShareSavedSearchAddPermissionResult {
 }
 
 const RIGHT_OPTIONS = [
-  { value: 'Read', label: 'Read' },
-  { value: 'ReadWrite', label: 'Edit' },
-  { value: 'Everything', label: 'Manage everything' },
-  { value: 'ReadCanCollect', label: 'Can collect' },
+  { value: 'Read', labelKey: 'permission.read', label: 'Read' },
+  { value: 'ReadWrite', labelKey: 'permission.read-write', label: 'Edit' },
+  { value: 'Everything', labelKey: 'permission.everything', label: 'Manage everything' },
+  { value: 'ReadCanCollect', labelKey: 'permission.read-can-collect', label: 'Can collect' },
 ];
 
 @Component({
   selector: 'lib-share-saved-search-add-permission-dialog',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,

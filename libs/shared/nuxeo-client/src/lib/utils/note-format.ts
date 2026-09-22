@@ -1,9 +1,9 @@
 /** Nuxeo Note `note:mime_type` values and display labels (matches Nuxeo Web UI). */
 export const NOTE_FORMAT_OPTIONS = [
-  { value: 'text/html', label: 'HTML' },
-  { value: 'text/plain', label: 'Text' },
-  { value: 'text/xml', label: 'XML' },
-  { value: 'text/markdown', label: 'Markdown' },
+  { value: 'text/html', labelKey: 'note-format.html', label: 'HTML' },
+  { value: 'text/plain', labelKey: 'note-format.plain', label: 'Text' },
+  { value: 'text/xml', labelKey: 'note-format.xml', label: 'XML' },
+  { value: 'text/markdown', labelKey: 'note-format.markdown', label: 'Markdown' },
 ] as const;
 
 export type NoteMimeType = (typeof NOTE_FORMAT_OPTIONS)[number]['value'];

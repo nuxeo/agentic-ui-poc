@@ -15,6 +15,7 @@ import {
   AiFeatureFlagService,
   type AuditAnomaly,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 function escapeNxqlLiteral(s: string): string {
   return s.replace(/'/g, "''");
 }
@@ -23,6 +24,7 @@ function escapeNxqlLiteral(s: string): string {
   selector: 'lib-admin-analytics-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     UpperCasePipe,
     FormsModule,
@@ -39,6 +41,7 @@ function escapeNxqlLiteral(s: string): string {
 })
 export class AdminAnalyticsPageComponent implements OnInit {
   private readonly adminApi = inject(AdministrationService);
+  private readonly translate = inject(TranslateService);
   private readonly aiGateway = inject(AiGatewayService);
   readonly featureFlags = inject(AiFeatureFlagService);
 
@@ -170,7 +173,9 @@ export class AdminAnalyticsPageComponent implements OnInit {
       },
       error: () => {
         this.aiAnomalies.set([]);
-        this.aiAnomalySummary.set('Failed to detect anomalies');
+        this.aiAnomalySummary.set(
+          this.translate.instant('admin.message.failed-to-detect-anomalies'),
+        );
         this.aiAnomalyLoading.set(false);
       },
     });

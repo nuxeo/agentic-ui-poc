@@ -9,13 +9,19 @@ import { AdfHxBrowseContextService } from '../../services/adf-hx-browse-context.
 import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';
 import { HxpDocumentTreeToggleNameDirective } from '../hxp-document-tree-toggle-name/hxp-document-tree-toggle-name.directive';
 import { ROOT_DOCUMENT } from '../../tokens/adf-hx-bridge.tokens';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'hxp-browse-nav-drawer',
   standalone: true,
   templateUrl: './hxp-browse-nav-drawer.component.html',
   styleUrl: './hxp-browse-nav-drawer.component.scss',
-  imports: [HxpIconComponent, UpstreamDocumentTreeComponent, HxpDocumentTreeToggleNameDirective],
+  imports: [
+    TranslatePipe,
+    HxpIconComponent,
+    UpstreamDocumentTreeComponent,
+    HxpDocumentTreeToggleNameDirective,
+  ],
   providers: [
     ...ADF_HX_NUXEO_BRIDGE_PROVIDERS,
     // `DocumentTreeDatabaseService` is upstream's tree data source and carries no

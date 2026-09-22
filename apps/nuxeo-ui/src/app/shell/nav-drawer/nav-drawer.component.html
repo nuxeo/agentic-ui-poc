@@ -7,7 +7,7 @@
         role="heading"
         aria-level="2"
       >
-        {{ item.label }}
+        {{ item | descriptorLabel }}
       </div>
       @if (isTasksPanel) {
         <button
@@ -90,7 +90,10 @@
       }
     </div>
   } @else if (isBrowseAdfHx) {
-    <hxp-browse-nav-drawer [title]="item.label" (navigatePath)="onAdfHxBrowseNavigate($event)" />
+    <hxp-browse-nav-drawer
+      [title]="item | descriptorLabel"
+      (navigatePath)="onAdfHxBrowseNavigate($event)"
+    />
   } @else if (isPersonalSpace) {
     <div class="folder-tree">
       @if (personalSpaceLoading()) {
@@ -178,7 +181,9 @@
               <div class="expired-meta">
                 <span class="expired-type">{{ doc.type }}</span>
                 <span class="expired-sep">&middot;</span>
-                <span class="expired-date">Expired {{ expiredDate(doc) }}</span>
+                <span class="expired-date">{{
+                  'shell.expired-on' | translate: { date: expiredDate(doc) }
+                }}</span>
               </div>
             </div>
             <mat-icon class="expired-warning-icon">warning</mat-icon>
@@ -207,9 +212,10 @@
               }
               <div class="collection-card-body">
                 <span class="collection-card-title">{{ col.title }}</span>
-                <span class="collection-card-date"
-                  >Last Modified {{ col.lastModified | date: 'mediumDate' }}</span
-                >
+                <span class="collection-card-date">{{
+                  'shell.last-modified-on'
+                    | translate: { date: col.lastModified | date: 'mediumDate' }
+                }}</span>
                 <span class="collection-card-owner">
                   <span class="owner-avatar">{{ collectionOwnerInitial(col) }}</span>
                   {{ collectionOwner(col) }}
@@ -263,7 +269,9 @@
                     @if (task.dueDate) {
                       <div class="task-due-line">
                         <span class="task-due-prefix">{{
-                          isOverdue(task) ? 'Overdue' : 'Due'
+                          isOverdue(task)
+                            ? ('shell.overdue' | translate)
+                            : ('shell.due' | translate)
                         }}</span>
                         <span
                           class="task-due-value"
@@ -406,7 +414,7 @@
           routerLinkActive="settings-item--active"
           [routerLinkActiveOptions]="{ exact: true }"
         >
-          {{ settingsItem.label }}
+          {{ settingsItem | descriptorLabel }}
         </button>
       }
       <button type="button" class="settings-item" (click)="onSettingsSignOut()">
@@ -422,7 +430,7 @@
           [class.settings-item--active]="isAdminDrawerPathActive(adminItem.path)"
           (click)="onAdministrationItemClick(adminItem.path)"
         >
-          {{ adminItem.label }}
+          {{ adminItem | descriptorLabel }}
         </button>
       }
     </div>
@@ -436,7 +444,7 @@
     <lib-extension-outlet [componentId]="sidebarId" />
   } @else {
     <div class="drawer-empty">
-      <p>Content for "{{ item.label }}" will appear here.</p>
+      <p>{{ 'shell.slot-empty' | translate: { name: item | descriptorLabel } }}</p>
     </div>
   }
 }

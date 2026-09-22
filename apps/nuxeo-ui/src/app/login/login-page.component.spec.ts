@@ -8,6 +8,7 @@ import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client
 
 import { AuthService } from '../auth/auth.service';
 import { LoginPageComponent } from './login-page.component';
+import { testTranslateModule } from '../i18n/translate-testing';
 
 /** Synthetic values for unit tests only — not Nuxeo or dev default credentials. */
 const MOCK_LOGIN_USER = 'nxeng-login-spec-user';
@@ -31,7 +32,21 @@ describe('LoginPageComponent', () => {
     });
 
     await TestBed.configureTestingModule({
-      imports: [LoginPageComponent],
+      imports: [
+        // Visible label and error text, which the fallback map does not hold — it carries
+        // accessible names only. These are the strings this spec asserts a user sees.
+        testTranslateModule({
+          'app.login-page.log-in': 'Log in',
+          'app.login-page.sign-in-credentials': 'Sign in credentials',
+          'app.login-page.username-required': 'Username (required)',
+          'app.login-page.password-required': 'Password (required)',
+          'app.login-page.username-is-required': 'Username is required',
+          'app.login-page.password-is-required': 'Password is required',
+          'app.login-page.copyright-c-1992-2026-hyland-software':
+            'Copyright (C) 1992–2026 Hyland Software, Inc.',
+        }),
+        LoginPageComponent,
+      ],
       providers: [
         provideRouter([{ path: 'dashboard', component: LoginPageComponent }]),
         { provide: AuthService, useValue: auth },

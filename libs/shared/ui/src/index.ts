@@ -47,6 +47,8 @@ export {
 export {
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
+  // Both functions take this, so a consumer cannot call either without being able to name it.
+  type TranslateFn,
 } from './lib/confirm-dialog/trash-confirm.utils';
 export {
   observeStripRedundantMatInputAriaRequired,

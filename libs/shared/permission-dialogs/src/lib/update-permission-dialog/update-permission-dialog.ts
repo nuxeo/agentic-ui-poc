@@ -1,4 +1,5 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -21,6 +22,7 @@ import {
   isMailSendError,
   permissionUpdateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface UpdatePermissionDialogData {
   documentUid: string;
@@ -29,16 +31,18 @@ export interface UpdatePermissionDialogData {
 }
 
 const PERMISSION_OPTIONS = [
-  { value: 'Read', label: 'Read' },
-  { value: 'ReadWrite', label: 'Edit' },
-  { value: 'Everything', label: 'Manage everything' },
-  { value: 'ReadCanCollect', label: 'Can collect' },
+  { value: 'Read', labelKey: 'permission.read', label: 'Read' },
+  { value: 'ReadWrite', labelKey: 'permission.read-write', label: 'Edit' },
+  { value: 'Everything', labelKey: 'permission.everything', label: 'Manage everything' },
+  { value: 'ReadCanCollect', labelKey: 'permission.read-can-collect', label: 'Can collect' },
 ];
 
 @Component({
   selector: 'lib-update-permission-dialog',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -52,98 +56,7 @@ const PERMISSION_OPTIONS = [
     MatSnackBarModule,
   ],
   providers: [provideNativeDateAdapter()],
-  template: `
-    <h2 mat-dialog-title>Update Permission</h2>
-
-    <mat-dialog-content>
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Right</mat-label>
-        <mat-select [(ngModel)]="permission">
-          @for (opt of permissionOptions; track opt.value) {
-            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-
-      @if (!isExternal) {
-        <div class="time-frame-section">
-          <label class="field-label">Time Frame</label>
-          <mat-radio-group [(ngModel)]="timeFrame" class="time-frame-radios">
-            <mat-radio-button value="permanent">Permanent</mat-radio-button>
-            <mat-radio-button value="date-based">Date-based</mat-radio-button>
-          </mat-radio-group>
-        </div>
-      }
-
-      <div class="date-fields">
-        <mat-form-field appearance="outline">
-          <mat-label>From</mat-label>
-          <input
-            matInput
-            [matDatepicker]="fromPicker"
-            [(ngModel)]="beginDate"
-            [disabled]="!isExternal && timeFrame === 'permanent'"
-          />
-          <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
-          <mat-datepicker #fromPicker />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>To</mat-label>
-          <input
-            matInput
-            [matDatepicker]="toPicker"
-            [(ngModel)]="endDate"
-            [disabled]="!isExternal && timeFrame === 'permanent'"
-            [required]="isExternal"
-          />
-          <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
-          <mat-datepicker #toPicker />
-        </mat-form-field>
-      </div>
-
-      @if (!isExternal) {
-        <mat-checkbox [(ngModel)]="sendNotify" class="notify-checkbox">
-          Send an email to notify user
-        </mat-checkbox>
-      }
-
-      @if (!isExternal && sendNotify) {
-        <p class="mail-hint">{{ mailHint }}</p>
-      }
-
-      @if (isExternal || sendNotify) {
-        <div class="notify-section">
-          <label class="field-label">Notification email</label>
-          <mat-form-field appearance="outline" class="full-width">
-            <textarea
-              matInput
-              [(ngModel)]="notifyComment"
-              rows="2"
-              placeholder="Hi! Could you comment on this document and..."
-            ></textarea>
-          </mat-form-field>
-        </div>
-      }
-    </mat-dialog-content>
-
-    <mat-dialog-actions>
-      <button mat-stroked-button mat-dialog-close>Cancel</button>
-      <span class="spacer"></span>
-      <button
-        mat-flat-button
-        color="primary"
-        [disabled]="saving() || (isExternal && !endDate)"
-        (click)="update()"
-      >
-        @if (saving()) {
-          <mat-spinner diameter="18" />
-        } @else {
-          Update
-        }
-      </button>
-    </mat-dialog-actions>
-  `,
+  templateUrl: './update-permission-dialog.html',
   styles: [
     `
       :host {
@@ -217,6 +130,7 @@ const PERMISSION_OPTIONS = [
 })
 export class UpdatePermissionDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<UpdatePermissionDialogComponent>);
+  private readonly translate = inject(TranslateService);
   private readonly data = inject<UpdatePermissionDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
@@ -274,13 +188,19 @@ export class UpdatePermissionDialogComponent {
           this.saving.set(false);
           const message = this.successMessage(result.notificationSent, result.notificationError);
           if (message) {
-            this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+            this.snackBar.open(message, this.translate.instant('common.dismiss'), {
+              duration: 7000,
+            });
           }
           this.dialogRef.close(true);
         },
         error: (err) => {
           this.saving.set(false);
-          this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
+          this.snackBar.open(
+            this.permissionErrorMessage(err),
+            this.translate.instant('common.dismiss'),
+            { duration: 7000 },
+          );
         },
       });
   }
@@ -313,13 +233,19 @@ export class UpdatePermissionDialogComponent {
           this.saving.set(false);
           const message = this.successMessage(result.notificationSent, result.notificationError);
           if (message) {
-            this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+            this.snackBar.open(message, this.translate.instant('common.dismiss'), {
+              duration: 7000,
+            });
           }
           this.dialogRef.close(true);
         },
         error: (err) => {
           this.saving.set(false);
-          this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
+          this.snackBar.open(
+            this.permissionErrorMessage(err),
+            this.translate.instant('common.dismiss'),
+            { duration: 7000 },
+          );
         },
       });
   }

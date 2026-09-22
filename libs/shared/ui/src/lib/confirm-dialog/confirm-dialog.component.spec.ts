@@ -129,8 +129,28 @@ describe('ConfirmDialogComponent', () => {
   });
 
   describe('with data built by the trash-confirm helpers', () => {
+    /**
+     * Stands in for the catalogue, with the real `en.json` wording and `{{ … }}` interpolation.
+     *
+     * The helpers return keys now, so this keeps the end-to-end assertion these tests were written
+     * for — the message the helper CHOSE reaches the rendered dialog with its parameter filled in
+     * — without making the dialog's markup depend on a catalogue file loading in a unit test.
+     */
+    const catalogue: Record<string, string> = {
+      'confirm.move-named-to-trash': 'Move "{{ name }}" to trash?',
+      'confirm.delete-selected-documents': 'Delete {{ count }} selected documents?',
+      'confirm.delete-the-document': 'Delete the document?',
+      'confirm.move-to-trash': 'Move to Trash',
+      'confirm.delete': 'Delete',
+    };
+    const translate = (key: string, params?: Record<string, unknown>) =>
+      Object.entries(params ?? {}).reduce(
+        (text, [name, value]) => text.replace(`{{ ${name} }}`, String(value)),
+        catalogue[key] ?? key,
+      );
+
     it('renders the single-document copy for trashDocumentConfirmData', async () => {
-      await render(trashDocumentConfirmData('  Report.pdf  '));
+      await render(trashDocumentConfirmData('  Report.pdf  ', translate));
 
       expect(fixture.nativeElement.querySelector('.msg')?.textContent?.trim()).toBe(
         'Move "Report.pdf" to trash?',
@@ -139,10 +159,10 @@ describe('ConfirmDialogComponent', () => {
     });
 
     it('renders the counted copy for trashSelectedDocumentsConfirmData', async () => {
-      await render(trashSelectedDocumentsConfirmData(4));
+      await render(trashSelectedDocumentsConfirmData(4, translate));
 
       expect(fixture.nativeElement.querySelector('.msg')?.textContent?.trim()).toBe(
-        'Delete 4 selected document(s)?',
+        'Delete 4 selected documents?',
       );
     });
   });

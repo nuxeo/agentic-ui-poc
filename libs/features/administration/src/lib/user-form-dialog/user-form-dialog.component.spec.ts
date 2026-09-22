@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatChipInputEvent } from '@angular/material/chips';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -22,7 +23,12 @@ describe('UserFormDialogComponent (NXSAT-151 / NXSAT-166)', () => {
     closeSpy = vi.fn();
     createUserSpy = vi.fn().mockReturnValue(of({ id: 'new.user' }));
     await TestBed.configureTestingModule({
-      imports: [UserFormDialogComponent, NoopAnimationsModule],
+      imports: [
+        testTranslateModule(),
+        testTranslateModule(),
+        UserFormDialogComponent,
+        NoopAnimationsModule,
+      ],
       providers: [
         {
           provide: MAT_DIALOG_DATA,
