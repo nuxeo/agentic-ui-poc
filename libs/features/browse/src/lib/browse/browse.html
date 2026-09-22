@@ -15,36 +15,46 @@
         <button
           mat-flat-button
           color="primary"
-          matTooltip="Create folder, upload files, or import CSV"
+          [matTooltip]="'browse.browse.create-folder-upload-files-or-import' | translate"
           [disabled]="!isCurrentFolderish()"
           (click)="openCreateImportDialog()"
         >
           <mat-icon>add</mat-icon>
-          Create / Import
+          {{ 'browse.browse.create-import' | translate }}
         </button>
       }
       <button
         mat-icon-button
-        matTooltip="Upload with Nuxeo Drive"
-        aria-label="Upload with Nuxeo Drive"
+        [matTooltip]="'browse.browse.upload-with-nuxeo-drive' | translate"
+        [attr.aria-label]="'browse.browse.upload-with-nuxeo-drive' | translate"
         (click)="openDriveDialog()"
       >
         <mat-icon>cloud_upload</mat-icon>
       </button>
       @if (showHeaderEdit()) {
-        <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
+        <button
+          mat-icon-button
+          [matTooltip]="'browse.browse.edit' | translate"
+          [attr.aria-label]="'browse.browse.edit' | translate"
+          (click)="openEditDialog()"
+        >
           <mat-icon>edit</mat-icon>
         </button>
       }
       @if (showHeaderDelete()) {
-        <button mat-icon-button matTooltip="Delete" aria-label="Delete" (click)="deleteDocument()">
+        <button
+          mat-icon-button
+          [matTooltip]="'browse.browse.delete' | translate"
+          [attr.aria-label]="'browse.browse.delete' | translate"
+          (click)="deleteDocument()"
+        >
           <mat-icon>delete</mat-icon>
         </button>
       }
       <button
         mat-icon-button
-        matTooltip="Download All"
-        aria-label="Download All"
+        [matTooltip]="'browse.browse.download-all' | translate"
+        [attr.aria-label]="'browse.browse.download-all' | translate"
         (click)="downloadAll()"
       >
         <mat-icon>download</mat-icon>
@@ -52,8 +62,8 @@
       <button
         mat-icon-button
         [matMenuTriggerFor]="moreMenu"
-        matTooltip="More actions"
-        aria-label="More actions"
+        [matTooltip]="'browse.browse.more-actions' | translate"
+        [attr.aria-label]="'browse.browse.more-actions' | translate"
       >
         <mat-icon>more_vert</mat-icon>
       </button>
@@ -69,7 +79,7 @@
             @if (action.icon) {
               <mat-icon>{{ action.icon }}</mat-icon>
             }
-            <span>{{ action.label }}</span>
+            <span>{{ action | descriptorLabel }}</span>
           </button>
         }
       </mat-menu>
@@ -98,10 +108,15 @@
           (selectedIndexChange)="onTabChange($event)"
         >
           <!-- ═══════ VIEW TAB ═══════ -->
-          <mat-tab label="View">
+          <mat-tab [label]="'browse.tab.view' | translate">
             <!-- Toolbar: result count + filters + view toggle + column settings + export CSV -->
             <div class="view-toolbar">
-              <span class="result-count">{{ filteredEntries().length }} result(s)</span>
+              <span class="result-count">{{
+                (filteredEntries().length === 1
+                  ? 'common.count.result-one'
+                  : 'common.count.result-many'
+                ) | translate: { count: filteredEntries().length }
+              }}</span>
               <div class="toolbar-spacer"></div>
 
               <mat-form-field
@@ -109,13 +124,13 @@
                 appearance="outline"
                 subscriptSizing="dynamic"
               >
-                <mat-label>Filter by title...</mat-label>
+                <mat-label>{{ 'browse.browse.filter-by-title' | translate }}</mat-label>
                 <input matInput [ngModel]="filterText()" (ngModelChange)="filterText.set($event)" />
                 @if (filterText()) {
                   <button
                     matSuffix
                     mat-icon-button
-                    aria-label="Clear"
+                    [attr.aria-label]="'browse.browse.clear' | translate"
                     (click)="filterText.set('')"
                     class="filter-clear-btn"
                   >
@@ -128,19 +143,19 @@
                 appearance="outline"
                 subscriptSizing="dynamic"
               >
-                <mat-label>Modified</mat-label>
+                <mat-label>{{ 'browse.browse.modified' | translate }}</mat-label>
                 <mat-date-range-input [rangePicker]="modifiedPicker">
                   <input
                     matStartDate
                     [ngModel]="filterModifiedFrom()"
                     (ngModelChange)="filterModifiedFrom.set($event)"
-                    placeholder="From"
+                    [placeholder]="'browse.browse.from' | translate"
                   />
                   <input
                     matEndDate
                     [ngModel]="filterModifiedTo()"
                     (ngModelChange)="filterModifiedTo.set($event)"
-                    placeholder="To"
+                    [placeholder]="'browse.browse.to' | translate"
                   />
                 </mat-date-range-input>
                 <mat-datepicker-toggle matIconSuffix [for]="modifiedPicker" />
@@ -151,7 +166,7 @@
                 appearance="outline"
                 subscriptSizing="dynamic"
               >
-                <mat-label>Last Contributor</mat-label>
+                <mat-label>{{ 'browse.browse.last-contributor' | translate }}</mat-label>
                 <input
                   matInput
                   [ngModel]="filterContributor()"
@@ -161,7 +176,7 @@
                   <button
                     matSuffix
                     mat-icon-button
-                    aria-label="Clear"
+                    [attr.aria-label]="'browse.browse.clear' | translate"
                     (click)="filterContributor.set('')"
                     class="filter-clear-btn"
                   >
@@ -174,9 +189,9 @@
                 appearance="outline"
                 subscriptSizing="dynamic"
               >
-                <mat-label>All types</mat-label>
+                <mat-label>{{ 'browse.browse.all-types' | translate }}</mat-label>
                 <mat-select [ngModel]="filterType()" (ngModelChange)="filterType.set($event)">
-                  <mat-option value="">All types</mat-option>
+                  <mat-option value="">{{ 'browse.browse.all-types' | translate }}</mat-option>
                   @for (t of distinctTypes(); track t) {
                     <mat-option [value]="t">{{ t }}</mat-option>
                   }
@@ -186,21 +201,24 @@
               <div class="toolbar-actions">
                 <button
                   mat-icon-button
-                  matTooltip="Export CSV"
-                  aria-label="Export CSV"
+                  [matTooltip]="'browse.browse.export-csv' | translate"
+                  [attr.aria-label]="'browse.browse.export-csv' | translate"
                   (click)="exportCsv()"
                   [disabled]="csvExporting()"
                 >
                   @if (csvExporting()) {
-                    <mat-spinner diameter="18" aria-label="Loading" />
+                    <mat-spinner
+                      diameter="18"
+                      [attr.aria-label]="'browse.browse.loading' | translate"
+                    />
                   } @else {
                     <mat-icon>download</mat-icon>
                   }
                 </button>
                 <button
                   mat-icon-button
-                  matTooltip="List view"
-                  aria-label="List view"
+                  [matTooltip]="'browse.browse.list-view' | translate"
+                  [attr.aria-label]="'browse.browse.list-view' | translate"
                   [class.active-view]="viewMode() === 'list'"
                   (click)="setViewMode('list')"
                 >
@@ -208,8 +226,8 @@
                 </button>
                 <button
                   mat-icon-button
-                  matTooltip="Card view"
-                  aria-label="Card view"
+                  [matTooltip]="'browse.browse.card-view' | translate"
+                  [attr.aria-label]="'browse.browse.card-view' | translate"
                   [class.active-view]="viewMode() === 'card'"
                   (click)="setViewMode('card')"
                 >
@@ -220,20 +238,23 @@
 
             @if (loading()) {
               <div class="browse-loading">
-                <mat-spinner diameter="36" aria-label="Loading" />
+                <mat-spinner
+                  diameter="36"
+                  [attr.aria-label]="'browse.browse.loading' | translate"
+                />
               </div>
             } @else if (error()) {
               <div class="browse-error">
                 <mat-icon class="error-icon">error_outline</mat-icon>
                 <p>{{ error() }}</p>
                 <button mat-stroked-button (click)="loadContent()">
-                  <mat-icon>refresh</mat-icon> Retry
+                  <mat-icon>refresh</mat-icon> {{ 'browse.browse.retry' | translate }}
                 </button>
               </div>
             } @else if (filteredEntries().length === 0) {
               <div class="browse-empty">
                 <mat-icon class="empty-icon">folder_open</mat-icon>
-                <p>This folder is empty</p>
+                <p>{{ 'browse.browse.this-folder-is-empty' | translate }}</p>
               </div>
             } @else if (viewMode() === 'list') {
               <!-- List view -->
@@ -242,7 +263,7 @@
                   <button
                     type="button"
                     class="col-panel-backdrop"
-                    aria-label="Close column picker"
+                    [attr.aria-label]="'browse.browse.close-column-picker' | translate"
                     (click)="closeColumnPanel()"
                   ></button>
                   <div
@@ -250,11 +271,11 @@
                     class="col-panel"
                     role="dialog"
                     aria-modal="true"
-                    aria-label="Column Settings"
+                    [attr.aria-label]="'browse.browse.column-settings' | translate"
                     tabindex="-1"
                     (keydown.escape)="closeColumnPanel()"
                   >
-                    <p class="col-panel-title">Column Settings</p>
+                    <p class="col-panel-title">{{ 'browse.browse.column-settings' | translate }}</p>
                     <div class="col-panel-list">
                       @for (col of pendingColumns(); track col.key) {
                         <mat-checkbox
@@ -262,13 +283,17 @@
                           [checked]="isPendingColumn(col.key)"
                           [disabled]="col.key === 'title'"
                           (change)="togglePendingColumn(col.key)"
-                          >{{ col.label }}</mat-checkbox
+                          >{{ col | descriptorLabel }}</mat-checkbox
                         >
                       }
                     </div>
                     <div class="col-panel-actions">
-                      <button mat-button (click)="resetColumns()">Reset</button>
-                      <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+                      <button mat-button (click)="resetColumns()">
+                        {{ 'browse.browse.reset' | translate }}
+                      </button>
+                      <button mat-flat-button color="primary" (click)="applyColumns()">
+                        {{ 'browse.browse.done' | translate }}
+                      </button>
                     </div>
                   </div>
                 }
@@ -277,11 +302,13 @@
                     <thead>
                       <tr>
                         <th class="col-checkbox">
-                          <span class="cdk-visually-hidden">Selection</span>
+                          <span class="cdk-visually-hidden">{{
+                            'browse.browse.selection' | translate
+                          }}</span>
                         </th>
                         @for (col of visibleColumns(); track col.key) {
                           <th class="sortable-th" (click)="toggleBrowseSort(col.key)">
-                            <span class="th-label">{{ col.label }}</span>
+                            <span class="th-label">{{ col | descriptorLabel }}</span>
                             @if (browseSortKey() === col.key) {
                               <mat-icon class="sort-arrow">
                                 {{ browseSortDir() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
@@ -291,15 +318,17 @@
                         }
                         @if (hasCollectionEntries()) {
                           <th class="col-actions">
-                            <span class="cdk-visually-hidden">Actions</span>
+                            <span class="cdk-visually-hidden">{{
+                              'browse.browse.actions' | translate
+                            }}</span>
                           </th>
                         }
                         <th class="col-gear">
                           <button
                             mat-icon-button
                             class="gear-btn"
-                            matTooltip="Manage columns"
-                            aria-label="Manage columns"
+                            [matTooltip]="'browse.browse.manage-columns' | translate"
+                            [attr.aria-label]="'browse.browse.manage-columns' | translate"
                             (click)="openColumnPanel()"
                           >
                             <mat-icon>tune</mat-icon>
@@ -366,7 +395,7 @@
                                   mat-icon-button
                                   type="button"
                                   [matMenuTriggerFor]="collectionRowMenu"
-                                  aria-label="Collection actions"
+                                  [attr.aria-label]="'browse.browse.collection-actions' | translate"
                                   (click)="$event.stopPropagation()"
                                 >
                                   <mat-icon>more_vert</mat-icon>
@@ -375,13 +404,13 @@
                                   @if (canEditCollectionEntry(doc)) {
                                     <button mat-menu-item (click)="openEditCollectionDialog(doc)">
                                       <mat-icon>edit</mat-icon>
-                                      <span>Edit</span>
+                                      <span>{{ 'browse.browse.edit' | translate }}</span>
                                     </button>
                                   }
                                   @if (canDeleteCollectionEntry(doc)) {
                                     <button mat-menu-item (click)="deleteCollectionEntry(doc)">
                                       <mat-icon>delete</mat-icon>
-                                      <span>Delete</span>
+                                      <span>{{ 'browse.browse.delete' | translate }}</span>
                                     </button>
                                   }
                                 </mat-menu>
@@ -429,7 +458,7 @@
                         type="button"
                         class="grid-card-menu"
                         [matMenuTriggerFor]="collectionCardMenu"
-                        aria-label="Collection actions"
+                        [attr.aria-label]="'browse.browse.collection-actions' | translate"
                         (click)="$event.stopPropagation()"
                       >
                         <mat-icon>more_vert</mat-icon>
@@ -438,13 +467,13 @@
                         @if (canEditCollectionEntry(doc)) {
                           <button mat-menu-item (click)="openEditCollectionDialog(doc)">
                             <mat-icon>edit</mat-icon>
-                            <span>Edit</span>
+                            <span>{{ 'browse.browse.edit' | translate }}</span>
                           </button>
                         }
                         @if (canDeleteCollectionEntry(doc)) {
                           <button mat-menu-item (click)="deleteCollectionEntry(doc)">
                             <mat-icon>delete</mat-icon>
-                            <span>Delete</span>
+                            <span>{{ 'browse.browse.delete' | translate }}</span>
                           </button>
                         }
                       </mat-menu>
@@ -456,16 +485,21 @@
           </mat-tab>
 
           <!-- ═══════ PERMISSIONS TAB ═══════ -->
-          <mat-tab label="Permissions">
+          <mat-tab [label]="'browse.tab.permissions' | translate">
             <div class="permissions-container">
               @if (permissionsLoading()) {
-                <div class="browse-loading"><mat-spinner diameter="24" aria-label="Loading" /></div>
+                <div class="browse-loading">
+                  <mat-spinner
+                    diameter="24"
+                    [attr.aria-label]="'browse.browse.loading' | translate"
+                  />
+                </div>
               } @else {
                 <!-- Permissions defined locally -->
                 <section class="perm-section">
                   <div class="perm-section-header">
                     <div class="perm-section-title" role="heading" aria-level="3">
-                      Permissions defined locally
+                      {{ 'browse.browse.permissions-defined-locally' | translate }}
                     </div>
                     @if (canManageCurrentPermissions()) {
                       <button
@@ -474,23 +508,27 @@
                         class="perm-action-btn"
                         (click)="addPermission()"
                       >
-                        New
+                        {{ 'browse.browse.new' | translate }}
                       </button>
                     }
                   </div>
                   @if (localAces().length === 0) {
-                    <div class="perm-empty">There are no local permissions.</div>
+                    <div class="perm-empty">
+                      {{ 'browse.browse.there-are-no-local-permissions' | translate }}
+                    </div>
                   } @else {
                     <table class="perm-table">
                       <thead>
                         <tr>
-                          <th>User / Group</th>
-                          <th>Right</th>
-                          <th>Time Frame</th>
-                          <th>Granted by</th>
+                          <th>{{ 'browse.browse.user-group' | translate }}</th>
+                          <th>{{ 'browse.browse.right' | translate }}</th>
+                          <th>{{ 'browse.browse.time-frame' | translate }}</th>
+                          <th>{{ 'browse.browse.granted-by' | translate }}</th>
                           @if (canManageCurrentPermissions()) {
                             <th>
-                              <span class="cdk-visually-hidden">Actions</span>
+                              <span class="cdk-visually-hidden">{{
+                                'browse.browse.actions' | translate
+                              }}</span>
                             </th>
                           }
                         </tr>
@@ -517,8 +555,8 @@
                               <td class="perm-row-actions">
                                 <button
                                   mat-icon-button
-                                  matTooltip="Edit"
-                                  aria-label="Edit"
+                                  [matTooltip]="'browse.browse.edit' | translate"
+                                  [attr.aria-label]="'browse.browse.edit' | translate"
                                   type="button"
                                   (click)="editPermission(ace)"
                                 >
@@ -526,8 +564,8 @@
                                 </button>
                                 <button
                                   mat-icon-button
-                                  matTooltip="Delete"
-                                  aria-label="Delete"
+                                  [matTooltip]="'browse.browse.delete' | translate"
+                                  [attr.aria-label]="'browse.browse.delete' | translate"
                                   type="button"
                                   (click)="deletePermission(ace)"
                                 >
@@ -546,7 +584,7 @@
                 <section class="perm-section">
                   <div class="perm-section-header">
                     <div class="perm-section-title" role="heading" aria-level="3">
-                      Permissions inherited from upper levels
+                      {{ 'browse.browse.permissions-inherited-from-upper-levels' | translate }}
                     </div>
                     @if (canManageCurrentPermissions()) {
                       <button
@@ -556,7 +594,11 @@
                         (click)="toggleInheritance()"
                         [disabled]="actionInProgress() === 'inheritance'"
                       >
-                        {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+                        {{
+                          isInheritanceBlocked()
+                            ? ('browse.unblock' | translate)
+                            : ('browse.block' | translate)
+                        }}
                       </button>
                     }
                   </div>
@@ -564,25 +606,26 @@
                     <div class="perm-info-bar">
                       <span class="perm-info-accent"></span>
                       <p>
-                        If you want to explicitly control the access to this document you can block
-                        the permissions inheritance. Any change made on parent document will not
-                        affect the access conditions to this document. You and the administrators
-                        will be added to local permissions.
+                        {{ 'browse.browse.if-you-want-to-explicitly-control' | translate }}
                       </p>
                     </div>
                   }
                   @if (isInheritanceBlocked()) {
-                    <div class="perm-empty">Permissions inheritance is blocked.</div>
+                    <div class="perm-empty">
+                      {{ 'browse.browse.permissions-inheritance-is-blocked' | translate }}
+                    </div>
                   } @else if (inheritedAces().length === 0) {
-                    <div class="perm-empty">No inherited permissions.</div>
+                    <div class="perm-empty">
+                      {{ 'browse.browse.no-inherited-permissions' | translate }}
+                    </div>
                   } @else {
                     <table class="perm-table">
                       <thead>
                         <tr>
-                          <th>User / Group</th>
-                          <th>Right</th>
-                          <th>Time Frame</th>
-                          <th>Granted by</th>
+                          <th>{{ 'browse.browse.user-group' | translate }}</th>
+                          <th>{{ 'browse.browse.right' | translate }}</th>
+                          <th>{{ 'browse.browse.time-frame' | translate }}</th>
+                          <th>{{ 'browse.browse.granted-by' | translate }}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -614,7 +657,7 @@
                 <section class="perm-section">
                   <div class="perm-section-header">
                     <div class="perm-section-title" role="heading" aria-level="3">
-                      Permissions Assigned to External Users
+                      {{ 'browse.browse.permissions-assigned-to-external-users' | translate }}
                     </div>
                     @if (canManageCurrentPermissions()) {
                       <button
@@ -623,29 +666,30 @@
                         class="perm-action-btn"
                         (click)="shareWithExternal()"
                       >
-                        New
+                        {{ 'browse.browse.new' | translate }}
                       </button>
                     }
                   </div>
                   <div class="perm-info-bar">
                     <span class="perm-info-accent"></span>
                     <p>
-                      Sharing to external users does not create new user accounts. External users
-                      are provided a link to access this document.
+                      {{ 'browse.browse.sharing-to-external-users-does-not' | translate }}
                     </p>
                   </div>
                   @if (externalAces().length === 0) {
-                    <div class="perm-empty">The document is not shared with any external user.</div>
+                    <div class="perm-empty">
+                      {{ 'browse.browse.the-document-is-not-shared-with' | translate }}
+                    </div>
                   } @else {
                     <table class="perm-table">
                       <thead>
                         <tr>
-                          <th>User</th>
-                          <th>Right</th>
-                          <th>Time Frame</th>
-                          <th>Granted by</th>
+                          <th>{{ 'browse.browse.user' | translate }}</th>
+                          <th>{{ 'browse.browse.right' | translate }}</th>
+                          <th>{{ 'browse.browse.time-frame' | translate }}</th>
+                          <th>{{ 'browse.browse.granted-by' | translate }}</th>
                           @if (canManageCurrentPermissions()) {
-                            <th>Actions</th>
+                            <th>{{ 'browse.browse.actions' | translate }}</th>
                           }
                         </tr>
                       </thead>
@@ -660,8 +704,8 @@
                               <td class="perm-row-actions">
                                 <button
                                   mat-icon-button
-                                  matTooltip="Edit"
-                                  aria-label="Edit"
+                                  [matTooltip]="'browse.browse.edit' | translate"
+                                  [attr.aria-label]="'browse.browse.edit' | translate"
                                   type="button"
                                   (click)="editExternalPermission(ace)"
                                 >
@@ -669,8 +713,10 @@
                                 </button>
                                 <button
                                   mat-icon-button
-                                  matTooltip="Send notification email"
-                                  aria-label="Send notification email"
+                                  [matTooltip]="'browse.browse.send-notification-email' | translate"
+                                  [attr.aria-label]="
+                                    'browse.browse.send-notification-email' | translate
+                                  "
                                   type="button"
                                   [disabled]="actionInProgress() === 'notify-' + ace.id"
                                   (click)="sendNotificationEmail(ace)"
@@ -679,8 +725,8 @@
                                 </button>
                                 <button
                                   mat-icon-button
-                                  matTooltip="Delete"
-                                  aria-label="Delete"
+                                  [matTooltip]="'browse.browse.delete' | translate"
+                                  [attr.aria-label]="'browse.browse.delete' | translate"
                                   type="button"
                                   (click)="deletePermission(ace)"
                                 >
@@ -699,11 +745,11 @@
           </mat-tab>
 
           <!-- ═══════ HISTORY TAB ═══════ -->
-          <mat-tab label="History">
+          <mat-tab [label]="'browse.tab.history' | translate">
             <div class="history-container">
               <div class="history-filters">
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
-                  <mat-label>Username</mat-label>
+                  <mat-label>{{ 'browse.browse.username' | translate }}</mat-label>
                   <input
                     matInput
                     [ngModel]="filterUsername()"
@@ -712,7 +758,7 @@
                   <mat-icon matPrefix>person_search</mat-icon>
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
-                  <mat-label>From</mat-label>
+                  <mat-label>{{ 'browse.browse.from' | translate }}</mat-label>
                   <input
                     matInput
                     [matDatepicker]="histFrom"
@@ -723,7 +769,7 @@
                   <mat-datepicker #histFrom />
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
-                  <mat-label>To</mat-label>
+                  <mat-label>{{ 'browse.browse.to' | translate }}</mat-label>
                   <input
                     matInput
                     [matDatepicker]="histTo"
@@ -734,21 +780,21 @@
                   <mat-datepicker #histTo />
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
-                  <mat-label>Action</mat-label>
+                  <mat-label>{{ 'browse.browse.action' | translate }}</mat-label>
                   <mat-select [ngModel]="filterAction()" (ngModelChange)="filterAction.set($event)">
-                    <mat-option value="">All</mat-option>
+                    <mat-option value="">{{ 'browse.browse.all' | translate }}</mat-option>
                     @for (a of availableActions(); track a.id) {
                       <mat-option [value]="a.id">{{ a.label }}</mat-option>
                     }
                   </mat-select>
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
-                  <mat-label>Category</mat-label>
+                  <mat-label>{{ 'browse.browse.category' | translate }}</mat-label>
                   <mat-select
                     [ngModel]="filterCategory()"
                     (ngModelChange)="filterCategory.set($event)"
                   >
-                    <mat-option value="">All</mat-option>
+                    <mat-option value="">{{ 'browse.browse.all' | translate }}</mat-option>
                     @for (c of availableCategories(); track c.id) {
                       <mat-option [value]="c.id">{{ c.label }}</mat-option>
                     }
@@ -757,9 +803,16 @@
               </div>
 
               @if (auditLoading()) {
-                <div class="browse-loading"><mat-spinner diameter="24" aria-label="Loading" /></div>
+                <div class="browse-loading">
+                  <mat-spinner
+                    diameter="24"
+                    [attr.aria-label]="'browse.browse.loading' | translate"
+                  />
+                </div>
               } @else if (filteredAuditEntries().length === 0) {
-                <div class="history-empty">No audit entries found.</div>
+                <div class="history-empty">
+                  {{ 'browse.browse.no-audit-entries-found' | translate }}
+                </div>
               } @else {
                 <div class="history-table-wrapper">
                   <table
@@ -772,15 +825,21 @@
                     class="history-table"
                   >
                     <ng-container matColumnDef="eventId">
-                      <th mat-header-cell *matHeaderCellDef mat-sort-header>Performed Action</th>
+                      <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                        {{ 'browse.browse.performed-action' | translate }}
+                      </th>
                       <td mat-cell *matCellDef="let row">{{ eventLabel(row.eventId) }}</td>
                     </ng-container>
                     <ng-container matColumnDef="eventDate">
-                      <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                      <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                        {{ 'browse.browse.date' | translate }}
+                      </th>
                       <td mat-cell *matCellDef="let row">{{ row.eventDate | date: 'medium' }}</td>
                     </ng-container>
                     <ng-container matColumnDef="principalName">
-                      <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
+                      <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                        {{ 'browse.browse.username' | translate }}
+                      </th>
                       <td mat-cell *matCellDef="let row">
                         <span class="user-cell">
                           <sat-avatar
@@ -795,15 +854,21 @@
                       </td>
                     </ng-container>
                     <ng-container matColumnDef="category">
-                      <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
+                      <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                        {{ 'browse.browse.category' | translate }}
+                      </th>
                       <td mat-cell *matCellDef="let row">{{ categoryLabel(row.category) }}</td>
                     </ng-container>
                     <ng-container matColumnDef="comment">
-                      <th mat-header-cell *matHeaderCellDef>Comment</th>
+                      <th mat-header-cell *matHeaderCellDef>
+                        {{ 'browse.browse.comment' | translate }}
+                      </th>
                       <td mat-cell *matCellDef="let row">{{ row.comment }}</td>
                     </ng-container>
                     <ng-container matColumnDef="docLifeCycle">
-                      <th mat-header-cell *matHeaderCellDef>State</th>
+                      <th mat-header-cell *matHeaderCellDef>
+                        {{ 'browse.browse.state' | translate }}
+                      </th>
                       <td mat-cell *matCellDef="let row">
                         @if (row.docLifeCycle) {
                           <sat-status-tag status="info" [hideIcon]="true">{{
@@ -854,24 +919,29 @@
           </mat-tab>
 
           <!-- ═══════ TRASH TAB ═══════ -->
-          <mat-tab label="Trash">
+          <mat-tab [label]="'browse.tab.trash' | translate">
             <div class="trash-container">
               @if (trashLoading()) {
-                <div class="browse-loading"><mat-spinner diameter="24" aria-label="Loading" /></div>
+                <div class="browse-loading">
+                  <mat-spinner
+                    diameter="24"
+                    [attr.aria-label]="'browse.browse.loading' | translate"
+                  />
+                </div>
               } @else if (trashedDocs().length === 0) {
                 <div class="browse-empty">
                   <mat-icon class="empty-icon">delete_outline</mat-icon>
-                  <p>Trash is empty</p>
+                  <p>{{ 'browse.browse.trash-is-empty' | translate }}</p>
                 </div>
               } @else {
                 <div class="browse-table-wrapper">
                   <table class="browse-table">
                     <thead>
                       <tr>
-                        <th>Name</th>
-                        <th>Type</th>
-                        <th>Last Modified</th>
-                        <th>Actions</th>
+                        <th>{{ 'browse.browse.name' | translate }}</th>
+                        <th>{{ 'browse.browse.type' | translate }}</th>
+                        <th>{{ 'browse.browse.last-modified' | translate }}</th>
+                        <th>{{ 'browse.browse.actions' | translate }}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -895,7 +965,8 @@
                               class="restore-btn"
                               (click)="restoreDocument(doc)"
                             >
-                              <mat-icon>restore_from_trash</mat-icon> Restore
+                              <mat-icon>restore_from_trash</mat-icon>
+                              {{ 'browse.browse.restore' | translate }}
                             </button>
                           </td>
                         </tr>
@@ -913,8 +984,10 @@
           mat-icon-button
           class="panel-toggle-btn"
           (click)="togglePanel()"
-          [matTooltip]="panelOpen() ? 'Hide details' : 'Show details'"
-          aria-label="Toggle details panel"
+          [matTooltip]="
+            panelOpen() ? ('browse.hide-details' | translate) : ('browse.show-details' | translate)
+          "
+          [attr.aria-label]="'browse.browse.toggle-details-panel' | translate"
         >
           <mat-icon>{{ panelOpen() ? 'info' : 'info_outline' }}</mat-icon>
         </button>
@@ -926,7 +999,11 @@
       <aside class="details-panel">
         <div class="panel-header">
           <span class="panel-title">{{ doc.title }}</span>
-          <button mat-icon-button (click)="closePanel()" aria-label="Close panel">
+          <button
+            mat-icon-button
+            (click)="closePanel()"
+            [attr.aria-label]="'browse.browse.close-panel' | translate"
+          >
             <mat-icon>close</mat-icon>
           </button>
         </div>
@@ -937,21 +1014,21 @@
             [class.sub-tab--active]="panelSubTab() === 'info'"
             (click)="switchPanelSubTab('info')"
           >
-            Info
+            {{ 'browse.browse.info' | translate }}
           </button>
           <button
             class="sub-tab"
             [class.sub-tab--active]="panelSubTab() === 'tags'"
             (click)="switchPanelSubTab('tags')"
           >
-            Tags
+            {{ 'browse.browse.tags' | translate }}
           </button>
           <button
             class="sub-tab"
             [class.sub-tab--active]="panelSubTab() === 'activity'"
             (click)="switchPanelSubTab('activity')"
           >
-            Activity
+            {{ 'browse.browse.activity' | translate }}
           </button>
         </div>
 
@@ -959,25 +1036,27 @@
         @if (panelSubTab() === 'info') {
           <div class="panel-body">
             <div class="panel-info-section">
-              <div class="panel-section-title" role="heading" aria-level="4">Info</div>
+              <div class="panel-section-title" role="heading" aria-level="4">
+                {{ 'browse.browse.info' | translate }}
+              </div>
               <div class="panel-info-row">
-                <span class="info-label">State</span>
+                <span class="info-label">{{ 'browse.browse.state' | translate }}</span>
                 <span class="info-value">
                   <sat-status-tag status="info" [hideIcon]="true">{{ docState() }}</sat-status-tag>
                 </span>
               </div>
               <div class="panel-info-row">
-                <span class="info-label">Last Modified</span>
+                <span class="info-label">{{ 'browse.browse.last-modified' | translate }}</span>
                 <span class="info-value">{{ doc.lastModified | date: 'mediumDate' }}</span>
               </div>
               <div class="panel-info-row">
-                <span class="info-label">Created</span>
+                <span class="info-label">{{ 'browse.browse.created' | translate }}</span>
                 <span class="info-value">{{
                   $any(doc.properties['dc:created']) | date: 'mediumDate'
                 }}</span>
               </div>
               <div class="panel-info-row">
-                <span class="info-label">By</span>
+                <span class="info-label">{{ 'browse.browse.by' | translate }}</span>
                 <span class="info-value avatar-value">
                   <sat-avatar
                     [initials]="avatarInitials(docCreator(doc))"
@@ -990,7 +1069,7 @@
                 </span>
               </div>
               <div class="panel-info-row">
-                <span class="info-label">Contributors</span>
+                <span class="info-label">{{ 'browse.browse.contributors' | translate }}</span>
                 <span class="info-value avatar-value">
                   <sat-avatar
                     [initials]="avatarInitials(lastContributor(doc))"
@@ -1005,13 +1084,15 @@
             </div>
 
             <div class="panel-info-section">
-              <div class="panel-section-title" role="heading" aria-level="4">Properties</div>
+              <div class="panel-section-title" role="heading" aria-level="4">
+                {{ 'browse.browse.properties' | translate }}
+              </div>
               <div class="panel-info-row">
-                <span class="info-label">Title</span>
+                <span class="info-label">{{ 'browse.browse.title' | translate }}</span>
                 <span class="info-value">{{ doc.title }}</span>
               </div>
               <div class="panel-info-row">
-                <span class="info-label">Type</span>
+                <span class="info-label">{{ 'browse.browse.type' | translate }}</span>
                 <span class="info-value">{{ doc.type }}</span>
               </div>
             </div>
@@ -1021,7 +1102,9 @@
         <!-- Tags sub-tab -->
         @if (panelSubTab() === 'tags') {
           <div class="panel-body">
-            <div class="panel-section-title" role="heading" aria-level="4">Tags</div>
+            <div class="panel-section-title" role="heading" aria-level="4">
+              {{ 'browse.browse.tags' | translate }}
+            </div>
             <div class="tags-container">
               @for (tag of tags(); track tag) {
                 <span class="removable-tag">
@@ -1030,21 +1113,21 @@
                     type="button"
                     class="tag-remove-btn"
                     (click)="removeTag(tag)"
-                    [attr.aria-label]="'Remove tag ' + tag"
+                    [attr.aria-label]="'shared.remove-tag' | translate: { name: tag }"
                   >
                     <mat-icon>close</mat-icon>
                   </button>
                 </span>
               }
               @if (tags().length === 0) {
-                <span class="no-data">No tags yet</span>
+                <span class="no-data">{{ 'browse.browse.no-tags-yet' | translate }}</span>
               }
             </div>
 
             <mat-form-field class="tag-autocomplete-field" appearance="outline">
               <input
                 matInput
-                placeholder="Search or create a tag"
+                [placeholder]="'browse.browse.search-or-create-a-tag' | translate"
                 [(ngModel)]="tagInput"
                 (ngModelChange)="onTagSearch($event)"
                 [matAutocomplete]="tagAuto"
@@ -1072,7 +1155,12 @@
         @if (panelSubTab() === 'activity') {
           <div class="panel-body">
             @if (activityLoading()) {
-              <div class="panel-loading"><mat-spinner diameter="20" aria-label="Loading" /></div>
+              <div class="panel-loading">
+                <mat-spinner
+                  diameter="20"
+                  [attr.aria-label]="'browse.browse.loading' | translate"
+                />
+              </div>
             } @else {
               @for (entry of activityEntries(); track entry.id) {
                 <div class="activity-item">
@@ -1091,7 +1179,7 @@
                 </div>
               }
               @if (activityEntries().length === 0) {
-                <span class="no-data">No recent activity</span>
+                <span class="no-data">{{ 'browse.browse.no-recent-activity' | translate }}</span>
               }
             }
           </div>

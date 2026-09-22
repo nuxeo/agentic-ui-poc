@@ -3,29 +3,29 @@
     <div>
       <h1>&#64;nuxeo-satori/platform/ui Component Showcase</h1>
       <p class="page-subtitle">
-        All components below are imported from the published customer package
+        {{ 'app.contracts-page.all-components-below-are-imported-from' | translate }}
       </p>
     </div>
     <div class="header-actions">
       <button mat-raised-button color="primary" (click)="openConfirmDialog()">
         <mat-icon>help_outline</mat-icon>
-        Confirm Dialog
+        {{ 'app.contracts-page.confirm-dialog' | translate }}
       </button>
       <button mat-raised-button color="primary" (click)="openShareDialog()">
         <mat-icon>share</mat-icon>
-        Share Dialog
+        {{ 'app.contracts-page.share-dialog' | translate }}
       </button>
       <button mat-raised-button color="primary" (click)="openExportDialog()">
         <mat-icon>download</mat-icon>
-        Export Dialog
+        {{ 'app.contracts-page.export-dialog' | translate }}
       </button>
       <button mat-raised-button color="primary" (click)="openSavedSearchDialog()">
         <mat-icon>save</mat-icon>
-        Saved Search
+        {{ 'app.contracts-page.saved-search' | translate }}
       </button>
       <button mat-raised-button color="primary" (click)="toggleSelection()">
         <mat-icon>check_box</mat-icon>
-        Toggle Selection Bar
+        {{ 'app.contracts-page.toggle-selection-bar' | translate }}
       </button>
     </div>
   </div>
@@ -43,34 +43,34 @@
   <!-- Stats using WidgetGrid -->
   <h2 class="section-title">
     <mat-icon>widgets</mat-icon>
-    WidgetGridComponent
+    {{ 'app.contracts-page.widgetgridcomponent' | translate }}
   </h2>
   <p class="section-note">
     <code>import {{ '{' }} WidgetGridComponent {{ '}' }} from '&#64;nuxeo-satori/platform/ui'</code>
   </p>
 
   <lib-widget-grid [columns]="3">
-    <lib-widget-container title="Active Contracts">
+    <lib-widget-container [title]="'app.contracts-page.active-contracts' | translate">
       <div class="stat">
         <mat-icon class="stat-icon info">description</mat-icon>
         <p class="stat-value">24</p>
-        <p class="stat-caption">Updated 2 hours ago</p>
+        <p class="stat-caption">{{ 'app.contracts-page.updated-2-hours-ago' | translate }}</p>
       </div>
     </lib-widget-container>
 
-    <lib-widget-container title="Expiring Soon">
+    <lib-widget-container [title]="'app.contracts-page.expiring-soon' | translate">
       <div class="stat">
         <mat-icon class="stat-icon warning">warning</mat-icon>
         <p class="stat-value warning">3</p>
-        <p class="stat-caption">Next 30 days</p>
+        <p class="stat-caption">{{ 'app.contracts-page.next-30-days' | translate }}</p>
       </div>
     </lib-widget-container>
 
-    <lib-widget-container title="Total Value">
+    <lib-widget-container [title]="'app.contracts-page.total-value' | translate">
       <div class="stat">
         <mat-icon class="stat-icon success">attach_money</mat-icon>
         <p class="stat-value">$2.4M</p>
-        <p class="stat-caption">Current quarter</p>
+        <p class="stat-caption">{{ 'app.contracts-page.current-quarter' | translate }}</p>
       </div>
     </lib-widget-container>
   </lib-widget-grid>
@@ -78,7 +78,7 @@
   <!-- Recent Activity using WidgetContainer -->
   <h2 class="section-title">
     <mat-icon>view_agenda</mat-icon>
-    WidgetContainerComponent
+    {{ 'app.contracts-page.widgetcontainercomponent' | translate }}
   </h2>
   <p class="section-note">
     <code
@@ -87,27 +87,27 @@
     >
   </p>
 
-  <lib-widget-container title="Recent Activity">
+  <lib-widget-container [title]="'app.contracts-page.recent-activity' | translate">
     <div class="activity">
       <div class="activity-list">
         <div class="activity-item">
           <mat-icon class="activity-icon success">check_circle</mat-icon>
           <div class="activity-details">
-            <strong>Contract ABC-123 renewed</strong>
+            <strong>{{ 'app.contracts-page.contract-abc-123-renewed' | translate }}</strong>
             <p class="activity-time">2 days ago</p>
           </div>
         </div>
         <div class="activity-item">
           <mat-icon class="activity-icon warning">schedule</mat-icon>
           <div class="activity-details">
-            <strong>Contract XYZ-789 pending review</strong>
+            <strong>{{ 'app.contracts-page.contract-xyz-789-pending-review' | translate }}</strong>
             <p class="activity-time">3 days ago</p>
           </div>
         </div>
         <div class="activity-item">
           <mat-icon class="activity-icon info">edit</mat-icon>
           <div class="activity-details">
-            <strong>Contract DEF-456 signed</strong>
+            <strong>{{ 'app.contracts-page.contract-def-456-signed' | translate }}</strong>
             <p class="activity-time">1 week ago</p>
           </div>
         </div>
@@ -118,55 +118,64 @@
   <!-- Interactive Component Demos -->
   <h2 class="section-title">
     <mat-icon>touch_app</mat-icon>
-    Interactive Component Demos
+    {{ 'app.contracts-page.interactive-component-demos' | translate }}
   </h2>
-  <p class="section-note">Click the buttons at the top to try each dialog and component</p>
+  <p class="section-note">{{ 'app.contracts-page.click-the-buttons-at-the-top' | translate }}</p>
 
   <lib-widget-grid [columns]="2">
-    <lib-widget-container title="Dialogs & Overlays">
+    <lib-widget-container [title]="'app.contracts-page.dialogs-overlays' | translate">
       <div class="demo-panel">
         <ul class="component-list">
           <li>
-            <code>ConfirmDialogComponent</code> — confirmation prompts
+            <code>ConfirmDialogComponent</code> —
+            {{ 'app.contracts-page.confirm-dialog-desc' | translate }}
             <span class="demo-status"> ✓ Live demo</span>
           </li>
           <li>
-            <code>ShareDialogComponent</code> — document sharing
+            <code>ShareDialogComponent</code> —
+            {{ 'app.contracts-page.share-dialog-desc' | translate }}
             <span class="demo-status"> ✓ Live demo</span>
           </li>
           <li>
-            <code>ExportDialogComponent</code> — export options
+            <code>ExportDialogComponent</code> —
+            {{ 'app.contracts-page.export-dialog-desc' | translate }}
             <span class="demo-status"> ✓ Live demo</span>
           </li>
           <li>
-            <code>SavedSearchDialogComponent</code> — save/manage searches
+            <code>SavedSearchDialogComponent</code> —
+            {{ 'app.contracts-page.saved-search-dialog-desc' | translate }}
             <span class="demo-status"> ✓ Live demo</span>
           </li>
           <li>
-            <code>DocumentCompareDialogComponent</code> — side-by-side compare
+            <code>DocumentCompareDialogComponent</code> —
+            {{ 'app.contracts-page.document-compare-desc' | translate }}
             <span class="demo-note"> (requires 2 documents)</span>
           </li>
         </ul>
       </div>
     </lib-widget-container>
 
-    <lib-widget-container title="Viewers & Display">
+    <lib-widget-container [title]="'app.contracts-page.viewers-display' | translate">
       <div class="demo-panel">
         <ul class="component-list">
           <li>
-            <code>SelectionTopbarComponent</code> — bulk action bar
+            <code>SelectionTopbarComponent</code> —
+            {{ 'app.contracts-page.selection-topbar-desc' | translate }}
             <span class="demo-status"> ✓ Live demo</span>
           </li>
           <li>
-            <code>WidgetGridComponent</code> — responsive grid layout
+            <code>WidgetGridComponent</code> —
+            {{ 'app.contracts-page.widget-grid-desc' | translate }}
             <span class="demo-status"> ✓ In use above</span>
           </li>
           <li>
-            <code>WidgetContainerComponent</code> — card-style container
+            <code>WidgetContainerComponent</code> —
+            {{ 'app.contracts-page.widget-container-desc' | translate }}
             <span class="demo-status"> ✓ In use above</span>
           </li>
           <li>
-            <code>DocumentViewerComponent</code> — rich document preview
+            <code>DocumentViewerComponent</code> —
+            {{ 'app.contracts-page.document-viewer-desc' | translate }}
             <span class="demo-note"> (requires document)</span>
           </li>
         </ul>
@@ -177,7 +186,7 @@
   <!-- Code Example -->
   <h2 class="section-title">
     <mat-icon>code</mat-icon>
-    Usage Example
+    {{ 'app.contracts-page.usage-example' | translate }}
   </h2>
 
   <mat-card class="code-card">
@@ -197,7 +206,7 @@ import {{ '{' }}
   imports: [WidgetContainerComponent, WidgetGridComponent],
   template: `
     &lt;lib-widget-grid [columns]="3"&gt;
-      &lt;lib-widget-container title="My Widget"&gt;
+      &lt;lib-widget-container [title]="'app.contracts-page.my-widget' | translate"&gt;
         &lt;!-- Your content here --&gt;
       &lt;/lib-widget-container&gt;
     &lt;/lib-widget-grid&gt;
@@ -211,7 +220,8 @@ export class MyPageComponent {{ '{' }} {{ '}' }}</pre>
     <p>
       <mat-icon class="banner-icon info">info</mat-icon>
       <span>
-        <strong>For customers:</strong> All components shown are available from
+        <strong>{{ 'app.contracts-page.for-customers' | translate }}</strong>
+        {{ 'app.contracts-page.all-components-shown-are-available-from' | translate }}
         <code>&#64;nuxeo-satori/platform/ui</code>. Import them directly into your extension
         libraries to build custom pages and features.
       </span>

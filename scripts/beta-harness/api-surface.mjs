@@ -266,7 +266,7 @@ function declarationsIn(text) {
         // gate stops being read. Only depth-1 members are filtered; a `private` inside a nested
         // type literal cannot occur in emitted declarations.
         else if (member && !/^private\s/.test(member)) {
-          members.push(`    ${member.replace(/\s+/g, ' ')}`);
+          members.push(`    ${sortUnionMembers(member.replace(/\s+/g, ' '))}`);
         }
       }
       if (depth <= 0) {
@@ -363,10 +363,34 @@ function surfaceOf(files) {
 
 /** Collapse whitespace so reformatting is not reported as an API change. */
 function normalise(fragment) {
-  return fragment
-    .replace(/\s+/g, ' ')
-    .replace(/\s*\{\s*$/, '')
-    .trimEnd();
+  return sortUnionMembers(
+    fragment
+      .replace(/\s+/g, ' ')
+      .replace(/\s*\{\s*$/, '')
+      .trimEnd(),
+  );
+}
+
+/**
+ * Put the members of a string-literal union in a fixed order.
+ *
+ * TypeScript emits an inferred union in the order it resolved the members, which is not stable
+ * across build states — `contentType` on the document viewer alternated between two orderings
+ * of the same eleven literals on consecutive runs of this script, reporting a removal and an
+ * addition each time. That is a false red, and a gate that reddens for no reason gets
+ * regenerated without reading, which is how a real removal slips through.
+ *
+ * Only literal unions are touched. Reordering members of a union of *object* types would need
+ * balanced-bracket parsing, and those do not reorder in practice.
+ */
+function sortUnionMembers(fragment) {
+  return fragment.replace(/(?:"[^"]*"|'[^']*')(?:\s*\|\s*(?:"[^"]*"|'[^']*'))+/g, (union) =>
+    union
+      .split('|')
+      .map((member) => member.trim())
+      .sort()
+      .join(' | '),
+  );
 }
 
 const entries = entryPoints();

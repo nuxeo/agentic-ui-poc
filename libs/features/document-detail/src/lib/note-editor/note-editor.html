@@ -2,7 +2,10 @@
   @if (readOnly()) {
     @if (loading()) {
       <div class="note-editor-loading">
-        <mat-spinner diameter="36" aria-label="Loading" />
+        <mat-spinner
+          diameter="36"
+          [attr.aria-label]="'document-detail.note-editor.loading' | translate"
+        />
       </div>
     } @else {
       <div class="note-body note-body--read-only">
@@ -21,7 +24,10 @@
     }
   } @else if (loading()) {
     <div class="note-editor-loading">
-      <mat-spinner diameter="36" aria-label="Loading" />
+      <mat-spinner
+        diameter="36"
+        [attr.aria-label]="'document-detail.note-editor.loading' | translate"
+      />
     </div>
   } @else {
     <div class="note-body">
@@ -30,15 +36,15 @@
           @if (imageUploading()) {
             <div class="note-image-upload-overlay" aria-live="polite">
               <mat-spinner diameter="28" />
-              <span>Uploading image…</span>
+              <span>{{ 'document-detail.note-editor.uploading-image' | translate }}</span>
             </div>
           }
           <button
             type="button"
             mat-icon-button
             class="note-quill-edit-btn"
-            matTooltip="Edit note"
-            aria-label="Edit note"
+            [matTooltip]="'document-detail.note-editor.edit-note' | translate"
+            [attr.aria-label]="'document-detail.note-editor.edit-note' | translate"
             (click)="focusForEdit()"
           >
             <mat-icon>edit</mat-icon>
@@ -47,11 +53,15 @@
             #quillToolbar
             class="note-quill-toolbar"
             role="toolbar"
-            aria-label="Note formatting"
+            [attr.aria-label]="'document-detail.note-editor.note-formatting' | translate"
             (mousedown)="onToolbarMouseDown($event)"
           >
             <span class="ql-formats">
-              <select class="ql-header" title="Text style" aria-label="Text style">
+              <select
+                class="ql-header"
+                [title]="'document-detail.note-editor.text-style' | translate"
+                [attr.aria-label]="'document-detail.note-editor.text-style' | translate"
+              >
                 <option value="1"></option>
                 <option value="2"></option>
                 <option value="3"></option>
@@ -62,33 +72,43 @@
               </select>
             </span>
             <span class="ql-formats">
-              <button type="button" class="ql-bold" title="Bold" aria-label="Bold"></button>
-              <button type="button" class="ql-italic" title="Italic" aria-label="Italic"></button>
+              <button
+                type="button"
+                class="ql-bold"
+                [title]="'document-detail.note-editor.bold' | translate"
+                [attr.aria-label]="'document-detail.note-editor.bold' | translate"
+              ></button>
+              <button
+                type="button"
+                class="ql-italic"
+                [title]="'document-detail.note-editor.italic' | translate"
+                [attr.aria-label]="'document-detail.note-editor.italic' | translate"
+              ></button>
               <button
                 type="button"
                 class="ql-underline"
-                title="Underline"
-                aria-label="Underline"
+                [title]="'document-detail.note-editor.underline' | translate"
+                [attr.aria-label]="'document-detail.note-editor.underline' | translate"
               ></button>
               <button
                 type="button"
                 class="ql-strike"
-                title="Strikethrough"
-                aria-label="Strikethrough"
+                [title]="'document-detail.note-editor.strikethrough' | translate"
+                [attr.aria-label]="'document-detail.note-editor.strikethrough' | translate"
               ></button>
             </span>
             <span class="ql-formats">
               <button
                 type="button"
                 class="ql-blockquote"
-                title="Blockquote"
-                aria-label="Blockquote"
+                [title]="'document-detail.note-editor.blockquote' | translate"
+                [attr.aria-label]="'document-detail.note-editor.blockquote' | translate"
               ></button>
               <button
                 type="button"
                 class="ql-code-block"
-                title="Code block"
-                aria-label="Code block"
+                [title]="'document-detail.note-editor.code-block' | translate"
+                [attr.aria-label]="'document-detail.note-editor.code-block' | translate"
               ></button>
             </span>
             <span class="ql-formats">
@@ -96,15 +116,15 @@
                 type="button"
                 class="ql-list"
                 value="bullet"
-                title="Bulleted list"
-                aria-label="Bulleted list"
+                [title]="'document-detail.note-editor.bulleted-list' | translate"
+                [attr.aria-label]="'document-detail.note-editor.bulleted-list' | translate"
               ></button>
               <button
                 type="button"
                 class="ql-list"
                 value="ordered"
-                title="Numbered list"
-                aria-label="Numbered list"
+                [title]="'document-detail.note-editor.numbered-list' | translate"
+                [attr.aria-label]="'document-detail.note-editor.numbered-list' | translate"
               ></button>
             </span>
             <span class="ql-formats">
@@ -112,37 +132,41 @@
                 type="button"
                 class="ql-align"
                 value=""
-                title="Align left"
-                aria-label="Align left"
+                [title]="'document-detail.note-editor.align-left' | translate"
+                [attr.aria-label]="'document-detail.note-editor.align-left' | translate"
               ></button>
               <button
                 type="button"
                 class="ql-align"
                 value="center"
-                title="Align center"
-                aria-label="Align center"
+                [title]="'document-detail.note-editor.align-center' | translate"
+                [attr.aria-label]="'document-detail.note-editor.align-center' | translate"
               ></button>
               <button
                 type="button"
                 class="ql-align"
                 value="right"
-                title="Align right"
-                aria-label="Align right"
+                [title]="'document-detail.note-editor.align-right' | translate"
+                [attr.aria-label]="'document-detail.note-editor.align-right' | translate"
               ></button>
               <button
                 type="button"
                 class="ql-align"
                 value="justify"
-                title="Justify"
-                aria-label="Justify"
+                [title]="'document-detail.note-editor.justify' | translate"
+                [attr.aria-label]="'document-detail.note-editor.justify' | translate"
               ></button>
             </span>
             <span class="ql-formats">
-              <select class="ql-color" title="Text color" aria-label="Text color"></select>
+              <select
+                class="ql-color"
+                [title]="'document-detail.note-editor.text-color' | translate"
+                [attr.aria-label]="'document-detail.note-editor.text-color' | translate"
+              ></select>
               <select
                 class="ql-background"
-                title="Highlight color"
-                aria-label="Highlight color"
+                [title]="'document-detail.note-editor.highlight-color' | translate"
+                [attr.aria-label]="'document-detail.note-editor.highlight-color' | translate"
               ></select>
             </span>
             <span class="ql-formats">
@@ -150,15 +174,15 @@
                 type="button"
                 class="ql-script"
                 value="sub"
-                title="Subscript"
-                aria-label="Subscript"
+                [title]="'document-detail.note-editor.subscript' | translate"
+                [attr.aria-label]="'document-detail.note-editor.subscript' | translate"
               ></button>
               <button
                 type="button"
                 class="ql-script"
                 value="super"
-                title="Superscript"
-                aria-label="Superscript"
+                [title]="'document-detail.note-editor.superscript' | translate"
+                [attr.aria-label]="'document-detail.note-editor.superscript' | translate"
               ></button>
             </span>
             <span class="ql-formats">
@@ -166,35 +190,39 @@
                 type="button"
                 class="ql-indent"
                 value="-1"
-                title="Decrease indent"
-                aria-label="Decrease indent"
+                [title]="'document-detail.note-editor.decrease-indent' | translate"
+                [attr.aria-label]="'document-detail.note-editor.decrease-indent' | translate"
               ></button>
               <button
                 type="button"
                 class="ql-indent"
                 value="+1"
-                title="Increase indent"
-                aria-label="Increase indent"
+                [title]="'document-detail.note-editor.increase-indent' | translate"
+                [attr.aria-label]="'document-detail.note-editor.increase-indent' | translate"
               ></button>
             </span>
             <span class="ql-formats">
               <button
                 type="button"
                 class="ql-link"
-                title="Insert link"
-                aria-label="Insert link"
+                [title]="'document-detail.note-editor.insert-link' | translate"
+                [attr.aria-label]="'document-detail.note-editor.insert-link' | translate"
               ></button>
               <button
                 type="button"
                 class="ql-image"
-                title="Insert image"
-                aria-label="Insert image"
+                [title]="'document-detail.note-editor.insert-image' | translate"
+                [attr.aria-label]="'document-detail.note-editor.insert-image' | translate"
               ></button>
               <button
                 type="button"
                 class="note-quill-image-from-docs"
-                title="Insert image from existing documents"
-                aria-label="Insert image from existing documents"
+                [title]="
+                  'document-detail.note-editor.insert-image-from-existing-documents' | translate
+                "
+                [attr.aria-label]="
+                  'document-detail.note-editor.insert-image-from-existing-documents' | translate
+                "
                 (mousedown)="$event.preventDefault()"
                 (click)="insertImagesFromExistingDocuments()"
               >
@@ -212,8 +240,8 @@
               <button
                 type="button"
                 class="ql-video"
-                title="Insert video"
-                aria-label="Insert video"
+                [title]="'document-detail.note-editor.insert-video' | translate"
+                [attr.aria-label]="'document-detail.note-editor.insert-video' | translate"
               ></button>
             </span>
             <input
@@ -227,8 +255,8 @@
               <button
                 type="button"
                 class="ql-clean"
-                title="Clear formatting"
-                aria-label="Clear formatting"
+                [title]="'document-detail.note-editor.clear-formatting' | translate"
+                [attr.aria-label]="'document-detail.note-editor.clear-formatting' | translate"
               ></button>
             </span>
           </div>
@@ -239,7 +267,7 @@
           class="note-text-surface"
           [ngModel]="editText()"
           (ngModelChange)="editText.set($event)"
-          aria-label="Note HTML source"
+          [attr.aria-label]="'document-detail.note-editor.note-html-source' | translate"
           spellcheck="false"
         ></textarea>
       } @else {
@@ -250,8 +278,8 @@
                 type="button"
                 mat-icon-button
                 class="note-plain-edit-btn"
-                matTooltip="Edit"
-                aria-label="Edit note"
+                [matTooltip]="'document-detail.note-editor.edit' | translate"
+                [attr.aria-label]="'document-detail.note-editor.edit-note' | translate"
                 (click)="enterPlainTextEdit()"
               >
                 <mat-icon>edit</mat-icon>
@@ -269,11 +297,13 @@
               [class.note-markdown-editor]="isMarkdown()"
               [ngModel]="editText()"
               (ngModelChange)="editText.set($event)"
-              aria-label="Note content"
+              [attr.aria-label]="'document-detail.note-editor.note-content' | translate"
               spellcheck="true"
             ></textarea>
             <div class="note-plain-actions">
-              <button type="button" mat-button (click)="cancelPlainTextEdit()">Cancel</button>
+              <button type="button" mat-button (click)="cancelPlainTextEdit()">
+                {{ 'document-detail.note-editor.cancel' | translate }}
+              </button>
               <button
                 type="button"
                 mat-flat-button
@@ -283,9 +313,12 @@
                 (click)="onSave()"
               >
                 @if (saving()) {
-                  <mat-spinner diameter="18" aria-label="Loading" />
+                  <mat-spinner
+                    diameter="18"
+                    [attr.aria-label]="'document-detail.note-editor.loading' | translate"
+                  />
                 } @else {
-                  Save
+                  {{ 'document-detail.note-editor.save' | translate }}
                 }
               </button>
             </div>
@@ -301,8 +334,16 @@
           mat-icon-button
           class="source-toggle"
           [class.source-toggle--active]="sourceMode()"
-          [matTooltip]="sourceMode() ? 'Visual editor' : 'HTML source'"
-          [attr.aria-label]="sourceMode() ? 'Visual editor' : 'HTML source'"
+          [matTooltip]="
+            sourceMode()
+              ? ('document-detail.visual-editor' | translate)
+              : ('document-detail.html-source' | translate)
+          "
+          [attr.aria-label]="
+            sourceMode()
+              ? ('document-detail.visual-editor' | translate)
+              : ('document-detail.html-source' | translate)
+          "
           (click)="toggleSourceMode()"
         >
           <mat-icon>{{ sourceMode() ? 'edit' : 'code' }}</mat-icon>
@@ -316,9 +357,12 @@
           (click)="onSave()"
         >
           @if (saving()) {
-            <mat-spinner diameter="18" aria-label="Loading" />
+            <mat-spinner
+              diameter="18"
+              [attr.aria-label]="'document-detail.note-editor.loading' | translate"
+            />
           } @else {
-            Save
+            {{ 'document-detail.note-editor.save' | translate }}
           }
         </button>
       </div>

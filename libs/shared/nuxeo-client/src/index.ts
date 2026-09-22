@@ -246,7 +246,7 @@ export {
 export {
   ADD_CHILDREN,
   MANAGE_DOCUMENT_PERMISSIONS,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   REMOVE_DOCUMENT,
   WRITE_DOCUMENT,
   WRITE_PROPERTIES,
@@ -370,3 +370,4 @@ export {
   EXPIRED_DOCUMENTS_QUERY,
   FAVORITES_COLLECTION_QUERY,
 } from './lib/queries/nxql-queries';
+export { formatRelativeTime } from './lib/utils/relative-time.utils';

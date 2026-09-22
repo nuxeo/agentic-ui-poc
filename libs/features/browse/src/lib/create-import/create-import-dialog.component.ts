@@ -61,6 +61,7 @@ import {
   documentNavigationUrl,
   isCollectionDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */
@@ -107,6 +108,23 @@ export interface DocTypeDef {
   icon: string;
 }
 
+const DOC_TYPE_LABEL_KEYS: Record<string, string> = {
+  Audio: 'doc-type.audio',
+  Collection: 'doc-type.collection',
+  File: 'doc-type.file',
+  Folder: 'doc-type.folder',
+  Note: 'doc-type.note',
+  OrderedFolder: 'doc-type.ordered-folder',
+  Picture: 'doc-type.picture',
+  Video: 'doc-type.video',
+  Workspace: 'doc-type.workspace',
+  Section: 'doc-type.section',
+  SectionRoot: 'doc-type.section-root',
+  TemplateRoot: 'doc-type.template-root',
+  Domain: 'doc-type.domain',
+  WorkspaceRoot: 'doc-type.workspace-root',
+};
+
 const DOC_TYPE_LABELS: Record<string, string> = {
   Audio: 'Audio',
   Collection: 'Collection',
@@ -124,7 +142,12 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   WorkspaceRoot: 'Workspace Root',
 };
 
-function docTypeLabel(type: string): string {
+function docTypeLabel(type: string, translate: (key: string) => string): string {
+  const key = DOC_TYPE_LABEL_KEYS[type];
+  if (key) return translate(key);
+  // A type a customer has added that no catalogue knows about. Splitting the camel case is a
+  // better guess than showing `OrderedFolder`, and it cannot be translated because nothing
+  // knew the type existed at build time.
   return DOC_TYPE_LABELS[type] ?? type.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
@@ -161,10 +184,10 @@ function applyImportPropertiesTemplate(
   return state;
 }
 
-function toDocTypeDefs(types: string[]): DocTypeDef[] {
+function toDocTypeDefs(types: string[], translate: (key: string) => string): DocTypeDef[] {
   return types.map((type) => ({
     type,
-    label: docTypeLabel(type),
+    label: docTypeLabel(type, translate),
     icon: docTypeIcon(type),
   }));
 }
@@ -178,6 +201,7 @@ const DIALOG_SIZE = {
   selector: 'lib-create-import-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
@@ -199,6 +223,7 @@ const DIALOG_SIZE = {
   styleUrl: './create-import-dialog.component.scss',
 })
 export class CreateImportDialogComponent implements OnInit {
+  private readonly translate = inject(TranslateService);
   @ViewChild('mainFileInput') mainFileInput?: ElementRef<HTMLInputElement>;
   @ViewChild('importFileInput') importFileInput?: ElementRef<HTMLInputElement>;
   @ViewChild('expiresInput') expiresNgModel?: NgModel;
@@ -401,7 +426,7 @@ export class CreateImportDialogComponent implements OnInit {
           },
           error: () => {
             this.pathError.set(
-              'Could not resolve a default folder. Open a folder in Browse first.',
+              this.translate.instant('browse.message.could-not-resolve-a-default-folder-open'),
             );
             this.resolvingPath.set(false);
           },
@@ -443,7 +468,9 @@ export class CreateImportDialogComponent implements OnInit {
             return;
           }
           this.parentFolderType.set(doc.type);
-          this.creatableTypes.set(toDocTypeDefs(resolveCreatableSubtypes(doc)));
+          this.creatableTypes.set(
+            toDocTypeDefs(resolveCreatableSubtypes(doc), (key) => this.translate.instant(key)),
+          );
           this.loadingContext.set(false);
         },
         error: () => {
@@ -452,7 +479,7 @@ export class CreateImportDialogComponent implements OnInit {
           }
           this.parentFolderType.set(null);
           this.creatableTypes.set([]);
-          this.typesLoadError.set('Could not load creatable document types for this folder.');
+          this.typesLoadError.set(this.translate.instant('browse.create-import.types-load-failed'));
           this.loadingContext.set(false);
         },
       });
@@ -1009,7 +1036,16 @@ export class CreateImportDialogComponent implements OnInit {
       )
       .subscribe({
         next: (docs) => {
-          this.snackBar.open(`Created ${docs.length} document(s).`, 'Close', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant(
+              docs.length === 1
+                ? 'common.count.created-document-one'
+                : 'common.count.created-document-many',
+              { count: docs.length },
+            ),
+            this.translate.instant('common.close'),
+            { duration: 4000 },
+          );
           this.dialogRef.close({
             refreshed: true,
             path,
@@ -1017,7 +1053,11 @@ export class CreateImportDialogComponent implements OnInit {
           });
         },
         error: (err: { error?: { message?: string }; message?: string }) => {
-          this.importError.set(err?.error?.message ?? err?.message ?? 'Create failed');
+          this.importError.set(
+            err?.error?.message ??
+              err?.message ??
+              this.translate.instant('admin.message.create-failed'),
+          );
         },
       });
   }
@@ -1122,12 +1162,16 @@ export class CreateImportDialogComponent implements OnInit {
     const hasBlob = isBlobHoldingDocType(docType.type);
 
     if (hasBlob && !mainFile) {
-      this.contentError.set('A file is required for this document type.');
+      this.contentError.set(
+        this.translate.instant('browse.message.a-file-is-required-for-this-document'),
+      );
       return;
     }
 
     if (hasBlob && mainFile && this.mainFileUploadPending()) {
-      this.contentError.set('Please wait for the file upload to finish.');
+      this.contentError.set(
+        this.translate.instant('browse.message.please-wait-for-the-file-upload-to'),
+      );
       return;
     }
 
@@ -1183,7 +1227,14 @@ export class CreateImportDialogComponent implements OnInit {
   ): void {
     this.mainFile.set(null);
     if (!hadFile) {
-      this.snackBar.open(`Created ${docTypeName} “${title}”`, 'Close', { duration: 4000 });
+      this.snackBar.open(
+        this.translate.instant('browse.create-import-dialog.created-named', {
+          type: docTypeName,
+          title,
+        }),
+        this.translate.instant('common.close'),
+        { duration: 4000 },
+      );
     }
     this.dialogRef.close({
       refreshed: true,
@@ -1273,7 +1324,11 @@ export class CreateImportDialogComponent implements OnInit {
           this.mainFile.set(null);
           this.mainFileBatchId = null;
           this.mainFileUploadPercent.set(0);
-          this.contentError.set(err?.error?.message ?? err?.message ?? 'File upload failed');
+          this.contentError.set(
+            err?.error?.message ??
+              err?.message ??
+              this.translate.instant('browse.message.file-upload-failed'),
+          );
         },
       });
   }
@@ -1335,7 +1390,7 @@ export class CreateImportDialogComponent implements OnInit {
   private selectCsvFile(file: File): void {
     if (!file.name.toLowerCase().endsWith('.csv')) {
       this.csvFile.set(null);
-      this.error.set('Please select a .csv file.');
+      this.error.set(this.translate.instant('browse.message.please-select-a-csv-file'));
       return;
     }
     this.csvFile.set(file);
@@ -1380,7 +1435,16 @@ export class CreateImportDialogComponent implements OnInit {
       )
       .subscribe({
         next: (docs) => {
-          this.snackBar.open(`Created ${docs.length} file(s).`, 'Close', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant(
+              docs.length === 1
+                ? 'common.count.created-file-one'
+                : 'common.count.created-file-many',
+              { count: docs.length },
+            ),
+            this.translate.instant('common.close'),
+            { duration: 4000 },
+          );
           this.dialogRef.close({
             refreshed: true,
             path,
@@ -1388,7 +1452,11 @@ export class CreateImportDialogComponent implements OnInit {
           });
         },
         error: (err: { error?: { message?: string }; message?: string }) => {
-          this.importError.set(err?.error?.message ?? err?.message ?? 'Upload failed');
+          this.importError.set(
+            err?.error?.message ??
+              err?.message ??
+              this.translate.instant('browse.message.upload-failed'),
+          );
         },
       });
   }
@@ -1423,11 +1491,15 @@ export class CreateImportDialogComponent implements OnInit {
           this.busy.set(false);
           if (err?.status === 404) {
             this.error.set(
-              'CSV import is not available. Install the Nuxeo CSV addon on the server.',
+              this.translate.instant('browse.message.csv-import-is-not-available-install-the'),
             );
             return;
           }
-          this.error.set(err?.error?.message ?? err?.message ?? 'CSV import failed');
+          this.error.set(
+            err?.error?.message ??
+              err?.message ??
+              this.translate.instant('browse.message.csv-import-failed'),
+          );
         },
       });
   }
