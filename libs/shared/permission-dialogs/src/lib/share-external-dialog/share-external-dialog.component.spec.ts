@@ -95,6 +95,21 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
     expect(closeSpy).toHaveBeenCalledWith(true);
   });
 
+  it('handles permission creation when notification is not sent', () => {
+    addExternalPermissionWithNotification.mockReturnValue(
+      of({
+        document: { uid: 'doc-1' },
+        notificationSent: false,
+      }),
+    );
+
+    fixture.componentInstance.create(false);
+
+    // When notificationSent=false and no notificationError, successMessage returns null
+    // The dialog still closes with true, but no success snackBar is shown
+    expect(closeSpy).toHaveBeenCalledWith(true);
+  });
+
   it('resets form on create-and-add-another without closing', () => {
     fixture.componentInstance.create(true);
 

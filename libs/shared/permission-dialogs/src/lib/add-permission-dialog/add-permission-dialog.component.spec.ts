@@ -150,4 +150,35 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
     });
     expect(closeSpy).not.toHaveBeenCalled();
   });
+
+  describe('user selection and search', () => {
+    it('updates search text and triggers search on change', () => {
+      component.selectedUser = selectedUser;
+      component.onSearchChange('new search');
+
+      expect(component.searchText).toBe('new search');
+      expect(component.selectedUser).toBeNull();
+    });
+
+    it('sets selected user and updates search text', () => {
+      component.selectedUser = null;
+      component.onUserSelected(selectedUser);
+
+      expect(component.selectedUser).toBe(selectedUser);
+      expect(component.searchText).toBe('Read Only User');
+    });
+
+    it('displays user label from suggestion object', () => {
+      expect(component.displayUser(selectedUser)).toBe('Read Only User');
+    });
+
+    it('displays string value as-is', () => {
+      expect(component.displayUser('test-string')).toBe('test-string');
+    });
+
+    it('returns empty string for null or undefined', () => {
+      expect(component.displayUser(null as any)).toBe('');
+      expect(component.displayUser(undefined as any)).toBe('');
+    });
+  });
 });

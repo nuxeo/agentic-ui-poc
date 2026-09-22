@@ -287,6 +287,14 @@ describe('CollectionDetailComponent', () => {
       expect(component.breadcrumbItems()).toEqual([]);
     });
 
+    it('should use cached breadcrumbs for same collection path', () => {
+      component.collection.set(mockCollection);
+      const firstCall = component.breadcrumbItems();
+      // Second call with same path should return cached result
+      const secondCall = component.breadcrumbItems();
+      expect(firstCall).toBe(secondCall); // Same reference = cache hit
+    });
+
     it('should compute localAces', () => {
       component.collection.set(mockCollection);
       const aces = component.localAces();
@@ -374,6 +382,16 @@ describe('CollectionDetailComponent', () => {
       component.onBreadcrumbClick(mockEvent);
 
       expect(navigateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('goToCollections', () => {
+    it('should navigate to collections list', () => {
+      const navigateSpy = vi.spyOn(router, 'navigateByUrl');
+
+      component.goToCollections();
+
+      expect(navigateSpy).toHaveBeenCalledWith('/collections');
     });
   });
 
