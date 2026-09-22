@@ -844,8 +844,10 @@ describe('BrowseComponent', () => {
     };
 
     expect(component.aceTimeFrame(ace)).not.toBe('Permanent');
-    expect(component.aceTimeFrame(ace)).toContain('from');
-    expect(component.aceTimeFrame(ace)).toContain('to');
+    // Both dates present resolves `permissions.time-frame.range`, which separates them rather
+    // than joining them with English connectives. The year is left open because the end date is
+    // 23:59:59Z and so lands in the next year in any timezone east of UTC.
+    expect(component.aceTimeFrame(ace)).toMatch(/^\w{3} \d{2}, \d{4} - \w{3} \d{2}, \d{4}$/);
   });
 
   it('localAces reflects persisted date-based permissions after reload', () => {

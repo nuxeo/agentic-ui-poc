@@ -362,14 +362,10 @@ export class AppShellComponent implements OnDestroy {
       return null;
     }
     const count = this.clipboardCount();
-    const noun = count === 1 ? 'item' : 'items';
-    // NOTE(i18n): this is a concatenated string, which INFO-144 forbids because no translator
-    // can reorder it, and the singular/plural branch is English grammar hardcoded in a
-    // conditional. Translating the entry's name is a strict improvement and is what this
-    // change is for, but the sentence around it still needs an ICU message with a `plural`
-    // arm. Tracked in NXSAT-284; not fixed here because it needs
-    // `ngx-translate-messageformat-compiler`, which the repo does not yet carry.
-    return `${this.navText(item)}, ${count} ${noun}`;
+    // Use the existing suffix-based pluralization pattern (common.count.*)
+    // When ICU MessageFormat is added (Phase 3C), this can be migrated to a single key
+    const key = count === 1 ? 'nav.clipboard.aria-label-one' : 'nav.clipboard.aria-label-many';
+    return this.translate.instant(key, { name: this.navText(item), count });
   }
 
   isActive(path: string): boolean {

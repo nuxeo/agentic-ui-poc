@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, DestroyRef, LOCALE_ID, inject, signal, OnInit, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -62,6 +62,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 export class TasksPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   readonly router = inject(Router);
   private readonly taskService = inject(TaskService);
   private readonly userService = inject(UserService);
@@ -890,7 +891,7 @@ export class TasksPageComponent implements OnInit {
 
   dueDateFormatted(task: NuxeoTask): string {
     if (!task.dueDate) return '';
-    return new Date(task.dueDate).toLocaleDateString('en-US', {
+    return new Date(task.dueDate).toLocaleDateString(this.locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

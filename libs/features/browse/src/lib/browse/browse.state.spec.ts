@@ -305,14 +305,18 @@ describe('BrowseComponent — listing state', () => {
 
     expect(component.getCellValue(entry, 'title')).toBe('Alpha');
     expect(component.getCellValue(entry, 'type')).toBe('Note');
+    // Asserted against the app's `LOCALE_ID` rather than a bare `toLocaleDateString()`. The bare
+    // form reads the machine's locale, so it agreed with the old hardcoded implementation on any
+    // host and could never have caught the cell ignoring the user's chosen language — on a
+    // day-first host this line expected `1/3/2026` while the column is meant to render `3/1/2026`.
     expect(component.getCellValue(entry, 'modified')).toBe(
-      new Date('2026-03-01T00:00:00.000Z').toLocaleDateString(),
+      new Date('2026-03-01T00:00:00.000Z').toLocaleDateString('en-US'),
     );
     expect(component.getCellValue(entry, 'lastContributor')).toBe('jdoe');
     expect(component.getCellValue(entry, 'state')).toBe('contract');
     expect(component.getCellValue(entry, 'version')).toBe('2.3');
     expect(component.getCellValue(entry, 'created')).toBe(
-      new Date('2026-02-01T00:00:00.000Z').toLocaleDateString(),
+      new Date('2026-02-01T00:00:00.000Z').toLocaleDateString('en-US'),
     );
     expect(component.getCellValue(entry, 'author')).toBe('asmith');
     expect(component.getCellValue(entry, 'nature')).toBe('contract');

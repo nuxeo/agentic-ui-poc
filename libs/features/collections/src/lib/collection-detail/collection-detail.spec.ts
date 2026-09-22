@@ -1126,15 +1126,14 @@ describe('CollectionDetailComponent', () => {
         begin: '2026-01-01T00:00:00.000Z',
         end: '2026-12-31T00:00:00.000Z',
       } as any;
-      const result = component.aceTimeFrame(ace);
-      expect(result).toContain('from');
-      expect(result).toContain('to');
+      // `permissions.time-frame.range` separates the two dates. The previous `from X to Y` was
+      // built by interpolation, so it was English in every locale.
+      expect(component.aceTimeFrame(ace)).toMatch(/^\w{3} \d{2}, 2026 - \w{3} \d{2}, 2026$/);
     });
 
     it('should format from date when only begin present', () => {
       const ace = { begin: '2026-01-01T00:00:00.000Z', end: null } as any;
-      const result = component.aceTimeFrame(ace);
-      expect(result).toContain('from');
+      expect(component.aceTimeFrame(ace)).toMatch(/^From \w{3} \d{2}, 2026$/);
     });
 
     it('should format until date when only end present', () => {
