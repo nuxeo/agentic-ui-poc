@@ -5,6 +5,8 @@ import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { TranslateModule } from '@ngx-translate/core';
 
+import { COMPILED_THEME_BASES } from '../theme/app-theme';
+
 /**
  * NXENG-778 — IBM Equal Access Issue ID 362174057 on the Personal Space sidebar link
  * (`sat-platform-nav-list-item[12]` / `aria-label="Personal Space"`).
@@ -56,6 +58,10 @@ function compositeOver(
   backdrop: readonly number[],
 ): number[] {
   return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
+}
+
+function flatten(value: string, backdrop: readonly number[]): number[] {
+  return compositeOver(parseColor(value), backdrop);
 }
 
 function paintedBackdrop(element: Element): number[] {
@@ -110,15 +116,15 @@ describe('Personal Space sidebar nav — keyboard focus visible (NXENG-778)', ()
     const panel = paintedBackdrop(anchor);
     const ownFill = parseColor(styles.backgroundColor);
     const interior = ownFill.alpha > 0 ? compositeOver(ownFill, panel) : panel;
-    const ring = parseColor(styles.outlineColor);
+    const ring = flatten(styles.outlineColor, interior);
 
     return {
       matchesFocusVisible: anchor.matches(':focus-visible'),
       outlineStyle: styles.outlineStyle,
       outlineWidth: Number.parseFloat(styles.outlineWidth),
       ringColor: styles.outlineColor,
-      ratioVsInterior: contrastRatio(compositeOver(ring, interior), interior),
-      ratioVsPanel: contrastRatio(compositeOver(ring, panel), panel),
+      ratioVsInterior: contrastRatio(ring, interior),
+      ratioVsPanel: contrastRatio(ring, panel),
     };
   }
 
@@ -135,9 +141,14 @@ describe('Personal Space sidebar nav — keyboard focus visible (NXENG-778)', ()
     expect(getComputedStyle(link).outlineStyle).toBe('none');
   });
 
-  for (const theme of ['nuxeo', 'dark', 'kawaii', 'light']) {
+  for (const theme of COMPILED_THEME_BASES) {
     it(`Personal Space focus ring clears ${MINIMUM_RATIO}:1 on the nav panel — ${theme}`, () => {
       const measured = measure(theme, false);
+      expect(measured.matchesFocusVisible)
+        .withContext(`Personal Space must be :focus-visible under ${theme}`)
+        .toBe(true);
+      expect(measured.outlineStyle).not.toBe('none');
+      expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
       expect(measured.ratioVsPanel)
         .withContext(`ring ${measured.ringColor} on the ${theme} nav panel`)
         .toBeGreaterThanOrEqual(MINIMUM_RATIO);
@@ -145,6 +156,11 @@ describe('Personal Space sidebar nav — keyboard focus visible (NXENG-778)', ()
 
     it(`Personal Space focus ring clears ${MINIMUM_RATIO}:1 on the current route — ${theme}`, () => {
       const measured = measure(theme, true);
+      expect(measured.matchesFocusVisible)
+        .withContext(`Personal Space must be :focus-visible under ${theme}, current route`)
+        .toBe(true);
+      expect(measured.outlineStyle).not.toBe('none');
+      expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
       expect(measured.ratioVsInterior)
         .withContext(`ring ${measured.ringColor} on the ${theme} current-item fill`)
         .toBeGreaterThanOrEqual(MINIMUM_RATIO);
