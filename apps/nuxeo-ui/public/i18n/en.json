@@ -108,7 +108,9 @@
       "state-off": "Off"
     },
     "test": {
-      "platform-nav-item": "Browse"
+      "platform-nav-item": "Browse",
+      "knowledge-discovery-nav-item": "Knowledge Discovery",
+      "dashboard-nav-item": "Dashboard"
     }
   }
 }

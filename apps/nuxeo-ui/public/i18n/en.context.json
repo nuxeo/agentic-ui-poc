@@ -63,5 +63,7 @@
   "shell.menu.state-off": "The disabled state of a toggle, shown inside the AI Features menu item. An ADJECTIVE or short word, not a verb.",
   "shell.ai.suggestion.recent-uploads": "A suggested question offered as a button in the AI assistant panel. An IMPERATIVE instruction to the assistant.",
   "shell.ai.sources": "Heading above the documents an AI answer cited. A NOUN, plural — the documents the answer came from, not a menu of options.",
-  "shell.test.platform-nav-item": "Label on a platform nav list item in a unit-test host template only. Not shown in the product UI; uses the same word as the real Browse nav entry for focus-ring contrast tests."
+  "shell.test.platform-nav-item": "Label on a platform nav list item in a unit-test host template only. Not shown in the product UI; uses the same word as the real Browse nav entry for focus-ring contrast tests.",
+  "shell.test.knowledge-discovery-nav-item": "Label on the Knowledge Discovery nav list item in the NXENG-780 focus-ring unit-test host only. Not shown in the product UI.",
+  "shell.test.dashboard-nav-item": "Label on the Dashboard nav list item in the NXENG-780 focus-ring unit-test host only. Not shown in the product UI."
 }

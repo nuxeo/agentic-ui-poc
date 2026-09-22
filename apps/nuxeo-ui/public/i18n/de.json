@@ -108,7 +108,9 @@
       "state-off": "aus"
     },
     "test": {
-      "platform-nav-item": "Durchsuchen"
+      "platform-nav-item": "Durchsuchen",
+      "knowledge-discovery-nav-item": "Knowledge Discovery",
+      "dashboard-nav-item": "Dashboard"
     }
   }
 }
