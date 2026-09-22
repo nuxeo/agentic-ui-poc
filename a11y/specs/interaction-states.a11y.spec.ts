@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect, test } from './a11y-fixtures';
+import { expect, REPORT_DIR, test } from '../fixtures';
 
 /**
  * WCAG 2.1 AA scan of **interaction states** — surfaces that exist only after a click.
@@ -38,7 +38,7 @@ import { expect, test } from './a11y-fixtures';
  * separately and each emits its own report.
  *
  * Run:
- *   npm run a11y:states
+ *   npm run a11y:scan -- states
  */
 
 const BROWSE = '/#/browse';
@@ -168,7 +168,7 @@ test.describe('accessibility: interaction states', () => {
    *
    * Also the standing lead on an open question: five of a11y-scout's eight `color-contrast`
    * findings are on `.mat-start-date`, `.mat-end-date` and the select, and none of them
-   * reproduced under a plain navigate-and-wait in `scripts/a11y-axe-differential.mjs`. Scanning
+   * reproduced under a plain navigate-and-wait in `a11y/diagnostics/axe-differential.mjs`. Scanning
    * the control with its picker open is the most direct way to find out whether the open state
    * is what the original scan caught.
    */
@@ -195,7 +195,7 @@ test.describe('accessibility: interaction states', () => {
    * from the option name — `scan-page.ts` gates reflow behind the same flag:
    * `if (keyboard !== false) { runReflowCheck(...) }`. There is no way to keep reflow without
    * paying for the keyboard walk. That is an acceptable loss only because reflow has been
-   * separately measured on this application and passes: `scripts/a11y-reflow-probe.mjs`
+   * separately measured on this application and passes: `a11y/diagnostics/reflow-probe.mjs`
    * reproduces the scanner's algorithm across all seven routes, finds `scrollWidth` pinned at
    * 320 on every one, and proves its own detection path by flipping to a violation under
    * `--negative-control`. Re-check that if the layout stops being drawer-clipped.
@@ -251,6 +251,7 @@ test.describe('accessibility: interaction states', () => {
    */
   test('emits the consolidated report', async ({ a11y }) => {
     const { state, reportPaths } = await a11y.generateReport({
+      outDir: REPORT_DIR,
       reportName: 'nuxeo-satori-interaction-states',
       failOnBlockers: false,
     });

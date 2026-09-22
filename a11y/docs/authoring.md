@@ -1,7 +1,7 @@
 # Writing accessibility checks — Playwright + a11y-scout against this app
 
 Three pages, three jobs. `docs/accessibility.md` is the **standard** — which layer owns which
-verdict. `docs/accessibility-scout.md` is the **tool** — what a11y-scout is and how to install it. This
+verdict. `a11y/docs/a11y-scout.md` is the **tool** — what a11y-scout is and how to install it. This
 page is the **authoring guide**: how to point Playwright at this application and write a script
 that finds an accessibility issue nobody has found yet.
 
@@ -56,7 +56,7 @@ Three rules, and each is enforced by something rather than by goodwill:
 | A **journey screen**             | one entry in `journey.screens.ts` + one `journeyTest()` call | compile error on a bad id; collection error on a missing test         |
 | A whole **new suite**            | a spec file + one entry in the config's suite list           | — (see below)                                                         |
 
-Nothing else needs touching. In particular **`package.json` does not**: `a11y:journey` selects
+Nothing else needs touching. In particular **`package.json` does not**: `a11y:scan -- journey` selects
 projects with a `journey-*` wildcard, so a fifth screen is picked up without a script change.
 
 ### Why a journey screen is defined in one place
@@ -104,11 +104,11 @@ is simply never run. Keep suites few and named after what they scan, and the gap
 Three styles exist in this repository and they are deliberately different. Pick by what you are
 trying to do, not by what you copied last.
 
-| You want to                                               | Style                                           | Start from                                         |
-| --------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------- |
-| Find new keyboard / focus / reflow issues across surfaces | **Playwright Test runner + a11y-scout fixture** | `apps/nuxeo-ui-e2e/src/a11y/surfaces.a11y.spec.ts` |
-| Answer one targeted question fast ("does X reproduce?")   | **Standalone Playwright library script**        | `scripts/a11y-axe-differential.mjs`                |
-| Add a conformance case to the Beta gate                   | **Beta harness evidence step**                  | `scripts/beta-harness/steps/phase-6-a11y.mjs`      |
+| You want to                                               | Style                                           | Start from                                    |
+| --------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------- |
+| Find new keyboard / focus / reflow issues across surfaces | **Playwright Test runner + a11y-scout fixture** | `a11y/specs/surfaces.a11y.spec.ts`            |
+| Answer one targeted question fast ("does X reproduce?")   | **Standalone Playwright library script**        | `a11y/diagnostics/axe-differential.mjs`       |
+| Add a conformance case to the Beta gate                   | **Beta harness evidence step**                  | `scripts/beta-harness/steps/phase-6-a11y.mjs` |
 
 The difference that matters: the **test runner** gives you fixtures, retries, parallelism and
 the a11y-scout accumulator, at the cost of a config and a worker model you have to respect. The
@@ -157,7 +157,7 @@ await page.reload({ waitUntil: 'networkidle' });
 In a **spec**, do not hand-roll this — the `signedIn` fixture already does it, and
 `a11y-fixtures.ts` rebases it onto a11y-scout's `test` so both are available in one spec:
 
-```23:28:apps/nuxeo-ui-e2e/src/a11y/a11y-fixtures.ts
+```23:28:a11y/fixtures.ts
 export const test = a11yBase.extend<{ signedIn: Page }>({
   signedIn: async ({ page }, use) => {
     await installSession(page);
@@ -176,7 +176,7 @@ accessibility tooling and it has landed three times: a step labelled "Login surf
 scanned the dashboard, a "card view" step that scanned the table view, and `/#/collections`,
 which has no matching route and has been counting its empty result as a pass for weeks.
 
-```70:96:apps/nuxeo-ui-e2e/src/a11y/surfaces.a11y.spec.ts
+```70:96:a11y/specs/surfaces.a11y.spec.ts
     test(`scans ${label}`, async ({ signedIn: page, a11y }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
 
@@ -197,7 +197,7 @@ which has no matching route and has been counting its empty result as a pass for
     });
 ```
 
-Run `npm run a11y:routes` before authoring anything new — it tells you which routes currently
+Run `npm run a11y:scan -- routes` before authoring anything new — it tells you which routes currently
 render, so you do not spend an afternoon scanning a dead one.
 
 ## 3. Style A — an a11y-scout spec

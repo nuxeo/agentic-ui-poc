@@ -1,4 +1,4 @@
-import { expect, test } from './a11y-fixtures';
+import { expect, REPORT_DIR, test } from '../fixtures';
 
 /**
  * WCAG 2.1 AA scan of the authenticated surfaces, through `@a11y-scout/playwright`.
@@ -43,7 +43,7 @@ import { expect, test } from './a11y-fixtures';
  *   npm run beta:backend && npx nx serve nuxeo-ui
  *
  * Run:
- *   npm run a11y:surfaces
+ *   npm run a11y:scan -- surfaces
  */
 
 /** Route, and the component that must be on screen before the route is worth scanning. */
@@ -102,6 +102,7 @@ test.describe('accessibility: authenticated surfaces', () => {
   // what lets a11y-scout attach the HTML to the Playwright report.
   test('emits the consolidated report', async ({ a11y }) => {
     const { state, reportPaths } = await a11y.generateReport({
+      outDir: REPORT_DIR,
       reportName: 'nuxeo-satori-surfaces',
       failOnBlockers: false,
     });

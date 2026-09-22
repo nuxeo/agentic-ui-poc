@@ -1,0 +1,23 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../dist/out-tsc/a11y",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "strict": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "sourceMap": false,
+    // `@playwright/test` and the two a11y-scout tarballs are installed with `--no-save`, so on
+    // a machine that has not run that install their types are absent and every spec reports
+    // TS2307. That is an environment fact, not a code defect, and failing the repo-wide
+    // typecheck on it would make a green tree depend on untracked dependencies. `preflight.mjs`
+    // is what reports the absence, with the install command.
+    "types": ["node"]
+  },
+  "include": ["specs/**/*.ts", "fixtures.ts", "playwright.config.ts"]
+}

@@ -41,17 +41,6 @@ const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
 
 export default defineConfig({
   testDir: './src',
-  // `src/a11y/` is excluded here and run from `playwright.a11y.config.ts` via the `a11y:*`
-  // scripts. Those specs import `@a11y-scout/playwright`, whose two tarballs are
-  // hand-distributed and resolvable from no registry, so collecting them here would fail this
-  // whole suite with ERR_MODULE_NOT_FOUND on a machine that has only run the documented
-  // `npm install --no-save @playwright/test` — thirteen critical-path specs lost to a
-  // dependency none of them use.
-  //
-  // Excluding the directory rather than the `*.a11y.spec.ts` filename on purpose: a new
-  // accessibility spec that forgot the suffix would otherwise be silently collected here and
-  // take the critical-path suite down with it. A directory cannot be forgotten by accident.
-  testIgnore: '**/a11y/**',
   // A real repository has flaky-test pressure; this makes it visible rather than absorbed.
   // A spec that only passes on retry still reports as flaky in the summary.
   retries: process.env['CI'] ? 2 : 1,

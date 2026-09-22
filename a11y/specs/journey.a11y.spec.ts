@@ -1,6 +1,6 @@
 import type { A11yFixture, ScanPageOptions } from '@a11y-scout/playwright';
 import type { Page, TestInfo, TestType } from '@playwright/test';
-import { expect, test } from './a11y-fixtures';
+import { expect, REPORT_DIR, test } from '../fixtures';
 import {
   JOURNEY_SCREENS,
   journeyReportName,
@@ -51,7 +51,7 @@ import {
  *   npm run beta:backend && npx nx serve nuxeo-ui
  *
  * Run:
- *   npm run a11y:journey
+ *   npm run a11y:scan -- journey
  */
 
 /**
@@ -201,6 +201,7 @@ async function waitForNavTreeSettled(page: Page, required: boolean): Promise<voi
  */
 async function emitScreenReport(a11y: A11yFixture, reportName: string): Promise<void> {
   const { state, reportPaths } = await a11y.generateReport({
+    outDir: REPORT_DIR,
     reportName,
     failOnBlockers: false,
   });

@@ -26,7 +26,7 @@
  *   npm run beta:backend && npx nx serve nuxeo-ui
  *
  * Usage:
- *   node scripts/a11y-route-render-check.mjs
+ *   node a11y/diagnostics/route-render-check.mjs
  *
  * Exit codes: 0 every route rendered, 1 at least one rendered nothing, 2 could not measure.
  */

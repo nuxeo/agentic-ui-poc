@@ -38,9 +38,9 @@
  *   npm run beta:backend && npx nx serve nuxeo-ui
  *
  * Usage:
- *   node scripts/a11y-axe-differential.mjs
- *   node scripts/a11y-axe-differential.mjs --surface browse --surface tasks
- *   node scripts/a11y-axe-differential.mjs --json out.json
+ *   node a11y/diagnostics/axe-differential.mjs
+ *   node a11y/diagnostics/axe-differential.mjs --surface browse --surface tasks
+ *   node a11y/diagnostics/axe-differential.mjs --json out.json
  *
  * Exit codes: 0 measured, 2 could not measure.
  */
@@ -95,7 +95,7 @@ try {
  * Resolve the a11y-scout report to compare against.
  *
  * Deliberately NOT `a11y-reports/latest/`. That directory is a rolling pointer that every
- * a11y-scout run overwrites, including `a11y:states`, whose findings come from dialogs and
+ * a11y-scout run overwrites, including `a11y:scan -- states`, whose findings come from dialogs and
  * overlays on a single route. Comparing this script's per-route axe pass against those would
  * report every interaction-state finding as "did not reproduce" and every route finding as
  * missing — a diff that looks alarming and means nothing. Pinning to the newest *surfaces*
@@ -134,7 +134,7 @@ if (reportPath && existsSync(reportPath)) {
 } else {
   console.warn(
     'axe-differential: no nuxeo-satori-surfaces-* report found; comparing to nothing.\n' +
-      '  Run `npm run a11y:surfaces` first, or set A11Y_SCOUT_REPORT to a report.json.\n',
+      '  Run `npm run a11y:scan -- surfaces` first, or set A11Y_SCOUT_REPORT to a report.json.\n',
   );
 }
 

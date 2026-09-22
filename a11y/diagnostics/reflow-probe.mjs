@@ -32,7 +32,7 @@
  * independently. A route that overflows via a NON-exempt element and was still reported clean
  * by a11y-scout would mean the scanner is broken.
  *
- * Run:  node scripts/a11y-reflow-probe.mjs
+ * Run:  node a11y/diagnostics/reflow-probe.mjs
  */
 
 import { resolve } from 'node:path';

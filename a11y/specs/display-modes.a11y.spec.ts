@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './a11y-fixtures';
+import { expect, REPORT_DIR, test } from '../fixtures';
 
 /**
  * WCAG scan of the three **display modes** the application has never been rendered in by any
@@ -59,7 +59,7 @@ import { expect, test } from './a11y-fixtures';
  * reduce`. Whether an indeterminate progress spinner should stop is a judgement call, but it is
  * a real observation about the running application rather than about dead files.
  *
- * Run:  npm run a11y:modes
+ * Run:  npm run a11y:scan -- modes
  */
 
 const THEME_STORAGE_KEY = 'agentic_ui_color_theme';
@@ -236,7 +236,7 @@ test.describe('accessibility: dark theme', () => {
         // Off deliberately. Dark theme changes colour, not focus order or trap behaviour, and
         // `surfaces.a11y.spec.ts` already walks these routes. NOTE: this also disables the
         // reflow scanner, which rides the same flag in `scan-page.ts`; reflow is covered
-        // separately by `scripts/a11y-reflow-probe.mjs`.
+        // separately by `a11y/diagnostics/reflow-probe.mjs`.
         keyboard: false,
         extraWaitMs: 400,
       });
@@ -334,6 +334,7 @@ test.describe('accessibility: motion', () => {
 test.describe('accessibility: display modes report', () => {
   test('emits the consolidated report', async ({ a11y }) => {
     const { state, reportPaths } = await a11y.generateReport({
+      outDir: REPORT_DIR,
       reportName: 'nuxeo-satori-display-modes',
       failOnBlockers: false,
     });

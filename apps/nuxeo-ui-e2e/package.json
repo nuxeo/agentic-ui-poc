@@ -1,7 +1,0 @@
-{
-  "name": "nuxeo-ui-e2e",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "$comment": "This file exists for one reason: \"type\": \"module\". @a11y-scout/playwright and a11y-scout are both ESM-only (\"type\": \"module\" with an ESM-only ./dist/index.js), the repository root package.json declares no \"type\" and so defaults to CommonJS, and without this the a11y specs fail to load. It is NOT an npm workspace member -- the root declares no \"workspaces\" -- and it does NOT define the Nx project, which project.json does. One visible side effect worth knowing: Nx infers an extra `npm:private` tag on this project from the \"private\" field, alongside the scope:e2e and type:e2e tags that project.json declares."
-}

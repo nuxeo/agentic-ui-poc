@@ -1,0 +1,7 @@
+{
+  "name": "agentic-ui-a11y",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "$comment": "This file exists for one reason: \"type\": \"module\". @a11y-scout/playwright and a11y-scout are both ESM-only, the repository root package.json declares no \"type\" and so defaults to CommonJS, and without this the specs here fail to load. It is NOT an npm workspace member - the root declares no \"workspaces\" - and it is NOT an Nx project. Nothing installs from it; a11y-scout and @playwright/test are installed at the root with --no-save, which is why package-lock.json is untouched by this folder."
+}

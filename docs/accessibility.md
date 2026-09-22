@@ -2,8 +2,8 @@
 
 **This page is the source of truth for how accessibility is measured in this repository.**
 What belongs here is the contract: which tool's answer counts for what, and what "accessibility
-is green" means. Two companion pages carry the detail — `docs/accessibility-scout.md` for what
-a11y-scout is and how to install it, and `docs/accessibility-authoring.md` for how to point Playwright
+is green" means. Two companion pages carry the detail — `a11y/docs/a11y-scout.md` for what
+a11y-scout is and how to install it, and `a11y/docs/authoring.md` for how to point Playwright
 at this app and write a check that finds something new.
 
 It exists because three scanners had accumulated with overlapping remits, two incompatible
@@ -24,12 +24,12 @@ thing that turns a run red and the number anyone quotes.
 
 ## The four layers
 
-| Layer                | Command                                                                                                                                                 | Owns the verdict for                                                | Cost                                        |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------- |
-| **Static templates** | `npm run a11y`                                                                                                                                          | `@angular-eslint/template` rules over 89 `.html` files              | seconds                                     |
-| **axe at runtime**   | `npm run beta:evidence -- phase-6-a11y`                                                                                                                 | **WCAG 2.1 AA conformance** — the number we publish                 | minutes (not measured)                      |
-| **a11y-scout**       | `npm run a11y:surfaces` (routes), `npm run a11y:states` (interaction states), `npm run a11y:modes` (display modes), `npm run a11y:journey` (per-screen) | Keyboard traps, focus order, focus visibility, reflow, AI semantics | 26.8, 19.5, 19.5 and 15.1 min, all measured |
-| **Manual**           | —                                                                                                                                                       | Everything automation cannot decide                                 | per release                                 |
+| Layer                | Command                                                                                                                                                                                 | Owns the verdict for                                                | Cost                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------- |
+| **Static templates** | `npm run a11y`                                                                                                                                                                          | `@angular-eslint/template` rules over 89 `.html` files              | seconds                                     |
+| **axe at runtime**   | `npm run beta:evidence -- phase-6-a11y`                                                                                                                                                 | **WCAG 2.1 AA conformance** — the number we publish                 | minutes (not measured)                      |
+| **a11y-scout**       | `npm run a11y:scan -- surfaces` (routes), `npm run a11y:scan -- states` (interaction states), `npm run a11y:scan -- modes` (display modes), `npm run a11y:scan -- journey` (per-screen) | Keyboard traps, focus order, focus visibility, reflow, AI semantics | 26.8, 19.5, 19.5 and 15.1 min, all measured |
+| **Manual**           | —                                                                                                                                                                                       | Everything automation cannot decide                                 | per release                                 |
 
 ### Why axe is owned by `phase-6-a11y.mjs` and not by a11y-scout
 
@@ -115,15 +115,15 @@ Two further rules apply to every layer:
 
 ## Cadence
 
-| When                                                                                  | Run                                                    | Gating?                          |
-| ------------------------------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------- |
-| Every PR and push to `main`/`feature/**`/`fix/**`                                     | Static templates, in CI                                | **Yes**                          |
-| Before a phase is signed off                                                          | axe runtime, locally                                   | **Yes** — conformance verdict    |
-| After any change to navigation, focus management, dialogs or layout; before a release | a11y-scout routes (`a11y:surfaces`), locally           | Not yet — see below              |
-| After any change to a dialog, overlay, tab group or view mode                         | a11y-scout interaction states (`a11y:states`), locally | Not yet — nothing triaged        |
-| After any change to theming, motion or high-contrast handling                         | a11y-scout display modes (`a11y:modes`), locally       | Not yet — nothing triaged        |
-| When one screen's accessibility needs handing to whoever owns it                      | a11y-scout journey (`a11y:journey`), locally           | No — reporting shape, not a gate |
-| Per release                                                                           | Manual                                                 | Judgement                        |
+| When                                                                                  | Run                                                            | Gating?                          |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------- |
+| Every PR and push to `main`/`feature/**`/`fix/**`                                     | Static templates, in CI                                        | **Yes**                          |
+| Before a phase is signed off                                                          | axe runtime, locally                                           | **Yes** — conformance verdict    |
+| After any change to navigation, focus management, dialogs or layout; before a release | a11y-scout routes (`a11y:scan -- surfaces`), locally           | Not yet — see below              |
+| After any change to a dialog, overlay, tab group or view mode                         | a11y-scout interaction states (`a11y:scan -- states`), locally | Not yet — nothing triaged        |
+| After any change to theming, motion or high-contrast handling                         | a11y-scout display modes (`a11y:scan -- modes`), locally       | Not yet — nothing triaged        |
+| When one screen's accessibility needs handing to whoever owns it                      | a11y-scout journey (`a11y:scan -- journey`), locally           | No — reporting shape, not a gate |
+| Per release                                                                           | Manual                                                         | Judgement                        |
 
 **Nothing runtime runs in CI, and that is a stated limitation rather than an oversight.** Both
 runtime layers need a live Nuxeo through the dev proxy; `backend-preflight.mjs` fails outright
@@ -148,7 +148,7 @@ Stated explicitly, because "WCAG 2.1 AA met" is a claim whose scope is what make
   same page `phase-0-no-backend` captured: that one is the form in its backend-unreachable
   error state.
 - **The thirteen `MatDialog`s, the upload flow, and dark mode.** Narrowed on 2026-09-12 but not
-  closed: `apps/nuxeo-ui-e2e/src/a11y/interaction-states.a11y.spec.ts` now covers seven interaction
+  closed: `a11y/specs/interaction-states.a11y.spec.ts` now covers seven interaction
   states on `/#/browse` — the column-picker dialog, the `mat-select` and date-range CDK overlays,
   card view, and the Permissions, History and Trash tabs. What remains uncovered is every state
   opened through `MatDialog` (browse alone has thirteen `dialog.open` sites), the upload flow,
@@ -164,7 +164,7 @@ Stated explicitly, because "WCAG 2.1 AA met" is a claim whose scope is what make
 
 The first a11y-scout baseline reported **8 `color-contrast`** and **2 `button-name`** findings
 while `phase-6-a11y.mjs` recorded both rules as driven to zero. Two scripts settled it:
-`scripts/a11y-axe-differential.mjs` and `scripts/a11y-route-render-check.mjs`.
+`a11y/diagnostics/axe-differential.mjs` and `a11y/diagnostics/route-render-check.mjs`.
 
 **a11y-scout was right. phase-6's zero is stale.** Under phase-6's _own_ four-tag set, at its
 own 1440×900 viewport, against the current app:
@@ -205,7 +205,7 @@ both are ruled out above. Reproduce the state before treating these as either re
 
 ### Gap 5, confirmed the same day
 
-`scripts/a11y-route-render-check.mjs` visits every route phase-6 scans and asserts its feature
+`a11y/diagnostics/route-render-check.mjs` visits every route phase-6 scans and asserts its feature
 host is visible. Eight of nine pass. **`/#/collections` renders no host and 111 characters of
 main content**, against 153–3,760 for every other route — `collectionsRoutes` declares exactly
 one path, `:uid`, so the bare path matches nothing. phase-6 has been scanning it with no
@@ -217,7 +217,7 @@ a gate is trusted.
 
 ## Interaction states — first scan 2026-09-12
 
-`apps/nuxeo-ui-e2e/src/a11y/interaction-states.a11y.spec.ts` (`npm run a11y:states`) drives seven
+`a11y/specs/interaction-states.a11y.spec.ts` (`npm run a11y:scan -- states`) drives seven
 states on `/#/browse` and scans each. It found **71 findings in 19.5 minutes**, and six rule
 classes that no previous scan of any layer had ever produced:
 
@@ -248,7 +248,7 @@ findings again are reachable behind a single click as the entire route-level sca
 
 ## Display modes — first scan 2026-09-12
 
-`apps/nuxeo-ui-e2e/src/a11y/display-modes.a11y.spec.ts` (`npm run a11y:modes`) renders the seven
+`a11y/specs/display-modes.a11y.spec.ts` (`npm run a11y:scan -- modes`) renders the seven
 routes in three modes no layer had ever set — `colorScheme`, `forcedColors` and `reducedMotion`
 appeared in no config or spec before this. **17 checks, 1.5 minutes, 81 findings.**
 
@@ -290,7 +290,7 @@ reduce`.
 
 ## Per-screen journey — first scan 2026-09-16
 
-`apps/nuxeo-ui-e2e/src/a11y/journey.a11y.spec.ts` (`npm run a11y:journey`) walks the four screens in
+`a11y/specs/journey.a11y.spec.ts` (`npm run a11y:scan -- journey`) walks the four screens in
 the order a user meets them and emits **one self-contained report per screen** rather than a
 consolidated one. The other suites answer "which rules does the app fail"; this answers "how bad
 is the screen I am about to hand to its owner". **15.1 minutes, 51 findings, 32 blockers** as
@@ -455,13 +455,13 @@ Both are diagnostics rather than gates, both run in well under a minute, and bot
 a claim about accessibility should be reproducible on demand rather than remembered from a run
 three weeks ago.
 
-| Script                                     | Answers                                                                                                                                                                                                                   | Exit                                               |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `node scripts/a11y-axe-differential.mjs`   | Runs the one shared axe engine under both harnesses' tag sets, back to back in the same page visit, so the tag list is the only variable. Compares against the newest `a11y-reports/nuxeo-satori-surfaces-*/report.json`. | 0 measured, 2 could not measure                    |
-| `node scripts/a11y-route-render-check.mjs` | Does every route a scan visits actually render its feature host?                                                                                                                                                          | 0 all rendered, 1 one did not, 2 could not measure |
+| Script                                         | Answers                                                                                                                                                                                                                   | Exit                                               |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `node a11y/diagnostics/axe-differential.mjs`   | Runs the one shared axe engine under both harnesses' tag sets, back to back in the same page visit, so the tag list is the only variable. Compares against the newest `a11y-reports/nuxeo-satori-surfaces-*/report.json`. | 0 measured, 2 could not measure                    |
+| `node a11y/diagnostics/route-render-check.mjs` | Does every route a scan visits actually render its feature host?                                                                                                                                                          | 0 all rendered, 1 one did not, 2 could not measure |
 
 The differential resolves the newest **surfaces** report rather than `a11y-reports/latest/`,
-which is a rolling pointer that every a11y-scout run overwrites — including `a11y:states`, whose
+which is a rolling pointer that every a11y-scout run overwrites — including `a11y:scan -- states`, whose
 findings come from overlays on a single route. Pointing a per-route comparison at one of those
 makes it report every interaction-state finding as "did not reproduce" and every route finding as
 missing — a diff that looks alarming and means nothing. Override with `A11Y_SCOUT_REPORT` if you
@@ -483,7 +483,7 @@ server.
 3. **Negative-control it.** Introduce the defect deliberately, watch the check go red, then
    remove the defect. A check never observed to fail is not evidence.
 4. **Scope any exclusion to one surface and cite its owner.** Never add a global rule id.
-5. **Put the file where it belongs** — `docs/accessibility-authoring.md` §0 has the layout and
+5. **Put the file where it belongs** — `a11y/docs/authoring.md` §0 has the layout and
    the three rules governing it. Not repeated here: this page owns the _ownership_ question,
    that page owns the _authoring_ question, and duplicating either is the same defect this
    standard exists to prevent.

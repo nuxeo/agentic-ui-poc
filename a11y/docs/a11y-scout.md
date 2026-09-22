@@ -1,13 +1,13 @@
 # a11y-scout — runtime accessibility scanning
 
-`npm run a11y:surfaces` runs a11y-scout — an internal Hyland WCAG scanner, distributed as tarballs
+`npm run a11y:scan -- surfaces` runs a11y-scout — an internal Hyland WCAG scanner, distributed as tarballs
 rather than published — over the authenticated surfaces, and writes one consolidated
 HTML/Markdown/JSON report to `a11y-reports/`.
 
 > **`docs/accessibility.md` is the source of truth** for how accessibility is measured here —
 > which layer owns which verdict, the baseline shape, the cadence, and the recorded decisions.
 > This page is the tool appendix: what a11y-scout is, how to install it, and how it behaves.
-> Read the standard first. To _write_ a new check, see `docs/accessibility-authoring.md`.
+> Read the standard first. To _write_ a new check, see `a11y/docs/authoring.md`.
 
 Under that standard a11y-scout owns **keyboard traps, focus order and visibility, reflow, and
 AI content semantics**. It does not own the axe verdict — `phase-6-a11y.mjs` does. a11y-scout
@@ -48,7 +48,7 @@ Three things about that command are load-bearing:
 - **Both tarballs together.** The fixture declares `a11y-scout` as an ordinary dependency;
   install it alone and npm goes looking in the registry for an engine that is not there.
 
-`npm run a11y:surfaces` runs `e2e-preflight.mjs --a11y`, which checks both are importable and
+`npm run a11y:scan -- surfaces` runs `e2e-preflight.mjs --a11y`, which checks both are importable and
 prints this command if either is missing.
 
 ## LLM configuration is optional
@@ -67,7 +67,7 @@ provider explicitly rather than relying on the default.
 
 ## Why it is a separate Playwright config
 
-`apps/nuxeo-ui-e2e/playwright.a11y.config.ts`, run separately from `beta:e2e`, because the two
+`a11y/playwright.config.ts`, run separately from `beta:e2e`, because the two
 suites have different prerequisites. The critical-path suite needs Playwright and a live
 stack; this also needs two tarballs no registry can supply. A colleague who has not downloaded
 them must lose the accessibility run, not thirteen critical-path specs. The base config's
