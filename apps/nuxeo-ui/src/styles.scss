@@ -123,7 +123,8 @@ html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-
 
 /*
  * Keyboard focus ring on the sidebar nav items — NXENG-761 (global token); batch tickets such as
- * NXENG-758 / NXENG-778 / NXENG-785 pin individual `data-nav-id` entries in Karma specs.
+ * NXENG-758 / NXENG-778 / NXENG-785 pin individual `data-nav-id` entries in Karma specs such as
+ * `nav-focus-ring-contrast.spec.ts` and `personal-space-nav-focus-visible.spec.ts`.
  *
  * Satori draws the ring itself, as
  * `outline: 2px solid var(--sat-platform-nav-outline, var(--mat-sys-outline-variant, #c8c6d0))`
