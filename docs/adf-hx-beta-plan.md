@@ -456,9 +456,18 @@ Largely built. Remaining:
 | 3 — WCAG 2.1 AA met         | **done** — 7 rule classes fixed (77 nodes), `KNOWN_VIOLATIONS` empty, 15 cases scanned                                                            |
 | 4 — SAST + SCA              | **done** — but SAST already existed and was reporting 21 unread alerts, 6 high. Two gates now read the output: `supply-chain` and `code-scanning` |
 | 5 — Safari/WebKit           | **done** — 34 specs (17 × 2 engines), 5 new specs target engine divergence; WebKit not Safari, distinction recorded                               |
-| 6 — coverage to 90%         | **10 of 11** in-scope projects meet the bar as of 2026-09-22 (was 10 of 10). Read the caveat below before quoting it                              |
+| 6 — coverage to 90%         | **REOPENED 2026-09-22** — **10 of 11** in-scope projects meet the bar (was 10 of 10). `shared-ai-client` is at 15.98%. Read the caveat below      |
 
-Step 6 closed on 2026-08-31, and all seven steps are now done. The debt was two files rather
+**Step 6 was closed on 2026-08-31 and is REOPENED as of 2026-09-22.** Six of the seven steps are
+done; this one is not. `shared-ai-client` is an in-scope project at 15.98%, so "coverage to 90%"
+is not met on its own terms.
+
+A green `npm run beta:coverage` does not close this, and that is worth being explicit about: the
+gate's exit condition is the **ratchet**, not the target. A shortfall against 90% is reported and
+never failed on — see `meetingTargetInScope` in `coverage-gate.mjs` — precisely so the bar can be
+aspirational without the gate becoming un-passable. So the gate being green and the step being
+done are different claims, and reading the first as the second is how this row said 10 of 10 for
+three weeks after it stopped being true. The debt was two files rather
 than two libraries: `document-detail.ts` held 1,606 of its library's 1,615 uncovered statements
 and `browse.ts` held 707 of 1,175, so `browse` went 56.72% → 99.02% and `document-detail`
 59.71% → 92.55%. Seven real bugs surfaced in the process, the worst of which crashed the whole
