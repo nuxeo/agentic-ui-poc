@@ -278,6 +278,13 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'kd.knowledge-discovery.loading': 'Loading',
   'kd.knowledge-discovery.question-example': 'e.g. Which contracts mention renewal clauses?',
   'kd.knowledge-discovery.reload-history': 'Reload history',
+  // The `[attr.aria-label]` of the Clipboard navigation item, so both halves of the pair are
+  // required here by the rule above. `nav.tree.toggle` below is the precedent for keeping the
+  // `{{ }}` placeholders: `instant()` interpolates against this map exactly as it does against
+  // the catalogue, so a failed fetch degrades to English words rather than to
+  // `nav.clipboard.aria-label-many` being read out as the control's name.
+  'nav.clipboard.aria-label-many': '{{ name }}, {{ count }} items',
+  'nav.clipboard.aria-label-one': '{{ name }}, {{ count }} item',
   'nav.clipboard.remove': 'Remove from clipboard',
   'nav.favorites.remove': 'Remove from favorites',
   'nav.loading': 'Loading',
