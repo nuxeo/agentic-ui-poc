@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 /**
  * NXENG-777 — the Collections sidebar nav link must show a visible keyboard focus indicator.
@@ -19,7 +19,7 @@ const COLLECTIONS_LINK =
 
 @Component({
   standalone: true,
-  imports: [SatPlatformNavModule],
+  imports: [SatPlatformNavModule, TranslateModule],
   templateUrl: './platform-nav-collections-focus-ring.host.html',
 })
 class CollectionsNavHostComponent {}
