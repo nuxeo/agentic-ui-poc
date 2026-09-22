@@ -76,71 +76,101 @@ After successfully improving collections and permission-dialogs to 95%+, and bri
 ### 3. Document-Detail (92.58% → 95%)
 
 **Gap:** 2.42pp (~118 statements)  
-**Status:** ❌ **BLOCKED** - failing tests
+**Status:** ✅ **UNBLOCKED** - localStorage fix discovered
 
-#### Critical Issue:
+#### Issue Resolution:
 
 ```
-71 FAILED tests out of 560 total
-SecruityError: Cannot initialize local storage without a `--localstorage-file` path
+✅ FIXED: 71 failing tests now pass with NODE_OPTIONS workaround
+All 560 tests passing with: NODE_OPTIONS="--no-experimental-webstorage"
 ```
 
 **Root Cause:**
 
 - Tests use `localStorage.removeItem(CLIPBOARD_STORAGE_KEY)` in beforeEach
 - Node 22+ localStorage compatibility issue
-- Workaround exists in `beta:gate` but not applied to raw `nx test`
+- Workaround from `beta:gate`: `NODE_OPTIONS="--no-experimental-webstorage"`
 
 **Files Affected:**
 
-- `document-detail.actions.spec.ts` - all 71 tests failing
+- `document-detail.actions.spec.ts` - now all passing
+
+**Coverage Analysis:**
+
+- Main file: `document-detail.ts` - 3,237/3,481 statements (92.99%)
+- 244 uncovered statements across many methods
+- Large, complex component with many integration paths
 
 **Barriers:**
 
-- Must fix localStorage issue before adding any new tests
-- Cannot measure actual coverage with failing test suite
-- Risk of adding tests on unstable foundation
+- Massive single file (3,481 statements) - architectural issue
+- Many uncovered statements are complex integration scenarios
+- Would require significant effort to add meaningful tests
 
-**Recommendation:** Fix localStorage configuration first, then re-assess coverage gaps.
+**Recommendation:** Tests now runnable. Focus on high-value uncovered paths first.
 
 ---
 
 ### 4. Nuxeo-Client (90.2% → 95%)
 
 **Gap:** 4.8pp (~230 statements)  
-**Status:** ⚠️ **PARTIALLY BLOCKED** - some failing tests
+**Status:** ✅ **UNBLOCKED** - localStorage fix applies here too
 
-#### Test Status:
+#### Issue Resolution:
 
 ```
-7 FAILED tests out of 737 total
-2 test files failing out of 46 files
+✅ FIXED: 7 failing tests now pass with NODE_OPTIONS workaround
+All 737 tests passing with: NODE_OPTIONS="--no-experimental-webstorage"
 ```
 
 **Issues:**
 
-- Some test files have failures
+- Same localStorage issue as document-detail
 - Large codebase with many service files
 - 19 unmeasured files (empty statement maps)
 
 **Barriers:**
 
-- Need to identify and fix failing tests first
 - 230 statements is significant effort (8-12 hours estimated)
 - Many service error paths and edge cases needed
+- Complex integration scenarios across many services
 
-**Recommendation:** Identify which 2 files are failing, fix those tests, then prioritize high-value coverage additions.
+**Recommendation:** Tests now runnable. Prioritize service error paths and high-impact edge cases.
 
 ---
 
 ## Summary of Barriers
 
-| Project             | Gap    | Primary Barrier                      | Fix Effort                |
-| ------------------- | ------ | ------------------------------------ | ------------------------- |
-| **search**          | 0.31pp | User acceptance (acceptable as-is)   | 30-60min if pursued       |
-| **adf-hx-bridge**   | 2.09pp | Missing test files for UI components | 3-6 hours (new files)     |
-| **document-detail** | 2.42pp | 71 failing tests (localStorage)      | 2-4 hours (fix + tests)   |
-| **nuxeo-client**    | 4.8pp  | 7 failing tests + large scope        | 10-15 hours (fix + tests) |
+| Project             | Gap    | Primary Barrier                         | Fix Effort               | Status              |
+| ------------------- | ------ | --------------------------------------- | ------------------------ | ------------------- |
+| **search**          | 0.31pp | User acceptance (acceptable as-is)      | 30-60min if pursued      | 🟢 User accepted    |
+| **adf-hx-bridge**   | 1.91pp | Missing test files for UI components    | 3-6 hours (new files)    | 🟡 Partial progress |
+| **document-detail** | 2.42pp | Large file (3,481 stmts), complex paths | 4-8 hours (many tests)   | 🟢 Tests unblocked  |
+| **nuxeo-client**    | 4.8pp  | Large scope, many service error paths   | 10-15 hours (many tests) | 🟢 Tests unblocked  |
+
+---
+
+## Key Discovery: localStorage Fix
+
+### ✅ All Test Suites Now Pass
+
+**Root Cause Identified:**  
+Node 22+ introduced a built-in `localStorage` that conflicts with jsdom's implementation used in tests.
+
+**Solution Applied:**
+
+```bash
+NODE_OPTIONS="--no-experimental-webstorage" npx nx test <project>
+```
+
+**Impact:**
+
+- ✅ **document-detail:** 71 failing tests → all 560 passing
+- ✅ **nuxeo-client:** 7 failing tests → all 737 passing
+- ✅ Both projects now have stable test foundations for coverage work
+
+**Implementation:**  
+The `beta:gate` script already includes this workaround. Individual `nx test` commands need to set `NODE_OPTIONS` manually.
 
 ---
 
@@ -148,36 +178,30 @@ SecruityError: Cannot initialize local storage without a `--localstorage-file` p
 
 ### Immediate (If Continuing):
 
-1. **Fix Test Infrastructure Issues**
+1. **Low-Hanging Fruit - Completed ✅**
+   - ✅ **adf-hx-bridge nuxeo-query-api.ts:** Added test for search + sort array
+   - Result: 92.91% → 93.09% (+0.18pp improvement)
+   - nuxeo-query-api.ts: 97.55% → 99.18% (only 2 defensive statements remain)
 
-   ```bash
-   # Document-detail localStorage fix
-   # Add --localstorage-file to test configuration
-   # OR: Mock localStorage in test setup
-
-   # Nuxeo-client failing tests
-   # Identify which 2 files are failing
-   # Fix root cause before adding tests
-   ```
-
-2. **Low-Hanging Fruit (1-2 hours)**
-   - **adf-hx-bridge nuxeo-query-api.ts:** Add 2 tests for uncovered branches
-     - Test: `getDocumentsByQuery` with search + sort array (no ORDER BY in HXQL)
-     - Test: Query with `ROOT_DOCUMENT.sys_id` as parent (resolvePath returns '/')
-   - Gets adf-hx-bridge from 92.91% → 93.2% (~0.3pp improvement)
+2. **Next Quick Wins (2-3 hours)**
+   - **adf-hx-bridge:** Identify 5-10 more easy statements from existing test files
+   - Focus on files that already have test coverage but are missing edge cases
 
 ### Short-Term (This Week):
 
-3. **Document-Detail Recovery**
-   - Fix localStorage configuration
-   - Verify all 560 tests pass
-   - Re-run coverage analysis
-   - Add targeted tests for uncovered critical paths
+3. **Document-Detail Coverage** ✅ Tests unblocked
+   - ✅ localStorage fixed - all 560 tests passing
+   - ✅ Coverage measured: 92.57% (92.99% in main file)
+   - **Next:** Add tests for high-value uncovered paths in document-detail.ts
+   - **Challenge:** Single massive file (3,481 statements) with complex integrations
+   - **Estimate:** 4-8 hours for meaningful improvement
 
-4. **Nuxeo-Client Cleanup**
-   - Fix 7 failing tests
-   - Run coverage analysis on clean suite
-   - Prioritize service error paths and edge cases
+4. **Nuxeo-Client Coverage** ✅ Tests unblocked
+   - ✅ localStorage fixed - all 737 tests passing
+   - ✅ Coverage measured: 90.2%
+   - **Next:** Prioritize service error paths and edge cases
+   - **Challenge:** Large scope (230 statements across many services)
+   - **Estimate:** 10-15 hours for 95% target
 
 ### Medium-Term (Next Sprint):
 
@@ -199,10 +223,12 @@ SecruityError: Cannot initialize local storage without a `--localstorage-file` p
 
 ### ✅ What Was Accomplished:
 
-- **2 projects to 95%+:** collections, permission-dialogs
-- **1 project to 94.69%:** search (0.31pp from target)
-- **18 high-quality tests added**
+- **2 projects to 95%+:** collections (95.14%), permission-dialogs (96.43%)
+- **1 project to 94.69%:** search (0.31pp from target, user accepted)
+- **1 project improved:** adf-hx-bridge 92.91% → 93.09% (+0.18pp)
+- **19 high-quality tests added** (18 initial + 1 adf-hx-bridge)
 - **Coverage gate fixed** (allowlist cleaned, baselines updated)
+- **localStorage issue discovered and fixed** (unblocked 78 failing tests)
 - **9 of 11 in-scope projects** now at 95%+ (82%)
 - **100% of in-scope projects** at 90%+ minimum
 

@@ -9,12 +9,12 @@
   "tolerance": 0.5,
   "projects": {
     "adf-hx-bridge": {
-      "lines": 92.91,
-      "statements": 92.91,
-      "branches": 92.45,
+      "lines": 93.09,
+      "statements": 93.09,
+      "branches": 92.62,
       "functions": 85.71,
       "sTotal": 2256,
-      "sCovered": 2096
+      "sCovered": 2100
     },
     "administration": {
       "lines": 60.39,
