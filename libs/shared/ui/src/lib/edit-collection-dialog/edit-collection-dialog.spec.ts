@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -8,7 +10,7 @@ import { vi } from 'vitest';
 import {
   CollectionService,
   DirectoryService,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   type DirectoryEntry,
   type L10nDirectoryEntry,
   type NuxeoDocument,
@@ -76,7 +78,7 @@ describe('EditCollectionDialogComponent (NXSAT-192)', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
-      imports: [EditCollectionDialogComponent],
+      imports: [testTranslateModule(), testTranslateModule(), EditCollectionDialogComponent],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -364,9 +366,13 @@ describe('EditCollectionDialogComponent (NXSAT-192)', () => {
 
     component.save();
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
-      duration: 4000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      {
+        duration: 4000,
+      },
+    );
     expect(component.saving()).toBe(false);
     expect(mockDialogRef.close).not.toHaveBeenCalled();
   });
@@ -390,7 +396,7 @@ describe('EditCollectionDialogComponent (NXSAT-192)', () => {
 
     await TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
-      imports: [EditCollectionDialogComponent],
+      imports: [testTranslateModule(), EditCollectionDialogComponent],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },

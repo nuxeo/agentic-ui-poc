@@ -1,0 +1,22 @@
+<h2 mat-dialog-title>{{ data.title || ('ui.saved-search' | translate) }}</h2>
+
+<mat-dialog-content>
+  <input
+    class="saved-search-input"
+    type="text"
+    [attr.aria-label]="data.title || ('ui.saved-search' | translate)"
+    [value]="name()"
+    [placeholder]="data.placeholder || ('ui.enter-a-name-for-your-saved' | translate)"
+    (input)="onInput($any($event.target).value)"
+    (keydown.enter)="save()"
+  />
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="dialogRef.close()">
+    {{ 'shared-ui.saved-search-dialog.cancel' | translate }}
+  </button>
+  <button mat-flat-button color="primary" type="button" [disabled]="!canSave()" (click)="save()">
+    {{ 'shared-ui.saved-search-dialog.save' | translate }}
+  </button>
+</mat-dialog-actions>

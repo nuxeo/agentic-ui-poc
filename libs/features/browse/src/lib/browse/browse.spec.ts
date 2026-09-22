@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
+import { TranslateService } from '@ngx-translate/core';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
@@ -19,7 +21,7 @@ import {
   TagService,
   CURRENT_USERNAME,
   ADMIN_ACCESS_CHECKS,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { trashSelectedDocumentsConfirmData } from '@nuxeo-satori/platform/ui';
 
@@ -125,7 +127,7 @@ describe('BrowseComponent', () => {
     vi.clearAllMocks();
     mockDocumentDetailService.getDocumentPermissions.mockReturnValue(EMPTY);
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent],
+      imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -588,9 +590,13 @@ describe('BrowseComponent', () => {
 
     component.openEditCollectionDialog(collection);
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
-      duration: 4000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      {
+        duration: 4000,
+      },
+    );
     expect(dialogOpenSpy).not.toHaveBeenCalled();
   });
 
@@ -614,9 +620,13 @@ describe('BrowseComponent', () => {
 
     component.deleteCollectionEntry(collection);
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
-      duration: 4000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      {
+        duration: 4000,
+      },
+    );
   });
 
   it('deleteDocument shows permission denied when single-item trash returns 403', () => {
@@ -635,9 +645,13 @@ describe('BrowseComponent', () => {
 
     component.deleteDocument();
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
-      duration: 4000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      {
+        duration: 4000,
+      },
+    );
   });
 
   it('deleteDocument confirms bulk trash for selected children, not the browsed folder', () => {
@@ -669,7 +683,12 @@ describe('BrowseComponent', () => {
     expect(dialogOpenSpy).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        data: trashSelectedDocumentsConfirmData(3),
+        // Resolved through the same service the component uses, so this asserts the BULK shape
+        // was chosen for three selected children rather than pinning any English wording — the
+        // strings now come from the catalogue and are not this test's subject.
+        data: trashSelectedDocumentsConfirmData(3, (key, params) =>
+          TestBed.inject(TranslateService).instant(key, params),
+        ),
       }),
     );
     expect(mockDocumentDetailService.trashDocument).not.toHaveBeenCalled();
@@ -721,11 +740,9 @@ describe('BrowseComponent', () => {
 
     component.deleteDocument();
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(
-      'Skipped 1 item(s) that could not be loaded',
-      'OK',
-      { duration: 5000 },
-    );
+    expect(snackBarOpenSpy).toHaveBeenCalledWith('Skipped 1 item that could not be loaded', 'OK', {
+      duration: 5000,
+    });
     expect(mockDocumentDetailService.trashDocument).toHaveBeenCalledWith('doc-1');
     expect(snackBarOpenSpy).toHaveBeenCalledWith('Moved to trash', 'OK', { duration: 3000 });
   });

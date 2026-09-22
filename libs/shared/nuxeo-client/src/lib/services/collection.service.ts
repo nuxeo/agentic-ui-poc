@@ -12,11 +12,9 @@ export class CollectionService {
   private readonly http = inject(HttpClient);
 
   getById(uid: string): Observable<NuxeoDocument> {
-    return this.api.get<NuxeoDocument>(
-      `/nuxeo/api/v1/id/${uid}`,
-      undefined,
-      { properties: 'dublincore' },
-    );
+    return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
+      properties: 'dublincore',
+    });
   }
 
   getAll(pageSize = 100): Observable<NuxeoDocumentList> {
@@ -47,9 +45,7 @@ export class CollectionService {
   }
 
   getCollectionMembers(collectionUid: string, pageSize = 50): Observable<NuxeoDocumentList> {
-    const params = new HttpParams()
-      .set('queryParams', collectionUid)
-      .set('pageSize', pageSize);
+    const params = new HttpParams().set('queryParams', collectionUid).set('pageSize', pageSize);
 
     return this.api.get<NuxeoDocumentList>(
       '/nuxeo/api/v1/search/pp/default_content_collection/execute',

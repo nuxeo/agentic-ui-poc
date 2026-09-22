@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal, DestroyRef, effect } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { switchMap, map, catchError, of, tap, finalize } from 'rxjs';
@@ -22,11 +23,12 @@ import {
   type AssetAggregations,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import {
+  ConfirmDialogComponent,
   SavedSearchDialogComponent,
   ShareSavedSearchDialogComponent,
-  ConfirmDialogComponent,
   type ConfirmDialogData,
 } from '@nuxeo-satori/platform/ui';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -34,22 +36,29 @@ export type ViewMode = 'grid' | 'list';
 export interface ColumnDef {
   key: string;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   width: string;
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'name', label: 'Title', width: '280px' },
-  { key: 'type', label: 'Type', width: '120px' },
-  { key: 'modified', label: 'Modified', width: '140px' },
-  { key: 'contributor', label: 'Last contributor', width: '180px' },
-  { key: 'state', label: 'State', width: '120px' },
-  { key: 'version', label: 'Version', width: '100px' },
-  { key: 'created', label: 'Created', width: '140px' },
-  { key: 'author', label: 'Author', width: '150px' },
-  { key: 'nature', label: 'Nature', width: '140px' },
-  { key: 'coverage', label: 'Coverage', width: '140px' },
-  { key: 'subjects', label: 'Subjects', width: '200px' },
-  { key: 'flags', label: 'Flags', width: '120px' },
+  { key: 'name', labelKey: 'assets.column.name', label: 'Title', width: '280px' },
+  { key: 'type', labelKey: 'assets.column.type', label: 'Type', width: '120px' },
+  { key: 'modified', labelKey: 'assets.column.modified', label: 'Modified', width: '140px' },
+  {
+    key: 'contributor',
+    labelKey: 'assets.column.contributor',
+    label: 'Last contributor',
+    width: '180px',
+  },
+  { key: 'state', labelKey: 'assets.column.state', label: 'State', width: '120px' },
+  { key: 'version', labelKey: 'assets.column.version', label: 'Version', width: '100px' },
+  { key: 'created', labelKey: 'assets.column.created', label: 'Created', width: '140px' },
+  { key: 'author', labelKey: 'assets.column.author', label: 'Author', width: '150px' },
+  { key: 'nature', labelKey: 'assets.column.nature', label: 'Nature', width: '140px' },
+  { key: 'coverage', labelKey: 'assets.column.coverage', label: 'Coverage', width: '140px' },
+  { key: 'subjects', labelKey: 'assets.column.subjects', label: 'Subjects', width: '200px' },
+  { key: 'flags', labelKey: 'assets.column.flags', label: 'Flags', width: '120px' },
 ];
 
 export interface AssetResult {
@@ -281,6 +290,8 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
   selector: 'lib-asset-search-results',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
     MatButtonModule,
     MatMenuModule,
     MatIconModule,
@@ -294,6 +305,7 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
   styleUrl: './asset-search-results.component.scss',
 })
 export class AssetSearchResultsComponent {
+  private readonly translate = inject(TranslateService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -339,7 +351,7 @@ export class AssetSearchResultsComponent {
           return mapped;
         }),
         catchError(() => {
-          this.error.set('Failed to load assets.');
+          this.error.set(this.translate.instant('assets.message.failed-to-load-assets'));
           return of<AssetResult[]>([]);
         }),
         tap(() => this.loading.set(false)),
@@ -716,8 +728,8 @@ export class AssetSearchResultsComponent {
     this.dialog
       .open(SavedSearchDialogComponent, {
         data: {
-          title: 'Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          title: this.translate.instant('ui.saved-search'),
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
       .afterClosed()
@@ -738,10 +750,18 @@ export class AssetSearchResultsComponent {
                 this.readSavedSearchTitle(saved) || trimmedTitle,
               );
               this.aggregationService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('common.search-saved', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-save-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });
@@ -770,10 +790,18 @@ export class AssetSearchResultsComponent {
         next: () => {
           this.aggregationService.selectedSavedSearchTitle.set(currentTitle);
           this.aggregationService.markSavedSearchDirty();
-          this.snackBar.open(`Search "${currentTitle}" updated.`, 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('common.search-updated', { name: currentTitle }),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
         },
         error: () => {
-          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+          this.snackBar.open(
+            this.translate.instant('assets.message.failed-to-save-search'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          );
         },
       });
   }
@@ -785,8 +813,8 @@ export class AssetSearchResultsComponent {
     this.dialog
       .open(SavedSearchDialogComponent, {
         data: {
-          title: 'Edit Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          title: this.translate.instant('ui.edit-saved-search'),
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: this.selectedSavedSearchTitle(),
         },
       })
@@ -805,12 +833,20 @@ export class AssetSearchResultsComponent {
             next: () => {
               this.aggregationService.selectedSavedSearchTitle.set(trimmedTitle);
               this.aggregationService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', {
-                duration: 3000,
-              });
+              this.snackBar.open(
+                this.translate.instant('common.search-updated', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                {
+                  duration: 3000,
+                },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-update-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });
@@ -824,7 +860,7 @@ export class AssetSearchResultsComponent {
       width: '95vw',
       maxWidth: '1080px',
       data: {
-        title: this.selectedSavedSearchTitle().trim() || 'Saved Search',
+        title: this.selectedSavedSearchTitle().trim() || this.translate.instant('ui.saved-search'),
         id,
       },
     });
@@ -837,9 +873,9 @@ export class AssetSearchResultsComponent {
     const title = this.selectedSavedSearchTitle().trim() || 'this saved search';
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Saved Search',
-        message: `Delete saved search "${title}"?`,
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.delete-saved-search'),
+        message: this.translate.instant('confirm.delete-saved-search-named', { name: title }),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 

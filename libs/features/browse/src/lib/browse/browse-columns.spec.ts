@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -79,7 +80,7 @@ describe('BrowseComponent — documentList slot', () => {
     manifest.set(extensions === undefined ? {} : { extensions });
 
     TestBed.configureTestingModule({
-      imports: [BrowseComponent],
+      imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -199,7 +200,7 @@ describe('BrowseComponent — documentList slot', () => {
     // than a document list with no columns at all.
     manifest.set({});
     TestBed.configureTestingModule({
-      imports: [BrowseComponent],
+      imports: [testTranslateModule(), BrowseComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),

@@ -15,6 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 
 import { NuxeoGroup, NuxeoUser, UserService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface GroupFormDialogData {
   mode: 'create' | 'edit';
@@ -34,6 +35,7 @@ export interface GroupFormDialogResult {
   selector: 'lib-group-form-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatButtonModule,
