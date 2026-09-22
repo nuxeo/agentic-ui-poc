@@ -1,4 +1,6 @@
 @if (loading()) {
-  <div class="extension-outlet__loading" role="status" aria-live="polite">Loading…</div>
+  <div class="extension-outlet__loading" role="status" aria-live="polite">
+    {{ 'extensions.extension-outlet.loading' | translate }}
+  </div>
 }
 <ng-container #outlet />

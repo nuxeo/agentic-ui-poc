@@ -1,0 +1,19 @@
+<h2 mat-dialog-title>{{ 'shared-ui.export-dialog.export' | translate }}</h2>
+
+<mat-dialog-content>
+  @for (option of options; track option.type) {
+    <button class="export-option" [disabled]="exporting()" (click)="onExport(option.type)">
+      <mat-icon class="export-option-icon">{{ option.icon }}</mat-icon>
+      <span class="export-option-label">{{ option | descriptorLabel }}</span>
+      @if (exporting() === option.type) {
+        <mat-spinner diameter="18" class="export-spinner" />
+      }
+    </button>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-stroked-button mat-dialog-close [disabled]="!!exporting()">
+    {{ 'shared-ui.export-dialog.cancel' | translate }}
+  </button>
+</mat-dialog-actions>

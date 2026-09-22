@@ -1,8 +1,13 @@
 <div class="results-page">
   @if (selectedCount() > 0) {
     <div class="selection-bar">
-      <span class="selection-bar-count">All {{ selectedCount() }} item(s) selected</span>
-      <a class="selection-bar-clear" (click)="selectionService.clear()">Clear</a>
+      <span class="selection-bar-count">{{
+        (selectedCount() === 1 ? 'common.count.all-selected-one' : 'common.count.all-selected-many')
+          | translate: { count: selectedCount() }
+      }}</span>
+      <a class="selection-bar-clear" (click)="selectionService.clear()">{{
+        'trash.trash.clear' | translate
+      }}</a>
       <div class="selection-bar-actions">
         <button
           mat-flat-button
@@ -11,7 +16,7 @@
           (click)="restoreSelected()"
         >
           <mat-icon>restore_from_trash</mat-icon>
-          Untrash Selected
+          {{ 'trash.trash.untrash-selected' | translate }}
         </button>
         <button
           mat-flat-button
@@ -20,37 +25,41 @@
           (click)="deleteSelected()"
         >
           <mat-icon>delete_forever</mat-icon>
-          Delete Permanently
+          {{ 'trash.trash.delete-permanently-2' | translate }}
         </button>
       </div>
     </div>
   }
 
   <div class="page-header-row">
-    <span class="page-header-title">Search Results</span>
+    <span class="page-header-title">{{ 'trash.trash.search-results' | translate }}</span>
     <div class="page-header-actions">
       <button mat-flat-button class="save-as-btn" [disabled]="saving()" (click)="saveAsSearch()">
         <mat-icon>bookmark_add</mat-icon>
-        Save As
+        {{ 'trash.trash.save-as' | translate }}
       </button>
       @if (trashFilterService.hasSavedFilter()) {
         <button mat-flat-button class="save-btn" [disabled]="saving()" (click)="saveSearch()">
           <mat-icon>bookmark</mat-icon>
-          Save
+          {{ 'trash.trash.save' | translate }}
         </button>
         <button
           mat-icon-button
           type="button"
           [matMenuTriggerFor]="resultsActionsMenu"
-          aria-label="Results actions"
+          [attr.aria-label]="'trash.trash.results-actions' | translate"
         >
           <mat-icon>more_vert</mat-icon>
         </button>
         <mat-menu #resultsActionsMenu="matMenu">
-          <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
-          <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
+          <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">
+            {{ 'trash.trash.edit' | translate }}
+          </button>
+          <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">
+            {{ 'trash.trash.share' | translate }}
+          </button>
           <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">
-            Delete
+            {{ 'trash.trash.delete' | translate }}
           </button>
         </mat-menu>
       }
@@ -60,15 +69,20 @@
   <div class="results-toolbar">
     <div class="results-summary">
       @if (resultCount() > 0) {
-        <span class="results-count">{{ totalResults() }} trashed document(s)</span>
+        <span class="results-count">{{
+          (totalResults() === 1
+            ? 'common.count.trashed-document-one'
+            : 'common.count.trashed-document-many'
+          ) | translate: { count: totalResults() }
+        }}</span>
       }
     </div>
 
     <div class="toolbar-actions">
       <button
         mat-icon-button
-        matTooltip="Export CSV"
-        aria-label="Export CSV"
+        [matTooltip]="'trash.trash.export-csv' | translate"
+        [attr.aria-label]="'trash.trash.export-csv' | translate"
         (click)="exportCsv()"
         class="toolbar-btn"
       >
@@ -78,8 +92,8 @@
       <button
         mat-icon-button
         [class.active]="viewMode() === 'grid'"
-        matTooltip="Grid View"
-        aria-label="Grid View"
+        [matTooltip]="'trash.trash.grid-view' | translate"
+        [attr.aria-label]="'trash.trash.grid-view' | translate"
         (click)="setViewMode('grid')"
         class="toolbar-btn"
       >
@@ -89,8 +103,8 @@
       <button
         mat-icon-button
         [class.active]="viewMode() === 'table'"
-        matTooltip="Table View"
-        aria-label="Table View"
+        [matTooltip]="'trash.trash.table-view' | translate"
+        [attr.aria-label]="'trash.trash.table-view' | translate"
         (click)="setViewMode('table')"
         class="toolbar-btn"
       >
@@ -100,8 +114,8 @@
       <button
         mat-icon-button
         [class.active]="viewMode() === 'list'"
-        matTooltip="List View"
-        aria-label="List View"
+        [matTooltip]="'trash.trash.list-view' | translate"
+        [attr.aria-label]="'trash.trash.list-view' | translate"
         (click)="setViewMode('list')"
         class="toolbar-btn"
       >
@@ -112,7 +126,7 @@
 
   @if (loading()) {
     <div class="results-loading">
-      <mat-spinner diameter="32" aria-label="Loading" />
+      <mat-spinner diameter="32" [attr.aria-label]="'trash.trash.loading' | translate" />
     </div>
   }
 
@@ -128,9 +142,9 @@
           <mat-checkbox
             [checked]="isAllSelected()"
             [indeterminate]="isIndeterminate()"
-            aria-label="Select all"
+            [attr.aria-label]="'trash.trash.select-all' | translate"
             [disabled]="resultCount() === 0"
-            matTooltip="Select all"
+            [matTooltip]="'trash.trash.select-all' | translate"
             (change)="toggleAll()"
           ></mat-checkbox>
 
@@ -139,17 +153,19 @@
             (selectionChange)="setSortBy($event.value)"
             class="grid-select"
           >
-            <mat-option value="title">Title</mat-option>
-            <mat-option value="created">Created</mat-option>
-            <mat-option value="modified">Modified</mat-option>
-            <mat-option value="contributor">Last contributor</mat-option>
-            <mat-option value="state">State</mat-option>
+            <mat-option value="title">{{ 'trash.trash.title' | translate }}</mat-option>
+            <mat-option value="created">{{ 'trash.trash.created' | translate }}</mat-option>
+            <mat-option value="modified">{{ 'trash.trash.modified' | translate }}</mat-option>
+            <mat-option value="contributor">{{
+              'trash.trash.last-contributor' | translate
+            }}</mat-option>
+            <mat-option value="state">{{ 'trash.trash.state' | translate }}</mat-option>
           </mat-select>
 
           <button
             mat-icon-button
-            matTooltip="Revert sort order"
-            aria-label="Revert sort order"
+            [matTooltip]="'trash.trash.revert-sort-order' | translate"
+            [attr.aria-label]="'trash.trash.revert-sort-order' | translate"
             (click)="toggleSortDir()"
             class="action-btn"
           >
@@ -164,7 +180,7 @@
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
-                [aria-label]="'Select ' + doc.title"
+                [attr.aria-label]="'common.select-item' | translate: { name: doc.title }"
                 (change)="toggleSelection(doc.uid)"
                 (click)="$event.stopPropagation()"
               ></mat-checkbox>
@@ -191,7 +207,7 @@
         }
 
         @if (resultCount() === 0) {
-          <div class="results-empty">Trash is empty.</div>
+          <div class="results-empty">{{ 'trash.trash.trash-is-empty' | translate }}</div>
         }
       </div>
     </div>
@@ -204,25 +220,29 @@
         <button
           type="button"
           class="col-panel-backdrop"
-          aria-label="Close column picker"
+          [attr.aria-label]="'trash.trash.close-column-picker' | translate"
           (click)="closeColumnPanel()"
           (keydown.escape)="closeColumnPanel()"
         ></button>
         <div class="col-panel">
-          <p class="col-panel-title">Column Settings</p>
+          <p class="col-panel-title">{{ 'trash.trash.column-settings' | translate }}</p>
           <div class="col-panel-list">
             @for (col of columnsForPanel; track col.key) {
               <mat-checkbox
                 class="col-panel-option"
                 [checked]="isPendingColumn(col.key)"
                 (change)="togglePendingColumn(col.key)"
-                >{{ col.label }}</mat-checkbox
+                >{{ col | descriptorLabel }}</mat-checkbox
               >
             }
           </div>
           <div class="col-panel-actions">
-            <button mat-button (click)="resetColumns()">Reset</button>
-            <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+            <button mat-button (click)="resetColumns()">
+              {{ 'trash.trash.reset' | translate }}
+            </button>
+            <button mat-flat-button color="primary" (click)="applyColumns()">
+              {{ 'trash.trash.done' | translate }}
+            </button>
           </div>
         </div>
       }
@@ -233,14 +253,14 @@
             <mat-checkbox
               [checked]="isAllSelected()"
               [indeterminate]="isIndeterminate()"
-              aria-label="Select all"
+              [attr.aria-label]="'trash.trash.select-all' | translate"
               (change)="toggleAll()"
             ></mat-checkbox>
           </span>
           @for (col of visibleColumns(); track col.key) {
             @if (SORTABLE_COLUMNS.has(col.key)) {
               <button type="button" class="col-sortable" (click)="sortByColumn(col.key)">
-                {{ col.label }}
+                {{ col | descriptorLabel }}
                 <mat-icon class="sort-icon" [class.sort-active]="sortBy() === col.key">
                   {{
                     sortBy() === col.key && sortDir() === 'desc' ? 'arrow_downward' : 'arrow_upward'
@@ -248,15 +268,15 @@
                 </mat-icon>
               </button>
             } @else {
-              <span>{{ col.label }}</span>
+              <span>{{ col | descriptorLabel }}</span>
             }
           }
           <span class="col-gear">
             <button
               mat-icon-button
               class="gear-btn"
-              matTooltip="Manage columns"
-              aria-label="Manage columns"
+              [matTooltip]="'trash.trash.manage-columns' | translate"
+              [attr.aria-label]="'trash.trash.manage-columns' | translate"
               (click)="openColumnPanel()"
             >
               <mat-icon>tune</mat-icon>
@@ -273,7 +293,7 @@
             <span class="col-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
-                [aria-label]="'Select ' + doc.title"
+                [attr.aria-label]="'common.select-item' | translate: { name: doc.title }"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(doc.uid)"
               ></mat-checkbox>
@@ -304,8 +324,8 @@
             <span class="col-actions">
               <button
                 mat-icon-button
-                matTooltip="Restore"
-                aria-label="Restore"
+                [matTooltip]="'trash.trash.restore' | translate"
+                [attr.aria-label]="'trash.trash.restore' | translate"
                 class="action-btn"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="restoreDocument(doc.uid, $event)"
@@ -314,8 +334,8 @@
               </button>
               <button
                 mat-icon-button
-                matTooltip="Delete permanently"
-                aria-label="Delete permanently"
+                [matTooltip]="'trash.trash.delete-permanently' | translate"
+                [attr.aria-label]="'trash.trash.delete-permanently' | translate"
                 class="action-btn action-danger"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="permanentlyDelete(doc.uid, $event)"
@@ -327,7 +347,7 @@
         }
 
         @if (resultCount() === 0) {
-          <div class="results-empty">Trash is empty.</div>
+          <div class="results-empty">{{ 'trash.trash.trash-is-empty' | translate }}</div>
         }
       </div>
     </div>
@@ -340,9 +360,9 @@
         <mat-checkbox
           [checked]="isAllSelected()"
           [indeterminate]="isIndeterminate()"
-          aria-label="Select all"
+          [attr.aria-label]="'trash.trash.select-all' | translate"
           [disabled]="resultCount() === 0"
-          matTooltip="Select all"
+          [matTooltip]="'trash.trash.select-all' | translate"
           (change)="toggleAll()"
           class="list-select-all"
         ></mat-checkbox>
@@ -352,17 +372,19 @@
           (selectionChange)="setSortBy($event.value)"
           class="list-select"
         >
-          <mat-option value="title">Title</mat-option>
-          <mat-option value="created">Created</mat-option>
-          <mat-option value="modified">Modified</mat-option>
-          <mat-option value="contributor">Last contributor</mat-option>
-          <mat-option value="state">State</mat-option>
+          <mat-option value="title">{{ 'trash.trash.title' | translate }}</mat-option>
+          <mat-option value="created">{{ 'trash.trash.created' | translate }}</mat-option>
+          <mat-option value="modified">{{ 'trash.trash.modified' | translate }}</mat-option>
+          <mat-option value="contributor">{{
+            'trash.trash.last-contributor' | translate
+          }}</mat-option>
+          <mat-option value="state">{{ 'trash.trash.state' | translate }}</mat-option>
         </mat-select>
 
         <button
           mat-icon-button
-          matTooltip="Revert sort order"
-          aria-label="Revert sort order"
+          [matTooltip]="'trash.trash.revert-sort-order' | translate"
+          [attr.aria-label]="'trash.trash.revert-sort-order' | translate"
           (click)="toggleSortDir()"
           class="action-btn"
         >
@@ -383,7 +405,7 @@
             <span class="simple-list-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
-                [aria-label]="'Select ' + doc.title"
+                [attr.aria-label]="'common.select-item' | translate: { name: doc.title }"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(doc.uid)"
               ></mat-checkbox>
@@ -404,8 +426,8 @@
             <div class="simple-list-actions col-hover-actions">
               <button
                 mat-icon-button
-                matTooltip="Restore"
-                aria-label="Restore"
+                [matTooltip]="'trash.trash.restore' | translate"
+                [attr.aria-label]="'trash.trash.restore' | translate"
                 class="action-btn"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="restoreDocument(doc.uid, $event)"
@@ -414,8 +436,8 @@
               </button>
               <button
                 mat-icon-button
-                matTooltip="Delete permanently"
-                aria-label="Delete permanently"
+                [matTooltip]="'trash.trash.delete-permanently' | translate"
+                [attr.aria-label]="'trash.trash.delete-permanently' | translate"
                 class="action-btn action-danger"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="permanentlyDelete(doc.uid, $event)"
@@ -428,7 +450,7 @@
       }
 
       @if (resultCount() === 0) {
-        <div class="results-empty">Trash is empty.</div>
+        <div class="results-empty">{{ 'trash.trash.trash-is-empty' | translate }}</div>
       }
     </div>
   }

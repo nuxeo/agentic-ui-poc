@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
@@ -21,7 +22,7 @@ import {
   DocumentDetailService,
   mailSendFailureMessage,
   NuxeoApiBase,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   type NuxeoComment,
   type NuxeoDocument,
   TagService,
@@ -34,6 +35,7 @@ import {
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
 import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 const STUB_DOC: NuxeoDocument = {
   uid: 'doc-uid-1',
@@ -429,7 +431,7 @@ describe('DocumentDetailComponent', () => {
 
       expect(updateSpy).not.toHaveBeenCalled();
       expect(snackBarOpenSpy).toHaveBeenCalledWith(
-        PERMISSION_DENIED_MESSAGE,
+        TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
         'OK',
         expect.objectContaining({ duration: 3000 }),
       );
@@ -443,7 +445,7 @@ describe('DocumentDetailComponent', () => {
 
       expect(dialogSpy).not.toHaveBeenCalled();
       expect(snackBarOpenSpy).toHaveBeenCalledWith(
-        PERMISSION_DENIED_MESSAGE,
+        TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
         'OK',
         expect.objectContaining({ duration: 3000 }),
       );
@@ -456,7 +458,7 @@ describe('DocumentDetailComponent', () => {
       component.submitComment();
 
       expect(snackBarOpenSpy).toHaveBeenCalledWith(
-        PERMISSION_DENIED_MESSAGE,
+        TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
         'OK',
         expect.objectContaining({ duration: 3000 }),
       );
@@ -622,7 +624,8 @@ describe('DocumentDetailComponent', () => {
       await TestBed.resetTestingModule();
       snackBarOpenSpy = vi.fn();
       await TestBed.configureTestingModule({
-        imports: [DocumentDetailComponent],
+        // The reset above discards what test-setup.ts provides globally.
+        imports: [DocumentDetailComponent, testTranslateModule()],
         providers: [
           provideZonelessChangeDetection(),
           provideRouter([], withDisabledInitialNavigation()),

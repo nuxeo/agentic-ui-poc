@@ -1,18 +1,18 @@
-<h2 mat-dialog-title>Edit Collection</h2>
+<h2 mat-dialog-title>{{ 'shared-ui.edit-collection-dialog.edit-collection' | translate }}</h2>
 
 <mat-dialog-content>
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
-    <mat-label>Title</mat-label>
+    <mat-label>{{ 'shared-ui.edit-collection-dialog.title' | translate }}</mat-label>
     <input matInput [(ngModel)]="title" required />
   </mat-form-field>
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
-    <mat-label>Description</mat-label>
+    <mat-label>{{ 'shared-ui.edit-collection-dialog.description' | translate }}</mat-label>
     <textarea matInput [(ngModel)]="description" rows="2"></textarea>
   </mat-form-field>
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width vocab-field">
-    <mat-label>Nature</mat-label>
+    <mat-label>{{ 'shared-ui.edit-collection-dialog.nature' | translate }}</mat-label>
     <mat-select
       #natureSelect
       [(ngModel)]="nature"
@@ -28,7 +28,9 @@
               <button
                 type="button"
                 matChipRemove
-                [attr.aria-label]="'Remove ' + naturePillLabel(natureId)"
+                [attr.aria-label]="
+                  'shared.remove-item' | translate: { name: naturePillLabel(natureId) }
+                "
                 (click)="$event.stopPropagation(); clearNature()"
               >
                 <mat-icon>cancel</mat-icon>
@@ -40,8 +42,8 @@
       <div class="vocab-panel__search">
         <input
           type="text"
-          placeholder="Search…"
-          aria-label="Search Nature"
+          [placeholder]="'shared-ui.edit-collection-dialog.search' | translate"
+          [attr.aria-label]="'shared-ui.edit-collection-dialog.search-nature' | translate"
           [(ngModel)]="naturePanelSearch"
           [ngModelOptions]="{ standalone: true }"
           (click)="$event.stopPropagation()"
@@ -57,7 +59,7 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width vocab-field">
-    <mat-label>Subjects</mat-label>
+    <mat-label>{{ 'shared-ui.edit-collection-dialog.subjects' | translate }}</mat-label>
     <mat-select
       [(ngModel)]="subjects"
       multiple
@@ -72,7 +74,7 @@
               <button
                 type="button"
                 matChipRemove
-                [attr.aria-label]="'Remove ' + subjectPillLabel(id)"
+                [attr.aria-label]="'shared.remove-item' | translate: { name: subjectPillLabel(id) }"
                 (click)="$event.stopPropagation()"
               >
                 <mat-icon>cancel</mat-icon>
@@ -84,8 +86,8 @@
       <div class="vocab-panel__search">
         <input
           type="text"
-          placeholder="Search…"
-          aria-label="Search Subjects"
+          [placeholder]="'shared-ui.edit-collection-dialog.search' | translate"
+          [attr.aria-label]="'shared-ui.edit-collection-dialog.search-subjects' | translate"
           [(ngModel)]="subjectsPanelSearch"
           [ngModelOptions]="{ standalone: true }"
           (click)="$event.stopPropagation()"
@@ -105,7 +107,7 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width vocab-field">
-    <mat-label>Coverage</mat-label>
+    <mat-label>{{ 'shared-ui.edit-collection-dialog.coverage' | translate }}</mat-label>
     <mat-select
       #coverageSelect
       [(ngModel)]="coverage"
@@ -121,7 +123,9 @@
               <button
                 type="button"
                 matChipRemove
-                [attr.aria-label]="'Remove ' + coveragePillLabel(coverageId)"
+                [attr.aria-label]="
+                  'shared.remove-item' | translate: { name: coveragePillLabel(coverageId) }
+                "
                 (click)="$event.stopPropagation(); clearCoverage()"
               >
                 <mat-icon>cancel</mat-icon>
@@ -133,8 +137,8 @@
       <div class="vocab-panel__search">
         <input
           type="text"
-          placeholder="Search…"
-          aria-label="Search Coverage"
+          [placeholder]="'shared-ui.edit-collection-dialog.search' | translate"
+          [attr.aria-label]="'shared-ui.edit-collection-dialog.search-coverage' | translate"
           [(ngModel)]="coveragePanelSearch"
           [ngModelOptions]="{ standalone: true }"
           (click)="$event.stopPropagation()"
@@ -159,7 +163,7 @@
     class="full-width"
     [class.expires-field-invalid]="showExpiresError()"
   >
-    <mat-label>Expires</mat-label>
+    <mat-label>{{ 'shared-ui.edit-collection-dialog.expires' | translate }}</mat-label>
     <input
       matInput
       name="expires"
@@ -169,18 +173,20 @@
       (ngModelChange)="onExpiresChange($event)"
       (input)="onExpiresInput($event)"
       #expiresInput="ngModel"
-      placeholder="mm/dd/yyyy"
+      [placeholder]="'common.date-mask' | translate"
     />
     <mat-datepicker-toggle matIconSuffix [for]="picker" />
     <mat-datepicker #picker />
     @if (showExpiresError()) {
-      <mat-error>Enter a valid date</mat-error>
+      <mat-error>{{ 'shared-ui.edit-collection-dialog.enter-a-valid-date' | translate }}</mat-error>
     }
   </mat-form-field>
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-stroked-button mat-dialog-close>Cancel</button>
+  <button mat-stroked-button mat-dialog-close>
+    {{ 'shared-ui.edit-collection-dialog.cancel' | translate }}
+  </button>
   <span class="spacer"></span>
   <button
     mat-flat-button
@@ -191,7 +197,7 @@
     @if (saving()) {
       <mat-spinner diameter="18" />
     } @else {
-      Save
+      {{ 'ui.edit-collection-dialog.save' | translate }}
     }
   </button>
 </mat-dialog-actions>

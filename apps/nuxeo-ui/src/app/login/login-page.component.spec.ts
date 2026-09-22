@@ -2,23 +2,14 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { TranslateLoader, TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom, of, Observable } from 'rxjs';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
 import { LoginPageComponent } from './login-page.component';
-
-class LoginTranslateLoader implements TranslateLoader {
-  getTranslation(_lang: string) {
-    return of({
-      'login.title': 'Log in',
-      'login.panel-label': 'Log in',
-      'login.skip-link': 'Skip to sign in',
-    });
-  }
-}
+import { testTranslateModule } from '../i18n/translate-testing';
 
 /** Synthetic values for unit tests only — not Nuxeo or dev default credentials. */
 const MOCK_LOGIN_USER = 'nxeng-login-spec-user';
@@ -43,10 +34,18 @@ describe('LoginPageComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [
-        LoginPageComponent,
-        TranslateModule.forRoot({
-          loader: { provide: TranslateLoader, useClass: LoginTranslateLoader },
+        testTranslateModule({
+          'app.login-page.log-in': 'Log in',
+          'app.login-page.sign-in-credentials': 'Sign in credentials',
+          'app.login-page.username-required': 'Username (required)',
+          'app.login-page.password-required': 'Password (required)',
+          'app.login-page.username-is-required': 'Username is required',
+          'app.login-page.password-is-required': 'Password is required',
+          'app.login-page.copyright-c-1992-2026-hyland-software':
+            'Copyright (C) 1992–2026 Hyland Software, Inc.',
+          'login.skip-link': 'Skip to sign in',
         }),
+        LoginPageComponent,
       ],
       providers: [
         provideRouter([{ path: 'dashboard', component: LoginPageComponent }]),
@@ -86,6 +85,43 @@ describe('LoginPageComponent', () => {
     expect(preventSpy).toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(usernameInput);
+  });
+
+  it('does not expose redundant aria-required on password when HTML required is set (NXENG-755)', async () => {
+    const passwordInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="password"]',
+    ) as HTMLInputElement;
+
+    expect(passwordInput.required).toBe(true);
+    expect(passwordInput.getAttribute('aria-required')).toBeNull();
+
+    const strippedAfterMaterialRestore = new Promise<void>((resolve) => {
+      const watch = new MutationObserver(() => {
+        if (passwordInput.getAttribute('aria-required') === null) {
+          watch.disconnect();
+          resolve();
+        }
+      });
+      watch.observe(passwordInput, {
+        attributes: true,
+        attributeFilter: ['aria-required'],
+      });
+      passwordInput.setAttribute('aria-required', 'true');
+    });
+
+    await strippedAfterMaterialRestore;
+    expect(passwordInput.getAttribute('aria-required')).toBeNull();
+  });
+
+  it('disconnects the password aria-required observer on destroy (NXENG-755)', async () => {
+    const passwordInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="password"]',
+    ) as HTMLInputElement;
+
+    fixture.destroy();
+    passwordInput.setAttribute('aria-required', 'true');
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(passwordInput.getAttribute('aria-required')).toBe('true');
   });
 
   it('keeps the credential field above siblings when focused (NXENG-749)', () => {

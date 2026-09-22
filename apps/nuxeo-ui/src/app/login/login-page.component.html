@@ -6,17 +6,21 @@
     id="login-main"
     tabindex="-1"
     class="login-panel"
-    [attr.aria-label]="'login.panel-label' | translate"
+    [attr.aria-label]="'app.login-page.log-in' | translate"
   >
     <div class="login-panel-inner">
-      <a routerLink="/login" class="login-brand" aria-label="Hyland">
+      <a
+        routerLink="/login"
+        class="login-brand"
+        [attr.aria-label]="'app.login-page.hyland' | translate"
+      >
         <sat-logo direction="horizontal">
           <sat-h-mark-logo />
           <sat-word-mark-logo />
         </sat-logo>
       </a>
 
-      <h1 id="login-page-heading" class="login-title">{{ 'login.title' | translate }}</h1>
+      <h1 id="login-page-heading" class="login-title">{{ 'app.login-page.log-in' | translate }}</h1>
 
       <form
         class="login-form"
@@ -25,14 +29,16 @@
         (ngSubmit)="submit()"
       >
         <fieldset class="login-credentials">
-          <legend class="cdk-visually-hidden">Sign in credentials</legend>
+          <legend class="cdk-visually-hidden">
+            {{ 'app.login-page.sign-in-credentials' | translate }}
+          </legend>
           <mat-form-field
             appearance="outline"
             subscriptSizing="dynamic"
             class="login-field-full login-field-username"
             hideRequiredMarker
           >
-            <mat-label>Username (required)</mat-label>
+            <mat-label>{{ 'app.login-page.username-required' | translate }}</mat-label>
             <input
               matInput
               formControlName="username"
@@ -42,7 +48,7 @@
               (animationstart)="onAutofillAnimation($event)"
             />
             @if (form.controls.username.hasError('required') && form.controls.username.touched) {
-              <mat-error>Username is required</mat-error>
+              <mat-error>{{ 'app.login-page.username-is-required' | translate }}</mat-error>
             }
           </mat-form-field>
 
@@ -52,7 +58,7 @@
             class="login-field-full login-field-password"
             hideRequiredMarker
           >
-            <mat-label>Password (required)</mat-label>
+            <mat-label>{{ 'app.login-page.password-required' | translate }}</mat-label>
             <input
               matInput
               type="password"
@@ -63,7 +69,7 @@
               (animationstart)="onAutofillAnimation($event)"
             />
             @if (form.controls.password.hasError('required') && form.controls.password.touched) {
-              <mat-error>Password is required</mat-error>
+              <mat-error>{{ 'app.login-page.password-is-required' | translate }}</mat-error>
             }
           </mat-form-field>
         </fieldset>
@@ -80,7 +86,7 @@
             @if (submitting()) {
               <mat-spinner diameter="20" />
             } @else {
-              Log in
+              {{ 'app.login-page.log-in' | translate }}
             }
           </button>
         </div>
@@ -89,7 +95,7 @@
       @if (samlEndpoints().length > 0) {
         <div class="login-or">
           <span class="login-or-line"></span>
-          <span class="login-or-text">OR</span>
+          <span class="login-or-text">{{ 'app.login-page.or' | translate }}</span>
           <span class="login-or-line"></span>
         </div>
 
@@ -108,7 +114,9 @@
       }
     </div>
 
-    <footer class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</footer>
+    <footer class="login-footer">
+      {{ 'app.login-page.copyright-c-1992-2026-hyland-software' | translate }}
+    </footer>
   </main>
 
   <div class="login-hero" role="presentation" aria-hidden="true">

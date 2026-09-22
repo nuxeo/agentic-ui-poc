@@ -5,13 +5,14 @@ import { hxpDocIconName } from '../../utils/hxp-doc-icon.utils';
 import { hxpDocTitle, hxpDocTypeLabel } from '../../utils/hxp-browse-cell.utils';
 import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';
 import { HxpSpinnerComponent } from '../hxp-spinner/hxp-spinner.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'hxp-browse-trash',
   standalone: true,
   templateUrl: './hxp-browse-trash.component.html',
   styleUrl: './hxp-browse-trash.component.scss',
-  imports: [DatePipe, HxpIconComponent, HxpSpinnerComponent],
+  imports: [TranslatePipe, DatePipe, HxpIconComponent, HxpSpinnerComponent],
 })
 export class HxpBrowseTrashComponent {
   readonly loading = input(false);

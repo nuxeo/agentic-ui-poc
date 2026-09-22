@@ -4,7 +4,7 @@
     class="note-image-picker__close"
     mat-icon-button
     mat-dialog-close
-    aria-label="Close"
+    [attr.aria-label]="'document-detail.note-image-picker-dialog.close' | translate"
   >
     <mat-icon>close</mat-icon>
   </button>
@@ -12,7 +12,9 @@
   <mat-dialog-content>
     <mat-expansion-panel class="note-image-picker__filters" [expanded]="true">
       <mat-expansion-panel-header>
-        <mat-panel-title>Filters</mat-panel-title>
+        <mat-panel-title>{{
+          'document-detail.note-image-picker-dialog.filters' | translate
+        }}</mat-panel-title>
       </mat-expansion-panel-header>
 
       <mat-form-field
@@ -20,7 +22,9 @@
         class="note-image-picker__search"
         subscriptSizing="dynamic"
       >
-        <mat-label>Quick Search</mat-label>
+        <mat-label>{{
+          'document-detail.note-image-picker-dialog.quick-search' | translate
+        }}</mat-label>
 
         <input
           matInput
@@ -33,7 +37,7 @@
 
       <div class="note-image-picker__actions">
         <button mat-stroked-button type="button" [disabled]="loading()" (click)="clearSearch()">
-          Clear
+          {{ 'document-detail.note-image-picker-dialog.clear' | translate }}
         </button>
 
         <button
@@ -43,7 +47,7 @@
           [disabled]="loading()"
           (click)="search()"
         >
-          Search
+          {{ 'document-detail.note-image-picker-dialog.search' | translate }}
         </button>
       </div>
     </mat-expansion-panel>
@@ -55,8 +59,8 @@
           [checked]="isAllSelected()"
           [indeterminate]="isIndeterminate()"
           [disabled]="loading() || results().length === 0"
-          matTooltip="Select all"
-          aria-label="Select all"
+          [matTooltip]="'document-detail.note-image-picker-dialog.select-all' | translate"
+          [attr.aria-label]="'document-detail.note-image-picker-dialog.select-all' | translate"
           (click)="$event.stopPropagation()"
           (change)="toggleSelectAll()"
         ></mat-checkbox>
@@ -74,13 +78,15 @@
     } @else if (searchError()) {
       <p class="note-image-picker__empty">{{ searchError() }}</p>
     } @else if (results().length === 0) {
-      <p class="note-image-picker__empty">No pictures found.</p>
+      <p class="note-image-picker__empty">
+        {{ 'document-detail.note-image-picker-dialog.no-pictures-found' | translate }}
+      </p>
     } @else {
       <div
         class="note-image-picker__grid"
         role="listbox"
         aria-multiselectable="true"
-        aria-label="Picture documents"
+        [attr.aria-label]="'document-detail.note-image-picker-dialog.picture-documents' | translate"
       >
         @for (doc of results(); track doc.uid) {
           <button
@@ -113,7 +119,9 @@
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">
-    <button mat-stroked-button type="button" mat-dialog-close>Cancel</button>
+    <button mat-stroked-button type="button" mat-dialog-close>
+      {{ 'document-detail.note-image-picker-dialog.cancel' | translate }}
+    </button>
 
     <button
       mat-flat-button
@@ -122,7 +130,7 @@
       [disabled]="selectionService.selectedCount() === 0"
       (click)="confirm()"
     >
-      Select
+      {{ 'document-detail.note-image-picker-dialog.select' | translate }}
     </button>
   </mat-dialog-actions>
 </div>

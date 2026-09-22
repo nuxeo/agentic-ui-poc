@@ -75,14 +75,14 @@ class AppConfigService {
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<AppConfigService>;
     }
 }
-type AppConfigSource = 'packaged-default' | 'deployed-file' | 'nuxeo-document';
+type AppConfigSource = 'deployed-file' | 'nuxeo-document' | 'packaged-default';
 interface AppIntegrationsConfig {
     readonly arender: AppARenderConfig | null;
     readonly knowledgeDiscoveryOperations: Readonly<Record<string, string>>;
     readonly knowledgeEnrichmentOperations: Readonly<Record<string, string>>;
     }
 }
-type AppManifestAttempt = 'not-attempted' | 'applied' | 'unavailable' | 'failed';
+type AppManifestAttempt = 'applied' | 'failed' | 'not-attempted' | 'unavailable';
 interface AppRuntimeManifest {
     readonly version: number;
     readonly navItems: readonly ManifestNavItem[];
@@ -156,7 +156,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/extensions
 
-54 exported symbol(s).
+57 exported symbol(s).
 
 ```ts
 const APP_NAV_ITEMS: InjectionToken<Signal<readonly NavItemDescriptor[]>>;
@@ -176,6 +176,12 @@ class AppExtensionsService {
 }
 const CORE_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvaluator>>;
 const DOCUMENT_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvaluator>>;
+class DescriptorLabelPipe implements PipeTransform {
+    transform(descriptor: LabelledDescriptor | null | undefined): string;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<DescriptorLabelPipe, never>;
+    static ɵpipe: _angular_core.ɵɵPipeDeclaration<DescriptorLabelPipe, "descriptorLabel", true>;
+    }
+}
 const EMPTY_EXTENSION_RULE_CONTEXT: ExtensionRuleContext;
 const EXTENSION_SLOTS: {
     readonly navbar: "navbar";
@@ -189,6 +195,7 @@ const EXTENSION_SLOTS: {
 };
 interface ExtensionActionDescriptor extends ExtensionElement {
     readonly label: string;
+    readonly labelKey?: string;
     readonly icon?: string;
     readonly tooltip?: string;
     readonly rule?: ExtensionRule;
@@ -217,6 +224,7 @@ class ExtensionActionRegistry {
 }
 interface ExtensionColumnDescriptor extends ExtensionElement {
     readonly label: string;
+    readonly labelKey?: string;
     readonly field: string;
     readonly sortable?: boolean;
     readonly rule?: ExtensionRule;
@@ -340,14 +348,21 @@ class ExtensionSlotRegistry {
 }
 interface ExtensionTabDescriptor extends ExtensionElement {
     readonly label: string;
+    readonly labelKey?: string;
     readonly icon?: string;
     readonly rule?: ExtensionRule;
     readonly componentId?: string;
     }
 }
+interface LabelledDescriptor {
+    readonly label: string;
+    readonly labelKey?: string;
+    }
+}
 const NO_EXTENSION_SLOT_OVERRIDES: ExtensionSlotOverrides;
 interface NavItemDescriptor extends ExtensionElement {
     readonly label: string;
+    readonly labelKey?: string;
     readonly path: string;
     readonly icon: string;
     readonly hasDrawer?: boolean;
@@ -387,6 +402,11 @@ interface SatoriExtensionContributions {
     }
 }
 type SatoriExtensionContributor = SatoriExtensionContributions | (() => SatoriExtensionContributions);
+function descriptorLabel(descriptor: {
+    readonly label: string;
+    readonly labelKey?: string;
+    }, translate: (key: string) => string): string;
+}
 function extensionRoutePathRejection(path: unknown): string | null;
 function extensionRoutes(descriptors: readonly ExtensionRouteDescriptor[]): Routes;
 function mergeExtensionConfigs(...layers: readonly ExtensionConfig[]): ExtensionConfig;
@@ -399,7 +419,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-302 exported symbol(s).
+303 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -527,13 +547,13 @@ interface AuthorizedApplication {
     authorizationDate: string;
     }
 }
-type AvatarColor = 'purple' | 'blue' | 'pink' | 'teal' | 'yellow' | 'green' | 'red' | 'orange';
+type AvatarColor = 'blue' | 'green' | 'orange' | 'pink' | 'purple' | 'red' | 'teal' | 'yellow';
 const BLOB_CLIENT_REASON_HEADER = "X-Client-Reason";
 const BLOB_CLIENT_REASON_PARAM = "clientReason";
 const BLOB_HOLDING_DOC_TYPES: ReadonlySet<string>;
 const BLOB_NOT_ATTACHED_ERROR = "File was not attached to the document";
 const BROWSE_RETURN_MODE_PARAM = "browseReturn";
-type BlobClientReason = 'view' | 'download';
+type BlobClientReason = 'download' | 'view';
 class BrowseContextService {
     readonly contextPath: i0.WritableSignal<string>;
     readonly treeRefreshTick: i0.WritableSignal<number>;
@@ -551,7 +571,7 @@ class BrowseContextService {
     static ɵprov: i0.ɵɵInjectableDeclaration<BrowseContextService>;
     }
 }
-type BrowseReturnMode = 'default' | 'adf-hx';
+type BrowseReturnMode = 'adf-hx' | 'default';
 class BrowseService {
     getByPath(nuxeoPath: string): Observable<NuxeoDocument>;
     getUserWorkspace(): Observable<NuxeoDocument>;
@@ -952,7 +972,7 @@ interface GlobalSearchSuggestion {
     text: string;
     matched: boolean;
     }>;
-    kind: 'document' | 'user' | 'group' | 'other';
+    kind: 'document' | 'group' | 'other' | 'user';
     documentUid?: string;
     path?: string;
     prefixedId?: string;
@@ -970,7 +990,7 @@ interface ImportFilesOptions {
     }
 }
 interface ImportProgress {
-    phase: 'uploading' | 'creating';
+    phase: 'creating' | 'uploading';
     percent: number;
     fileIndex?: number;
     fileCount?: number;
@@ -1021,15 +1041,19 @@ const NOTE_DOCUMENT_PICKER_HEADERS: {
 const NOTE_DOCUMENT_PICKER_PROVIDER = "document_picker";
 const NOTE_FORMAT_OPTIONS: readonly [{
     readonly value: "text/html";
+    readonly labelKey: "note-format.html";
     readonly label: "HTML";
     }, {
     readonly value: "text/plain";
+    readonly labelKey: "note-format.plain";
     readonly label: "Text";
     }, {
     readonly value: "text/xml";
+    readonly labelKey: "note-format.xml";
     readonly label: "XML";
     }, {
     readonly value: "text/markdown";
+    readonly labelKey: "note-format.markdown";
     readonly label: "Markdown";
     }];
 }
@@ -1055,7 +1079,7 @@ interface NuxeoAce {
     creator: string | null;
     begin: string | null;
     end: string | null;
-    status: 'effective' | 'pending' | 'archived';
+    status: 'archived' | 'effective' | 'pending';
     }
 }
 interface NuxeoAcl {
@@ -1354,7 +1378,7 @@ interface NuxeoWorkflowModelList {
     entries: NuxeoWorkflowModel[];
     }
 }
-const PERMISSION_DENIED_MESSAGE = "You do not have permission to perform this action";
+const PERMISSION_DENIED_KEY = "common.permission-denied";
 const PERMISSION_NOTIFICATION_MAIL_HINT = "Requires outbound mail (SMTP) configured on the Nuxeo server.";
 interface PaginatedListMeta {
     totalSize?: number;
@@ -1640,7 +1664,7 @@ interface TrustedHtmlConfig {
 interface UserGroupSuggestion {
     id: string;
     displayLabel: string;
-    type: 'USER_TYPE' | 'GROUP_TYPE';
+    type: 'GROUP_TYPE' | 'USER_TYPE';
     prefixed_id: string;
     username?: string;
     groupname?: string;
@@ -1752,7 +1776,7 @@ function directoryUsesL10nLabel(directoryName: string): boolean;
 function docTypeIcon(type: string): string;
 function documentHasMainBlob(doc: NuxeoDocument): boolean;
 function documentHasPersistedMainBlob(doc: NuxeoDocument): boolean;
-function documentNavigationUrl(doc: Pick<NuxeoDocument, 'uid' | 'type' | 'path' | 'facets'>, docTypeHint?: string): string;
+function documentNavigationUrl(doc: Pick<NuxeoDocument, 'facets' | 'path' | 'type' | 'uid'>, docTypeHint?: string): string;
 function entryPropertiesIncludeParent(keys: readonly string[]): boolean;
 function escapeNxqlLiteral(value: string): string;
 function expandableNuxeoPathPrefixes(nuxeoPath: string): string[];
@@ -1765,6 +1789,7 @@ function formatCompareValue(value: unknown): string;
 function formatDirectoryEntryId(id: string): string;
 function formatHierarchicalL10nLabel(id: string | null | undefined, entries: L10nDirectoryEntry[]): string;
 function formatNoteHtmlForSourceView(html: string): string;
+function formatRelativeTime(value: string | number | Date | null | undefined, locale: string, now?: number): string;
 const fullAdministratorGuard: CanActivateFn;
 function getDirectoryMetadata(catalog: Map<string, DirectoryMetadata>, directoryName: string): DirectoryMetadata | undefined;
 function groupL10nChildrenByParent(entries: L10nDirectoryEntry[], query?: string): L10nOptionGroup[];
@@ -1777,13 +1802,13 @@ function isAdfHxBrowseRouterUrl(routerUrl: string): boolean;
 function isBlobHoldingDocType(docType: string): boolean;
 function isBrowsableNavNode(doc: NuxeoDocument | null): boolean;
 function isBrowseRouterUrl(routerUrl: string): boolean;
-function isCollectionDocument(doc: Pick<NuxeoDocument, 'type' | 'facets'> | null | undefined, docTypeHint?: string): boolean;
+function isCollectionDocument(doc: Pick<NuxeoDocument, 'facets' | 'type'> | null | undefined, docTypeHint?: string): boolean;
 function isCompareIconField(key: string): boolean;
 function isContentLakeIngestCurrent(doc: NuxeoDocument | null | undefined): boolean;
 function isDirectoryI18nKey(value: string | undefined | null): boolean;
 function isDomainParentType(parentType: string | null | undefined): boolean;
 function isExpiresFieldValid(expiresRawText: string, expires: Date | null): boolean;
-function isFolderishDocument(doc: Pick<NuxeoDocument, 'type' | 'facets'> | null): boolean;
+function isFolderishDocument(doc: Pick<NuxeoDocument, 'facets' | 'type'> | null): boolean;
 function isHtmlNoteFormat(mimeType: string): boolean;
 function isMailSendError(err: unknown): boolean;
 function isManagedDirectory(metadata: Pick<DirectoryMetadata, 'type'>): boolean;
@@ -1797,7 +1822,7 @@ function isRestrictedImportParentPath(path: string | null | undefined): boolean;
 function isSafeHttpUrl(url: string): boolean;
 function isUserWorkspacePath(nuxeoPath: string): boolean;
 function l10nEntryLabel(entry: L10nDirectoryEntry): string;
-function mailSendFailureMessage(context: 'add' | 'update' | 'send'): string;
+function mailSendFailureMessage(context: 'add' | 'send' | 'update'): string;
 function mediaTypeEssence(value: string | null | undefined): string;
 function mergeCreateDocumentBody(template: NuxeoCreateDocumentTemplate, docType: string, nameFallback: string, overrides: Record<string, unknown>): Record<string, unknown>;
 function mergeDocumentPermissionsContext(existing: NuxeoDocument, updated: NuxeoDocument, options?: MergeDocumentPermissionsContextOptions): NuxeoDocument;
@@ -1823,8 +1848,8 @@ function permissionCreateMailFailureMessage(): string;
 function permissionNotificationAceNotFoundMessage(context: 'add' | 'update'): string;
 function permissionUpdateMailFailureMessage(): string;
 function postTrashBrowseRouterUrl(deletedDocPath: string): string;
-function principalPermissionTimeFrameLabel(row: PrincipalPermissionRow): string;
-function principalPermissionToLocalRow(row: PrincipalPermissionRow): LocalPermissionRow;
+function principalPermissionTimeFrameLabel(row: PrincipalPermissionRow, translate: (key: string) => string): string;
+function principalPermissionToLocalRow(row: PrincipalPermissionRow, translate: (key: string) => string): LocalPermissionRow;
 function readBlobDigest(doc: NuxeoDocument): string | null;
 function readClipboardDocs(): ClipboardDoc[];
 function readContentLakeIngestMarker(doc: NuxeoDocument): string | null;
@@ -1857,14 +1882,14 @@ function userWorkspaceBrowseRouterUrl(nuxeoPath: string): string | null;
 function userWorkspaceOwnerFromPath(nuxeoPath: string): string | null;
 function userWorkspaceRootFromPath(nuxeoPath: string): string | null;
 function vocabularyParentRequired(directoryName: string, metadata?: DirectoryMetadata): boolean;
-function vocabularySupportsParent(directoryName: string, metadata: DirectoryMetadata | undefined, entries: readonly Pick<ManagedDirectoryEntry, 'propertyKeys' | 'parent'>[]): boolean;
+function vocabularySupportsParent(directoryName: string, metadata: DirectoryMetadata | undefined, entries: readonly Pick<ManagedDirectoryEntry, 'parent' | 'propertyKeys'>[]): boolean;
 function vocabularyTableColumns(directoryName: string, metadata: DirectoryMetadata | undefined, entries: readonly ManagedDirectoryEntry[]): string[];
 function writeClipboardDocs(docs: ClipboardDoc[]): void;
 ```
 
 ## @nuxeo-satori/platform/ui
 
-32 exported symbol(s).
+35 exported symbol(s).
 
 ```ts
 class ConfirmDialogComponent {
@@ -1936,7 +1961,7 @@ class DocumentViewerComponent {
     readonly removeMainFileClicked: _angular_core.OutputEmitterRef<void>;
     readonly storyboardSeek: _angular_core.OutputEmitterRef<number>;
     readonly formatDownload: _angular_core.OutputEmitterRef<string>;
-    readonly contentType: _angular_core.Signal<"image" | "video" | "audio" | "markdown" | "html" | "xml" | "text" | "pdf" | "pdfRendition" | "preview" | "none">;
+    readonly contentType: _angular_core.Signal<"audio" | "html" | "image" | "markdown" | "none" | "pdf" | "pdfRendition" | "preview" | "text" | "video" | "xml">;
     readonly showARenderViewer: _angular_core.Signal<boolean>;
     readonly showImageToolbar: _angular_core.Signal<boolean>;
     readonly showVideoStoryboard: _angular_core.Signal<boolean>;
@@ -1953,7 +1978,7 @@ class DocumentViewerComponent {
     }[]>;
     readonly zoom: _angular_core.WritableSignal<number>;
     readonly rotation: _angular_core.WritableSignal<number>;
-    readonly fitMode: _angular_core.WritableSignal<"width" | "real">;
+    readonly fitMode: _angular_core.WritableSignal<"real" | "width">;
     readonly transform: _angular_core.Signal<string>;
     readonly videoRef: _angular_core.Signal<ElementRef<HTMLVideoElement> | undefined>;
     zoomIn(): void;
@@ -2040,7 +2065,7 @@ interface ExportDialogData {
     exportFn: (type: ExportType, uid: string) => rxjs.Observable<Blob>;
     }
 }
-type ExportType = 'thumbnail' | 'pdf' | 'zip' | 'xml';
+type ExportType = 'pdf' | 'thumbnail' | 'xml' | 'zip';
 interface IptcData {
     copyright?: string;
     rights?: string;
@@ -2159,6 +2184,7 @@ interface StoryboardItem {
     label: string;
     }
 }
+type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
 class UiComponent {
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<UiComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<UiComponent, "lib-ui", never, {}, {}, never, never, true, never>;
@@ -2194,7 +2220,9 @@ class WidgetGridComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<WidgetGridComponent, "lib-widget-grid", never, { "columns": { "alias": "columns"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
     }
 }
+function observeStripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): MutationObserver | null;
 function openDocumentCompareDialog(dialog: MatDialog, items: DocumentCompareDialogData['items']): void;
-function trashDocumentConfirmData(title: string): ConfirmDialogData;
-function trashSelectedDocumentsConfirmData(count: number): ConfirmDialogData;
+function stripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): void;
+function trashDocumentConfirmData(title: string, translate: TranslateFn): ConfirmDialogData;
+function trashSelectedDocumentsConfirmData(count: number, translate: TranslateFn): ConfirmDialogData;
 ```
