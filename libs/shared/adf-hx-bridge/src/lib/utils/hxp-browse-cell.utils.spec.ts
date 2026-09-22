@@ -68,7 +68,12 @@ describe('hxpBrowseCellValue', () => {
     // reads whatever locale the machine running the test has. That agrees with the old hardcoded
     // implementation on a US CI box and disagrees anywhere else, so it could neither catch the bug
     // nor survive a move.
-    const modified = doc({ sys_modified: '2026-02-03T10:00:00.000Z' });
+    //
+    // LOCAL-time midday fixture, no `Z`: this column renders a modification timestamp as an
+    // instant in the host zone, which is right for that column, so a UTC fixture would make the
+    // assertion depend on the host offset rather than on the locale. `2026-02-03T10:00:00.000Z`
+    // asserting `3.2.2026` passes in Europe and fails in `Pacific/Kiritimati` (+14) as `4.2.2026`.
+    const modified = doc({ sys_modified: '2026-02-03T12:00:00' });
     expect(hxpBrowseCellValue(modified, 'modified', 'de-DE')).toBe('3.2.2026');
     expect(hxpBrowseCellValue(modified, 'modified', 'en-US')).toBe('2/3/2026');
   });
