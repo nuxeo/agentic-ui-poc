@@ -25,12 +25,12 @@
       "sCovered": 2250
     },
     "administration": {
-      "lines": 62.08,
-      "statements": 62.08,
+      "lines": 60.39,
+      "statements": 60.39,
       "branches": 64.92,
       "functions": 55.29,
-      "sTotal": 1031,
-      "sCovered": 640
+      "sTotal": 1078,
+      "sCovered": 651
     },
     "assets": {
       "lines": 97.44,
@@ -41,20 +41,20 @@
       "sCovered": 76
     },
     "browse": {
-      "lines": 99.02,
-      "statements": 99.02,
-      "branches": 92.94,
-      "functions": 98.96,
-      "sTotal": 3072,
-      "sCovered": 3042
+      "lines": 98.75,
+      "statements": 98.75,
+      "branches": 92.52,
+      "functions": 98.95,
+      "sTotal": 3291,
+      "sCovered": 3250
     },
     "collections": {
-      "lines": 94.96,
-      "statements": 94.96,
-      "branches": 86.67,
-      "functions": 93.33,
-      "sTotal": 695,
-      "sCovered": 660
+      "lines": 94.73,
+      "statements": 94.73,
+      "branches": 86.24,
+      "functions": 93.22,
+      "sTotal": 683,
+      "sCovered": 647
     },
     "core": {
       "lines": 100,
@@ -65,59 +65,59 @@
       "sCovered": 7
     },
     "document-detail": {
-      "lines": 92.73,
-      "statements": 92.73,
-      "branches": 83.85,
+      "lines": 92.56,
+      "statements": 92.56,
+      "branches": 83.58,
       "functions": 97.83,
-      "sTotal": 4758,
-      "sCovered": 4412
+      "sTotal": 4840,
+      "sCovered": 4480
     },
     "integration-tests": {
-      "lines": 27.75,
-      "statements": 27.75,
+      "lines": 23.92,
+      "statements": 23.92,
       "branches": 98.25,
       "functions": 88.89,
-      "sTotal": 519,
+      "sTotal": 602,
       "sCovered": 144
     },
     "knowledge-discovery": {
-      "lines": 65.68,
-      "statements": 65.68,
-      "branches": 62.18,
+      "lines": 65.03,
+      "statements": 65.03,
+      "branches": 62.03,
       "functions": 69.33,
-      "sTotal": 1043,
-      "sCovered": 685
+      "sTotal": 1081,
+      "sCovered": 703
     },
     "nuxeo-client": {
-      "lines": 94.31,
-      "statements": 94.31,
-      "branches": 83.16,
-      "functions": 96.16,
-      "sTotal": 4111,
-      "sCovered": 3877
+      "lines": 90.3,
+      "statements": 90.3,
+      "branches": 83.82,
+      "functions": 92.34,
+      "sTotal": 4834,
+      "sCovered": 4365
     },
     "permission-dialogs": {
-      "lines": 93.85,
-      "statements": 93.85,
+      "lines": 93.7,
+      "statements": 93.7,
       "branches": 61.73,
       "functions": 84.38,
-      "sTotal": 439,
-      "sCovered": 412
+      "sTotal": 476,
+      "sCovered": 446
     },
     "search": {
-      "lines": 94.56,
-      "statements": 94.56,
+      "lines": 93.41,
+      "statements": 93.41,
       "branches": 82.76,
       "functions": 90.28,
-      "sTotal": 974,
-      "sCovered": 921
+      "sTotal": 1016,
+      "sCovered": 949
     },
     "shared-ai-client": {
-      "lines": 16.51,
-      "statements": 16.51,
+      "lines": 15.98,
+      "statements": 15.98,
       "branches": 84.85,
       "functions": 44.44,
-      "sTotal": 212,
+      "sTotal": 219,
       "sCovered": 35
     },
     "shared-app-config": {
@@ -153,12 +153,12 @@
       "sCovered": 247
     },
     "tasks": {
-      "lines": 43.81,
-      "statements": 43.81,
+      "lines": 43.2,
+      "statements": 43.2,
       "branches": 52.31,
       "functions": 45.76,
-      "sTotal": 687,
-      "sCovered": 301
+      "sTotal": 706,
+      "sCovered": 305
     },
     "testing": {
       "lines": 100,
@@ -169,12 +169,12 @@
       "sCovered": 26
     },
     "ui": {
-      "lines": 97.68,
-      "statements": 97.68,
-      "branches": 96.55,
-      "functions": 88.64,
-      "sTotal": 517,
-      "sCovered": 505
+      "lines": 97.78,
+      "statements": 97.78,
+      "branches": 96.72,
+      "functions": 89.36,
+      "sTotal": 540,
+      "sCovered": 528
     }
   }
 }
