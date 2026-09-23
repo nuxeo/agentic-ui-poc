@@ -168,9 +168,9 @@ sat-platform-nav-container.has-selection-topbar {
     font-size 0.15s ease;
 
   &.header-search-label--caption {
-    top: 6px;
-    transform: none;
-    font-size: 11px;
+    top: 6px !important;
+    transform: none !important;
+    font-size: 11px !important;
     opacity: 1;
   }
 }

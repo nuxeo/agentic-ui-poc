@@ -14,6 +14,16 @@ const SEARCH_LABEL_KEY = 'shell.search.placeholder';
 /** Distinct marker so the spec proves the catalogue resolved, not a raw key string. */
 const SEARCH_LABEL_MARKER = '⟪NXENG-798-visible-search-label⟫';
 
+/** Mirrors `apps/nuxeo-ui/src/styles.scss` + `app-shell.component.scss` caption rules for Karma. */
+const CAPTION_LABEL_STYLES = `
+  .header-search-label.header-search-label--caption {
+    top: 6px !important;
+    transform: none !important;
+    font-size: 11px !important;
+  }
+`;
+const CAPTION_LABEL_STYLE_ID = 'nxeng-798-caption-spec-styles';
+
 const authMock = {
   isAuthenticated: signal(true),
   username: signal('test.user'),
@@ -28,6 +38,13 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    if (!document.getElementById(CAPTION_LABEL_STYLE_ID)) {
+      const style = document.createElement('style');
+      style.id = CAPTION_LABEL_STYLE_ID;
+      style.textContent = CAPTION_LABEL_STYLES;
+      document.head.appendChild(style);
+    }
+
     await TestBed.configureTestingModule({
       imports: [AppShellComponent],
       providers: [...appConfig.providers, provideHttpClientTesting()],
@@ -48,6 +65,7 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     };
     http.match(() => true).forEach((request) => request.flush(emptyDocumentList));
     http.verify();
+    document.getElementById(CAPTION_LABEL_STYLE_ID)?.remove();
   });
 
   /**
@@ -122,11 +140,14 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     const label = fixture.nativeElement.querySelector(
       `label[for="${GLOBAL_HEADER_SEARCH_INPUT_ID}"].header-search-label`,
     ) as HTMLLabelElement;
+    const wrap = fixture.nativeElement.querySelector('.header-search-input-wrap') as HTMLElement;
 
     fixture.componentInstance.onGlobalSearchInput('reports');
     fixture.detectChanges();
 
-    const wrap = fixture.nativeElement.querySelector('.header-search-input-wrap') as HTMLElement;
+    expect(fixture.componentInstance.globalSearchTerm())
+      .withContext('filled-state styling is driven from globalSearchTerm')
+      .toBe('reports');
     expect(wrap.classList.contains('header-search-filled'))
       .withContext('filled state must drive persistent-label styling')
       .toBe(true);
@@ -138,16 +159,17 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     const filledLabel = fixture.nativeElement.querySelector(
       `label[for="${GLOBAL_HEADER_SEARCH_INPUT_ID}"].header-search-label`,
     ) as HTMLLabelElement;
-    const filledLabelStyle = getComputedStyle(filledLabel);
-    expect(Number.parseFloat(filledLabelStyle.opacity))
-      .withContext('label must stay painted while a query is entered')
-      .toBeGreaterThan(0);
     expect(filledLabel.classList.contains('header-search-label--caption'))
       .withContext('filled state must apply the caption label class')
       .toBe(true);
     expect(filledLabel.textContent!.trim())
       .withContext('caption must keep the catalogue string visible while a query is entered')
       .toBe(SEARCH_LABEL_MARKER);
+
+    const filledLabelStyle = getComputedStyle(filledLabel);
+    expect(Number.parseFloat(filledLabelStyle.opacity))
+      .withContext('label must stay painted while a query is entered')
+      .toBeGreaterThan(0);
 
     fixture.componentInstance.onGlobalSearchInput('');
     fixture.detectChanges();
@@ -156,5 +178,21 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     expect(wrap.classList.contains('header-search-filled'))
       .withContext('cleared field must leave the empty-state styling')
       .toBe(false);
+  });
+
+  it('applies the 11px caption layout when header-search-label--caption is present', () => {
+    const probe = document.createElement('label');
+    probe.className = 'header-search-label header-search-label--caption';
+    document.body.appendChild(probe);
+    try {
+      expect(Number.parseFloat(getComputedStyle(probe).fontSize))
+        .withContext('styles.scss caption rules must shrink the modifier class')
+        .toBe(11);
+      expect(getComputedStyle(probe).transform)
+        .withContext('caption rules must drop the centered overlay translate')
+        .toBe('none');
+    } finally {
+      probe.remove();
+    }
   });
 });
