@@ -23,6 +23,12 @@ export function isHxRootDocument(document: { sys_id?: string; sys_primaryType?: 
   return document.sys_id === ROOT_DOCUMENT.sys_id || document.sys_primaryType === SYS_ROOT;
 }
 
+/**
+ * Set on tree children by the `QUERY` port: `false` when a folder holds no folder the tree would
+ * list. Absent means unknown, and the folder keeps its expand arrow.
+ */
+export const HXP_HAS_SUBFOLDERS = 'hxp_hasSubfolders';
+
 export function isHxFolderDocument(document: { sys_isFolderish?: boolean }): boolean {
   return document.sys_isFolderish === true;
 }

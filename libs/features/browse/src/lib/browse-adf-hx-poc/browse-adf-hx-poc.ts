@@ -519,14 +519,6 @@ export class BrowseAdfHxPocComponent {
       this.loadFolder(path);
     });
 
-    effect(() => {
-      const refreshTick = this.adfHxBrowseContext.treeRefreshTick();
-      if (refreshTick === 0) {
-        return;
-      }
-      this.loadFolder(this.browsePath());
-    });
-
     // Trash loads once its tab is open and the folder has finished loading, so opening the tab
     // mid-navigation waits for the new folder instead of reading the previous one or none.
     effect(() => {

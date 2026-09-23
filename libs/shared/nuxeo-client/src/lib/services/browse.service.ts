@@ -320,6 +320,38 @@ export class BrowseService {
   }
 
   /**
+   * Which of these folders contain at least one folder the browse tree would list.
+   *
+   * One query for a whole tree level, matching the `tree_children` page provider's own filter, so
+   * a tree can drop the expand arrow from folders that hold only files. `null` when the answer is
+   * incomplete — more matches than one page — so a caller keeps the arrow rather than hiding a
+   * branch that exists.
+   */
+  getFolderIdsWithSubfolders(
+    parentUids: readonly string[],
+  ): Observable<ReadonlySet<string> | null> {
+    if (parentUids.length === 0) {
+      return of(new Set<string>());
+    }
+    const ids = parentUids.map((uid) => `'${escapeNxqlLiteral(uid)}'`).join(', ');
+    const query =
+      `SELECT * FROM Document WHERE ecm:parentId IN (${ids}) ` +
+      `AND ecm:mixinType = 'Folderish' AND ecm:mixinType != 'HiddenInNavigation' ` +
+      `AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0`;
+    return this.api
+      .nxqlSearch(query, BrowseService.SUBFOLDER_PROBE_PAGE_SIZE, { properties: 'dublincore' })
+      .pipe(
+        map((list) =>
+          (list as { isNextPageAvailable?: boolean }).isNextPageAvailable
+            ? null
+            : new Set((list.entries ?? []).map((doc) => doc.parentRef ?? '').filter(Boolean)),
+        ),
+      );
+  }
+
+  private static readonly SUBFOLDER_PROBE_PAGE_SIZE = 1000;
+
+  /**
    * Filters a page of children and keeps its counts consistent with what is kept.
    *
    * Nuxeo's `totalSize` and `resultsCount` count every child, so passing them through beside a

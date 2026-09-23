@@ -8,7 +8,11 @@ import {
   NuxeoApiBase,
   type NuxeoDocumentList,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import { DEFAULT_REPOSITORY_ID, isHxRootDocument } from '../tokens/adf-hx-bridge.tokens';
+import {
+  DEFAULT_REPOSITORY_ID,
+  HXP_HAS_SUBFOLDERS,
+  isHxRootDocument,
+} from '../tokens/adf-hx-bridge.tokens';
 import { mapNuxeoDocumentsToHx } from '../mapping/nuxeo-to-hx-document.mapper';
 import { mapNuxeoVersionsToHx } from '../mapping/nuxeo-to-hx-version.mapper';
 
@@ -322,13 +326,48 @@ export class NuxeoQueryApi {
     if (isHxRootDocument({ sys_id: parentId })) {
       const bootstrap = await firstValueFrom(this.browse.getNavTreeBootstrap(limit));
       const documents = mapNuxeoDocumentsToHx(bootstrap.entries, repositoryId);
-      return this.sliceQueryResult(documents, limit, offset);
+      return this.withSubfolderFlags(this.sliceQueryResult(documents, limit, offset));
     }
 
     const parent = await firstValueFrom(this.documentDetail.getFullDocument(parentId));
     const children = await firstValueFrom(this.browse.getNavTreeChildren(parent, limit));
     const documents = mapNuxeoDocumentsToHx(children.entries ?? [], repositoryId);
-    return this.sliceQueryResult(documents, limit, offset);
+    return this.withSubfolderFlags(this.sliceQueryResult(documents, limit, offset));
+  }
+
+  /**
+   * Marks which tree children hold folders of their own, so the tree can drop the expand arrow
+   * from a folder that holds only files — upstream's tree treats every folder as expandable.
+   *
+   * A failed or incomplete probe leaves the children unmarked: an arrow that expands to nothing
+   * is a smaller defect than a branch the user cannot open.
+   */
+  private async withSubfolderFlags(
+    result: AxiosLikeResponse<QueryResult>,
+  ): Promise<AxiosLikeResponse<QueryResult>> {
+    const documents = result.data.documents ?? [];
+    const folderIds = documents
+      .filter((doc) => doc.sys_isFolderish && doc.sys_id)
+      .map((doc) => doc.sys_id as string);
+    if (folderIds.length === 0) {
+      return result;
+    }
+    const withSubfolders = await firstValueFrom(
+      this.browse.getFolderIdsWithSubfolders(folderIds),
+    ).catch(() => null);
+    if (!withSubfolders) {
+      return result;
+    }
+    return {
+      data: {
+        ...result.data,
+        documents: documents.map((doc) =>
+          doc.sys_isFolderish && doc.sys_id
+            ? { ...doc, [HXP_HAS_SUBFOLDERS]: withSubfolders.has(doc.sys_id) }
+            : doc,
+        ),
+      },
+    };
   }
 
   /**

@@ -590,6 +590,31 @@ into upstream's markup with `::ng-deep`.
 
 **Ask:** use `overflow-y: auto`, and leave the table's height to the host.
 
+### 4.9 `HxpDocumentTreeComponent` cannot reload, re-root or show a leaf folder as a leaf
+
+**Package:** `@alfresco/adf-hx-content-services@7.20.0-automate.292`
+**Symbols:** `HxpDocumentTreeComponent`, `DocumentTreeDatabaseService`
+
+Three gaps, each of which a host has to work around:
+
+1. **`rootDocument` is read once, in `ngOnInit`, and there is no reload.** A host that scopes the
+   tree to the selected domain, or offers a Refresh button, must destroy and re-create the
+   component.
+2. **`[documents]` expansion stops at the first ancestor it cannot find.** `openNodes` walks the
+   ancestor chain from the repository root, so a tree rooted at a domain never opens below it.
+3. **Every folder is expandable.** `isExpandable(child)` returns `isFolder(child)` — its own
+   comment says it should check for children — so a folder holding only files shows an arrow
+   that expands to nothing. The tree also omits the toggle on a non-expandable node instead of
+   keeping its space, so a leaf is misaligned against its siblings. `DocumentTreeDatabaseService`
+   is provided by the component itself, so a host cannot substitute a better one.
+
+**Our mitigation.** W18 in `docs/adf-hx-workarounds.md`: the drawer re-creates the tree on a
+key, opens the branch from the tree's own root, and replaces `isExpandable` on the tree's
+instance, honouring a subfolder flag our `QUERY` port sets from one NXQL probe per level.
+
+**Ask:** a `reload()` method or a reactive `rootDocument`; expand from the tree's root rather than
+the repository's; and either an `isExpandable` input or a data-source injection token.
+
 ---
 
 ## What we would most like fixed, in order

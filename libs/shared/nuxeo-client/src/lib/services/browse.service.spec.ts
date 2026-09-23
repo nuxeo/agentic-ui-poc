@@ -420,6 +420,44 @@ describe('BrowseService', () => {
     expect(result.entries).toHaveLength(1);
   });
 
+  describe('getFolderIdsWithSubfolders', () => {
+    it('asks once for every folder, with the tree provider filter, and returns their parents', async () => {
+      const result$ = firstValueFrom(service.getFolderIdsWithSubfolders(['a', "o'b"]));
+      const req = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/search/lang/NXQL/execute');
+      const query = req.request.params.get('query') ?? '';
+      // The id is escaped: an apostrophe in a uid must not end the literal.
+      expect(query).toContain("ecm:parentId IN ('a', 'o\\'b')");
+      expect(query).toContain("ecm:mixinType = 'Folderish'");
+      expect(query).toContain("ecm:mixinType != 'HiddenInNavigation'");
+      expect(query).toContain('ecm:isTrashed = 0');
+      req.flush({ entries: [{ uid: 'x', parentRef: 'a' }], isNextPageAvailable: false });
+
+      expect([...((await result$) ?? [])]).toEqual(['a']);
+    });
+
+    it('answers unknown rather than "none" when there are more matches than one page', async () => {
+      const result$ = firstValueFrom(service.getFolderIdsWithSubfolders(['a', 'b']));
+      httpMock
+        .expectOne((r) => r.url === '/nuxeo/api/v1/search/lang/NXQL/execute')
+        .flush({ entries: [{ uid: 'x', parentRef: 'a' }], isNextPageAvailable: true });
+
+      expect(await result$).toBeNull();
+    });
+
+    it('makes no request for an empty level', async () => {
+      expect((await firstValueFrom(service.getFolderIdsWithSubfolders([])))?.size).toBe(0);
+      httpMock.expectNone(() => true);
+    });
+
+    it('propagates a failed probe', async () => {
+      const result$ = firstValueFrom(service.getFolderIdsWithSubfolders(['a']));
+      httpMock
+        .expectOne((r) => r.url === '/nuxeo/api/v1/search/lang/NXQL/execute')
+        .flush({}, { status: 500, statusText: 'Server Error' });
+      await expect(result$).rejects.toBeDefined();
+    });
+  });
+
   describe('a domain listing, which keeps only folders', () => {
     const domain = {
       uid: 'dom-uid',
