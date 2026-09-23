@@ -14,6 +14,8 @@ describe('TaskListComponent', () => {
   let fixture: ComponentFixture<TaskListComponent>;
   let mockTaskService: { getUserTasks: ReturnType<typeof vi.fn> };
   let mockRouter: { navigate: ReturnType<typeof vi.fn> };
+  /** Who is signed in, read through `CURRENT_USERNAME` on each call so a test can change it. */
+  let currentUsername: string | null;
 
   /**
    * A complete `NuxeoTask`.
@@ -67,13 +69,17 @@ describe('TaskListComponent', () => {
       navigate: vi.fn(),
     };
 
+    currentUsername = 'testuser';
+
     await TestBed.configureTestingModule({
       imports: [testTranslateModule(), TaskListComponent],
       providers: [
         provideZonelessChangeDetection(),
         { provide: TaskService, useValue: mockTaskService },
         { provide: Router, useValue: mockRouter },
-        { provide: CURRENT_USERNAME, useValue: () => 'testuser' },
+        // Reads the mutable `currentUsername` on every call rather than closing over a fixed value,
+        // so a test can change who is signed in without rebuilding the TestBed.
+        { provide: CURRENT_USERNAME, useValue: () => currentUsername },
       ],
     }).compileComponents();
 
@@ -95,19 +101,15 @@ describe('TaskListComponent', () => {
   });
 
   it('uses Administrator as default when currentUsername is null', () => {
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({
-      imports: [testTranslateModule(), TaskListComponent],
-      providers: [
-        provideZonelessChangeDetection(),
-        { provide: TaskService, useValue: mockTaskService },
-        { provide: Router, useValue: mockRouter },
-        { provide: CURRENT_USERNAME, useValue: () => null },
-      ],
-    });
+    // No `TestBed.resetTestingModule()` here. Resetting discards the compilation the outer
+    // `beforeEach` awaited, and `TaskListComponent` has an external `templateUrl`, so the
+    // replacement module has to be compiled again before `createComponent` — a synchronous
+    // `configureTestingModule` followed by `createComponent` relies on a cached compilation and can
+    // fail with "Please call TestBed.compileComponents()". Flipping the mutable username instead
+    // needs no second module at all.
+    currentUsername = null;
 
-    const newFixture = TestBed.createComponent(TaskListComponent);
-    newFixture.detectChanges();
+    fixture.detectChanges();
 
     expect(mockTaskService.getUserTasks).toHaveBeenCalledWith('Administrator', 50);
   });
