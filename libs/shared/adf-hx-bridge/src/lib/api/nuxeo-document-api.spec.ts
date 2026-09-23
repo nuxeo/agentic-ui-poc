@@ -1,7 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
-import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { NuxeoDocumentApi, ROOT_DOCUMENT as ROOT_DOCUMENT_FROM_PORT } from './nuxeo-document-api';
 import { NuxeoAclService } from '../services/nuxeo-acl.service';
 import { NuxeoPrincipalResolver } from '../services/nuxeo-principal-resolver.service';
@@ -107,7 +106,9 @@ describe('NuxeoDocumentApi', () => {
     const req = httpMock.expectOne(
       (r) => r.url === '/nuxeo/api/v1/path/default-domain/workspaces/ws',
     );
-    req.flush(nuxeoDocument({ uid: 'ws-1', type: 'Workspace', path: '/default-domain/workspaces/ws' }));
+    req.flush(
+      nuxeoDocument({ uid: 'ws-1', type: 'Workspace', path: '/default-domain/workspaces/ws' }),
+    );
 
     expect((await pending).data.sys_id).toBe('ws-1');
   });
@@ -279,7 +280,9 @@ describe('NuxeoDocumentApi', () => {
     // A single trip to read the document, then nothing: `/` has no ancestors, and the loop
     // starts at `i = 1` so a one-segment path yields none either.
     const pending = api.getDocumentAncestors('doc-1');
-    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDocument({ path: '/' }));
+    httpMock
+      .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
+      .flush(nuxeoDocument({ path: '/' }));
     await settle();
 
     expect((await pending).data.ancestors).toEqual([]);
@@ -311,10 +314,14 @@ describe('NuxeoDocumentApi', () => {
       .flush({ message: 'no' }, { status: 403, statusText: 'Forbidden' });
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain/workspaces')
-      .flush(nuxeoDocument({ uid: 'anc-1', type: 'Workspace', path: '/default-domain/workspaces' }));
+      .flush(
+        nuxeoDocument({ uid: 'anc-1', type: 'Workspace', path: '/default-domain/workspaces' }),
+      );
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain/workspaces/ws')
-      .flush(nuxeoDocument({ uid: 'anc-2', type: 'Workspace', path: '/default-domain/workspaces/ws' }));
+      .flush(
+        nuxeoDocument({ uid: 'anc-2', type: 'Workspace', path: '/default-domain/workspaces/ws' }),
+      );
 
     await expect(pending).rejects.toBeDefined();
   });

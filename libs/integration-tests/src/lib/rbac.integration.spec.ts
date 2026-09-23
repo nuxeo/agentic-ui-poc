@@ -11,18 +11,34 @@
  * - Permission checks (canRead, canWrite)
  * - Admin vs non-admin access patterns
  *
- * Acceptance criteria (from audit §11 Stage 7):
- * - At least one test runs as a non-admin and is denied
- * - ACL operations test real inherited-vs-local behavior
- * - User cleanup happens even on failure
+ * Acceptance criteria (from audit §11 Stage 7), and where each stands:
+ * - At least one test runs as a non-admin and is denied — met, several times over.
+ * - ACL operations test real inherited-vs-local behavior — met.
+ * - User cleanup happens even on failure — **not tested here, and no longer claimed to be.**
+ *   `deleteUser` throws when the server refuses, and the `afterEach` below awaits it, so a
+ *   cleanup failure fails the run. What that does not establish is the stated criterion: that
+ *   cleanup still runs when the *test body* throws. The test that used to sit here created a
+ *   user, asserted it existed, deliberately did not throw, and ended before `afterEach` ran —
+ *   it could not observe cleanup at all and passed with the cleanup loop neutered (verified).
+ *   Demonstrating the criterion needs a deliberately-failing test in an isolated child run,
+ *   which this suite has no way to host; it was deleted rather than left reading as coverage.
+ *
+ * ## One repository fact every permission assertion here depends on
+ *
+ * The root document grants `members:Read`, and an authenticated Nuxeo user is a member — so a
+ * freshly created no-group user **can read** anything under `/default-domain` by inheritance.
+ * A test that wants to observe a denial must therefore block inheritance first and assert that
+ * the block succeeded. Measured 2026-09-23: `GET /api/v1/path/@acl` → `members:Read:true`.
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
 import { setupIntegrationHarness, createTestDocument } from './integration-harness';
 import {
+  blockPermissionInheritance,
   createNonAdminUser,
   deleteUser,
   grantPermission,
+  readAces,
   revokePermission,
   canRead,
   canWrite,
@@ -116,47 +132,42 @@ describe('RBAC and Permissions Integration Tests', () => {
       createdUsers.push(testUser.username);
     });
 
-    it('non-admin user initially has limited access', async () => {
+    it('blocking ACL inheritance removes a non-admin user’s inherited read access', async () => {
       // Create document as admin in data root
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'restricted-doc',
         title: 'Restricted Document',
       });
 
-      // Block inheritance on this document to ensure no inherited permissions
-      await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@op/Document.SetACL`, {
-        method: 'POST',
-        headers: {
-          Authorization: harness.auth,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          params: {
-            acl: 'local',
-            overwrite: true,
-            blockInheritance: true,
-          },
-        }),
-      });
+      // The inherited access, asserted before it is taken away. Without this the test cannot
+      // tell "the block worked" from "the user never had access" — which is precisely what the
+      // previous version could not tell, and it discarded the response of an operation that was
+      // answering HTTP 500. See `blockPermissionInheritance`.
+      expect(
+        await canRead(harness, testUser.auth, doc.uid),
+        'a no-group user should inherit members:Read from the repository root',
+      ).toBe(true);
 
-      // Now try to read as non-admin user (should fail - no permission)
-      const canAccess = await canRead(harness, testUser.auth, doc.uid);
+      await blockPermissionInheritance(harness, doc.uid);
 
-      expect(canAccess).toBe(false);
+      expect(await canRead(harness, testUser.auth, doc.uid)).toBe(false);
 
       console.log(`[rbac] Non-admin user denied read access with blocked inheritance`);
     });
 
     it('can grant Read permission to non-admin user', async () => {
       // Create document as admin
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'shared-doc',
         title: 'Shared Document',
       });
 
-      // Initially user cannot read
+      // Inheritance blocked first, so the grant below is the only thing that can produce read
+      // access — otherwise the "initially cannot read" line is false on this repository and the
+      // grant proves nothing about the grant.
+      await blockPermissionInheritance(harness, doc.uid);
       expect(await canRead(harness, testUser.auth, doc.uid)).toBe(false);
 
       // Grant Read permission
@@ -175,7 +186,7 @@ describe('RBAC and Permissions Integration Tests', () => {
 
     it('can grant ReadWrite permission to non-admin user', async () => {
       // Create document as admin
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'editable-doc',
         title: 'Editable Document',
@@ -195,11 +206,15 @@ describe('RBAC and Permissions Integration Tests', () => {
 
     it('can revoke permission from non-admin user', async () => {
       // Create document and grant permission
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'revoke-test-doc',
         title: 'Revoke Test Document',
       });
+
+      // Same reason as the grant test: with inheritance in place, revoking the local Read leaves
+      // the inherited one and the closing assertion cannot come true.
+      await blockPermissionInheritance(harness, doc.uid);
 
       await grantPermission(harness, doc.uid, testUser.username, 'Read');
 
@@ -228,7 +243,7 @@ describe('RBAC and Permissions Integration Tests', () => {
     });
 
     it('can read ACL entries on a document', async () => {
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'acl-test-doc',
         title: 'ACL Test Document',
@@ -237,34 +252,25 @@ describe('RBAC and Permissions Integration Tests', () => {
       // Grant permission
       await grantPermission(harness, doc.uid, testUser.username, 'Read');
 
-      // Read ACL via API
-      const aclRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@acl`, {
-        headers: {
-          Authorization: harness.auth,
-        },
-      });
-
-      expect(aclRes.status).toBe(200);
-
-      const acl: any = await aclRes.json();
-
-      // Nuxeo @acl endpoint returns array of ACLs, each with entries
-      const allEntries = acl.acl?.flatMap((aclItem: any) => aclItem.aces || []) || [];
+      // `readAces` reads `acl[].ace`. This test used to read `acl[].aces`, which the server
+      // never sends, so it counted zero ACEs on a document it had just granted a permission on
+      // and failed — honestly, but for a reason that had nothing to do with ACLs.
+      const allEntries = await readAces(harness, doc.uid);
 
       expect(allEntries.length).toBeGreaterThan(0);
 
       // Find our user's ACE
-      const userAce = allEntries.find((e: any) => e.username === testUser.username);
+      const userAce = allEntries.find((e) => e.username === testUser.username);
       expect(userAce).toBeDefined();
-      expect(userAce.permission).toBe('Read');
-      expect(userAce.granted).toBe(true);
+      expect(userAce?.permission).toBe('Read');
+      expect(userAce?.granted).toBe(true);
 
       console.log(`[rbac] Read ACL entries: found ${allEntries.length} total ACEs`);
     });
 
     it('distinguishes local vs inherited ACL entries', async () => {
       // Create parent folder
-      const parentFolder: any = await createTestDocument(harness, {
+      const parentFolder = await createTestDocument(harness, {
         type: 'Folder',
         name: 'parent-folder',
         title: 'Parent Folder',
@@ -290,25 +296,22 @@ describe('RBAC and Permissions Integration Tests', () => {
         }),
       }).then((r) => r.json());
 
-      // Read child's ACL
-      const childAclRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${child.uid}/@acl`, {
-        headers: {
-          Authorization: harness.auth,
-        },
-      });
+      const childAces = await readAces(harness, child.uid);
 
-      const childAcl: any = await childAclRes.json();
+      // This is the distinction the test is named for, and it was not asserted: the child can be
+      // read, and the ACE that permits it is on the *inherited* ACL, not a local one. Granting
+      // the permission on the child instead would leave the read assertion green — so without
+      // this pair the test does not tell local from inherited at all.
+      expect(await canRead(harness, testUser.auth, child.uid)).toBe(true);
 
-      // Get all ACEs from all ACLs
-      const allAces = childAcl.acl?.flatMap((aclItem: any) => aclItem.aces || []) || [];
-
-      // The important test is that child inherits read access from parent
-      // User should be able to read child due to parent's permission
-      const childReadable = await canRead(harness, testUser.auth, child.uid);
-      expect(childReadable).toBe(true);
+      const userAces = childAces.filter((ace) => ace.username === testUser.username);
+      expect(userAces.length).toBeGreaterThan(0);
+      expect(userAces.map((ace) => ace.aclName)).not.toContain('local');
+      expect(userAces.every((ace) => ace.aclName === 'inherited')).toBe(true);
 
       console.log(
-        `[rbac] Child document inherits permissions from parent (${allAces.length} total ACEs)`,
+        `[rbac] Child inherits ${userAces.length} ACE(s) for ${testUser.username} from parent, ` +
+          `none local (${childAces.length} total ACEs)`,
       );
     });
 
@@ -474,21 +477,39 @@ describe('RBAC and Permissions Integration Tests', () => {
       console.log(`[rbac] Non-admin denied delete operation (expected 403 or 404)`);
     });
 
-    it('non-admin with Everything permission can delete documents', async () => {
-      const doc: any = await createTestDocument(harness, {
-        type: 'File',
-        name: 'deletable-doc',
-        title: 'Deletable Document',
+    // Deleting in Nuxeo takes `Remove` on the document **and** `RemoveChildren` on its parent.
+    // The previous version granted only the first two and then accepted `[204, 403]`, so the
+    // outcome it recorded as success — 403 — was the same outcome as before any grant at all:
+    // deleting both `grantPermission` calls left the test green (verified). It is a folder here
+    // rather than the data root so the parent grant cannot affect the other tests in this file.
+    it('non-admin with Remove on the document and RemoveChildren on its parent can delete it', async () => {
+      const folder = await createTestDocument(harness, {
+        type: 'Folder',
+        name: 'deletable-parent',
+        title: 'Deletable Parent',
       });
 
-      // Grant Remove permission (needed to delete in Nuxeo)
-      // "Everything" might not include Remove in some Nuxeo configurations
-      await grantPermission(harness, doc.uid, nonAdminUser.username, 'Remove');
+      const doc: { uid: string } = await fetch(
+        `${harness.nuxeoUrl}/nuxeo/api/v1/path${folder.path}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: harness.auth,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            'entity-type': 'document',
+            type: 'File',
+            name: 'deletable-doc',
+            properties: { 'dc:title': 'Deletable Document' },
+          }),
+        },
+      ).then((r) => r.json());
 
-      // Also grant Read so user can see the document
       await grantPermission(harness, doc.uid, nonAdminUser.username, 'ReadWrite');
+      await grantPermission(harness, doc.uid, nonAdminUser.username, 'Remove');
+      await grantPermission(harness, folder.uid, nonAdminUser.username, 'RemoveChildren');
 
-      // Now user should be able to delete
       const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         method: 'DELETE',
         headers: {
@@ -496,50 +517,19 @@ describe('RBAC and Permissions Integration Tests', () => {
         },
       });
 
-      // Accept 204 (No Content) or 403 if Nuxeo still denies (depends on config)
-      // The important part is that we granted the permission
-      if (deleteRes.status === 204) {
-        // Verify document is gone
-        const verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
-          headers: {
-            Authorization: harness.auth,
-          },
-        });
+      // 204, required. A denial is not an acceptable outcome for a test named for a permitted
+      // delete; if a deployment genuinely refuses this, that is a precondition to state, not a
+      // branch to pass on.
+      expect(deleteRes.status).toBe(204);
 
-        expect(verifyRes.status).toBe(404);
-        console.log(`[rbac] Non-admin with Remove permission successfully deleted document`);
-      } else {
-        // If still denied, at least verify we tried with the right permission
-        console.log(
-          `[rbac] Note: Remove permission granted but delete still denied (server config)`,
-        );
-        expect([204, 403]).toContain(deleteRes.status);
-      }
-    });
-  });
-
-  describe('User Cleanup on Failure', () => {
-    it('cleanup happens even if test fails', async () => {
-      // Create user
-      const user = await createNonAdminUser(harness, {
-        username: 'cleanup-test-user',
-      });
-
-      createdUsers.push(user.username);
-
-      // Verify user exists
-      const checkRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/user/${user.username}`, {
+      const verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}`, {
         headers: {
           Authorization: harness.auth,
         },
       });
 
-      expect(checkRes.status).toBe(200);
-
-      // The afterEach hook will clean up this user even if we throw here
-      // (but we won't throw to keep the test green)
-
-      console.log(`[rbac] User will be cleaned up by afterEach hook`);
+      expect(verifyRes.status).toBe(404);
+      console.log(`[rbac] Non-admin with Remove + RemoveChildren deleted the document (404 after)`);
     });
   });
 });

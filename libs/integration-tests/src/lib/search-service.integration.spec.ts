@@ -6,32 +6,130 @@
  * OpenSearch. The highest-risk gap per audit §6.1, §7.2.
  *
  * Tests:
- * - NXQL/HXQL query generation (including injection cases from hxql-literal.ts)
- * - Quick filters, drawer filters
+ * - Fulltext search, quick filters, drawer filters
  * - Sorting, pagination
+ * - Autocomplete suggestions
  * - Saved search CRUD
- * - Error handling (4xx, 5xx)
- * - Empty results, edge cases
+ * - Error handling
  *
- * Acceptance criteria (from audit §11 Stage 5), and where each actually stands:
- * - Every public method exercised against the server — NOT met. `vitest.config.mts` sets
- *   `environment: 'node'`, Angular's `HttpClient` needs `XMLHttpRequest`, and 13 of the 19
- *   tests here fail on the resulting DI poisoning. See the pull request's known issues.
+ * ## Every assertion here is scoped to this run's own documents, deliberately
+ *
+ * Two measured properties of the deployment make an unscoped assertion worthless, and both
+ * were what let ten of these tests pass while proving nothing:
+ *
+ * 1. **The search index on a shared instance is stale.** An unscoped `default_search` query
+ *    reports `resultsCount` in the thousands and returns 0–7 resolvable rows, because the
+ *    index still holds documents other worktrees have deleted. So `expect(items).toBeDefined()`
+ *    and `expect(items.length).toBeGreaterThan(0)` are not the same assertion, and the first
+ *    is satisfied by every broken query there is. Measured 2026-09-23: `sortBy=dc:created`
+ *    `sortOrder=desc` → `resultsCount` 1026, `entries` 0.
+ * 2. **`SearchQueryParams.q` does not filter.** It is sent as the `query` HTTP parameter, and
+ *    `default_search` has no such predicate, so Nuxeo ignores it: `query=Searchable` and no
+ *    query at all both answer `resultsCount` 1026 on the same repository. The page provider's
+ *    fulltext parameter is `ecm_fulltext`, which `SearchQueryParams.ecmFulltext` sets. The
+ *    tests below therefore scope with `ecmFulltext`. **`q` has no integration coverage here
+ *    because there is no server behaviour to cover** — see the pull request; whether `q`
+ *    should map to `ecm_fulltext` is a product decision, not a test fix.
+ *
+ * So `beforeAll` seeds five documents carrying a token unique to this run, waits for each to
+ * be indexed, and every test asserts on *those* documents by UID. A test that can name the
+ * rows it expects is a test that can fail.
+ *
+ * Acceptance criteria (from audit §11 Stage 5), and where each stands:
+ * - Every public method exercised against the server — NOT met. `search`, `suggest`,
+ *   `getUserCollections` and the four saved-search methods are; the rest of the service is not,
+ *   and `q` cannot be (above).
  * - At least one 4xx and one 5xx tested — NOT met. See the note in `Error Handling` below.
  * - Reverting hxql-literal fix turns suite red — met, but **not here**. The guard lives in
  *   `apps/nuxeo-ui-e2e/src/search.spec.ts`, which drives the one page that composes HXQL.
  *   The block that used to stand in for it in this file could not fail; see below.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { SearchService, type SearchResponse } from '@nuxeo-satori/platform/nuxeo-client';
-import { setupIntegrationHarness, createTestDocument } from './integration-harness';
+import {
+  SearchService,
+  type GlobalSearchSuggestion,
+  type SavedSearchOption,
+  type SearchQueryParams,
+  type SearchResponse,
+} from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  setupIntegrationHarness,
+  createTestDocument,
+  waitForIndexed,
+  waitForNxqlMatch,
+  tagDocument,
+} from './integration-harness';
 
 describe('SearchService Integration Tests', () => {
   const harness = setupIntegrationHarness();
   let searchService: SearchService;
+
+  /**
+   * A single fulltext token that matches this run's fixtures and nothing else.
+   *
+   * The dashes come out of the run ID so it stays one analyser token, and the `sfx` prefix
+   * keeps it from colliding with the data-root workspace's own title (`Integration Test
+   * <runId>`), which would otherwise turn up in every fixture query as a sixth row.
+   */
+  const token = `sfx${harness.runId.replace(/[^a-z0-9]/gi, '')}`;
+  const tagLabel = `tag-${token}`;
+
+  /** Created in this order, so `dc:created`/`dc:modified` ordering is known, not assumed. */
+  const titles = ['Alpha', 'Bravo', 'Charlie', 'Delta'] as const;
+  const fileUids: Record<(typeof titles)[number], string> = {
+    Alpha: '',
+    Bravo: '',
+    Charlie: '',
+    Delta: '',
+  };
+  let folderUid = '';
+
+  const fileTitles = titles.map((name) => `${name} ${token}`);
+
+  beforeAll(async () => {
+    for (const name of titles) {
+      const doc = await createTestDocument(harness, {
+        type: 'File',
+        name: `search-fixture-${name.toLowerCase()}`,
+        title: `${name} ${token}`,
+        properties: { 'dc:description': `search fixture ${token}` },
+      });
+      fileUids[name] = doc.uid;
+    }
+
+    // Folderish, so `quickFilters: 'noFolder'` has something to exclude. Without it that
+    // test would compare a set against itself.
+    const folder = await createTestDocument(harness, {
+      type: 'Folder',
+      name: 'search-fixture-folder',
+      title: `Folder ${token}`,
+      properties: { 'dc:description': `search fixture ${token}` },
+    });
+    folderUid = folder.uid;
+
+    for (const uid of [...Object.values(fileUids), folderUid]) {
+      await waitForIndexed(harness, uid);
+    }
+
+    // The tag relation is indexed separately from the document, so `waitForIndexed` returning
+    // is not evidence `ecm_tags` can find it. Established through `ecm:tag` in NXQL — a
+    // different surface from the page provider the test then drives.
+    await tagDocument(harness, fileUids.Delta, tagLabel);
+    await waitForNxqlMatch(
+      harness,
+      `SELECT * FROM Document WHERE ecm:tag = '${tagLabel}'`,
+      fileUids.Delta,
+      `tag '${tagLabel}' searchable`,
+    );
+
+    console.log(
+      `[search-integration] Fixture ready: 4 File(s) + 1 Folder under ${harness.dataRoot}, ` +
+        `token '${token}', tag '${tagLabel}' on ${fileUids.Delta}`,
+    );
+  }, 90000);
 
   // `beforeEach`, not `beforeAll`. The setup file resets the TestBed between tests, so a
   // service injected once was reached through a destroyed injector from the second test
@@ -56,49 +154,25 @@ describe('SearchService Integration Tests', () => {
     searchService = TestBed.inject(SearchService);
   });
 
+  const search = (params: SearchQueryParams): Promise<SearchResponse> =>
+    new Promise<SearchResponse>((resolve, reject) => {
+      searchService.search(params).subscribe({ next: resolve, error: reject });
+    });
+
+  const idsOf = (result: SearchResponse): string[] => result.items.map((item) => item.id);
+
   describe('Basic Search', () => {
-    it('can execute a simple search query', async () => {
-      // Create a test document to search for
-      await createTestDocument(harness, {
-        type: 'File',
-        name: 'search-test-doc',
-        title: 'Searchable Document',
-        properties: {
-          'dc:description': 'This document is for search integration testing',
-        },
-      });
+    it('returns the seeded documents for a fulltext term that matches them', async () => {
+      const result = await search({ ecmFulltext: token, pageSize: 20 });
 
-      // Execute search
-      const result = await new Promise<SearchResponse>((resolve, reject) => {
-        searchService
-          .search({
-            q: 'Searchable',
-            pageSize: 10,
-          })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
-      });
-
-      expect(result).toBeDefined();
-      expect(result).toHaveProperty('items');
-      expect(Array.isArray(result.items)).toBe(true);
-      console.log(`[search-integration] Found ${result.items.length} result(s)`);
+      // The exact set, not "at least one". An extra row means the token is not unique to this
+      // run and every other test in the file is measuring the wrong documents.
+      expect(new Set(idsOf(result))).toEqual(new Set([...Object.values(fileUids), folderUid]));
+      console.log(`[search-integration] Fulltext '${token}' found ${result.items.length} row(s)`);
     });
 
     it('returns empty results for a term that cannot match', async () => {
-      const result: any = await new Promise((resolve, reject) => {
-        searchService
-          .search({
-            q: 'zzz-no-such-document-zzz',
-            pageSize: 10,
-          })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
-      });
+      const result = await search({ ecmFulltext: `${token}-no-such-document`, pageSize: 10 });
 
       expect(result.items).toHaveLength(0);
       console.log('[search-integration] Zero results handled correctly');
@@ -121,193 +195,166 @@ describe('SearchService Integration Tests', () => {
   // identity function.
 
   describe('Filters', () => {
-    it('can apply quick filters', async () => {
-      const result: any = await new Promise((resolve, reject) => {
-        searchService
-          .search({
-            q: '',
-            quickFilters: 'File',
-            pageSize: 10,
-          })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
-      });
+    it('excludes folderish documents when the noFolder quick filter is applied', async () => {
+      // `quickFilters: 'File'` is what this test used to send. `default_search` advertises
+      // exactly three quick filters — `noFolder`, `mostRecent`, `onlyValidated` — so `'File'`
+      // named nothing and was discarded by the server: measured, `'File'`, `'Picture'` and no
+      // quick filter at all returned byte-identical result sets including a Workspace.
+      const unfiltered = await search({ ecmFulltext: token, pageSize: 20 });
+      expect(idsOf(unfiltered)).toContain(folderUid);
 
-      expect(result).toBeDefined();
-      expect(result.items).toBeDefined();
-      console.log(`[search-integration] Quick filter returned ${result.items.length} result(s)`);
+      const filtered = await search({ ecmFulltext: token, quickFilters: 'noFolder', pageSize: 20 });
+
+      expect(idsOf(filtered)).not.toContain(folderUid);
+      expect(new Set(idsOf(filtered))).toEqual(new Set(Object.values(fileUids)));
+      console.log(
+        `[search-integration] noFolder: ${unfiltered.items.length} row(s) -> ${filtered.items.length}`,
+      );
     });
 
     it('can filter by author', async () => {
-      const result: any = await new Promise((resolve, reject) => {
-        searchService
-          .search({
-            q: '',
-            author: harness.user,
-            pageSize: 10,
-          })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
+      const mine = await search({ ecmFulltext: token, author: harness.user, pageSize: 20 });
+
+      expect(new Set(idsOf(mine))).toEqual(new Set([...Object.values(fileUids), folderUid]));
+      expect(mine.items.map((item) => item.author)).toEqual(
+        mine.items.map(() => harness.user), // every row, not `some`
+      );
+
+      // The negative half is what makes the parameter load-bearing: without it, dropping
+      // `author` entirely leaves the positive half passing, because everything this run
+      // created was created by the same principal.
+      const someoneElse = await search({
+        ecmFulltext: token,
+        author: `no-such-user-${token}`,
+        pageSize: 20,
       });
 
-      expect(result).toBeDefined();
-      expect(result.items).toBeDefined();
-      console.log(`[search-integration] Author filter returned ${result.items.length} result(s)`);
+      expect(someoneElse.items).toHaveLength(0);
+      console.log(
+        `[search-integration] Author '${harness.user}' -> ${mine.items.length} row(s); ` +
+          `unknown author -> ${someoneElse.items.length}`,
+      );
     });
 
     it('can filter by tag', async () => {
-      // `dc:subjects` is bound to the `l10nsubjects` vocabulary, so an arbitrary string is
-      // rejected: `'integration-test'` produced HTTP 422 "is not a valid l10nsubjects id"
-      // and the test failed on document creation, before it reached the filter at all.
-      // `art` is a real entry in that directory on a stock instance.
-      const subject = 'art';
+      // This test used to set `dc:subjects` and then filter by `tag`. Those are different
+      // fields: `tag` sets the `ecm_tags` page-provider parameter, which filters on the tag
+      // *relation*, so the filter was applied to something the fixture never set and the
+      // empty result was indistinguishable from a broken filter. The fixture now applies a
+      // real tag with `Services.TagDocument` — see `tagDocument`.
+      const tagged = await search({ ecmFulltext: token, tag: tagLabel, pageSize: 20 });
 
-      await createTestDocument(harness, {
-        type: 'File',
-        name: 'tagged-doc',
-        title: 'Tagged Document',
-        properties: {
-          'dc:subjects': [subject],
-        },
+      expect(idsOf(tagged)).toEqual([fileUids.Delta]);
+
+      const otherTag = await search({
+        ecmFulltext: token,
+        tag: `no-such-${tagLabel}`,
+        pageSize: 20,
       });
 
-      const result: any = await new Promise((resolve, reject) => {
-        searchService
-          .search({
-            q: '',
-            tag: subject,
-            pageSize: 10,
-          })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
-      });
-
-      expect(result).toBeDefined();
-      expect(result.items).toBeDefined();
-      // May or may not find it depending on index freshness
-      console.log(`[search-integration] Tag filter returned ${result.items.length} result(s)`);
+      expect(otherTag.items).toHaveLength(0);
+      console.log(
+        `[search-integration] Tag '${tagLabel}' -> ${tagged.items.length} row(s); ` +
+          `unknown tag -> ${otherTag.items.length}`,
+      );
     });
   });
 
   describe('Sorting and Pagination', () => {
     it('can sort results by title ascending', async () => {
-      const result: any = await new Promise((resolve, reject) => {
-        searchService
-          .search({
-            q: '',
-            sortBy: 'dc:title',
-            sortOrder: 'asc',
-            pageSize: 5,
-          })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
+      const result = await search({
+        ecmFulltext: token,
+        quickFilters: 'noFolder',
+        sortBy: 'dc:title',
+        sortOrder: 'asc',
+        pageSize: 20,
       });
 
-      expect(result).toBeDefined();
-      expect(result.items).toBeDefined();
-      console.log(`[search-integration] Sorted ${result.items.length} result(s) by title asc`);
+      // Titles, in full, in order. The fixture is created Alpha→Delta, so the default sort
+      // (`dc:created` desc, applied whenever `sortBy` is absent) is the exact reverse of this
+      // — which is what makes dropping the two parameters fail rather than pass.
+      expect(result.items.map((item) => item.title)).toEqual(fileTitles);
+      console.log(`[search-integration] Title asc: ${result.items.map((i) => i.title).join(', ')}`);
     });
 
     it('can sort results by modified date descending', async () => {
-      const result: any = await new Promise((resolve, reject) => {
-        searchService
-          .search({
-            q: '',
-            sortBy: 'dc:modified',
-            sortOrder: 'desc',
-            pageSize: 5,
-          })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
+      const descending = await search({
+        ecmFulltext: token,
+        quickFilters: 'noFolder',
+        sortBy: 'dc:modified',
+        sortOrder: 'desc',
+        pageSize: 20,
+      });
+      const ascending = await search({
+        ecmFulltext: token,
+        quickFilters: 'noFolder',
+        sortBy: 'dc:modified',
+        sortOrder: 'asc',
+        pageSize: 20,
       });
 
-      expect(result).toBeDefined();
-      expect(result.items).toBeDefined();
-      console.log(`[search-integration] Sorted ${result.items.length} result(s) by modified desc`);
+      // `SearchResultItem.modifiedDate` is `lastModified.slice(0, 10)` — a date, not a
+      // timestamp — so four documents created in one run all carry the same value and
+      // "adjacent timestamps are non-increasing" is satisfied by any order at all. The
+      // orderable fact is identity: nothing touches these documents after creation, so
+      // `dc:modified` descending is creation order reversed.
+      expect(idsOf(descending)).toEqual([
+        fileUids.Delta,
+        fileUids.Charlie,
+        fileUids.Bravo,
+        fileUids.Alpha,
+      ]);
+      expect(idsOf(ascending)).toEqual([...idsOf(descending)].reverse());
+      console.log(
+        `[search-integration] Modified desc: ${descending.items.map((i) => i.title).join(', ')}`,
+      );
     });
 
     it('can paginate results', async () => {
-      // Page 0
-      const page0: any = await new Promise((resolve, reject) => {
-        searchService
-          .search({
-            q: '',
-            pageSize: 2,
-            pageIndex: 0,
-          })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
-      });
+      const common = {
+        ecmFulltext: token,
+        quickFilters: 'noFolder',
+        sortBy: 'dc:title',
+        sortOrder: 'asc' as const,
+        pageSize: 2,
+      };
 
-      // Page 1
-      const page1: any = await new Promise((resolve, reject) => {
-        searchService
-          .search({
-            q: '',
-            pageSize: 2,
-            pageIndex: 1,
-          })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
-      });
+      const page0 = await search({ ...common, pageIndex: 0 });
+      const page1 = await search({ ...common, pageIndex: 1 });
 
-      expect(page0.items).toBeDefined();
-      expect(page1.items).toBeDefined();
-
-      // If we have enough documents, pages should differ
-      if (page0.items.length > 0 && page1.items.length > 0) {
-        // Compare first item IDs (they should be different if pagination works)
-        const ids0 = page0.items.map((item: any) => item.id);
-        const ids1 = page1.items.map((item: any) => item.id);
-        const overlap = ids0.filter((id: string) => ids1.includes(id));
-        expect(overlap.length).toBe(0); // Pages should not overlap
-      }
-
+      // Unconditional. The previous version wrapped its only assertion in
+      // `if (page0.items.length > 0 && page1.items.length > 0)`, and both pages were empty on
+      // every run — so the test passed without ever comparing anything. Four fixture files at
+      // `pageSize: 2` guarantee two full pages.
+      expect(idsOf(page0)).toEqual([fileUids.Alpha, fileUids.Bravo]);
+      expect(idsOf(page1)).toEqual([fileUids.Charlie, fileUids.Delta]);
       console.log(
-        `[search-integration] Page 0: ${page0.items.length}, Page 1: ${page1.items.length}`,
+        `[search-integration] Page 0: ${page0.items.length}, Page 1: ${page1.items.length}, no overlap`,
       );
     });
   });
 
   describe('Autocomplete Suggestions', () => {
     it('can get autocomplete suggestions', async () => {
-      await createTestDocument(harness, {
-        type: 'File',
-        name: 'suggestion-test',
-        title: 'Suggestion Test Document',
+      const suggestions = await new Promise<GlobalSearchSuggestion[]>((resolve, reject) => {
+        searchService.suggest(token, 10).subscribe({ next: resolve, error: reject });
       });
 
-      const suggestions: any = await new Promise((resolve, reject) => {
-        searchService.suggest('Suggestion', 5).subscribe({
-          next: resolve,
-          error: reject,
-        });
-      });
-
-      expect(Array.isArray(suggestions)).toBe(true);
-      console.log(`[search-integration] Got ${suggestions.length} suggestion(s)`);
+      // `Search.SuggestersLauncher` answers with `label`, which `mapSuggestion` does not read,
+      // so `displayLabel` falls through to the UID. `documentUid` is the field that carries
+      // the identity, and it is the one worth asserting: a suggester that returned users, or
+      // the wrong documents, or nothing, all fail here.
+      const suggestedUids = suggestions.map((s) => s.documentUid);
+      for (const name of titles) {
+        expect(suggestedUids).toContain(fileUids[name]);
+      }
+      expect(suggestions.every((s) => s.kind === 'document')).toBe(true);
+      console.log(`[search-integration] Got ${suggestions.length} suggestion(s) for '${token}'`);
     });
 
     it('returns empty suggestions for empty query', async () => {
-      const suggestions: any = await new Promise((resolve, reject) => {
-        searchService.suggest('', 5).subscribe({
-          next: resolve,
-          error: reject,
-        });
+      const suggestions = await new Promise<GlobalSearchSuggestion[]>((resolve, reject) => {
+        searchService.suggest('', 5).subscribe({ next: resolve, error: reject });
       });
 
       expect(suggestions).toHaveLength(0);
@@ -317,11 +364,8 @@ describe('SearchService Integration Tests', () => {
 
   describe('Collections', () => {
     it('can get user collections', async () => {
-      const collections: any = await new Promise((resolve, reject) => {
-        searchService.getUserCollections().subscribe({
-          next: resolve,
-          error: reject,
-        });
+      const collections = await new Promise<unknown[]>((resolve, reject) => {
+        searchService.getUserCollections().subscribe({ next: resolve, error: reject });
       });
 
       expect(Array.isArray(collections)).toBe(true);
@@ -332,8 +376,20 @@ describe('SearchService Integration Tests', () => {
   describe('Saved Searches', () => {
     let savedSearchId: string;
 
+    const listSavedSearches = (): Promise<SavedSearchOption[]> =>
+      new Promise((resolve, reject) => {
+        searchService.getSavedSearches().subscribe({ next: resolve, error: reject });
+      });
+
+    const readSavedSearch = (id: string): Promise<Record<string, string>> =>
+      new Promise((resolve, reject) => {
+        searchService.getSavedSearchById(id).subscribe({ next: resolve, error: reject });
+      });
+
     it('can create a saved search', async () => {
-      const created: any = await new Promise((resolve, reject) => {
+      // `saveSavedSearch` is typed `Observable<unknown>`, so the identity of the created
+      // document is narrowed here rather than asserted by the type system.
+      const created = (await new Promise<unknown>((resolve, reject) => {
         searchService
           .saveSavedSearch({
             title: `Integration Test Search ${harness.runId}`,
@@ -347,29 +403,19 @@ describe('SearchService Integration Tests', () => {
               pageSize: '10',
             },
           })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
-      });
+          .subscribe({ next: resolve, error: reject });
+      })) as { uid?: string; id?: string };
 
-      expect(created).toBeDefined();
-      savedSearchId = created.uid ?? created.id;
-      expect(savedSearchId).toBeDefined();
+      savedSearchId = created.uid ?? created.id ?? '';
+      expect(savedSearchId).toBeTruthy();
       console.log(`[search-integration] Created saved search: ${savedSearchId}`);
     });
 
     it('can list saved searches', async () => {
-      const searches: any = await new Promise((resolve, reject) => {
-        searchService.getSavedSearches().subscribe({
-          next: resolve,
-          error: reject,
-        });
-      });
+      const searches = await listSavedSearches();
 
-      expect(Array.isArray(searches)).toBe(true);
-      const ourSearch = searches.find((s: any) => s.title?.includes(harness.runId));
-      expect(ourSearch).toBeDefined();
+      const ourSearch = searches.find((s) => s.title?.includes(harness.runId));
+      expect(ourSearch?.id).toBe(savedSearchId);
       console.log(`[search-integration] Found ${searches.length} saved search(es)`);
     });
 
@@ -382,25 +428,21 @@ describe('SearchService Integration Tests', () => {
     it('can get a saved search by ID', async () => {
       expect(savedSearchId, 'the creating test must have run and succeeded').toBeTruthy();
 
-      const params: any = await new Promise((resolve, reject) => {
-        searchService.getSavedSearchById(savedSearchId).subscribe({
-          next: resolve,
-          error: reject,
-        });
-      });
+      const params = await readSavedSearch(savedSearchId);
 
-      expect(params).toBeDefined();
-      expect(params.ecm_fulltext).toBe('test');
+      expect(params['ecm_fulltext']).toBe('test');
       console.log(`[search-integration] Retrieved saved search params: ${JSON.stringify(params)}`);
     });
 
     it('can update a saved search', async () => {
       expect(savedSearchId, 'the creating test must have run and succeeded').toBeTruthy();
 
-      const updated: any = await new Promise((resolve, reject) => {
+      const updatedTitle = `Updated Test Search ${harness.runId}`;
+
+      await new Promise((resolve, reject) => {
         searchService
           .updateSavedSearch(savedSearchId, {
-            title: `Updated Test Search ${harness.runId}`,
+            title: updatedTitle,
             params: {
               // `ecm_fulltext`, for the same reason as the creating test above: a `query`
               // parameter beside `pageProviderName` is a 400.
@@ -408,27 +450,38 @@ describe('SearchService Integration Tests', () => {
               pageSize: '20',
             },
           })
-          .subscribe({
-            next: resolve,
-            error: reject,
-          });
+          .subscribe({ next: resolve, error: reject });
       });
 
-      expect(updated).toBeDefined();
-      console.log('[search-integration] Updated saved search');
+      // Read back, rather than `expect(updated).toBeDefined()` on whatever the PUT echoed.
+      // The service can return an object while persisting nothing, and it did: replacing the
+      // `updateSavedSearch` call with a plain read left the old assertion green.
+      const params = await readSavedSearch(savedSearchId);
+      expect(params['ecm_fulltext']).toBe('updated-test');
+
+      const searches = await listSavedSearches();
+      expect(searches.find((s) => s.id === savedSearchId)?.title).toBe(updatedTitle);
+
+      // `pageSize` is deliberately not asserted: Nuxeo does not return it among a saved
+      // search's params (measured — the read-back carries the aggregate and fulltext
+      // predicates only), so an assertion on it would be testing this client's own request.
+      console.log(`[search-integration] Updated saved search to '${updatedTitle}'`);
     });
 
     it('can delete a saved search', async () => {
       expect(savedSearchId, 'the creating test must have run and succeeded').toBeTruthy();
 
+      // Present before. This is what stops the "absent after" assertion from passing on an
+      // error: `getSavedSearches` swallows failures into an empty list, so absence alone
+      // cannot tell a deletion from a broken request.
+      expect((await listSavedSearches()).map((s) => s.id)).toContain(savedSearchId);
+
       await new Promise((resolve, reject) => {
-        searchService.deleteSavedSearch(savedSearchId).subscribe({
-          next: resolve,
-          error: reject,
-        });
+        searchService.deleteSavedSearch(savedSearchId).subscribe({ next: resolve, error: reject });
       });
 
-      console.log('[search-integration] Deleted saved search');
+      expect((await listSavedSearches()).map((s) => s.id)).not.toContain(savedSearchId);
+      console.log(`[search-integration] Deleted saved search ${savedSearchId} (confirmed absent)`);
     });
   });
 
@@ -442,27 +495,24 @@ describe('SearchService Integration Tests', () => {
     //
     //   GET /nuxeo/api/v1/search/pp/default_search/execute
     //       ?sortBy=invalid_field_that_does_not_exist&sortOrder=desc&pageSize=10
-    //   -> HTTP 200, "hasError": false, resultsCount 695
+    //   -> HTTP 200, "hasError": false, results still returned
     //
     // The page provider tolerates an unknown sort field rather than rejecting it, so the
     // contract is "results still arrive", and reverting that would turn this red.
     it('ignores an unknown sort field and still returns results', async () => {
-      const result = await new Promise<SearchResponse>((resolve, reject) => {
-        searchService
-          .search({
-            q: '',
-            sortBy: 'invalid_field_that_does_not_exist',
-            pageSize: 10,
-          })
-          .subscribe({ next: resolve, error: reject });
+      const result = await search({
+        ecmFulltext: token,
+        sortBy: 'invalid_field_that_does_not_exist',
+        pageSize: 20,
       });
 
-      // `items.length > 0`, not `toBeDefined()`. The preflight refuses to run against an
-      // empty repository, so rows are guaranteed to exist — an empty page here means the
-      // unknown sort field suppressed them, which is the behaviour under test.
-      expect(result.items.length).toBeGreaterThan(0);
+      // Scoped to this run's fixtures, so "results still arrive" is checked against rows that
+      // are known to exist. The previous version asserted `length > 0` against the whole
+      // repository, where a stale index answers with resolvable rows or none depending on
+      // which sort window it lands in — green or red for reasons unrelated to the sort field.
+      expect(new Set(idsOf(result))).toEqual(new Set([...Object.values(fileUids), folderUid]));
       console.log(
-        `[search-integration] Unknown sort field ignored; ${result.items.length} result(s) on page 1`,
+        `[search-integration] Unknown sort field ignored; ${result.items.length} fixture row(s)`,
       );
     });
 

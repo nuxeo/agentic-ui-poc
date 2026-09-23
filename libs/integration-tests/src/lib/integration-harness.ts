@@ -272,6 +272,102 @@ export async function waitForIndexed(
 }
 
 /**
+ * The fields of Nuxeo's document entity that the fixtures here actually read.
+ *
+ * `createTestDocument` returned `unknown`, so every call site widened it to `any` to reach
+ * `uid` — and a test that reads `uid` off `any` cannot be told by the typechecker that the
+ * creation returned an error body instead. Narrow, not exhaustive: add a field when a test
+ * needs it.
+ */
+export interface CreatedTestDocument {
+  uid: string;
+  path: string;
+  type: string;
+  title?: string;
+  properties?: Record<string, unknown>;
+}
+
+/**
+ * Block until a document matches an arbitrary NXQL query, or throw.
+ *
+ * `waitForIndexed` deliberately queries by `ecm:uuid` alone, because a wait that shares the
+ * assertion's own filter makes the assertion test nothing. This one exists for the cases
+ * where the *precondition* is a property other than existence — a tag, for instance, which
+ * `Services.TagDocument` writes through a relation the index picks up separately from the
+ * document itself, so `waitForIndexed` returning is not evidence the tag is searchable.
+ *
+ * The caller owns the distinction: pass a query that establishes the precondition, never the
+ * one the test is about. The `what` argument is quoted in the failure so a timeout reads as
+ * the precondition it is rather than as the assertion.
+ */
+export async function waitForNxqlMatch(
+  harness: IntegrationHarness,
+  nxql: string,
+  uid: string,
+  what: string,
+  options: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<void> {
+  const timeoutMs = options.timeoutMs ?? 20000;
+  const intervalMs = options.intervalMs ?? 250;
+  const deadline = Date.now() + timeoutMs;
+
+  const url = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
+  url.searchParams.set('query', nxql);
+  url.searchParams.set('pageSize', '100');
+
+  let lastStatus = 0;
+  while (Date.now() < deadline) {
+    const res = await fetch(url, { headers: { Authorization: harness.auth } });
+    lastStatus = res.status;
+    if (res.status === 200) {
+      const body = await res.json();
+      if ((body.entries ?? []).some((entry: { uid?: string }) => entry.uid === uid)) return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(
+    `waitForNxqlMatch: ${uid} did not satisfy "${what}" within ${timeoutMs}ms ` +
+      `(last HTTP ${lastStatus}).\n  Query: ${nxql}\n` +
+      `  This is a precondition failure, not the assertion under test.`,
+  );
+}
+
+/**
+ * Apply a Nuxeo tag to a document, and throw if the server refused.
+ *
+ * Tags are not `dc:subjects`. `SearchService.search({ tag })` sets the `ecm_tags` page-provider
+ * parameter, which filters on the tag *relation* — so a test that writes `dc:subjects` and then
+ * filters by `tag` is filtering on something it never set, and gets an empty result it cannot
+ * tell apart from a broken filter. That is exactly how the tag-filter test here came to pass
+ * while proving nothing.
+ *
+ * `Services.TagDocument` is the automation operation, not `/@tag`: the tag adapter is not
+ * exposed on this deployment (`GET /api/v1/id/<uid>/@tag` answers HTTP 404 "Service tag not
+ * found"), measured 2026-09-23.
+ */
+export async function tagDocument(
+  harness: IntegrationHarness,
+  uid: string,
+  label: string,
+): Promise<void> {
+  const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${uid}/@op/Services.TagDocument`, {
+    method: 'POST',
+    headers: {
+      Authorization: harness.auth,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ params: { tags: label }, input: `doc:${uid}` }),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to tag ${uid} with '${label}': ${res.status} ${res.statusText}\n${await res.text()}`,
+    );
+  }
+}
+
+/**
  * Helper: Create a document in the test's data root.
  *
  * Convenience wrapper that ensures documents are created in the right place.
@@ -284,7 +380,7 @@ export async function createTestDocument(
     title?: string;
     properties?: Record<string, unknown>;
   },
-): Promise<unknown> {
+): Promise<CreatedTestDocument> {
   const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${harness.dataRoot}`, {
     method: 'POST',
     headers: {
@@ -307,5 +403,5 @@ export async function createTestDocument(
     throw new Error(`Failed to create test document: ${res.status} ${res.statusText}\n${body}`);
   }
 
-  return res.json();
+  return (await res.json()) as CreatedTestDocument;
 }

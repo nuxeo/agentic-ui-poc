@@ -3,7 +3,7 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { firstValueFrom } from 'rxjs';
 import type { ACE } from '@hylandsoftware/hxcs-js-client';
-import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { nuxeoAce } from '@agentic-ui/shared/testing';
 
 import {

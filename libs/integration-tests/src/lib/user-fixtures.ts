@@ -212,6 +212,90 @@ export async function grantPermission(
 }
 
 /**
+ * Read every ACE on a document, local and inherited, as one flat list.
+ *
+ * The shape is the reason this exists. `GET /api/v1/id/<uid>/@acl` answers
+ * `{ "entity-type": "acls", "acl": [ { "name": "local", "ace": [ … ] } ] }` — the entries are
+ * under **`ace`**. Two places read `aclItem.aces`, which is never present, so both got an empty
+ * list: `revokePermission` read `acl.entries` (also never present), found nothing to revoke and
+ * returned successfully without revoking, and the ACL-reading test counted zero ACEs on a
+ * document it had just granted a permission on. A helper that silently returns "nothing here"
+ * for every document is worse than one that throws.
+ */
+export interface DocumentAce {
+  id: string;
+  username: string;
+  permission: string;
+  granted: boolean;
+  /** The ACL the entry belongs to — `local` for an entry on the document, else inherited. */
+  aclName: string;
+}
+
+export async function readAces(
+  harness: { nuxeoUrl: string; auth: string },
+  docId: string,
+): Promise<DocumentAce[]> {
+  const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docId}/@acl`, {
+    headers: { Authorization: harness.auth },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to get ACL for ${docId}: ${res.status} ${await res.text()}`);
+  }
+
+  const body: any = await res.json();
+  const acls: any[] = body.acl ?? [];
+
+  return acls.flatMap((entry: any) =>
+    ((entry.ace ?? entry.aces ?? []) as any[]).map((ace: any) => ({
+      id: ace.id,
+      username: ace.username,
+      permission: ace.permission,
+      granted: ace.granted,
+      aclName: entry.name,
+    })),
+  );
+}
+
+/**
+ * Stop a document inheriting its parents' ACLs, and throw if the server refused.
+ *
+ * **Not** `Document.SetACL` with `blockInheritance: true`. That is what the RBAC spec used, and
+ * on this deployment it answers **HTTP 500** — the operation needs `user` and `permission`
+ * parameters it was not given. The spec discarded the response, so the failure was invisible and
+ * the document kept its inherited `members:Read` from the repository root; the assertion that
+ * followed ("a non-admin cannot read it") then failed for a reason that looked like a product
+ * bug. Measured 2026-09-23.
+ *
+ * `Document.BlockPermissionInheritance` is the operation that does the job: 200, and the
+ * document's effective ACL becomes local-only with `Everyone:Everything:false` appended.
+ */
+export async function blockPermissionInheritance(
+  harness: { nuxeoUrl: string; auth: string },
+  docId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${harness.nuxeoUrl}/nuxeo/api/v1/id/${docId}/@op/Document.BlockPermissionInheritance`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: harness.auth,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ params: {} }),
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to block permission inheritance on ${docId}: ${res.status} ${await res.text()}`,
+    );
+  }
+
+  console.log(`[user-fixtures] Blocked permission inheritance on doc ${docId}`);
+}
+
+/**
  * Remove ACL entry from a document for a user.
  *
  * @param harness Integration test harness
@@ -223,24 +307,15 @@ export async function revokePermission(
   docId: string,
   username: string,
 ): Promise<void> {
-  // Get current ACLs
-  const getRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docId}/@acl`, {
-    headers: {
-      Authorization: harness.auth,
-    },
-  });
-
-  if (!getRes.ok) {
-    throw new Error(`Failed to get ACL for ${docId}: ${getRes.status}`);
-  }
-
-  const acl: any = await getRes.json();
-
-  // Find ACE for this user
-  const ace = acl.entries?.find((e: any) => e.username === username);
+  // Find the user's ACE. `readAces` reads the field the server actually sends; see its
+  // docblock for what the previous `acl.entries` lookup did instead.
+  const ace = (await readAces(harness, docId)).find((e) => e.username === username);
   if (!ace) {
-    console.log(`[user-fixtures] No ACE found for ${username} on ${docId}, nothing to revoke`);
-    return;
+    throw new Error(
+      `[user-fixtures] No ACE for ${username} on ${docId}, so there is nothing to revoke.\n` +
+        `  This used to log and return, which made a revocation that never happened look like\n` +
+        `  one that did — grant the permission first, or do not call this.`,
+    );
   }
 
   // Remove via Document.RemovePermission

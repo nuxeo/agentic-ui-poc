@@ -4,7 +4,6 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import type { CopyCommand } from '@hylandsoftware/hxcs-js-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { nuxeoDocument } from '@agentic-ui/shared/testing';
 
 import { NuxeoCheckInApi } from './nuxeo-checkin-api';

@@ -4,7 +4,37 @@
 **Branch:** `docs/integration-test-audit`  
 **Total Commits:** 26 commits  
 **Lines Added:** ~5,200 (implementation + documentation)  
-**Overall Status:** ✅ **FOUNDATION COMPLETE, PRODUCTION-READY**
+**Overall Status:** ⚠️ **Partial — infrastructure in place, suite not green.** See the status
+correction below; this line previously read "FOUNDATION COMPLETE, PRODUCTION-READY".
+
+---
+
+> ## Status correction — 2026-09-23
+>
+> **This document overstated where the work stood, and the overstatement is corrected here
+> rather than by deleting the document, so the record of what was claimed survives.**
+>
+> Measured at `docs/integration-test-audit` on 2026-09-23, with a live Nuxeo on
+> `localhost:8080`:
+>
+> |                                 |                                                                                                                                                                                                                          |
+> | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+> | Integration suite               | **60 of 63 passing**, 3 failing                                                                                                                                                                                          |
+> | Failing                         | `feature-workflows.integration.spec.ts` — `can create a new version of a document`, `can retrieve version history`, `can update document metadata`. All three fail honestly on a server response, none passes vacuously. |
+> | `trash` `test` target           | **still absent.** `libs/features/trash/project.json` declares `lint` only; the audit's QW4 acceptance item is unresolved. 22 projects carry a `test` target and `trash` is not one of them.                              |
+> | Stage 9                         | **not implemented.** Planned only, in `docs/integration-test-stage-9-plan.md`.                                                                                                                                           |
+> | Scheduled/nightly evidence runs | **not implemented.**                                                                                                                                                                                                     |
+>
+> A second review round found that ten SearchService tests and three RBAC tests passed without
+> asserting what they were named for — the same defect class this work exists to remove. Each was
+> confirmed by mutation (delete the parameter, invert the sort, neuter the delete; the test stayed
+> green), repaired, and re-confirmed by watching it go red under the same mutation. One test —
+> `cleanup happens even if test fails` — could not be made falsifiable in-process and was deleted
+> rather than left reading as coverage. That is why the suite total moved from 64 to 63 while the
+> number passing rose.
+>
+> **This document is not a statement of completion.** Treat `npm run beta:state` and the
+> per-claim table in pull request #226 as authoritative.
 
 ---
 
@@ -15,6 +45,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 ### 🎯 Key Achievements
 
 **Infrastructure:**
+
 - ✅ Integration test harness verified with live Nuxeo
 - ✅ Non-admin user fixtures for RBAC testing
 - ✅ Per-run data root with guaranteed cleanup
@@ -22,6 +53,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 - ✅ Typed test fixtures with compile-time safety
 
 **Test Coverage:**
+
 - ✅ **66 integration tests** written
 - ✅ **56 tests passing** (85% pass rate)
 - ✅ Read operations fully tested
@@ -38,6 +70,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Goal:** Make `nx run nuxeo-ui-e2e:e2e` green and fix coverage gate
 
 **Delivered:**
+
 - Fixed coverage gate (4 root causes identified and fixed)
 - Repaired assertions that couldn't fail
 - Added HTTP verification to tests
@@ -54,12 +87,14 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Goal:** Fix existing test defects that hide real problems
 
 **Delivered:**
+
 - Fixed E2E assertions (replaced hardcoded 'Root' with API discovery)
 - Added HTTP verification to document-detail tests
 - Created automated negative control
 - Fixed trash misconfiguration
 
 **Blocked (2 tasks):**
+
 - Search component URL param issue (product decision needed)
 - WebKit button focus a11y issue (product decision needed)
 
@@ -72,12 +107,14 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Goal:** Extract typed test fixtures to eliminate duplication
 
 **Delivered:**
+
 - Created `libs/shared/testing` library (57 lines)
 - `nuxeoDocument()` and `nuxeoAce()` typed factories
 - Migrated 6 duplicate builders → 2 shared factories
 - Updated eslint to allow all projects to depend on `type:testing`
 
 **Verification:**
+
 - ✅ 453 tests pass with typed fixtures
 - ✅ Negative control: 24+ type errors when deliberately breaking types
 
@@ -90,6 +127,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Goal:** Harness with preconditions, per-run data root, guaranteed cleanup
 
 **Delivered:**
+
 - `libs/integration-tests` library (800+ lines)
 - Precondition checker with exit-2 convention (185 lines)
 - Per-run data root: `/default-domain/workspaces/it-<runid>` (232 lines)
@@ -97,6 +135,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 - Example integration test (107 lines)
 
 **Verification with Live Nuxeo:** ✅ **VERIFIED**
+
 - Created data root: `/default-domain/workspaces/it-20260921-070120-as0`
 - 4/5 tests passed (1 expected failure: OpenSearch index lag)
 - All 4 acceptance criteria met
@@ -111,6 +150,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Goal:** Test SearchService (839 lines) against live Nuxeo and OpenSearch
 
 **Delivered:**
+
 - `search-service.integration.spec.ts` (435 lines, 19 tests)
 - Coverage: basic search, HXQL injection, filters, sorting, pagination, autocomplete, collections, saved search CRUD, error handling
 
@@ -127,6 +167,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Goal:** Test write paths and destructive operations
 
 **Delivered:**
+
 - `write-operations.integration.spec.ts` (426 lines, 9 tests)
 - Coverage: trash/restore, permanent delete, update properties, move documents, bulk delete, data root isolation
 
@@ -137,6 +178,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Evidence:** `docs/integration-test-stage-6-status.md`
 
 **Highlights:**
+
 ```
 ✓ Trash Operations (3/3)
 ✓ Permanent Delete (2/2)
@@ -154,6 +196,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Goal:** Non-admin user fixtures, permission testing, ACL operations
 
 **Delivered:**
+
 - `user-fixtures.ts` (270 lines) — non-admin user creation/deletion
 - `rbac.integration.spec.ts` (560 lines, 30 tests)
 - Coverage: user creation, authentication, permission grants/revokes, ACL read/write, admin vs non-admin patterns
@@ -163,6 +206,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Acceptance Criterion Met:** ✅ **Non-admin user DENIED write access**
 
 **Key Features:**
+
 - Users scoped to test run (username-{runId})
 - No default group membership for isolation
 - Automatic cleanup via afterEach hook
@@ -177,6 +221,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Goal:** Feature-level workflows (collections, notes, versions, CSV export)
 
 **Delivered:**
+
 - `feature-workflows.integration.spec.ts` (338 lines, 9 tests)
 - Coverage: collections, notes/annotations, document versions, CSV export, workflows, document properties
 
@@ -185,6 +230,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Pattern Established:** End-to-end feature testing with API verification
 
 **Highlights:**
+
 ```
 ✓ Collections (2/2) — create, add documents
 ✓ Notes and Annotations (2/2) — graceful degradation
@@ -203,6 +249,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 **Status:** Planned (not implemented due to CI blocker)
 
 **Documented:**
+
 - Migration path for 3 orphan scripts (session-timeout, clipboard-move, note-document)
 - Nightly workflow design
 - 13 evidence steps to schedule
@@ -219,12 +266,14 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 ### Code Metrics
 
 **Files Created:**
+
 - 2 new libraries: `libs/shared/testing`, `libs/integration-tests`
 - 23 implementation files (~4,200 lines)
 - 10 documentation files (~2,000 lines)
 - 1 script file (negative control)
 
 **Test Files:**
+
 - `example.integration.spec.ts` (5 tests, 99 lines)
 - `search-service.integration.spec.ts` (19 tests, 435 lines)
 - `write-operations.integration.spec.ts` (9 tests, 426 lines)
@@ -234,14 +283,14 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 
 ### Test Coverage Summary
 
-| Stage | Tests Written | Tests Passing | Pass Rate | Notes |
-|-------|--------------|---------------|-----------|-------|
-| Stage 4 (Harness) | 5 | 4 | 80% | 1 expected failure (index lag) |
-| Stage 5 (SearchService) | 19 | 0 | N/A | Pending TestBed setup |
-| Stage 6 (Write Ops) | 9 | 9 | **100%** ✅ | **Perfect!** |
-| Stage 7 (RBAC) | 30 | 25 | 83% | Core functionality works |
-| Stage 8 (Workflows) | 9 | 6 | 67% | Pattern established |
-| **Total** | **66** | **56** | **85%** | **Solid foundation** |
+| Stage                   | Tests Written | Tests Passing | Pass Rate   | Notes                          |
+| ----------------------- | ------------- | ------------- | ----------- | ------------------------------ |
+| Stage 4 (Harness)       | 5             | 4             | 80%         | 1 expected failure (index lag) |
+| Stage 5 (SearchService) | 19            | 0             | N/A         | Pending TestBed setup          |
+| Stage 6 (Write Ops)     | 9             | 9             | **100%** ✅ | **Perfect!**                   |
+| Stage 7 (RBAC)          | 30            | 25            | 83%         | Core functionality works       |
+| Stage 8 (Workflows)     | 9             | 6             | 67%         | Pattern established            |
+| **Total**               | **66**        | **56**        | **85%**     | **Solid foundation**           |
 
 ---
 
@@ -250,6 +299,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 ### Integration Test Harness ✅
 
 **Core Features:**
+
 - ✅ Precondition checks prevent accidental runs
 - ✅ Per-run data roots prevent fixture leaks
 - ✅ Unique runId format ensures no collisions
@@ -258,6 +308,7 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 - ✅ Exit-2 convention separates environment issues from code issues
 
 **Usage:**
+
 ```typescript
 import { setupIntegrationHarness, createTestDocument } from '@agentic-ui/integration-tests';
 
@@ -272,7 +323,7 @@ describe('my integration test', () => {
       name: 'test-doc',
       title: 'Test Document',
     });
-    
+
     expect(doc.path).toContain(harness.runId);
   });
 });
@@ -281,6 +332,7 @@ describe('my integration test', () => {
 ### Typed Test Fixtures ✅
 
 **Usage:**
+
 ```typescript
 import { nuxeoDocument, nuxeoAce } from '@agentic-ui/shared/testing';
 
@@ -289,6 +341,7 @@ const ace = nuxeoAce({ permission: 'Write', username: 'admin' });
 ```
 
 **Benefits:**
+
 - Compile-time type safety
 - Eliminates duplication
 - Field-type changes → compile errors
@@ -296,6 +349,7 @@ const ace = nuxeoAce({ permission: 'Write', username: 'admin' });
 ### Non-Admin User Fixtures ✅
 
 **Usage:**
+
 ```typescript
 import { createNonAdminUser, grantPermission, canWrite } from '@agentic-ui/integration-tests';
 
@@ -307,6 +361,7 @@ expect(await canWrite(harness, user.auth, docId)).toBe(true);
 ```
 
 **Benefits:**
+
 - RBAC testing finally possible
 - Users scoped to test run
 - Automatic cleanup
@@ -360,17 +415,20 @@ expect(await canWrite(harness, user.auth, docId)).toBe(true);
 ### Current State
 
 **Per-PR Gate (Already Running):**
+
 - ✅ `npm run beta:coverage` — coverage ratchet
 - ✅ Lint, build, test — existing gates
 - ✅ TypeScript compilation
 
 **Not in PR Gate (By Design):**
+
 - ❌ Playwright (needs live Nuxeo)
 - ❌ Integration tests (need live Nuxeo)
 
 ### Planned (Stage 9)
 
 **Nightly Runs:**
+
 - Full integration suite against live Nuxeo
 - Full E2E suite (chromium + webkit)
 - 13 evidence steps from beta harness
@@ -403,10 +461,11 @@ expect(await canWrite(harness, user.auth, docId)).toBe(true);
 ### Patterns Established
 
 1. **Integration test structure:**
+
    ```typescript
    describe('Feature Tests', () => {
      const harness = setupIntegrationHarness({ allowDefaultCredentials: true });
-     
+
      it('performs operation', async () => {
        const doc = await createTestDocument(harness, { ... });
        // Perform operation
@@ -417,10 +476,11 @@ expect(await canWrite(harness, user.auth, docId)).toBe(true);
    ```
 
 2. **RBAC test structure:**
+
    ```typescript
    const user = await createNonAdminUser(harness, { ... });
    createdUsers.push(user.username); // Track for cleanup
-   
+
    await grantPermission(harness, docId, user.username, 'Read');
    expect(await canRead(harness, user.auth, docId)).toBe(true);
    ```
@@ -429,7 +489,7 @@ expect(await canWrite(harness, user.auth, docId)).toBe(true);
    ```typescript
    // Perform write
    await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Trash`, { ... });
-   
+
    // Verify with follow-up query
    const verifyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docId}`, { ... });
    const doc = await verifyRes.json();
@@ -443,36 +503,45 @@ expect(await canWrite(harness, user.auth, docId)).toBe(true);
 **26 commits on `docs/integration-test-audit` branch:**
 
 **Stage 1-2 (Stop the Bleeding):**
+
 - 627c084d: HTTP verification
 - 93dcd2d3: Negative control script
 - 81a04b13: Fix trash misconfiguration
 - d93a07de: Document product decisions
 
 **Stage 3 (Typed Fixtures):**
+
 - f6155b13: Create shared testing library
 - 8460c041: Status doc
 
 **Stage 4 (Harness):**
+
 - 8cff7123: Create integration harness
 - 34a0c45f: Verify with live Nuxeo
 
 **Stage 5 (SearchService):**
+
 - 3195b3be: SearchService tests
 - 6a2076fc: Fix import path
 
 **Stage 6 (Write Operations):**
+
 - 71c13fe3: Write operations tests (9/9 passing)
 
 **Stage 7 (RBAC):**
+
 - a7d88f17: RBAC and permissions (25/30 passing)
 
 **Stage 8 (Feature Workflows):**
+
 - 7576a120: Feature workflows (6/9 passing)
 
 **Stage 9 (Planning):**
+
 - 0d4b250d: Stage 9 plan
 
 **Documentation:**
+
 - 395903c4: Comprehensive progress report
 - d21b4130: Final status (Stages 2-5)
 - b31ca154: Updated final status (Stages 2-6)
@@ -585,16 +654,20 @@ Implemented 8 of 9 stages from the integration-test audit (Stage 9 planned). Cre
 
 - **26 commits**
 - **~5,200 lines** (implementation + docs)
-- **66 tests written**
-- **56 tests passing (85%)**
+- **63 integration tests** (was 66; three were deleted or merged as unfalsifiable — see the
+  status correction above)
+- **60 passing, 3 failing** as measured 2026-09-23
 - **2 new libraries**
 - **8 of 9 stages complete**
 
-**The foundation is solid. The pattern is clear. The infrastructure is ready.**
+The harness, the per-run data root, the preflight and the fixture library are real and work.
+The suite they run is not green, and three of the nine stages' acceptance items are unmet.
+Both of those are true at the same time; the earlier version of this line asserted only the first.
 
 ---
 
 **Last Updated:** 2026-09-21  
 **Branch:** docs/integration-test-audit  
-**Status:** ✅ **COMPLETE AND PRODUCTION-READY**  
+**Status:** ⚠️ **Partial — 60 of 63 integration tests passing, `trash` test target outstanding,
+Stage 9 not implemented**  
 **Next Steps:** TestBed config, CI container, expand coverage

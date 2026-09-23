@@ -4,7 +4,6 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import type { CopyCommand, MoveCommand } from '@hylandsoftware/hxcs-js-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { nuxeoDocument } from '@agentic-ui/shared/testing';
 
 import { NuxeoCopyApi, NuxeoMoveApi } from './nuxeo-copy-move-api';
@@ -167,7 +166,11 @@ describe('NuxeoMoveApi', () => {
       input: 'doc:doc-2',
     });
     req.flush(
-      nuxeoDocument({ uid: 'doc-2', title: 'Moved', path: '/default-domain/workspaces/target/Moved' }),
+      nuxeoDocument({
+        uid: 'doc-2',
+        title: 'Moved',
+        path: '/default-domain/workspaces/target/Moved',
+      }),
     );
 
     const response = await pending;
@@ -182,7 +185,9 @@ describe('NuxeoMoveApi', () => {
     // Asymmetry with `copy`, and it is correct: `MoveCommand` has `targetParentId` only, so
     // there is no name to refuse. Asserted so the difference reads as deliberate.
     const pending = api.move('doc-2', 'default', moveTo('target-3'));
-    httpMock.expectOne('/nuxeo/api/v1/automation/Document.Move').flush(nuxeoDocument({ uid: 'doc-2' }));
+    httpMock
+      .expectOne('/nuxeo/api/v1/automation/Document.Move')
+      .flush(nuxeoDocument({ uid: 'doc-2' }));
     await expect(pending).resolves.toBeDefined();
   });
 

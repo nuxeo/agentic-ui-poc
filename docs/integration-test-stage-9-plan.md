@@ -6,6 +6,18 @@
 
 ---
 
+> **Credentials opt-in, corrected 2026-09-23.** These examples passed
+> `{ allowDefaultCredentials: true }` to `setupIntegrationHarness`. That option was deliberately
+> removed from `IntegrationTestConfig` — every suite in the library set it, so the guard it opted
+> out of never fired in any code path that existed. Copying the old example would now fail
+> type-checking. The opt-in is an environment variable set at the point of invocation:
+>
+> ```bash
+> ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration
+> ```
+
+---
+
 ## Summary
 
 Stage 9 involves promoting orphan evidence scripts to first-class integration tests and bringing the 13 beta-harness evidence steps under scheduled runs. This stage consolidates the testing infrastructure established in Stages 1-8.
@@ -31,7 +43,7 @@ From audit §13, three scripts should be promoted:
 
 ```typescript
 describe('Session Timeout Integration Tests', () => {
-  const harness = setupIntegrationHarness({ allowDefaultCredentials: true });
+  const harness = setupIntegrationHarness();
 
   it('starts idle tracking when authenticated', async () => {
     // Authenticate user
@@ -62,7 +74,7 @@ describe('Session Timeout Integration Tests', () => {
 
 ```typescript
 describe('Clipboard Operations Integration Tests', () => {
-  const harness = setupIntegrationHarness({ allowDefaultCredentials: true });
+  const harness = setupIntegrationHarness();
 
   it('can copy and paste a document', async () => {
     const sourceDoc = await createTestDocument(harness, { ... });

@@ -7,11 +7,41 @@
 
 ---
 
+> ## Status correction — 2026-09-23
+>
+> **This document overstated where the work stood, and the overstatement is corrected here
+> rather than by deleting the document, so the record of what was claimed survives.**
+>
+> Measured at `docs/integration-test-audit` on 2026-09-23, with a live Nuxeo on
+> `localhost:8080`:
+>
+> |                                 |                                                                                                                                                                                                                          |
+> | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+> | Integration suite               | **60 of 63 passing**, 3 failing                                                                                                                                                                                          |
+> | Failing                         | `feature-workflows.integration.spec.ts` — `can create a new version of a document`, `can retrieve version history`, `can update document metadata`. All three fail honestly on a server response, none passes vacuously. |
+> | `trash` `test` target           | **still absent.** `libs/features/trash/project.json` declares `lint` only; the audit's QW4 acceptance item is unresolved. 22 projects carry a `test` target and `trash` is not one of them.                              |
+> | Stage 9                         | **not implemented.** Planned only, in `docs/integration-test-stage-9-plan.md`.                                                                                                                                           |
+> | Scheduled/nightly evidence runs | **not implemented.**                                                                                                                                                                                                     |
+>
+> A second review round found that ten SearchService tests and three RBAC tests passed without
+> asserting what they were named for — the same defect class this work exists to remove. Each was
+> confirmed by mutation (delete the parameter, invert the sort, neuter the delete; the test stayed
+> green), repaired, and re-confirmed by watching it go red under the same mutation. One test —
+> `cleanup happens even if test fails` — could not be made falsifiable in-process and was deleted
+> rather than left reading as coverage. That is why the suite total moved from 64 to 63 while the
+> number passing rose.
+>
+> **This document is not a statement of completion.** Treat `npm run beta:state` and the
+> per-claim table in pull request #226 as authoritative.
+
+---
+
 ## Executive Summary
 
 Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `docs/integration-test-audit.md`. Created foundational infrastructure for service-level integration testing with working harness, typed fixtures, comprehensive SearchService tests, and verified write operations.
 
 **Key Achievements:**
+
 - Integration test harness verified working with live Nuxeo ✅
 - Write operations fully tested and working (9/9 tests passing) ✅
 - First stage with 100% tests passing ✅
@@ -25,12 +55,14 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 **Goal:** Fix existing test defects that hide real problems
 
 **Completed:**
+
 - Fixed coverage gate (4 root causes: Karma/Vitest split, unratcheted projects, unlisted files, stale entries)
 - Fixed E2E assertions (replaced hardcoded 'Root' with API discovery, 5 call sites)
 - Added HTTP verification to document-detail.tabs.spec.ts (123 tests pass)
 - Created automated negative control script (e2e-negative-control.sh)
 
 **Blocked (product decisions needed):**
+
 - Search component doesn't read `?q=` URL param
 - WebKit button focus a11y issue
 
@@ -43,12 +75,14 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 **Goal:** Extract typed test fixtures to eliminate duplication
 
 **Delivered:**
+
 - Created `libs/shared/testing` library
 - `nuxeoDocument()` and `nuxeoAce()` typed factories
 - Migrated 6 duplicate builders across 5 files → 2 shared factories
 - Updated eslint to allow all projects to depend on `type:testing`
 
 **Verification:**
+
 - ✅ Lint: 27 projects pass
 - ✅ Typecheck: 4 projects clean
 - ✅ Tests: 453 tests pass, no behavior change
@@ -63,6 +97,7 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 **Goal:** Harness with preconditions, per-run data root, guaranteed cleanup
 
 **Delivered:**
+
 - `libs/integration-tests` library
 - Precondition checker with exit-2 convention
 - Per-run data root: `/default-domain/workspaces/it-<runid>`
@@ -76,15 +111,17 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 3. ✅ Document creation in data root works
 4. ✅ Data isolation verified (workspace exists and queryable)
 5. ✅ Guaranteed cleanup works (data root deleted after tests)
-6. ⚠️  Query test failed due to OpenSearch index lag (expected, documented)
+6. ⚠️ Query test failed due to OpenSearch index lag (expected, documented)
 
 **All 4 acceptance criteria met:**
+
 1. ✅ No Nuxeo → exit 2
 2. ✅ Empty Nuxeo → exit 2
 3. ✅ Default creds without flag → exit 2 (verified - threw error)
 4. ✅ Test creates documents → none remain (cleanup confirmed)
 
 **Test run output:**
+
 ```
 [integration-harness] Created data root: /default-domain/workspaces/it-20260921-070120-as0
 [example] Running with runId: 20260921-070120-as0
@@ -102,6 +139,7 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 **Delivered:** `search-service.integration.spec.ts` (435 lines, 19 tests)
 
 **Test Coverage:**
+
 1. Basic Search (2 tests)
    - Simple query execution
    - Empty results handling
@@ -146,6 +184,7 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 **Delivered:** `write-operations.integration.spec.ts` (426 lines, 9 tests)
 
 **Test Coverage:**
+
 1. Trash Operations (3 tests)
    - Trash document via Document.Trash automation
    - Verify trashed documents excluded from queries
@@ -178,18 +217,21 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 ### Code Metrics
 
 **Files Created:**
+
 - 2 new libraries: `libs/shared/testing`, `libs/integration-tests`
 - 19 implementation files (~2,400 lines)
 - 7 documentation files (~1,300 lines)
 - 1 script file (negative control)
 
 **Files Modified:**
+
 - 5 spec files (migrated to shared fixtures)
 - 4 configuration files (eslint, package.json, tsconfig, nx.json)
 - 3 beta harness scripts (fixes)
 - 2 CI files (sonarcloud workflow, coverage baseline)
 
 **Test Coverage:**
+
 - 40+ integration test cases written
 - 453 adf-hx-bridge tests pass with typed fixtures
 - 4/5 integration harness tests pass with live Nuxeo
@@ -201,6 +243,7 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 **22 commits on `docs/integration-test-audit` branch:**
 
 **Stage 2:**
+
 - 627c084d: HTTP verification
 - 93dcd2d3: Negative control script
 - 81a04b13: Fix trash misconfiguration
@@ -208,21 +251,26 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 - 8cdf0550, be07ec04: Status docs
 
 **Stage 3:**
+
 - f6155b13: Create shared testing library
 - 8460c041: Status doc
 
 **Stage 4:**
+
 - 8cff7123: Create integration harness
 - 34a0c45f: Verify with live Nuxeo
 
 **Stage 5:**
+
 - 3195b3be: SearchService tests
 - 6a2076fc: Fix import path
 
 **Stage 6:**
+
 - 71c13fe3: Write operations tests (9/9 passing)
 
 **Documentation:**
+
 - 395903c4: Comprehensive progress report
 - d21b4130: Final status (Stages 2-5)
 - (this commit): Updated final status (Stages 2-6)
@@ -234,6 +282,7 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 ### Integration Test Harness ✅ VERIFIED
 
 **Core Features:**
+
 - ✅ Precondition checks prevent accidental runs against wrong environments
 - ✅ Per-run data roots prevent fixture leaks
 - ✅ Unique runId format ensures no collisions
@@ -242,6 +291,7 @@ Implemented and verified Stages 2-6 of the 9-stage integration-test plan from `d
 - ✅ Exit-2 convention clearly separates environment issues from code issues
 
 **Usage:**
+
 ```typescript
 import { setupIntegrationHarness, createTestDocument } from '@agentic-ui/integration-tests';
 
@@ -256,7 +306,7 @@ describe('my integration test', () => {
       name: 'test-doc',
       title: 'Test Document',
     });
-    
+
     expect(doc.path).toContain(harness.runId);
     // Cleanup happens automatically
   });
@@ -266,6 +316,7 @@ describe('my integration test', () => {
 ### Typed Test Fixtures ✅ VERIFIED
 
 **Usage:**
+
 ```typescript
 import { nuxeoDocument, nuxeoAce } from '@agentic-ui/shared/testing';
 
@@ -274,6 +325,7 @@ const ace = nuxeoAce({ permission: 'Write', username: 'admin' });
 ```
 
 **Benefits:**
+
 - Compile-time type safety
 - Eliminates duplication
 - Field-type changes → compile errors (verified)
@@ -285,11 +337,13 @@ const ace = nuxeoAce({ permission: 'Write', username: 'admin' });
 ### 1. OpenSearch Index Lag (Expected)
 
 **Issue:** Documents created in Nuxeo not immediately searchable
+
 - Created document via API: ✅ Success
 - Query for document via NXQL/HXQL: ⚠️ Returns 0 results
 - **Cause:** Eventual consistency of OpenSearch index
 
 **Resolution Options:**
+
 1. Query by path/uid instead of search
 2. Wait for index refresh (not practical)
 3. Accept eventual consistency in tests
@@ -299,6 +353,7 @@ const ace = nuxeoAce({ permission: 'Write', username: 'admin' });
 ### 2. Angular TestBed in Vitest (Configuration Gap)
 
 **Issue:** SearchService tests need Angular test environment initialization
+
 - Import paths: ✅ Fixed
 - Tests load: ✅ Success
 - Tests run: ⚠️ Skip (TestBed not initialized)
@@ -307,28 +362,28 @@ const ace = nuxeoAce({ permission: 'Write', username: 'admin' });
 **Resolution:** Configure vitest to initialize Angular testing environment
 
 **Example setup needed:**
+
 ```typescript
 // test-setup.ts
 import { getTestBed } from '@angular/core/testing';
 import {
   BrowserDynamicTestingModule,
-  platformBrowserDynamicTesting
+  platformBrowserDynamicTesting,
 } from '@angular/platform-browser-dynamic/testing';
 
-getTestBed().initTestEnvironment(
-  BrowserDynamicTestingModule,
-  platformBrowserDynamicTesting()
-);
+getTestBed().initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting());
 ```
 
 ### 3. Product Decisions Blocking 2 Tasks
 
 **Task 2.3:** Search component doesn't read `?q=` URL parameter
+
 - Guard spec navigates to `/#/search?q=O'Brien`
 - Component ignores parameter
 - **Decision needed:** Product change vs test workaround
 
 **Task 2.6:** WebKit button focus behavior
+
 - 4 specs fail on WebKit
 - Root cause: disabled-but-interactive button focus (a11y issue)
 - **Decision needed:** Product fix vs test scoping
@@ -340,6 +395,7 @@ getTestBed().initTestEnvironment(
 ## Remaining Work (Stages 7-9)
 
 ### Stage 6: Write Paths (P0, Large) ✅ COMPLETE
+
 - ✅ Trash/restore/permanent-delete (3 tests passing)
 - ✅ Bulk actions (1 test passing)
 - ✅ Update operations (2 tests passing)
@@ -348,12 +404,14 @@ getTestBed().initTestEnvironment(
 - ⏳ Download — deferred (lower priority)
 
 ### Stage 7: RBAC and Guards (P1, Large)
+
 - Guard unit specs (auth, login, admin, theming)
 - principal-permissions.service.ts integration
 - ACL read/write with real inherited-vs-local ACLs
 - **Non-administrator fixture user** (missing ingredient)
 
 ### Stage 8: Feature Workflows (P1, Large)
+
 - Collections membership
 - Document-detail write paths
 - Notes, CSV export
@@ -361,6 +419,7 @@ getTestBed().initTestEnvironment(
 - AiFeatureFlagService opt-out
 
 ### Stage 9: Fold in Orphans (P2, Medium)
+
 - Promote session-timeout.mjs, clipboard-move-scenarios.mjs
 - Convert note-document-scenarios.mjs
 - Bring 13 evidence steps under scheduled run
@@ -372,12 +431,14 @@ getTestBed().initTestEnvironment(
 From audit §12:
 
 **Add to PR gate (when ready):**
+
 - `npm run beta:coverage` ✅ (already runs, gate fixed)
 - Recorded-fixture integration subset (after Stage 5 complete)
 - Typecheck-specs gate (AC4)
 - NOT Playwright (needs live Nuxeo, would force red gate)
 
 **Nightly runs:**
+
 - Full integration suite against live Nuxeo
 - Full E2E suite (both engines)
 - Evidence collection runs
@@ -446,13 +507,16 @@ From audit §12:
 
 ## Conclusion
 
-**Integration test infrastructure: COMPLETE AND VERIFIED ✅**
+**Integration test infrastructure: in place and exercised against a live Nuxeo; the suite it runs
+is not green.** This line read "COMPLETE AND VERIFIED ✅".
 
 The foundation is solid and working:
+
 - Precondition checks prevent mistakes ✅
 - Per-run data roots prevent leaks ✅
 - Typed fixtures eliminate duplication ✅
-- SearchService tests demonstrate read pattern ✅
+- SearchService tests demonstrate read pattern ✅ — after repair. As first written, ten of the
+  seventeen asserted only response shape and passed with the parameter under test deleted.
 - **Write operations tests demonstrate write pattern ✅**
 - **First stage with 100% tests passing ✅**
 
@@ -466,4 +530,5 @@ The foundation is solid and working:
 
 **Last Updated:** 2026-09-21  
 **Branch:** docs/integration-test-audit  
-**Status:** ✅ Stages 2-6 complete, harness verified for read and write, ready for Stages 7-9
+**Status:** ⚠️ Stages 2-6 delivered, harness verified for read and write against a live Nuxeo;
+60 of 63 integration tests passing, Stage 9 not implemented, `trash` test target outstanding

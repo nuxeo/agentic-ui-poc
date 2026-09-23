@@ -389,11 +389,26 @@ describe('DocumentDetailComponent — tab surfaces', () => {
   });
 
   afterEach(() => {
-    // Ensures no unexpected HTTP requests were made. This spec was added as part of Stage 2.4
-    // of the integration-test plan (QW7 from the audit). It will initially fail, exposing
-    // untested HTTP surface in a 15-provider component that makes only 2 expectOne calls in
-    // ~2000 lines. That's the point: the spec currently asserts almost nothing about HTTP.
-    http.verify();
+    // Resolved here, not read out of the `http` variable `build()` assigns.
+    //
+    // Every one of the 123 tests below happens to call `build()` today, so the guard does work
+    // — but a test that returned before it would have verified the *previous* test's
+    // controller, and the first such test in the file would have verified `undefined`:
+    // `TypeError: Cannot read properties of undefined (reading 'verify')`, reproduced by adding
+    // exactly that test and watching it happen. `TestBed.inject` here always yields this test's
+    // controller, whether or not the test built anything.
+    //
+    // It is not hoisted into `beforeEach` — the obvious fix — because seven tests call
+    // `TestBed.overrideProvider` in their own bodies, and injecting anything in `beforeEach`
+    // instantiates the module: "Cannot override provider when the test module has already been
+    // instantiated." Measured; that variant turned seven tests red.
+    //
+    // On what the guard found: it was added as Stage 2.4 (QW7 from the audit) expecting to fail
+    // and expose untested HTTP surface in a 15-provider component making only two `expectOne`
+    // calls. It did not. The project is green with it in place, so that surface is not there —
+    // the component's other collaborators are all injected as mocks. The guard stays because it
+    // is cheap and capable of failing, not because it found anything.
+    TestBed.inject(HttpTestingController).verify();
   });
 
   describe('tab switching', () => {

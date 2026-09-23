@@ -21,7 +21,10 @@ export {
   setupIntegrationHarness,
   createTestDocument,
   waitForIndexed,
+  waitForNxqlMatch,
+  tagDocument,
   type IntegrationHarness,
+  type CreatedTestDocument,
 } from './lib/integration-harness';
 
 export {
