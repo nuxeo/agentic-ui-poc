@@ -28,15 +28,15 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 
 ## 1. Where the programme stands
 
-| Phase                                   | Status                                                                                        | Evidence                                                                                  |
-| --------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| 0 — Unblock and verify                  | **complete**                                                                                  | `phase-0-baseline` 14/14                                                                  |
-| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below                                                           | `phase-1-config` 39/39                                                                    |
-| 2 — Layer 1: extension registry         | **complete**, carry-forward named                                                             | `phase-2-registry` 46/46                                                                  |
-| 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted                                                      | `phase-3-adf-hx` 55/55                                                                    |
-| 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded                                                          | `phase-4-platform` 25/25                                                                  |
-| 5 — Layer 3: agent harness              | **complete**                                                                                  | `phase-5-harness` 27/27                                                                   |
-| 6 — Beta quality bar                    | **in progress** — 6 of 7; step 6 reopened 2026-09-22. **Step 3 needs re-checking: see below** | `phase-6-a11y` 27/27 on `2026-08-24T14-40-16`; **3 failed on every run since 2026-09-15** |
+| Phase                                   | Status                                                                              | Evidence                                                                                  |
+| --------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 0 — Unblock and verify                  | **complete**                                                                        | `phase-0-baseline` 14/14                                                                  |
+| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below                                                 | `phase-1-config` 39/39                                                                    |
+| 2 — Layer 1: extension registry         | **complete**, carry-forward named                                                   | `phase-2-registry` 46/46                                                                  |
+| 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted                                            | `phase-3-adf-hx` 55/55                                                                    |
+| 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded                                                | `phase-4-platform` 25/25                                                                  |
+| 5 — Layer 3: agent harness              | **complete**                                                                        | `phase-5-harness` 27/27                                                                   |
+| 6 — Beta quality bar                    | **in progress** — 5 of 7; step 6 reopened 2026-09-22, step 3 in question 2026-09-23 | `phase-6-a11y` 27/27 on `2026-08-24T14-40-16`; **3 failed on every run since 2026-09-15** |
 
 Branch `feature/adf-hx-browse-poc`, 103 commits ahead of `main`, **draft PR #145**. CI is
 green on both the `push` and `pull_request` paths.
@@ -293,12 +293,13 @@ pinned major).
 
 ---
 
-### Phase 6: 6 of 7 steps done; step 6 reopened 2026-09-22
+### Phase 6: 5 of 7 steps done; steps 3 and 6 open as of 2026-09-23
 
 **This section is dated 2026-09-22 and the paragraphs below it are older.** It said "opened, two
-steps done of seven" and "barely started", which was true when written and is not now — steps 0–5
-are done and step 6 (the 90% bar) is the one still open, reopened on 2026-09-22 because
-`shared-ai-client` entered the measurement at 15.98%. (Phase 6 has seven steps numbered **0–6**;
+steps done of seven" and "barely started", which was true when written and is not now — steps 0–2, 4
+and 5 are done, and **two** are open: step 6 (the 90% bar), reopened 2026-09-22 because
+`shared-ai-client` entered the measurement at 15.98%; and step 3 (WCAG 2.1 AA), in question since
+2026-09-23 because five consecutive `phase-6-a11y` captures fail 3 `button-name` checks. (Phase 6 has seven steps numbered **0–6**;
 an earlier revision of this sentence referred to a step 7, which does not exist.) Where a figure below disagrees with the
 table at the end of this section, the table is the later measurement.
 

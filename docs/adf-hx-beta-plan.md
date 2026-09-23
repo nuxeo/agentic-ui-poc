@@ -30,7 +30,7 @@ is a human summary and can go stale exactly as its predecessor did.
 | 3 — adf-hx adoption              | complete        | 55 checks                  |
 | 4 — Layer 2 publishable platform | complete        | 25 checks                  |
 | 5 — Layer 3 agent harness        | complete        | 27 checks                  |
-| 6 — Beta quality bar and proof   | **in progress** | steps 0-5 of 7; gate 17/17 |
+| 6 — Beta quality bar and proof   | **in progress** | 5 of 7; steps 3 and 6 open |
 
 All six completed phases are re-gated against the current 14-gate pipeline, not only the
 smaller pipeline that existed when each was signed off — Phases 0–2 were originally gated
@@ -432,7 +432,7 @@ Largely built. Remaining:
 - Add Nx generators for "new extension component", "new action", "new rule".
 - Package the guardrail script for customer use.
 
-## Phase 6 — Beta quality bar and proof (**6 of 7 steps done**; step 6 reopened 2026-09-22)
+## Phase 6 — Beta quality bar and proof (**5 of 7 steps done**; steps 3 and 6 open as of 2026-09-23)
 
 - NXENG-615's checklist, assessed against the slice: unit coverage above 90% (the bridge has 11
   tests for 2,949 lines today), ~~Playwright E2E on critical paths~~ (**done** — `npm run beta:e2e`,
@@ -448,18 +448,22 @@ Largely built. Remaining:
 
 **Progress, and what each step still needs**
 
-| Step                        | State                                                                                                                                             |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail                                                                                              |
-| 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                                                                                                       |
-| 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate                                                                                                 |
-| 3 — WCAG 2.1 AA met         | **done** — 7 rule classes fixed (77 nodes), `KNOWN_VIOLATIONS` empty, 15 cases scanned                                                            |
-| 4 — SAST + SCA              | **done** — but SAST already existed and was reporting 21 unread alerts, 6 high. Two gates now read the output: `supply-chain` and `code-scanning` |
-| 5 — Safari/WebKit           | **done** — 34 specs (17 × 2 engines), 5 new specs target engine divergence; WebKit not Safari, distinction recorded                               |
-| 6 — coverage to 90%         | **REOPENED 2026-09-22** — **10 of 11** in-scope projects meet the bar (was 10 of 10). `shared-ai-client` is at 15.98%. Read the caveat below      |
+| Step                        | State                                                                                                                                                                                                                                                                                                                   |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail                                                                                                                                                                                                                                                                    |
+| 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                                                                                                                                                                                                                                                                             |
+| 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate                                                                                                                                                                                                                                                                       |
+| 3 — WCAG 2.1 AA met         | **IN QUESTION as of 2026-09-23** — was done 2026-08-24 (7 rule classes fixed, 77 nodes, `KNOWN_VIOLATIONS` empty, 15 cases). Five consecutive `phase-6-a11y` captures since 2026-09-15 fail 3 checks: `button-name` on browse, browse cards and the column panel. Undiagnosed, so this is unverified rather than failed |
+| 4 — SAST + SCA              | **done** — but SAST already existed and was reporting 21 unread alerts, 6 high. Two gates now read the output: `supply-chain` and `code-scanning`                                                                                                                                                                       |
+| 5 — Safari/WebKit           | **done** — 34 specs (17 × 2 engines), 5 new specs target engine divergence; WebKit not Safari, distinction recorded                                                                                                                                                                                                     |
+| 6 — coverage to 90%         | **REOPENED 2026-09-22** — **10 of 11** in-scope projects meet the bar (was 10 of 10). `shared-ai-client` is at 15.98%. Read the caveat below                                                                                                                                                                            |
 
-**Step 6 was closed on 2026-08-31 and is REOPENED as of 2026-09-22.** Six of the seven steps are
-done; this one is not. `shared-ai-client` is an in-scope project at 15.98%, so "coverage to 90%"
+**Two steps are open: 3 and 6. Five of the seven are done.**
+
+Step 6 was closed on 2026-08-31 and is REOPENED as of 2026-09-22; step 3 came back into question
+on 2026-09-23. Neither was reopened by new work — step 6 because the coverage denominator grew,
+step 3 because reading the a11y manifests showed five consecutive failing captures behind a
+recorded pass. Both were already true and unrecorded. `shared-ai-client` is an in-scope project at 15.98%, so "coverage to 90%"
 is not met on its own terms.
 
 A green `npm run beta:coverage` does not close this, and that is worth being explicit about: the
