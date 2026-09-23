@@ -1,0 +1,57 @@
+<section class="connected-accounts-page">
+  <div class="connected-accounts-page__card">
+    <div class="connected-accounts-page__title" role="heading" aria-level="2">
+      {{ titleKey | translate }}
+    </div>
+
+    @if (loading()) {
+      <div class="connected-accounts-page__state">
+        {{ 'app.cloud-services-page.loading-connected-accounts' | translate }}
+      </div>
+    } @else {
+      @if (error(); as errorMessage) {
+        <div class="connected-accounts-page__state connected-accounts-page__state--error">
+          {{ errorMessage }}
+        </div>
+      } @else {
+        <div class="connected-accounts-table-wrapper">
+          <table class="connected-accounts-table">
+            <thead>
+              <tr>
+                <th>{{ 'app.cloud-services-page.service-name' | translate }}</th>
+                <th>{{ 'app.cloud-services-page.nuxeo-login' | translate }}</th>
+                <th>{{ 'app.cloud-services-page.service-login' | translate }}</th>
+                <th>{{ 'app.cloud-services-page.creation-date' | translate }}</th>
+                <th>{{ 'app.cloud-services-page.shared' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (serviceAccounts().length === 0) {
+                <tr>
+                  <td colspan="5" class="connected-accounts-table__empty">
+                    <div class="connected-accounts-table__empty-content">
+                      {{ 'app.cloud-services-page.no-tokens-defined' | translate }}
+                    </div>
+                  </td>
+                </tr>
+              } @else {
+                @for (
+                  account of serviceAccounts();
+                  track account.serviceName + account.serviceLogin
+                ) {
+                  <tr>
+                    <td>{{ account.serviceName }}</td>
+                    <td>{{ account.nuxeoLogin }}</td>
+                    <td>{{ account.serviceLogin }}</td>
+                    <td>{{ account.creationDate }}</td>
+                    <td>{{ sharedLabel(account.shared) }}</td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </div>
+</section>

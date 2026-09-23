@@ -1,0 +1,113 @@
+<div class="login-page">
+  <main class="login-panel" [attr.aria-label]="'app.login-page.log-in' | translate">
+    <div class="login-panel-inner">
+      <a
+        routerLink="/login"
+        class="login-brand"
+        [attr.aria-label]="'app.login-page.hyland' | translate"
+      >
+        <sat-logo direction="horizontal">
+          <sat-h-mark-logo />
+          <sat-word-mark-logo />
+        </sat-logo>
+      </a>
+
+      <h1 class="login-title">{{ 'app.login-page.log-in' | translate }}</h1>
+
+      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+        <fieldset class="login-credentials">
+          <legend class="cdk-visually-hidden">
+            {{ 'app.login-page.sign-in-credentials' | translate }}
+          </legend>
+          <mat-form-field
+            appearance="outline"
+            subscriptSizing="dynamic"
+            class="login-field-full login-field-username"
+            hideRequiredMarker
+          >
+            <mat-label>{{ 'app.login-page.username-required' | translate }}</mat-label>
+            <input
+              matInput
+              formControlName="username"
+              autocomplete="username"
+              (input)="onCredentialInput()"
+              (change)="onCredentialInput()"
+              (animationstart)="onAutofillAnimation($event)"
+            />
+            @if (form.controls.username.hasError('required') && form.controls.username.touched) {
+              <mat-error>{{ 'app.login-page.username-is-required' | translate }}</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field
+            appearance="outline"
+            subscriptSizing="dynamic"
+            class="login-field-full login-field-password"
+            hideRequiredMarker
+          >
+            <mat-label>{{ 'app.login-page.password-required' | translate }}</mat-label>
+            <input
+              matInput
+              type="password"
+              formControlName="password"
+              autocomplete="current-password"
+              (input)="onCredentialInput()"
+              (change)="onCredentialInput()"
+              (animationstart)="onAutofillAnimation($event)"
+            />
+            @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+              <mat-error>{{ 'app.login-page.password-is-required' | translate }}</mat-error>
+            }
+          </mat-form-field>
+        </fieldset>
+
+        <div class="login-actions-row login-actions-row--single">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            class="login-submit"
+            disabledInteractive
+            [disabled]="submitDisabled()"
+          >
+            @if (submitting()) {
+              <mat-spinner diameter="20" />
+            } @else {
+              {{ 'app.login-page.log-in' | translate }}
+            }
+          </button>
+        </div>
+      </form>
+
+      @if (samlEndpoints().length > 0) {
+        <div class="login-or">
+          <span class="login-or-line"></span>
+          <span class="login-or-text">{{ 'app.login-page.or' | translate }}</span>
+          <span class="login-or-line"></span>
+        </div>
+
+        <div class="login-sso">
+          @for (ep of samlEndpoints(); track ep.id) {
+            <button
+              type="button"
+              mat-stroked-button
+              class="login-sso-btn"
+              (click)="startSamlLogin(ep)"
+            >
+              {{ ep.label }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <footer class="login-footer">
+      {{ 'app.login-page.copyright-c-1992-2026-hyland-software' | translate }}
+    </footer>
+  </main>
+
+  <div class="login-hero" role="presentation" aria-hidden="true">
+    <!-- Decorative hero: img avoids CSS background-image for HC review; SCSS hides it in forced-colors (NXENG-751). -->
+    <img class="login-hero-image" [src]="heroImagePath" alt="" />
+  </div>
+</div>

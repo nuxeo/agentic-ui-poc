@@ -1,0 +1,132 @@
+{
+  "app": {
+    "login-page": {},
+    "nav": {
+      "toggle": "Navigationsmenü ein- oder ausblenden"
+    },
+    "title": "Hyland Nuxeo"
+  },
+  "browse": {
+    "details": {
+      "hide": "Details ausblenden",
+      "show": "Details anzeigen",
+      "toggle": "Detailbereich ein- oder ausblenden"
+    },
+    "scope": {
+      "create-import": "Erstellen / Importieren",
+      "delete": "Löschen",
+      "drive": "Nuxeo Drive",
+      "edit": "Metadaten bearbeiten",
+      "export": "Exportieren",
+      "notify": "Benachrichtigen",
+      "share": "Teilen"
+    }
+  },
+  "login": {
+    "panel-label": "Anmelden",
+    "skip-link": "Zur Anmeldung springen",
+    "title": "Anmelden"
+  },
+  "nav": {
+    "clipboard": {
+      "copy": "Kopieren",
+      "empty": "Die Zwischenablage ist leer",
+      "hint": "Verwenden Sie „Zur Zwischenablage hinzufügen“ bei Dokumenten oder Sammlungen, um hier Elemente hinzuzufügen.",
+      "move": "Verschieben",
+      "remove": "Aus der Zwischenablage entfernen",
+      "tip": "Navigieren Sie zu einem Container, um den Inhalt der Zwischenablage einzufügen oder zu verschieben."
+    },
+    "collections": {
+      "empty": "Keine Sammlungen gefunden"
+    },
+    "expired": {
+      "empty": "Keine abgelaufenen Dokumente"
+    },
+    "favorites": {
+      "empty": "Noch keine Favoriten",
+      "hint": "Verwenden Sie das Sternsymbol bei Dokumenten, um sie zu Ihren Favoriten hinzuzufügen.",
+      "remove": "Aus Favoriten entfernen"
+    },
+    "folders": {
+      "empty": "Keine Ordner gefunden"
+    },
+    "item": {
+      "administration": "Administration",
+      "assets": "Assets",
+      "browse": "Durchsuchen",
+      "browse-adf-hx": "Durchsuchen (adf-hx-PoC)",
+      "clipboard": "Zwischenablage",
+      "collections": "Sammlungen",
+      "dashboard": "Dashboard",
+      "expired-queue": "Warteschlange abgelaufener Dokumente",
+      "favorites": "Favoriten",
+      "knowledge-discovery": "Knowledge Discovery",
+      "personal-space": "Persönlicher Bereich",
+      "recently-viewed": "Zuletzt angesehen",
+      "search-filters": "Suchfilter",
+      "tasks": "Aufgaben",
+      "trash": "Papierkorb"
+    },
+    "loading": "Wird geladen",
+    "recent": {
+      "empty": "Keine kürzlich angesehenen Dokumente"
+    },
+    "refresh": "Aktualisieren",
+    "sign-out": "Abmelden",
+    "tasks": {
+      "dashboard": "Aufgaben-Dashboard anzeigen",
+      "empty": "Keine ausstehenden Aufgaben",
+      "retry": "Wiederholen"
+    },
+    "tree": {
+      "retry": "Erneut versuchen",
+      "root": "Stamm",
+      "toggle": "{{ name }} ein- oder ausklappen"
+    }
+  },
+  "settings": {
+    "themes": {
+      "apply": "Anwenden",
+      "current": "Aktuell",
+      "search": "Designs suchen",
+      "title": "Designs"
+    }
+  },
+  "shell": {
+    "ai": {
+      "clear": "Chat leeren",
+      "close": "Chat schließen",
+      "empty-state": "Fragen Sie mich zu Ihren Dokumenten, durchsuchen Sie das Repository oder erhalten Sie Einblicke in Workflows und Aufgaben.",
+      "heading": "Nuxeo KI-Assistent",
+      "input-placeholder": "Stellen Sie eine Frage zu Ihren Dokumenten...",
+      "open": "KI-Assistent",
+      "send": "Nachricht senden",
+      "sources": "Quellen",
+      "suggestion": {
+        "modified-today": "Welche Dokumente wurden heute geändert?",
+        "recent-uploads": "Zeige mir die neuesten Uploads",
+        "summarize-tasks": "Fasse meine offenen Aufgaben zusammen"
+      },
+      "title": "KI-Assistent"
+    },
+    "menu": {
+      "about": "Info",
+      "ai-features": "KI-Funktionen {{ state }}",
+      "help": "Hilfe",
+      "state-off": "aus",
+      "state-on": "ein",
+      "themes": "Designs"
+    },
+    "search": {
+      "no-results": "Keine Ergebnisse gefunden",
+      "placeholder": "Dokumente, Benutzer oder Gruppen suchen",
+      "searching": "Suche läuft…"
+    },
+    "settings": {
+      "menu": "Einstellungsmenü"
+    },
+    "test": {
+      "platform-nav-item": "Durchsuchen"
+    }
+  }
+}
