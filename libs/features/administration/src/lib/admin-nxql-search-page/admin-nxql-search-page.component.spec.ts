@@ -1,12 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, signal, type WritableSignal } from '@angular/core';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { of, throwError } from 'rxjs';
 
 import { AdminNxqlSearchPageComponent } from './admin-nxql-search-page.component';
 import { AdministrationService, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslateService } from '@ngx-translate/core';
 import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 const DEFAULT_NXQL =
   "SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 " +
@@ -20,27 +21,33 @@ describe('AdminNxqlSearchPageComponent', () => {
     nxqlSearch: vi.fn(),
   };
 
-  const mockTranslateService = {
-    instant: vi.fn((key: string) => key),
-  };
-
   const mockAiGatewayService = {
     nlToNxql: vi.fn(),
   };
 
-  const mockAiFeatureFlagService = {
-    nlToNxqlEnabled: vi.fn(() => true),
-  };
+  /**
+   * `AiFeatureFlagService` exposes `aiEnabled` as a signal, and the template gates the whole AI row
+   * on `featureFlags.aiEnabled()`.
+   *
+   * This was previously mocked as `{ nlToNxqlEnabled: vi.fn(() => true) }` — a method that exists
+   * nowhere in the codebase. Nothing caught it because no test in this file rendered the template,
+   * so the invalid provider was never resolved. The render assertions below are what make the gate
+   * real: they fail if the flag is mocked with the wrong shape.
+   */
+  let aiEnabled: WritableSignal<boolean>;
 
   beforeEach(() => {
+    aiEnabled = signal(true);
+
     TestBed.configureTestingModule({
-      imports: [AdminNxqlSearchPageComponent],
+      // The real English catalogue, because the assertions below render a template full of
+      // `| translate`. A `{ instant: key => key }` stub has no `get()` and no change streams.
+      imports: [AdminNxqlSearchPageComponent, NoopAnimationsModule, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         { provide: AdministrationService, useValue: mockAdminService },
-        { provide: TranslateService, useValue: mockTranslateService },
         { provide: AiGatewayService, useValue: mockAiGatewayService },
-        { provide: AiFeatureFlagService, useValue: mockAiFeatureFlagService },
+        { provide: AiFeatureFlagService, useValue: { aiEnabled } },
       ],
     });
 
@@ -55,9 +62,41 @@ describe('AdminNxqlSearchPageComponent', () => {
     // isolation the mock returned `undefined` and the component could not subscribe. Re-stating the
     // defaults here makes every test independent of the order it runs in.
     mockAdminService.nxqlSearch.mockReturnValue(of({ entries: [], totalSize: 0 }));
-    mockTranslateService.instant.mockImplementation((key: string) => key);
     mockAiGatewayService.nlToNxql.mockReturnValue(of({ nxql: '', explanation: '' }));
-    mockAiFeatureFlagService.nlToNxqlEnabled.mockReturnValue(true);
+  });
+
+  describe('the AI feature gate', () => {
+    /** The natural-language row, which the template wraps in `@if (featureFlags.aiEnabled())`. */
+    function aiRow(): Element | null {
+      return (fixture.nativeElement as HTMLElement).querySelector('.ai-generate-row');
+    }
+
+    it('renders the natural-language row when AI is enabled', () => {
+      aiEnabled.set(true);
+
+      fixture.detectChanges();
+
+      expect(aiRow()).not.toBeNull();
+    });
+
+    it('renders no natural-language row when AI is disabled', () => {
+      aiEnabled.set(false);
+
+      fixture.detectChanges();
+
+      // The discriminating half: without it, a template that dropped the `@if` entirely would
+      // still satisfy the enabled case above.
+      expect(aiRow()).toBeNull();
+    });
+
+    it('renders the query editor either way', () => {
+      aiEnabled.set(false);
+
+      fixture.detectChanges();
+
+      // The gate hides only the AI affordance, not the page.
+      expect((fixture.nativeElement as HTMLElement).querySelector('.nxql-field')).not.toBeNull();
+    });
   });
 
   describe('component creation', () => {
@@ -194,11 +233,11 @@ describe('AdminNxqlSearchPageComponent', () => {
     });
 
     it('should use translated message when error has no message', () => {
-      mockTranslateService.instant.mockReturnValue('Query failed');
       mockAdminService.nxqlSearch.mockReturnValue(throwError(() => ({})));
       component.runSearch();
-      expect(component.error()).toBe('Query failed');
-      expect(mockTranslateService.instant).toHaveBeenCalledWith('admin.message.query-failed');
+      // The English the real catalogue serves for `admin.message.query-failed`, so this asserts
+      // what a user reads rather than the key a developer typed.
+      expect(component.error()).toBe('Query failed.');
     });
 
     it('should clear results when search fails', () => {
@@ -599,12 +638,9 @@ describe('AdminNxqlSearchPageComponent', () => {
 
     it('should use translated fallback message for AI errors', () => {
       component.aiNlQuery = 'find all documents';
-      mockTranslateService.instant.mockReturnValue('AI generation failed');
       mockAiGatewayService.nlToNxql.mockReturnValue(throwError(() => ({})));
       component.generateFromNl();
-      expect(mockTranslateService.instant).toHaveBeenCalledWith(
-        'admin.message.ai-generation-failed',
-      );
+      expect(component.aiGenError()).toBe('AI generation failed');
     });
 
     it('should not modify queryText when generation fails', () => {
