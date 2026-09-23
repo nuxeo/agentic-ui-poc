@@ -143,6 +143,11 @@ sat-platform-nav-container.has-selection-topbar {
 
 // Visible label text for the global search field (NXENG-798). Styled where placeholder text
 // used to sit; `:placeholder-shown` keeps it visible while the field is empty.
+//
+// The pill surface is always `#fff` with fixed light foregrounds on the input and icon
+// (`#101828` / `#667085`), so the label uses the same muted light-scheme colour rather
+// than `--mat-sys-on-surface-variant`, which follows the page theme and can wash out on
+// the white field under dark packaged themes.
 .header-search-label {
   position: absolute;
   left: 40px;
@@ -150,7 +155,7 @@ sat-platform-nav-container.has-selection-topbar {
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
-  color: var(--mat-sys-on-surface-variant);
+  color: #667085;
   font-size: 14px;
   line-height: 1;
   white-space: nowrap;

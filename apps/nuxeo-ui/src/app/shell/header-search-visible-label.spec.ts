@@ -80,5 +80,24 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     expect(associatedLabels)
       .withContext('the input must be named by the visible label')
       .toContain(label as HTMLLabelElement);
+
+    const labelStyle = getComputedStyle(label!);
+    expect(labelStyle.display)
+      .withContext('label must not be display:none')
+      .not.toBe('none');
+    expect(labelStyle.visibility)
+      .withContext('label must not be visibility:hidden')
+      .not.toBe('hidden');
+    expect(Number.parseFloat(labelStyle.opacity))
+      .withContext('label must be painted while the field is empty')
+      .toBeGreaterThan(0);
+
+    const { width, height } = label!.getBoundingClientRect();
+    expect(width)
+      .withContext('label must occupy horizontal space in the layout')
+      .toBeGreaterThan(0);
+    expect(height)
+      .withContext('label must occupy vertical space in the layout')
+      .toBeGreaterThan(0);
   });
 });
