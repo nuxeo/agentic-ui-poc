@@ -135,6 +135,42 @@ describe('LoginPageComponent', () => {
     expect(document.activeElement).toBe(usernameInput);
   });
 
+  it('does not expose redundant aria-required on username when HTML required is set (NXENG-753)', async () => {
+    const usernameInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement;
+    expect(usernameInput.required).toBe(true);
+    expect(usernameInput.getAttribute('aria-required')).toBeNull();
+
+    const strippedAfterMaterialRestore = new Promise<void>((resolve) => {
+      const watch = new MutationObserver(() => {
+        if (usernameInput.getAttribute('aria-required') === null) {
+          watch.disconnect();
+          resolve();
+        }
+      });
+      watch.observe(usernameInput, {
+        attributes: true,
+        attributeFilter: ['aria-required'],
+      });
+      usernameInput.setAttribute('aria-required', 'true');
+    });
+
+    await strippedAfterMaterialRestore;
+    expect(usernameInput.getAttribute('aria-required')).toBeNull();
+  });
+
+  it('disconnects the username aria-required observer on destroy (NXENG-753)', async () => {
+    const usernameInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement;
+
+    fixture.destroy();
+    usernameInput.setAttribute('aria-required', 'true');
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(usernameInput.getAttribute('aria-required')).toBe('true');
+  });
+
   it('does not expose redundant aria-required on password when HTML required is set (NXENG-755)', async () => {
     const passwordInput = fixture.nativeElement.querySelector(
       'input[formcontrolname="password"]',

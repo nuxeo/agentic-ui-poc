@@ -928,8 +928,10 @@ function checkAdfHxWorkaroundIds() {
  *    bundle — measured at 1.70 → 2.65 MB when that happened, which is why
  *    `libs/shared/adf-hx-bridge/src/providers.ts` exists as a separate entry point.
  *
- * The bridge's `providers.ts` is the sanctioned exception: it is a secondary entry point that only
- * the lazily-loaded POC route imports, and its whole purpose is to hold the adf-hx-facing code.
+ * The bridge's `providers.ts` is the secondary entry point for adf-hx-facing code. Most consumers
+ * are lazy (the POC route); the shell nav drawer and `app.config.ts` also import it eagerly on
+ * purpose — see the allowlist below — so the gate watches the main barrel, not "never import
+ * providers at startup".
  */
 function checkNoAdfHxInPublicApi() {
   // Scoped to the two heavy packages, deliberately. `@alfresco/adf-extensions` is also an
