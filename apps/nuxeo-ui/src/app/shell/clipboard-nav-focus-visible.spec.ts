@@ -121,16 +121,15 @@ describe('Clipboard sidebar nav — keyboard focus visible (NXENG-873)', () => {
     const styles = getComputedStyle(anchor);
 
     const panel = navPanelRgb();
-    const ownFill = parseColor(styles.backgroundColor);
-    const interior = ownFill.alpha > 0 ? compositeOver(ownFill, panel) : panel;
-    const ring = flatten(styles.outlineColor, interior);
+    const own = flatten(styles.backgroundColor, panel);
+    const ring = flatten(styles.outlineColor, own);
 
     return {
       matchesFocusVisible: anchor.matches(':focus-visible'),
       outlineStyle: styles.outlineStyle,
       outlineWidth: Number.parseFloat(styles.outlineWidth),
       ringColor: styles.outlineColor,
-      ratioVsInterior: contrastRatio(ring, interior),
+      ratioVsInterior: contrastRatio(ring, own),
       ratioVsPanel: contrastRatio(ring, panel),
     };
   }
