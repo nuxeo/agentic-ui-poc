@@ -623,24 +623,29 @@ export class BrowseAdfHxPocComponent {
     }
 
     this.csvExporting.set(true);
-    this.mediaService
-      .exportCsv(uid)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (blob) => {
-          const url = URL.createObjectURL(blob);
-          const anchor = document.createElement('a');
-          anchor.href = url;
-          anchor.download = `${hxpDocTitle(doc)}.csv`;
-          anchor.click();
-          URL.revokeObjectURL(url);
-          this.csvExporting.set(false);
-        },
-        error: () => {
-          this.csvExporting.set(false);
-          this.scopeNotice.set(this.translate.instant('browse.message.csv-export-failed'));
-        },
-      });
+    // The export runs as a server-side bulk action and can take seconds, so say so, as
+    // production browse does.
+    this.scopeNotice.set(this.translate.instant('browse.message.starting-csv-export'));
+    const export$ =
+      uid === ROOT_DOCUMENT.sys_id
+        ? this.mediaService.exportCsvOfRepositoryRoot()
+        : this.mediaService.exportCsv(uid);
+    export$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${hxpDocTitle(doc)}.csv`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        this.csvExporting.set(false);
+        this.scopeNotice.set(this.translate.instant('browse.message.csv-exported-successfully'));
+      },
+      error: () => {
+        this.csvExporting.set(false);
+        this.scopeNotice.set(this.translate.instant('browse.message.csv-export-failed'));
+      },
+    });
   }
 
   protected downloadAll(): void {

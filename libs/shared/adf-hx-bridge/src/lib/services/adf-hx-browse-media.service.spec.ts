@@ -224,6 +224,21 @@ describe('AdfHxBrowseMediaService', () => {
     });
   });
 
+  describe('exportCsvOfRepositoryRoot', () => {
+    it("exports the real root's children, not the synthetic root's", async () => {
+      // The bridge's root id is all zeros, which Nuxeo does not know, so exporting it failed.
+      const pending = firstValueFrom(service.exportCsvOfRepositoryRoot());
+      httpMock
+        .expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'))
+        .flush({ uid: 'root-uid', type: 'Root', path: '/', title: 'Root', properties: {} });
+
+      const start = httpMock.expectOne((r) => r.url.includes('Bulk.RunAction'));
+      expect(start.request.body.params.query).toContain("ecm:parentId = 'root-uid'");
+      start.flush('', { status: 500, statusText: 'Server Error' });
+      await expect(pending).rejects.toBeDefined();
+    });
+  });
+
   describe('exportZip', () => {
     it('requests a bulk download of exactly the folder it was given', async () => {
       const pending = firstValueFrom(service.exportZip('ws-1'));

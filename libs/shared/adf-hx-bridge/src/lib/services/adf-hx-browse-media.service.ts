@@ -57,6 +57,18 @@ export class AdfHxBrowseMediaService {
       .pipe(switchMap((commandId) => this.browseService.pollAndDownloadCsv(commandId)));
   }
 
+  /**
+   * CSV of the repository root's children.
+   *
+   * The bridge's root is a synthetic document with no Nuxeo uid, and exporting its children
+   * failed outright; this resolves the real root first, as production browse exports it.
+   */
+  exportCsvOfRepositoryRoot(): Observable<Blob> {
+    return this.browseService
+      .getRepositoryRoot()
+      .pipe(switchMap((root) => this.exportCsv(root.uid)));
+  }
+
   exportZip(parentUid: string): Observable<Blob> {
     return this.detailService.exportZip(parentUid);
   }
