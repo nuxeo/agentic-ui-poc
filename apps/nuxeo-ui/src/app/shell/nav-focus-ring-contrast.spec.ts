@@ -54,6 +54,7 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
  * behind a sibling item's measurements.
  */
 const NAV_ITEMS_UNDER_TEST = [
+  { navId: 'app.navbar.browse', ticket: 'NXENG-794' },
   { navId: 'app.navbar.browseAdfHx', ticket: 'NXENG-758' },
   { navId: 'app.navbar.search', ticket: 'NXENG-785' },
   { navId: 'app.navbar.administration', ticket: 'NXENG-795' },
@@ -260,6 +261,33 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
       }
     });
   }
+
+  it('declares a standalone :focus rule on nav links that IBM Equal Access can read (NXENG-794)', () => {
+    const target = 'sat-platform-nav .sat-platform-nav-item:focus';
+    let matched: CSSStyleRule | undefined;
+    for (const sheet of Array.from(document.styleSheets)) {
+      let sheetRules: CSSRuleList;
+      try {
+        sheetRules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      for (const rule of Array.from(sheetRules)) {
+        const styleRule = rule as CSSStyleRule;
+        const canonical = styleRule.selectorText
+          ?.replace(/\[_ngcontent-[^\]]+\]/g, '')
+          .trim();
+        if (canonical === target) {
+          matched = styleRule;
+          break;
+        }
+      }
+      if (matched) break;
+    }
+    expect(matched).withContext(`stylesheet must contain ${target} without a comma list`).toBeDefined();
+    expect(matched!.cssText).toMatch(/outline:\s*2px\s+solid/);
+    expect(matched!.cssText).toMatch(/outline-offset:\s*-2px/);
+  });
 
   it('takes the ring colour from --agentic-nav-focus-outline-color when it is set', () => {
     // A custom property written onto `<html>` is exactly how `AppThemeService.applyTheme`

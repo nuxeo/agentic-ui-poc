@@ -444,6 +444,11 @@ both route states, against 2.87:1 before.
 Leave `outline-offset` alone. `.sat-platform-nav-list` sets `overflow-x: hidden`, so a ring
 drawn outside the item's box is clipped at the rail edges.
 
+IBM Equal Access's `style_focus_visible` still reads `:focus` only (Issue 1307118137). Satori's
+rule is `:focus-visible`-only, so mirror the same outline on a **standalone**
+`sat-platform-nav .sat-platform-nav-item:focus` selector in `styles.scss` — not a comma list with
+`:focus-visible`. See NXENG-794 and `nav-focus-ring-contrast.spec.ts`.
+
 **Axe will not catch this**, and neither will the template `a11y-scan`: axe has no focus-ring
 contrast rule, and the scan reads templates, not computed CSS. A green
 `expectNoA11yViolations()` is not evidence about a focus indicator.
