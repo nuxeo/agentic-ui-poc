@@ -460,6 +460,78 @@ expectRed(
   /yielded no key\/value pairs/,
 );
 
+/** NXENG-798: global search names via associated visible label, not placeholder attribute. */
+const HEADER_SEARCH_LABEL_TEMPLATE = `<input id="global-header-search-input" class="header-search-input" placeholder=" " />
+<label class="header-search-label" for="global-header-search-input">
+  {{ 'shell.search.placeholder' | translate }}
+</label>
+`;
+
+const EN_JSON_SHELL_SEARCH = `{
+  "app": {
+    "title": "Hyland Nuxeo",
+    "nav": { "toggle": "Toggle navigation menu" }
+  },
+  "settings": {
+    "themes": { "search": "Search themes" }
+  },
+  "shell": {
+    "search": {
+      "placeholder": "Search documents"
+    }
+  }
+}
+`;
+
+const EN_FALLBACK_SHELL_SEARCH = `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'app.nav.toggle': 'Toggle navigation menu',
+  'settings.themes.search': 'Search themes',
+  'shell.search.placeholder': 'Search documents',
+};
+`;
+
+const APP_HEADER_SEARCH_LABEL = {
+  'apps/nuxeo-ui/public/i18n/en.json': EN_JSON_SHELL_SEARCH,
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK_SHELL_SEARCH,
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html': HEADER_SEARCH_LABEL_TEMPLATE,
+};
+
+expectGreen(
+  'header search associated visible label covered by fallback',
+  'checkAccessibleNameFallbacks',
+  APP_HEADER_SEARCH_LABEL,
+);
+
+expectRed(
+  'header search visible label missing from the fallback',
+  'checkAccessibleNameFallbacks',
+  APP_HEADER_SEARCH_LABEL,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      EN_FALLBACK_SHELL_SEARCH.replace(
+        "  'shell.search.placeholder': 'Search documents',\n",
+        '',
+      ),
+    ),
+  /visible label text.*`shell\.search\.placeholder`/s,
+);
+
+expectRed(
+  'header search visible label blank in the fallback',
+  'checkAccessibleNameFallbacks',
+  APP_HEADER_SEARCH_LABEL,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      EN_FALLBACK_SHELL_SEARCH.replace(
+        "'shell.search.placeholder': 'Search documents'",
+        "'shell.search.placeholder': ''",
+      ),
+    ),
+  /maps it to an empty string/,
+);
+
 /* ---------------- checkNoHardcodedUiText ---------------- */
 
 expectGreen('a template routing everything through the pipe', 'checkNoHardcodedUiText', APP);

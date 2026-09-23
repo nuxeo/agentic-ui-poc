@@ -88,8 +88,33 @@ const HEADER_SEARCH_INPUT = 'input.header-search-input';
 /** Visible label naming the global search (NXENG-798); placeholder is no longer the accessible name. */
 const HEADER_SEARCH_LABEL = 'label.header-search-label[for="global-header-search-input"]';
 
-async function headerSearchVisibleLabel(page) {
-  return (await page.locator(HEADER_SEARCH_LABEL).innerText()).trim();
+async function headerSearchVisibleLabel(page, h) {
+  const locator = page.locator(HEADER_SEARCH_LABEL);
+  const painted = await locator.evaluate((el) => {
+    const style = getComputedStyle(el);
+    const { width, height } = el.getBoundingClientRect();
+    return {
+      text: (el.textContent ?? '').trim(),
+      display: style.display,
+      visibility: style.visibility,
+      opacity: Number.parseFloat(style.opacity),
+      width,
+      height,
+    };
+  });
+
+  h.check(
+    'the global search label is visibly painted, not merely present in the DOM',
+    painted.display !== 'none' &&
+      painted.visibility !== 'hidden' &&
+      painted.opacity > 0 &&
+      painted.width > 0 &&
+      painted.height > 0,
+    `display=${painted.display} visibility=${painted.visibility} opacity=${painted.opacity} ` +
+      `box=${painted.width}x${painted.height} text=${JSON.stringify(painted.text.slice(0, 40))}`,
+  );
+
+  return painted.text;
 }
 
 /** The file the marketplace package installs. Served verbatim for the English pass. */
@@ -605,7 +630,7 @@ export default async function run(page, h) {
     `served so far: ${JSON.stringify(servedLanguages)}`,
   );
 
-  const frenchSearchLabel = await headerSearchVisibleLabel(page);
+  const frenchSearchLabel = await headerSearchVisibleLabel(page, h);
   h.check(
     'the global search visible label is French',
     frenchSearchLabel === 'Rechercher des documents, des utilisateurs ou des groupes',
@@ -709,7 +734,7 @@ export default async function run(page, h) {
   await page.waitForTimeout(3000);
   await h.expectVisible('the adf-hx POC route rendered', 'lib-browse-adf-hx-poc');
 
-  const adfHxRouteSearchLabel = await headerSearchVisibleLabel(page);
+  const adfHxRouteSearchLabel = await headerSearchVisibleLabel(page, h);
   h.check(
     'the adf-hx route keeps the configured language',
     adfHxRouteSearchLabel === frenchSearchLabel,
@@ -736,7 +761,7 @@ export default async function run(page, h) {
   await reloadApp(page);
   await h.expectVisible('app shell rendered in German pass', 'app-shell');
 
-  const germanSearchLabel = await headerSearchVisibleLabel(page);
+  const germanSearchLabel = await headerSearchVisibleLabel(page, h);
   h.check(
     'the global search visible label is German',
     germanSearchLabel === 'Dokumente, Benutzer oder Gruppen suchen',
@@ -770,7 +795,7 @@ export default async function run(page, h) {
     fallbackKeys.length === 0,
     fallbackKeys.join('\n      '),
   );
-  const fallbackSearchLabel = await headerSearchVisibleLabel(page);
+  const fallbackSearchLabel = await headerSearchVisibleLabel(page, h);
   h.check(
     'an unshipped locale falls back to the English string',
     fallbackSearchLabel === 'Search documents, users or groups',
