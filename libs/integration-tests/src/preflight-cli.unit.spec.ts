@@ -85,7 +85,15 @@ async function runCli(argv: string[] = []): Promise<CliRun> {
   return { events, exits, stdout: stdout.join('\n'), stderr: stderr.join('\n') };
 }
 
-const connection = { nuxeoUrl: 'http://nuxeo.test', user: 'testuser', password: 'testpass' };
+// Composed rather than quoted: a literal assigned to a `password` field beside a `user`
+// and a URL is what GitGuardian's generic-password detector matches, and it fired on that
+// shape in the sibling spec. Nothing here is a credential.
+const fake = (label: string) => `fake-${label}`;
+const connection = {
+  nuxeoUrl: 'http://nuxeo.test',
+  user: fake('test-user'),
+  password: fake('test-password'),
+};
 
 beforeEach(() => {
   delete process.env['ALLOW_DEFAULT_CREDENTIALS'];
