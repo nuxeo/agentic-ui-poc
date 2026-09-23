@@ -86,6 +86,25 @@ const OUT_OF_SCOPE = Object.freeze({
   core: 'untouched Nx scaffold',
 });
 
+/*
+ * `shared-ai-client` is deliberately NOT in the list above, and was briefly added by mistake.
+ *
+ * The reasoning for adding it was that its KD and KE siblings are excluded and the AI backend is
+ * not in this repository. Both premises are true and the conclusion does not follow.
+ * `docs/adf-hx-beta-plan.md` is the plan of record and names the excluded set exactly —
+ * "administration, workflow tasks, KD/KE, assets, trash — plus the reference extension libraries
+ * and the forkable template" — then says: **"The default is in-scope, so a new library counts
+ * until someone argues otherwise."** KD/KE are named. The AI client is not.
+ *
+ * And it is genuinely exercised by the core slice: `search` and `document-detail` both consume
+ * `AiGatewayService`. A missing backend does not prevent unit-testing an Angular HTTP client
+ * against mocked responses, which is how every other client here is tested.
+ *
+ * It sits at 15.98%, so excluding it moves the reported in-scope figure from 10 of 11 to 10 of 10
+ * without a line of production code changing. That is the exact reason the bar is scope-aware and
+ * the scope lives in the plan rather than here: changing this map is not how scope gets decided.
+ */
+
 /** @param {string} project */
 function inBetaScope(project) {
   return !Object.hasOwn(OUT_OF_SCOPE, project);

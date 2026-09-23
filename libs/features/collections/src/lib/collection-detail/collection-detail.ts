@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal, computed } from '@angular/core';
+import { Component, DestroyRef, LOCALE_ID, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -52,6 +52,8 @@ import {
   shouldShowUserWorkspaceBreadcrumbs,
   postTrashBrowseRouterUrl,
   BrowseContextService,
+  formatAceDateRange,
+  permissionRightLabel,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -111,6 +113,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 })
 export class CollectionDetailComponent {
   private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly collectionService = inject(CollectionService);
@@ -600,33 +603,16 @@ export class CollectionDetailComponent {
   }
 
   permissionLabel(permission: string): string {
-    const labels: Record<string, string> = {
-      Everything: 'Manage everything',
-      ReadWrite: 'Edit',
-      Read: 'Read',
-      Write: 'Write',
-      ReadRemove: 'Read & Remove',
-      AddChildren: 'Add Children',
-      Remove: 'Remove',
-      ManageWorkflows: 'Manage Workflows',
-      ReadCanCollect: 'Can collect',
-    };
-    return labels[permission] ?? permission;
+    return permissionRightLabel(permission, (key) => this.translate.instant(key));
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    if (!ace.begin && !ace.end) return this.translate.instant('permissions.time-frame.permanent');
-    const fmt = (iso: string) =>
-      new Date(iso).toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
-    if (!ace.begin && ace.end) return `Until ${fmt(ace.end)}`;
-    const parts: string[] = [];
-    if (ace.begin) parts.push(`from ${fmt(ace.begin)}`);
-    if (ace.end) parts.push(`to ${fmt(ace.end)}`);
-    return parts.join(' ');
+    return formatAceDateRange(
+      ace.begin,
+      ace.end,
+      (key, params) => this.translate.instant(key, params),
+      this.locale,
+    );
   }
 
   addPermission(): void {

@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  LOCALE_ID,
   OnInit,
   OnDestroy,
   inject,
@@ -115,6 +116,8 @@ import {
   type BrowseReturnMode,
   type ClipboardDoc,
   formatRelativeTime,
+  formatAceDateRange,
+  permissionRightLabel,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -289,6 +292,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly destroyRef = inject(DestroyRef);
   private readonly extensionRuleContext = inject(ExtensionRuleContextService);
   private readonly extensions = inject(AppExtensionsService);
@@ -485,7 +489,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   /** Set after a successful ingest or CheckDigest probe when the marker cannot be persisted. */
   readonly contentLakePresenceVerified = signal(false);
   readonly contentLakePresenceChecking = signal(false);
-  readonly contentLakeIngestedTooltip = 'Indexed in Content Lake';
 
   // Loaded from the Nuxeo `nature` directory and supplied as candidate classes to the
   // KE text-classification model. Sourcing live ids guarantees the value we write back
@@ -866,26 +869,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly canRemoveDoc = computed(() => canRemoveDocument(this.doc()));
 
   permissionLabel(permission: string): string {
-    const labels: Record<string, string> = {
-      Everything: 'Manage everything',
-      ReadWrite: 'Edit',
-      Read: 'Read',
-      Write: 'Write',
-      ReadRemove: 'Read & Remove',
-      AddChildren: 'Add Children',
-      Remove: 'Remove',
-      ManageWorkflows: 'Manage Workflows',
-      ReadCanCollect: 'Can collect',
-    };
-    return labels[permission] ?? permission;
+    return permissionRightLabel(permission, (key) => this.translate.instant(key));
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    if (!ace.begin && !ace.end) return this.translate.instant('permissions.time-frame.permanent');
-    const parts: string[] = [];
-    if (ace.begin) parts.push(`from ${new Date(ace.begin).toLocaleDateString()}`);
-    if (ace.end) parts.push(`to ${new Date(ace.end).toLocaleDateString()}`);
-    return parts.join(' ');
+    return formatAceDateRange(
+      ace.begin,
+      ace.end,
+      (key, params) => this.translate.instant(key, params),
+      this.locale,
+    );
   }
 
   displayUsername(ace: NuxeoAce): string {
@@ -1817,7 +1810,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   taskDueLabel(task: NuxeoTask): string {
     if (!task.dueDate) return '';
     const d = new Date(task.dueDate);
-    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString(this.locale, { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
   openStartProcess(): void {

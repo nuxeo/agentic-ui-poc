@@ -126,7 +126,8 @@
       "menu": "Menu des paramètres"
     },
     "test": {
-      "platform-nav-item": "Parcourir"
+      "platform-nav-item": "Parcourir",
+      "personal-space-nav-item": "Espace personnel"
     }
   }
 }
