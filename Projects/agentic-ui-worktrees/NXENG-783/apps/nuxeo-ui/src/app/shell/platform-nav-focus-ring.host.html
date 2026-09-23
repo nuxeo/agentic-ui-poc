@@ -1,0 +1,11 @@
+<!--
+  Two items, one of them active: the failing adjacency is between the focus ring and the
+  active-item highlight, whether that highlight belongs to the focused item itself or to the
+  item touching it — nav items have no gap between them.
+-->
+<sat-platform-nav>
+  <sat-platform-nav-list-item data-nav-id="idle">Browse (adf-hx POC)</sat-platform-nav-list-item>
+  <sat-platform-nav-list-item data-nav-id="active" [active]="true">{{
+    'shell.test.platform-nav-item' | translate
+  }}</sat-platform-nav-list-item>
+</sat-platform-nav>
