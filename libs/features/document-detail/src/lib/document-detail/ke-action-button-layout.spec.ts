@@ -24,6 +24,7 @@
  *      font so the glyph actually renders at runtime.
  */
 import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -55,7 +56,7 @@ describe('KE action button loader layout', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [KeButtonHostComponent],
+      imports: [testTranslateModule(), KeButtonHostComponent],
       providers: [provideZonelessChangeDetection()],
     }).compileComponents();
 

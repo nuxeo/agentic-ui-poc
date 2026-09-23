@@ -49,6 +49,8 @@
     "review:analysis": "node scripts/pr-review-analysis.mjs",
     "mirror:agents": "node scripts/mirror-agent-config.mjs sync",
     "beta:mirror": "node scripts/mirror-agent-config.mjs check",
+    "i18n:pseudo": "node tools/i18n/pseudo-locale.mjs",
+    "i18n:audit": "node tools/i18n/pseudo-locale.mjs && node tools/i18n/pseudo-locale-audit.mjs && node tools/i18n/pseudo-locale-deep.mjs",
     "review:crowdin-selftest": "node tools/i18n/crowdin-push-context.selftest.mjs"
   },
   "lint-staged": {
@@ -164,6 +166,7 @@
     "@angular/build": {
       "vite": "6.4.3"
     },
+    "adm-zip": "0.6.1",
     "axios": "1.19.0",
     "body-parser": "2.3.0",
     "esbuild": "0.28.1",

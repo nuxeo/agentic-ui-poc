@@ -10,7 +10,7 @@ export function stripRedundantMatInputAriaRequired(
   }
 }
 
-/** Strips on setup and whenever MatInput re-applies aria-required (NXENG-753). */
+/** Strips on setup and whenever MatInput re-applies aria-required. */
 export function observeStripRedundantMatInputAriaRequired(
   input: HTMLInputElement | null | undefined,
 ): MutationObserver | null {
@@ -20,6 +20,10 @@ export function observeStripRedundantMatInputAriaRequired(
 
   const strip = (): void => stripRedundantMatInputAriaRequired(input);
   strip();
+
+  if (typeof MutationObserver === 'undefined') {
+    return null;
+  }
 
   const observer = new MutationObserver(strip);
   observer.observe(input, {

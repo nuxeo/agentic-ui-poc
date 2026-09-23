@@ -9,8 +9,9 @@ import { FormsModule } from '@angular/forms';
 import {
   DocumentDetailService,
   isPermissionDeniedError,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface CreateVersionDialogData {
   documentUid: string;
@@ -23,6 +24,7 @@ export interface CreateVersionDialogData {
   selector: 'lib-create-version-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatRadioModule,
@@ -30,44 +32,7 @@ export interface CreateVersionDialogData {
     MatSnackBarModule,
     FormsModule,
   ],
-  template: `
-    <h2 mat-dialog-title>
-      Create Version for {{ data.documentTitle }} - Version {{ data.currentMajor }}.{{
-        data.currentMinor
-      }}
-    </h2>
-
-    <mat-dialog-content>
-      <mat-radio-group [(ngModel)]="increment" class="version-options">
-        <mat-radio-button value="Minor" class="version-option">
-          <span class="version-badge">{{ data.currentMajor }}.{{ data.currentMinor + 1 }}</span>
-          Minor version
-        </mat-radio-button>
-        <mat-radio-button value="Major" class="version-option">
-          <span class="version-badge">{{ data.currentMajor + 1 }}.0</span>
-          Major version
-        </mat-radio-button>
-      </mat-radio-group>
-    </mat-dialog-content>
-
-    <mat-dialog-actions>
-      <button mat-stroked-button mat-dialog-close type="button">Cancel</button>
-      <span class="spacer"></span>
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        (click)="create()"
-        [disabled]="saving()"
-      >
-        @if (saving()) {
-          <mat-spinner diameter="18" />
-        } @else {
-          Create Version
-        }
-      </button>
-    </mat-dialog-actions>
-  `,
+  templateUrl: './create-version-dialog.html',
   styles: [
     `
       h2[mat-dialog-title] {
@@ -135,6 +100,7 @@ export interface CreateVersionDialogData {
 export class CreateVersionDialogComponent {
   readonly data = inject<CreateVersionDialogData>(MAT_DIALOG_DATA);
   private readonly dialogRef = inject(MatDialogRef<CreateVersionDialogComponent>);
+  private readonly translate = inject(TranslateService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
@@ -156,15 +122,21 @@ export class CreateVersionDialogComponent {
             this.increment === 'Major'
               ? `${this.data.currentMajor + 1}.0`
               : `${this.data.currentMajor}.${this.data.currentMinor + 1}`;
-          this.snackBar.open(`Version ${label} created`, 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('document-detail.create-version-dialog.created', {
+              version: label,
+            }),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
           this.dialogRef.close(doc);
         },
         error: (err) => {
           this.saving.set(false);
           const message = isPermissionDeniedError(err)
-            ? PERMISSION_DENIED_MESSAGE
+            ? this.translate.instant(PERMISSION_DENIED_KEY)
             : 'Failed to create version';
-          this.snackBar.open(message, 'OK', { duration: 3000 });
+          this.snackBar.open(message, this.translate.instant('common.ok'), { duration: 3000 });
         },
       });
   }

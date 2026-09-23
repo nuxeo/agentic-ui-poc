@@ -457,6 +457,141 @@ shell to see it. See `apps/nuxeo-ui/src/app/shell/nav-focus-ring-contrast.spec.t
 
 ---
 
+## 17. `outline: none` with no replacement, and a focus ring on a non-focusable wrapper
+
+`outline: none` on a control with no focus style anywhere is WCAG 2.1 failure technique F78 and
+an SC 2.4.7 violation. It is easy to miss because nothing looks broken until you stop using the
+mouse: the header global search input — the **first Tab stop on every page in this app** —
+changed **zero of the 19312 pixels** in its box when it received keyboard focus. There is no
+global `:focus-visible` fallback in `apps/nuxeo-ui/src/styles.scss` to catch this, so every
+control is on its own.
+
+```scss
+// BAD ❌ — the browser's ring removed and nothing put back. F78.
+.header-search-input {
+  border: none;
+  outline: none;
+}
+
+// VALID BUT AVOID ⚠️ — a real, clearly visible ring, just on the wrapper <div>. This does
+// satisfy SC 2.4.7: WCAG does not require the outline to be declared on the focused node.
+// Two practical costs, neither of them a WCAG failure. Every tool that inspects the focused
+// element still reports no indicator, so the finding never closes and the next author has
+// no way to tell a real gap from a scanner blind spot. And the ring is stuck with the
+// wrapper's box, so it cannot follow the control it belongs to. Prefer the focused element;
+// reach for the ancestor when the focusable element genuinely has no box of its own.
+.header-search-input-wrap:focus-within {
+  outline: 2px solid var(--mat-sys-primary);
+}
+
+// GOOD ✅ — the ring belongs to the element that takes focus. Give it the border and the
+// radius so it has a box worth outlining, and let its colour track the same theme as the
+// surface behind it — see the offset trap below.
+.header-search-input {
+  box-sizing: border-box;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 20px;
+  outline: none;
+}
+
+.header-search-input:focus {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+```
+
+Three traps, each of which cost a measurement to find:
+
+- **A positive `outline-offset` means the element's own background is not what the ring
+  contrasts with.** The ring is painted outside the border box and the offset gap shows what is
+  _behind_ the element, so both of the ring's adjacent colours are the ancestor surface. This
+  cost two wrong conclusions in a row: first a contrast assertion that compared the ring to the
+  field's pinned white, which the ring never touches; then a "fix" for the number that assertion
+  produced — `color-scheme: light` on the field, to stop `light-dark(#5654ac, #c3c0ff)` flipping
+  to the pale value on white. Measured against the surface the ring actually touches, that pin
+  made it **2.65:1 on a dark header**, worse than doing nothing. Sample the rendered pixel just
+  outside the ring, or walk up to the nearest non-transparent ancestor background, and compare
+  against that. Then let the ring track the same theme as the surface behind it: 5.80–10.11:1
+  across the four packaged themes (`DEFAULT_APP_THEMES` in
+  `libs/shared/app-config/src/lib/bootstrap-config.ts`) and both OS colour schemes.
+- **IBM Equal Access's `style_focus_visible` reads `:focus` only.** It collects `:focus-visible`
+  and `:focus-within` into an array and then only ever reads index 0. A `:focus-visible`-only
+  ring is invisible to it, and its lookup does not resolve **selector lists** either — writing
+  `&:focus, &:focus-visible` reports the control as unindicated again. `:focus` costs nothing on
+  a control that accepts keyboard input: it matches `:focus-visible` whenever focused anyway.
+- **`outline-color` computes to `currentColor` even when `outline-style: none`.** A test that
+  reads `outline-color` and checks the contrast ratio passes on completely unfixed code, because
+  it measures the text colour. Assert `outline-style !== 'none'` and a non-zero width _before_
+  measuring the colour.
+
+Regression test pattern: `nuxeo-ui` runs its specs in real Chrome (`ng test nuxeo-ui` is the
+Karma builder, and its `styles` option loads the app's global stylesheet), so assert the
+_rendered_ cascade — pull the real component stylesheet in with `styleUrls`, call `focus()`, and
+read the ring back out of `getComputedStyle`. Grepping the SCSS cannot tell a rule that applies
+from one that is overridden. See
+`apps/nuxeo-ui/src/app/shell/header-search-focus-ring.spec.ts` (NXENG-775).
+
+---
+
+## 18. Unlabelled vendor `<svg>` inside a labelled link (WCAG 1.1.1)
+
+A third-party logo or icon component draws a bare `<svg>` with no `<title>` and no
+`aria-label`. Placed inside a link that already has an accessible name, each graphic is still
+announced as an unnamed image — a WCAG 2.1 1.1.1 Non-text Content violation at level A, reported
+by IBM Equal Access as `svg_graphics_labelled`.
+
+**Axe does not catch this one.** Measured on the login page before the fix: IBM reported two
+violations, axe at WCAG 2.1 AA reported zero. Axe's `svg-img-alt` only applies to an `<svg>` that
+carries an explicit `role`, and a bare vendor `<svg>` has none — so an axe-clean surface can still
+hold this violation, and a green `expectNoA11yViolations()` is not evidence against it.
+
+The trap is that **an ARIA attribute on the host element does not reach the `<svg>`**. The rule
+reads the `<svg>` node, and the markup belongs to the dependency — `@hylandsoftware/satori-ui`
+ships its logo components with `ViewEncapsulation.None` and no `<title>` — so nothing in this
+repo can label it.
+
+```html
+<!-- BAD ❌ — the link is named, but each vendor <svg> is an unnamed image -->
+<a routerLink="/login" aria-label="Hyland">
+  <sat-logo direction="horizontal">
+    <sat-h-mark-logo />
+    <sat-word-mark-logo />
+  </sat-logo>
+</a>
+
+<!-- ALSO BAD ❌ — aria-label on the host never reaches the <svg>; measured, still 2 violations -->
+<sat-word-mark-logo aria-label="Hyland" />
+
+<!-- GOOD ✅ — the link carries the name, so the lockup is decorative and hidden as a whole -->
+<a routerLink="/login" aria-label="Hyland">
+  <sat-logo direction="horizontal" aria-hidden="true">
+    <sat-h-mark-logo />
+    <sat-word-mark-logo />
+  </sat-logo>
+</a>
+```
+
+Hide the wrapper rather than each mark: it is the lockup that is decorative, and a mark added
+later stays covered. Two conditions before reaching for `aria-hidden`, and both belong in the
+test rather than in the PR description:
+
+- **The accessible name must already exist elsewhere**, and must stay exposed. Hiding the only
+  thing that conveys the meaning replaces one violation with a worse one.
+- **Nothing inside the subtree may be focusable** — `aria-hidden` over focusable content is
+  itself a violation (`aria_hidden_focus_misuse`). A vendor release that adds a focusable element
+  inside the lockup reintroduces it, so assert it rather than checking once by hand.
+
+`aria-hidden` is not `display: none`: the graphic still renders and still has a layout box, so
+visual assertions and Playwright's `expectVisible` keep passing.
+
+Regression test pattern: assert the guarantee, not the attribute's location — every `<svg>`
+inside the link has an `aria-hidden="true"` ancestor, the link itself has none, and no hidden
+subtree contains a focusable element. A test for the attribute on one element passes while a
+newly added mark goes unhidden. See
+`apps/nuxeo-ui/src/app/login/login-page.component.spec.ts` (NXENG-743).
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.
@@ -471,4 +606,5 @@ Fix proactively to avoid a review cycle:
 - "Code span split across newlines" → keep the whole backticked phrase on one line
 - "Writing AI output to a vocabulary field without validation" → source candidates from the vocabulary and validate the response
 - "`<mat-spinner>` inside a button" → use a spinning `<mat-icon class="ke-spinning">progress_activity</mat-icon>` to preserve inline layout
+- "SVG has no accessible name" → if the link around it is already named, mark the graphic decorative with `aria-hidden="true"` on the wrapper; an `aria-label` on the host element does not reach the `<svg>`
 - "Focus indicator may not be visible" → set the vendor's focus-outline custom property to its own foreground token; left unset it falls back to a low-emphasis divider colour and misses 3:1

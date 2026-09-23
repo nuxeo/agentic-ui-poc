@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
@@ -268,7 +269,7 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
     installDefaults();
 
     await TestBed.configureTestingModule({
-      imports: [DocumentDetailComponent],
+      imports: [testTranslateModule(), testTranslateModule(), DocumentDetailComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -1087,7 +1088,7 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       component.abandonWorkflow(workflow());
 
       expect(component.abandoningWorkflow()).toBe(false);
-      expect(snack).toHaveBeenCalledWith('Failed to abandon workflow', 'OK', expect.anything());
+      expect(snack).toHaveBeenCalledWith('Failed to abandon workflow.', 'OK', expect.anything());
     });
 
     it('turns an i18n task key into a readable label', async () => {
@@ -1144,8 +1145,14 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       await build();
 
       expect(component.aceTimeFrame(ace())).toBe('Permanent');
-      expect(component.aceTimeFrame(ace({ begin: '2026-01-01' }))).toContain('from');
-      expect(component.aceTimeFrame(ace({ end: '2026-12-31' }))).toContain('to');
+      // `From`/`Until` come from `permissions.time-frame.*` now. They used to be interpolated
+      // English (`from ${date}`), which is why no locale could change them.
+      expect(component.aceTimeFrame(ace({ begin: '2026-01-01' }))).toMatch(
+        /^From \w{3} \d{2}, 2026$/,
+      );
+      expect(component.aceTimeFrame(ace({ end: '2026-12-31' }))).toMatch(
+        /^Until \w{3} \d{2}, 2026$/,
+      );
     });
 
     it('strips the transient prefix from a shared-link principal', async () => {

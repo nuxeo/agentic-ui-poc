@@ -9,14 +9,15 @@ import {
   computed,
   DestroyRef,
   untracked,
+  LOCALE_ID,
 } from '@angular/core';
-import { NgTemplateOutlet, DatePipe } from '@angular/common';
+import { NgTemplateOutlet, DatePipe, formatDate } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 
@@ -53,11 +54,13 @@ import {
   readClipboardDocs,
   writeClipboardDocs,
   type ClipboardDoc,
+  formatRelativeTime,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { toAdfHxBrowseRouterUrl } from '@agentic-ui/shared/adf-hx-bridge';
 import { HxpBrowseNavDrawerComponent } from '@agentic-ui/shared/adf-hx-bridge/providers';
 import {
   AppExtensionsService,
+  DescriptorLabelPipe,
   EXTENSION_SLOTS,
   ExtensionComponentRegistry,
   ExtensionOutletComponent,
@@ -87,6 +90,7 @@ export interface FolderNode {
   selector: 'app-nav-drawer',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
     NgTemplateOutlet,
     DatePipe,
     RouterLink,
@@ -104,6 +108,8 @@ export interface FolderNode {
   styleUrl: './nav-drawer.component.scss',
 })
 export class NavDrawerComponent {
+  private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly browseService = inject(BrowseService);
   private readonly browseContext = inject(BrowseContextService);
   private readonly clipboardTargetService = inject(ClipboardTargetService);
@@ -485,7 +491,9 @@ export class NavDrawerComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.expiredError.set('Failed to load expired documents.');
+        this.expiredError.set(
+          this.translate.instant('app.message.failed-to-load-expired-documents'),
+        );
         this.expiredLoading.set(false);
         this.expiredLoaded = false;
       },
@@ -504,11 +512,12 @@ export class NavDrawerComponent {
   expiredDate(doc: NuxeoDocument): string {
     const expired = doc.properties?.['dc:expired'] as string;
     if (!expired) return '';
-    return new Date(expired).toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    // `formatDate`, not `inject(DatePipe)`. Listing `DatePipe` in `imports` makes it usable as
+    // `| date` in the template; it does NOT provide it for injection, so injecting it threw
+    // NG0201 in this component's constructor and took the app-shell header specs down with it.
+    // `providers: [DatePipe]` would also work, but this needs no DI at all — `formatDate` is the
+    // function `DatePipe.transform` delegates to, and it takes the locale as an argument.
+    return formatDate(new Date(expired), 'mediumDate', this.locale);
   }
 
   // ── Recently Viewed ──
@@ -526,7 +535,9 @@ export class NavDrawerComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.recentlyViewedError.set('Failed to load recently viewed documents.');
+        this.recentlyViewedError.set(
+          this.translate.instant('app.message.failed-to-load-recently-viewed-documents'),
+        );
         this.recentlyViewedLoading.set(false);
         this.recentlyViewedLoaded = false;
       },
@@ -556,25 +567,13 @@ export class NavDrawerComponent {
     return docTypeIcon(doc.type);
   }
 
+  /**
+   * Localised by `Intl.RelativeTimeFormat`, which also covers the future case this used to
+   * spell as `in ${label}` — a positive offset produces "in 3 days" in each language's own
+   * word order. See `formatRelativeTime`.
+   */
   relativeTime(dateStr: string): string {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const absDiff = Math.abs(diff);
-    const minutes = Math.floor(absDiff / 60_000);
-    const hours = Math.floor(absDiff / 3_600_000);
-    const days = Math.floor(absDiff / 86_400_000);
-    const months = Math.floor(days / 30);
-    const years = Math.floor(days / 365);
-
-    let label: string;
-    if (years >= 1) label = years === 1 ? 'a year' : `${years} years`;
-    else if (months >= 1) label = months === 1 ? 'a month' : `${months} months`;
-    else if (days >= 1) label = days === 1 ? 'a day' : `${days} days`;
-    else if (hours >= 1) label = hours === 1 ? 'an hour' : `${hours} hours`;
-    else label = minutes <= 1 ? 'just now' : `${minutes} minutes`;
-
-    if (label === 'just now') return label;
-    return diff > 0 ? `${label} ago` : `in ${label}`;
+    return formatRelativeTime(dateStr, this.translate.currentLang);
   }
 
   // ── Collections ──
@@ -948,12 +947,16 @@ export class NavDrawerComponent {
                 rootNode.loaded = true;
                 rootNode.children = [];
                 this.personalSpaceNodes.update((nodes) => [...nodes]);
-                this.personalSpaceError.set('Failed to load workspace folders.');
+                this.personalSpaceError.set(
+                  this.translate.instant('app.message.failed-to-load-workspace-folders'),
+                );
               },
             });
         },
         error: () => {
-          this.personalSpaceError.set('Failed to load personal workspace.');
+          this.personalSpaceError.set(
+            this.translate.instant('app.message.failed-to-load-personal-workspace'),
+          );
           this.personalSpaceLoading.set(false);
           this.personalSpaceLoaded = false;
         },
@@ -1090,7 +1093,7 @@ export class NavDrawerComponent {
         this.tasksLoading.set(false);
       },
       error: () => {
-        this.tasksError.set('Failed to load tasks.');
+        this.tasksError.set(this.translate.instant('tasks.message.failed-to-load-tasks'));
         this.tasksLoading.set(false);
       },
     });
@@ -1290,9 +1293,9 @@ export class NavDrawerComponent {
           if (results.length === 0) {
             this.snackBar.open(
               action === 'copy'
-                ? 'Failed to copy clipboard items.'
-                : 'Failed to move clipboard items.',
-              'Dismiss',
+                ? this.translate.instant('app.message.failed-to-copy-clipboard-items')
+                : this.translate.instant('app.message.failed-to-move-clipboard-items'),
+              this.translate.instant('common.dismiss'),
               { duration: 4000 },
             );
             return;
@@ -1311,16 +1314,16 @@ export class NavDrawerComponent {
           const verb = action === 'copy' ? 'Copied' : 'Moved';
           this.snackBar.open(
             `${verb} ${count} item${count === 1 ? '' : 's'} to ${target.title ?? 'folder'}.`,
-            'Dismiss',
+            this.translate.instant('common.dismiss'),
             { duration: 4000 },
           );
         },
         error: () => {
           this.snackBar.open(
             action === 'copy'
-              ? 'Failed to copy clipboard items.'
-              : 'Failed to move clipboard items.',
-            'Dismiss',
+              ? this.translate.instant('app.message.failed-to-copy-clipboard-items')
+              : this.translate.instant('app.message.failed-to-move-clipboard-items'),
+            this.translate.instant('common.dismiss'),
             { duration: 4000 },
           );
         },

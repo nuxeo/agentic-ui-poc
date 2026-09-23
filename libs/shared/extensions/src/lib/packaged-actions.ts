@@ -35,18 +35,21 @@ function notBusy(operation: string): ExtensionRuleRef {
 export const PACKAGED_BULK_ACTIONS: readonly ExtensionActionDescriptor[] = [
   {
     id: 'app.bulkActions.downloadZip',
+    labelKey: 'action.bulk-actions-download-zip',
     label: 'Download All as Zip',
     icon: 'download',
     order: 10,
   },
   {
     id: 'app.bulkActions.addToCollection',
+    labelKey: 'action.bulk-actions-add-to-collection',
     label: 'Add to Collection',
     icon: 'library_add',
     order: 20,
   },
   {
     id: 'app.bulkActions.compare',
+    labelKey: 'action.bulk-actions-compare',
     label: 'Compare',
     icon: 'compare',
     order: 30,
@@ -56,18 +59,21 @@ export const PACKAGED_BULK_ACTIONS: readonly ExtensionActionDescriptor[] = [
   },
   {
     id: 'app.bulkActions.addToClipboard',
+    labelKey: 'action.bulk-actions-add-to-clipboard',
     label: 'Add to Clipboard',
     icon: 'content_paste',
     order: 40,
   },
   {
     id: 'app.bulkActions.publish',
+    labelKey: 'action.bulk-actions-publish',
     label: 'Publish Document',
     icon: 'publish',
     order: 50,
   },
   {
     id: 'app.bulkActions.delete',
+    labelKey: 'action.bulk-actions-delete',
     label: 'Delete selected',
     icon: 'delete',
     order: 60,
@@ -97,6 +103,7 @@ export const PACKAGED_BULK_ACTIONS: readonly ExtensionActionDescriptor[] = [
 export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescriptor[] = [
   {
     id: 'app.toolbar.edit',
+    labelKey: 'action.toolbar-edit',
     label: 'Edit',
     icon: 'edit',
     order: 10,
@@ -107,6 +114,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
     // only ever reaches metadata and says so. Two descriptors rather than a
     // component-swapped label, for the same reason as the toggles above.
     id: 'app.toolbar.editProperties',
+    labelKey: 'action.toolbar-edit-properties',
     label: 'Edit properties',
     icon: 'edit',
     order: 10,
@@ -114,6 +122,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.addToCollection',
+    labelKey: 'action.toolbar-add-to-collection',
     label: 'Add to collection',
     icon: 'library_add',
     order: 20,
@@ -121,6 +130,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.delete',
+    labelKey: 'action.toolbar-delete',
     label: 'Delete',
     icon: 'delete',
     order: 30,
@@ -129,6 +139,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.lock',
+    labelKey: 'action.toolbar-lock',
     label: 'Lock',
     icon: 'lock',
     order: 40,
@@ -137,6 +148,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.unlock',
+    labelKey: 'action.toolbar-unlock',
     label: 'Unlock',
     icon: 'lock_open',
     order: 40,
@@ -145,6 +157,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.addToFavorites',
+    labelKey: 'action.toolbar-add-to-favorites',
     label: 'Add to Favorites',
     icon: 'star_border',
     order: 50,
@@ -154,6 +167,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.removeFromFavorites',
+    labelKey: 'action.toolbar-remove-from-favorites',
     label: 'Remove from Favorites',
     icon: 'star',
     order: 50,
@@ -163,6 +177,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.share',
+    labelKey: 'action.toolbar-share',
     label: 'Share',
     icon: 'share',
     order: 60,
@@ -171,6 +186,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.publish',
+    labelKey: 'action.toolbar-publish',
     label: 'Publish document',
     icon: 'publish',
     order: 70,
@@ -179,6 +195,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.subscribe',
+    labelKey: 'action.toolbar-subscribe',
     label: 'Notify Me',
     icon: 'notifications',
     order: 80,
@@ -188,6 +205,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.unsubscribe',
+    labelKey: 'action.toolbar-unsubscribe',
     label: 'Unsubscribe',
     icon: 'notifications_active',
     order: 80,
@@ -197,6 +215,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.addToClipboard',
+    labelKey: 'action.toolbar-add-to-clipboard',
     label: 'Add to Clipboard',
     icon: 'content_paste',
     order: 90,
@@ -205,6 +224,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.removeFromClipboard',
+    labelKey: 'action.toolbar-remove-from-clipboard',
     label: 'Remove from Clipboard',
     icon: 'content_paste_off',
     order: 90,
@@ -215,6 +235,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
     // No rule: Export is the one entry the trashed banner leaves reachable, and
     // it was outside the `@if (!isTrashed())` block for exactly that reason.
     id: 'app.toolbar.export',
+    labelKey: 'action.toolbar-export',
     label: 'Export',
     icon: 'download',
     order: 100,
@@ -223,6 +244,7 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
   },
   {
     id: 'app.toolbar.startProcess',
+    labelKey: 'action.toolbar-start-process',
     label: 'Start Process',
     icon: 'play_circle',
     order: 110,
@@ -244,12 +266,14 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
 export const PACKAGED_BROWSE_CONTEXT_MENU: readonly ExtensionActionDescriptor[] = [
   {
     id: 'app.contextMenu.share',
+    labelKey: 'action.context-menu-share',
     label: 'Share',
     icon: 'share',
     order: 10,
   },
   {
     id: 'app.contextMenu.subscribe',
+    labelKey: 'action.context-menu-subscribe',
     label: 'Notify Me',
     icon: 'notifications',
     order: 20,
@@ -257,6 +281,7 @@ export const PACKAGED_BROWSE_CONTEXT_MENU: readonly ExtensionActionDescriptor[] 
   },
   {
     id: 'app.contextMenu.unsubscribe',
+    labelKey: 'action.context-menu-unsubscribe',
     label: 'Unsubscribe',
     icon: 'notifications_off',
     order: 20,
@@ -264,6 +289,7 @@ export const PACKAGED_BROWSE_CONTEXT_MENU: readonly ExtensionActionDescriptor[] 
   },
   {
     id: 'app.contextMenu.export',
+    labelKey: 'action.context-menu-export',
     label: 'Export',
     icon: 'ios_share',
     order: 30,

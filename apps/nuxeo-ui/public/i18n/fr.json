@@ -1,39 +1,40 @@
 {
   "app": {
-    "title": "Hyland Nuxeo",
+    "login-page": {},
     "nav": {
       "toggle": "Afficher ou masquer le menu de navigation"
-    }
-  },
-  "login": {
-    "title": "Se connecter",
-    "panel-label": "Se connecter",
-    "skip-link": "Aller à la connexion"
+    },
+    "title": "Hyland Nuxeo"
   },
   "browse": {
     "details": {
-      "show": "Afficher les détails",
       "hide": "Masquer les détails",
+      "show": "Afficher les détails",
       "toggle": "Afficher ou masquer le panneau de détails"
     },
     "scope": {
       "create-import": "Créer / Importer",
+      "delete": "Supprimer",
       "drive": "Nuxeo Drive",
       "edit": "Modifier les métadonnées",
-      "delete": "Supprimer",
-      "share": "Partager",
+      "export": "Exporter",
       "notify": "Notifier",
-      "export": "Exporter"
+      "share": "Partager"
     }
+  },
+  "login": {
+    "panel-label": "Se connecter",
+    "skip-link": "Aller à la connexion",
+    "title": "Se connecter"
   },
   "nav": {
     "clipboard": {
+      "copy": "Copier",
       "empty": "Le presse-papiers est vide",
       "hint": "Utilisez « Ajouter au presse-papiers » sur des documents ou des collections pour ajouter des éléments ici.",
+      "move": "Déplacer",
       "remove": "Retirer du presse-papiers",
-      "tip": "Accédez à un conteneur pour coller ou déplacer le contenu du presse-papiers.",
-      "copy": "Copier",
-      "move": "Déplacer"
+      "tip": "Accédez à un conteneur pour coller ou déplacer le contenu du presse-papiers."
     },
     "collections": {
       "empty": "Aucune collection trouvée"
@@ -49,6 +50,23 @@
     "folders": {
       "empty": "Aucun dossier trouvé"
     },
+    "item": {
+      "administration": "Administration",
+      "assets": "Ressources",
+      "browse": "Parcourir",
+      "browse-adf-hx": "Parcourir (PoC adf-hx)",
+      "clipboard": "Presse-papiers",
+      "collections": "Collections",
+      "dashboard": "Tableau de bord",
+      "expired-queue": "File des documents expirés",
+      "favorites": "Favoris",
+      "knowledge-discovery": "Knowledge Discovery",
+      "personal-space": "Espace personnel",
+      "recently-viewed": "Consultés récemment",
+      "search-filters": "Filtres de recherche",
+      "tasks": "Tâches",
+      "trash": "Corbeille"
+    },
     "loading": "Chargement",
     "recent": {
       "empty": "Aucun document consulté récemment"
@@ -61,35 +79,43 @@
       "retry": "Réessayer"
     },
     "tree": {
-      "root": "Racine",
       "retry": "Réessayer",
+      "root": "Racine",
       "toggle": "Développer ou réduire {{ name }}"
     }
   },
   "settings": {
     "themes": {
-      "title": "Thèmes",
-      "search": "Rechercher des thèmes",
+      "apply": "Appliquer",
       "current": "Actuel",
-      "apply": "Appliquer"
+      "search": "Rechercher des thèmes",
+      "title": "Thèmes"
     }
   },
   "shell": {
     "ai": {
       "clear": "Effacer la conversation",
       "close": "Fermer la conversation",
+      "empty-state": "Posez-moi des questions sur vos documents, recherchez dans le référentiel ou obtenez des informations sur les workflows et les tâches.",
       "heading": "Assistant IA Nuxeo",
       "input-placeholder": "Posez une question sur vos documents...",
       "open": "Assistant IA",
       "send": "Envoyer le message",
-      "title": "Assistant IA",
-      "empty-state": "Posez-moi des questions sur vos documents, recherchez dans le référentiel ou obtenez des informations sur les workflows et les tâches.",
+      "sources": "Sources",
       "suggestion": {
         "modified-today": "Quels documents ont été modifiés aujourd’hui ?",
-        "summarize-tasks": "Résume mes tâches en attente",
-        "recent-uploads": "Montre-moi les derniers téléversements"
+        "recent-uploads": "Montre-moi les derniers téléversements",
+        "summarize-tasks": "Résume mes tâches en attente"
       },
-      "sources": "Sources"
+      "title": "Assistant IA"
+    },
+    "menu": {
+      "about": "À propos",
+      "ai-features": "Fonctions IA {{ state }}",
+      "help": "Aide",
+      "state-off": "désactivées",
+      "state-on": "activées",
+      "themes": "Thèmes"
     },
     "search": {
       "no-results": "Aucun résultat trouvé",
@@ -99,16 +125,9 @@
     "settings": {
       "menu": "Menu des paramètres"
     },
-    "menu": {
-      "themes": "Thèmes",
-      "help": "Aide",
-      "about": "À propos",
-      "ai-features": "Fonctions IA {{ state }}",
-      "state-on": "activées",
-      "state-off": "désactivées"
-    },
     "test": {
-      "platform-nav-item": "Parcourir"
+      "platform-nav-item": "Parcourir",
+      "personal-space-nav-item": "Espace personnel"
     }
   }
 }

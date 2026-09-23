@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of, throwError } from 'rxjs';
@@ -58,7 +59,7 @@ async function createComponent(query: Record<string, string> = {}): Promise<{
   fixture: ComponentFixture<KnowledgeDiscoveryComponent>;
 }> {
   await TestBed.configureTestingModule({
-    imports: [KnowledgeDiscoveryComponent],
+    imports: [testTranslateModule(), KnowledgeDiscoveryComponent],
     providers: [
       provideZonelessChangeDetection(),
       { provide: KdClientService, useValue: mockKdClient },

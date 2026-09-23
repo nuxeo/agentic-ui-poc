@@ -21,6 +21,7 @@ import {
   docTypeIcon,
   FOLDERISH_TYPES,
   avatarColor,
+  formatRelativeTime,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { AuthService } from '../auth/auth.service';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
@@ -31,11 +32,13 @@ import {
   aiErrorMessage,
   type Insight,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     MatDialogModule,
     MatButtonModule,
@@ -51,6 +54,7 @@ import {
   styleUrl: './dashboard-page.component.scss',
 })
 export class DashboardPageComponent {
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
@@ -96,7 +100,9 @@ export class DashboardPageComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.recentlyEditedError.set('Failed to load recently edited documents.');
+        this.recentlyEditedError.set(
+          this.translate.instant('app.message.failed-to-load-recently-edited-documents'),
+        );
         this.recentlyEditedLoading.set(false);
       },
     });
@@ -107,7 +113,7 @@ export class DashboardPageComponent {
         this.tasksLoading.set(false);
       },
       error: () => {
-        this.tasksError.set('Failed to load tasks.');
+        this.tasksError.set(this.translate.instant('tasks.message.failed-to-load-tasks'));
         this.tasksLoading.set(false);
       },
     });
@@ -119,7 +125,9 @@ export class DashboardPageComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.recentlyViewedError.set('Failed to load recently viewed documents.');
+        this.recentlyViewedError.set(
+          this.translate.instant('app.message.failed-to-load-recently-viewed-documents'),
+        );
         this.recentlyViewedLoading.set(false);
       },
     });
@@ -131,7 +139,9 @@ export class DashboardPageComponent {
         this.loadThumbnails(res.entries);
       },
       error: () => {
-        this.favoritesError.set('Failed to load favorite items.');
+        this.favoritesError.set(
+          this.translate.instant('app.message.failed-to-load-favorite-items'),
+        );
         this.favoritesLoading.set(false);
       },
     });
@@ -142,7 +152,9 @@ export class DashboardPageComponent {
         this.aiInsightsLoading.set(false);
       },
       error: (err) => {
-        this.aiInsightsError.set(aiErrorMessage(err, 'AI insights unavailable.'));
+        this.aiInsightsError.set(
+          aiErrorMessage(err, this.translate.instant('app.message.ai-insights-unavailable')),
+        );
         this.aiInsightsLoading.set(false);
       },
     });
@@ -251,25 +263,13 @@ export class DashboardPageComponent {
     return !!task.dueDate && new Date(task.dueDate) < new Date();
   }
 
+  /**
+   * Localised by `Intl.RelativeTimeFormat`, which also covers the future case this used to
+   * spell as `in ${label}` — a positive offset produces "in 3 days" in each language's own
+   * word order. See `formatRelativeTime`.
+   */
   relativeTime(dateStr: string): string {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const absDiff = Math.abs(diff);
-    const minutes = Math.floor(absDiff / 60_000);
-    const hours = Math.floor(absDiff / 3_600_000);
-    const days = Math.floor(absDiff / 86_400_000);
-    const months = Math.floor(days / 30);
-    const years = Math.floor(days / 365);
-
-    let label: string;
-    if (years >= 1) label = years === 1 ? 'a year' : `${years} years`;
-    else if (months >= 1) label = months === 1 ? 'a month' : `${months} months`;
-    else if (days >= 1) label = days === 1 ? 'a day' : `${days} days`;
-    else if (hours >= 1) label = hours === 1 ? 'an hour' : `${hours} hours`;
-    else label = minutes <= 1 ? 'just now' : `${minutes} minutes`;
-
-    if (label === 'just now') return label;
-    return diff > 0 ? `${label} ago` : `in ${label}`;
+    return formatRelativeTime(dateStr, this.translate.currentLang);
   }
 
   goToTask(task: NuxeoTask): void {

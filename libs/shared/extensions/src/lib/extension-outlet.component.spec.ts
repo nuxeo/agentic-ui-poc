@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { ExtensionComponentRegistry } from './extension-component-registry.service';
 import { ExtensionOutletComponent } from './extension-outlet.component';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 @Component({ standalone: true, template: '<p class="panel">registered panel</p>' })
 class RegisteredPanelComponent {}
@@ -27,7 +28,7 @@ async function settle(fixture: { detectChanges: () => void }) {
  */
 describe('ExtensionOutletComponent', () => {
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [ExtensionOutletComponent] });
+    TestBed.configureTestingModule({ imports: [testTranslateModule(), ExtensionOutletComponent] });
   });
 
   it('renders a component registered under an ID', async () => {

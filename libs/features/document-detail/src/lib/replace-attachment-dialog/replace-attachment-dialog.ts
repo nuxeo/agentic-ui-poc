@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ReplaceAttachmentDialogData {
   fileName: string;
@@ -8,34 +9,8 @@ export interface ReplaceAttachmentDialogData {
 @Component({
   selector: 'lib-replace-attachment-dialog',
   standalone: true,
-  imports: [MatDialogModule],
-  template: `
-    <div class="replace-dialog">
-      <h2>Replace File</h2>
-
-      <label
-        class="upload-zone"
-        [class.has-file]="selectedFile()"
-        (dragover)="onDragOver($event)"
-        (dragleave)="onDragLeave($event)"
-        (drop)="onDrop($event)"
-      >
-        @if (selectedFile(); as file) {
-          <span class="file-chosen">{{ file.name }}</span>
-        } @else {
-          <span class="upload-link">Upload main file</span>
-        }
-        <input #fileInput type="file" hidden (change)="onFileSelected($event)" />
-      </label>
-
-      <div class="dialog-actions">
-        <button class="btn-cancel" (click)="cancel()">Cancel</button>
-        <button class="btn-replace" [disabled]="!selectedFile()" (click)="confirm()">
-          Replace
-        </button>
-      </div>
-    </div>
-  `,
+  imports: [TranslatePipe, MatDialogModule],
+  templateUrl: './replace-attachment-dialog.html',
   styles: [
     `
       .replace-dialog {

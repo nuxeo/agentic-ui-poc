@@ -1,21 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-remove-attachment-dialog',
   standalone: true,
-  imports: [MatDialogModule],
-  template: `
-    <div class="remove-dialog">
-      <h2>Remove File</h2>
-      <p>Do you really want to remove this file?</p>
-
-      <div class="dialog-actions">
-        <button class="btn-no" (click)="cancel()">No</button>
-        <button class="btn-yes" (click)="confirm()">Yes</button>
-      </div>
-    </div>
-  `,
+  imports: [TranslatePipe, MatDialogModule],
+  templateUrl: './remove-attachment-dialog.html',
   styles: [
     `
       .remove-dialog {

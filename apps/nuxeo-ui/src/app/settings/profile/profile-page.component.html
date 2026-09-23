@@ -13,20 +13,22 @@
           #changePasswordButton
         >
           <mat-icon aria-hidden="true">lock</mat-icon>
-          <span>Change password</span>
+          <span>{{ 'app.profile-page.change-password' | translate }}</span>
         </button>
       </header>
 
       @if (loading()) {
-        <p class="profile-card__loading">Loading profile details…</p>
+        <p class="profile-card__loading">
+          {{ 'app.profile-page.loading-profile-details' | translate }}
+        </p>
       } @else {
         <dl class="profile-card__details">
           <div class="profile-card__detail-row">
-            <dt>Email</dt>
+            <dt>{{ 'app.profile-page.email' | translate }}</dt>
             <dd>{{ email() }}</dd>
           </div>
           <div class="profile-card__detail-row">
-            <dt>Company</dt>
+            <dt>{{ 'app.profile-page.company' | translate }}</dt>
             <dd>{{ company() }}</dd>
           </div>
         </dl>
@@ -34,23 +36,27 @@
     </article>
 
     <article class="profile-card">
-      <div class="profile-card__section-title" role="heading" aria-level="3">Groups</div>
+      <div class="profile-card__section-title" role="heading" aria-level="3">
+        {{ 'app.profile-page.groups' | translate }}
+      </div>
 
       @if (groupsLoading()) {
-        <p class="profile-card__text">Loading groups…</p>
+        <p class="profile-card__text">{{ 'app.profile-page.loading-groups' | translate }}</p>
       } @else {
         <div class="profile-card__table-wrapper">
           <table class="profile-card__table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Identifier</th>
+                <th>{{ 'app.profile-page.name' | translate }}</th>
+                <th>{{ 'app.profile-page.identifier' | translate }}</th>
               </tr>
             </thead>
             <tbody>
               @if (groups().length === 0) {
                 <tr>
-                  <td colspan="2" class="profile-card__table-empty">No groups found.</td>
+                  <td colspan="2" class="profile-card__table-empty">
+                    {{ 'app.profile-page.no-groups-found' | translate }}
+                  </td>
                 </tr>
               } @else {
                 @for (g of groups(); track g.identifier) {
@@ -77,18 +83,22 @@
     </article>
 
     <article class="profile-card">
-      <div class="profile-card__section-title" role="heading" aria-level="3">Local Permissions</div>
+      <div class="profile-card__section-title" role="heading" aria-level="3">
+        {{ 'app.profile-page.local-permissions' | translate }}
+      </div>
 
       @if (localPermissionsLoading()) {
-        <p class="profile-card__text">Loading local permissions…</p>
+        <p class="profile-card__text">
+          {{ 'app.profile-page.loading-local-permissions' | translate }}
+        </p>
       } @else {
         <ng-container
           *ngTemplateOutlet="
             permissionTableBody;
             context: {
               rows: localPermissions(),
-              emptyMessage: 'No local permissions found.',
-              tableLabel: 'Local permissions',
+              emptyMessage: ('settings.profile.no-local-permissions' | translate),
+              tableLabel: ('settings.profile.local-permissions' | translate),
             }
           "
         />
@@ -102,11 +112,13 @@
         (visible)="onGroupPermSectionVisible($event)"
       >
         <div class="profile-card__section-title" role="heading" aria-level="3">
-          {{ g.label }} permissions
+          {{ 'settings.profile.group-permissions-heading' | translate: { group: g.label } }}
         </div>
 
         @if (isGroupPermLoading(g.identifier)) {
-          <p class="profile-card__text">Loading {{ g.label }} permissions…</p>
+          <p class="profile-card__text">
+            {{ 'settings.profile.loading-group-permissions' | translate: { group: g.label } }}
+          </p>
         } @else if (hasGroupPermLoaded(g.identifier)) {
           <ng-container
             *ngTemplateOutlet="
@@ -150,10 +162,10 @@
       </colgroup>
       <thead>
         <tr>
-          <th scope="col">On</th>
-          <th scope="col">Right</th>
-          <th scope="col">Time Frame</th>
-          <th scope="col">Granted by</th>
+          <th scope="col">{{ 'app.profile-page.on' | translate }}</th>
+          <th scope="col">{{ 'app.profile-page.right' | translate }}</th>
+          <th scope="col">{{ 'app.profile-page.time-frame' | translate }}</th>
+          <th scope="col">{{ 'app.profile-page.granted-by' | translate }}</th>
         </tr>
       </thead>
       <tbody>
@@ -210,7 +222,7 @@
         type="button"
         [disabled]="currentPage === 0"
         (click)="groupPermPrev(groupId)"
-        aria-label="Previous page"
+        [attr.aria-label]="'app.profile-page.previous-page' | translate"
       >
         <mat-icon>chevron_left</mat-icon>
       </button>
@@ -220,7 +232,7 @@
         type="button"
         [disabled]="currentPage === totalPages - 1"
         (click)="groupPermNext(groupId)"
-        aria-label="Next page"
+        [attr.aria-label]="'app.profile-page.next-page' | translate"
       >
         <mat-icon>chevron_right</mat-icon>
       </button>

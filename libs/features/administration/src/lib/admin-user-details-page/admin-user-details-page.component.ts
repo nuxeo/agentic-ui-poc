@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, LOCALE_ID, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -32,6 +32,7 @@ import {
   ChangePasswordDialogComponent,
   ChangePasswordDialogData,
 } from '../change-password-dialog/change-password-dialog.component';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 const PERM_PAGE_SIZE = 10;
 
@@ -39,6 +40,7 @@ const PERM_PAGE_SIZE = 10;
   selector: 'lib-admin-user-details-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     RouterLink,
     MatButtonModule,
     MatIconModule,
@@ -54,6 +56,8 @@ const PERM_PAGE_SIZE = 10;
 })
 export class AdminUserDetailsPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
   private readonly permService = inject(PrincipalPermissionsService);
@@ -103,7 +107,7 @@ export class AdminUserDetailsPageComponent implements OnInit {
 
   load(): void {
     if (!this.userId) {
-      this.error.set('Missing user id.');
+      this.error.set(this.translate.instant('admin.message.missing-user-id'));
       return;
     }
     this.loading.set(true);
@@ -118,7 +122,9 @@ export class AdminUserDetailsPageComponent implements OnInit {
         this.loadAllGroupPerms(user);
       },
       error: (e) => {
-        this.error.set(e?.error?.message ?? 'Could not load user details.');
+        this.error.set(
+          e?.error?.message ?? this.translate.instant('admin.message.could-not-load-user-details'),
+        );
         this.loading.set(false);
       },
     });
@@ -235,13 +241,21 @@ export class AdminUserDetailsPageComponent implements OnInit {
         if (!newPassword) return;
         this.userService.updateUser(user.id, { password: newPassword }).subscribe({
           next: () => {
-            this.snackBar.open('Password updated', 'Dismiss', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('admin.message.password-updated'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            );
             this.load();
           },
           error: (e) =>
-            this.snackBar.open(e?.error?.message ?? 'Password update failed', 'Dismiss', {
-              duration: 5000,
-            }),
+            this.snackBar.open(
+              e?.error?.message ?? this.translate.instant('admin.message.password-update-failed'),
+              this.translate.instant('common.dismiss'),
+              {
+                duration: 5000,
+              },
+            ),
         });
       });
   }
@@ -271,13 +285,21 @@ export class AdminUserDetailsPageComponent implements OnInit {
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('User updated', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('admin.message.user-updated'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              );
               this.load();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
-                duration: 5000,
-              }),
+              this.snackBar.open(
+                e?.error?.message ?? this.translate.instant('admin.message.update-failed'),
+                this.translate.instant('common.dismiss'),
+                {
+                  duration: 5000,
+                },
+              ),
           });
       });
   }
@@ -291,9 +313,9 @@ export class AdminUserDetailsPageComponent implements OnInit {
         {
           width: '400px',
           data: {
-            title: 'Delete user',
-            message: `Delete user "${user.id}"? This cannot be undone.`,
-            confirmLabel: 'Delete',
+            title: this.translate.instant('confirm.delete-user'),
+            message: this.translate.instant('confirm.delete-user-named', { name: user.id }),
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )
@@ -302,11 +324,19 @@ export class AdminUserDetailsPageComponent implements OnInit {
         if (!ok) return;
         this.userService.deleteUser(user.id).subscribe({
           next: () => {
-            this.snackBar.open('User deleted', 'Dismiss', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('admin.message.user-deleted'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            );
             this.router.navigate(['/administration/users-groups']);
           },
           error: (e) =>
-            this.snackBar.open(e?.error?.message ?? 'Delete failed', 'Dismiss', { duration: 5000 }),
+            this.snackBar.open(
+              e?.error?.message ?? this.translate.instant('admin.message.delete-failed'),
+              this.translate.instant('common.dismiss'),
+              { duration: 5000 },
+            ),
         });
       });
   }
@@ -317,13 +347,21 @@ export class AdminUserDetailsPageComponent implements OnInit {
     const nextGroups = (user.properties.groups ?? []).filter((g) => g !== groupId);
     this.userService.updateUser(user.id, { groups: nextGroups }).subscribe({
       next: () => {
-        this.snackBar.open('Group removed from user', 'Dismiss', { duration: 2500 });
+        this.snackBar.open(
+          this.translate.instant('admin.message.group-removed-from-user'),
+          this.translate.instant('common.dismiss'),
+          { duration: 2500 },
+        );
         this.load();
       },
       error: (e) =>
-        this.snackBar.open(e?.error?.message ?? 'Could not update user groups', 'Dismiss', {
-          duration: 5000,
-        }),
+        this.snackBar.open(
+          e?.error?.message ?? this.translate.instant('admin.message.could-not-update-user-groups'),
+          this.translate.instant('common.dismiss'),
+          {
+            duration: 5000,
+          },
+        ),
     });
   }
 
@@ -336,19 +374,32 @@ export class AdminUserDetailsPageComponent implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.snackBar.open('Permission removed', 'Dismiss', { duration: 2500 });
+          this.snackBar.open(
+            this.translate.instant('admin.message.permission-removed'),
+            this.translate.instant('common.dismiss'),
+            { duration: 2500 },
+          );
           this.loadLocalPerms();
           const u = this.user();
           if (u) this.loadAllGroupPerms(u);
         },
         error: (e) =>
-          this.snackBar.open(e?.error?.message ?? 'Could not remove permission', 'Dismiss', {
-            duration: 5000,
-          }),
+          this.snackBar.open(
+            e?.error?.message ??
+              this.translate.instant('admin.message.could-not-remove-permission'),
+            this.translate.instant('common.dismiss'),
+            {
+              duration: 5000,
+            },
+          ),
       });
   }
 
   timeFrameLabel(row: PrincipalPermissionRow): string {
-    return principalPermissionTimeFrameLabel(row);
+    return principalPermissionTimeFrameLabel(
+      row,
+      (key) => this.translate.instant(key),
+      this.locale,
+    );
   }
 }

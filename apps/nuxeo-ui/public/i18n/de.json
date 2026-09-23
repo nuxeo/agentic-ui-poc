@@ -1,39 +1,40 @@
 {
   "app": {
-    "title": "Hyland Nuxeo",
+    "login-page": {},
     "nav": {
       "toggle": "Navigationsmenü ein- oder ausblenden"
-    }
-  },
-  "login": {
-    "title": "Anmelden",
-    "panel-label": "Anmelden",
-    "skip-link": "Zur Anmeldung springen"
+    },
+    "title": "Hyland Nuxeo"
   },
   "browse": {
     "details": {
-      "show": "Details anzeigen",
       "hide": "Details ausblenden",
+      "show": "Details anzeigen",
       "toggle": "Detailbereich ein- oder ausblenden"
     },
     "scope": {
       "create-import": "Erstellen / Importieren",
+      "delete": "Löschen",
       "drive": "Nuxeo Drive",
       "edit": "Metadaten bearbeiten",
-      "delete": "Löschen",
-      "share": "Teilen",
+      "export": "Exportieren",
       "notify": "Benachrichtigen",
-      "export": "Exportieren"
+      "share": "Teilen"
     }
+  },
+  "login": {
+    "panel-label": "Anmelden",
+    "skip-link": "Zur Anmeldung springen",
+    "title": "Anmelden"
   },
   "nav": {
     "clipboard": {
+      "copy": "Kopieren",
       "empty": "Die Zwischenablage ist leer",
       "hint": "Verwenden Sie „Zur Zwischenablage hinzufügen“ bei Dokumenten oder Sammlungen, um hier Elemente hinzuzufügen.",
+      "move": "Verschieben",
       "remove": "Aus der Zwischenablage entfernen",
-      "tip": "Navigieren Sie zu einem Container, um den Inhalt der Zwischenablage einzufügen oder zu verschieben.",
-      "copy": "Kopieren",
-      "move": "Verschieben"
+      "tip": "Navigieren Sie zu einem Container, um den Inhalt der Zwischenablage einzufügen oder zu verschieben."
     },
     "collections": {
       "empty": "Keine Sammlungen gefunden"
@@ -49,6 +50,23 @@
     "folders": {
       "empty": "Keine Ordner gefunden"
     },
+    "item": {
+      "administration": "Administration",
+      "assets": "Assets",
+      "browse": "Durchsuchen",
+      "browse-adf-hx": "Durchsuchen (adf-hx-PoC)",
+      "clipboard": "Zwischenablage",
+      "collections": "Sammlungen",
+      "dashboard": "Dashboard",
+      "expired-queue": "Warteschlange abgelaufener Dokumente",
+      "favorites": "Favoriten",
+      "knowledge-discovery": "Knowledge Discovery",
+      "personal-space": "Persönlicher Bereich",
+      "recently-viewed": "Zuletzt angesehen",
+      "search-filters": "Suchfilter",
+      "tasks": "Aufgaben",
+      "trash": "Papierkorb"
+    },
     "loading": "Wird geladen",
     "recent": {
       "empty": "Keine kürzlich angesehenen Dokumente"
@@ -61,35 +79,43 @@
       "retry": "Wiederholen"
     },
     "tree": {
-      "root": "Stamm",
       "retry": "Erneut versuchen",
+      "root": "Stamm",
       "toggle": "{{ name }} ein- oder ausklappen"
     }
   },
   "settings": {
     "themes": {
-      "title": "Designs",
-      "search": "Designs suchen",
+      "apply": "Anwenden",
       "current": "Aktuell",
-      "apply": "Anwenden"
+      "search": "Designs suchen",
+      "title": "Designs"
     }
   },
   "shell": {
     "ai": {
       "clear": "Chat leeren",
       "close": "Chat schließen",
+      "empty-state": "Fragen Sie mich zu Ihren Dokumenten, durchsuchen Sie das Repository oder erhalten Sie Einblicke in Workflows und Aufgaben.",
       "heading": "Nuxeo KI-Assistent",
       "input-placeholder": "Stellen Sie eine Frage zu Ihren Dokumenten...",
       "open": "KI-Assistent",
       "send": "Nachricht senden",
-      "title": "KI-Assistent",
-      "empty-state": "Fragen Sie mich zu Ihren Dokumenten, durchsuchen Sie das Repository oder erhalten Sie Einblicke in Workflows und Aufgaben.",
+      "sources": "Quellen",
       "suggestion": {
         "modified-today": "Welche Dokumente wurden heute geändert?",
-        "summarize-tasks": "Fasse meine offenen Aufgaben zusammen",
-        "recent-uploads": "Zeige mir die neuesten Uploads"
+        "recent-uploads": "Zeige mir die neuesten Uploads",
+        "summarize-tasks": "Fasse meine offenen Aufgaben zusammen"
       },
-      "sources": "Quellen"
+      "title": "KI-Assistent"
+    },
+    "menu": {
+      "about": "Info",
+      "ai-features": "KI-Funktionen {{ state }}",
+      "help": "Hilfe",
+      "state-off": "aus",
+      "state-on": "ein",
+      "themes": "Designs"
     },
     "search": {
       "no-results": "Keine Ergebnisse gefunden",
@@ -99,16 +125,9 @@
     "settings": {
       "menu": "Einstellungsmenü"
     },
-    "menu": {
-      "themes": "Designs",
-      "help": "Hilfe",
-      "about": "Info",
-      "ai-features": "KI-Funktionen {{ state }}",
-      "state-on": "ein",
-      "state-off": "aus"
-    },
     "test": {
-      "platform-nav-item": "Durchsuchen"
+      "platform-nav-item": "Durchsuchen",
+      "personal-space-nav-item": "Persönlicher Bereich"
     }
   }
 }
