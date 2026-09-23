@@ -27,7 +27,7 @@ const row = {
 
 describe('principal-permission-display', () => {
   it('principalPermissionTimeFrameLabel asks for the permanent key when there is no begin or end', () => {
-    expect(principalPermissionTimeFrameLabel(row, echoKey)).toBe(
+    expect(principalPermissionTimeFrameLabel(row, echoKey, 'en-US')).toBe(
       'permissions.time-frame.permanent',
     );
   });
@@ -38,9 +38,19 @@ describe('principal-permission-display', () => {
     const dated = principalPermissionTimeFrameLabel(
       { ...row, begin: '2026-01-01T00:00:00Z', end: '2026-02-01T00:00:00Z' },
       echoKey,
+      'en-US',
     );
     expect(dated).not.toContain('permissions.time-frame');
     expect(dated).toContain('–');
+  });
+
+  it('principalPermissionTimeFrameLabel passes the locale through rather than dropping it', () => {
+    // Same failure mode as the resolver below: the wrapper can accept `locale` and not forward it,
+    // and every assertion above still passes because `Intl` falls back to the host locale.
+    const dated = { ...row, begin: '2026-01-02T00:00:00Z', end: null };
+    expect(principalPermissionTimeFrameLabel(dated, echoKey, 'de-DE')).not.toBe(
+      principalPermissionTimeFrameLabel(dated, echoKey, 'en-US'),
+    );
   });
 
   it('principalPermissionToLocalRow maps document title, path, and permission', () => {
@@ -53,6 +63,7 @@ describe('principal-permission-display', () => {
           permission: 'CanAskForPublishing',
         },
         echoKey,
+        'en-US',
       ),
     ).toEqual({
       documentTitle: 'Sections',
@@ -66,7 +77,7 @@ describe('principal-permission-display', () => {
   it('principalPermissionToLocalRow passes the resolver through rather than dropping it', () => {
     // The wrapper's only job beyond mapping fields is handing the resolver on. It forgot to for a
     // while, which is how the profile page stayed English while its callers had been updated.
-    expect(principalPermissionToLocalRow(row, (key) => `resolved:${key}`).timeFrame).toBe(
+    expect(principalPermissionToLocalRow(row, (key) => `resolved:${key}`, 'en-US').timeFrame).toBe(
       'resolved:permissions.time-frame.permanent',
     );
   });

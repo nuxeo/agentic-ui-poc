@@ -1145,8 +1145,14 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       await build();
 
       expect(component.aceTimeFrame(ace())).toBe('Permanent');
-      expect(component.aceTimeFrame(ace({ begin: '2026-01-01' }))).toContain('from');
-      expect(component.aceTimeFrame(ace({ end: '2026-12-31' }))).toContain('to');
+      // `From`/`Until` come from `permissions.time-frame.*` now. They used to be interpolated
+      // English (`from ${date}`), which is why no locale could change them.
+      expect(component.aceTimeFrame(ace({ begin: '2026-01-01' }))).toMatch(
+        /^From \w{3} \d{2}, 2026$/,
+      );
+      expect(component.aceTimeFrame(ace({ end: '2026-12-31' }))).toMatch(
+        /^Until \w{3} \d{2}, 2026$/,
+      );
     });
 
     it('strips the transient prefix from a shared-link principal', async () => {

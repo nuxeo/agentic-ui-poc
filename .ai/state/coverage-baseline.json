@@ -9,36 +9,36 @@
   "tolerance": 0.5,
   "projects": {
     "adf-hx-bridge": {
-      "lines": 91.62,
-      "statements": 91.62,
-      "branches": 93.45,
-      "functions": 83.41,
-      "sTotal": 2100,
-      "sCovered": 1924
+      "lines": 99.65,
+      "statements": 99.65,
+      "branches": 93.41,
+      "functions": 100,
+      "sTotal": 2258,
+      "sCovered": 2250
     },
     "administration": {
-      "lines": 62.08,
-      "statements": 62.08,
-      "branches": 65.1,
-      "functions": 55.81,
-      "sTotal": 1031,
-      "sCovered": 640
+      "lines": 60.39,
+      "statements": 60.39,
+      "branches": 64.92,
+      "functions": 55.29,
+      "sTotal": 1078,
+      "sCovered": 651
     },
     "browse": {
-      "lines": 99.02,
-      "statements": 99.02,
-      "branches": 93.05,
-      "functions": 98.96,
-      "sTotal": 3076,
-      "sCovered": 3046
+      "lines": 98.75,
+      "statements": 98.75,
+      "branches": 92.52,
+      "functions": 98.95,
+      "sTotal": 3291,
+      "sCovered": 3250
     },
     "collections": {
-      "lines": 94.05,
-      "statements": 94.05,
-      "branches": 85.35,
-      "functions": 91.38,
-      "sTotal": 672,
-      "sCovered": 632
+      "lines": 94.73,
+      "statements": 94.73,
+      "branches": 86.24,
+      "functions": 93.22,
+      "sTotal": 683,
+      "sCovered": 647
     },
     "core": {
       "lines": 100,
@@ -49,60 +49,60 @@
       "sCovered": 7
     },
     "document-detail": {
-      "lines": 92.55,
-      "statements": 92.55,
-      "branches": 83.45,
-      "functions": 97.81,
-      "sTotal": 4724,
-      "sCovered": 4372
+      "lines": 92.56,
+      "statements": 92.56,
+      "branches": 83.58,
+      "functions": 97.83,
+      "sTotal": 4840,
+      "sCovered": 4480
     },
     "knowledge-discovery": {
-      "lines": 64.77,
-      "statements": 64.77,
-      "branches": 59.46,
-      "functions": 68,
-      "sTotal": 1039,
-      "sCovered": 673
+      "lines": 65.03,
+      "statements": 65.03,
+      "branches": 62.03,
+      "functions": 69.33,
+      "sTotal": 1081,
+      "sCovered": 703
     },
     "nuxeo-client": {
-      "lines": 94.31,
-      "statements": 94.31,
-      "branches": 83.16,
-      "functions": 96.16,
-      "sTotal": 4111,
-      "sCovered": 3877
+      "lines": 90.28,
+      "statements": 90.28,
+      "branches": 83.8,
+      "functions": 92.33,
+      "sTotal": 4826,
+      "sCovered": 4357
     },
     "search": {
-      "lines": 91.16,
-      "statements": 91.16,
-      "branches": 84.05,
-      "functions": 90.48,
-      "sTotal": 848,
-      "sCovered": 773
+      "lines": 93.41,
+      "statements": 93.41,
+      "branches": 82.76,
+      "functions": 90.28,
+      "sTotal": 1016,
+      "sCovered": 949
     },
     "shared-app-config": {
-      "lines": 100,
-      "statements": 100,
-      "branches": 90.22,
-      "functions": 96.97,
-      "sTotal": 426,
-      "sCovered": 426
+      "lines": 99.58,
+      "statements": 99.58,
+      "branches": 92,
+      "functions": 94.44,
+      "sTotal": 475,
+      "sCovered": 473
     },
     "shared-extensions": {
-      "lines": 94.71,
-      "statements": 94.71,
-      "branches": 93.07,
-      "functions": 75.64,
-      "sTotal": 662,
-      "sCovered": 627
+      "lines": 95.44,
+      "statements": 95.44,
+      "branches": 93.8,
+      "functions": 78.41,
+      "sTotal": 768,
+      "sCovered": 733
     },
     "shared-kd-client": {
       "lines": 99.72,
       "statements": 99.72,
-      "branches": 92.77,
+      "branches": 92.88,
       "functions": 100,
-      "sTotal": 713,
-      "sCovered": 711
+      "sTotal": 724,
+      "sCovered": 722
     },
     "shared-ke-client": {
       "lines": 100,
@@ -113,20 +113,20 @@
       "sCovered": 247
     },
     "ui": {
-      "lines": 97.57,
-      "statements": 97.57,
-      "branches": 96.93,
+      "lines": 97.68,
+      "statements": 97.68,
+      "branches": 96.55,
       "functions": 88.64,
-      "sTotal": 493,
-      "sCovered": 481
+      "sTotal": 517,
+      "sCovered": 505
     },
     "permission-dialogs": {
-      "lines": 93.85,
-      "statements": 93.85,
+      "lines": 93.7,
+      "statements": 93.7,
       "branches": 61.73,
       "functions": 84.38,
-      "sTotal": 439,
-      "sCovered": 412
+      "sTotal": 476,
+      "sCovered": 446
     },
     "acme-extensions": {
       "lines": 53.47,
@@ -135,6 +135,30 @@
       "functions": 38.46,
       "sTotal": 101,
       "sCovered": 54
+    },
+    "assets": {
+      "lines": 97.44,
+      "statements": 97.44,
+      "branches": 92.31,
+      "functions": 66.67,
+      "sTotal": 78,
+      "sCovered": 76
+    },
+    "shared-ai-client": {
+      "lines": 15.98,
+      "statements": 15.98,
+      "branches": 84.85,
+      "functions": 44.44,
+      "sTotal": 219,
+      "sCovered": 35
+    },
+    "tasks": {
+      "lines": 43.2,
+      "statements": 43.2,
+      "branches": 52.31,
+      "functions": 45.76,
+      "sTotal": 706,
+      "sCovered": 305
     }
   }
 }

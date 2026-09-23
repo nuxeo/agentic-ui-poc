@@ -3,6 +3,7 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  LOCALE_ID,
   afterNextRender,
   computed,
   inject,
@@ -47,6 +48,7 @@ const GROUP_PERM_PAGE_SIZE = 25;
 export class ProfilePageComponent {
   private readonly auth = inject(AuthService);
   private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly destroyRef = inject(DestroyRef);
   private readonly userService = inject(UserService);
   private readonly settingsService = inject(SettingsService);
@@ -173,7 +175,7 @@ export class ProfilePageComponent {
       return [];
     }
     return page.rows.map((row) =>
-      principalPermissionToLocalRow(row, (key) => this.translate.instant(key)),
+      principalPermissionToLocalRow(row, (key) => this.translate.instant(key), this.locale),
     );
   }
 
