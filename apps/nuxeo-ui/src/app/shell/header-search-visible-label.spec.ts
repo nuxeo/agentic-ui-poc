@@ -67,10 +67,11 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
       .withContext('visible label must render non-empty text')
       .toBeTruthy();
 
+    const labelText = label?.textContent?.trim() ?? '';
     const placeholder = (input?.getAttribute('placeholder') ?? '').trim();
     expect(placeholder)
       .withContext('placeholder must not substitute for the visible label')
-      .not.toBe(label?.textContent?.trim());
+      .not.toBe(labelText);
 
     expect(Array.from(input?.labels ?? []))
       .withContext('the input must be named by the visible label')
