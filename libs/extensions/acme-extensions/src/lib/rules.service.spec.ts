@@ -2,12 +2,30 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { EMPTY_EXTENSION_RULE_CONTEXT } from '@nuxeo-satori/platform/extensions';
+import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AcmeRulesService } from './rules.service';
 
 describe('AcmeRulesService', () => {
   let service: AcmeRulesService;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+
+  /**
+   * A complete `NuxeoDocument` with the given uid.
+   *
+   * `ExtensionRuleContext.document` is a full `NuxeoDocument | null`; a `{ uid }` literal only
+   * typechecked here because Vitest strips types through esbuild.
+   */
+  function doc(uid: string): NuxeoDocument {
+    return {
+      uid,
+      title: uid,
+      type: 'File',
+      path: `/default-domain/workspaces/${uid}`,
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    };
+  }
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -47,7 +65,7 @@ describe('AcmeRulesService', () => {
         ...EMPTY_EXTENSION_RULE_CONTEXT,
         url: '/documents/123',
         selectionCount: 5,
-        document: { uid: 'doc-123' },
+        document: doc('doc-123'),
       };
 
       service.exportSummary(context);
@@ -83,7 +101,7 @@ describe('AcmeRulesService', () => {
         ...EMPTY_EXTENSION_RULE_CONTEXT,
         url: '/documents/456',
         selectionCount: 3,
-        document: { uid: 'doc-456' },
+        document: doc('doc-456'),
       };
 
       service.exportClaim(context);

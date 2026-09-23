@@ -29,7 +29,12 @@ const mockSearchService = {
   search: vi.fn((_request?: Record<string, unknown>): Observable<SearchResponseLike> =>
     of({ items: [], aggregations: {} }),
   ),
-  saveSavedSearch: vi.fn((): Observable<Record<string, unknown>> => of({ id: 'ss-1' })),
+  // The parameter is declared even though the stub ignores it: a zero-arg signature types
+  // `mock.calls[0]` as an empty tuple, so `calls[0][0]` — which the save assertions read — does not
+  // typecheck.
+  saveSavedSearch: vi.fn(
+    (_request?: Record<string, unknown>): Observable<Record<string, unknown>> => of({ id: 'ss-1' }),
+  ),
   updateSavedSearch: vi.fn((): Observable<Record<string, unknown>> => of({ id: 'ss-1' })),
   deleteSavedSearch: vi.fn((): Observable<void> => of(undefined)),
 };
@@ -657,7 +662,7 @@ describe('SearchComponent', () => {
   describe('onImageError', () => {
     it('should replace image src with fallback on error', () => {
       const mockImg = { src: '' } as HTMLImageElement;
-      const event = { target: mockImg } as Event;
+      const event = { target: mockImg } as unknown as Event;
 
       component.onImageError(event);
 
@@ -1362,9 +1367,12 @@ describe('SearchComponent', () => {
         }),
       );
       // Verify empty/whitespace values were excluded
-      const savedCall = mockSearchService.saveSavedSearch.mock.calls[0][0] as Record<string, any>;
-      expect(savedCall.params.dc_title).toBeUndefined();
-      expect(savedCall.params.path).toBeUndefined();
+      const savedCall = mockSearchService.saveSavedSearch.mock.calls[0][0] as unknown as Record<
+        string,
+        Record<string, unknown>
+      >;
+      expect(savedCall['params']['dc_title']).toBeUndefined();
+      expect(savedCall['params']['path']).toBeUndefined();
     });
 
     it('does not save when the dialog is dismissed or the title is blank', () => {

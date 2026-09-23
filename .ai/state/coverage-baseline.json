@@ -11,18 +11,18 @@
     "adf-hx-bridge": {
       "lines": 93.09,
       "statements": 93.09,
-      "branches": 92.62,
+      "branches": 92.63,
       "functions": 85.71,
       "sTotal": 2256,
       "sCovered": 2100
     },
     "administration": {
-      "lines": 60.39,
-      "statements": 60.39,
-      "branches": 65.1,
-      "functions": 55.81,
-      "sTotal": 1078,
-      "sCovered": 651
+      "lines": 96.24,
+      "statements": 96.24,
+      "branches": 91.87,
+      "functions": 94.94,
+      "sTotal": 2607,
+      "sCovered": 2509
     },
     "browse": {
       "lines": 98.76,
@@ -99,7 +99,7 @@
     "shared-kd-client": {
       "lines": 99.72,
       "statements": 99.72,
-      "branches": 92.86,
+      "branches": 92.88,
       "functions": 100,
       "sTotal": 724,
       "sCovered": 722
@@ -145,20 +145,20 @@
       "sCovered": 76
     },
     "shared-ai-client": {
-      "lines": 15.98,
-      "statements": 15.98,
-      "branches": 84.85,
-      "functions": 44.44,
-      "sTotal": 219,
+      "lines": 35.71,
+      "statements": 35.71,
+      "branches": 90.63,
+      "functions": 62.5,
+      "sTotal": 98,
       "sCovered": 35
     },
     "tasks": {
-      "lines": 43.12,
-      "statements": 43.12,
-      "branches": 52.31,
-      "functions": 45.76,
-      "sTotal": 705,
-      "sCovered": 304
+      "lines": 97.4,
+      "statements": 97.4,
+      "branches": 93.23,
+      "functions": 92.37,
+      "sTotal": 1076,
+      "sCovered": 1048
     }
   }
 }

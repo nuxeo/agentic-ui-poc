@@ -23,6 +23,7 @@ import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
 
 import { TasksPageComponent } from './tasks-page.component';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
+import { tasksRoutes } from '../lib.routes';
 
 /**
  * Asserts which MIME type the tasks preview actually *binds* to the document viewer.
@@ -65,6 +66,12 @@ class ResizeObserverStub {
   }
 }
 
+// Mock URL.createObjectURL for blob handling
+beforeAll(() => {
+  global.URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test');
+  global.URL.revokeObjectURL = vi.fn();
+});
+
 describe('TasksPageComponent — the MIME type bound to the viewer', () => {
   let fixture: ComponentFixture<TasksPageComponent>;
   let component: TasksPageComponent;
@@ -83,7 +90,7 @@ describe('TasksPageComponent — the MIME type bound to the viewer', () => {
       imports: [TasksPageComponent, NoopAnimationsModule, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
-        provideRouter([], withDisabledInitialNavigation()),
+        provideRouter([{ path: 'tasks', children: tasksRoutes }], withDisabledInitialNavigation()),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: new Map() }, params: of({}) },

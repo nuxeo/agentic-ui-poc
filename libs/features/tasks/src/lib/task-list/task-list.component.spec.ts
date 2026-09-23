@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
-import { TaskService, CURRENT_USERNAME } from '@nuxeo-satori/platform/nuxeo-client';
+import { TaskService, CURRENT_USERNAME, type NuxeoTask } from '@nuxeo-satori/platform/nuxeo-client';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 import { TaskListComponent } from './task-list.component';
@@ -15,25 +15,47 @@ describe('TaskListComponent', () => {
   let mockTaskService: { getUserTasks: ReturnType<typeof vi.fn> };
   let mockRouter: { navigate: ReturnType<typeof vi.fn> };
 
-  const mockTasks = [
-    {
+  /**
+   * A complete `NuxeoTask`.
+   *
+   * These fixtures used to be bare object literals, which typechecked only because Vitest strips
+   * types through esbuild — `dueDate: null` is not assignable to the model's `dueDate: string`, and
+   * every required field was missing. An absent deadline is `''` in the type, which is what the
+   * component's `!!task.dueDate` guard absorbs.
+   */
+  function task(over: Partial<NuxeoTask> = {}): NuxeoTask {
+    return {
       id: 'task-1',
       name: 'wf.serialDocumentReview.validateTask.title',
+      directive: '',
+      workflowInstanceId: 'wf-1',
       workflowModelName: 'SerialDocumentReview',
+      workflowTitle: '',
+      state: 'opened',
+      nodeName: 'validateNode',
       targetDocumentIds: [{ id: 'doc-1' }],
       actors: [{ id: 'user1' }],
+      delegatedActors: [],
+      comments: [],
       created: '2026-01-01T00:00:00.000Z',
       dueDate: '2026-01-15T00:00:00.000Z',
-    },
-    {
+      variables: {},
+      taskInfo: { taskActions: [] },
+      ...over,
+    };
+  }
+
+  const mockTasks: NuxeoTask[] = [
+    task(),
+    task({
       id: 'task-2',
       name: 'wf.parallelReview.approveTask.directive',
       workflowModelName: 'ParallelDocumentReview',
       targetDocumentIds: [{ id: 'doc-2' }],
       actors: [{ id: 'user2' }],
       created: '2026-01-02T00:00:00.000Z',
-      dueDate: null,
-    },
+      dueDate: '',
+    }),
   ];
 
   beforeEach(async () => {
@@ -190,23 +212,13 @@ describe('TaskListComponent', () => {
     });
 
     it('returns false when task has no due date', () => {
-      const noDateTask = {
-        ...mockTasks[0],
-        dueDate: null,
-      };
-
-      expect(component.isOverdue(noDateTask)).toBe(false);
+      expect(component.isOverdue(task({ dueDate: '' }))).toBe(false);
     });
   });
 
   describe('dueLabel', () => {
     it('returns empty string when task has no due date', () => {
-      const noDateTask = {
-        ...mockTasks[0],
-        dueDate: null,
-      };
-
-      expect(component.dueLabel(noDateTask)).toBe('');
+      expect(component.dueLabel(task({ dueDate: '' }))).toBe('');
     });
 
     it('returns "less than an hour" for tasks due very soon', () => {
