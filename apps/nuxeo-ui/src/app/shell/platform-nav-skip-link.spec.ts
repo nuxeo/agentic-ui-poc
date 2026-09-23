@@ -54,4 +54,31 @@ describe('platform shell skip link (NXENG-783)', () => {
     expect(link.getAttribute('href')).toBe('#main-content');
     expect(fixture.nativeElement.querySelector('#main-content')).toBeTruthy();
   });
+
+  it('declares a standalone :focus rule IBM element_tabbable_visible can read', () => {
+    const target = 'html body a.sat-skip-to-content-button:focus';
+    let matched: CSSStyleRule | undefined;
+    for (const sheet of Array.from(document.styleSheets)) {
+      let rules: CSSRuleList;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      for (const rule of Array.from(rules)) {
+        const styleRule = rule as CSSStyleRule;
+        const canonical = styleRule.selectorText
+          ?.replace(/\[_ngcontent-[^\]]+\]/g, '')
+          .trim();
+        if (canonical === target) {
+          matched = styleRule;
+          break;
+        }
+      }
+      if (matched) break;
+    }
+    expect(matched).withContext(`stylesheet must contain ${target} without a comma list`).toBeDefined();
+    expect(matched!.style.opacity).toBe('1');
+    expect(matched!.style.position).toBe('fixed');
+  });
 });

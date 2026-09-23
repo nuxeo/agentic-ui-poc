@@ -192,7 +192,15 @@ html {
  * Also replace Satori's invalid `opacity: 100` with `opacity: 1` when the visible class
  * does land after change detection.
  */
-html body a.sat-skip-to-content-button:focus,
+/* Standalone — IBM Equal Access reads `:focus` only, not comma-grouped selector lists. */
+html body a.sat-skip-to-content-button:focus {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 2000;
+  opacity: 1;
+}
+
 html body a.sat-skip-to-content-button:focus-visible,
 html body a.sat-skip-to-content-button.sat-skip-to-content-button-visible {
   position: fixed;
