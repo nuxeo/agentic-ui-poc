@@ -135,9 +135,24 @@ hxp-domain-hint {
     }
   }
 
+  // WORKAROUND(adf-hx): W17 — adf-core gives `.adf-datatable` `height: 100%` and
+  // `overflow-y: scroll`, so a six-row folder drew a full-height table with an empty band under
+  // the rows and a permanent scrollbar track. Sized to its rows instead, shrinking — and
+  // scrolling its body — only when they do not fit, which is how production browse's table sits.
   > hxp-document-list {
-    flex: 1 1 0;
+    flex: 0 1 auto;
+    height: auto;
     min-height: 0;
+  }
+
+  ::ng-deep .hxp-document-list-container {
+    flex: 0 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+
+  ::ng-deep adf-datatable.adf-datatable {
+    overflow-y: auto;
   }
 }
 

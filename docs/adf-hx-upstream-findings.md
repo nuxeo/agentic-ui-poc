@@ -562,6 +562,24 @@ full text as the tooltip. Values short enough to escape that limit but still cli
 
 **Ask:** copy `formatTooltip` in `ObjectDataColumn`, alongside the properties it already copies.
 
+### 4.8 `.adf-datatable` forces a full-height table with a permanent scrollbar
+
+**Package:** `@alfresco/adf-core@9.0.0`
+**Rule:** `.adf-datatable { overflow-y: scroll; height: 100%; display: block }`
+
+`overflow-y: scroll` draws a scrollbar track whether or not anything overflows, and `height: 100%`
+stretches a short list to fill its container. A folder of six documents therefore renders as a
+full-height table with an empty band beneath the rows and a scrollbar that scrolls nothing. The
+body already scrolls on its own (`.adf-datatable-body`), so neither is needed for long lists.
+
+**Reproduce:** render `hxp-document-list` with a handful of documents inside a container taller
+than the rows.
+
+**Our mitigation.** Overridden from the host (W17 in `docs/adf-hx-workarounds.md`), which reaches
+into upstream's markup with `::ng-deep`.
+
+**Ask:** use `overflow-y: auto`, and leave the table's height to the host.
+
 ---
 
 ## What we would most like fixed, in order
