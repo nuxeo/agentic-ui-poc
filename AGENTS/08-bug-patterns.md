@@ -538,6 +538,65 @@ from one that is overridden. See
 
 ---
 
+## 18. Unlabelled vendor `<svg>` inside a labelled link (WCAG 1.1.1)
+
+A third-party logo or icon component draws a bare `<svg>` with no `<title>` and no
+`aria-label`. Placed inside a link that already has an accessible name, each graphic is still
+announced as an unnamed image — a WCAG 2.1 1.1.1 Non-text Content violation at level A, reported
+by IBM Equal Access as `svg_graphics_labelled`.
+
+**Axe does not catch this one.** Measured on the login page before the fix: IBM reported two
+violations, axe at WCAG 2.1 AA reported zero. Axe's `svg-img-alt` only applies to an `<svg>` that
+carries an explicit `role`, and a bare vendor `<svg>` has none — so an axe-clean surface can still
+hold this violation, and a green `expectNoA11yViolations()` is not evidence against it.
+
+The trap is that **an ARIA attribute on the host element does not reach the `<svg>`**. The rule
+reads the `<svg>` node, and the markup belongs to the dependency — `@hylandsoftware/satori-ui`
+ships its logo components with `ViewEncapsulation.None` and no `<title>` — so nothing in this
+repo can label it.
+
+```html
+<!-- BAD ❌ — the link is named, but each vendor <svg> is an unnamed image -->
+<a routerLink="/login" aria-label="Hyland">
+  <sat-logo direction="horizontal">
+    <sat-h-mark-logo />
+    <sat-word-mark-logo />
+  </sat-logo>
+</a>
+
+<!-- ALSO BAD ❌ — aria-label on the host never reaches the <svg>; measured, still 2 violations -->
+<sat-word-mark-logo aria-label="Hyland" />
+
+<!-- GOOD ✅ — the link carries the name, so the lockup is decorative and hidden as a whole -->
+<a routerLink="/login" aria-label="Hyland">
+  <sat-logo direction="horizontal" aria-hidden="true">
+    <sat-h-mark-logo />
+    <sat-word-mark-logo />
+  </sat-logo>
+</a>
+```
+
+Hide the wrapper rather than each mark: it is the lockup that is decorative, and a mark added
+later stays covered. Two conditions before reaching for `aria-hidden`, and both belong in the
+test rather than in the PR description:
+
+- **The accessible name must already exist elsewhere**, and must stay exposed. Hiding the only
+  thing that conveys the meaning replaces one violation with a worse one.
+- **Nothing inside the subtree may be focusable** — `aria-hidden` over focusable content is
+  itself a violation (`aria_hidden_focus_misuse`). A vendor release that adds a focusable element
+  inside the lockup reintroduces it, so assert it rather than checking once by hand.
+
+`aria-hidden` is not `display: none`: the graphic still renders and still has a layout box, so
+visual assertions and Playwright's `expectVisible` keep passing.
+
+Regression test pattern: assert the guarantee, not the attribute's location — every `<svg>`
+inside the link has an `aria-hidden="true"` ancestor, the link itself has none, and no hidden
+subtree contains a focusable element. A test for the attribute on one element passes while a
+newly added mark goes unhidden. See
+`apps/nuxeo-ui/src/app/login/login-page.component.spec.ts` (NXENG-743).
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.
@@ -552,4 +611,5 @@ Fix proactively to avoid a review cycle:
 - "Code span split across newlines" → keep the whole backticked phrase on one line
 - "Writing AI output to a vocabulary field without validation" → source candidates from the vocabulary and validate the response
 - "`<mat-spinner>` inside a button" → use a spinning `<mat-icon class="ke-spinning">progress_activity</mat-icon>` to preserve inline layout
+- "SVG has no accessible name" → if the link around it is already named, mark the graphic decorative with `aria-hidden="true"` on the wrapper; an `aria-label` on the host element does not reach the `<svg>`
 - "Focus indicator may not be visible" → set the vendor's focus-outline custom property to its own foreground token; left unset it falls back to a low-emphasis divider colour and misses 3:1

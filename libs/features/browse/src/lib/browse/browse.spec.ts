@@ -844,8 +844,14 @@ describe('BrowseComponent', () => {
     };
 
     expect(component.aceTimeFrame(ace)).not.toBe('Permanent');
-    expect(component.aceTimeFrame(ace)).toContain('from');
-    expect(component.aceTimeFrame(ace)).toContain('to');
+    // Both dates present resolves `permissions.time-frame.range`, which separates them rather
+    // than joining them with English connectives.
+    //
+    // The years are pinned to 2026 deliberately. An earlier version left them open, reasoning that
+    // `23:59:59Z` lands in the next year east of UTC -- true before `formatAceDateRange` formatted
+    // in UTC, and false after. Leaving them open would let the UTC round-trip regress without this
+    // test noticing, which is the whole thing that guard exists to prevent.
+    expect(component.aceTimeFrame(ace)).toMatch(/^\w{3} \d{2}, 2026 - \w{3} \d{2}, 2026$/);
   });
 
   it('localAces reflects persisted date-based permissions after reload', () => {
