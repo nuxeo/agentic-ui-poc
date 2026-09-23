@@ -256,6 +256,27 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
    * (`aria_hidden_focus_misuse`). A vendor release that added a focusable element inside the
    * lockup would reintroduce it, so this is asserted rather than checked once by hand.
    */
+  /**
+   * NXENG-909 (IBM issue 3350142295, same control as NXENG-775). The scan names
+   * `sat-app-header` and `input.header-search-input` on live routes; this asserts the ring
+   * on the **rendered** shell header, not only in the isolated search fixture spec.
+   */
+  it('shows a visible keyboard focus ring on the global search input', () => {
+    const input = header.querySelector('input.header-search-input');
+    expect(input).withContext('the header must render the global search field').toBeTruthy();
+
+    (input as HTMLInputElement).focus();
+    expect(document.activeElement).toBe(input);
+
+    const style = getComputedStyle(input as Element);
+    expect(style.outlineStyle)
+      .withContext('IBM style_focus_visible reads :focus outline')
+      .toBe('solid');
+    expect(parseFloat(style.outlineWidth))
+      .withContext('outline width must be non-zero (WCAG 2.4.7)')
+      .toBeGreaterThan(0);
+  });
+
   it('puts nothing focusable inside an aria-hidden subtree in the header', () => {
     // A sanity check on the census, not on the fix: Angular Material's icon hosts are
     // aria-hidden too, so this stays true with or without the word mark hidden. Claiming it
