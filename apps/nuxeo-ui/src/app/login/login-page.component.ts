@@ -15,12 +15,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { TranslateModule, TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
+import { observeStripRedundantMatInputAriaRequired } from '@nuxeo-satori/platform/ui';
 
 import { AuthService } from '../auth/auth.service';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 const LAST_USER_KEY = 'agentic_ui_last_username';
 
@@ -35,6 +36,7 @@ const LAST_USER_KEY = 'agentic_ui_last_username';
     MatInputModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    TranslateModule,
     SatLogoModule,
   ],
   templateUrl: './login-page.component.html',
@@ -50,6 +52,7 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly autofillSyncTimeouts: ReturnType<typeof setTimeout>[] = [];
+  private passwordAriaRequiredObserver: MutationObserver | null = null;
 
   readonly submitting = signal(false);
   /** SSO entry points from `nuxeo-sso.providers.ts` / app config. */
@@ -80,12 +83,35 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     // Password managers often autofill after first paint without updating reactive form state.
     this.scheduleAutofillSync();
+    this.watchPasswordRequiredAccessibility();
+  }
+
+  /**
+   * `withHashLocation()` treats `#login-main` as the router URL; focus the first sign-in
+   * control without changing the hash (WCAG 2.4.1 skip navigation).
+   */
+  skipToSignIn(event: MouseEvent): void {
+    event.preventDefault();
+    const usernameInput = this.host.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement | null;
+    usernameInput?.focus();
   }
 
   ngOnDestroy(): void {
+    this.passwordAriaRequiredObserver?.disconnect();
+    this.passwordAriaRequiredObserver = null;
     for (const timeoutId of this.autofillSyncTimeouts) {
       clearTimeout(timeoutId);
     }
+  }
+
+  /** NXENG-755: keep native required, drop MatInput's duplicate aria-required on password. */
+  private watchPasswordRequiredAccessibility(): void {
+    this.passwordAriaRequiredObserver?.disconnect();
+    this.passwordAriaRequiredObserver = observeStripRedundantMatInputAriaRequired(
+      this.getCredentialInputs().passwordInput,
+    );
   }
 
   private scheduleAutofillSync(): void {

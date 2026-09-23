@@ -3,6 +3,7 @@ import {
   DestroyRef,
   ElementRef,
   HostListener,
+  LOCALE_ID,
   ViewChild,
   computed,
   effect,
@@ -89,6 +90,8 @@ import {
   postTrashBrowseRouterUrl,
   isCollectionDocument,
   formatRelativeTime,
+  formatAceDateRange,
+  permissionRightLabel,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -200,6 +203,7 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
 })
 export class BrowseComponent {
   private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly destroyRef = inject(DestroyRef);
   @ViewChild('columnPanel')
   private columnPanel?: ElementRef<HTMLElement>;
@@ -1248,7 +1252,7 @@ export class BrowseComponent {
       case 'type':
         return doc.type;
       case 'modified':
-        return doc.lastModified ? new Date(doc.lastModified).toLocaleDateString() : '';
+        return doc.lastModified ? new Date(doc.lastModified).toLocaleDateString(this.locale) : '';
       case 'lastContributor':
         return (doc.properties?.['dc:lastContributor'] as string) ?? '';
       case 'state':
@@ -1261,7 +1265,7 @@ export class BrowseComponent {
       }
       case 'created':
         return doc.properties?.['dc:created']
-          ? new Date(doc.properties['dc:created'] as string).toLocaleDateString()
+          ? new Date(doc.properties['dc:created'] as string).toLocaleDateString(this.locale)
           : '';
       case 'author':
         return (doc.properties?.['dc:creator'] as string) ?? '';
@@ -2016,33 +2020,16 @@ export class BrowseComponent {
   }
 
   permissionLabel(permission: string): string {
-    const labels: Record<string, string> = {
-      Everything: 'Manage everything',
-      ReadWrite: 'Edit',
-      Read: 'Read',
-      Write: 'Write',
-      ReadRemove: 'Read & Remove',
-      AddChildren: 'Add Children',
-      Remove: 'Remove',
-      ManageWorkflows: 'Manage Workflows',
-      ReadCanCollect: 'Can collect',
-    };
-    return labels[permission] ?? permission;
+    return permissionRightLabel(permission, (key) => this.translate.instant(key));
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    if (!ace.begin && !ace.end) return this.translate.instant('permissions.time-frame.permanent');
-    const fmt = (iso: string) =>
-      new Date(iso).toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
-    if (!ace.begin && ace.end) return `Until ${fmt(ace.end)}`;
-    const parts: string[] = [];
-    if (ace.begin) parts.push(`from ${fmt(ace.begin)}`);
-    if (ace.end) parts.push(`to ${fmt(ace.end)}`);
-    return parts.join(' ');
+    return formatAceDateRange(
+      ace.begin,
+      ace.end,
+      (key, params) => this.translate.instant(key, params),
+      this.locale,
+    );
   }
 
   displayUsername(ace: NuxeoAce): string {

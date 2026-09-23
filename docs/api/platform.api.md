@@ -419,7 +419,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-303 exported symbol(s).
+304 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1745,8 +1745,7 @@ function auditActivityLabelKey(entry: AuditEntry): string;
 function avatarColor(name: string): AvatarColor;
 function browseTreeContextPath(doc: NuxeoDocument): string;
 function buildContentLakeIngestMarker(blobDigest: string): string;
-function buildDocumentCompareRows(left: NuxeoDocument, right: NuxeoDocument, viewAll: boolean): CompareRow[];
-function buildDocumentCompareSections(left: NuxeoDocument, right: NuxeoDocument, viewAll: boolean): CompareSection[];
+function buildDocumentCompareSections(left: NuxeoDocument, right: NuxeoDocument, viewAll: boolean, locale: string): CompareSection[];
 function buildNoteDocumentPickerNxql(fulltext: string): string;
 function buildVocabularyTableColumns(propertyKeys: readonly string[]): string[];
 function canAddChildren(doc: NuxeoDocument | null | undefined): boolean;
@@ -1784,7 +1783,8 @@ function filterCreatableSubtypesForParent(parentType: string | null | undefined,
 function filterDirectoryPickerEntries(entries: DirectoryEntry[], query?: string): DirectoryEntry[];
 function filterInsertablePictureDocuments(entries: NuxeoDocumentList['entries'] | undefined): NuxeoDocument[];
 function findLocalAceForPrincipal(doc: NuxeoDocument, principalId: string): NuxeoAce | undefined;
-function formatCompareDate(value: unknown): string;
+function formatAceDateRange(begin: string | null, end: string | null, translate: (key: string, params?: Record<string, unknown>) => string, locale: string): string;
+function formatCompareDate(value: unknown, locale: string): string;
 function formatCompareValue(value: unknown): string;
 function formatDirectoryEntryId(id: string): string;
 function formatHierarchicalL10nLabel(id: string | null | undefined, entries: L10nDirectoryEntry[]): string;
@@ -1846,10 +1846,11 @@ function parseBrowseReturnMode(value: string | null | undefined): BrowseReturnMo
 function parseDocumentSubtypes(doc: NuxeoDocument): string[];
 function permissionCreateMailFailureMessage(): string;
 function permissionNotificationAceNotFoundMessage(context: 'add' | 'update'): string;
+function permissionRightLabel(permission: string, translate: (key: string) => string): string;
 function permissionUpdateMailFailureMessage(): string;
 function postTrashBrowseRouterUrl(deletedDocPath: string): string;
-function principalPermissionTimeFrameLabel(row: PrincipalPermissionRow, translate: (key: string) => string): string;
-function principalPermissionToLocalRow(row: PrincipalPermissionRow, translate: (key: string) => string): LocalPermissionRow;
+function principalPermissionTimeFrameLabel(row: PrincipalPermissionRow, translate: (key: string) => string, locale: string): string;
+function principalPermissionToLocalRow(row: PrincipalPermissionRow, translate: (key: string) => string, locale: string): LocalPermissionRow;
 function readBlobDigest(doc: NuxeoDocument): string | null;
 function readClipboardDocs(): ClipboardDoc[];
 function readContentLakeIngestMarker(doc: NuxeoDocument): string | null;
@@ -1889,7 +1890,7 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void;
 
 ## @nuxeo-satori/platform/ui
 
-33 exported symbol(s).
+35 exported symbol(s).
 
 ```ts
 class ConfirmDialogComponent {
@@ -2220,7 +2221,9 @@ class WidgetGridComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<WidgetGridComponent, "lib-widget-grid", never, { "columns": { "alias": "columns"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
     }
 }
+function observeStripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): MutationObserver | null;
 function openDocumentCompareDialog(dialog: MatDialog, items: DocumentCompareDialogData['items']): void;
+function stripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): void;
 function trashDocumentConfirmData(title: string, translate: TranslateFn): ConfirmDialogData;
 function trashSelectedDocumentsConfirmData(count: number, translate: TranslateFn): ConfirmDialogData;
 ```
