@@ -6,6 +6,10 @@
 <div class="header-search">
   <div class="header-search-input-wrap">
     <mat-icon class="header-search-icon">search</mat-icon>
-    <input type="text" class="header-search-input" placeholder="Search documents, users or groups" />
+    <input
+      type="text"
+      class="header-search-input"
+      [placeholder]="'shell.search.placeholder' | translate"
+    />
   </div>
 </div>

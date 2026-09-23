@@ -504,7 +504,7 @@ Three traps, each of which cost a measurement to find:
 
 - **A positive `outline-offset` means the element's own background is not what the ring
   contrasts with.** The ring is painted outside the border box and the offset gap shows what is
-  *behind* the element, so both of the ring's adjacent colours are the ancestor surface. This
+  _behind_ the element, so both of the ring's adjacent colours are the ancestor surface. This
   cost two wrong conclusions in a row: first a contrast assertion that compared the ring to the
   field's pinned white, which the ring never touches; then a "fix" for the number that assertion
   produced — `color-scheme: light` on the field, to stop `light-dark(#5654ac, #c3c0ff)` flipping
@@ -521,12 +521,12 @@ Three traps, each of which cost a measurement to find:
   a control that accepts keyboard input: it matches `:focus-visible` whenever focused anyway.
 - **`outline-color` computes to `currentColor` even when `outline-style: none`.** A test that
   reads `outline-color` and checks the contrast ratio passes on completely unfixed code, because
-  it measures the text colour. Assert `outline-style !== 'none'` and a non-zero width *before*
+  it measures the text colour. Assert `outline-style !== 'none'` and a non-zero width _before_
   measuring the colour.
 
 Regression test pattern: `nuxeo-ui` runs its specs in real Chrome (`ng test nuxeo-ui` is the
 Karma builder, and its `styles` option loads the app's global stylesheet), so assert the
-*rendered* cascade — pull the real component stylesheet in with `styleUrls`, call `focus()`, and
+_rendered_ cascade — pull the real component stylesheet in with `styleUrls`, call `focus()`, and
 read the ring back out of `getComputedStyle`. Grepping the SCSS cannot tell a rule that applies
 from one that is overridden. See
 `apps/nuxeo-ui/src/app/shell/header-search-focus-ring.spec.ts` (NXENG-775).

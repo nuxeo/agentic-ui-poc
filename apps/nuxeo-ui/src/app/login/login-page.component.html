@@ -1,5 +1,13 @@
 <div class="login-page">
-  <main class="login-panel" [attr.aria-label]="'app.login-page.log-in' | translate">
+  <a class="login-skip-link" mat-raised-button href="#login-main" (click)="skipToSignIn($event)">{{
+    'login.skip-link' | translate
+  }}</a>
+  <main
+    id="login-main"
+    tabindex="-1"
+    class="login-panel"
+    [attr.aria-label]="'app.login-page.log-in' | translate"
+  >
     <div class="login-panel-inner">
       <a
         routerLink="/login"
@@ -18,9 +26,14 @@
         </sat-logo>
       </a>
 
-      <h1 class="login-title">{{ 'app.login-page.log-in' | translate }}</h1>
+      <h1 id="login-page-heading" class="login-title">{{ 'app.login-page.log-in' | translate }}</h1>
 
-      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+      <form
+        class="login-form"
+        aria-labelledby="login-page-heading"
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+      >
         <fieldset class="login-credentials">
           <legend class="cdk-visually-hidden">
             {{ 'app.login-page.sign-in-credentials' | translate }}
