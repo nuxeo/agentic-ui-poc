@@ -4,6 +4,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { TranslateModule } from '@ngx-translate/core';
+import { PACKAGED_NAV_ITEMS } from '@nuxeo-satori/platform/extensions';
 
 /**
  * Regression test for NXENG-761 — the keyboard focus indicator on the sidebar nav links.
@@ -55,7 +56,12 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
 const NAV_ITEMS_UNDER_TEST = [
   { navId: 'app.navbar.browseAdfHx', ticket: 'NXENG-758' },
   { navId: 'app.navbar.search', ticket: 'NXENG-785' },
+  { navId: 'app.navbar.administration', ticket: 'NXENG-795' },
 ] as const;
+
+const PACKAGED_LABEL_BY_NAV_ID = Object.fromEntries(
+  PACKAGED_NAV_ITEMS.map((item) => [item.id, item.label]),
+) as Record<string, string>;
 
 /** Focusable anchor inside the list item under test — never a bare `.sat-platform-nav-item`. */
 function linkSelector(navId: string): string {
@@ -152,6 +158,7 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
     // Satori's class by hand — otherwise a rename of that class would leave this spec
     // measuring a plain item while still reporting on the current one.
     fixture.componentInstance.navId.set(navId);
+    fixture.componentInstance.label.set(PACKAGED_LABEL_BY_NAV_ID[navId] ?? navId);
     fixture.componentInstance.active.set(asCurrentRoute);
     fixture.detectChanges();
 
@@ -241,6 +248,15 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
         // outside the box would be cut off at the rail edges. The fix changes colour only.
         expect(Number.parseFloat(getComputedStyle(link).outlineOffset)).toBeLessThan(0);
       });
+
+      if (navId === 'app.navbar.administration') {
+        it('binds the packaged Administration entry id and label (NXENG-795)', () => {
+          measure(navId, 'nuxeo', false);
+          const item = link.closest('sat-platform-nav-list-item');
+          expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.administration');
+          expect(link.textContent).toContain(PACKAGED_LABEL_BY_NAV_ID[navId]);
+        });
+      }
     });
   }
 
