@@ -90,8 +90,8 @@ import {
   postTrashBrowseRouterUrl,
   isCollectionDocument,
   formatRelativeTime,
-  principalPermissionRightLabel,
-  principalPermissionTimeFrameLabel,
+  formatAceDateRange,
+  permissionRightLabel,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -2020,11 +2020,16 @@ export class BrowseComponent {
   }
 
   permissionLabel(permission: string): string {
-    return principalPermissionRightLabel(permission, (key) => this.translate.instant(key));
+    return permissionRightLabel(permission, (key) => this.translate.instant(key));
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    return principalPermissionTimeFrameLabel(ace, (key, params) => this.translate.instant(key, params), this.locale);
+    return formatAceDateRange(
+      ace.begin,
+      ace.end,
+      (key, params) => this.translate.instant(key, params),
+      this.locale,
+    );
   }
 
   displayUsername(ace: NuxeoAce): string {
