@@ -541,6 +541,27 @@ accessible name is non-empty in our accessibility capture so it cannot regress.
 the accessible name from an `@Input()` that a host can set without touching the tooltip. An empty
 tooltip string should not be able to produce an unnamed control.
 
+### 4.7 `ObjectDataColumn` drops `formatTooltip`, so a column's tooltip function never runs
+
+**Package:** `@alfresco/adf-core@9.0.0`
+**Symbols:** `ObjectDataColumn` constructor, `DataTableComponent.getCellTooltip`
+
+`DataColumn` declares `formatTooltip`, and the DataTable template binds
+`[tooltip]="getCellTooltip(row, col)"`, which calls `col.formatTooltip`. But the table builds an
+`ObjectDataColumn` from each `[columns]` entry, and that constructor copies a fixed list of
+properties that does not include `formatTooltip`. The function is discarded before the table sees
+it, with no warning.
+
+**Reproduce:** pass `[columns]="[{ key: 'name', type: 'text', formatTooltip: () => 'x' }]"` to
+`adf-datatable` (or a `[schema]` to `hxp-document-list`) and inspect a body cell: its
+`.adf-datatable-cell-value` span carries `title=""`.
+
+**Our mitigation.** `maxTextLength` survives the copy, so long values are shortened and get their
+full text as the tooltip. Values short enough to escape that limit but still clipped by
+`adf-ellipsis-cell` get no tooltip. Recorded as W16 in `docs/adf-hx-workarounds.md`.
+
+**Ask:** copy `formatTooltip` in `ObjectDataColumn`, alongside the properties it already copies.
+
 ---
 
 ## What we would most like fixed, in order

@@ -7,6 +7,7 @@
 .hxp-browse-page {
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   height: 100%;
   padding: 16px 24px;
   min-height: 0;
@@ -78,6 +79,29 @@
 hxp-breadcrumb,
 hxp-domain-hint {
   flex-shrink: 0;
+}
+
+// Upstream's DataTable already scrolls its own rows, but only inside a bounded height. As a plain
+// block this wrapper let the table grow to fit every row, and the tab body clipped the rest — the
+// last rows of a long folder could not be reached at all.
+.hxp-poc-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  > * {
+    flex-shrink: 0;
+  }
+
+  > .hxp-poc-column-btn {
+    align-self: flex-start;
+  }
+
+  > hxp-document-list {
+    flex: 1 1 0;
+    min-height: 0;
+  }
 }
 
 // WORKAROUND(adf-hx): W9 — ::ng-deep overrides, because the panels ship drawer-sized
