@@ -221,10 +221,12 @@
           />
         } @else if (activeTab() === 'trash') {
           <hxp-browse-trash
-            [loading]="trashLoading()"
+            [loading]="trashLoading() || loading()"
+            [error]="trashError()"
             [documents]="trashedDocuments()"
             [thumbnails]="trashThumbnails()"
             (restore)="onRestoreTrash($event)"
+            (retry)="onRetryTrash()"
           />
         }
       </div>

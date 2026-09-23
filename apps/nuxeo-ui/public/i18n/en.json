@@ -1520,9 +1520,11 @@
     },
     "hxp-browse-trash": {
       "actions": "Actions",
+      "failed-to-load": "Could not load the trash.",
       "last-modified": "Last Modified",
       "name": "Name",
       "restore": "Restore",
+      "retry": "Retry",
       "trash-is-empty": "Trash is empty",
       "type": "Type"
     },

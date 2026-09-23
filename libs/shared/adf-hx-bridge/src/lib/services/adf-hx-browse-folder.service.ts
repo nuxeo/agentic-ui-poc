@@ -11,7 +11,7 @@ import {
   TagService,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { Observable, forkJoin } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 import {
   mapNuxeoDocumentToHx,
@@ -70,6 +70,18 @@ export class AdfHxBrowseFolderService {
 
   getTrashedChildren(parentUid: string, pageSize = 50): Observable<NuxeoDocumentList> {
     return this.browseService.getTrashedChildren(parentUid, pageSize);
+  }
+
+  /**
+   * Trashed children of Nuxeo's real repository root.
+   *
+   * The bridge presents the root as a synthetic document with no Nuxeo uid, so the trash query
+   * has to resolve the real one first — the same root production browse lists.
+   */
+  getTrashedChildrenOfRepositoryRoot(pageSize = 50): Observable<NuxeoDocumentList> {
+    return this.browseService
+      .getRepositoryRoot()
+      .pipe(switchMap((root) => this.browseService.getTrashedChildren(root.uid, pageSize)));
   }
 
   restoreDocument(uid: string): Observable<NuxeoDocument> {

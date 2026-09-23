@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, map, Subject } from 'rxjs';
@@ -402,7 +402,10 @@ export class BrowseAdfHxPocComponent {
 
   protected readonly trashedDocuments = signal<Document[]>([]);
   protected readonly trashLoading = signal(false);
+  protected readonly trashError = signal(false);
   private trashLoaded = false;
+  /** Bumped per request and on navigation, so a late answer for a folder no longer shown is dropped. */
+  private trashRequestId = 0;
 
   protected readonly activityEntries = signal<AuditEntry[]>([]);
   protected readonly activityLoading = signal(false);
@@ -554,6 +557,18 @@ export class BrowseAdfHxPocComponent {
       this.loadFolder(this.browsePath());
     });
 
+    // Trash loads once its tab is open and the folder has finished loading, so opening the tab
+    // mid-navigation waits for the new folder instead of reading the previous one or none.
+    effect(() => {
+      if (this.activeTab() !== 'trash' || this.loading()) return;
+      const folder = this.currentDocument();
+      untracked(() => {
+        if (!this.trashLoaded && !this.trashLoading() && !this.trashError()) {
+          this.loadTrash(folder);
+        }
+      });
+    });
+
     effect(() => {
       const doc = this.currentNuxeoDoc();
       const uid = doc?.uid;
@@ -578,9 +593,10 @@ export class BrowseAdfHxPocComponent {
       }
       this.loadAuditLog();
     }
-    if (tab === 'trash' && !this.trashLoaded) {
-      this.loadTrash();
-    }
+  }
+
+  protected onRetryTrash(): void {
+    this.loadTrash(this.currentDocument());
   }
 
   protected togglePanel(): void {
@@ -700,6 +716,9 @@ export class BrowseAdfHxPocComponent {
     this.permissionsParent.set(NO_PARENT_DOCUMENT);
     this.historyDirectoriesLoaded = false;
     this.trashLoaded = false;
+    this.trashRequestId++;
+    this.trashLoading.set(false);
+    this.trashError.set(false);
     this.auditEntries.set([]);
     this.trashedDocuments.set([]);
     this.activityEntries.set([]);
@@ -870,26 +889,43 @@ export class BrowseAdfHxPocComponent {
       });
   }
 
-  private loadTrash(): void {
-    const doc = this.currentNuxeoDoc();
-    if (!doc?.uid) {
+  /**
+   * Reads the trash of the folder on screen.
+   *
+   * Takes the folder rather than `currentNuxeoDoc()`: that is null at the repository root by
+   * design and still loading just after a navigation, and either way the tab used to report
+   * "Trash is empty" without asking.
+   */
+  private loadTrash(folder: Document): void {
+    const uid = folder.sys_id;
+    if (!uid) {
       return;
     }
 
+    const requestId = ++this.trashRequestId;
     this.trashLoading.set(true);
-    this.folderService
-      .getTrashedChildren(doc.uid, 50)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (res) => {
-          const hxDocs = this.folderService.mapTrashedToHx(res.entries);
-          this.trashedDocuments.set(hxDocs);
-          this.trashLoading.set(false);
-          this.trashLoaded = true;
-          this.loadTrashThumbnails(hxDocs);
-        },
-        error: () => this.trashLoading.set(false),
-      });
+    this.trashError.set(false);
+    const trash$ =
+      uid === ROOT_DOCUMENT.sys_id
+        ? this.folderService.getTrashedChildrenOfRepositoryRoot(50)
+        : this.folderService.getTrashedChildren(uid, 50);
+
+    trash$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        if (requestId !== this.trashRequestId) return;
+        const hxDocs = this.folderService.mapTrashedToHx(res.entries);
+        this.trashedDocuments.set(hxDocs);
+        this.trashLoading.set(false);
+        this.trashLoaded = true;
+        this.loadTrashThumbnails(hxDocs);
+      },
+      error: () => {
+        if (requestId !== this.trashRequestId) return;
+        this.trashedDocuments.set([]);
+        this.trashLoading.set(false);
+        this.trashError.set(true);
+      },
+    });
   }
 
   private loadActivity(uid: string): void {
