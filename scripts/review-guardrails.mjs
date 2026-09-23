@@ -2390,8 +2390,10 @@ function checkAccessibleNameFallbacks() {
   // NXENG-798: global search names via a visible `<label>`, not `[placeholder]`. Only this control
   // is wired here — a repo-wide `<label>{{ … | translate }}</label>` scan would surface dozens of
   // pre-existing catalogue keys that never passed through the attribute binding pattern.
-  const HEADER_SEARCH_LABEL =
-    /<label\b[^>]*\bfor="global-header-search-input"[^>]*>[\s\S]*?\{\{\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*\}\}/g;
+  const HEADER_SEARCH_LABEL_BLOCK =
+    /<label\b[^>]*\bfor="global-header-search-input"[^>]*>([\s\S]*?)<\/label>/g;
+  const TRANSLATE_INTERPOLATION =
+    /\{\{\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*\}\}/g;
 
   // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
   // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns
@@ -2438,8 +2440,11 @@ function checkAccessibleNameFallbacks() {
 
   const shellTemplate = 'apps/nuxeo-ui/src/app/shell/app-shell.component.html';
   if (fileExists(shellTemplate)) {
-    for (const [, key] of read(shellTemplate).matchAll(HEADER_SEARCH_LABEL)) {
-      recordBinding(shellTemplate, 'visible label text', key);
+    const shellHtml = read(shellTemplate);
+    for (const [, labelInner] of shellHtml.matchAll(HEADER_SEARCH_LABEL_BLOCK)) {
+      for (const [, key] of labelInner.matchAll(TRANSLATE_INTERPOLATION)) {
+        recordBinding(shellTemplate, 'visible label text', key);
+      }
     }
   }
 

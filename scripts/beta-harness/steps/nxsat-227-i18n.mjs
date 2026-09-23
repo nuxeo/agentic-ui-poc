@@ -82,9 +82,6 @@ const ENVIRONMENTAL_ERRORS = [
   `/i18n/${UNSHIPPED_LOCALE}.json`,
 ];
 
-/** The global search box in the header, by class — see `app-shell.component.html`. */
-const HEADER_SEARCH_INPUT = 'input.header-search-input';
-
 /** Visible label naming the global search (NXENG-798); placeholder is no longer the accessible name. */
 const HEADER_SEARCH_LABEL = 'label.header-search-label[for="global-header-search-input"]';
 

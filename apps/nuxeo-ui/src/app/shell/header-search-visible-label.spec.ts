@@ -108,4 +108,37 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
       .withContext('label must occupy vertical space in the layout')
       .toBeGreaterThan(0);
   });
+
+  it('hides the overlay label while a query is entered and restores it when cleared', () => {
+    const fixture = TestBed.createComponent(AppShellComponent);
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', { [SEARCH_LABEL_KEY]: SEARCH_LABEL_MARKER }, true);
+    translate.use('en');
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector(
+      `#${GLOBAL_HEADER_SEARCH_INPUT_ID}`,
+    ) as HTMLInputElement;
+    const label = fixture.nativeElement.querySelector(
+      `label[for="${GLOBAL_HEADER_SEARCH_INPUT_ID}"].header-search-label`,
+    ) as HTMLLabelElement;
+
+    fixture.componentInstance.onGlobalSearchInput('reports');
+    fixture.detectChanges();
+
+    expect(input.value)
+      .withContext('typed query must remain visible in the field')
+      .toBe('reports');
+    expect(Number.parseFloat(getComputedStyle(label).opacity))
+      .withContext('overlay label must fade once the field is no longer empty')
+      .toBe(0);
+
+    fixture.componentInstance.onGlobalSearchInput('');
+    fixture.detectChanges();
+
+    expect(input.value).toBe('');
+    expect(Number.parseFloat(getComputedStyle(label).opacity))
+      .withContext('overlay label must return when the field is cleared')
+      .toBeGreaterThan(0);
+  });
 });

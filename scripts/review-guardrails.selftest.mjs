@@ -532,6 +532,22 @@ expectRed(
   /maps it to an empty string/,
 );
 
+const HEADER_SEARCH_KEY_OUTSIDE_LABEL = `<label class="header-search-label" for="global-header-search-input"></label>
+<span>{{ 'shell.search.placeholder' | translate }}</span>
+`;
+
+expectRed(
+  'header search translate outside the associated label must not satisfy the gate alone',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': EN_JSON_SHELL_SEARCH,
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
+    'apps/nuxeo-ui/src/app/shell/app-shell.component.html': HEADER_SEARCH_KEY_OUTSIDE_LABEL,
+  },
+  null,
+  /asserted nothing/,
+);
+
 /* ---------------- checkNoHardcodedUiText ---------------- */
 
 expectGreen('a template routing everything through the pipe', 'checkNoHardcodedUiText', APP);
