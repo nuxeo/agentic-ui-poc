@@ -271,17 +271,46 @@ describe('platform sidebar nav — keyboard focus ring (NXENG-761)', () => {
       .toBe('rgb(255, 0, 0)');
   });
 
+  it('declares a standalone :focus rule IBM Equal Access can read (NXENG-794)', () => {
+    const target = 'sat-platform-nav .sat-platform-nav-item:focus';
+    let matched: CSSStyleRule | undefined;
+    for (const sheet of Array.from(document.styleSheets)) {
+      let rules: CSSRuleList;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      for (const rule of Array.from(rules)) {
+        const styleRule = rule as CSSStyleRule;
+        const canonical = styleRule.selectorText
+          ?.replace(/\[_ngcontent-[^\]]+\]/g, '')
+          .trim();
+        if (canonical === target) {
+          matched = styleRule;
+          break;
+        }
+      }
+      if (matched) break;
+    }
+    expect(matched).withContext(`stylesheet must contain ${target} without a comma list`).toBeDefined();
+    expect(matched!.cssText).toMatch(/outline:\s*2px\s+solid/);
+    expect(matched!.cssText).toMatch(/outline-offset:\s*-2px/);
+  });
+
   /**
-   * The indicator must stay keyboard-only. Satori's rule is `:focus-visible`, and this fix
-   * only supplies the colour it reads — but a later "fix" that reached for `:focus` would ring
-   * every mouse click, which is the regression this pins down.
+   * NXENG-794 — IBM Equal Access reads `:focus` only, so `styles.scss` mirrors Satori's ring on
+   * `:focus` as well. Programmatic focus without `:focus-visible` must still paint the ring so
+   * the scanner and keyboard users see the same indicator.
    */
-  it('does not draw the ring when the link is focused without a keyboard', () => {
+  it('draws the ring on :focus even when :focus-visible is false (IBM style_focus_visible)', () => {
     const el = link('idle');
     el.focus({ focusVisible: false } as FocusOptions);
     expect(el.matches(':focus')).toBe(true);
     expect(el.matches(':focus-visible')).toBe(false);
-    expect(getComputedStyle(el).outlineStyle).toBe('none');
+    const style = getComputedStyle(el);
+    expect(style.outlineStyle).not.toBe('none');
+    expect(parseFloat(style.outlineWidth)).toBeGreaterThan(0);
   });
 });
 
