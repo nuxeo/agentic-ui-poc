@@ -334,9 +334,7 @@ describe('LoginPageComponent', () => {
       hidden!.insertAdjacentHTML('beforeend', html);
       const injected = hidden!.lastElementChild!;
       const reached = [injected, ...allDescendants(injected)].some(canTakeFocus);
-      expect(reached)
-        .withContext(`the guard must see ${html} as focusable`)
-        .toBe(true);
+      expect(reached).withContext(`the guard must see ${html} as focusable`).toBe(true);
       injected.remove();
     }
 
