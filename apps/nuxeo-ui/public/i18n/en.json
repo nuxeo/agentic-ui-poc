@@ -2154,7 +2154,8 @@
     },
     "slot-empty": "Content for \"{{ name }}\" will appear here.",
     "test": {
-      "platform-nav-item": "Browse"
+      "platform-nav-item": "Browse",
+      "personal-space-nav-item": "Personal Space"
     }
   },
   "tab": {
