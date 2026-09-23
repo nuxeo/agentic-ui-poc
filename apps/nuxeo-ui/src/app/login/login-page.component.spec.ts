@@ -2,7 +2,8 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of, Observable } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
+import { firstValueFrom, of, Observable } from 'rxjs';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -33,8 +34,6 @@ describe('LoginPageComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [
-        // Visible label and error text, which the fallback map does not hold — it carries
-        // accessible names only. These are the strings this spec asserts a user sees.
         testTranslateModule({
           'app.login-page.log-in': 'Log in',
           'app.login-page.sign-in-credentials': 'Sign in credentials',
@@ -44,6 +43,7 @@ describe('LoginPageComponent', () => {
           'app.login-page.password-is-required': 'Password is required',
           'app.login-page.copyright-c-1992-2026-hyland-software':
             'Copyright (C) 1992–2026 Hyland Software, Inc.',
+          'login.skip-link': 'Skip to sign in',
         }),
         LoginPageComponent,
       ],
@@ -53,9 +53,38 @@ describe('LoginPageComponent', () => {
       ],
     }).compileComponents();
 
+    await firstValueFrom(TestBed.inject(TranslateService).use('en'));
+
     fixture = TestBed.createComponent(LoginPageComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it('provides a skip link to the sign-in landmark (WCAG 2.4.1)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const skip = el.querySelector('a.login-skip-link');
+    expect(skip).toBeTruthy();
+    expect(skip?.getAttribute('href')).toBe('#login-main');
+    expect(skip?.textContent?.trim()).toContain('Skip to sign in');
+
+    const landmark = el.querySelector('#login-main');
+    expect(landmark).toBeTruthy();
+    expect(landmark?.getAttribute('tabindex')).toBe('-1');
+    expect(landmark?.getAttribute('aria-label')).toBe('Log in');
+  });
+
+  it('focuses the username field and cancels navigation when the skip link is activated', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const usernameInput = el.querySelector('input[formcontrolname="username"]') as HTMLInputElement;
+    const event = new MouseEvent('click', { cancelable: true, bubbles: true });
+    const preventSpy = spyOn(event, 'preventDefault').and.callThrough();
+
+    component.skipToSignIn(event);
+    fixture.detectChanges();
+
+    expect(preventSpy).toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(usernameInput);
   });
 
   it('does not expose redundant aria-required on password when HTML required is set (NXENG-755)', async () => {
@@ -315,6 +344,7 @@ describe('LoginPageComponent', () => {
       const root = fixture.nativeElement as HTMLElement;
       const main = root.querySelector('main.login-panel');
       expect(main).not.toBeNull();
+      expect(main?.getAttribute('id')).toBe('login-main');
       expect(main?.getAttribute('aria-label')).toBe('Log in');
       expect(main?.querySelector('form.login-form')).not.toBeNull();
       expect(main?.querySelector('footer.login-footer')).not.toBeNull();
