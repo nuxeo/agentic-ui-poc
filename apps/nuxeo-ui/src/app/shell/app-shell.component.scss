@@ -150,7 +150,7 @@ sat-platform-nav-container.has-selection-topbar {
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
-  color: #667085;
+  color: var(--mat-sys-on-surface-variant);
   font-size: 14px;
   line-height: 1;
   white-space: nowrap;
