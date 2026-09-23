@@ -348,7 +348,11 @@ DocumentService`. The chain, read from the published bundle:
   a secondary entry point in the bridge library, or the shell must stop importing the
   bridge barrel.** The entry point was built and the initial bundle returned to 1.71 MB with
   the ports bound; it is now 3.24 MB for a different and accepted reason — see the
-  root-injector fact above. **Nothing eagerly loaded may import from `providers.ts`.**
+  root-injector fact above. **Do not add new eager imports from `providers.ts`.** The lazy POC
+  route remains the intended consumer for most of this surface; two product decisions already
+  pull adf-hx into the initial bundle on purpose — `provideAdfHxNuxeoBridge()` in
+  `app.config.ts` and `HxpBrowseNavDrawerComponent` in the shell nav drawer (see the guardrail
+  allowlist in `scripts/review-guardrails.mjs`).
 - **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
   A second `install.xml` copy step with `overwrite="false"` puts customer
   configuration in a _sibling_ of the bundle, outside the destructive copy's
