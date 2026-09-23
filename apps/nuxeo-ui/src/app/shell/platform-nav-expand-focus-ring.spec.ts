@@ -108,7 +108,7 @@ describe('Expand navigation rail toggle focus ring (NXENG-796)', () => {
     const styles = getComputedStyle(button);
     const panel = paintedBackdrop(button);
     const ownFill = parseColor(styles.backgroundColor);
-    const interior = ownFill.alpha > 0 && ownFill.alpha < 1 ? compositeOver(ownFill, panel) : panel;
+    const interior = ownFill.alpha > 0 ? compositeOver(ownFill, panel) : panel;
     const ring = parseColor(styles.outlineColor);
 
     return {
@@ -143,7 +143,8 @@ describe('Expand navigation rail toggle focus ring (NXENG-796)', () => {
     document.documentElement.setAttribute('data-app-theme', 'nuxeo');
     fixture.detectChanges();
 
-    const focusSelectors: string[] = [];
+    const target = 'sat-platform-nav #sat-platform-nav-title-icon:focus';
+    let matched: CSSStyleRule | undefined;
     for (const sheet of Array.from(document.styleSheets)) {
       let rules: CSSRuleList;
       try {
@@ -152,14 +153,20 @@ describe('Expand navigation rail toggle focus ring (NXENG-796)', () => {
         continue;
       }
       for (const rule of Array.from(rules)) {
-        const selector = (rule as CSSStyleRule).selectorText;
-        if (selector?.includes('#sat-platform-nav-title-icon') && selector.includes(':focus')) {
-          focusSelectors.push(selector);
+        const styleRule = rule as CSSStyleRule;
+        const canonical = styleRule.selectorText
+          ?.replace(/\[_ngcontent-[^\]]+\]/g, '')
+          .trim();
+        if (canonical === target) {
+          matched = styleRule;
+          break;
         }
       }
+      if (matched) break;
     }
 
-    const canonical = focusSelectors.map((s) => s.replace(/\[_ngcontent-[^\]]+\]/g, '').trim());
-    expect(canonical).toContain('sat-platform-nav #sat-platform-nav-title-icon:focus');
+    expect(matched).withContext(`stylesheet must contain ${target} without a comma list`).toBeDefined();
+    expect(matched!.cssText).toMatch(/outline:\s*2px\s+solid/);
+    expect(matched!.cssText).toMatch(/outline-offset:\s*-2px/);
   });
 });
