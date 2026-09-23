@@ -160,6 +160,15 @@ sat-platform-nav-container.has-selection-topbar {
   outline-offset: 2px;
 }
 
+// Same IBM `style_focus_visible` constraints as `.header-search-input:focus` above.
+// Chain Material's own classes so this wins over MDC's `outline-style: none` on icon buttons.
+.header-settings-menu-button.mat-mdc-icon-button:focus {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-color: var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
 .header-search-dropdown {
   position: absolute;
   top: calc(100% + 8px);
