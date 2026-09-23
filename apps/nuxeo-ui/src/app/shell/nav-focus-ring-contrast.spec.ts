@@ -246,7 +246,8 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
   }
 
   it('declares a standalone :focus rule on nav links that IBM Equal Access can read (NXENG-794)', () => {
-    const focusSelectors: string[] = [];
+    const target = 'sat-platform-nav .sat-platform-nav-item:focus';
+    let matched: CSSStyleRule | undefined;
     for (const sheet of Array.from(document.styleSheets)) {
       let sheetRules: CSSRuleList;
       try {
@@ -255,16 +256,20 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
         continue;
       }
       for (const rule of Array.from(sheetRules)) {
-        const selector = (rule as CSSStyleRule).selectorText;
-        if (selector?.includes('.sat-platform-nav-item') && selector.includes(':focus')) {
-          focusSelectors.push(selector);
+        const styleRule = rule as CSSStyleRule;
+        const canonical = styleRule.selectorText
+          ?.replace(/\[_ngcontent-[^\]]+\]/g, '')
+          .trim();
+        if (canonical === target) {
+          matched = styleRule;
+          break;
         }
       }
+      if (matched) break;
     }
-    const canonical = focusSelectors.map((selector) =>
-      selector.replace(/\[_ngcontent-[^\]]+\]/g, '').trim(),
-    );
-    expect(canonical).toContain('sat-platform-nav .sat-platform-nav-item:focus');
+    expect(matched).withContext(`stylesheet must contain ${target} without a comma list`).toBeDefined();
+    expect(matched!.cssText).toMatch(/outline:\s*2px\s+solid/);
+    expect(matched!.cssText).toMatch(/outline-offset:\s*-2px/);
   });
 
   it('takes the ring colour from --agentic-nav-focus-outline-color when it is set', () => {
