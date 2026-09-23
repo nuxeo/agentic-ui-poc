@@ -17,6 +17,10 @@ export default defineConfig(() => ({
     reporters: ['default'],
     // Matches the other libraries: the Vitest default pool has crashed under Nx/CI here.
     pool: 'threads',
+    // zone.js keeps the event loop alive after TestBed teardown. Needed from the moment this
+    // library gained TestBed specs, as in `libs/shared/extensions/vite.config.mts`; without it the
+    // worker can hang instead of exiting once the specs finish.
+    forceExit: true,
     coverage: {
       reportsDirectory: '../../../coverage/libs/shared/ai-client',
       provider: 'v8' as const,
