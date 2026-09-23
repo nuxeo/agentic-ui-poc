@@ -293,9 +293,15 @@ pinned major).
 
 ---
 
-### Phase 6: opened, two steps done of seven
+### Phase 6: 6 of 7 steps done; step 6 reopened 2026-09-22
 
-The quality bar itself is barely started and the record should not imply otherwise. What
+**This section is dated 2026-09-22 and the paragraphs below it are older.** It said "opened, two
+steps done of seven" and "barely started", which was true when written and is not now — steps 0–5
+and 7 are done, and step 6 (the 90% bar) is the one still open, reopened on 2026-09-22 because
+`shared-ai-client` entered the measurement at 15.98%. Where a figure below disagrees with the
+table at the end of this section, the table is the later measurement.
+
+What
 exists after step 1:
 
 **Step 0 — the coverage ratchet was lying in two directions.** Both were created by the
@@ -362,11 +368,11 @@ Three corrections came out of this step, and two were defects in work from the d
 
 | Requirement         | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Unit coverage ≥ 90% | **3 of 15** measurable projects, substantively. `search` 22.76%, `document-detail` 29.8%. Was recorded as "5 of 17" until 2026-08-24, when the gate stopped scoring 0/0 statements as 100% — `assets` and `tasks` are untested, not perfect                                                                                                                                                                                                                                                            |
+| Unit coverage ≥ 90% | **10 of 11 in-scope projects** as of 2026-09-22, `shared-ai-client` short at 15.98%. Two earlier figures on this row were each true when written: "5 of 17" until 2026-08-24, when the gate stopped scoring 0/0 statements as 100%; then "3 of 15" before the Phase 6 coverage work took `search` 22.76% → 93.41% and `document-detail` 29.8% → 92.56%. Re-measure with `nvm use 20 && npm run beta:coverage -- --run` rather than quoting any of them                                                 |
 | Playwright E2E      | **done** — 12 specs, 9 credential-sensitive; not in PR CI (needs Docker Nuxeo)                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | WCAG 2.1 AA         | **met** on the 15 cases scanned — 7 rule classes fixed, `KNOWN_VIOLATIONS` empty. One violation remains and it is `@alfresco/adf-core`'s (finding 1.2), excluded on that one surface. Dialogs, upload, dark mode and pre-auth login are **not** covered                                                                                                                                                                                                                                                |
 | SAST                | **done, and the premise was wrong** — CodeQL default setup had run since 2026-07-24 and was reporting 21 open alerts, 6 high, that nothing read. All fixed; 14 of them from one HTML escaper missing the double quote. Two gates now consume the output: `supply-chain` (production `high`/`critical`, dated acceptances, unimported deps) and `code-scanning` (fails if the ref was never analysed). Production audit 1 low (quill, accepted to 2026-11-30); dev-inclusive 9 high, reported not gated |
-| Safari              | never run; Chromium only                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Safari              | **WebKit verified, not Safari** — `apps/nuxeo-ui-e2e/playwright.config.ts` registers a `webkit` project alongside `chromium`, and that file records the rule that it is "registered only once the suite passed on it", so its presence is the evidence. WebKit is the engine Safari ships; it is not Safari, and shares neither its UI nor iOS's stricter storage rules. This row read "never run; Chromium only" after that stopped being true                                                        |
 
 Coverage alone is most of the phase's 20-30 day estimate.
 
