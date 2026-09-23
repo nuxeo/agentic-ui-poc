@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  principalPermissionRightLabel,
   principalPermissionTimeFrameLabel,
   principalPermissionToLocalRow,
 } from './principal-permission-display';
@@ -50,6 +51,12 @@ describe('principal-permission-display', () => {
     const dated = { ...row, begin: '2026-01-02T00:00:00Z', end: null };
     expect(principalPermissionTimeFrameLabel(dated, echoKey, 'de-DE')).not.toBe(
       principalPermissionTimeFrameLabel(dated, echoKey, 'en-US'),
+    );
+  });
+
+  it('principalPermissionRightLabel resolves known permission labels through the caller translator', () => {
+    expect(principalPermissionRightLabel('Read', (key) => `resolved:${key}`)).toBe(
+      'resolved:permissions.right.Read',
     );
   });
 

@@ -286,15 +286,10 @@ export {
   type ClipboardDoc,
 } from './lib/utils/clipboard.utils';
 export {
+  principalPermissionRightLabel,
   principalPermissionTimeFrameLabel,
   principalPermissionToLocalRow,
 } from './lib/utils/principal-permission-display';
-// `formatPermissionTimeFrame` is deliberately NOT re-exported: its only callers are
-// `settings.service.ts` and `principal-permission-display.ts`, both inside this library. It was
-// briefly exported here purely because it shares a file with `formatAceDateRange`, which widened
-// the published surface for nothing.
-export { formatAceDateRange } from './lib/utils/permission-timeframe.utils';
-export { permissionRightLabel } from './lib/utils/permission-label.utils';
 export {
   isNavigableBaseUrl,
   navigableUrlOrNull,

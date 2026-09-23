@@ -52,8 +52,8 @@ import {
   shouldShowUserWorkspaceBreadcrumbs,
   postTrashBrowseRouterUrl,
   BrowseContextService,
-  formatAceDateRange,
-  permissionRightLabel,
+  principalPermissionRightLabel,
+  principalPermissionTimeFrameLabel,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -603,16 +603,11 @@ export class CollectionDetailComponent {
   }
 
   permissionLabel(permission: string): string {
-    return permissionRightLabel(permission, (key) => this.translate.instant(key));
+    return principalPermissionRightLabel(permission, (key) => this.translate.instant(key));
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    return formatAceDateRange(
-      ace.begin,
-      ace.end,
-      (key, params) => this.translate.instant(key, params),
-      this.locale,
-    );
+    return principalPermissionTimeFrameLabel(ace, (key, params) => this.translate.instant(key, params), this.locale);
   }
 
   addPermission(): void {
