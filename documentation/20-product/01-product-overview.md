@@ -136,7 +136,7 @@ the API-surface gate and the upgrade rehearsal exist.**
 | **The Layers 0/1 coverage assumption** | RFC and plan both flag it as needing validation against real customer requests. **Not verified**           |
 | **Published to a registry**            | `private: true`. Scope decided (`@nuxeo/satori-platform` on Nuxeo Nexus); publishing deliberately deferred |
 | **WCAG 2.1 AA**                        | **Met** on 15 scanned cases (2026-08-24). Not covered: dialogs, upload, dark mode, pre-auth login          |
-| **Coverage bar (>90%)**                | 3 of 15 measurable projects meet it substantively                                                          |
+| **Coverage bar (>90%)**                | 10 of 11 in-scope projects meet it as of 2026-09-22; `shared-ai-client` short at 15.98% (was "3 of 15")    |
 | **4 of 8 extension slots**             | Reserved — `routes`, `toolbar`, `contextMenu`, `tabs` are read by nothing                                  |
 | **`selection` rule context**           | Still empty, so `canWriteSelection` / `canRemoveSelection` answer `false`                                  |
 | **SAST**                               | None. SCA is `npm audit` only                                                                              |
