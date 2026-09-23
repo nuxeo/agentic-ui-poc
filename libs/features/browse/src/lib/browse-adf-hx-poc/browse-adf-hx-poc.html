@@ -99,7 +99,7 @@
                 [title]="'browse.browse-adf-hx-poc.manage-columns' | translate"
                 (click)="openColumnPicker()"
               >
-                {{ 'browse.browse-adf-hx-poc.columns' | translate }}
+                <hxp-icon name="tune" size="md" [decorative]="true" />
               </button>
               @if (columnPickerOpen()) {
                 <hxp-column-picker
