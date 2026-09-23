@@ -70,18 +70,35 @@ class ResizeObserverStub {
  * jsdom implements neither object-URL method, and `loadPreviewBlob` mints one for every preview.
  *
  * `vi.spyOn(URL, 'createObjectURL')` cannot be used: the property is `undefined` under jsdom and
- * `spyOn` throws on an absent one. Hence assignment, plus the `afterAll` below, without which these
- * stubs outlive the file and leak into any other spec sharing the worker.
+ * `spyOn` throws on an absent one. So the methods are assigned — and the prior values are captured
+ * first, so `afterAll` puts back whatever was there rather than deleting unconditionally. Under
+ * jsdom there is nothing to put back and the effect is a delete; if some other suite in the worker
+ * had provided real implementations, deleting would have removed theirs for every later spec.
  */
+const priorCreateObjectURL = URL.createObjectURL;
+const priorRevokeObjectURL = URL.revokeObjectURL;
+
 beforeAll(() => {
   global.URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test');
   global.URL.revokeObjectURL = vi.fn();
 });
 
 afterAll(() => {
-  delete (URL as Partial<typeof URL>).createObjectURL;
-  delete (URL as Partial<typeof URL>).revokeObjectURL;
+  restoreObjectUrlMethod('createObjectURL', priorCreateObjectURL);
+  restoreObjectUrlMethod('revokeObjectURL', priorRevokeObjectURL);
 });
+
+/** Puts `prior` back, or removes the stub entirely when there was nothing there to begin with. */
+function restoreObjectUrlMethod<K extends 'createObjectURL' | 'revokeObjectURL'>(
+  name: K,
+  prior: (typeof URL)[K] | undefined,
+): void {
+  if (prior === undefined) {
+    delete (URL as Partial<typeof URL>)[name];
+    return;
+  }
+  URL[name] = prior;
+}
 
 describe('TasksPageComponent — the MIME type bound to the viewer', () => {
   let fixture: ComponentFixture<TasksPageComponent>;

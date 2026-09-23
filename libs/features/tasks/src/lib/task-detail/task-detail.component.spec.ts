@@ -28,15 +28,35 @@ import { TaskDetailComponent } from './task-detail.component';
  * `afterAll` removes them again — which is the restoration a spy would have provided, and without it
  * these stubs outlive the file and leak into any other spec sharing the worker.
  */
+const priorCreateObjectURL = URL.createObjectURL;
+const priorRevokeObjectURL = URL.revokeObjectURL;
+
 beforeAll(() => {
   global.URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test');
   global.URL.revokeObjectURL = vi.fn();
 });
 
 afterAll(() => {
-  delete (URL as Partial<typeof URL>).createObjectURL;
-  delete (URL as Partial<typeof URL>).revokeObjectURL;
+  restoreObjectUrlMethod('createObjectURL', priorCreateObjectURL);
+  restoreObjectUrlMethod('revokeObjectURL', priorRevokeObjectURL);
 });
+
+/**
+ * Puts `prior` back, or removes the stub entirely when there was nothing there to begin with.
+ *
+ * Restoring rather than always deleting matters if another suite in the same worker has provided
+ * real implementations: an unconditional `delete` would remove theirs for every later spec.
+ */
+function restoreObjectUrlMethod<K extends 'createObjectURL' | 'revokeObjectURL'>(
+  name: K,
+  prior: (typeof URL)[K] | undefined,
+): void {
+  if (prior === undefined) {
+    delete (URL as Partial<typeof URL>)[name];
+    return;
+  }
+  URL[name] = prior;
+}
 
 /**
  * A Vitest double for the subset of `T` this spec stubs, bound to the real method signatures.
