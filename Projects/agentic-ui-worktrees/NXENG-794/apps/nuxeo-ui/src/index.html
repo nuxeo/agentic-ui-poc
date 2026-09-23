@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Static on purpose. This file is the document shell, not an Angular template, so an
+         interpolation here is never compiled — it renders as literal `{{ ... }}` in the browser
+         tab, which is what happened when the extraction codemod treated this like a component
+         template. Only the moment before bootstrap is visible anyway: AppShellComponent
+         replaces it from Layer 0 `branding.documentTitle`. -->
+    <title>Nuxeo Platform</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <!-- Required for MatIcon ligatures (e.g. <mat-icon>settings</mat-icon>) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  </head>
+  <body class="mat-app-background mat-typography">
+    <app-root></app-root>
+  </body>
+</html>
