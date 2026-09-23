@@ -44,6 +44,11 @@ function visibleLabelTexts(root: Element): string[] {
   return texts;
 }
 
+/** Full visible label IBM compares against the accessible name (WCAG 2.5.3). */
+function visibleLabelJoined(root: Element): string {
+  return visibleLabelTexts(root).join(' ').replace(/\s+/g, ' ').trim();
+}
+
 /** Accessible name when `aria-label` is set (same precedence as accname). */
 function accessibleName(el: Element): string {
   const labelledBy = el.getAttribute('aria-labelledby')?.trim();
@@ -126,10 +131,24 @@ describe('platform sidebar — user profile label in name (NXENG-894)', () => {
       .toBeNull();
 
     const name = accessibleName(button);
-    for (const label of visibleLabelTexts(button)) {
-      expect(name.toLowerCase())
-        .withContext(`accessible name "${name}" must contain visible label "${label}"`)
-        .toContain(label.toLowerCase());
-    }
+    const visible = visibleLabelJoined(button);
+    expect(name.toLowerCase())
+      .withContext(
+        `accessible name "${name}" must contain the full visible label "${visible}" (IBM label_name_visible)`,
+      )
+      .toContain(visible.toLowerCase());
+  });
+
+  it('opens the settings drawer when the profile control is activated', () => {
+    const fixture = TestBed.createComponent(AppShellComponent);
+    const component = fixture.componentInstance;
+    TestBed.inject(SatPlatformNavStateService).toggleCollapsed();
+    fixture.detectChanges();
+
+    profileButton(fixture.nativeElement as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(component.drawerOpen()).toBe(true);
+    expect(component.activeDrawerItem()?.path).toBe('/settings');
   });
 });
