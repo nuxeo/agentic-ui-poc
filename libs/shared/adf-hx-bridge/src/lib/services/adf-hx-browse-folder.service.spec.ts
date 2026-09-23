@@ -325,6 +325,20 @@ describe('AdfHxBrowseFolderService', () => {
       expect((await restored).state).toBe('project');
     });
 
+    it('trashes a document through Document.Trash, and propagates a refusal', async () => {
+      const trashed = firstValueFrom(service.trashDocument('doc-1'));
+      const req = httpMock.expectOne((r) => r.url.includes('/automation/Document.Trash'));
+      expect(req.request.body.input).toBe('doc:doc-1');
+      req.flush(nuxeoDoc({ uid: 'doc-1' }));
+      expect((await trashed).uid).toBe('doc-1');
+
+      const refused = firstValueFrom(service.trashDocument('doc-2'));
+      httpMock
+        .expectOne((r) => r.url.includes('/automation/Document.Trash'))
+        .flush({}, { status: 403, statusText: 'Forbidden' });
+      await expect(refused).rejects.toBeDefined();
+    });
+
     it("lists the real repository root's trash, not the synthetic root's", async () => {
       // The bridge's root has an all-zero id that Nuxeo does not know, so querying its children
       // returned nothing and the Trash tab at the root reported empty without asking.

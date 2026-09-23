@@ -157,7 +157,9 @@ rendered today is **upstream's**, which is a different component that happens to
 `hxp-document-tree` with upstream's `DocumentTreeDatabaseService`, wrapped by
 `hxp-browse-nav-drawer`. Removed 2026-08-25.
 
-Write methods on `NuxeoDocumentApi` throw _"not implemented in Scope A"_ until Scope B.
+Write methods on `NuxeoDocumentApi` throw _"not implemented in Scope A"_ until Scope B. The browse
+page's own write actions do not go through that port: they open the application's shared dialogs,
+which call `nuxeo-client` directly.
 
 ---
 
@@ -171,13 +173,13 @@ App shell maps Satori tokens once in `apps/nuxeo-ui/src/styles/hxp-theme.scss` (
 
 ## Scope A vs Scope B
 
-| Area                               | Scope A (current)                              | Scope B (future)                          |
-| ---------------------------------- | ---------------------------------------------- | ----------------------------------------- |
-| View tab                           | List/card, filters, columns, selection, export | —                                         |
-| Permissions / History / Trash tabs | Read-only UI + data                            | Write actions (dialogs, ACL mutations)    |
-| Header actions                     | Download/CSV work; writes show notice          | Create/Import, Edit, Delete, Share, …     |
-| Details panel                      | Info, tags list, activity (read)               | Tag add/remove, edit properties           |
-| Document API                       | Read paths implemented                         | create/patch/delete on `NuxeoDocumentApi` |
+| Area                               | Scope A (current)                                                                                 | Scope B (future)                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| View tab                           | List/card, filters, columns, selection, export                                                    | —                                         |
+| Permissions / History / Trash tabs | Read-only UI + data                                                                               | Write actions (dialogs, ACL mutations)    |
+| Header actions                     | Download/CSV; Create/Import, Drive, Edit and Delete through the app's shared dialogs (2026-09-23) | Share, Notify, Export                     |
+| Details panel                      | Info, tags list, activity (read)                                                                  | Tag add/remove, edit properties           |
+| Document API                       | Read paths implemented                                                                            | create/patch/delete on `NuxeoDocumentApi` |
 
 ---
 

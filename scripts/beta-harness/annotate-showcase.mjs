@@ -117,7 +117,7 @@ const PANELS = [
       {
         selector: 'hxp-folder-header',
         label: 'hxp-folder-header',
-        note: 'Icon-only actions — every write shows a Scope A notice',
+        note: 'Icon-only actions — Create/Import, Drive, Edit and Delete open the shared dialogs',
       },
       {
         selector: 'hxp-document-list',
@@ -136,7 +136,7 @@ const COMPARISON = [
   [
     'Write actions',
     'Live (Create / Import, edit, delete)',
-    'Rendered but stubbed — show a Scope A notice',
+    'Create / Import, Drive, edit, delete via the shared dialogs; share and export still stubbed',
   ],
   ['Data source', 'BrowseService → Nuxeo REST', 'Bridge ports → BrowseService → Nuxeo REST'],
   ['Rows returned', '6', '6 — identical data'],

@@ -84,6 +84,11 @@ export class AdfHxBrowseFolderService {
       .pipe(switchMap((root) => this.browseService.getTrashedChildren(root.uid, pageSize)));
   }
 
+  /** Moves one document to the trash, as production browse's Delete does. */
+  trashDocument(uid: string): Observable<NuxeoDocument> {
+    return this.detailService.trashDocument(uid);
+  }
+
   restoreDocument(uid: string): Observable<NuxeoDocument> {
     return this.browseService.restoreDocument(uid);
   }

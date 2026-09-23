@@ -24,10 +24,13 @@ Shell (nuxeo-ui)
                  Nuxeo REST
 ```
 
-- **POC page:** `libs/features/browse/src/lib/browse-adf-hx-poc/` — wires tabs, filters, panel; no Material.
+- **POC page:** `libs/features/browse/src/lib/browse-adf-hx-poc/` — wires tabs, filters, panel; no
+  Material in its template (the shared dialogs below are opened, not embedded).
 - **Bridge:** `libs/shared/adf-hx-bridge/` — all `hxp-*` UI + AdfHx services + Nuxeo→Hx mapper.
 - **Production browse** (`/#/browse`) is unchanged; path sync and `browseReturn=adf-hx` helpers live in `browse-path.utils.ts`.
-- **Scope A:** read-only — write actions show a notice; tabs/load/export are implemented.
+- **Write actions are live since 2026-09-23.** Create/Import, Nuxeo Drive, Edit and Delete open
+  the application's own shared dialogs — see *Shared dialogs* below. Share, Notify, Export, tag
+  edits and Restore still show a notice.
 
 ## UI — real adf-hx components first, `hxp-*` for what adf-hx lacks
 
@@ -53,6 +56,18 @@ this phase.
   `hxp-spinner`, `hxp-column-picker`, `hxp-document-cards`, `hxp-browse-toolbar` and
   `hxp-browse-pager` all follow this.
 - **Never** use Satori (`sat-*`) or production browse UI in the POC page or its bridge components.
+
+## Shared dialogs — the one allowed exception
+
+Product decision, 2026-09-23: the page may open the application's **modal dialogs** —
+`CreateImportDialogComponent`, `BrowseDriveDialogComponent`, `EditMetadataDialogComponent` and
+`ConfirmDialogComponent` — through `MatDialog`, so creating, importing, editing and deleting behave
+exactly as on production browse. adf-hx has no equivalents (its `UPLOAD` port refuses: R1).
+
+- Only dialogs, opened as modals. Inline production markup, `sat-*` components and Material widgets
+  in the page template stay banned.
+- Results must route back to **this** page (`toAdfHxBrowseRouterUrl`, `browseReturn=adf-hx`), never
+  to `/browse`.
 - Side nav: `hxp-browse-nav-drawer`, which now hosts upstream's `HxpDocumentTreeComponent`. The
   hand-written `hxp-browse-nav-tree` was deleted when the real tree was adopted.
 - CSS tokens: prefer **`--hxp-*`** in bridge SCSS, aliased from Satori in
@@ -75,4 +90,5 @@ this phase.
 
 ## PR blocker
 
-Any new Material, Satori, direct `BrowseService` usage, or production browse component in the above paths must be removed before merge.
+Any new Material, Satori, direct `BrowseService` usage, or production browse component in the above
+paths must be removed before merge — except the shared dialogs listed above, opened as modals.
