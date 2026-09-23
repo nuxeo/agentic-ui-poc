@@ -420,6 +420,69 @@ describe('BrowseService', () => {
     expect(result.entries).toHaveLength(1);
   });
 
+  describe('a domain listing, which keeps only folders', () => {
+    const domain = {
+      uid: 'dom-uid',
+      title: 'Domain',
+      type: 'Domain',
+      path: '/default-domain',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    };
+    const child = (uid: string, type: string, facets: string[] = []) => ({
+      uid,
+      title: uid,
+      type,
+      path: `/default-domain/${uid}`,
+      facets,
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    });
+    const threeFoldersTwoFiles = [
+      child('sections', 'SectionRoot', ['Folderish']),
+      child('templates', 'TemplateRoot', ['Folderish']),
+      child('workspaces', 'WorkspaceRoot', ['Folderish']),
+      child('tour.pdf', 'File'),
+      child('csx.pdf', 'File'),
+    ];
+
+    function flushDomain(children: { isNextPageAvailable: boolean }) {
+      httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain').flush(domain);
+      httpMock
+        .expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain/@children')
+        .flush({
+          entries: threeFoldersTwoFiles,
+          totalSize: 5,
+          resultsCount: 5,
+          currentPageSize: 5,
+          currentPageIndex: 0,
+          numberOfPages: 1,
+          ...children,
+        });
+    }
+
+    it('counts the folders it shows, not every child Nuxeo counted', async () => {
+      // Nuxeo counted five children; three are folders. Passing its 5 through beside three rows
+      // is what showed "1–3 of 5" in the adf-hx pager.
+      const result$ = firstValueFrom(service.getBrowseFolderContents('/default-domain'));
+      flushDomain({ isNextPageAvailable: false });
+
+      const result = await result$;
+      expect(result.entries.map((e) => e.uid)).toEqual(['sections', 'templates', 'workspaces']);
+      expect(result.totalSize).toBe(3);
+    });
+
+    it('reports the total as unknown when Nuxeo has more pages to filter', async () => {
+      const result$ = firstValueFrom(service.getBrowseFolderContents('/default-domain'));
+      flushDomain({ isNextPageAvailable: true });
+
+      const result = await result$;
+      expect(result.entries).toHaveLength(3);
+      expect(result.totalSize).toBeLessThan(0);
+      expect(result.hasNextPage).toBe(true);
+    });
+  });
+
   it('getBrowseFolderContents loads Favorites members via default_content_collection', async () => {
     const result$ = firstValueFrom(
       service.getBrowseFolderContents('/default-domain/UserWorkspaces/user-readonly01/Favorites'),

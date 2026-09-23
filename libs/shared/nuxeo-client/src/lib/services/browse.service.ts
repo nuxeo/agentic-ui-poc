@@ -305,10 +305,7 @@ export class BrowseService {
     if (parent.type === 'Domain') {
       const safePath = parent.path?.replace(/\/+$/, '') ?? '';
       return this.getChildren(safePath, pageSize).pipe(
-        map((list) => ({
-          ...list,
-          entries: (list.entries ?? []).filter((doc) => isFolderishDocument(doc)),
-        })),
+        map((list) => this.keepEntries(list, (doc) => isFolderishDocument(doc))),
       );
     }
     // User workspaces expose Favorites (type Favorites) via @children; tree_children omits it
@@ -316,13 +313,27 @@ export class BrowseService {
     if (parent.type === 'Workspace' && isUserWorkspacePath(parent.path ?? '')) {
       const safePath = parent.path?.replace(/\/+$/, '') ?? '';
       return this.getChildren(safePath, pageSize).pipe(
-        map((list) => ({
-          ...list,
-          entries: (list.entries ?? []).filter((doc) => isBrowsableNavNode(doc)),
-        })),
+        map((list) => this.keepEntries(list, (doc) => isBrowsableNavNode(doc))),
       );
     }
     return this.getTreeChildrenWithPathFallback(parent, pageSize);
+  }
+
+  /**
+   * Filters a page of children and keeps its counts consistent with what is kept.
+   *
+   * Nuxeo's `totalSize` and `resultsCount` count every child, so passing them through beside a
+   * filtered list showed "1–3 of 5" over three rows. The filtered length is the total only when
+   * this page was the whole folder; beyond that the kept count of later pages is unknown.
+   */
+  private keepEntries(
+    list: NuxeoDocumentList,
+    keep: (doc: NuxeoDocument) => boolean,
+  ): NuxeoDocumentList {
+    const entries = (list.entries ?? []).filter(keep);
+    const hasNextPage = (list as { isNextPageAvailable?: boolean }).isNextPageAvailable === true;
+    const total = hasNextPage ? -2 : entries.length;
+    return { ...list, entries, totalSize: total, resultsCount: total };
   }
 
   private getTreeChildrenWithPathFallback(
