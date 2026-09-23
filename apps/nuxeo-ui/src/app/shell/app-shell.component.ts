@@ -362,14 +362,26 @@ export class AppShellComponent implements OnDestroy {
       return null;
     }
     const count = this.clipboardCount();
-    const noun = count === 1 ? 'item' : 'items';
-    // NOTE(i18n): this is a concatenated string, which INFO-144 forbids because no translator
-    // can reorder it, and the singular/plural branch is English grammar hardcoded in a
-    // conditional. Translating the entry's name is a strict improvement and is what this
-    // change is for, but the sentence around it still needs an ICU message with a `plural`
-    // arm. Tracked in NXSAT-284; not fixed here because it needs
-    // `ngx-translate-messageformat-compiler`, which the repo does not yet carry.
-    return `${this.navText(item)}, ${count} ${noun}`;
+    // The catalogue's established two-key pluralisation, as used by every `common.count.*` pair.
+    //
+    // This maps `1` to the singular and EVERY other count to the plural. That is not the same
+    // thing as "these locales have two plural forms", which an earlier version of this comment
+    // claimed. Measured with `Intl.PluralRules`:
+    //
+    //   en -> one, other          (0 -> other)
+    //   de -> one, other          (0 -> other)
+    //   fr -> one, many, other    (0 -> ONE, 1_000_000 -> many)
+    //
+    // So French has three categories and treats zero as singular. This call site is unaffected on
+    // both counts: it returns `null` above when the count is not positive, so zero never reaches a
+    // key, and a clipboard cannot hold a million items. The narrowing is what makes two keys
+    // correct HERE, not a property of the languages.
+    //
+    // `docs/i18n-status.md` records the ICU decision and the same measurement, including the
+    // `common.count.*` pairs where the zero case is NOT narrowed away and French is therefore
+    // wrong today.
+    const key = count === 1 ? 'nav.clipboard.aria-label-one' : 'nav.clipboard.aria-label-many';
+    return this.translate.instant(key, { name: this.navText(item), count });
   }
 
   isActive(path: string): boolean {

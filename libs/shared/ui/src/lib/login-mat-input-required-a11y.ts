@@ -21,6 +21,10 @@ export function observeStripRedundantMatInputAriaRequired(
   const strip = (): void => stripRedundantMatInputAriaRequired(input);
   strip();
 
+  if (typeof MutationObserver === 'undefined') {
+    return null;
+  }
+
   const observer = new MutationObserver(strip);
   observer.observe(input, {
     attributes: true,

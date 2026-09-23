@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, LOCALE_ID, computed, effect, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -44,6 +44,7 @@ export interface DocumentCompareDialogData {
 export class DocumentCompareDialogComponent {
   private readonly detailService = inject(DocumentDetailService);
   private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   readonly data = inject<DocumentCompareDialogData>(MAT_DIALOG_DATA);
 
   readonly leftId = signal(this.data.items[0]?.id ?? '');
@@ -59,7 +60,7 @@ export class DocumentCompareDialogComponent {
     const left = this.leftDoc();
     const right = this.rightDoc();
     if (!left || !right) return [];
-    return buildDocumentCompareSections(left, right, this.viewAllData());
+    return buildDocumentCompareSections(left, right, this.viewAllData(), this.locale);
   });
 
   isIconRow(row: CompareRow): boolean {
