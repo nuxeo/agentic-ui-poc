@@ -493,7 +493,15 @@ evidence captures failed on this before we understood it.
 Not a defect — but it is not documented, and it makes "the breadcrumb renders links" untestable
 without navigating two levels deep.
 
-**Ask:** document the behaviour.
+Users read it as broken: a folder's own name is missing and its parent cannot be clicked. We now
+render the inner `HxpUiBreadcrumbComponent` with the ancestors plus the current document.
+
+A related trap: the crumbs bind `DocumentRouterService.urlFor()` to `[routerLink]`, which treats
+a **string** as path segments and escapes any `?`. A host whose routes carry a query parameter
+gets links to `/route%3Fparam%3D…`. We return a `UrlTree` from our substitute to avoid it.
+
+**Ask:** document the behaviour, and consider an input to include the current document. Type
+`urlFor()` as `string | UrlTree` so a substitute can return a tree without casting.
 
 ### 4.4 `CheckInApi` also declares a copy operation
 

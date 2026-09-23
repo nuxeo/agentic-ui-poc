@@ -361,22 +361,35 @@ export default async function run(page, h) {
   // `/{repository}/documents/{id}`, which this app has no route for, and the breadcrumb feeds
   // that straight into `[routerLink]`. `NuxeoDocumentRouterService` is bound against it, so
   // the assertion is on the hrefs the crumbs actually carry.
-  // Two levels deep, deliberately. Upstream's breadcrumb renders **ancestors only** — never
-  // the current document — and only links a crumb that is not the last. At the root there is
-  // one crumb and at a top-level folder still only one, so neither state has a link and the
-  // assertion below would fail for the wrong reason. Two earlier runs of this step did
-  // exactly that. `/default-domain/workspaces` gives root + default-domain, so the first is
-  // linked.
+  // Since 2026-09-23 the page feeds upstream's inner `hxp-ui-breadcrumb` the ancestors **plus the
+  // folder itself**, as production browse shows: `hxp-breadcrumb` alone never rendered the current
+  // folder and left its parent unlinked. `/default-domain/workspaces` therefore gives
+  // Home › Domain › Workspaces, with the first two linked and the last marked as the location.
   await h.goTo('/#/browse-adf-hx?path=%2Fdefault-domain%2Fworkspaces');
   await page.waitForTimeout(2000);
   await h.expectVisible('upstream breadcrumb rendered', 'hxp-ui-breadcrumb');
-  const crumbHrefs = await page.$$eval('hxp-breadcrumb a[href]', (as) =>
+  const crumbHrefs = await page.$$eval('hxp-ui-breadcrumb a[href]', (as) =>
     as.map((a) => a.getAttribute('href') ?? ''),
   );
+  // This check used to accept any href containing `browse-adf-hx`, and so passed while every
+  // crumb but Home pointed at `browse-adf-hx%3Fpath%3D…` — a route that does not exist, because a
+  // string bound to `[routerLink]` has its `?` escaped. It now requires the query to survive.
   h.check(
-    'breadcrumb links target the adf-hx browse route',
-    crumbHrefs.length > 0 && crumbHrefs.every((href) => href.includes('browse-adf-hx')),
-    `hrefs were ${JSON.stringify(crumbHrefs.slice(0, 4))}`,
+    'every breadcrumb link carries the path as a real query parameter',
+    crumbHrefs.length === 2 &&
+      crumbHrefs.every((href) => href.includes('browse-adf-hx') && !/%3F/i.test(href)) &&
+      crumbHrefs.some((href) => href.includes('?path=')),
+    `hrefs were ${JSON.stringify(crumbHrefs)}`,
+  );
+  const lastCrumb = await page
+    .locator('hxp-ui-breadcrumb a[aria-current="location"]')
+    .first()
+    .evaluate((a) => ({ text: (a.textContent ?? '').trim(), href: a.getAttribute('href') }))
+    .catch(() => null);
+  h.check(
+    'the folder on screen is the last crumb, marked as the location and not linked',
+    lastCrumb !== null && /workspaces/i.test(lastCrumb.text) && !lastCrumb.href,
+    `last crumb was ${JSON.stringify(lastCrumb)}`,
   );
   h.check(
     "no link points at upstream's /{repository}/documents/ shape",

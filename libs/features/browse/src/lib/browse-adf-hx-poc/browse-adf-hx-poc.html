@@ -19,7 +19,7 @@
     <p class="hxp-browse-scope-notice" role="status">{{ notice }}</p>
   }
 
-  <hxp-breadcrumb [document]="currentDocument()" />
+  <hxp-ui-breadcrumb [documents]="breadcrumbDocuments()" />
   <hxp-domain-hint [document]="currentDocument()" [browsePath]="browsePath()" />
 
   <div class="hxp-browse-page__body">

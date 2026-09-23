@@ -53,6 +53,7 @@ export const REGISTRY = {
   'hxp-document-list': { origin: 'adf-hx', name: 'HxpDocumentListComponent', headline: true },
   'hxp-document-tree': { origin: 'adf-hx', name: 'HxpDocumentTreeComponent', headline: true },
   'hxp-breadcrumb': { origin: 'adf-hx', name: 'HxpBreadcrumbComponent', headline: true },
+  'hxp-ui-breadcrumb': { origin: 'adf-hx', name: 'HxpUiBreadcrumbComponent', headline: true },
   'hxp-properties-sidebar': {
     origin: 'adf-hx',
     name: 'HxpPropertiesSidebarComponent',

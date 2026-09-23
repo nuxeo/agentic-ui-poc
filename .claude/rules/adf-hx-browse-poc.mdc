@@ -37,11 +37,13 @@ components are adopted and adf-core brings Material in transitively. An agent fo
 would try to remove working code.** `docs/adf-hx-beta-plan.md` lists updating it as a hard rule for
 this phase.
 
-- **Prefer the real upstream component.** `HxpDocumentListComponent`, `HxpBreadcrumbComponent`,
-  `HxpDocumentTreeComponent`, `ManageVersionsSidebarComponent` and `HxpPropertiesSidebarComponent`
-  are adopted from `@alfresco/adf-hx-content-services/ui`, and each replaced a hand-written
-  equivalent that was deleted in the same change. Do not reintroduce a local imitation of a
-  component upstream provides.
+- **Prefer the real upstream component.** `HxpDocumentListComponent`, `HxpUiBreadcrumbComponent`
+  (the inner breadcrumb, fed the ancestors plus the current folder), `HxpDocumentTreeComponent`,
+  `PermissionsManagementPanelComponent` and `HxpUiDocumentViewerComponent` are adopted from
+  `@alfresco/adf-hx-content-services/ui`. Do not reintroduce a local imitation of a component
+  upstream provides. `ManageVersionsSidebarComponent` and `HxpPropertiesSidebarComponent` were
+  adopted too, and removed from browse on 2026-09-23 because production keeps both on the
+  document page — that is a product decision, not a reason to rebuild them here.
 - **Material arrives transitively through adf-core, and that is expected.** The adopted panels
   render `mat-select`, `mat-expansion-panel`, `mat-icon-button` and Material form fields. Do not
   strip it.

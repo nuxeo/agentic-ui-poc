@@ -52,7 +52,7 @@ import {
   AdfHxDocumentService,
 } from '@agentic-ui/shared/adf-hx-bridge/providers';
 import {
-  HxpBreadcrumbComponent as UpstreamBreadcrumbComponent,
+  HxpUiBreadcrumbComponent as UpstreamBreadcrumbComponent,
   HxpDocumentListComponent as UpstreamDocumentListComponent,
   HxpUiDocumentViewerComponent as UpstreamDocumentViewerComponent,
   PermissionsManagementPanelComponent as UpstreamPermissionsPanelComponent,
@@ -307,6 +307,8 @@ export class BrowseAdfHxPocComponent {
   protected readonly listLoading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly currentDocument = signal<Document>(ROOT_DOCUMENT);
+  protected readonly breadcrumbDocuments = signal<Document[]>([{ ...ROOT_DOCUMENT }]);
+  private breadcrumbRequestId = 0;
   protected readonly currentNuxeoDoc = signal<NuxeoDocument | null>(null);
   protected readonly documents = signal<Document[]>([]);
   protected readonly thumbnails = signal<Record<string, string>>({});
@@ -712,6 +714,7 @@ export class BrowseAdfHxPocComponent {
       next: (document) => {
         this.currentDocument.set(document);
         this.documentService.notifyDocumentLoaded(document);
+        this.loadBreadcrumb(document);
         this.loadNuxeoContext(document);
         this.loadChildren(document);
       },
@@ -721,6 +724,36 @@ export class BrowseAdfHxPocComponent {
         this.error.set(this.translate.instant('browse.message.failed-to-load-folder-contents'));
       },
     });
+  }
+
+  /**
+   * Ancestors plus the folder itself, as production browse's breadcrumb shows.
+   *
+   * Upstream's `hxp-breadcrumb` renders ancestors only and leaves the last one unlinked, so the
+   * folder on screen never appeared and its parent could not be clicked. Its inner
+   * `hxp-ui-breadcrumb` renders whatever list it is given, which is fed here instead.
+   */
+  private loadBreadcrumb(document: Document): void {
+    const requestId = ++this.breadcrumbRequestId;
+    if (document.sys_id === ROOT_DOCUMENT.sys_id) {
+      this.breadcrumbDocuments.set([document]);
+      return;
+    }
+    // Shown straight away so a slow ancestor lookup never leaves the previous folder's trail.
+    this.breadcrumbDocuments.set([{ ...ROOT_DOCUMENT }, document]);
+    this.documentService
+      .getAncestors(document.sys_id ?? '')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (ancestors) => {
+          if (requestId === this.breadcrumbRequestId) {
+            this.breadcrumbDocuments.set([...ancestors, document]);
+          }
+        },
+        error: () => {
+          /* the root-and-self trail set above stays */
+        },
+      });
   }
 
   private loadNuxeoContext(document: Document): void {

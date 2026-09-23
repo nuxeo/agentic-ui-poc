@@ -93,13 +93,13 @@ Helpers (in `@nuxeo-satori/platform/nuxeo-client`):
 
 Imported from `@alfresco/adf-hx-content-services/ui`. Nothing in this library defines them.
 
-| Selector                           | Rendered by                                |
-| ---------------------------------- | ------------------------------------------ |
-| `hxp-document-list`                | `browse-adf-hx-poc.ts`, `search-adf-hx.ts` |
-| `hxp-breadcrumb`                   | `browse-adf-hx-poc.ts`                     |
-| `hxp-ui-document-viewer`           | `browse-adf-hx-poc.ts`                     |
-| `hxp-permissions-management-panel` | `browse-adf-hx-poc.ts` (Permissions tab)   |
-| `hxp-document-tree`                | wrapped by our `hxp-browse-nav-drawer`     |
+| Selector                           | Rendered by                                                |
+| ---------------------------------- | ---------------------------------------------------------- |
+| `hxp-document-list`                | `browse-adf-hx-poc.ts`, `search-adf-hx.ts`                 |
+| `hxp-ui-breadcrumb`                | `browse-adf-hx-poc.ts`, fed ancestors + the current folder |
+| `hxp-ui-document-viewer`           | `browse-adf-hx-poc.ts`                                     |
+| `hxp-permissions-management-panel` | `browse-adf-hx-poc.ts` (Permissions tab)                   |
+| `hxp-document-tree`                | wrapped by our `hxp-browse-nav-drawer`                     |
 
 `hxp-properties-sidebar` and `hxp-manage-versions-sidebar` are no longer rendered. They were the
 browse POC's Properties and Versions tabs until 2026-09-23, removed so the folder tabs match

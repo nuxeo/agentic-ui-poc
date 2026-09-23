@@ -137,7 +137,7 @@ The reliable test is the import. Our POC feature code aliases every upstream com
 | Selector                           | Where                                              |
 | ---------------------------------- | -------------------------------------------------- |
 | `hxp-document-list`                | browse POC, adf-hx search                          |
-| `hxp-breadcrumb`                   | browse POC                                         |
+| `hxp-ui-breadcrumb`                | browse POC, fed ancestors plus the current folder  |
 | `hxp-ui-document-viewer`           | browse POC                                         |
 | `hxp-permissions-management-panel` | browse POC, Permissions tab                        |
 | `hxp-document-tree`                | nav drawer, wrapped by our `hxp-browse-nav-drawer` |
