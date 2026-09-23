@@ -55,15 +55,19 @@
         (focusout)="onGlobalSearchFocusOut($event)"
       >
         <div class="header-search-input-wrap">
-          <mat-icon class="header-search-icon">search</mat-icon>
+          <mat-icon class="header-search-icon" aria-hidden="true">search</mat-icon>
           <input
+            id="global-header-search-input"
             type="text"
             class="header-search-input"
-            [placeholder]="'shell.search.placeholder' | translate"
+            placeholder=" "
             [value]="globalSearchTerm()"
             (focus)="onGlobalSearchFocus()"
             (input)="onGlobalSearchInput($any($event.target).value)"
           />
+          <label class="header-search-label" for="global-header-search-input">
+            {{ 'shell.search.placeholder' | translate }}
+          </label>
         </div>
 
         @if (globalSearchOpen()) {

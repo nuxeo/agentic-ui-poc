@@ -141,6 +141,27 @@ sat-platform-nav-container.has-selection-topbar {
   color: #101828;
 }
 
+// Visible label text for the global search field (NXENG-798). Styled where placeholder text
+// used to sit; `:placeholder-shown` keeps it visible while the field is empty.
+.header-search-label {
+  position: absolute;
+  left: 40px;
+  right: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-search-input:not(:placeholder-shown) + .header-search-label {
+  opacity: 0;
+}
+
 // `outline-offset` puts the ring entirely outside the field, with the gap showing what is
 // behind it — so the colour it has to contrast with is the header's, not the field's white.
 // That is why the ring tracks `--mat-sys-primary` and is deliberately NOT pinned to the
