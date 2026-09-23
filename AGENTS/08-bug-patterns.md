@@ -529,7 +529,7 @@ Karma builder, and its `styles` option loads the app's global stylesheet), so as
 _rendered_ cascade — pull the real component stylesheet in with `styleUrls`, call `focus()`, and
 read the ring back out of `getComputedStyle`. Grepping the SCSS cannot tell a rule that applies
 from one that is overridden. See
-`apps/nuxeo-ui/src/app/shell/header-search-focus-ring.spec.ts` (NXENG-775).
+`apps/nuxeo-ui/src/app/shell/header-search-focus-ring.spec.ts` (NXENG-775, NXENG-909).
 
 ---
 
