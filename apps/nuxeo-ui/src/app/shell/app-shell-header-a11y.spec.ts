@@ -238,12 +238,14 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
    * name comes from the level-1 heading carrying the page title, not from the word mark.
    */
   it('keeps the header level-1 heading exposed to assistive technology', () => {
-    // Both attributes: `aria-level` alone sets no role, so an element carrying only it is not
-    // exposed as a heading at all and selecting on it would keep this green while the
-    // header's heading had gone.
-    const heading = header.querySelector('[role="heading"][aria-level="1"]');
-    expect(heading).withContext('the header must expose a level-1 heading').toBeTruthy();
+    // Native `<h1>`: IBM Equal Access `text_block_heading` (NXENG-788) flags a styled block
+    // with `role="heading"`; the vendor header slot is documented as `<h2 satAppHeaderTitle>`.
+    const heading = header.querySelector('h1.sat-app-header-title');
+    expect(heading).withContext('the header must expose a native level-1 heading').toBeTruthy();
     expect(heading?.textContent?.trim()).toBeTruthy();
+    expect(heading?.getAttribute('role'))
+      .withContext('a native h1 must not carry a redundant role attribute')
+      .toBeNull();
     expect(ariaHiddenAncestorOf(heading as Element))
       .withContext('the heading naming the page must not sit inside an aria-hidden subtree')
       .toBeNull();
