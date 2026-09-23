@@ -38,16 +38,42 @@ set -euo pipefail
 # does not measure what its message claims. On the run this script was last verified
 # against, 4 of 13 failures were exactly that.
 #
-# So failures are classified by where the run says the error happened. Only a failure
-# located in a `*.spec.ts` file counts: that is a line the spec itself wrote, reached
-# because the spec got far enough to check something. Everything else — fixtures, hooks,
-# shared helpers — is reported separately and excluded.
+# ## Why the filename is not the measurement either
 #
-# The classification is deliberately conservative in the direction that can only make the
-# threshold harder to meet. `expectSurfaceWithData()` lives in `fixtures.ts`, so a failure
-# inside it is excluded even though it is a genuine repository-data assertion. Under-counting
-# cannot manufacture a pass; over-counting is how this control became meaningless the first
-# time.
+# The previous version classified by where the run said the error happened: a failure located
+# in a `*.spec.ts` file counted, anything else did not. Review was right that this does not
+# hold, and it was measured rather than argued — on Playwright 1.63, `expect(1 + 1).toBe(3)`
+# and a promise rejecting with "Timeout 45000ms exceeded" produce error locations that are
+# both `*.spec.ts` lines and are indistinguishable by filename. A `page.goto()` timeout is
+# thrown from a line the spec wrote, so it counted toward the threshold with no `expect`
+# having run at all. A run where the wrong password broke navigation everywhere could
+# therefore satisfy a control whose entire purpose is to prove the specs read repository data.
+#
+# So the fact is emitted rather than inferred. `apps/nuxeo-ui-e2e/assertion-failure-reporter.ts`
+# reads `TestStep.category === 'expect'` — which Playwright sets itself and its JSON reporter
+# does not serialize — and writes, per failing spec, whether a failing assertion outside any
+# hook was the cause. An `expect` that fails in `beforeEach` does not count: it is nested
+# under the hook steps and the body never ran.
+#
+# That keeps the conservatism the filename test was reaching for while dropping its two
+# errors. It no longer excludes a genuine repository-data assertion for living in
+# `fixtures.ts` — `expectSurfaceWithData()` was in exactly that position — and it no longer
+# admits a navigation timeout for being thrown from a spec file.
+#
+# Both corrections are visible on the runs this version was verified against, chromium,
+# against the local stack:
+#
+#   wrong password    14 failed, 10 at an assertion, 4 never reached one
+#   correct password   2 failed,  2 at an assertion, 21 passed
+#
+# The old classifier scored the same suite 8 and 6. The two runs also show the corrections
+# separately: under correct credentials one of the two genuine failures is located in
+# `fixtures.ts:69` and the filename test would have discarded it, and
+# `scripts/beta-harness/assertion-reporter.selftest.mjs` shows the reverse — restore the
+# filename rule and its count of deliberate failures goes from 1 to 3.
+#
+# NOTE the default threshold below is still 5 against a measured 10. Raising it is a
+# judgement about how much drift should be tolerated, not part of this fix.
 #
 # Usage:
 #   ./scripts/e2e-negative-control.sh [min-expected-failures]
@@ -62,6 +88,9 @@ set -euo pipefail
 MIN_FAILURES="${1:-5}"
 # Written by the `json` reporter registered in apps/nuxeo-ui-e2e/playwright.config.ts.
 RESULTS_FILE="dist/e2e/results.json"
+# Written by assertion-failure-reporter.ts, registered beside it. This is what the count
+# comes from; RESULTS_FILE is kept only so an absent run is still detected as one.
+ASSERTIONS_FILE="dist/e2e/assertion-failures.json"
 
 echo "=== E2E Negative Control: Bogus Credentials ==="
 echo "Running E2E suite with NUXEO_PASS=wrong"
@@ -69,7 +98,7 @@ echo "Expected: at least ${MIN_FAILURES} specs should fail"
 echo ""
 
 # Clear previous results, so a stale file from an earlier run can never be counted.
-rm -f "$RESULTS_FILE"
+rm -f "$RESULTS_FILE" "$ASSERTIONS_FILE"
 
 # Run preflight with correct credentials first
 if ! node scripts/beta-harness/e2e-preflight.mjs; then
@@ -96,37 +125,34 @@ if [ ! -f "$RESULTS_FILE" ]; then
   exit 2
 fi
 
-# Classify the specs the run reports as not ok. `spec.ok` is false when every attempt
-# failed, so a spec that only passed on retry is not counted as a failure here.
-#
-# The location is read from the FINAL attempt: a retry can fail somewhere else than the
-# first try did, and the final attempt is the one `spec.ok` reflects.
+# An absent assertions file is an environment failure, never zero. Treating it as zero is
+# the same mistake as the `|| echo "0"` fallback that made the first version of this script
+# incapable of reporting anything but FAIL.
+if [ ! -f "$ASSERTIONS_FILE" ]; then
+  echo ""
+  echo "ERROR: ${ASSERTIONS_FILE} was not written, so no assertion count can be read."
+  echo "Playwright exited ${PLAYWRIGHT_EXIT}. Check that assertion-failure-reporter.ts is"
+  echo "still registered in apps/nuxeo-ui-e2e/playwright.config.ts."
+  exit 2
+fi
+
+# The reporter has already decided, per spec, whether a failing `expect` outside any hook was
+# the cause; it counts only specs whose every attempt failed, the same population `spec.ok`
+# describes. Nothing here re-derives that from an error location.
 CLASSIFIED=$(node -e '
-  const report = require("fs").readFileSync(process.argv[1], "utf8");
-  const { suites = [] } = JSON.parse(report);
-  const atAssertion = [];
-  const beforeAssertion = [];
-
-  const walk = (list) => {
-    for (const suite of list) {
-      for (const spec of suite.specs ?? []) {
-        if (spec.ok !== false) continue;
-        const attempts = (spec.tests ?? []).flatMap((t) => t.results ?? []);
-        const last = attempts[attempts.length - 1];
-        const location = last?.errorLocation ?? last?.errors?.[0]?.location ?? null;
-        const file = location?.file ?? "";
-        const where = location ? `${file.split("/").pop()}:${location.line}` : "unknown";
-        const row = { title: spec.title, where };
-        if (/\.spec\.ts$/.test(file)) atAssertion.push(row);
-        else beforeAssertion.push(row);
-      }
-      walk(suite.suites ?? []);
-    }
-  };
-  walk(suites);
-
-  process.stdout.write(JSON.stringify({ atAssertion, beforeAssertion }));
-' "$RESULTS_FILE")
+  const { specs = [] } = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  const row = (s) => ({
+    title: s.title,
+    where: s.failedAtAssertion ? s.assertion.where : s.errorLocation,
+    assertion: s.assertion?.assertion ?? "",
+  });
+  process.stdout.write(
+    JSON.stringify({
+      atAssertion: specs.filter((s) => s.failedAtAssertion).map(row),
+      beforeAssertion: specs.filter((s) => !s.failedAtAssertion).map(row),
+    }),
+  );
+' "$ASSERTIONS_FILE")
 
 ACTUAL_FAILURES=$(printf "%s" "$CLASSIFIED" | node -e '
   let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
@@ -144,16 +170,19 @@ echo ""
 echo "=== Results ==="
 echo "Playwright exit code: ${PLAYWRIGHT_EXIT}"
 echo "Failures at a spec's own assertion: ${ACTUAL_FAILURES}   (these are what count)"
-echo "Failures before the spec body:      ${SETUP_FAILURES}   (fixtures/hooks — excluded)"
+echo "Failures with no assertion reached: ${SETUP_FAILURES}   (setup, navigation, hooks — excluded)"
 echo "Expected minimum: ${MIN_FAILURES}"
 echo ""
 printf "%s" "$CLASSIFIED" | node -e '
   let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
     const { atAssertion, beforeAssertion } = JSON.parse(s);
-    const list = (rows) => rows.map((r) => `    ${r.where.padEnd(32)} ${r.title}`).join("\n");
-    if (atAssertion.length) console.log("  Counted — failed at a line the spec wrote:\n" + list(atAssertion));
+    const list = (rows) =>
+      rows.map((r) => `    ${r.where.padEnd(44)} ${r.assertion.padEnd(26)} ${r.title}`).join("\n");
+    // No apostrophes in here: this whole program is a single-quoted shell argument, and one
+    // stray "spec+apostrophe+s" closed it early and took the script down with a syntax error.
+    if (atAssertion.length) console.log("  Counted — a failing expect() written by the spec itself:\n" + list(atAssertion));
     if (beforeAssertion.length) {
-      console.log("\n  Excluded — failed outside any spec file, so the body never ran its checks:\n" + list(beforeAssertion));
+      console.log("\n  Excluded — no assertion ran, so the failure says nothing about what the spec checks:\n" + list(beforeAssertion));
     }
   });
 '
@@ -161,20 +190,20 @@ echo ""
 
 if [ "$ACTUAL_FAILURES" -ge "$MIN_FAILURES" ]; then
   echo "✅ PASS: Negative control succeeded"
-  echo "${ACTUAL_FAILURES} spec(s) failed at their own assertions when the credentials were wrong,"
-  echo "so those assertions depend on repository data rather than on constants."
+  echo "${ACTUAL_FAILURES} spec(s) failed at an expect() of their own when the credentials were"
+  echo "wrong, so those assertions depend on repository data rather than on constants."
   echo ""
   echo "It says nothing about the specs that still PASSED with a wrong password, or about"
-  echo "the ${SETUP_FAILURES} that never reached their body. Both are gaps, not evidence."
+  echo "the ${SETUP_FAILURES} that never reached an assertion. Both are gaps, not evidence."
   exit 0
 else
   echo "❌ FAIL: Negative control FAILED"
   echo "Only ${ACTUAL_FAILURES} spec(s) failed at an assertion of their own, below the ${MIN_FAILURES} expected."
   echo ""
   if [ "$SETUP_FAILURES" -gt 0 ]; then
-    echo "${SETUP_FAILURES} further spec(s) failed before their body ran. Those do not count: a spec"
-    echo "that dies in a fixture would have failed identically with an empty body, so it"
-    echo "demonstrates nothing about what it asserts."
+    echo "${SETUP_FAILURES} further spec(s) failed without reaching an assertion. Those do not count:"
+    echo "a spec that dies in setup or navigation would have failed identically with an empty"
+    echo "body, so it demonstrates nothing about what it asserts."
     echo ""
   fi
   echo "Either some specs pass vacuously — asserting constants rather than verifying that"

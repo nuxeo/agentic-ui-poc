@@ -52,7 +52,16 @@ export default defineConfig({
   // anything beyond this is a defect rather than slowness.
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  reporter: [['list'], ['json', { outputFile: '../../dist/e2e/results.json' }]],
+  // `assertion-failure-reporter.ts` records whether each failing spec failed at an `expect`
+  // of its own. `scripts/e2e-negative-control.sh` needs that and the JSON reporter cannot
+  // supply it: Playwright carries the fact on `TestStep.category`, which `results.json` does
+  // not serialize. See the reporter's own header for why the filename it used instead
+  // could not tell a failed assertion from a navigation timeout thrown out of a spec file.
+  reporter: [
+    ['list'],
+    ['json', { outputFile: '../../dist/e2e/results.json' }],
+    ['./assertion-failure-reporter.ts'],
+  ],
   outputDir: '../../dist/e2e/artifacts',
   use: {
     baseURL,
