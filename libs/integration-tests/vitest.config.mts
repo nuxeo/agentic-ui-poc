@@ -26,7 +26,12 @@ export default defineConfig(() => ({
     environmentOptions: {
       jsdom: { url: process.env['NUXEO_URL'] ?? 'http://localhost:8080' },
     },
-    include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    // `*.integration.spec.ts` only — every spec this target has ever run is named that way,
+    // so this narrows nothing that exists today. It is written explicitly because the
+    // `test` target's `vitest.unit.config.mts` claims the disjoint half (`*.unit.spec.ts`),
+    // and two patterns that cannot both match one file is a stronger guarantee than an
+    // exclusion list someone has to remember to extend.
+    include: ['{src,tests}/**/*.integration.spec.ts'],
     reporters: ['default'],
     coverage: {
       reportsDirectory: '../../coverage/libs/integration-tests',

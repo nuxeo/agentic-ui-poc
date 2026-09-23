@@ -45,11 +45,29 @@ backstop for anyone running vitest directly:
 npm run beta:integration-preflight    # just the gate
 ```
 
-## The target is called `integration`, not `test`
+## Two targets, and which specs each one runs
 
-Deliberately. `nx affected -t test` and `nx run-many -t test` run on CI runners that have no
-Nuxeo, and every spec here would fail there on a precondition. A name that no `-t test`
-invocation matches cannot be forgotten the way an exclusion list can.
+| target        | config                   | specs                   | needs Nuxeo |
+| ------------- | ------------------------ | ----------------------- | ----------- |
+| `integration` | `vitest.config.mts`      | `*.integration.spec.ts` | yes         |
+| `test`        | `vitest.unit.config.mts` | `*.unit.spec.ts`        | no          |
 
-`nx run integration-tests:integration` runs the same two commands, but nx normalises a failed
-command to exit 1, so **exit 2 only survives `npm run beta:integration`**.
+The live specs are under `integration`, deliberately. `nx affected -t test` and
+`nx run-many -t test` run on CI runners that have no Nuxeo, and every one of those specs would
+fail there on a precondition. A name that no `-t test` invocation matches cannot be forgotten
+the way an exclusion list can.
+
+The `test` target does not weaken that, because the two `include` patterns are disjoint: a
+file cannot be both `*.unit.spec.ts` and `*.integration.spec.ts`, so a live spec has to be
+renamed before `-t test` can see it, and a rename shows up in a diff.
+
+It runs the preflight's decision logic and the CLI's exit-code mapping with `fetch` stubbed.
+Those two files decide whether the suite may run at all and with which code, and while
+`integration` was the only target they were exercised by nothing on CI — the gate that guards
+the suite had no gate. `integration-harness.ts` and `user-fixtures.ts` stay out of it on
+purpose: they issue real `DELETE`s against a real repository, and mocking that would assert
+the mock rather than the behaviour.
+
+`nx run integration-tests:integration` runs the same two commands as `npm run beta:integration`,
+but nx normalises a failed command to exit 1, so **exit 2 only survives
+`npm run beta:integration`**.

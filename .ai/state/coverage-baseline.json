@@ -56,6 +56,14 @@
       "sTotal": 4758,
       "sCovered": 4412
     },
+    "integration-tests": {
+      "lines": 27.75,
+      "statements": 27.75,
+      "branches": 98.25,
+      "functions": 88.89,
+      "sTotal": 519,
+      "sCovered": 144
+    },
     "knowledge-discovery": {
       "lines": 65.68,
       "statements": 65.68,
@@ -151,6 +159,14 @@
       "functions": 44.44,
       "sTotal": 212,
       "sCovered": 35
+    },
+    "testing": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "sTotal": 26,
+      "sCovered": 26
     },
     "tasks": {
       "lines": 43.81,
