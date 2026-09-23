@@ -90,28 +90,36 @@ describe('adf-hx-browse-tree.utils', () => {
 
   describe('hxTreeNodeIsExpandable', () => {
     const KEY = 'hxp_hasSubfolders';
+    const folder = (fields: Partial<Document>): Document => ({
+      sys_primaryType: 'Folder',
+      ...fields,
+    });
 
     it('drops the arrow only from a folder marked as holding no folders', () => {
-      expect(hxTreeNodeIsExpandable({ sys_isFolderish: true, [KEY]: false }, KEY)).toBe(false);
-      expect(hxTreeNodeIsExpandable({ sys_isFolderish: true, [KEY]: true }, KEY)).toBe(true);
+      expect(hxTreeNodeIsExpandable(folder({ sys_isFolderish: true, [KEY]: false }), KEY)).toBe(
+        false,
+      );
+      expect(hxTreeNodeIsExpandable(folder({ sys_isFolderish: true, [KEY]: true }), KEY)).toBe(
+        true,
+      );
     });
 
     it('keeps the arrow on an unmarked folder, since unknown is not "empty"', () => {
-      expect(hxTreeNodeIsExpandable({ sys_isFolderish: true }, KEY)).toBe(true);
+      expect(hxTreeNodeIsExpandable(folder({ sys_isFolderish: true }), KEY)).toBe(true);
     });
 
     it('never makes a file expandable, whatever it is marked', () => {
-      expect(hxTreeNodeIsExpandable({ sys_isFolderish: false, [KEY]: true }, KEY)).toBe(false);
+      expect(hxTreeNodeIsExpandable(folder({ sys_isFolderish: false, [KEY]: true }), KEY)).toBe(
+        false,
+      );
     });
   });
 
   describe('hxTreeBranchFromRoot', () => {
-    const chain: Document[] = [
-      { sys_id: 'repo' },
-      { sys_id: 'domain' },
-      { sys_id: 'workspaces' },
-      { sys_id: 'y' },
-    ];
+    const chain: Document[] = ['repo', 'domain', 'workspaces', 'y'].map((sys_id) => ({
+      sys_id,
+      sys_primaryType: 'Folder',
+    }));
 
     it("starts the branch at the tree's own root, so a domain-rooted tree can open it", () => {
       // Upstream's `[documents]` expansion starts from the repository root and stops at the first

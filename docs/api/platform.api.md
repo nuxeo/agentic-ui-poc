@@ -588,6 +588,7 @@ class BrowseService {
     getFolderContext(nuxeoPath: string): Observable<NuxeoDocument>;
     getCreatableSubtypes(nuxeoPath: string): Observable<string[]>;
     getNavTreeChildren(parent: NuxeoDocument, pageSize?: number): Observable<NuxeoDocumentList>;
+    getFolderIdsWithSubfolders(parentUids: readonly string[]): Observable<ReadonlySet<string> | null>;
     getChildren(nuxeoPath: string, pageSize?: number, currentPageIndex?: number, sort?: {
     sortBy: string;
     sortOrder: 'ASC' | 'DESC';
