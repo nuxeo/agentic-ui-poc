@@ -3,10 +3,16 @@
  *
  * ## Design principles (from integration-test-audit.md §10.2 AC2)
  *
- * 1. **Every field required.** No `Partial<>` escape hatch. Following the discipline from
- *    `nuxeo-document-api.spec.ts:39-41`: if a field is logically optional on the model, make it
- *    `null` explicitly in the fixture. This makes incomplete fixtures a compile error, not a
- *    runtime surprise.
+ * 1. **Every *required* field filled.** No `Partial<>` escape hatch on the base fixture:
+ *    a factory returns a value the compiler accepts as the whole model, so a missing required
+ *    field is a compile error rather than a runtime surprise.
+ *
+ *    This principle read "every field required" and that was not true of any fixture here.
+ *    `NuxeoDocument` declares thirteen genuinely optional fields — `parentRef`, `state`,
+ *    `isTrashed`, `isVersion`, `facets`, `contextParameters` among them — and
+ *    `nuxeoDocument()` sets none of them. A spec that reads `doc.facets` off an un-overridden
+ *    fixture gets `undefined`, not a default, and the sentence above said otherwise. **Any
+ *    optional field a spec depends on must be passed explicitly in `over`.**
  *
  * 2. **One factory per model.** Not a god-object with 40 overrides. Each fixture fills one
  *    specific shape and does it completely.
@@ -26,12 +32,19 @@
 import type { NuxeoDocument, NuxeoAce } from '@nuxeo-satori/platform/nuxeo-client';
 
 /**
- * One complete Nuxeo document. Every optional-looking field on `NuxeoDocument` is in fact
- * required, so a partial literal only compiles behind a cast — which is what hid incomplete
- * fixtures in the original specs.
+ * A Nuxeo document with every **required** field of `NuxeoDocument` filled: `uid`, `title`,
+ * `type`, `path`, `lastModified` and `properties`, describing a typical File in a workspace.
  *
- * @param over - Selective overrides for specific test scenarios. All other fields get sensible
- * defaults that represent a typical File document in a workspace.
+ * The thirteen optional fields are deliberately **absent**, not defaulted — `parentRef`,
+ * `lockOwner`, `lockCreated`, `state`, `isTrashed`, `isCheckedOut`, `isVersion`,
+ * `versionableId`, `isLatestVersion`, `isLatestMajorVersion`, `facets` and
+ * `contextParameters`. A live Nuxeo omits them too unless the enricher that supplies them was
+ * requested, so absent is the honest default; inventing one would make specs pass against data
+ * the server would not have sent. **Pass any of them in `over` if the spec under test reads
+ * it**, rather than relying on the fixture to have a value there.
+ *
+ * @param over - Selective overrides. Required fields already have values; optional fields have
+ * none until you supply them here.
  *
  * @example
  * ```ts

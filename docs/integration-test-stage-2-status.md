@@ -2,21 +2,22 @@
 
 **Stage:** 2 of 9 (Stop the Bleeding)  
 **Goal:** Fix existing test defects that hide real problems  
-**Last Updated:** 2026-09-21 11:40 UTC
+**Last Updated:** 2026-09-23
 
 ## Completion Status
 
-**Overall:** 5 of 7 tasks complete (2.1, 2.2, 2.4, 2.5, 2.7), 2 blocked on product decisions
-(2.3, 2.6).
+**Overall:** 6 of 7 tasks complete (2.1, 2.2, 2.3, 2.4, 2.5, 2.7), 1 blocked on a product
+decision (2.6).
 
 The line above read "6/7 tasks complete, 2 blocked" — which does not add up against seven tasks,
 and counted Task 2.2 as whole when part of it (the `trash` `test` target) had been reverted. See
-Task 2.2 and Task 2.7 below.
+Task 2.2 and Task 2.7 below. It then read "5 of 7, 2 blocked" for as long as Task 2.3 stayed
+listed as blocked after it had been delivered.
 
 **Summary:** Stage 2's goal — stop hiding problems — is met for the coverage gate, the HTTP
-verification guard and the negative control. Two tasks are blocked on product decisions (real
-product issues correctly surfaced by tests, not test bugs). One acceptance item inside Task 2.2,
-the `trash` `test` target, is **not** delivered.
+verification guard, the negative control and the HXQL injection guard. One task is blocked on a
+product decision (a real product issue correctly surfaced by tests, not a test bug). One
+acceptance item inside Task 2.2, the `trash` `test` target, is **not** delivered.
 
 ### Completed Tasks ✅
 
@@ -53,6 +54,25 @@ the `trash` `test` target, is **not** delivered.
 - **Verification:** `npm run beta:coverage` exits 0 (except for stale document-detail report, see 2.4)
 - **Commits:** Multiple throughout session
 
+#### Task 2.3: Made the HXQL injection-guard specs exercise the real path
+
+- **Issue:** `search.spec.ts` visited `/#/search?q=O'Brien`, which the search component
+  ignores — `search.ts:294` reads `q` from the drawer service signal, not the URL. The spec
+  therefore asserted only that `lib-search` rendered and contained no "error", and would have
+  passed with `escapeHxqlLiteral` reverted. It was the audit's one named security finding and
+  it looked addressed.
+- **Delivered by neither option in `DECISIONS-NEEDED.md` §1.** No product change and no drawer
+  workaround. The specs moved to `/#/search-adf-hx`, which is the one production call site of
+  `escapeHxqlLiteral` (`search-adf-hx.ts:110`), and drive it through the page's own input.
+- **What they assert:** the NXQL on the wire, not a row count — a count on that surface is
+  vacuous, since its default ordering answers 200 with `resultsCount: 732` and zero entries.
+  An apostrophe must arrive escaped inside the literal and Nuxeo must answer 200; and for a
+  query-shaped payload, stripping every literal must leave no `ecm:uuid` and no top-level `OR`
+  in the structure that remains.
+- **Falsifiable:** reverting `escapeHxqlLiteral` takes both specs red.
+- **Not blocked:** the `?q=` product question in `DECISIONS-NEEDED.md` §1 is still open, but
+  nothing in the test suite waits on it.
+
 #### Task 2.4: Added httpMock.verify() to document-detail.tabs.spec.ts
 
 - **Issue:** 2000-line spec with 15-provider component makes only 2 expectOne calls
@@ -86,16 +106,6 @@ the `trash` `test` target, is **not** delivered.
 - **Verification needed:** Run once to establish baseline failure count
 
 ### Blocked Tasks ⏸️
-
-#### Task 2.3: Fix search ?q= specs to exercise real path
-
-- **Issue:** search.spec.ts navigates to `/#/search?q=O'Brien` but component ignores URL param
-- **Root cause:** Search component doesn't read `q` from URL
-- **Guard:** HXQL injection spec non-functional
-- **Decision needed:** Product change (make component read URL) vs test workaround (drive drawer)
-- **Documented in:** `DECISIONS-NEEDED.md` §1
-- **Recommendation:** Product change (useful feature + makes spec functional)
-- **Who decides:** Product/Feature lead
 
 #### Task 2.6: Address WebKit E2E failures
 
@@ -135,7 +145,8 @@ the `trash` `test` target, is **not** delivered.
 
 ### Waiting on Product
 
-1. Get decision on Task 2.3 (search URL param)
+1. Get decision on the `/#/search?q=` URL parameter. This is a **feature** question only —
+   Task 2.3 no longer waits on it, see above.
 2. Get decision on Task 2.6 (WebKit button focus)
 3. If decisions are "fix later":
    - Create product tickets

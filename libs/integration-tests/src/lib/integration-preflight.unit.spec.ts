@@ -308,7 +308,11 @@ describe('runPreflightChecks — the empty-repository check', () => {
     const result = await runPreflightChecks();
 
     expect(result.ok).toBe(true);
-    expect(result.satisfied).toContain('Nuxeo has 2 File document(s) to test against');
+    // "at least 2", not "2". An absent `resultsCount` means the total is unknown, and the
+    // entries are a floor rather than a count — the same reason the -1/-2 sentinels below
+    // are phrased this way. Stating a floor as an exact total is how an unknown becomes a
+    // figure someone later quotes.
+    expect(result.satisfied).toContain('Nuxeo has at least 2 File document(s) to test against');
   });
 
   it('refuses a reachable but empty repository', async () => {
@@ -326,6 +330,47 @@ describe('runPreflightChecks — the empty-repository check', () => {
     // needs to know the server answered.
     expect(result.satisfied).toContain('Nuxeo reachable at http://nuxeo.test');
   });
+
+  // Nuxeo's page provider answers -1 (UNKNOWN_SIZE) and -2 (UNKNOWN_SIZE_AFTER_QUERY) when
+  // the total exceeds the count limit. `resultsCount ?? entries.length` passed both straight
+  // through, so a populated repository scored -2, failed `count > 0`, and this gate reported
+  // it empty and exited 2. Both sentinels, because -1 was as wrong as -2 and only one was
+  // mentioned in review.
+  for (const sentinel of [-1, -2]) {
+    it(`treats resultsCount ${sentinel} as unknown and trusts the returned entries`, async () => {
+      useNonDefaultCredentials();
+      stubFetch(
+        { status: 200 },
+        {
+          status: 200,
+          json: () => Promise.resolve({ resultsCount: sentinel, entries: [{ uid: 'a' }] }),
+        },
+      );
+
+      const result = await runPreflightChecks();
+
+      expect(result.ok).toBe(true);
+      expect(result.problems).toEqual([]);
+      // "at least 1", not "1": the real total is unknown, and printing it as exact would be
+      // the same overstatement in the other direction.
+      expect(result.satisfied).toContain('Nuxeo has at least 1 File document(s) to test against');
+    });
+
+    it(`still refuses an empty repository when resultsCount is ${sentinel}`, async () => {
+      // The sentinel must not become a way to pass with nothing in the repository: with no
+      // entries there is still no evidence of a document.
+      useNonDefaultCredentials();
+      stubFetch(
+        { status: 200 },
+        { status: 200, json: () => Promise.resolve({ resultsCount: sentinel, entries: [] }) },
+      );
+
+      const result = await runPreflightChecks();
+
+      expect(result.ok).toBe(false);
+      expect(result.problems[0]).toMatch(/holds no File documents/);
+    });
+  }
 
   it('treats a response with neither count as empty', async () => {
     useNonDefaultCredentials();

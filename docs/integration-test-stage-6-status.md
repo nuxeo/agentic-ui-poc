@@ -1,8 +1,13 @@
 # Integration Test Stage 6 Status — Write Paths and Destructive Operations
 
 **Completed:** 2026-09-21  
+**Re-verified:** 2026-09-23, after the isolation assertion was found vacuous — 9 of 9 passing  
 **Branch:** `docs/integration-test-audit`  
 **Status:** ✅ **COMPLETE AND VERIFIED**
+
+> The status above was first written against a run in which the data-root isolation assertion
+> could not fail; see "Guaranteed Cleanup" below. It stands now because the assertion was
+> repaired and the stage re-run, not because the original evidence was reread more kindly.
 
 ---
 
@@ -156,18 +161,38 @@ No shared state between tests. Each test:
 
 ### 4. Guaranteed Cleanup Works for Destructive Operations
 
-The harness's `afterAll` cleanup runs even when tests delete documents:
+The harness's `afterAll` cleanup runs even when tests delete documents. Current verified run,
+2026-09-23, `write-operations.integration.spec.ts`, 9 of 9 passing:
 
 ```
-[integration-harness] Created data root: /default-domain/workspaces/it-20260921-071634-5pa
-[write-ops] Trashed document: 1f25f279-8f0c-47c7-ae56-cfa9dbe72e7a
-[write-ops] Permanently deleted document: 18813ab4-6eca-4973-bb93-295976080764
-[write-ops] Bulk deleted 3 documents
-[write-ops] Isolation verified: 0 docs outside root before, 0 after
-[integration-harness] Deleted data root: /default-domain/workspaces/it-20260921-071634-5pa
+[integration-harness] Created data root: /default-domain/workspaces/it-20260923-112307-59df
+[write-ops] Isolation verified: 970 docs outside root before, 970 after
+[integration-harness] Deleted data root: /default-domain/workspaces/it-20260923-112307-59df (confirmed absent)
 ```
 
-Even though tests deleted 5+ documents, the harness still cleaned up the data root.
+Even though tests deleted 5+ documents, the harness still cleaned up the data root — and the
+cleanup is now _verified_ rather than requested: it re-reads the path after the `DELETE` and
+throws if it is still readable.
+
+> **The run previously quoted here was invalid evidence and is kept only as a record of the
+> defect.** It read:
+>
+> ```
+> [write-ops] Isolation verified: 0 docs outside root before, 0 after
+> ```
+>
+> Both figures were zero because the query behind them was not NXQL. `ecm:path NOT STARTSWITH`
+> made Nuxeo answer HTTP 400 with an exception body carrying neither `resultsCount` nor
+> `entries`, and the spec's `?? 0` fallbacks turned the rejection into `expect(0).toBe(0)`.
+> It reported "0 docs outside root" against a repository holding hundreds of File documents,
+> and would have passed just as well if the harness had deleted `/default-domain` wholesale —
+> the precise outcome the test exists to detect. Reading "0 before, 0 after" as isolation
+> working was reading a broken query as a clean result.
+>
+> The spec now uses `NOT (ecm:path STARTSWITH …)`, asserts the HTTP status, requires
+> `resultsCount` to be a number, and requires the before-count to be greater than zero, so an
+> empty or rejected result fails instead of passing. The 970 above is what that assertion is
+> worth: a real baseline that a wrongly-scoped delete would move.
 
 ---
 
@@ -225,6 +250,10 @@ Test Files  1 passed (1)
 
 **All 9 tests passing ✅**
 
+Captured 2026-09-21. The Data Root Isolation line in it is true but was not yet meaningful —
+its assertion could not fail at the time. Re-run 2026-09-23 with the repaired query, still
+9 of 9, and the isolation figure is now a real 970; see "Guaranteed Cleanup" above.
+
 ---
 
 ## Coverage
@@ -271,9 +300,18 @@ Uses the same harness as Stage 4 (example tests) and Stage 5 (SearchService test
 ```typescript
 import { setupIntegrationHarness, createTestDocument } from './integration-harness';
 
-const harness = setupIntegrationHarness({
-  allowDefaultCredentials: true, // For local Docker
-});
+const harness = setupIntegrationHarness();
+```
+
+`setupIntegrationHarness` takes no `allowDefaultCredentials` option any more, and this
+example used to pass one. Copying it verbatim now fails type-checking, which is the visible
+half of the problem; the invisible half is worse. A per-suite `allowDefaultCredentials: true`
+meant every suite silently opted itself out of the guard against
+`Administrator`/`Administrator`, so the check never fired for anyone. The opt-in moved to
+invocation time, where it has to be stated deliberately per run and is visible in the command:
+
+```bash
+ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration
 ```
 
 ### Follows Established Patterns ✅

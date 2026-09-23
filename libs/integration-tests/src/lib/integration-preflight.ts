@@ -243,9 +243,25 @@ export async function runPreflightChecks(
 
       if (res.status === 200) {
         const body = await res.json();
-        const count = body.resultsCount ?? body.entries?.length ?? 0;
-        if (count > 0) {
-          satisfied.push(`Nuxeo has ${count} File document(s) to test against`);
+        // `resultsCount` is only a count when it is not negative. Nuxeo's page provider
+        // returns -1 (UNKNOWN_SIZE) and -2 (UNKNOWN_SIZE_AFTER_QUERY) when the total exceeds
+        // the count limit, and `??` passes both straight through because they are neither
+        // null nor undefined. A populated repository then scored `count = -2`, failed
+        // `count > 0`, and this gate reported "holds no File documents" and exited 2 —
+        // inverting its answer on exactly the large repositories it is least able to doubt.
+        //
+        // The entries are the evidence in any case: the query asks for `pageSize=1`, so one
+        // returned row IS the proof that the repository has something to test against. The
+        // total is only ever the nicer number to print.
+        const entries = Array.isArray(body.entries) ? body.entries.length : 0;
+        const total =
+          typeof body.resultsCount === 'number' && body.resultsCount >= 0
+            ? body.resultsCount
+            : null;
+        if (total !== null ? total > 0 : entries > 0) {
+          satisfied.push(
+            `Nuxeo has ${total ?? `at least ${entries}`} File document(s) to test against`,
+          );
         } else {
           problems.push(
             'Nuxeo is reachable but holds no File documents.\n' +
