@@ -14,6 +14,7 @@ import {
   NuxeoApiBase,
   type NuxeoDocument,
   type NuxeoTask,
+  type NuxeoUser,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
@@ -25,16 +26,29 @@ beforeAll(() => {
   global.URL.revokeObjectURL = vi.fn();
 });
 
+/**
+ * A Vitest double for the subset of `T` this spec stubs, bound to the real method signatures.
+ *
+ * These service doubles were `any`, which defeats the point: `spec-types` cannot see drift through
+ * `any`, so a renamed or re-signatured service method would leave the spec green — the same fixture
+ * rot this file's model fixtures were fixed for. Binding to `T` means the compiler rejects a stub
+ * whose return type no longer matches the service.
+ */
+type ServiceMock<T, K extends keyof T> = {
+  [P in K]: T[P] extends (...args: infer A) => infer R ? MockInstance<(...args: A) => R> : T[P];
+};
+
 describe('TaskDetailComponent', () => {
   let component: TaskDetailComponent;
   let fixture: ComponentFixture<TaskDetailComponent>;
-  let mockTaskService: any;
-  let mockUserService: any;
-  let mockDocService: any;
-  let mockRoute: any;
-  let mockRouter: any;
-  let mockWorkflowService: any;
-  let mockHttp: any;
+  let mockTaskService: ServiceMock<TaskService, 'getTask' | 'completeTask'>;
+  let mockUserService: ServiceMock<UserService, 'searchUsers' | 'searchGroups'>;
+  let mockDocService: ServiceMock<DocumentService, 'getById'>;
+  let mockWorkflowService: ServiceMock<WorkflowService, 'cancelWorkflow'>;
+  let mockHttp: ServiceMock<HttpClient, 'get'>;
+  let mockRouter: ServiceMock<Router, 'navigate'>;
+  /** Only the slice of `ActivatedRoute` this component reads. */
+  let mockRoute: { snapshot: { paramMap: { get: MockInstance<(key: string) => string | null> } } };
   let snackBarOpen: MockInstance<MatSnackBar['open']>;
 
   // Typed as the real models, not left as object literals: `test` runs through esbuild, which
@@ -61,6 +75,19 @@ describe('TaskDetailComponent', () => {
         { name: 'approve', label: 'Approve' },
         { name: 'reject', label: 'Reject' },
       ],
+    },
+  };
+
+  /** A complete `NuxeoUser`, for the participant-search results. */
+  const mockSearchUser: NuxeoUser = {
+    'entity-type': 'user',
+    id: 'user:john',
+    properties: {
+      username: 'john',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john@example.com',
+      groups: [],
     },
   };
 
@@ -416,13 +443,13 @@ describe('TaskDetailComponent', () => {
     });
 
     it('keeps user results when only the group search fails', () => {
-      mockUserService.searchUsers.mockReturnValue(of([{ id: 'user:john' }]));
+      mockUserService.searchUsers.mockReturnValue(of([mockSearchUser]));
       mockUserService.searchGroups.mockReturnValue(throwError(() => new Error('nope')));
       component.participantInput = 'jo';
 
       component.searchUsers();
 
-      expect(component.userResults()).toEqual([{ id: 'user:john' }]);
+      expect(component.userResults()).toEqual([mockSearchUser]);
       expect(component.groupResults()).toEqual([]);
     });
   });
@@ -433,6 +460,13 @@ describe('TaskDetailComponent', () => {
     beforeEach(() => {
       fixture.detectChanges();
     });
+
+    /** The `variables` argument of the most recent `completeTask` call, asserted to exist. */
+    function lastCompleteTaskVariables(): Record<string, unknown> {
+      const call = mockTaskService.completeTask.mock.calls.at(-1);
+      expect(call).toBeDefined();
+      return call![2] as Record<string, unknown>;
+    }
 
     it('does nothing when no task is loaded', () => {
       component.task.set(null);
@@ -487,9 +521,9 @@ describe('TaskDetailComponent', () => {
 
       component.executeAction({ name: 'start_review', label: 'Start review' });
 
-      const variables = mockTaskService.completeTask.mock.calls.at(-1)[2];
+      const variables = lastCompleteTaskVariables();
       expect(variables).not.toHaveProperty('end_date');
-      expect(variables.participants).toEqual(['user:john']);
+      expect(variables['participants']).toEqual(['user:john']);
     });
 
     it('confirms completion and returns to the task list', () => {

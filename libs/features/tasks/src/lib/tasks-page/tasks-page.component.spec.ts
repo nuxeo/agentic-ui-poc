@@ -4,7 +4,16 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject, of, throwError } from 'rxjs';
-import { vi, describe, it, expect, beforeEach, beforeAll, type MockInstance } from 'vitest';
+import {
+  vi,
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+  beforeAll,
+  type MockInstance,
+} from 'vitest';
 
 import { TasksPageComponent } from './tasks-page.component';
 import {
@@ -44,17 +53,39 @@ beforeAll(() => {
   global.URL.revokeObjectURL = vi.fn();
 });
 
+/**
+ * A Vitest double for the subset of `T` this spec stubs, bound to the real method signatures.
+ *
+ * These service doubles were `any`, which defeats the point: `spec-types` cannot see drift through
+ * `any`, so a renamed or re-signatured service method would leave the spec green — the same fixture
+ * rot the model fixtures in this file were fixed for.
+ */
+type ServiceMock<T, K extends keyof T> = {
+  [P in K]: T[P] extends (...args: infer A) => infer R ? MockInstance<(...args: A) => R> : T[P];
+};
+
 describe('TasksPageComponent', () => {
   let component: TasksPageComponent;
   let fixture: ComponentFixture<TasksPageComponent>;
-  let mockTaskService: any;
-  let mockUserService: any;
-  let mockWorkflowService: any;
-  let mockDocService: any;
-  let mockNuxeoApi: any;
-  let mockHttp: any;
-  let mockRouter: any;
-  let mockActivatedRoute: any;
+  let mockTaskService: ServiceMock<
+    TaskService,
+    | 'getUserTasks'
+    | 'getTask'
+    | 'completeTask'
+    | 'delegateTask'
+    | 'reassignTask'
+    | 'notifyTasksChanged'
+  >;
+  let mockUserService: ServiceMock<UserService, 'searchUsers' | 'searchGroups'>;
+  let mockWorkflowService: ServiceMock<WorkflowService, 'cancelWorkflow' | 'getWorkflowGraph'>;
+  let mockDocService: ServiceMock<DocumentService, 'getById'>;
+  let mockNuxeoApi: ServiceMock<NuxeoApiBase, 'apiUrl'>;
+  let mockHttp: ServiceMock<HttpClient, 'get'>;
+  let mockRouter: ServiceMock<Router, 'navigate' | 'navigateByUrl'>;
+  /** Only the slice of `ActivatedRoute` this component reads. */
+  let mockActivatedRoute: {
+    snapshot: { paramMap: { get: MockInstance<(key: string) => string | null> } };
+  };
   let snackBarOpen: MockInstance<MatSnackBar['open']>;
 
   // Typed as the real models, not left as object literals: `test` runs through esbuild, which
@@ -379,8 +410,9 @@ describe('TasksPageComponent', () => {
 
       component.executeAction({ name: 'start_review', label: 'Start review' });
 
-      const variables = mockTaskService.completeTask.mock.calls.at(-1)[2];
-      expect(variables.participants).toEqual(['user:Administrator']);
+      const call = mockTaskService.completeTask.mock.calls.at(-1);
+      expect(call).toBeDefined();
+      expect((call![2] as Record<string, unknown>)['participants']).toEqual(['user:Administrator']);
     });
 
     it('should show success snackbar on completion', () => {
@@ -945,7 +977,7 @@ describe('TasksPageComponent', () => {
     });
 
     it('should show submitting while an action is in flight and clear it when it lands', () => {
-      const completion = new Subject<unknown>();
+      const completion = new Subject<NuxeoTask>();
       mockTaskService.completeTask.mockReturnValue(completion.asObservable());
       fixture.detectChanges();
       component.selectTask(mockTask);
@@ -953,7 +985,7 @@ describe('TasksPageComponent', () => {
       component.executeAction({ name: 'approve', label: 'Approve' });
       expect(component.submitting()).toBe(true);
 
-      completion.next({});
+      completion.next(mockTask);
       completion.complete();
       expect(component.submitting()).toBe(false);
     });
@@ -1068,6 +1100,18 @@ describe('TasksPageComponent', () => {
   });
 
   describe('Formatting Helpers', () => {
+    // `dueLabel` reads `Date.now()` itself and floors the difference, while the cases below build a
+    // due date from an earlier `Date.now()`. A tick between the two turns "Due in 3 days" into
+    // "Due in 2 days", so the clock is frozen rather than padded with a margin.
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-06-15T12:00:00.000Z'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should humanise the task label from its workflow-prefixed name', () => {
       expect(component.taskLabel({ ...mockTask, name: 'wf.review.validateTask' })).toBe(
         'Validate Task',

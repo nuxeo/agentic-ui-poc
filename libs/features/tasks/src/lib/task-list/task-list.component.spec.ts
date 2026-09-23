@@ -217,6 +217,19 @@ describe('TaskListComponent', () => {
   });
 
   describe('dueLabel', () => {
+    // The clock is frozen for this block. Every case here builds a due date as an offset from
+    // `Date.now()` and then lets `dueLabel` read `Date.now()` again and floor the difference, so a
+    // tick between the two turns "in 3 days" into "in 2 days". With real timers these tests are
+    // green almost always, which is the worst kind of flake.
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-06-15T12:00:00.000Z'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('returns empty string when task has no due date', () => {
       expect(component.dueLabel(task({ dueDate: '' }))).toBe('');
     });

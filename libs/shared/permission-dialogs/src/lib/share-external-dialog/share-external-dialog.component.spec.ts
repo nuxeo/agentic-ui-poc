@@ -103,10 +103,15 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
       }),
     );
 
+    snackBarOpenSpy.mockClear();
+
     fixture.componentInstance.create(false);
 
-    // When notificationSent=false and no notificationError, successMessage returns null
-    // The dialog still closes with true, but no success snackBar is shown
+    // The load-bearing assertion. `notificationSent: false` with no `notificationError` makes
+    // `successMessage` return null, so nothing should be announced — but the dialog still closes
+    // with `true`, exactly as it does on success. Asserting only the close leaves this test green
+    // if a regression starts reporting success for an email that was never sent.
+    expect(snackBarOpenSpy).not.toHaveBeenCalled();
     expect(closeSpy).toHaveBeenCalledWith(true);
   });
 

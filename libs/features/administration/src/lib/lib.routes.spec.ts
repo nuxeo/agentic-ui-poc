@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { describe, it, expect, beforeEach } from 'vitest';
+import { fullAdministratorGuard } from '@nuxeo-satori/platform/nuxeo-client';
 import { administrationRoutes } from './lib.routes';
 import { AdministrationShellComponent } from './administration-shell/administration-shell.component';
 import { AdminAnalyticsPageComponent } from './admin-analytics-page/admin-analytics-page.component';
@@ -41,13 +42,16 @@ describe('administrationRoutes', () => {
     expect(redirectRoute?.redirectTo).toBe('analytics');
   });
 
+  // The three administrator-only routes below compare `canActivate` to `[fullAdministratorGuard]`
+  // by identity, not to "some guard of length 1". A length check stays green when the guard is
+  // swapped for any other function, which on a security-sensitive route is the one regression these
+  // tests exist to catch.
   it('should configure analytics route with fullAdministratorGuard', () => {
     const parentRoute = administrationRoutes[0];
     const analyticsRoute = parentRoute.children?.find((r) => r.path === 'analytics');
     expect(analyticsRoute).toBeDefined();
     expect(analyticsRoute?.component).toBe(AdminAnalyticsPageComponent);
-    expect(analyticsRoute?.canActivate).toBeDefined();
-    expect(analyticsRoute?.canActivate?.length).toBe(1);
+    expect(analyticsRoute?.canActivate).toEqual([fullAdministratorGuard]);
   });
 
   it('should configure users-groups route', () => {
@@ -99,8 +103,7 @@ describe('administrationRoutes', () => {
     const cloudServicesRoute = parentRoute.children?.find((r) => r.path === 'cloud-services');
     expect(cloudServicesRoute).toBeDefined();
     expect(cloudServicesRoute?.component).toBe(AdminCloudServicesPageComponent);
-    expect(cloudServicesRoute?.canActivate).toBeDefined();
-    expect(cloudServicesRoute?.canActivate?.length).toBe(1);
+    expect(cloudServicesRoute?.canActivate).toEqual([fullAdministratorGuard]);
   });
 
   it('should configure nxql-search route with fullAdministratorGuard', () => {
@@ -108,8 +111,7 @@ describe('administrationRoutes', () => {
     const nxqlSearchRoute = parentRoute.children?.find((r) => r.path === 'nxql-search');
     expect(nxqlSearchRoute).toBeDefined();
     expect(nxqlSearchRoute?.component).toBe(AdminNxqlSearchPageComponent);
-    expect(nxqlSearchRoute?.canActivate).toBeDefined();
-    expect(nxqlSearchRoute?.canActivate?.length).toBe(1);
+    expect(nxqlSearchRoute?.canActivate).toEqual([fullAdministratorGuard]);
   });
 });
 

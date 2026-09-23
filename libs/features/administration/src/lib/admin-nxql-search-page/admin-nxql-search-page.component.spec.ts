@@ -48,6 +48,16 @@ describe('AdminNxqlSearchPageComponent', () => {
     component = fixture.componentInstance;
 
     vi.clearAllMocks();
+
+    // `clearAllMocks` resets recorded calls but keeps implementations, so a `mockReturnValue` set
+    // inside one test survives into the next. Without these defaults, tests that call `runSearch()`
+    // without arranging `nxqlSearch` only passed because an earlier test had arranged it — run in
+    // isolation the mock returned `undefined` and the component could not subscribe. Re-stating the
+    // defaults here makes every test independent of the order it runs in.
+    mockAdminService.nxqlSearch.mockReturnValue(of({ entries: [], totalSize: 0 }));
+    mockTranslateService.instant.mockImplementation((key: string) => key);
+    mockAiGatewayService.nlToNxql.mockReturnValue(of({ nxql: '', explanation: '' }));
+    mockAiFeatureFlagService.nlToNxqlEnabled.mockReturnValue(true);
   });
 
   describe('component creation', () => {
