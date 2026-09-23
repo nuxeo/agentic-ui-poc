@@ -113,7 +113,14 @@ try {
         .filter((f) => typeof f === 'string' && f.endsWith('.ts'))
         .map((f) => join(SRC, 'src', f)),
     ],
-    { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+    // `npx` is `npx.cmd` on Windows, which Node will not start without a shell; without this the
+    // launch fails with ENOENT and no output, and every task depending on this one is skipped.
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: process.platform === 'win32',
+    },
   );
 } catch (error) {
   console.error(
