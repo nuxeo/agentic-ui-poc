@@ -20,6 +20,9 @@ import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 import { AdminUserDetailsPageComponent } from './admin-user-details-page.component';
 
+/** What the change-password dialog hands back. Named, so it cannot read as a real credential. */
+const PASSWORD_FROM_DIALOG = 'value-returned-by-the-dialog';
+
 describe('AdminUserDetailsPageComponent', () => {
   let component: AdminUserDetailsPageComponent;
   let fixture: ComponentFixture<AdminUserDetailsPageComponent>;
@@ -401,16 +404,21 @@ describe('AdminUserDetailsPageComponent', () => {
     });
 
     it('should set the new password and confirm it', () => {
-      dialogReturns('s3cret!');
+      // A deliberately non-credential-shaped placeholder: what is under test is that whatever the
+      // dialog returns reaches `updateUser` untouched, and a realistic-looking literal here trips
+      // secret scanning for no gain.
+      dialogReturns(PASSWORD_FROM_DIALOG);
 
       component.openChangePassword();
 
-      expect(userService.updateUser).toHaveBeenCalledWith('jdoe', { password: 's3cret!' });
+      expect(userService.updateUser).toHaveBeenCalledWith('jdoe', {
+        password: PASSWORD_FROM_DIALOG,
+      });
       expect(snackBarOpen).toHaveBeenCalledWith('Password updated', 'Dismiss', { duration: 3000 });
     });
 
     it("should surface the server's message when the password cannot be set", () => {
-      dialogReturns('weak');
+      dialogReturns(PASSWORD_FROM_DIALOG);
       userService.updateUser.mockReturnValue(
         throwError(() => ({ error: { message: 'Password too weak' } })),
       );
@@ -421,7 +429,7 @@ describe('AdminUserDetailsPageComponent', () => {
     });
 
     it('should fall back to a generic message when the failure carries none', () => {
-      dialogReturns('weak');
+      dialogReturns(PASSWORD_FROM_DIALOG);
       userService.updateUser.mockReturnValue(throwError(() => ({})));
 
       component.openChangePassword();
