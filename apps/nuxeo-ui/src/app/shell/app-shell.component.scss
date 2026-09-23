@@ -145,8 +145,9 @@ sat-platform-nav-container.has-selection-topbar {
   color: var(--shell-header-search-foreground);
 }
 
-// Visible label text for the global search field (NXENG-798). Styled where placeholder text
-// used to sit; `:placeholder-shown` keeps it visible while the field is empty.
+// Visible label for the global search field (NXENG-798). Overlays the empty field like a
+// placeholder, then shrinks to a persistent caption above the typed query so the control
+// keeps a visible name in every state (IBM input_label_visible / WCAG 2.5.3).
 //
 .header-search-label {
   position: absolute;
@@ -161,10 +162,30 @@ sat-platform-nav-container.has-selection-topbar {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition:
+    top 0.15s ease,
+    transform 0.15s ease,
+    font-size 0.15s ease;
+
+  &.header-search-label--caption {
+    top: 6px;
+    transform: none;
+    font-size: 11px;
+    opacity: 1;
+  }
 }
 
-.header-search-input:not(:placeholder-shown) + .header-search-label {
-  opacity: 0;
+.header-search-input:focus + .header-search-label {
+  top: 6px;
+  transform: none;
+  font-size: 11px;
+  opacity: 1;
+}
+
+.header-search-input-wrap.header-search-filled .header-search-input,
+.header-search-input:focus {
+  padding-top: 15px;
+  padding-bottom: 5px;
 }
 
 // `outline-offset` puts the ring entirely outside the field, with the gap showing what is

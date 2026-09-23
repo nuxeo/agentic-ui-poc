@@ -216,6 +216,24 @@ html body a.sat-skip-to-content-button.sat-skip-to-content-button-visible {
 }
 
 /*
+ * Header global search — persistent caption label (NXENG-798).
+ *
+ * Declared globally so the filled-state modifier matches under Karma the same way as in the
+ * app; the base overlay styles stay in `app-shell.component.scss`.
+ */
+.header-search-label.header-search-label--caption {
+  top: 6px;
+  transform: none;
+  font-size: 11px;
+  opacity: 1;
+}
+
+.header-search-input-wrap.header-search-filled .header-search-input {
+  padding-top: 15px;
+  padding-bottom: 5px;
+}
+
+/*
  * Rail expand/collapse toggle — NXENG-796 (IBM 1434332929).
  *
  * Satori paints the ring on `.sat-platform-nav-item:focus-visible` only. IBM Equal Access

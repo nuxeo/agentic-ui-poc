@@ -109,7 +109,7 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
       .toBeGreaterThan(0);
   });
 
-  it('hides the overlay label while a query is entered and restores it when cleared', () => {
+  it('keeps a shrunken visible label while a query is entered and restores the empty state when cleared', () => {
     const fixture = TestBed.createComponent(AppShellComponent);
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', { [SEARCH_LABEL_KEY]: SEARCH_LABEL_MARKER }, true);
@@ -126,19 +126,35 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     fixture.componentInstance.onGlobalSearchInput('reports');
     fixture.detectChanges();
 
+    const wrap = fixture.nativeElement.querySelector('.header-search-input-wrap') as HTMLElement;
+    expect(wrap.classList.contains('header-search-filled'))
+      .withContext('filled state must drive persistent-label styling')
+      .toBe(true);
+
     expect(input.value)
       .withContext('typed query must remain visible in the field')
       .toBe('reports');
-    expect(Number.parseFloat(getComputedStyle(label).opacity))
-      .withContext('overlay label must fade once the field is no longer empty')
-      .toBe(0);
+
+    const filledLabel = fixture.nativeElement.querySelector(
+      `label[for="${GLOBAL_HEADER_SEARCH_INPUT_ID}"].header-search-label`,
+    ) as HTMLLabelElement;
+    const filledLabelStyle = getComputedStyle(filledLabel);
+    expect(Number.parseFloat(filledLabelStyle.opacity))
+      .withContext('label must stay painted while a query is entered')
+      .toBeGreaterThan(0);
+    expect(filledLabel.classList.contains('header-search-label--caption'))
+      .withContext('filled state must apply the caption label class')
+      .toBe(true);
+    expect(filledLabel.textContent!.trim())
+      .withContext('caption must keep the catalogue string visible while a query is entered')
+      .toBe(SEARCH_LABEL_MARKER);
 
     fixture.componentInstance.onGlobalSearchInput('');
     fixture.detectChanges();
 
     expect(input.value).toBe('');
-    expect(Number.parseFloat(getComputedStyle(label).opacity))
-      .withContext('overlay label must return when the field is cleared')
-      .toBeGreaterThan(0);
+    expect(wrap.classList.contains('header-search-filled'))
+      .withContext('cleared field must leave the empty-state styling')
+      .toBe(false);
   });
 });

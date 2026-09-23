@@ -221,12 +221,11 @@ async function rawKeysOnPage(page) {
 
       // `placeholder` and `alt` as well as `aria-label` and `title`.
       //
-      // For the two shell text inputs the placeholder is the ONLY thing naming them, so a raw key
-      // there is a raw key announced as a control's name — and this sweep did not read placeholders,
-      // while the unnamed-control check below deliberately accepts a placeholder AS a name. Between
-      // them, `shell.search.placeholder` rendering into the global search box would have been
-      // invisible to the whole capture. `alt` is included for the same reason: it is the accessible
-      // name of an image.
+      // The AI assistant input is still placeholder-named; global header search (NXENG-798) uses a
+      // visible `<label>` instead. A raw key in either naming path is a raw key announced as the
+      // control's name — and this attribute sweep still does not read `<label>` text, while the
+      // unnamed-control check below deliberately accepts a placeholder AS a name. `alt` is included
+      // for the same reason: it is the accessible name of an image.
       for (const element of document.querySelectorAll('[aria-label], [title], [placeholder], [alt]')) {
         for (const attribute of ['aria-label', 'title', 'placeholder', 'alt']) {
           const value = element.getAttribute(attribute);
