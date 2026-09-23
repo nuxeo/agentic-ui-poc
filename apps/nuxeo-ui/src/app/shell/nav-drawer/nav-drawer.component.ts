@@ -9,8 +9,9 @@ import {
   computed,
   DestroyRef,
   untracked,
+  LOCALE_ID,
 } from '@angular/core';
-import { NgTemplateOutlet, DatePipe } from '@angular/common';
+import { NgTemplateOutlet, DatePipe, formatDate } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -110,6 +111,7 @@ export interface FolderNode {
 })
 export class NavDrawerComponent {
   private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly browseService = inject(BrowseService);
   private readonly browseContext = inject(BrowseContextService);
   private readonly clipboardTargetService = inject(ClipboardTargetService);
@@ -512,11 +514,12 @@ export class NavDrawerComponent {
   expiredDate(doc: NuxeoDocument): string {
     const expired = doc.properties?.['dc:expired'] as string;
     if (!expired) return '';
-    return new Date(expired).toLocaleDateString('en-US', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+    // `formatDate`, not `inject(DatePipe)`. Listing `DatePipe` in `imports` makes it usable as
+    // `| date` in the template; it does NOT provide it for injection, so injecting it threw
+    // NG0201 in this component's constructor and took the app-shell header specs down with it.
+    // `providers: [DatePipe]` would also work, but this needs no DI at all — `formatDate` is the
+    // function `DatePipe.transform` delegates to, and it takes the locale as an argument.
+    return formatDate(new Date(expired), 'mediumDate', this.locale);
   }
 
   // ── Recently Viewed ──

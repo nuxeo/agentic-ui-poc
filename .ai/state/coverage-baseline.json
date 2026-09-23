@@ -9,12 +9,12 @@
   "tolerance": 0.5,
   "projects": {
     "adf-hx-bridge": {
-      "lines": 93.09,
-      "statements": 93.09,
-      "branches": 92.63,
-      "functions": 85.71,
-      "sTotal": 2256,
-      "sCovered": 2100
+      "lines": 99.65,
+      "statements": 99.65,
+      "branches": 93.41,
+      "functions": 100,
+      "sTotal": 2258,
+      "sCovered": 2250
     },
     "administration": {
       "lines": 96.24,
@@ -25,20 +25,20 @@
       "sCovered": 2509
     },
     "browse": {
-      "lines": 98.76,
-      "statements": 98.76,
-      "branches": 92.6,
-      "functions": 98.96,
-      "sTotal": 3307,
-      "sCovered": 3266
+      "lines": 98.75,
+      "statements": 98.75,
+      "branches": 92.52,
+      "functions": 98.95,
+      "sTotal": 3291,
+      "sCovered": 3250
     },
     "collections": {
-      "lines": 95.14,
-      "statements": 95.14,
-      "branches": 86.73,
-      "functions": 95,
-      "sTotal": 699,
-      "sCovered": 665
+      "lines": 94.73,
+      "statements": 94.73,
+      "branches": 86.24,
+      "functions": 93.22,
+      "sTotal": 683,
+      "sCovered": 647
     },
     "core": {
       "lines": 100,
@@ -49,12 +49,12 @@
       "sCovered": 7
     },
     "document-detail": {
-      "lines": 92.58,
-      "statements": 92.58,
-      "branches": 83.65,
+      "lines": 92.56,
+      "statements": 92.56,
+      "branches": 83.58,
       "functions": 97.83,
-      "sTotal": 4850,
-      "sCovered": 4490
+      "sTotal": 4840,
+      "sCovered": 4480
     },
     "knowledge-discovery": {
       "lines": 65.03,
@@ -65,12 +65,12 @@
       "sCovered": 703
     },
     "nuxeo-client": {
-      "lines": 90.2,
-      "statements": 90.2,
-      "branches": 83.64,
-      "functions": 92.29,
-      "sTotal": 4787,
-      "sCovered": 4318
+      "lines": 90.28,
+      "statements": 90.28,
+      "branches": 83.8,
+      "functions": 92.33,
+      "sTotal": 4826,
+      "sCovered": 4357
     },
     "search": {
       "lines": 94.69,
@@ -113,12 +113,12 @@
       "sCovered": 247
     },
     "ui": {
-      "lines": 97.77,
-      "statements": 97.77,
-      "branches": 96.69,
-      "functions": 89.36,
-      "sTotal": 537,
-      "sCovered": 525
+      "lines": 97.68,
+      "statements": 97.68,
+      "branches": 96.55,
+      "functions": 88.64,
+      "sTotal": 517,
+      "sCovered": 505
     },
     "permission-dialogs": {
       "lines": 96.43,

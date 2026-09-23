@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, LOCALE_ID, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -49,6 +49,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 export class AdminGroupDetailsPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
   private readonly permService = inject(PrincipalPermissionsService);
@@ -269,7 +270,11 @@ export class AdminGroupDetailsPageComponent implements OnInit {
   }
 
   timeFrameLabel(row: PrincipalPermissionRow): string {
-    return principalPermissionTimeFrameLabel(row, (key) => this.translate.instant(key));
+    return principalPermissionTimeFrameLabel(
+      row,
+      (key) => this.translate.instant(key),
+      this.locale,
+    );
   }
 
   removeNestedGroup(nestedId: string): void {

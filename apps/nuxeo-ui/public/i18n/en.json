@@ -1182,6 +1182,7 @@
       "go-back-2": "Go Back",
       "granted-by": "Granted by",
       "if-you-want-to-explicitly-control": "If you want to explicitly control the access to this document you can block the\n                    permissions inheritance. Any change made on parent document will not affect the\n                    access conditions to this document. You and the administrators will be added to\n                    local permissions.",
+      "indexed-in-content-lake": "Indexed in Content Lake",
       "indexing-properties": "Indexing Properties",
       "ingest-to-content-lake": "Ingest to Content Lake",
       "key-points": "Key Points:",
@@ -1655,6 +1656,8 @@
   },
   "nav": {
     "clipboard": {
+      "aria-label-one": "{{ name }}, {{ count }} item",
+      "aria-label-many": "{{ name }}, {{ count }} items",
       "copy": "Copy",
       "empty": "Clipboard is empty",
       "hint": "Use \"Add to Clipboard\" on documents or collections to add items here.",
@@ -1762,6 +1765,17 @@
       "the-following-permission-will-be-deleted": "The following permission will be deleted.",
       "time-frame": "Time Frame",
       "user-group": "User / Group"
+    },
+    "right": {
+      "AddChildren": "Add Children",
+      "Everything": "Manage everything",
+      "ManageWorkflows": "Manage Workflows",
+      "Read": "Read",
+      "ReadCanCollect": "Can collect",
+      "ReadRemove": "Read & Remove",
+      "ReadWrite": "Edit",
+      "Remove": "Remove",
+      "Write": "Write"
     },
     "share-external-dialog": {
       "cancel": "Cancel",
@@ -2154,7 +2168,8 @@
     },
     "slot-empty": "Content for \"{{ name }}\" will appear here.",
     "test": {
-      "platform-nav-item": "Browse"
+      "platform-nav-item": "Browse",
+      "personal-space-nav-item": "Personal Space"
     }
   },
   "tab": {

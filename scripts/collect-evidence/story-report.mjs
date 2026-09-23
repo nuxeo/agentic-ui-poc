@@ -25,7 +25,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { resolve } from 'node:path';
+import { basename, isAbsolute, resolve } from 'node:path';
 
 import { evidenceDirForTicket } from './evidence-path.mjs';
 
@@ -65,7 +65,10 @@ if (!before || !after) {
  * Screenshots are named `NN-slug.png`, and the index drifts whenever a scene is inserted.
  * Pair on the slug so an added Act 1 scene does not silently compare scene 3 with scene 4.
  */
-const slug = (f) => f.replace(/^\d+-/, '').replace(/\.png$/, '');
+const slug = (f) => basename(f).replace(/^\d+-/, '').replace(/\.png$/, '');
+
+/** Manifest may store absolute paths on Windows; pair and read by basename under each half dir. */
+const shotPath = (dir, file) => (isAbsolute(file) ? file : resolve(dir, file));
 const index = (m) => {
   const out = new Map();
   for (const s of m.steps ?? []) for (const f of s.screenshots ?? []) out.set(slug(f), { file: f, step: s });
@@ -154,7 +157,7 @@ for (const [dir, manifest, phase] of [
   for (const h of manifest.highlights ?? []) {
     const html = annotatedHtml({
       title: h.label,
-      src: await dataUrl(resolve(dir, h.file)),
+      src: await dataUrl(shotPath(dir, h.file)),
       box: h.box,
       tone: phase === 'before' ? 'bad' : 'good',
     });

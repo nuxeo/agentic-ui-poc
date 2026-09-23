@@ -1,19 +1,23 @@
 # i18n — where we actually are
 
-**Dated 16 September 2026.** Measured, not estimated: every number below comes from a command
+**Dated 22 September 2026.** Measured, not estimated: every number below comes from a command
 that is quoted next to it, so it can be re-run rather than believed.
+
+Re-measure before quoting anything here. The 16 September edition of this page claimed the gate was
+**23 of 23 green** while `guardrails` was failing, and put the catalogue at **1653** keys when it
+held 1968 — both figures had a command printed beside them and neither had been re-run.
 
 This is the status page. The **plan** is [`docs/i18n-localization-plan.md`](i18n-localization-plan.md);
 the two are separate on purpose, because a plan that carries its own progress report goes stale
 silently and gets believed anyway.
 
-|              |                                                                                                                                                                                                                                   |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Beta ticket  | [NXSAT-227](https://hyland.atlassian.net/browse/NXSAT-227) — delivered, in review                                                                                                                                                 |
-| GA ticket    | [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284) — delivered, in review. This row said **not started** while the branch implementing it was open, and the same page measured its output two sections below.             |
-| Pull request | [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198) (NXSAT-227, merged) · [#217](https://github.com/nuxeo/agentic-ui-poc/pull/217) (NXSAT-284)                                                                               |
-| Branch       | `feature/nxsat-227a-i18n` (merged) · `feature/nxsat-284-descriptor-labels`                                                                                                                                                        |
-| Gate         | **23 of 23 green**, `code-scanning` included. Re-measure rather than reading this: `npm run beta:gate`. This row said 21 of 22 and named a blocker that no longer exists — the gate count grew and CodeQL now runs on the branch. |
+|              |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Beta ticket  | [NXSAT-227](https://hyland.atlassian.net/browse/NXSAT-227) — delivered, in review                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| GA ticket    | [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284) — delivered, in review. This row said **not started** while the branch implementing it was open, and the same page measured its output two sections below.                                                                                                                                                                                                                                                                                                                                  |
+| Pull request | [#198](https://github.com/nuxeo/agentic-ui-poc/pull/198) (NXSAT-227, merged) · [#217](https://github.com/nuxeo/agentic-ui-poc/pull/217) (NXSAT-284)                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Branch       | `feature/nxsat-227a-i18n` (merged) · `feature/nxsat-284-descriptor-labels`                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Gate         | `lockfile, guardrails, lint, test, build, typecheck, api-surface` all pass as of 2026-09-22, **under Node 20** — on Node 25 a built-in `localStorage` shadows jsdom's and `test` reports 126 false failures. `guardrails` was RED on pristine `origin/main` earlier the same day (`header-search-focus-ring.spec.html` carried a hard-coded `placeholder`); NXENG-755 fixed it by binding the pipe. Re-measure rather than reading this: `nvm use 20 && npm run beta:gate`. This row said **23 of 23 green** for six days while that gate was failing. |
 
 ---
 
@@ -25,7 +29,7 @@ previous figure of 41 came from a run that could not prove the pseudo-locale was
 
 |                                                                |           |
 | -------------------------------------------------------------- | --------- |
-| Catalogue keys, each with translator context                   | **1653**  |
+| Catalogue keys, each with translator context                   | **1968**  |
 | Descriptor labels carrying a `labelKey`                        | **191**   |
 | Visible English strings under the `zz` pseudo-locale, 9 routes | **24–30** |
 
@@ -53,6 +57,131 @@ That instrument has been wrong twice, both times under-reporting:
   read as a miss until the generator produced a `zz` for those catalogues too — 22 more.
 - The prose test required letters only, so anything with a number was skipped in
   silence: the five size buckets, every date range, `2 result(s)`.
+
+## Locale-aware date formatting — closed 2026-09-22
+
+Eleven call sites formatted dates with a hardcoded `'en-US'` or a bare `toLocaleDateString()`
+(which reads the **host machine's** locale, not the user's choice). All now take `LOCALE_ID`,
+**and `LOCALE_ID` is now provided from Layer 0 configuration** — see gap 10 below, which this
+closes.
+
+That second half is the one that makes the first half mean anything, and it was nearly shipped
+missing. An earlier revision of this section claimed closure while `LOCALE_ID` had no provider at
+all, so Angular supplied its built-in `en-US` to every injection and a French or German
+deployment still rendered every one of these dates in English. Correct plumbing feeding a
+constant. Gap 10, six hundred lines below on this same page, said so at the time.
+
+The provider is in `provide-app-config.ts` and shares `resolveFormattingLocale()` with the
+`APP_INITIALIZER` that sets adf-core's locale, so Angular's formatting locale and adf-core's
+cannot drift apart. Proven by `LOCALE_ID provider` in `provide-app-config.spec.ts`, which
+asserts `fr` and `de` resolve from configuration and an unregistered locale falls back to `en`;
+deleting the provider turns all four red.
+
+The grep that must stay empty:
+
+```bash
+grep -rn --include='*.ts' -E "toLocale(Date|Time)?String\('en-US'|toLocale(Date|Time)?String\(\)" \
+  apps libs | grep -v '\.spec\.'
+```
+
+Three lessons from it, each of which cost something:
+
+- **`aceTimeFrame` and `permissionLabel` existed as three copies each**, in browse,
+  collection-detail and document-detail, and every copy had the same two bugs. They are now
+  `formatAceDateRange` and `permissionRightLabel` in `nuxeo-client`. The date half was a bug; the
+  **English half was unfixable** — `from ${begin} to ${end}` is assembled at runtime, so no
+  catalogue entry can reach it and no translation could ever have applied. The
+  `permissions.time-frame.*` keys it now uses were already in `en.json` **and already used** by
+  `share-saved-search-dialog`, which has a fourth copy of the same four-shape branching. That one
+  stays: `parseTimeFrame` reads its own label back by splitting on the `range` separator, so its
+  dates must remain unformatted.
+- **A test asserting `toLocaleDateString()` against `toLocaleDateString()` proves nothing.**
+  `browse.state.spec.ts` compared `getCellValue` to a bare `toLocaleDateString()`, so it agreed
+  with the hardcoded implementation on every machine and could not have caught the defect. On a
+  day-first host it expected `1/3/2026` where the column must render `3/1/2026`. Locale
+  assertions must be **differential** — `de-DE` ≠ `en-US`, with both literals written out.
+- **`inject(DatePipe)` throws NG0201.** Listing `DatePipe` in a component's `imports` makes it
+  usable as `| date` in the template; it does **not** provide it for injection. This took six
+  app-shell specs down. Use `formatDate(value, format, locale)` from `@angular/common` — a pure
+  function needing no DI — rather than `providers: [DatePipe]`.
+
+### Two traps for whoever measures this next
+
+- **Never hand-edit `fr.json` or `de.json`.** Crowdin owns them and overwrites local edits on the
+  next pull; the guardrail says so explicitly. An attempt to add keys to them here introduced
+  curly quotes and left `de.json` as invalid JSON. `npm run beta:gate -- --gates guardrails`
+  catches that in ~2s with an exact line and column — verified by reintroducing the breakage on
+  purpose. Caveat: while a catalogue is unparseable the guardrail reports **only** that and masks
+  every other finding, so it needs a second green run after the fix.
+- **`--skip-nx-cache` does not skip the Angular build cache.** `nx test nuxeo-ui` (Karma) can
+  rebuild a bundle from `.angular/cache` that still contains stashed-away changes, so
+  stash-and-compare gives a **contaminated baseline**. It reported an identical "6 failed, 149
+  passed" with and without a change that was in fact causing all six. Compare failure **causes**,
+  not counts or test names.
+- **Node 25 makes `nx test` lie.** A built-in `localStorage` shadows jsdom's, so
+  `nuxeo-client`, `browse` and `document-detail` report 7, 48 and 71 failures, all
+  `Cannot initialize local storage without a --localstorage-file path`. Under the pinned Node 20
+  (`nvm use 20`) all three are green. Always confirm on 20 before believing a red.
+
+### Pluralisation 2026-09-22: ICU deferred, but French is wrong today — and the first reason given was false
+
+The catalogue holds **22** `-one`/`-many` key pairs (`grep -c '\-one":' apps/nuxeo-ui/public/i18n/en.json`),
+selected by `count === 1 ? '…-one' : '…-many'` at each call site.
+
+**The original justification for deferring ICU was that "en, fr and de each need exactly two plural
+forms". That is false, and it was asserted without being measured.** What `Intl.PluralRules`
+actually reports:
+
+```bash
+node -e "for (const l of ['en','fr','de']) { const p = new Intl.PluralRules(l);
+  console.log(l, p.resolvedOptions().pluralCategories.join(','),
+    '| 0 ->', p.select(0), '| 1e6 ->', p.select(1000000)); }"
+```
+
+| Locale | CLDR categories      | `0`     | `1000000` |
+| ------ | -------------------- | ------- | --------- |
+| `en`   | one, other           | other   | other     |
+| `de`   | one, other           | other   | other     |
+| `fr`   | **one, many, other** | **one** | **many**  |
+
+French has **three** categories and treats **zero as singular**. So `count === 1` is the wrong
+test for French:
+
+- **Zero is a live defect.** `search.html` renders `resultCount() === 1 ? 'common.count.result-one' : '…-many'`,
+  and a search with no hits therefore reads **`0 résultats`** in French where CLDR requires
+  **`0 résultat`**. The same applies to every `common.count.*` pair that can render zero.
+- **A million is theoretical here**, but `found-result-many` would take French's `other` form where
+  CLDR asks for `many`.
+
+`nav.clipboard.aria-label-*` is **not** affected, and for a reason worth stating rather than
+assuming: `clipboardNavAriaLabel()` returns `null` for a non-positive count, so zero never reaches
+a key, and a clipboard cannot hold a million items.
+
+**ICU remains deferred, on the corrected premise.** Two keys plus a `=== 1` test is not
+CLDR-correct for French, so the honest position is that this is known debt rather than a
+sufficient design. The cheap partial fix is to select the singular for `0` **and** `1` in French —
+which is locale-dependent branching in 22 call sites, i.e. the thing ICU exists to remove. Adopting
+`ngx-translate-messageformat-compiler` costs a dependency, a compiler in `app.config.ts` and 22 key
+migrations, and it is the only option that is actually correct.
+
+Escalate this before the Crowdin spend, not after: translators asked for two French forms will
+supply two, and a later ICU migration re-opens every plural string. Adding any locale needing 3–6
+forms (Polish, Russian, Arabic, Czech) makes ICU unavoidable.
+
+### `aria-labelledby` is not a translatable string — do not "fix" it
+
+A 2026-09-22 sweep flagged five `[aria-labelledby]` bindings as untranslated and recommended
+`[aria-labelledby]="'some.key' | translate"`. **That change would break accessibility, not fix
+it.** `aria-labelledby` takes a space-separated list of **element IDs**; translating it leaves the
+control pointing at an element that does not exist, so it loses its accessible name entirely —
+the exact defect the "fix" claims to repair. The existing markup is already correct: the ID is a
+stable hook and the element it references holds the translated text. `aria-label` takes a string
+and _should_ be translated; `aria-labelledby` and `aria-describedby` take IDs and must not be.
+
+The same sweep cited `aria-label="Clear full text"`, `"Comment actions"` and `"Filter options"`
+as hard-coded. None of those strings exist in the codebase — they are already-translated keys in
+`en-fallback.ts`, and the quoted line numbers pointed at unrelated code. Verify a finding against
+the file before acting on it.
 
 ### What the remaining findings are
 
@@ -587,11 +716,14 @@ fails any source that is not.
 
 9. **A language picker.** `availableLanguages` is validated, unit-tested and read by nothing.
    adf-core ships `LanguagePickerComponent`.
-10. **`LOCALE_ID`.** Locale _data_ is now registered for `fr` and `de`, and adf-core's
-    formatting locale follows the configuration — so dates format per locale instead of
-    throwing. What is still missing is providing `LOCALE_ID` itself from configuration, so
-    anything relying on Angular's default locale rather than adf-core's explicit one is still
-    `en-US`. Narrower than it was, not closed.
+10. **`LOCALE_ID` — CLOSED 2026-09-22.** Locale _data_ is registered for `fr` and `de`, adf-core's
+    formatting locale follows the configuration, and `LOCALE_ID` is now **provided** from it too,
+    in `provide-app-config.ts`. Both consumers share `resolveFormattingLocale()`, so Angular's
+    formatting locale and adf-core's cannot diverge. Before that provider existed, anything
+    reading Angular's locale — every `DatePipe`, `DecimalPipe`, `CurrencyPipe` and
+    `inject(LOCALE_ID)` — got the built-in `en-US` regardless of configuration. Covered by
+    `LOCALE_ID provider` in `provide-app-config.spec.ts`; deleting the provider turns four tests
+    red. See "Locale-aware date formatting" above.
 11. **RTL** — DS-2277. Satori needs 4–6 weeks of its own work before an app can start, and the
     target should be the "good enough" level from its spectrum, agreed explicitly.
 12. **Pluralisation — the deferral has expired, and the convention is now two keys.** This entry

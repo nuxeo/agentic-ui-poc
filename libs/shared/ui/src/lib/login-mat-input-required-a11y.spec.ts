@@ -45,6 +45,35 @@ describe('observeStripRedundantMatInputAriaRequired', () => {
     expect(observeStripRedundantMatInputAriaRequired(null)).toBeNull();
   });
 
+  it('returns null when MutationObserver is unavailable', () => {
+    const input = document.createElement('input');
+    input.required = true;
+    input.setAttribute('aria-required', 'true');
+
+    const original = globalThis.MutationObserver;
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'MutationObserver');
+    Object.defineProperty(globalThis, 'MutationObserver', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
+
+    try {
+      expect(observeStripRedundantMatInputAriaRequired(input)).toBeNull();
+      expect(input.getAttribute('aria-required')).toBeNull();
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(globalThis, 'MutationObserver', descriptor);
+      } else {
+        Object.defineProperty(globalThis, 'MutationObserver', {
+          configurable: true,
+          writable: true,
+          value: original,
+        });
+      }
+    }
+  });
+
   it('strips immediately and when MatInput re-applies aria-required', async () => {
     const input = document.createElement('input');
     input.required = true;

@@ -63,6 +63,24 @@ test.describe('authentication and authorisation', () => {
     await expect(page.locator('button, input[type="submit"]').first()).toBeVisible();
   });
 
+  test('skip link is first in tab order and focuses the first sign-in control (NXENG-745)', async ({
+    page,
+  }) => {
+    await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
+    await page.goto('/#/login', { waitUntil: 'networkidle' });
+
+    const skip = page.locator('a.login-skip-link');
+    await page.keyboard.press('Tab');
+    await expect(skip).toBeFocused();
+
+    await page.keyboard.press('Enter');
+    const username = page.locator('input[formcontrolname="username"]');
+    await expect(username).toBeFocused();
+    // Bypass must land past the Hyland logo inside main#login-main, not on the brand link.
+    await expect(page.locator('a.login-brand')).not.toBeFocused();
+    expect(page.url()).toMatch(/#\/login$/);
+  });
+
   test('password field stays visible when focused via keyboard (NXENG-749)', async ({ page }) => {
     await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
     await page.goto('/#/login', { waitUntil: 'networkidle' });
@@ -141,7 +159,7 @@ test.describe('authentication and authorisation', () => {
     const heroOpacity = await heroImg.evaluate((el) => getComputedStyle(el).opacity);
     expect(heroOpacity, 'forced-colors hides decorative hero art').toBe('0');
 
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       await page.keyboard.press('Tab');
     }
     await expect(submit).toBeFocused();
@@ -164,8 +182,8 @@ test.describe('authentication and authorisation', () => {
     const submit = page.locator('button.login-submit');
     await expect(submit).toBeVisible();
 
-    // Brand link → username → password → submit (empty credentials, disabledInteractive).
-    for (let i = 0; i < 4; i += 1) {
+    // Skip link → brand link → username → password → submit (empty credentials, disabledInteractive).
+    for (let i = 0; i < 5; i += 1) {
       await page.keyboard.press('Tab');
     }
     await expect(submit).toBeFocused();

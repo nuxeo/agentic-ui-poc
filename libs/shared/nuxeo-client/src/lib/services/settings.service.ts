@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, LOCALE_ID, inject } from '@angular/core';
 import { Observable, forkJoin, map } from 'rxjs';
 
 import {
@@ -33,6 +33,7 @@ export interface SynchronizationRootRow {
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
   private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly api = inject(NuxeoApiBase);
 
   getLocalPermissions(username: string, pageSize = 25): Observable<LocalPermissionRow[]> {
@@ -210,8 +211,11 @@ export class SettingsService {
         documentTitle: title,
         documentPath,
         right: ace.permission,
-        timeFrame: formatPermissionTimeFrame(ace.begin, ace.end, (key) =>
-          this.translate.instant(key),
+        timeFrame: formatPermissionTimeFrame(
+          ace.begin,
+          ace.end,
+          (key) => this.translate.instant(key),
+          this.locale,
         ),
         grantedBy: ace.creator || '—',
       });

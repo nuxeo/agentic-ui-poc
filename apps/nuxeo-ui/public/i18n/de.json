@@ -126,7 +126,8 @@
       "menu": "Einstellungsmenü"
     },
     "test": {
-      "platform-nav-item": "Durchsuchen"
+      "platform-nav-item": "Durchsuchen",
+      "personal-space-nav-item": "Persönlicher Bereich"
     }
   }
 }

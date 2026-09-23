@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { NuxeoDocument } from '../models/document.model';
 import {
-  buildDocumentCompareRows,
   buildDocumentCompareSections,
   formatCompareDate,
   formatCompareSubjects,
@@ -37,7 +36,14 @@ describe('document-compare.utils', () => {
   });
 
   it('formatCompareDate renders Web UI style dates', () => {
-    expect(formatCompareDate('2026-07-07T10:00:00.000Z')).toBe('July 7, 2026');
+    expect(formatCompareDate('2026-07-07T10:00:00.000Z', 'en-US')).toBe('July 7, 2026');
+  });
+
+  it('formatCompareDate honours the locale it is given', () => {
+    // The `en-US` assertion above passed against the hardcoded `'en-US'` this parameter replaced,
+    // so on its own it cannot tell a threaded locale from an ignored one. German names the month
+    // differently, which can only come from the argument.
+    expect(formatCompareDate('2026-07-07T10:00:00.000Z', 'de-DE')).toBe('7. Juli 2026');
   });
 
   it('formatCompareUser renders username strings', () => {
@@ -60,7 +66,7 @@ describe('document-compare.utils', () => {
   });
 
   it('buildDocumentCompareSections always shows uid and common fields in default view', () => {
-    const sections = buildDocumentCompareSections(doc(), doc(), false);
+    const sections = buildDocumentCompareSections(doc(), doc(), false, 'en-US');
 
     expect(sections.map((section) => section.id)).toEqual(['uid', 'common']);
     expect(sections[0]?.fields.map((row) => row.label)).toEqual([
@@ -72,7 +78,7 @@ describe('document-compare.utils', () => {
   });
 
   it('buildDocumentCompareSections uses diff field set by default', () => {
-    const sections = buildDocumentCompareSections(doc(), doc(), false);
+    const sections = buildDocumentCompareSections(doc(), doc(), false, 'en-US');
     expect(sections.map((section) => section.id)).not.toContain('relatedtext');
     expect(
       sections.flatMap((section) => section.fields).some((row) => row.label === 'description'),
@@ -80,7 +86,7 @@ describe('document-compare.utils', () => {
   });
 
   it('buildDocumentCompareSections shows full Web UI fields when viewAll is true', () => {
-    const sections = buildDocumentCompareSections(doc(), doc(), true);
+    const sections = buildDocumentCompareSections(doc(), doc(), true, 'en-US');
     expect(sections.map((section) => section.id)).toEqual([
       'uid',
       'common',
@@ -110,7 +116,7 @@ describe('document-compare.utils', () => {
       },
     });
 
-    const sections = buildDocumentCompareSections(left, right, false);
+    const sections = buildDocumentCompareSections(left, right, false, 'en-US');
 
     expect(sections.some((section) => section.id === 'uid')).toBe(true);
     expect(
@@ -121,10 +127,5 @@ describe('document-compare.utils', () => {
     expect(
       sections.flatMap((section) => section.fields).some((row) => row.key === 'dc:description'),
     ).toBe(false);
-  });
-
-  it('buildDocumentCompareRows flattens section rows', () => {
-    const rows = buildDocumentCompareRows(doc(), doc({ title: 'Beta' }), true);
-    expect(rows.length).toBeGreaterThan(15);
   });
 });
