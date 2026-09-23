@@ -1,10 +1,11 @@
 import { Component, signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { TranslateModule } from '@ngx-translate/core';
 
+import { testTranslateModule } from '../i18n/translate-testing';
 import { COMPILED_THEME_BASES } from '../theme/app-theme';
 
 /**
@@ -20,6 +21,8 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
 
 const CLIPBOARD_LINK =
   'sat-platform-nav-list-item[data-nav-id="app.navbar.clipboard"] .sat-platform-nav-item';
+
+const CLIPBOARD_TEST_LABEL = '⟪NXENG-873-clipboard-nav⟫';
 
 @Component({
   standalone: true,
@@ -64,38 +67,42 @@ function flatten(value: string, backdrop: readonly number[]): number[] {
   return compositeOver(parseColor(value), backdrop);
 }
 
-function paintedBackdrop(element: Element): number[] {
-  for (let node = element.parentElement; node; node = node.parentElement) {
-    const background = getComputedStyle(node).backgroundColor;
-    if (background && background !== 'rgba(0, 0, 0, 0)' && background !== 'transparent') {
-      return parseColor(background).rgb;
-    }
-  }
-  throw new Error('no painted ancestor found; the nav panel did not render');
-}
-
 describe('Clipboard sidebar nav — keyboard focus visible (NXENG-873)', () => {
   const MINIMUM_RATIO = 3;
+  let fixture: ComponentFixture<ClipboardNavHostComponent>;
   let link: HTMLElement;
   let originalTheme: string | null;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ClipboardNavHostComponent, TranslateModule.forRoot()],
+      imports: [
+        ClipboardNavHostComponent,
+        testTranslateModule({ 'shell.test.clipboard-nav-item': CLIPBOARD_TEST_LABEL }),
+      ],
       providers: [provideSatori(), provideNoopAnimations()],
     }).compileComponents();
     originalTheme = document.documentElement.getAttribute('data-app-theme');
+    fixture = TestBed.createComponent(ClipboardNavHostComponent);
+    document.body.appendChild(fixture.nativeElement);
   });
 
   afterEach(() => {
+    fixture.nativeElement.remove();
     if (originalTheme === null) document.documentElement.removeAttribute('data-app-theme');
     else document.documentElement.setAttribute('data-app-theme', originalTheme);
   });
 
+  function navPanelRgb(): number[] {
+    const panel = fixture.nativeElement.querySelector('.sat-platform-nav-panel') as HTMLElement;
+    if (!panel) {
+      throw new Error('Satori nav panel did not render — contrast must use the real panel fill');
+    }
+    return parseColor(getComputedStyle(panel).backgroundColor).rgb;
+  }
+
   function measure(theme: string, asCurrentRoute: boolean) {
     document.documentElement.setAttribute('data-app-theme', theme);
 
-    const fixture = TestBed.createComponent(ClipboardNavHostComponent);
     fixture.componentInstance.active.set(asCurrentRoute);
     fixture.detectChanges();
 
@@ -113,7 +120,7 @@ describe('Clipboard sidebar nav — keyboard focus visible (NXENG-873)', () => {
     anchor.focus({ focusVisible: true } as FocusOptions);
     const styles = getComputedStyle(anchor);
 
-    const panel = paintedBackdrop(anchor);
+    const panel = navPanelRgb();
     const ownFill = parseColor(styles.backgroundColor);
     const interior = ownFill.alpha > 0 ? compositeOver(ownFill, panel) : panel;
     const ring = flatten(styles.outlineColor, interior);
