@@ -148,6 +148,7 @@ sat-platform-nav-container.has-selection-topbar {
 // against the header across the four packaged themes and both OS schemes: lowest 5.80:1
 // (light theme), highest 10.11:1 (dark theme). Forcing it light dropped it to 2.65:1.
 //
+// NXENG-909 / IBM issue 3350142295 — same control as NXENG-775.
 // Keep this as its own selector. IBM Equal Access's `style_focus_visible` reads the
 // element's `:focus` styles only — it collects `:focus-visible` and `:focus-within` and
 // then never looks at them — and its lookup does not resolve selector lists, so writing
