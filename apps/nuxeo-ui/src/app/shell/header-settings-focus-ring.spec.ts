@@ -11,6 +11,13 @@
  *  - `.header-settings-menu-button:focus` must stay a standalone selector (IBM reads `:focus`
  *    only and does not resolve comma lists);
  *  - the ring colour tracks `--mat-sys-primary` so it contrasts with the header surface.
+ *
+ * What the contrast example below does NOT cover: the numeric ratio against each packaged
+ * theme's real header background. The fixture is a synthetic DOM with no `sat-app-header`
+ * behind the button, so it only measures against the nearest painted ancestor (usually
+ * `<body>`). Packaged theme × colour-scheme combinations were checked in the Playwright
+ * evidence run; what is pinned here is the invariant — a non-none 2px ring using the theme
+ * primary token — matching `header-search-focus-ring.spec.ts` (NXENG-775).
  */
 import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -97,10 +104,12 @@ describe('header Settings menu — keyboard focus indicator (NXENG-872)', () => 
     expect(style.outlineOffset).toBe('2px');
   });
 
-  it('meets the 3:1 non-text contrast of SC 1.4.11 against the surface the ring touches', () => {
+  it('meets the 3:1 non-text contrast of SC 1.4.11 against the fixture surface the ring touches', () => {
     button.focus();
     const style = getComputedStyle(button);
 
+    // Same guard as NXENG-775: `outline-color` can compute to `currentColor` while
+    // `outline-style` is still `none`, which would pass contrast without a visible ring.
     expect(style.outlineStyle).not.toBe('none');
     expect(parseFloat(style.outlineWidth)).toBeGreaterThan(0);
     expect(parseFloat(style.outlineOffset)).toBeGreaterThan(0);
