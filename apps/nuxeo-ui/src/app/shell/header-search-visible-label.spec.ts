@@ -1,5 +1,5 @@
 import { signal } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TranslateService } from '@ngx-translate/core';
 
@@ -26,8 +26,15 @@ const authMock = {
 
 describe('AppShellComponent — header global search visible label (NXENG-798)', () => {
   let http: HttpTestingController;
+  /** fakeAsync does not advance CSS transitions; suppress so caption geometry is instant. */
+  let transitionSuppress: HTMLStyleElement;
 
   beforeEach(async () => {
+    transitionSuppress = document.createElement('style');
+    transitionSuppress.textContent =
+      '.header-search-label { transition: none !important; }';
+    document.head.appendChild(transitionSuppress);
+
     await TestBed.configureTestingModule({
       imports: [AppShellComponent],
       providers: [...appConfig.providers, provideHttpClientTesting()],
@@ -39,6 +46,8 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
   });
 
   afterEach(() => {
+    transitionSuppress?.remove();
+
     const emptyDocumentList = {
       entries: [],
       totalSize: 0,
@@ -109,7 +118,7 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
       .toBeGreaterThan(0);
   });
 
-  it('keeps a shrunken visible label while a query is entered and restores the empty state when cleared', () => {
+  it('keeps a shrunken visible label while a query is entered and restores the empty state when cleared', fakeAsync(() => {
     const fixture = TestBed.createComponent(AppShellComponent);
     const translate = TestBed.inject(TranslateService);
     translate.setTranslation('en', { [SEARCH_LABEL_KEY]: SEARCH_LABEL_MARKER }, true);
@@ -121,8 +130,16 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     ) as HTMLInputElement;
     const wrap = fixture.nativeElement.querySelector('.header-search-input-wrap') as HTMLElement;
 
+    const emptyLabel = fixture.nativeElement.querySelector(
+      `label[for="${GLOBAL_HEADER_SEARCH_INPUT_ID}"].header-search-label`,
+    ) as HTMLLabelElement;
+    expect(Number.parseFloat(getComputedStyle(emptyLabel).fontSize))
+      .withContext('empty-state label uses the overlay size from app-shell.component.scss')
+      .toBe(14);
+
     fixture.componentInstance.onGlobalSearchInput('reports');
     fixture.detectChanges();
+    tick();
 
     expect(fixture.componentInstance.globalSearchTerm())
       .withContext('filled-state styling is driven from globalSearchTerm')
@@ -149,35 +166,23 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     expect(Number.parseFloat(filledLabelStyle.opacity))
       .withContext('label must stay painted while a query is entered')
       .toBeGreaterThan(0);
+    expect(Number.parseFloat(filledLabelStyle.fontSize))
+      .withContext(
+        'caption must shrink the live AppShell label (styles.scss single declaration)',
+      )
+      .toBe(11);
+    expect(filledLabelStyle.transform)
+      .withContext('caption must drop the centered overlay translate on the live shell label')
+      .toBe('none');
 
     fixture.componentInstance.onGlobalSearchInput('');
     fixture.detectChanges();
+    tick();
 
     expect(input.value).toBe('');
     expect(wrap.classList.contains('header-search-filled'))
       .withContext('cleared field must leave the empty-state styling')
       .toBe(false);
-  });
-
-  /**
-   * Negative control for the caption stylesheet: `angular.json` loads `apps/nuxeo-ui/src/styles.scss`
-   * into Karma (same as `nav-focus-ring-contrast.spec.ts`). This probe must read those bytes, not
-   * spec-injected CSS — deleting `.header-search-label--caption` from `styles.scss` must fail here.
-   */
-  it('applies the 11px caption layout when header-search-label--caption is present', () => {
-    const probe = document.createElement('label');
-    probe.className = 'header-search-label header-search-label--caption';
-    document.body.appendChild(probe);
-    try {
-      expect(Number.parseFloat(getComputedStyle(probe).fontSize))
-        .withContext('styles.scss caption rules must shrink the modifier class')
-        .toBe(11);
-      expect(getComputedStyle(probe).transform)
-        .withContext('caption rules must drop the centered overlay translate')
-        .toBe('none');
-    } finally {
-      probe.remove();
-    }
-  });
+  }));
 });
 

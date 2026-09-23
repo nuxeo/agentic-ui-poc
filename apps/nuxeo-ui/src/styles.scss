@@ -217,9 +217,7 @@ html body a.sat-skip-to-content-button.sat-skip-to-content-button-visible {
 
 /*
  * Header global search — persistent caption label (NXENG-798).
- *
- * Declared globally so the filled-state modifier matches under Karma the same way as in the
- * app; the base overlay styles stay in `app-shell.component.scss`.
+ * Single runtime declaration: base overlay styles stay in `app-shell.component.scss`.
  */
 .header-search-label.header-search-label--caption {
   top: 6px !important;

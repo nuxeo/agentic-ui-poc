@@ -153,11 +153,8 @@ sat-platform-nav-container.has-selection-topbar {
   position: absolute;
   left: 40px;
   right: 13px;
-  top: 50%;
-  transform: translateY(-50%);
   pointer-events: none;
   color: var(--shell-header-search-muted-foreground);
-  font-size: 14px;
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -166,14 +163,16 @@ sat-platform-nav-container.has-selection-topbar {
     top 0.15s ease,
     transform 0.15s ease,
     font-size 0.15s ease;
-
-  &.header-search-label--caption {
-    top: 6px !important;
-    transform: none !important;
-    font-size: 11px !important;
-    opacity: 1;
-  }
 }
+
+// Empty-field overlay only — filled caption geometry is global in `styles.scss`.
+.header-search-label:not(.header-search-label--caption) {
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+}
+
+// Filled-state caption geometry lives in `styles.scss` (single declaration for app + Karma).
 
 .header-search-input:focus + .header-search-label {
   top: 6px;
