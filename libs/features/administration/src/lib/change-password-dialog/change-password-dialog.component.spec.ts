@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { TranslatePipe } from '@ngx-translate/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   ChangePasswordDialogComponent,
@@ -36,15 +36,21 @@ describe('ChangePasswordDialogComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [ChangePasswordDialogComponent, NoopAnimationsModule],
+      // `testTranslateModule()` explicitly, and no `TranslatePipe` provider.
+      //
+      // The removed `{ provide: TranslatePipe, useValue: { transform } }` was dead: `TranslatePipe`
+      // is a standalone pipe that Angular instantiates for the template's six `| translate` uses,
+      // and it resolves `TranslateService` itself — it never reads that token. Anyone reading the
+      // spec would think translation was stubbed here when nothing was.
+      //
+      // This file renders, so it does need the catalogue. It is already supplied project-wide by
+      // `provideTestTranslations()` in `src/test-setup.ts`; naming it here too makes the dependency
+      // local and obvious rather than resting on setup-file ordering.
+      imports: [ChangePasswordDialogComponent, NoopAnimationsModule, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MAT_DIALOG_DATA, useValue: mockDialogData },
-        {
-          provide: TranslatePipe,
-          useValue: { transform: vi.fn((key: string) => key) },
-        },
       ],
     }).compileComponents();
 
