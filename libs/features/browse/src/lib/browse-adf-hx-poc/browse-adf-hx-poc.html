@@ -109,16 +109,20 @@
                   (dismiss)="closeColumnPicker()"
                 />
               }
-              <hxp-document-list
-                [documents]="filteredDocuments()"
-                [isLoading]="loading() || listLoading()"
-                [schema]="schema()"
-                [multiselect]="true"
-                [contextMenuActions]="false"
-                (rowClicked)="onUpstreamRowClicked($event)"
-                (selectedDocuments)="onSelectedDocuments($event)"
-                (sortingClicked)="onSortingClicked($event)"
-              />
+              <!-- Re-created when the app-wide selection is cleared from the selection bar:
+                   upstream's table keeps its own checkboxes and offers no way to reset them. -->
+              @for (key of [listResetKey()]; track key) {
+                <hxp-document-list
+                  [documents]="filteredDocuments()"
+                  [isLoading]="loading() || listLoading()"
+                  [schema]="schema()"
+                  [multiselect]="true"
+                  [contextMenuActions]="false"
+                  (rowClicked)="onUpstreamRowClicked($event)"
+                  (selectedDocuments)="onSelectedDocuments($event)"
+                  (sortingClicked)="onSortingClicked($event)"
+                />
+              }
               <hxp-browse-pager
                 [pageIndex]="pageIndex()"
                 [pageSize]="pageSize()"

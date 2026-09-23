@@ -6,7 +6,9 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 import {
   auditActivityLabel,
+  BrowseContextService,
   canAddChildren,
+  SelectionService,
   canRemoveDocument,
   canViewDocumentAuditLog,
   canWriteDocument,
@@ -246,9 +248,31 @@ export class BrowseAdfHxPocComponent {
   protected readonly viewerOpen = signal(false);
   protected readonly viewerDocument = signal<Document | null>(null);
 
+  /**
+   * Mirrors the table's checked rows into the app-wide selection, which is what shows the shell's
+   * selection bar and its bulk actions — production browse does the same. Without it, ticking
+   * rows here selected nothing any bulk action could see.
+   */
   protected onSelectedDocuments(documents: Document[]): void {
     this.selectedDocuments.set(documents);
+    const ids: string[] = [];
+    const labels: Record<string, string> = {};
+    const previews: Record<string, string | null> = {};
+    const types: Record<string, string> = {};
+    const thumbnails = this.thumbnails();
+    for (const doc of documents) {
+      const id = doc.sys_id;
+      if (!id) continue;
+      ids.push(id);
+      labels[id] = hxpDocTitle(doc);
+      previews[id] = thumbnails[id] ?? null;
+      if (doc.sys_primaryType) types[id] = doc.sys_primaryType;
+    }
+    this.selection.selectAll(ids, labels, previews, types);
   }
+
+  /** Bumped to re-create upstream's table, the only way to clear its checkboxes from outside. */
+  protected readonly listResetKey = signal(0);
 
   protected openViewer(): void {
     const doc = this.selectedDocument();
@@ -267,6 +291,8 @@ export class BrowseAdfHxPocComponent {
   private readonly folderService = inject(AdfHxBrowseFolderService);
   private readonly mediaService = inject(AdfHxBrowseMediaService);
   private readonly adfHxBrowseContext = inject(AdfHxBrowseContextService);
+  private readonly selection = inject(SelectionService);
+  private readonly contentContext = inject(BrowseContextService);
   private readonly extensions = inject(AppExtensionsService);
   private readonly documentRouter = inject(NuxeoDocumentRouterService);
   private readonly destroyRef = inject(DestroyRef);
@@ -474,6 +500,28 @@ export class BrowseAdfHxPocComponent {
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.mediaService.revokeThumbnails();
+    });
+
+    // The selection bar's Clear, or a bulk action finishing, empties the app-wide selection.
+    // Upstream's table keeps its own checkboxes, so it is re-created to match.
+    effect(() => {
+      const count = this.selection.selectedCount();
+      if (count === 0 && untracked(() => this.selectedDocuments().length) > 0) {
+        untracked(() => {
+          this.selectedDocuments.set([]);
+          this.listResetKey.update((key) => key + 1);
+        });
+      }
+    });
+
+    // Bulk actions — delete, move — signal a content change here, as they do for production
+    // browse, so the folder is re-read after them.
+    // The tick is app-wide and may already be non-zero from production browse; only a change
+    // after this page opened means its folder changed.
+    const openedAtTick = this.contentContext.treeRefreshTick();
+    effect(() => {
+      if (this.contentContext.treeRefreshTick() === openedAtTick) return;
+      untracked(() => this.loadFolder(this.browsePath()));
     });
 
     this.tagSearch$
@@ -692,6 +740,8 @@ export class BrowseAdfHxPocComponent {
     // The selection belongs to the folder that was on screen. Carrying it across a navigation
     // would leave Preview pointed at a document no longer in the list.
     this.selectedDocuments.set([]);
+    // `?path=` changing is not a route change, so the shell does not clear the selection itself.
+    this.selection.clear();
   }
 
   private loadFolder(path: string): void {
