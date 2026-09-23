@@ -47,7 +47,7 @@ support boundary, the upgrade path and any certification claim.
 |                           |                                                                                                                                  |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | **Phases 0–5**            | Complete, each with evidence and a green 15-gate run                                                                             |
-| **Phase 6** (quality bar) | In progress — **2 of 7 steps**                                                                                                   |
+| **Phase 6** (quality bar) | In progress — **5 of 7 steps** as of 2026-09-23; steps 3 (WCAG) and 6 (coverage) open                                            |
 | **Customers**             | **Zero.** Nothing has been published; nothing installed by anyone outside the team                                               |
 | **Published**             | No. `private: true`. Scope decided (`@nuxeo/satori-platform`, Nuxeo Nexus); publishing deliberately deferred to final deployment |
 

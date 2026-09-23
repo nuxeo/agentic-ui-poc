@@ -222,7 +222,7 @@ phase claims more than the artifacts support. The narrative version is the **Pro
 status** section of [`docs/adf-hx-beta-plan.md`](../../docs/adf-hx-beta-plan.md), which is
 dated.
 
-At `77265f9`: Phases 0–5 complete, Phase 6 in progress (steps 0–2 of 7).
+At `77265f9`: Phases 0–5 complete, Phase 6 in progress (steps 0–2 of 7). **As of 2026-09-23 Phase 6 is 5 of 7**, with steps 3 (WCAG, back in question) and 6 (coverage, reopened) open.
 
 ---
 
