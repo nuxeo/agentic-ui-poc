@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TranslateService } from '@ngx-translate/core';
 
 import { appConfig } from '../app.config';
 import { AuthService } from '../auth/auth.service';
@@ -9,18 +10,22 @@ import { AppShellComponent } from './app-shell.component';
 /** Stable id shared by the shell template and this spec's assertions. */
 export const GLOBAL_HEADER_SEARCH_INPUT_ID = 'global-header-search-input';
 
+const SEARCH_LABEL_KEY = 'shell.search.placeholder';
+/** Distinct marker so the spec proves the catalogue resolved, not a raw key string. */
+const SEARCH_LABEL_MARKER = '⟪NXENG-798-visible-search-label⟫';
+
+const authMock = {
+  isAuthenticated: signal(true),
+  username: signal('test.user'),
+  hasAdministrationAccess: signal(true),
+  isAdministrator: signal(true),
+  basicCredentials: () => null,
+  shareAuthToken: () => null,
+  logout: () => undefined,
+} as unknown as AuthService;
+
 describe('AppShellComponent — header global search visible label (NXENG-798)', () => {
   let http: HttpTestingController;
-
-  const authMock = {
-    isAuthenticated: signal(true),
-    username: signal('test.user'),
-    hasAdministrationAccess: signal(true),
-    isAdministrator: signal(true),
-    basicCredentials: () => null,
-    shareAuthToken: () => null,
-    logout: () => undefined,
-  } as unknown as AuthService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -51,6 +56,9 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
    */
   it('associates a visible label with the header search input instead of placeholder-only naming', () => {
     const fixture = TestBed.createComponent(AppShellComponent);
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('en', { [SEARCH_LABEL_KEY]: SEARCH_LABEL_MARKER }, true);
+    translate.use('en');
     fixture.detectChanges();
 
     const input = fixture.nativeElement.querySelector(
@@ -64,9 +72,9 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     expect(label).withContext('header search must expose a visible <label>').toBeTruthy();
 
     const labelText = label!.textContent!.trim();
-    expect(labelText.length)
-      .withContext('visible label must render non-empty text')
-      .toBeGreaterThan(0);
+    expect(labelText)
+      .withContext('visible label must render the seeded catalogue string')
+      .toBe(SEARCH_LABEL_MARKER);
 
     const placeholder = (input!.getAttribute('placeholder') ?? '').trim();
     expect(placeholder)
