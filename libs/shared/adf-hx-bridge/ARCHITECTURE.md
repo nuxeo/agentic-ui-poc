@@ -93,17 +93,18 @@ Helpers (in `@nuxeo-satori/platform/nuxeo-client`):
 
 Imported from `@alfresco/adf-hx-content-services/ui`. Nothing in this library defines them.
 
-| Selector                      | Rendered by                                |
-| ----------------------------- | ------------------------------------------ |
-| `hxp-document-list`           | `browse-adf-hx-poc.ts`, `search-adf-hx.ts` |
-| `hxp-breadcrumb`              | `browse-adf-hx-poc.ts`                     |
-| `hxp-properties-sidebar`      | `browse-adf-hx-poc.ts` (Properties tab)    |
-| `hxp-ui-document-viewer`      | `browse-adf-hx-poc.ts`                     |
-| `hxp-manage-versions-sidebar` | `browse-adf-hx-poc.ts` (Versions tab)      |
-| `hxp-document-tree`           | wrapped by our `hxp-browse-nav-drawer`     |
+| Selector                           | Rendered by                                |
+| ---------------------------------- | ------------------------------------------ |
+| `hxp-document-list`                | `browse-adf-hx-poc.ts`, `search-adf-hx.ts` |
+| `hxp-breadcrumb`                   | `browse-adf-hx-poc.ts`                     |
+| `hxp-ui-document-viewer`           | `browse-adf-hx-poc.ts`                     |
+| `hxp-permissions-management-panel` | `browse-adf-hx-poc.ts` (Permissions tab)   |
+| `hxp-document-tree`                | wrapped by our `hxp-browse-nav-drawer`     |
 
-`hxp-properties-sidebar` and `hxp-manage-versions-sidebar` both require a **row checkbox tick**;
-a row click leaves them showing "Select a single document in the View tab."
+`hxp-properties-sidebar` and `hxp-manage-versions-sidebar` are no longer rendered. They were the
+browse POC's Properties and Versions tabs until 2026-09-23, removed so the folder tabs match
+production browse, which keeps both on the document page. The ports and mappers they exercised
+(`VERSION`, `MODEL`, the `sys` pseudo-schema) stay, and remain unit-tested.
 
 ### Ours — this library's own components
 

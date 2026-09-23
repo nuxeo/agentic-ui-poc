@@ -15,9 +15,11 @@ reproducible against published packages, with a version, a path and a reproducti
 
 **Context.** We are adopting adf-hx components over a **Nuxeo** back end by implementing the twelve
 `*_API_TOKEN` ports against Nuxeo's REST API, rather than against HxPR. Eleven of the twelve are
-implemented. Five components render against live data: document list, breadcrumb, document tree,
-manage-versions and the properties sidebar. So these findings come from working code, not from
-reading the source.
+implemented. Five components were rendered against live data: document list, breadcrumb, document
+tree, manage-versions and the properties sidebar. So these findings come from working code, not
+from reading the source. The last two are no longer rendered in our browse page, which since
+2026-09-23 keeps per-document panels on the document page as production browse does; the findings
+about them were observed while they were.
 
 **Deliberately excluded.** Problems caused by _our_ environment are not listed here — a Node 25
 `localStorage` global, a macOS lockfile pruning platform-optional entries, and Angular replacing

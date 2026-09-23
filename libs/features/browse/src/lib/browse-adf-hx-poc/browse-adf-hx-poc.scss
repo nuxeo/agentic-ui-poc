@@ -156,51 +156,9 @@ hxp-domain-hint {
   }
 }
 
-// WORKAROUND(adf-hx): W9 — ::ng-deep overrides, because the panels ship drawer-sized
-// ViewEncapsulation.None styles.
-//
-// Upstream's versions panel is built to be a drawer, not a tab body: it ships
-// `ViewEncapsulation.None` styles that give its list `height: 100vh` and its skeleton loader a
-// fixed 370px width. Inside a tab that pushes the page taller than the viewport.
-//
-// `::ng-deep` rather than a scroll container, because a scroll container would leave a
-// viewport-tall empty area below three versions. The selectors are upstream's own class names
-// and would stop matching if it were restyled — that shows up as a layout regression in the
-// evidence screenshot, not as silently broken data.
-.hxp-poc-versions {
-  flex: 1;
-  min-height: 0;
-  max-width: 420px;
-  overflow: auto;
-
-  ::ng-deep .hxp-version-list {
-    height: auto;
-    padding: 12px 0;
-  }
-
-  ::ng-deep .hxp-version-panel-skeleton-loader {
-    width: 100%;
-  }
-}
-
-// Same containment problem as the versions panel: upstream's properties sidebar is built to be
-// a drawer and ships `ViewEncapsulation.None` styles sized for one. Wider than Versions because
-// it renders two-column property cards rather than a list.
-.hxp-poc-properties {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-
-  ::ng-deep .adf-info-drawer-layout-content {
-    height: auto;
-  }
-}
-
-// Third instance of the same containment problem, and the reason it is worth stating as a pattern:
-// every adf-hx panel adopted so far is built to be a drawer and ships `ViewEncapsulation.None`
-// styles that size itself against the viewport rather than its container. Upstream's permissions
-// panel sets `height: calc(100% - 32px)` on its own container, which collapses to nothing unless
-// the host gives it a height to be a percentage of.
+// Upstream's permissions panel is built to be a drawer: it sets `height: calc(100% - 32px)` on its
+// own container, which collapses to nothing unless the host gives it a height to be a percentage
+// of.
 .hxp-poc-permissions {
   flex: 1;
   min-height: 0;

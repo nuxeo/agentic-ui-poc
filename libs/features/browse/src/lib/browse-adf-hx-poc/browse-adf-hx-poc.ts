@@ -54,9 +54,7 @@ import {
 import {
   HxpBreadcrumbComponent as UpstreamBreadcrumbComponent,
   HxpDocumentListComponent as UpstreamDocumentListComponent,
-  HxpPropertiesSidebarComponent as UpstreamPropertiesSidebarComponent,
   HxpUiDocumentViewerComponent as UpstreamDocumentViewerComponent,
-  ManageVersionsSidebarComponent as UpstreamManageVersionsSidebarComponent,
   PermissionsManagementPanelComponent as UpstreamPermissionsPanelComponent,
 } from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
@@ -93,9 +91,7 @@ const NO_PARENT_DOCUMENT: Document = { sys_primaryType: '', sys_effectiveAcl: []
     UpstreamBreadcrumbComponent,
     UpstreamDocumentListComponent,
     UpstreamDocumentViewerComponent,
-    UpstreamManageVersionsSidebarComponent,
     UpstreamPermissionsPanelComponent,
-    UpstreamPropertiesSidebarComponent,
     HxpDocumentCardsComponent,
     HxpColumnPickerComponent,
     HxpBrowsePagerComponent,
@@ -232,26 +228,15 @@ export class BrowseAdfHxPocComponent {
     this.documentRouter.navigateTo(document);
   }
 
-  // ── Per-document tabs: Properties and Versions ──
+  // ── Selection ──
   //
   // MISSING(adf-hx): M6 — deciding *which* document a per-document panel acts on. Upstream's
-  // panels each take one `[document]` and are built as drawers; choosing the target from a
-  // selection, and saying so when there is none, is the host's job.
-  //
-  // Both belong to a document, not to the folder being browsed, so they act on the row
-  // **selected** in the View tab rather than on `currentDocument()`. Binding Versions to the
-  // folder would have looked like a working feature: upstream always prepends a "current
-  // version" entry, so a folder with no versions still renders one row.
+  // viewer takes one `[document]`; choosing it from the selection is the host's job.
 
   /** The rows checked in upstream's DataTable, from its `selectedDocuments` output. */
   private readonly selectedDocuments = signal<readonly Document[]>([]);
 
-  /**
-   * The document the per-document tabs act on, or `null` when the selection is not a single row.
-   *
-   * Shared by Properties and Versions: both take one `[document]`, and both are meaningless
-   * without a choice of which.
-   */
+  /** The document Preview opens, or `null` when the selection is not a single row. */
   protected readonly selectedDocument = computed<Document | null>(() => {
     const selection = this.selectedDocuments();
     return selection.length === 1 ? selection[0] : null;
@@ -277,23 +262,6 @@ export class BrowseAdfHxPocComponent {
     this.viewerOpen.set(false);
     this.viewerDocument.set(null);
   }
-
-  /** Upstream's panel emits its own close; there is no drawer here, so fall back to View. */
-  protected onCloseVersions(): void {
-    this.activeTab.set('view');
-  }
-
-  /**
-   * The properties panel acts on the same selection as Versions.
-   *
-   * It is rendered with `[editable]="false"`, which is upstream's own read-only mode rather than
-   * our scope-notice path. Scope A does not write, and suppressing the edit affordance entirely
-   * is more honest than offering one that always refuses.
-   */
-  protected onCloseProperties(): void {
-    this.activeTab.set('view');
-  }
-
   private readonly route = inject(ActivatedRoute);
   private readonly documentService = inject(AdfHxDocumentService);
   private readonly folderService = inject(AdfHxBrowseFolderService);
@@ -723,7 +691,7 @@ export class BrowseAdfHxPocComponent {
     this.trashedDocuments.set([]);
     this.activityEntries.set([]);
     // The selection belongs to the folder that was on screen. Carrying it across a navigation
-    // would leave the Versions tab pointed at a document no longer in the list.
+    // would leave Preview pointed at a document no longer in the list.
     this.selectedDocuments.set([]);
   }
 

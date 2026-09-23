@@ -53,7 +53,7 @@ const PRODUCT = 'http://localhost:4200';
 /**
  * A workspace with eleven mixed children — files, folders, an image and a PDF.
  * The repository root has two folderish rows and nothing to select, which makes the
- * Properties, Versions and Preview beats unreachable; hence a folder, reached by the
+ * Preview beat unreachable; hence a folder, reached by the
  * route's own `path` query parameter.
  */
 const FOLDER = '/default-domain/workspaces/Narasimha';
@@ -164,7 +164,7 @@ async function stage(page, text) {
  */
 const endBeat = (page) => stage(page, null);
 
-/** Check the first row whose title matches, so Properties/Versions/Preview have a target. */
+/** Check the first row whose title matches, so Preview has a target. */
 async function selectRow(page, pattern) {
   const rows = page.locator('adf-datatable-row');
   const n = await rows.count();
@@ -362,36 +362,9 @@ export default async function run({ page, deckUrl, hold, playDeck }) {
     .catch(() => {});
   await page.waitForTimeout(3000);
 
-  // Beat 9 — Properties: upstream's sidebar, with adf-core card view inside.
-  const selected = await selectRow(page, /lta_merged\.pdf/i).catch(() => null);
-  console.log(`  [scene] selected row: ${selected}`);
-  await caption(
-    page,
-    'Properties is upstream’s sidebar, rendering adf-core card items over our Nuxeo model port.',
-  );
-  await clickTab(page, 'Properties').catch((e) =>
-    console.log(`  [scene] Properties: ${e.message}`),
-  );
-  await page.waitForTimeout(6000);
-  await revealAndHold(
-    page,
-    ['hxp-properties-sidebar', 'hxp-properties-sidebar-legacy', 'adf-info-drawer', 'adf-card-view'],
-    7000,
-    { label: 'properties' },
-  );
-  await beat(page, 'properties-sidebar');
-
-  // Beat 10 — Versions: upstream's sidebar over our VERSION and CHECKIN ports.
-  await stage(
-    page,
-    'Versions is upstream’s panel, driven by our VERSION and CHECKIN ports against Nuxeo.',
-  );
-  await clickTab(page, 'Versions').catch((e) => console.log(`  [scene] Versions: ${e.message}`));
-  await page.waitForTimeout(6000);
-  await revealAndHold(page, ['hxp-manage-versions-sidebar', 'adf-info-drawer-layout'], 6000, {
-    label: 'versions',
-  });
-  await beat(page, 'versions-sidebar');
+  // Properties and Versions were beats 9 and 10 here, over upstream's sidebars in browse tabs of
+  // those names. The tabs were removed on 2026-09-23 so the folder tabs match production browse,
+  // which keeps both panels on the document page.
 
   // Beat 11 — the Permissions tab, now upstream's own panel, then two tabs with no upstream
   // component in them at all. Permissions used to be in the second group: `hxp-browse-permissions`
