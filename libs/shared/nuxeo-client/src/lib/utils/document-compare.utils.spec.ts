@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { NuxeoDocument } from '../models/document.model';
 import {
   buildDocumentCompareSections,
@@ -44,6 +44,19 @@ describe('document-compare.utils', () => {
     // so on its own it cannot tell a threaded locale from an ignored one. German names the month
     // differently, which can only come from the argument.
     expect(formatCompareDate('2026-07-07T10:00:00.000Z', 'de-DE')).toBe('7. Juli 2026');
+  });
+
+  it('formatCompareDate keeps stable UTC day rendering while honouring locale', () => {
+    const spy = vi.spyOn(Date.prototype, 'toLocaleDateString').mockReturnValue('July 7, 2026');
+
+    formatCompareDate('2026-07-07T10:00:00.000Z', 'en-US');
+
+    expect(spy).toHaveBeenCalledWith('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
   });
 
   it('formatCompareUser renders username strings', () => {
