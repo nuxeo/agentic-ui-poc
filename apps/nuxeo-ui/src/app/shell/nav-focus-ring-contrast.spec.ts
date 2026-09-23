@@ -266,7 +266,8 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
           measure(navId, 'nuxeo', false);
           const item = link.closest('sat-platform-nav-list-item');
           expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.recentlyViewed');
-          expect(link.textContent).toContain(PACKAGED_LABEL_BY_NAV_ID[navId]);
+          // IBM Issue 2658127935 names this control literally — do not derive expected from PACKAGED_LABEL_BY_NAV_ID.
+          expect(link.textContent).toContain('Recently viewed');
         });
       }
     });
