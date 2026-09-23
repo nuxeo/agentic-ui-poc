@@ -9,6 +9,15 @@ import {
   ChangePasswordDialogData,
 } from './change-password-dialog.component';
 
+/**
+ * What the user types, and a mistyped confirmation.
+ *
+ * Named rather than inlined as `password123` / `password456`: this dialog only compares and trims
+ * two strings, so the literals carry no meaning, and password-shaped ones trip secret scanning.
+ */
+const ENTERED = 'the-value-the-user-typed';
+const MISTYPED = 'a-different-value';
+
 describe('ChangePasswordDialogComponent', () => {
   let component: ChangePasswordDialogComponent;
   let fixture: ComponentFixture<ChangePasswordDialogComponent>;
@@ -65,32 +74,32 @@ describe('ChangePasswordDialogComponent', () => {
   });
 
   it('canSave should return false when passwords do not match', () => {
-    component.password = 'password123';
-    component.confirm = 'password456';
+    component.password = ENTERED;
+    component.confirm = MISTYPED;
     expect(component.canSave()).toBe(false);
   });
 
   it('canSave should return false when password is set but confirm is empty', () => {
-    component.password = 'password123';
+    component.password = ENTERED;
     component.confirm = '';
     expect(component.canSave()).toBe(false);
   });
 
   it('canSave should return false when confirm is set but password is empty', () => {
     component.password = '';
-    component.confirm = 'password123';
+    component.confirm = ENTERED;
     expect(component.canSave()).toBe(false);
   });
 
   it('canSave should return true when passwords match and are non-empty', () => {
-    component.password = 'password123';
-    component.confirm = 'password123';
+    component.password = ENTERED;
+    component.confirm = ENTERED;
     expect(component.canSave()).toBe(true);
   });
 
   it('canSave should trim whitespace when comparing passwords', () => {
-    component.password = '  password123  ';
-    component.confirm = 'password123';
+    component.password = `  ${ENTERED}  `;
+    component.confirm = ENTERED;
     expect(component.canSave()).toBe(true);
   });
 
@@ -101,22 +110,22 @@ describe('ChangePasswordDialogComponent', () => {
   });
 
   it('save should do nothing when canSave returns false', () => {
-    component.password = 'password123';
+    component.password = ENTERED;
     component.confirm = 'different';
     component.save();
     expect(mockDialogRef.close).not.toHaveBeenCalled();
   });
 
   it('save should close dialog with trimmed password when canSave returns true', () => {
-    component.password = '  password123  ';
-    component.confirm = 'password123';
+    component.password = `  ${ENTERED}  `;
+    component.confirm = ENTERED;
     component.save();
-    expect(mockDialogRef.close).toHaveBeenCalledWith('password123');
+    expect(mockDialogRef.close).toHaveBeenCalledWith(ENTERED);
   });
 
   it('save should not close dialog when passwords do not match', () => {
-    component.password = 'password123';
-    component.confirm = 'password456';
+    component.password = ENTERED;
+    component.confirm = MISTYPED;
     component.save();
     expect(mockDialogRef.close).not.toHaveBeenCalled();
   });
