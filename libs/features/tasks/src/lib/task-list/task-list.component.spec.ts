@@ -155,23 +155,16 @@ describe('TaskListComponent', () => {
   });
 
   it('removes workflow prefix from task name', () => {
-    const task = {
-      ...mockTasks[0],
-      name: 'wf.serialDocumentReview.someComplexTaskName.title',
-    };
+    // Named rather than `task`, which would shadow the `task()` factory declared above.
+    const prefixedName = task({ name: 'wf.serialDocumentReview.someComplexTaskName.title' });
 
-    const label = component.taskLabel(task);
-    expect(label).toBe('Some Complex Task Name');
+    expect(component.taskLabel(prefixedName)).toBe('Some Complex Task Name');
   });
 
   it('capitalizes first letter of each word in task label', () => {
-    const task = {
-      ...mockTasks[0],
-      name: 'wf.test.reviewAndApprove.title',
-    };
+    const camelCaseName = task({ name: 'wf.test.reviewAndApprove.title' });
 
-    const label = component.taskLabel(task);
-    expect(label).toBe('Review And Approve');
+    expect(component.taskLabel(camelCaseName)).toBe('Review And Approve');
   });
 
   it('extracts workflow display name from workflowModelName', () => {
@@ -183,13 +176,9 @@ describe('TaskListComponent', () => {
   });
 
   it('handles camelCase in workflow names', () => {
-    const task = {
-      ...mockTasks[0],
-      workflowModelName: 'myCustomWorkflowProcess',
-    };
+    const camelCaseWorkflow = task({ workflowModelName: 'myCustomWorkflowProcess' });
 
-    const workflow = component.taskWorkflow(task);
-    expect(workflow).toBe('My Custom Workflow Process');
+    expect(component.taskWorkflow(camelCaseWorkflow)).toBe('My Custom Workflow Process');
   });
 
   it('can reload tasks manually', () => {

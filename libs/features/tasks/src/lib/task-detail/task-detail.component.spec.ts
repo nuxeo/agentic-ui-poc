@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
-import { vi, type MockInstance } from 'vitest';
+import { afterAll, beforeAll, vi, type MockInstance } from 'vitest';
 
 import {
   TaskService,
@@ -20,10 +20,22 @@ import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 import { TaskDetailComponent } from './task-detail.component';
 
-// Mock URL.createObjectURL for preview handling
+/**
+ * jsdom implements neither object-URL method, and the preview flow mints and revokes them.
+ *
+ * `vi.spyOn(URL, 'createObjectURL')` is not an option: `typeof URL.createObjectURL` is `'undefined'`
+ * under jsdom, and `spyOn` throws "not a function" on an absent property. So they are assigned, and
+ * `afterAll` removes them again — which is the restoration a spy would have provided, and without it
+ * these stubs outlive the file and leak into any other spec sharing the worker.
+ */
 beforeAll(() => {
   global.URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test');
   global.URL.revokeObjectURL = vi.fn();
+});
+
+afterAll(() => {
+  delete (URL as Partial<typeof URL>).createObjectURL;
+  delete (URL as Partial<typeof URL>).revokeObjectURL;
 });
 
 /**

@@ -7,7 +7,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateModule } from '@ngx-translate/core';
 import { Subject, of, type Observable } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CURRENT_USERNAME,
@@ -66,10 +66,21 @@ class ResizeObserverStub {
   }
 }
 
-// Mock URL.createObjectURL for blob handling
+/**
+ * jsdom implements neither object-URL method, and `loadPreviewBlob` mints one for every preview.
+ *
+ * `vi.spyOn(URL, 'createObjectURL')` cannot be used: the property is `undefined` under jsdom and
+ * `spyOn` throws on an absent one. Hence assignment, plus the `afterAll` below, without which these
+ * stubs outlive the file and leak into any other spec sharing the worker.
+ */
 beforeAll(() => {
   global.URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test');
   global.URL.revokeObjectURL = vi.fn();
+});
+
+afterAll(() => {
+  delete (URL as Partial<typeof URL>).createObjectURL;
+  delete (URL as Partial<typeof URL>).revokeObjectURL;
 });
 
 describe('TasksPageComponent — the MIME type bound to the viewer', () => {

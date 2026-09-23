@@ -12,6 +12,7 @@ import {
   beforeEach,
   afterEach,
   beforeAll,
+  afterAll,
   type MockInstance,
 } from 'vitest';
 
@@ -48,9 +49,17 @@ class ResizeObserverStub {
 beforeAll(() => {
   (globalThis as { ResizeObserver?: unknown }).ResizeObserver ??= ResizeObserverStub;
 
-  // jsdom has no object-URL support either, and the preview flow mints and revokes them.
+  // jsdom implements neither object-URL method, and the preview flow mints and revokes them.
+  // `vi.spyOn(URL, 'createObjectURL')` cannot be used: the property is `undefined` under jsdom and
+  // `spyOn` throws on an absent one. Hence assignment, plus the `afterAll` below — without it these
+  // stubs outlive the file and leak into any other spec sharing the worker.
   global.URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test-blob-url');
   global.URL.revokeObjectURL = vi.fn();
+});
+
+afterAll(() => {
+  delete (URL as Partial<typeof URL>).createObjectURL;
+  delete (URL as Partial<typeof URL>).revokeObjectURL;
 });
 
 /**
