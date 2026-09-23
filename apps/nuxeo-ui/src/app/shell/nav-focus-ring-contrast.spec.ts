@@ -54,6 +54,7 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
  * behind a sibling item's measurements.
  */
 const NAV_ITEMS_UNDER_TEST = [
+  { navId: 'app.navbar.dashboard', ticket: 'NXENG-893' },
   { navId: 'app.navbar.browse', ticket: 'NXENG-794' },
   { navId: 'app.navbar.browseAdfHx', ticket: 'NXENG-758' },
   { navId: 'app.navbar.search', ticket: 'NXENG-785' },
@@ -251,6 +252,15 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
         expect(Number.parseFloat(getComputedStyle(link).outlineOffset)).toBeLessThan(0);
       });
 
+      if (navId === 'app.navbar.dashboard') {
+        it('binds the packaged Dashboard entry id and label (NXENG-893)', () => {
+          measure(navId, 'nuxeo', false);
+          const item = link.closest('sat-platform-nav-list-item');
+          expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.dashboard');
+          expect(link.textContent).toContain(PACKAGED_LABEL_BY_NAV_ID[navId]);
+        });
+      }
+
       if (navId === 'app.navbar.administration') {
         it('binds the packaged Administration entry id and label (NXENG-795)', () => {
           measure(navId, 'nuxeo', false);
@@ -274,9 +284,7 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
       }
       for (const rule of Array.from(sheetRules)) {
         const styleRule = rule as CSSStyleRule;
-        const canonical = styleRule.selectorText
-          ?.replace(/\[_ngcontent-[^\]]+\]/g, '')
-          .trim();
+        const canonical = styleRule.selectorText?.replace(/\[_ngcontent-[^\]]+\]/g, '').trim();
         if (canonical === target) {
           matched = styleRule;
           break;
@@ -284,7 +292,9 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
       }
       if (matched) break;
     }
-    expect(matched).withContext(`stylesheet must contain ${target} without a comma list`).toBeDefined();
+    expect(matched)
+      .withContext(`stylesheet must contain ${target} without a comma list`)
+      .toBeDefined();
     expect(matched!.cssText).toMatch(/outline:\s*2px\s+solid/);
     expect(matched!.cssText).toMatch(/outline-offset:\s*-2px/);
   });
