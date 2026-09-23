@@ -132,6 +132,11 @@ describe('platform sidebar — user profile label in name (NXENG-894)', () => {
 
     const name = accessibleName(button);
     const visible = visibleLabelJoined(button);
+    expect(visible)
+      .withContext(
+        'profile button must expose a non-empty visible display name (not only aria-label)',
+      )
+      .toBe('Administrator');
     expect(name.toLowerCase())
       .withContext(
         `accessible name "${name}" must contain the full visible label "${visible}" (IBM label_name_visible)`,
