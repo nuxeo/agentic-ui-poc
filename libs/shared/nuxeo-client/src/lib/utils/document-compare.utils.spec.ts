@@ -49,14 +49,22 @@ describe('document-compare.utils', () => {
   it('formatCompareDate keeps stable UTC day rendering while honouring locale', () => {
     const spy = vi.spyOn(Date.prototype, 'toLocaleDateString').mockReturnValue('July 7, 2026');
 
-    formatCompareDate('2026-07-07T10:00:00.000Z', 'en-US');
+    // Restored in a `finally`, because this spy is on `Date.prototype` and so is global. Left in
+    // place it made every later test in this file render *every* date as "July 7, 2026" — including
+    // the July 7 vs July 8 section comparison below, which would then compare two identical strings
+    // and pass whatever the formatter or the diff did.
+    try {
+      formatCompareDate('2026-07-07T10:00:00.000Z', 'en-US');
 
-    expect(spy).toHaveBeenCalledWith('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      timeZone: 'UTC',
-    });
+      expect(spy).toHaveBeenCalledWith('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'UTC',
+      });
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('formatCompareUser renders username strings', () => {
@@ -140,5 +148,15 @@ describe('document-compare.utils', () => {
     expect(
       sections.flatMap((section) => section.fields).some((row) => row.key === 'dc:description'),
     ).toBe(false);
+
+    // `dc:modified` differs only after formatting — July 7 against July 8. This is the assertion
+    // the unrestored `Date.prototype.toLocaleDateString` spy above used to suppress: with every
+    // date rendering as "July 7, 2026", the two sides compared equal and this row vanished from
+    // the differences, so a formatter or diff regression here would have gone unnoticed.
+    expect(
+      sections
+        .flatMap((section) => section.fields)
+        .some((row) => row.key === 'dc:modified' && row.differs),
+    ).toBe(true);
   });
 });

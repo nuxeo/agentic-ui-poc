@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type MockInstance } from 'vitest';
 import { Subject, of, throwError } from 'rxjs';
 
 import {
@@ -12,6 +12,8 @@ import {
 import {
   AiGatewayService,
   AiFeatureFlagService,
+  type AnomaliesResponse,
+  type AuditAnomaly,
   type AuditFilterResponse,
   type AuditSummaryResponse,
 } from '@agentic-ui/shared/ai-client';
@@ -26,11 +28,30 @@ describe('AdminAuditPageComponent', () => {
     getEventTypes: ReturnType<typeof vi.fn>;
     getEventCategories: ReturnType<typeof vi.fn>;
   };
+  /**
+   * Each double is bound to its gateway method rather than left as a bare `vi.fn`.
+   *
+   * Untyped, they accepted any response shape, and the defaults below were off-model in three ways:
+   * the anomalies carried a `title` that `AuditAnomaly` does not have while omitting the required
+   * `events` and `timestamp`, and the summary omitted the required `topUsers` and `highlights`. That
+   * is the fixture-drift hole this branch exists to close, still open in this file.
+   */
   let aiGateway: {
-    detectAnomalies: ReturnType<typeof vi.fn>;
-    auditNlFilter: ReturnType<typeof vi.fn>;
-    auditSummarize: ReturnType<typeof vi.fn>;
+    detectAnomalies: MockInstance<AiGatewayService['detectAnomalies']>;
+    auditNlFilter: MockInstance<AiGatewayService['auditNlFilter']>;
+    auditSummarize: MockInstance<AiGatewayService['auditSummarize']>;
   };
+
+  /** A complete `AuditAnomaly`. */
+  function anomaly(over: Partial<AuditAnomaly> = {}): AuditAnomaly {
+    return {
+      description: '40 deletes in a minute',
+      severity: 'high',
+      events: ['documentRemoved'],
+      timestamp: '2026-03-01T10:00:00.000Z',
+      ...over,
+    };
+  }
 
   /**
    * A complete `AuditEntry`.
@@ -99,17 +120,27 @@ describe('AdminAuditPageComponent', () => {
     };
 
     aiGateway = {
-      detectAnomalies: vi.fn().mockReturnValue(
+      detectAnomalies: vi.fn<AiGatewayService['detectAnomalies']>().mockReturnValue(
         of({
           anomalies: [
-            { severity: 'high', title: 'Mass deletion', description: '40 deletes in a minute' },
-            { severity: 'low', title: 'Odd hour login', description: '03:14 login' },
+            anomaly({ description: 'Mass deletion' }),
+            anomaly({
+              description: 'Odd hour login',
+              severity: 'low',
+              events: ['loginSuccess'],
+              timestamp: '2026-03-01T03:14:00.000Z',
+            }),
           ],
           summary: 'One high-severity anomaly in the last 24 hours.',
         }),
       ),
-      auditNlFilter: vi.fn().mockReturnValue(of({ explanation: 'Filtered to jdoe' })),
-      auditSummarize: vi.fn().mockReturnValue(of({ summary: 'Mostly edits.', stats: [] })),
+      auditNlFilter: vi
+        .fn<AiGatewayService['auditNlFilter']>()
+        .mockReturnValue(of({ explanation: 'Filtered to jdoe' })),
+      // `AuditSummaryResponse` requires `topUsers` and `highlights` as well as `summary`/`stats`.
+      auditSummarize: vi
+        .fn<AiGatewayService['auditSummarize']>()
+        .mockReturnValue(of({ summary: 'Mostly edits.', stats: [], topUsers: [], highlights: [] })),
     };
 
     await TestBed.configureTestingModule({
@@ -303,7 +334,10 @@ describe('AdminAuditPageComponent', () => {
     });
 
     it('should treat a response with no anomalies as an empty feed', () => {
-      aiGateway.detectAnomalies.mockReturnValue(of({}));
+      // `AnomaliesResponse` requires both fields, so an empty object is off-model on purpose: this
+      // pins `res.anomalies ?? []` and `res.summary ?? ''`, which only a response missing them
+      // exercises. Making the fixture model-complete would delete what the test is for.
+      aiGateway.detectAnomalies.mockReturnValue(of({} as unknown as AnomaliesResponse));
 
       component.loadAnomalies();
 
@@ -387,7 +421,9 @@ describe('AdminAuditPageComponent', () => {
     it('should leave filters the AI filter did not mention untouched', () => {
       component.principalName = 'existing-user';
       component.eventCategory = 'existing-category';
-      aiGateway.auditNlFilter.mockReturnValue(of({ eventId: 'documentRemoved' }));
+      // In-model: only `explanation` is required on `AuditFilterResponse`, and this case is about
+      // the filter fields it does *not* return, so an empty explanation says exactly that.
+      aiGateway.auditNlFilter.mockReturnValue(of({ eventId: 'documentRemoved', explanation: '' }));
       component.nlQuery = 'deletions';
 
       component.onNlSearch();
@@ -398,7 +434,11 @@ describe('AdminAuditPageComponent', () => {
     });
 
     it('should record an empty explanation when the filter response omits one', () => {
-      aiGateway.auditNlFilter.mockReturnValue(of({ principalName: 'jdoe' }));
+      // Off-model on purpose, and the name says why: `explanation` is required on the model, so the
+      // only way to exercise `res.explanation || ''` against a genuinely absent field is to omit it.
+      aiGateway.auditNlFilter.mockReturnValue(
+        of({ principalName: 'jdoe' } as unknown as AuditFilterResponse),
+      );
       component.nlQuery = 'jdoe';
 
       component.onNlSearch();
@@ -464,7 +504,12 @@ describe('AdminAuditPageComponent', () => {
       expect(aiGateway.auditSummarize).toHaveBeenCalledWith(mockEntries);
       expect(component.summaryOpen()).toBe(true);
       expect(component.summaryLoading()).toBe(false);
-      expect(component.auditSummary()).toEqual({ summary: 'Mostly edits.', stats: [] });
+      expect(component.auditSummary()).toEqual({
+        summary: 'Mostly edits.',
+        stats: [],
+        topUsers: [],
+        highlights: [],
+      });
     });
 
     it('should show the panel loading while the summary is in flight', () => {

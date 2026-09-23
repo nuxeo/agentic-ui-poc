@@ -1,11 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type MockInstance } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, signal, type WritableSignal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Subject, of, throwError } from 'rxjs';
 import { AdminAnalyticsPageComponent } from './admin-analytics-page.component';
 import { AdministrationService } from '@nuxeo-satori/platform/nuxeo-client';
-import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
+import {
+  AiGatewayService,
+  AiFeatureFlagService,
+  type AnomaliesResponse,
+  type AuditAnomaly,
+} from '@agentic-ui/shared/ai-client';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 describe('AdminAnalyticsPageComponent', () => {
@@ -16,9 +21,27 @@ describe('AdminAnalyticsPageComponent', () => {
     getNxqlTotalSize: ReturnType<typeof vi.fn>;
     nxqlSearch: ReturnType<typeof vi.fn>;
   };
+  /**
+   * Bound to the gateway method, not a bare `vi.fn`.
+   *
+   * An untyped double accepts any response shape, which is how the anomaly fixtures below omitted the
+   * required `events` field on `AuditAnomaly` without `spec-types` noticing — the same fixture-drift
+   * hole this branch exists to close.
+   */
   let mockAiGatewayService: {
-    detectAnomalies: ReturnType<typeof vi.fn>;
+    detectAnomalies: MockInstance<AiGatewayService['detectAnomalies']>;
   };
+
+  /** A complete `AuditAnomaly`. */
+  function anomaly(over: Partial<AuditAnomaly> = {}): AuditAnomaly {
+    return {
+      description: 'Test anomaly',
+      severity: 'high',
+      events: ['documentRemoved'],
+      timestamp: '2026-09-22T10:00:00Z',
+      ...over,
+    };
+  }
   /**
    * `AiFeatureFlagService` exposes `aiEnabled` as a signal, and this template gates its whole AI
    * anomalies tab on `featureFlags.aiEnabled()`.
@@ -37,7 +60,7 @@ describe('AdminAnalyticsPageComponent', () => {
     };
 
     mockAiGatewayService = {
-      detectAnomalies: vi.fn(),
+      detectAnomalies: vi.fn<AiGatewayService['detectAnomalies']>(),
     };
 
     aiEnabled = signal(true);
@@ -309,9 +332,7 @@ describe('AdminAnalyticsPageComponent', () => {
   describe('runAnomalyDetection', () => {
     it('should call AI gateway with current time range signal value', () => {
       const mockResponse = {
-        anomalies: [
-          { timestamp: '2026-09-22T10:00:00Z', severity: 'high', description: 'Test anomaly' },
-        ],
+        anomalies: [anomaly()],
         summary: 'Test summary',
       };
       component.aiAnomalyTimeRange.set('7d');
@@ -325,8 +346,12 @@ describe('AdminAnalyticsPageComponent', () => {
     it('should update anomalies and summary on success', () => {
       const mockResponse = {
         anomalies: [
-          { timestamp: '2026-09-22T10:00:00Z', severity: 'high', description: 'Test anomaly 1' },
-          { timestamp: '2026-09-22T11:00:00Z', severity: 'medium', description: 'Test anomaly 2' },
+          anomaly({ description: 'Test anomaly 1' }),
+          anomaly({
+            description: 'Test anomaly 2',
+            severity: 'medium',
+            timestamp: '2026-09-22T11:00:00Z',
+          }),
         ],
         summary: 'Found 2 anomalies in the last 24 hours',
       };
@@ -358,7 +383,7 @@ describe('AdminAnalyticsPageComponent', () => {
       // `subscribe()` and the flag is already back to false, so the test only ever saw false at both
       // ends — deleting `aiAnomalyLoading.set(true)` from `runAnomalyDetection` would have left it
       // green. The `true` assertion in the middle is the one that makes this test earn its name.
-      const pending = new Subject<{ anomalies: unknown[]; summary: string }>();
+      const pending = new Subject<AnomaliesResponse>();
       mockAiGatewayService.detectAnomalies.mockReturnValue(pending.asObservable());
 
       expect(component.aiAnomalyLoading()).toBe(false);
