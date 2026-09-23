@@ -128,7 +128,8 @@ html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-
  * in Karma specs such as `nav-focus-ring-contrast.spec.ts`,
  * `personal-space-nav-focus-visible.spec.ts`, and
  * `nav-focus-ring-knowledge-discovery.spec.ts`. NXENG-796 pins the expand/collapse rail toggle in
- * `platform-nav-expand-focus-ring.spec.ts`.
+ * `platform-nav-expand-focus-ring.spec.ts`. NXENG-889 pins the sidebar user profile control in
+ * `platform-nav-user-profile-focus-ring.spec.ts`.
  *
  * Satori draws the ring itself, as
  * `outline: 2px solid var(--sat-platform-nav-outline, var(--mat-sys-outline-variant, #c8c6d0))`
@@ -239,6 +240,20 @@ sat-platform-nav .sat-platform-nav-item:focus {
  * as `.header-search-input:focus` in `app-shell.component.scss` (NXENG-775).
  */
 sat-platform-nav #sat-platform-nav-title-icon:focus {
+  outline: 2px solid var(--sat-platform-nav-outline, var(--mat-sys-outline-variant, #c8c6d0));
+  outline-offset: -2px;
+}
+
+/*
+ * Sidebar user profile control — NXENG-889 (IBM 2877563335).
+ *
+ * Same IBM `style_focus_visible` / `:focus`-only lookup as the expand toggle above. The
+ * profile button is a `.sat-platform-nav-item`, but Material's tooltip trigger styles and
+ * the vendor's `:focus-visible`-only ring leave a sub-2px default outline on `:focus` that
+ * Equal Access reads as no indicator. Mirror the nav ring on a standalone `:focus` selector
+ * keyed by the reported id.
+ */
+sat-platform-nav #sat-platform-nav-user-profile:focus {
   outline: 2px solid var(--sat-platform-nav-outline, var(--mat-sys-outline-variant, #c8c6d0));
   outline-offset: -2px;
 }
