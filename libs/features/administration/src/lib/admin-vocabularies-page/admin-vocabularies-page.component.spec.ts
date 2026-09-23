@@ -169,10 +169,18 @@ describe('AdminVocabulariesPageComponent', () => {
     });
 
     it('should set loadingList to true initially', () => {
+      // One `forkJoin` input is held pending, so the in-flight state is observable at all. With both
+      // arms synchronous the join completes during `subscribe()` and the flag is already false —
+      // deleting `loadingList.set(true)` from `ngOnInit` would have left this green.
+      const pendingNames = new Subject<string[]>();
+      mockDirectoryService.listDirectoryNames.mockReturnValue(pendingNames.asObservable());
       component.loadingList.set(false);
 
       component.ngOnInit();
+      expect(component.loadingList()).toBe(true);
 
+      pendingNames.next(mockDirectoryNames);
+      pendingNames.complete();
       expect(component.loadingList()).toBe(false);
     });
   });
@@ -527,12 +535,20 @@ describe('AdminVocabulariesPageComponent', () => {
     });
 
     it('should set mutating state during operation', () => {
+      // The delete is held pending so `mutating` is observable as true. With `of(undefined)` the
+      // request completes during `subscribe()` and only the false end-state was ever asserted, so
+      // removing `mutating.set(true)` would not have failed this.
+      const pendingDelete = new Subject<void>();
+      mockDirectoryService.deleteEntry.mockReturnValue(pendingDelete.asObservable());
       mockDialog.open.mockReturnValue({
         afterClosed: vi.fn().mockReturnValue(of(true)),
       } as never);
 
       component.confirmDeleteEntry(entryToDelete);
+      expect(component.mutating()).toBe(true);
 
+      pendingDelete.next();
+      pendingDelete.complete();
       expect(component.mutating()).toBe(false);
     });
   });
@@ -611,12 +627,18 @@ describe('AdminVocabulariesPageComponent', () => {
     });
 
     it('should set mutating state during operation', () => {
+      // Same reasoning as the delete case: the create is held pending so the `true` half is real.
+      const pendingCreate = new Subject<void>();
+      mockDirectoryService.createEntry.mockReturnValue(pendingCreate.asObservable());
       mockDialog.open.mockReturnValue({
         afterClosed: vi.fn().mockReturnValue(of(createResult)),
       } as never);
 
       component.openCreateEntry();
+      expect(component.mutating()).toBe(true);
 
+      pendingCreate.next();
+      pendingCreate.complete();
       expect(component.mutating()).toBe(false);
     });
 

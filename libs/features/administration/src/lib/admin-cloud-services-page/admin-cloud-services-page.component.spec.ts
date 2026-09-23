@@ -16,7 +16,7 @@ describe('AdminCloudServicesPageComponent', () => {
   let fixture: ComponentFixture<AdminCloudServicesPageComponent>;
   let adminService: { listOAuth2Providers: ReturnType<typeof vi.fn> };
 
-  const mockProviders = [
+  const mockProviders: NuxeoOAuth2Provider[] = [
     {
       serviceName: 'GoogleDrive',
       description: 'Google Drive OAuth2 provider',
@@ -27,7 +27,7 @@ describe('AdminCloudServicesPageComponent', () => {
       description: 'Dropbox OAuth2 provider',
       enabled: false,
     },
-  ] as unknown as NuxeoOAuth2Provider[];
+  ];
 
   beforeEach(async () => {
     adminService = {

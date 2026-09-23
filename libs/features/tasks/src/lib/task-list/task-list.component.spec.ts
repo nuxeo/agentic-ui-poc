@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { TaskService, CURRENT_USERNAME, type NuxeoTask } from '@nuxeo-satori/platform/nuxeo-client';
@@ -115,10 +115,18 @@ describe('TaskListComponent', () => {
   });
 
   it('sets loading state during task fetch', () => {
+    // Starts from false and holds the request pending, so this observes the transition `loadTasks`
+    // performs rather than the signal's declared default. Asserting the default `true` before
+    // `detectChanges()` proved nothing about `loadTasks` — deleting `this.loading.set(true)` from it
+    // would have left the old version of this test green.
+    const pending = new Subject<NuxeoTask[]>();
+    mockTaskService.getUserTasks.mockReturnValue(pending.asObservable());
+    component.loading.set(false);
+
+    component.loadTasks();
     expect(component.loading()).toBe(true);
 
-    fixture.detectChanges();
-
+    pending.next(mockTasks);
     expect(component.loading()).toBe(false);
   });
 

@@ -50,14 +50,6 @@
       "until": "2026-11-30",
       "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
     },
-    "libs/shared/ai-client/src/lib/ai-chat.service.ts": {
-      "until": "2027-06-30",
-      "reason": "Excluded from coverage instrumentation in libs/shared/ai-client/vite.config.mts. Thin client over AI.* Nuxeo Automation operations that ship in a separate marketplace package which is not in this repo, so there is no local backend to assert against and an absent package is an expected HTTP 500 rather than a client defect. The code is untested, not verified: excluding it raised the reported shared-ai-client figure from 15.98% to 35.71% without adding a single test."
-    },
-    "libs/shared/ai-client/src/lib/ai-gateway.service.ts": {
-      "until": "2027-06-30",
-      "reason": "Excluded from coverage instrumentation in libs/shared/ai-client/vite.config.mts. Thin client over AI.* Nuxeo Automation operations that ship in a separate marketplace package which is not in this repo, so there is no local backend to assert against and an absent package is an expected HTTP 500 rather than a client defect. The code is untested, not verified: excluding it raised the reported shared-ai-client figure from 15.98% to 35.71% without adding a single test."
-    },
     "libs/shared/nuxeo-client/src/lib/constants/avatar-colors.ts": {
       "until": "2026-11-30",
       "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."

@@ -288,7 +288,10 @@ describe('TaskDetailComponent', () => {
     });
 
     it('returns empty array when taskInfo is missing', () => {
-      component.task.set({ ...mockTask, taskInfo: undefined } as any);
+      // `taskInfo` is required on `NuxeoTask`, so this is an off-model probe: Nuxeo omits the block
+      // for a task with no available actions, and `?.taskActions ?? []` is what absorbs it. Cast
+      // through `unknown` rather than `any` so it crosses exactly that boundary and nothing else.
+      component.task.set({ ...mockTask, taskInfo: undefined } as unknown as NuxeoTask);
 
       expect(component.actions).toEqual([]);
     });
@@ -645,7 +648,7 @@ describe('TaskDetailComponent', () => {
     it('revokes the object URL when the component is destroyed', () => {
       fixture.detectChanges();
       expect(component.docPreviewUrl()).not.toBeNull();
-      (URL.revokeObjectURL as any).mockClear();
+      vi.mocked(URL.revokeObjectURL).mockClear();
 
       fixture.destroy();
 

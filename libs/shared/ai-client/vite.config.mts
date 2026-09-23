@@ -12,6 +12,8 @@ export default defineConfig(() => ({
     globals: true,
     environment: 'jsdom',
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    // Added with the service specs: they use the TestBed, which needs an initialised environment.
+    setupFiles: ['src/test-setup.ts'],
     reporters: ['default'],
     // Matches the other libraries: the Vitest default pool has crashed under Nx/CI here.
     pool: 'threads',
@@ -19,10 +21,6 @@ export default defineConfig(() => ({
       reportsDirectory: '../../../coverage/libs/shared/ai-client',
       provider: 'v8' as const,
       reporter: ['text', 'html', 'clover', 'json', 'lcov'],
-      // The AI backend is not in this repo: these are thin clients over `AI.*` Nuxeo Automation
-      // operations that ship in a separate marketplace package, so an absent package is an expected
-      // HTTP 500 rather than a client defect, and there is nothing local to assert against.
-      exclude: ['src/lib/ai-chat.service.ts', 'src/lib/ai-gateway.service.ts'],
     },
   },
 }));

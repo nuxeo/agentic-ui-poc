@@ -503,7 +503,7 @@ describe('AdminNxqlSearchPageComponent', () => {
         type: 'File',
         lastModified: '2026-09-21T10:00:00Z',
         properties: {
-          'dc:lastContributor': 123 as any,
+          'dc:lastContributor': 123,
         },
       };
       expect(component.lastContributor(doc)).toBe('123');

@@ -130,15 +130,17 @@ describe('TasksPageComponent', () => {
     },
   };
 
-  const mockUser = {
+  const mockUser: NuxeoUser = {
+    'entity-type': 'user',
     id: 'user:john',
     properties: {
       username: 'john',
       firstName: 'John',
       lastName: 'Doe',
       email: 'john@example.com',
+      groups: [],
     },
-  } as unknown as NuxeoUser;
+  };
 
   beforeEach(() => {
     // Every `vi.fn` here is parameterised with the service method's own type. A bare `vi.fn()`
@@ -489,7 +491,10 @@ describe('TasksPageComponent', () => {
     });
 
     it('should return early when the task has no workflow instance', () => {
-      component.selectedTask.set({ ...mockTask, workflowInstanceId: undefined } as any);
+      component.selectedTask.set({
+        ...mockTask,
+        workflowInstanceId: undefined,
+      } as unknown as NuxeoTask);
       component.abandonWorkflow();
       expect(mockWorkflowService.cancelWorkflow).not.toHaveBeenCalled();
     });
@@ -558,7 +563,7 @@ describe('TasksPageComponent', () => {
       component.delegateInput = 'jo';
       component.delegateActors = ['user:john'];
       component.delegateComment = 'Please handle';
-      component.delegateUserResults.set([mockUser as any]);
+      component.delegateUserResults.set([mockUser]);
 
       component.closeDelegatePanel();
 
@@ -581,7 +586,7 @@ describe('TasksPageComponent', () => {
 
     it('should not search delegate users for fewer than two characters', () => {
       mockUserService.searchUsers.mockClear();
-      component.delegateUserResults.set([mockUser as any]);
+      component.delegateUserResults.set([mockUser]);
       component.delegateInput = 'a';
 
       component.searchDelegateUsers();
@@ -593,7 +598,7 @@ describe('TasksPageComponent', () => {
     it('should add delegate actor and clear the search state', () => {
       component.delegateActors = [];
       component.delegateInput = 'jo';
-      component.delegateUserResults.set([mockUser as any]);
+      component.delegateUserResults.set([mockUser]);
 
       component.addDelegateActor('user:john');
 
@@ -679,7 +684,7 @@ describe('TasksPageComponent', () => {
       component.reassignInput = 'ja';
       component.reassignActors = ['user:jane'];
       component.reassignComment = 'Reassigning';
-      component.reassignUserResults.set([mockUser as any]);
+      component.reassignUserResults.set([mockUser]);
 
       component.closeReassignPanel();
 
@@ -702,7 +707,7 @@ describe('TasksPageComponent', () => {
 
     it('should not search reassign users for fewer than two characters', () => {
       mockUserService.searchUsers.mockClear();
-      component.reassignUserResults.set([mockUser as any]);
+      component.reassignUserResults.set([mockUser]);
       component.reassignInput = 'a';
 
       component.searchReassignUsers();
@@ -714,7 +719,7 @@ describe('TasksPageComponent', () => {
     it('should add a reassign actor and clear the search state', () => {
       component.reassignActors = [];
       component.reassignInput = 'ja';
-      component.reassignUserResults.set([mockUser as any]);
+      component.reassignUserResults.set([mockUser]);
 
       component.addReassignActor('user:jane');
 
@@ -797,7 +802,7 @@ describe('TasksPageComponent', () => {
     });
 
     it('should return empty actions when taskInfo is missing', () => {
-      component.selectTask({ ...mockTask, taskInfo: undefined } as any);
+      component.selectTask({ ...mockTask, taskInfo: undefined } as unknown as NuxeoTask);
       expect(component.actions).toEqual([]);
     });
 
@@ -810,7 +815,9 @@ describe('TasksPageComponent', () => {
     });
 
     it('should not report a task with no due date as overdue', () => {
-      expect(component.isOverdue({ ...mockTask, dueDate: undefined } as any)).toBe(false);
+      expect(component.isOverdue({ ...mockTask, dueDate: undefined } as unknown as NuxeoTask)).toBe(
+        false,
+      );
     });
 
     it('should expose the actors assigned to the selected task', () => {
@@ -824,7 +831,7 @@ describe('TasksPageComponent', () => {
     });
 
     it('should expose delegated actors on the selected task', () => {
-      component.selectTask({ ...mockTask, delegatedActors: [{ id: 'user:jane' }] } as any);
+      component.selectTask({ ...mockTask, delegatedActors: [{ id: 'user:jane' }] });
       expect(component.delegatedActorsList).toEqual(['user:jane']);
     });
 
@@ -926,7 +933,7 @@ describe('TasksPageComponent', () => {
     it('should revoke the previous object URL when the selection changes', () => {
       component.selectTask(mockTask);
       expect(component.rawPreviewUrl()).not.toBeNull();
-      (URL.revokeObjectURL as any).mockClear();
+      vi.mocked(URL.revokeObjectURL).mockClear();
 
       component.selectTask({ ...mockTask, id: 'task-2', targetDocumentIds: [] });
 
@@ -1017,7 +1024,10 @@ describe('TasksPageComponent', () => {
     });
 
     it('should not open the graph panel when the task has no workflow instance', () => {
-      component.selectedTask.set({ ...mockTask, workflowInstanceId: undefined } as any);
+      component.selectedTask.set({
+        ...mockTask,
+        workflowInstanceId: undefined,
+      } as unknown as NuxeoTask);
 
       component.openGraphPanel();
 
@@ -1075,11 +1085,20 @@ describe('TasksPageComponent', () => {
   });
 
   describe('Task Comments', () => {
+    /**
+     * Sets `selectedTask` with a `comments` array in whichever shape Nuxeo happened to send.
+     *
+     * `NuxeoTask.comments` is `{ author; text; date }[]`, but `taskComments` exists precisely
+     * because the server also sends bare strings and the `{ comment, creationDate }` spelling. Each
+     * case below is therefore off-model on purpose; the cast is confined to this helper so the
+     * individual tests read cleanly and no `any` is involved.
+     */
+    function selectTaskWithComments(comments: readonly unknown[]): void {
+      component.selectedTask.set({ ...mockTask, comments } as unknown as NuxeoTask);
+    }
+
     it('should normalise object comments', () => {
-      component.selectedTask.set({
-        ...mockTask,
-        comments: [{ author: 'admin', text: 'Looks good', date: '2026-01-01' }],
-      } as any);
+      selectTaskWithComments([{ author: 'admin', text: 'Looks good', date: '2026-01-01' }]);
 
       expect(component.taskComments).toEqual([
         { author: 'admin', text: 'Looks good', date: '2026-01-01' },
@@ -1087,16 +1106,15 @@ describe('TasksPageComponent', () => {
     });
 
     it('should normalise plain-string comments', () => {
-      component.selectedTask.set({ ...mockTask, comments: ['Just a string'] } as any);
+      selectTaskWithComments(['Just a string']);
 
       expect(component.taskComments).toEqual([{ author: '', text: 'Just a string', date: '' }]);
     });
 
     it('should accept the alternate `comment` and `creationDate` keys', () => {
-      component.selectedTask.set({
-        ...mockTask,
-        comments: [{ author: 'admin', comment: 'Via comment key', creationDate: '2026-02-02' }],
-      } as any);
+      selectTaskWithComments([
+        { author: 'admin', comment: 'Via comment key', creationDate: '2026-02-02' },
+      ]);
 
       expect(component.taskComments).toEqual([
         { author: 'admin', text: 'Via comment key', date: '2026-02-02' },
@@ -1104,7 +1122,7 @@ describe('TasksPageComponent', () => {
     });
 
     it('should expose no comments when the task has none', () => {
-      component.selectedTask.set({ ...mockTask, comments: undefined } as any);
+      component.selectedTask.set({ ...mockTask, comments: undefined } as unknown as NuxeoTask);
       expect(component.taskComments).toEqual([]);
     });
   });
@@ -1183,7 +1201,9 @@ describe('TasksPageComponent', () => {
       expect(component.dueDateFormatted({ ...mockTask, dueDate: '2026-03-05T00:00:00.000Z' })).toBe(
         'March 5, 2026',
       );
-      expect(component.dueDateFormatted({ ...mockTask, dueDate: undefined } as any)).toBe('');
+      expect(
+        component.dueDateFormatted({ ...mockTask, dueDate: undefined } as unknown as NuxeoTask),
+      ).toBe('');
     });
 
     it('should label a future due date as "Due in" and a past one as overdue', () => {
@@ -1208,7 +1228,9 @@ describe('TasksPageComponent', () => {
     });
 
     it('should produce no due label without a due date', () => {
-      expect(component.dueLabel({ ...mockTask, dueDate: undefined } as any)).toBe('');
+      expect(component.dueLabel({ ...mockTask, dueDate: undefined } as unknown as NuxeoTask)).toBe(
+        '',
+      );
     });
   });
 

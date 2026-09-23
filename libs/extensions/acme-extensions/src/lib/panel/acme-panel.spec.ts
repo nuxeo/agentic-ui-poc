@@ -7,6 +7,7 @@ import {
   EMPTY_EXTENSION_RULE_CONTEXT,
   ExtensionActionRegistry,
   ExtensionRuleContextService,
+  type ExtensionRuleContext,
 } from '@nuxeo-satori/platform/extensions';
 
 import { AcmePanelComponent } from './acme-panel';
@@ -107,10 +108,20 @@ describe('AcmePanelComponent', () => {
   });
 
   it('calls execute with current context', () => {
-    const specificContext = {
+    // Declared `ExtensionRuleContext`, not inferred. `document` is a full `NuxeoDocument | null` on
+    // the model, and a `{ uid }` literal only slipped through because `mockRuleContext.context` is an
+    // untyped `vi.fn` — so `spec-types` could not see the mismatch.
+    const specificContext: ExtensionRuleContext = {
       ...EMPTY_EXTENSION_RULE_CONTEXT,
       url: '/documents/test',
-      document: { uid: 'doc-1' },
+      document: {
+        uid: 'doc-1',
+        title: 'doc-1',
+        type: 'File',
+        path: '/default-domain/workspaces/doc-1',
+        lastModified: '2026-01-01T00:00:00.000Z',
+        properties: {},
+      },
     };
 
     mockRuleContext.context.mockReturnValue(specificContext);

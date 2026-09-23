@@ -145,12 +145,12 @@
       "sCovered": 76
     },
     "shared-ai-client": {
-      "lines": 35.71,
-      "statements": 35.71,
-      "branches": 90.63,
-      "functions": 62.5,
-      "sTotal": 98,
-      "sCovered": 35
+      "lines": 97.72,
+      "statements": 97.72,
+      "branches": 98.7,
+      "functions": 94.44,
+      "sTotal": 219,
+      "sCovered": 214
     },
     "tasks": {
       "lines": 97.4,

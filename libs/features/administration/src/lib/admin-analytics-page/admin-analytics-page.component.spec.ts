@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, signal, type WritableSignal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { AdminAnalyticsPageComponent } from './admin-analytics-page.component';
 import { AdministrationService } from '@nuxeo-satori/platform/nuxeo-client';
 import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
@@ -354,16 +354,19 @@ describe('AdminAnalyticsPageComponent', () => {
     });
 
     it('should set loading state correctly during async operation', () => {
-      const mockResponse = {
-        anomalies: [],
-        summary: 'No anomalies detected',
-      };
-      mockAiGatewayService.detectAnomalies.mockReturnValue(of(mockResponse));
+      // A pending `Subject`, not `of(...)`. With a synchronous observable the response lands during
+      // `subscribe()` and the flag is already back to false, so the test only ever saw false at both
+      // ends — deleting `aiAnomalyLoading.set(true)` from `runAnomalyDetection` would have left it
+      // green. The `true` assertion in the middle is the one that makes this test earn its name.
+      const pending = new Subject<{ anomalies: unknown[]; summary: string }>();
+      mockAiGatewayService.detectAnomalies.mockReturnValue(pending.asObservable());
 
       expect(component.aiAnomalyLoading()).toBe(false);
 
       component.runAnomalyDetection();
+      expect(component.aiAnomalyLoading()).toBe(true);
 
+      pending.next({ anomalies: [], summary: 'No anomalies detected' });
       expect(component.aiAnomalyLoading()).toBe(false);
     });
   });
