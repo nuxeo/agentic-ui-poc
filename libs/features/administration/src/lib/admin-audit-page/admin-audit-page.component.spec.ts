@@ -32,35 +32,61 @@ describe('AdminAuditPageComponent', () => {
     auditSummarize: ReturnType<typeof vi.fn>;
   };
 
-  const mockEntries = [
-    {
+  /**
+   * A complete `AuditEntry`.
+   *
+   * These were object literals behind `as unknown as AuditEntry[]`, which is the drift this branch
+   * set out to remove — the cast silences exactly the check that would notice the model gaining or
+   * renaming a field. `AuditEntry` also requires `docLifeCycle`, `docPath`, `docType`,
+   * `repositoryId`, `logDate` and `extended`, none of which the old fixtures supplied.
+   */
+  function auditEntry(over: Partial<AuditEntry> = {}): AuditEntry {
+    return {
       id: 1,
       eventId: 'documentModified',
       eventDate: '2026-03-01T10:00:00.000Z',
+      logDate: '2026-03-01T10:00:01.000Z',
       principalName: 'Administrator',
       category: 'eventDocumentCategory',
-      docUUID: 'doc-1',
       comment: 'Edited the title',
-    },
-    {
+      docUUID: 'doc-1',
+      docPath: '/default-domain/workspaces/doc-1',
+      docType: 'File',
+      docLifeCycle: 'project',
+      repositoryId: 'default',
+      extended: {},
+      ...over,
+    };
+  }
+
+  const mockEntries: AuditEntry[] = [
+    auditEntry(),
+    auditEntry({
       id: 2,
       eventId: 'documentSecurityUpdated',
       eventDate: '2026-03-02T10:00:00.000Z',
+      logDate: '2026-03-02T10:00:01.000Z',
       principalName: 'jdoe',
       category: 'eventLifeCycleCategory',
       docUUID: 'doc-2',
+      docPath: '/default-domain/workspaces/doc-2',
       comment: '',
-    },
-  ] as unknown as AuditEntry[];
+    }),
+  ];
 
-  const mockEventTypes = [
-    { id: 'documentModified', label: 'Document modified' },
-    { id: 'documentCreated', label: 'Document created' },
-  ] as unknown as DirectoryEntry[];
+  /** A complete `DirectoryEntry`, for the event-type and category filter vocabularies. */
+  function directoryEntry(id: string, label: string, directoryName: string): DirectoryEntry {
+    return { id, label, displayLabel: label, ordering: 0, obsolete: 0, directoryName };
+  }
 
-  const mockEventCategories = [
-    { id: 'eventDocumentCategory', label: 'Document' },
-  ] as unknown as DirectoryEntry[];
+  const mockEventTypes: DirectoryEntry[] = [
+    directoryEntry('documentModified', 'Document modified', 'eventTypes'),
+    directoryEntry('documentCreated', 'Document created', 'eventTypes'),
+  ];
+
+  const mockEventCategories: DirectoryEntry[] = [
+    directoryEntry('eventDocumentCategory', 'Document', 'eventCategories'),
+  ];
 
   beforeEach(async () => {
     adminService = {
@@ -250,13 +276,15 @@ describe('AdminAuditPageComponent', () => {
 
   describe('actionLabel', () => {
     it('should split a camelCase event id into words and capitalise it', () => {
-      expect(component.actionLabel({ eventId: 'documentModified' } as AuditEntry)).toBe(
+      expect(component.actionLabel(auditEntry({ eventId: 'documentModified' }))).toBe(
         'Document Modified',
       );
     });
 
     it('should render an em dash for an entry with no event id', () => {
-      expect(component.actionLabel({} as AuditEntry)).toBe('—');
+      // `AuditEntry.eventId` is declared non-optional, so this shape is off-type on purpose: the
+      // component guards it with `?.`, and Nuxeo has been seen to omit it on synthetic entries.
+      expect(component.actionLabel({} as unknown as AuditEntry)).toBe('—');
     });
   });
 

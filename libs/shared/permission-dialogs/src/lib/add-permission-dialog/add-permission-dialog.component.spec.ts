@@ -153,11 +153,49 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
 
   describe('user selection and search', () => {
     it('updates search text and triggers search on change', () => {
-      component.selectedUser = selectedUser;
-      component.onSearchChange('new search');
+      // The emission is what makes this test match its name. Asserting only `searchText` and
+      // `selectedUser` leaves it green when `this.searchSubject.next(value)` is deleted, so the
+      // debounce is advanced and the resulting service call is the load-bearing assertion.
+      vi.useFakeTimers();
+      try {
+        const searchUsersGroups = TestBed.inject(DocumentDetailService)
+          .searchUsersGroups as unknown as ReturnType<typeof vi.fn>;
+        searchUsersGroups.mockReturnValue(of([selectedUser]));
+        component.selectedUser = selectedUser;
 
-      expect(component.searchText).toBe('new search');
-      expect(component.selectedUser).toBeNull();
+        component.onSearchChange('new search');
+
+        expect(component.searchText).toBe('new search');
+        expect(component.selectedUser).toBeNull();
+
+        // Nothing until the 300ms debounce elapses.
+        expect(searchUsersGroups).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(300);
+
+        expect(searchUsersGroups).toHaveBeenCalledWith('new search');
+        expect(component.suggestions()).toEqual([selectedUser]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('does not search for an empty term', () => {
+      vi.useFakeTimers();
+      try {
+        const searchUsersGroups = TestBed.inject(DocumentDetailService)
+          .searchUsersGroups as unknown as ReturnType<typeof vi.fn>;
+        component.suggestions.set([selectedUser]);
+
+        component.onSearchChange('');
+        vi.advanceTimersByTime(300);
+
+        // The pipeline short-circuits to `of([])` below one character rather than querying.
+        expect(searchUsersGroups).not.toHaveBeenCalled();
+        expect(component.suggestions()).toEqual([]);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('sets selected user and updates search text', () => {
@@ -177,8 +215,12 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
     });
 
     it('returns empty string for null or undefined', () => {
-      expect(component.displayUser(null as any)).toBe('');
-      expect(component.displayUser(undefined as any)).toBe('');
+      // `displayUser` is typed `UserGroupSuggestion | string`, so both of these are off-type on
+      // purpose: `mat-autocomplete`'s `displayWith` is called with the control's raw value, which is
+      // `null` before the user has picked anything. The cast goes through `unknown` rather than
+      // `any` so it reads as a deliberate off-type probe and not a silenced error.
+      expect(component.displayUser(null as unknown as string)).toBe('');
+      expect(component.displayUser(undefined as unknown as string)).toBe('');
     });
   });
 });

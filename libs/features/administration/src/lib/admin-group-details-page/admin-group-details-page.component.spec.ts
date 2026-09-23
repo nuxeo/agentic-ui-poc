@@ -686,6 +686,17 @@ describe('AdminGroupDetailsPageComponent', () => {
       grantedBy: 'Administrator',
     };
 
+    /**
+     * The same rendering the component performs: the app's locale, not the host's, and UTC.
+     *
+     * An argument-less `toLocaleString()` here reads the *host* locale, which is the exact defect
+     * `fix(i18n): format dates in the user's locale, not the host's` removed from the formatter —
+     * so these assertions passed only on a machine whose locale happened to be en-US.
+     */
+    function asRendered(iso: string): string {
+      return new Date(iso).toLocaleString('en-US', { timeZone: 'UTC' });
+    }
+
     it('should render a bounded permission as a translated date range', () => {
       const label = component.timeFrameLabel({
         ...baseRow,
@@ -693,11 +704,9 @@ describe('AdminGroupDetailsPageComponent', () => {
         end: '2026-12-31T00:00:00.000Z',
       } as PrincipalPermissionRow);
 
-      // The helper builds `begin – end` from locale date strings, so the assertion checks the
-      // shape and both endpoints rather than a hard-coded locale rendering.
-      expect(label).toContain('–');
-      expect(label).toContain(new Date('2026-01-01T00:00:00.000Z').toLocaleString());
-      expect(label).toContain(new Date('2026-12-31T00:00:00.000Z').toLocaleString());
+      expect(label).toBe(
+        `${asRendered('2026-01-01T00:00:00.000Z')} – ${asRendered('2026-12-31T00:00:00.000Z')}`,
+      );
     });
 
     it('should render an em dash for the open end of a half-bounded permission', () => {
@@ -707,7 +716,7 @@ describe('AdminGroupDetailsPageComponent', () => {
         end: null,
       } as PrincipalPermissionRow);
 
-      expect(label).toBe(`${new Date('2026-01-01T00:00:00.000Z').toLocaleString()} – —`);
+      expect(label).toBe(`${asRendered('2026-01-01T00:00:00.000Z')} – —`);
     });
 
     it('should call an unbounded permission Permanent', () => {

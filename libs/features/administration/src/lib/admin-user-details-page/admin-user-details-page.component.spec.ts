@@ -39,7 +39,11 @@ describe('AdminUserDetailsPageComponent', () => {
   let navigate: MockInstance<Router['navigate']>;
   let paramMapSubject: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
 
-  const mockUser = {
+  // Declared as `NuxeoUser` rather than forced through `unknown`: the model carries the
+  // discriminant `'entity-type': 'user'`, and a cast here would hide the next model change — the
+  // exact drift this branch removes elsewhere.
+  const mockUser: NuxeoUser = {
+    'entity-type': 'user',
     id: 'jdoe',
     properties: {
       username: 'jdoe',
@@ -49,7 +53,7 @@ describe('AdminUserDetailsPageComponent', () => {
       company: 'Acme',
       groups: ['members', 'reviewers'],
     },
-  } as unknown as NuxeoUser;
+  };
 
   const permPage: PrincipalPermissionPage = {
     rows: [
@@ -74,6 +78,11 @@ describe('AdminUserDetailsPageComponent', () => {
   /** The row the permission table hands back to `removePermission`. */
   const permRow = permPage.rows[0];
 
+  /** A complete `NuxeoGroup`, for the group-label lookups `loadGroupInfo` performs. */
+  function group(groupname: string, grouplabel: string): NuxeoGroup {
+    return { 'entity-type': 'group', groupname, grouplabel };
+  }
+
   beforeEach(() => {
     paramMapSubject = new BehaviorSubject(convertToParamMap({ userId: 'jdoe' }));
 
@@ -81,9 +90,7 @@ describe('AdminUserDetailsPageComponent', () => {
       getUser: vi.fn().mockReturnValue(of(mockUser)),
       updateUser: vi.fn().mockReturnValue(of(mockUser)),
       deleteUser: vi.fn().mockReturnValue(of(undefined)),
-      getGroup: vi.fn((id: string) =>
-        of({ groupname: id, grouplabel: `${id} label` } as NuxeoGroup),
-      ),
+      getGroup: vi.fn((id: string) => of(group(id, `${id} label`))),
     };
 
     permService = {
@@ -225,9 +232,7 @@ describe('AdminUserDetailsPageComponent', () => {
 
     it('should fall back to the group id when its label cannot be fetched', () => {
       userService.getGroup.mockImplementation((id: string) =>
-        id === 'reviewers'
-          ? throwError(() => new Error('403'))
-          : of({ groupname: id, grouplabel: 'members label' } as NuxeoGroup),
+        id === 'reviewers' ? throwError(() => new Error('403')) : of(group(id, 'members label')),
       );
 
       component.ngOnInit();
@@ -240,7 +245,12 @@ describe('AdminUserDetailsPageComponent', () => {
     });
 
     it('should fall back to the id when a group has no label', () => {
-      userService.getGroup.mockReturnValue(of({ groupname: 'members' } as NuxeoGroup));
+      // `NuxeoGroup.grouplabel` is declared required, so this shape is off-type on purpose: Nuxeo
+      // omits the field for a group created without one, and `gs[i]?.grouplabel ?? gid` is what
+      // absorbs it. An empty string would *not* exercise that path, because `??` only catches
+      // nullish — which is why this cannot simply pass `''`.
+      const withoutLabel = { 'entity-type': 'group', groupname: 'members' };
+      userService.getGroup.mockReturnValue(of(withoutLabel as unknown as NuxeoGroup));
 
       component.ngOnInit();
 
@@ -621,7 +631,7 @@ describe('AdminUserDetailsPageComponent', () => {
       component.user.set({
         ...mockUser,
         properties: { ...mockUser.properties, groups: ['members'] },
-      } as NuxeoUser);
+      });
 
       component.removeGroup('members');
 
@@ -707,6 +717,19 @@ describe('AdminUserDetailsPageComponent', () => {
       expect(component.timeFrameLabel(permRow)).toBe('Permanent');
     });
 
+    /**
+     * The same rendering the component performs: the app's locale, not the host's, and UTC.
+     *
+     * An argument-less `toLocaleString()` here reads the *host* locale, which is the exact defect
+     * `fix(i18n): format dates in the user's locale, not the host's` removed from the formatter —
+     * so these assertions passed on a machine whose locale happened to be en-US and failed
+     * everywhere else. `timeZone: 'UTC'` matters for the same reason it does in the formatter:
+     * the permission dialogs emit date-only boundaries that parse as UTC midnight.
+     */
+    function asRendered(iso: string): string {
+      return new Date(iso).toLocaleString('en-US', { timeZone: 'UTC' });
+    }
+
     it('should render a bounded permission as a date range', () => {
       const label = component.timeFrameLabel({
         ...permRow,
@@ -715,8 +738,7 @@ describe('AdminUserDetailsPageComponent', () => {
       } as PrincipalPermissionRow);
 
       expect(label).toBe(
-        `${new Date('2026-01-01T00:00:00.000Z').toLocaleString()} – ` +
-          `${new Date('2026-12-31T00:00:00.000Z').toLocaleString()}`,
+        `${asRendered('2026-01-01T00:00:00.000Z')} – ${asRendered('2026-12-31T00:00:00.000Z')}`,
       );
     });
 
@@ -727,7 +749,7 @@ describe('AdminUserDetailsPageComponent', () => {
         end: '2026-12-31T00:00:00.000Z',
       } as PrincipalPermissionRow);
 
-      expect(label).toBe(`— – ${new Date('2026-12-31T00:00:00.000Z').toLocaleString()}`);
+      expect(label).toBe(`— – ${asRendered('2026-12-31T00:00:00.000Z')}`);
     });
   });
 });

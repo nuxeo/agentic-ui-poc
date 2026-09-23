@@ -141,46 +141,56 @@ describe('TasksPageComponent', () => {
   } as unknown as NuxeoUser;
 
   beforeEach(() => {
+    // Every `vi.fn` here is parameterised with the service method's own type. A bare `vi.fn()`
+    // produces `Mock<Procedure>`, whose `mockReturnValue` accepts anything and which is assignable
+    // to the typed field — so declaring the *variable* as `ServiceMock<...>` checked later
+    // `.mockReturnValue` calls but not this object literal. Binding the mock itself is what
+    // rejects a stub whose return type has drifted from the service.
     mockTaskService = {
-      getUserTasks: vi.fn().mockReturnValue(of([mockTask])),
-      getTask: vi.fn().mockReturnValue(of(mockTask)),
-      completeTask: vi.fn().mockReturnValue(of({})),
-      delegateTask: vi.fn().mockReturnValue(of({})),
-      reassignTask: vi.fn().mockReturnValue(of({})),
-      notifyTasksChanged: vi.fn(),
+      getUserTasks: vi.fn<TaskService['getUserTasks']>().mockReturnValue(of([mockTask])),
+      getTask: vi.fn<TaskService['getTask']>().mockReturnValue(of(mockTask)),
+      completeTask: vi.fn<TaskService['completeTask']>().mockReturnValue(of(mockTask)),
+      // `delegateTask` and `reassignTask` return `Observable<void>`, not `Observable<{}>`.
+      delegateTask: vi.fn<TaskService['delegateTask']>().mockReturnValue(of(undefined)),
+      reassignTask: vi.fn<TaskService['reassignTask']>().mockReturnValue(of(undefined)),
+      notifyTasksChanged: vi.fn<TaskService['notifyTasksChanged']>(),
     };
 
     mockUserService = {
-      searchUsers: vi.fn().mockReturnValue(of([mockUser])),
-      searchGroups: vi.fn().mockReturnValue(of([])),
+      searchUsers: vi.fn<UserService['searchUsers']>().mockReturnValue(of([mockUser])),
+      searchGroups: vi.fn<UserService['searchGroups']>().mockReturnValue(of([])),
     };
 
     mockWorkflowService = {
-      cancelWorkflow: vi.fn().mockReturnValue(of({})),
-      getWorkflowGraph: vi.fn().mockReturnValue(of({ nodes: [] })),
+      cancelWorkflow: vi.fn<WorkflowService['cancelWorkflow']>().mockReturnValue(of(undefined)),
+      getWorkflowGraph: vi
+        .fn<WorkflowService['getWorkflowGraph']>()
+        .mockReturnValue(of({ nodes: [] })),
     };
 
     mockDocService = {
-      getById: vi.fn().mockReturnValue(of(mockDocument)),
+      getById: vi.fn<DocumentService['getById']>().mockReturnValue(of(mockDocument)),
     };
 
     mockNuxeoApi = {
-      apiUrl: vi.fn((path: string) => `http://localhost:8080${path}`),
+      apiUrl: vi.fn<NuxeoApiBase['apiUrl']>((path: string) => `http://localhost:8080${path}`),
     };
 
     mockHttp = {
-      get: vi.fn().mockReturnValue(of(new Blob(['test'], { type: 'application/pdf' }))),
+      get: vi
+        .fn<HttpClient['get']>()
+        .mockReturnValue(of(new Blob(['test'], { type: 'application/pdf' }))),
     };
 
     mockRouter = {
-      navigate: vi.fn().mockResolvedValue(true),
-      navigateByUrl: vi.fn().mockResolvedValue(true),
+      navigate: vi.fn<Router['navigate']>().mockResolvedValue(true),
+      navigateByUrl: vi.fn<Router['navigateByUrl']>().mockResolvedValue(true),
     };
 
     mockActivatedRoute = {
       snapshot: {
         paramMap: {
-          get: vi.fn().mockReturnValue(null),
+          get: vi.fn<(key: string) => string | null>().mockReturnValue(null),
         },
       },
     };

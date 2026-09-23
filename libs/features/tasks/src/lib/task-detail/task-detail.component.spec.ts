@@ -101,38 +101,47 @@ describe('TaskDetailComponent', () => {
   };
 
   beforeEach(async () => {
+    // Every `vi.fn` here is parameterised with the service method's own type. A bare `vi.fn()`
+    // produces `Mock<Procedure>`, whose `mockReturnValue` accepts anything and which is assignable
+    // to the typed field — so declaring the *variable* as `ServiceMock<...>` checked later
+    // `.mockReturnValue` calls but not this object literal. That is how
+    // `completeTask: vi.fn().mockReturnValue(of({}))` survived here while `completeTask` returns
+    // `Observable<NuxeoTask>`. Binding the mock itself is what rejects it.
     mockTaskService = {
-      getTask: vi.fn().mockReturnValue(of(mockTask)),
-      completeTask: vi.fn().mockReturnValue(of({})),
+      getTask: vi.fn<TaskService['getTask']>().mockReturnValue(of(mockTask)),
+      completeTask: vi.fn<TaskService['completeTask']>().mockReturnValue(of(mockTask)),
     };
 
     mockUserService = {
-      searchUsers: vi.fn().mockReturnValue(of([])),
-      searchGroups: vi.fn().mockReturnValue(of([])),
+      searchUsers: vi.fn<UserService['searchUsers']>().mockReturnValue(of([])),
+      searchGroups: vi.fn<UserService['searchGroups']>().mockReturnValue(of([])),
     };
 
     mockDocService = {
-      getById: vi.fn().mockReturnValue(of(mockDoc)),
+      getById: vi.fn<DocumentService['getById']>().mockReturnValue(of(mockDoc)),
     };
 
     mockRoute = {
       snapshot: {
         paramMap: {
-          get: vi.fn().mockReturnValue('task-1'),
+          get: vi.fn<(key: string) => string | null>().mockReturnValue('task-1'),
         },
       },
     };
 
     mockRouter = {
-      navigate: vi.fn(),
+      navigate: vi.fn<Router['navigate']>().mockResolvedValue(true),
     };
 
     mockWorkflowService = {
-      cancelWorkflow: vi.fn().mockReturnValue(of({})),
+      // `Observable<void>`, so `of(undefined)` — `of({})` does not satisfy it.
+      cancelWorkflow: vi.fn<WorkflowService['cancelWorkflow']>().mockReturnValue(of(undefined)),
     };
 
     mockHttp = {
-      get: vi.fn().mockReturnValue(of(new Blob(['thumb'], { type: 'image/png' }))),
+      get: vi
+        .fn<HttpClient['get']>()
+        .mockReturnValue(of(new Blob(['thumb'], { type: 'image/png' }))),
     };
 
     await TestBed.configureTestingModule({

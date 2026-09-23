@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, signal, type WritableSignal } from '@angular/core';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { AdminAnalyticsPageComponent } from './admin-analytics-page.component';
 import { AdministrationService } from '@nuxeo-satori/platform/nuxeo-client';
-import { TranslateService } from '@ngx-translate/core';
 import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 describe('AdminAnalyticsPageComponent', () => {
   let component: AdminAnalyticsPageComponent;
@@ -15,13 +16,18 @@ describe('AdminAnalyticsPageComponent', () => {
     getNxqlTotalSize: ReturnType<typeof vi.fn>;
     nxqlSearch: ReturnType<typeof vi.fn>;
   };
-  let mockTranslateService: {
-    instant: ReturnType<typeof vi.fn>;
-  };
   let mockAiGatewayService: {
     detectAnomalies: ReturnType<typeof vi.fn>;
   };
-  let mockAiFeatureFlagService: Record<string, unknown>;
+  /**
+   * `AiFeatureFlagService` exposes `aiEnabled` as a signal, and this template gates its whole AI
+   * anomalies tab on `featureFlags.aiEnabled()`.
+   *
+   * The mock here was `{}` — no `aiEnabled` at all. Nothing caught it because no test in this file
+   * rendered the template, so the incomplete provider was never resolved, and `spec-types` cannot
+   * see into a `useValue` slot. The render assertions below are what make the gate real.
+   */
+  let aiEnabled: WritableSignal<boolean>;
 
   beforeEach(() => {
     mockAdminService = {
@@ -30,24 +36,21 @@ describe('AdminAnalyticsPageComponent', () => {
       nxqlSearch: vi.fn(),
     };
 
-    mockTranslateService = {
-      instant: vi.fn((key: string) => key),
-    };
-
     mockAiGatewayService = {
       detectAnomalies: vi.fn(),
     };
 
-    mockAiFeatureFlagService = {};
+    aiEnabled = signal(true);
 
     TestBed.configureTestingModule({
-      imports: [AdminAnalyticsPageComponent],
+      // `NoopAnimationsModule` and the real catalogue, because the AI-gate assertions below render
+      // a `mat-tab-group` template full of `| translate`.
+      imports: [AdminAnalyticsPageComponent, NoopAnimationsModule, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         { provide: AdministrationService, useValue: mockAdminService },
-        { provide: TranslateService, useValue: mockTranslateService },
         { provide: AiGatewayService, useValue: mockAiGatewayService },
-        { provide: AiFeatureFlagService, useValue: mockAiFeatureFlagService },
+        { provide: AiFeatureFlagService, useValue: { aiEnabled } },
       ],
     });
 
@@ -57,6 +60,41 @@ describe('AdminAnalyticsPageComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('the AI feature gate', () => {
+    beforeEach(() => {
+      // Rendering runs `ngOnInit`, which fans out from `getDefaultDomainPath`. The suite's other
+      // tests arrange these per case; the render assertions need them arranged up front or the
+      // component subscribes to `undefined`.
+      mockAdminService.getDefaultDomainPath.mockReturnValue(of('/default-domain'));
+      mockAdminService.getNxqlTotalSize.mockReturnValue(of(0));
+      mockAdminService.nxqlSearch.mockReturnValue(of({ entries: [], totalSize: 0 }));
+      mockAiGatewayService.detectAnomalies.mockReturnValue(of({ anomalies: [], summary: '' }));
+    });
+
+    /** The AI anomalies tab label, which the template wraps in `@if (featureFlags.aiEnabled())`. */
+    function aiTabLabel(): Element | null {
+      return (fixture.nativeElement as HTMLElement).querySelector('.ai-tab-icon');
+    }
+
+    it('renders the AI anomalies tab when AI is enabled', () => {
+      aiEnabled.set(true);
+
+      fixture.detectChanges();
+
+      expect(aiTabLabel()).not.toBeNull();
+    });
+
+    it('renders no AI anomalies tab when AI is disabled', () => {
+      aiEnabled.set(false);
+
+      fixture.detectChanges();
+
+      // The discriminating half: without it, a template that dropped the `@if` entirely would
+      // still satisfy the enabled case above.
+      expect(aiTabLabel()).toBeNull();
+    });
   });
 
   describe('Component initialization', () => {
@@ -80,8 +118,10 @@ describe('AdminAnalyticsPageComponent', () => {
     });
 
     it('should have featureFlags service properly injected and accessible', () => {
-      expect(component.featureFlags).toBeDefined();
-      expect(component.featureFlags).toBe(mockAiFeatureFlagService);
+      // Asserts the shape the template depends on, not just object identity with the double: the
+      // template calls `featureFlags.aiEnabled()`, so that is what has to be there.
+      expect(component.featureFlags.aiEnabled).toBeDefined();
+      expect(component.featureFlags.aiEnabled()).toBe(true);
     });
   });
 
@@ -300,8 +340,6 @@ describe('AdminAnalyticsPageComponent', () => {
     });
 
     it('should handle errors with translated error message and clear anomalies', () => {
-      const errorMessage = 'admin.message.failed-to-detect-anomalies';
-      mockTranslateService.instant.mockReturnValue(errorMessage);
       mockAiGatewayService.detectAnomalies.mockReturnValue(
         throwError(() => new Error('API Error')),
       );
@@ -309,10 +347,9 @@ describe('AdminAnalyticsPageComponent', () => {
       component.runAnomalyDetection();
 
       expect(component.aiAnomalies()).toEqual([]);
-      expect(component.aiAnomalySummary()).toBe(errorMessage);
-      expect(mockTranslateService.instant).toHaveBeenCalledWith(
-        'admin.message.failed-to-detect-anomalies',
-      );
+      // The English the real catalogue serves for `admin.message.failed-to-detect-anomalies`, so
+      // this asserts what a user reads rather than the key a developer typed.
+      expect(component.aiAnomalySummary()).toBe('Failed to detect anomalies');
       expect(component.aiAnomalyLoading()).toBe(false);
     });
 
