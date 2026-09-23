@@ -85,6 +85,13 @@ const ENVIRONMENTAL_ERRORS = [
 /** The global search box in the header, by class — see `app-shell.component.html`. */
 const HEADER_SEARCH_INPUT = 'input.header-search-input';
 
+/** Visible label naming the global search (NXENG-798); placeholder is no longer the accessible name. */
+const HEADER_SEARCH_LABEL = 'label.header-search-label[for="global-header-search-input"]';
+
+async function headerSearchVisibleLabel(page) {
+  return (await page.locator(HEADER_SEARCH_LABEL).innerText()).trim();
+}
+
 /** The file the marketplace package installs. Served verbatim for the English pass. */
 const PACKAGED_BOOTSTRAP = readFileSync(
   resolve(process.cwd(), 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json'),
@@ -598,11 +605,11 @@ export default async function run(page, h) {
     `served so far: ${JSON.stringify(servedLanguages)}`,
   );
 
-  const frenchPlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
+  const frenchSearchLabel = await headerSearchVisibleLabel(page);
   h.check(
-    'the global search placeholder is French',
-    frenchPlaceholder === 'Rechercher des documents, des utilisateurs ou des groupes',
-    `placeholder was "${frenchPlaceholder}"`,
+    'the global search visible label is French',
+    frenchSearchLabel === 'Rechercher des documents, des utilisateurs ou des groupes',
+    `label was "${frenchSearchLabel}"`,
   );
 
   const frenchAssistant = await page
@@ -702,11 +709,11 @@ export default async function run(page, h) {
   await page.waitForTimeout(3000);
   await h.expectVisible('the adf-hx POC route rendered', 'lib-browse-adf-hx-poc');
 
-  const adfHxRoutePlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
+  const adfHxRouteSearchLabel = await headerSearchVisibleLabel(page);
   h.check(
     'the adf-hx route keeps the configured language',
-    adfHxRoutePlaceholder === frenchPlaceholder,
-    `shell was "${frenchPlaceholder}", adf-hx route is "${adfHxRoutePlaceholder}"`,
+    adfHxRouteSearchLabel === frenchSearchLabel,
+    `shell was "${frenchSearchLabel}", adf-hx route is "${adfHxRouteSearchLabel}"`,
   );
 
   // Upstream's own catalogue should now resolve in French too — it ships `fr`, and before the
@@ -729,16 +736,16 @@ export default async function run(page, h) {
   await reloadApp(page);
   await h.expectVisible('app shell rendered in German pass', 'app-shell');
 
-  const germanPlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
+  const germanSearchLabel = await headerSearchVisibleLabel(page);
   h.check(
-    'the global search placeholder is German',
-    germanPlaceholder === 'Dokumente, Benutzer oder Gruppen suchen',
-    `placeholder was "${germanPlaceholder}"`,
+    'the global search visible label is German',
+    germanSearchLabel === 'Dokumente, Benutzer oder Gruppen suchen',
+    `label was "${germanSearchLabel}"`,
   );
   h.check(
-    'the German and French placeholders differ, so the catalogue is really being chosen',
-    germanPlaceholder !== frenchPlaceholder,
-    `fr="${frenchPlaceholder}" de="${germanPlaceholder}"`,
+    'the German and French visible labels differ, so the catalogue is really being chosen',
+    germanSearchLabel !== frenchSearchLabel,
+    `fr="${frenchSearchLabel}" de="${germanSearchLabel}"`,
   );
   await h.screenshot('de-shell-german-chrome');
 
@@ -763,11 +770,11 @@ export default async function run(page, h) {
     fallbackKeys.length === 0,
     fallbackKeys.join('\n      '),
   );
-  const fallbackPlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
+  const fallbackSearchLabel = await headerSearchVisibleLabel(page);
   h.check(
     'an unshipped locale falls back to the English string',
-    fallbackPlaceholder === 'Search documents, users or groups',
-    `placeholder was "${fallbackPlaceholder}"`,
+    fallbackSearchLabel === 'Search documents, users or groups',
+    `label was "${fallbackSearchLabel}"`,
   );
 
   // Strings degrading is only half of tolerant. Angular's date, number and currency pipes throw

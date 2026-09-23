@@ -80,9 +80,9 @@ describe('AppShellComponent — header global search visible label (NXENG-798)',
     expect(placeholder)
       .withContext('placeholder must not substitute for the visible label')
       .not.toBe(labelText);
-    expect(placeholder.length)
-      .withContext('placeholder must be blank so the label is the visible name')
-      .toBeLessThanOrEqual(1);
+    expect(placeholder)
+      .withContext('placeholder must be empty so the label is the visible name')
+      .toBe('');
 
     const associatedLabels = Array.from((input as HTMLInputElement).labels ?? []);
     expect(associatedLabels)
