@@ -325,7 +325,7 @@ export default async function run(page, h) {
   await rowCheckboxes
     .nth(1)
     .click()
-    .catch(() => {});
+    .catch(() => {}); // a click that cannot land fails the checked-count assertion below
   await page.waitForTimeout(500);
   const selectedCount = await page
     .locator('hxp-document-list adf-datatable-row mat-checkbox.mat-mdc-checkbox-checked')
@@ -341,7 +341,7 @@ export default async function run(page, h) {
   await rowCheckboxes
     .nth(1)
     .click()
-    .catch(() => {});
+    .catch(() => {}); // best-effort reset; the later steps select their own rows
   await page.waitForTimeout(300);
 
   h.step('adf-core strings are translated, not raw keys');
@@ -385,7 +385,7 @@ export default async function run(page, h) {
     .locator('hxp-ui-breadcrumb a[aria-current="location"]')
     .first()
     .evaluate((a) => ({ text: (a.textContent ?? '').trim(), href: a.getAttribute('href') }))
-    .catch(() => null);
+    .catch(() => null); // no current-location crumb fails the check below, with this in its detail
   h.check(
     'the folder on screen is the last crumb, marked as the location and not linked',
     lastCrumb !== null && /workspaces/i.test(lastCrumb.text) && !lastCrumb.href,

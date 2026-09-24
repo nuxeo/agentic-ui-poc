@@ -354,7 +354,7 @@ export class NuxeoQueryApi {
     }
     const withSubfolders = await firstValueFrom(
       this.browse.getFolderIdsWithSubfolders(folderIds),
-    ).catch(() => null);
+    ).catch(() => null); // a failed probe leaves the children unmarked, keeping upstream's arrows
     if (!withSubfolders) {
       return result;
     }
