@@ -433,14 +433,14 @@ Phase 2.
 
 Settled. Do not re-open without new information.
 
-| Decision                                                   | Rationale                                                                                                                                                                                    |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`ng-mocks` stays stubbed, indefinitely**                 | Upstream will not change the shipped `/ui` bundle. `tools/stubs/ng-mocks/` is the resolution, not a workaround pending one. The `bundle` gate fails if the real library returns.             |
-| **`angular-oauth2-oidc` and `cropperjs` are kept**, unused | They cause no issue today. `pdfjs-dist` tree-shakes out entirely; these two do not.                                                                                                          |
-| **The adf-hx initial-bundle cost is accepted**             | See §5. Unavoidable, not a preference.                                                                                                                                                       |
-| **API ports live in the root injector**                    | Eleven upstream services are `providedIn: 'root'` and resolve the tokens from root. Scoping them to the lazy POC route means shadowing all eleven, and the list grows per component adopted. |
-| **`UPLOAD` bound but refusing** (and `MODEL`'s write half) | An unbound token stops eleven root services constructing at all. Bound, a component constructs and fails at the point of use with a message naming the operation.                            |
-| **The POC route stays at `/#/browse-adf-hx`**              | Production `/#/browse` is untouched until parity is agreed.                                                                                                                                  |
+| Decision                                                   | Rationale                                                                                                                                                                                        |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`ng-mocks` stays stubbed, indefinitely**                 | Upstream will not change the shipped `/ui` bundle. `tools/stubs/ng-mocks/` is the resolution, not a workaround pending one. The `bundle` gate fails if the real library returns.                 |
+| **`angular-oauth2-oidc` and `cropperjs` are kept**, unused | They cause no issue today. `pdfjs-dist` tree-shakes out entirely; these two do not. `cropperjs` became used in NXSAT-290: its stylesheet is a global style, which adf-core's image viewer needs. |
+| **The adf-hx initial-bundle cost is accepted**             | See §5. Unavoidable, not a preference.                                                                                                                                                           |
+| **API ports live in the root injector**                    | Eleven upstream services are `providedIn: 'root'` and resolve the tokens from root. Scoping them to the lazy POC route means shadowing all eleven, and the list grows per component adopted.     |
+| **`UPLOAD` bound but refusing** (and `MODEL`'s write half) | An unbound token stops eleven root services constructing at all. Bound, a component constructs and fails at the point of use with a message naming the operation.                                |
+| **The POC route stays at `/#/browse-adf-hx`**              | Production `/#/browse` is untouched until parity is agreed.                                                                                                                                      |
 
 ---
 
