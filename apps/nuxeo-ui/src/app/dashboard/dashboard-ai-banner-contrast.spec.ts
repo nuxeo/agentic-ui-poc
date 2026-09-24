@@ -39,6 +39,14 @@ function parseColor(value: string): { rgb: number[]; alpha: number } {
   return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
 }
 
+/** Composite a translucent colour over an opaque backdrop — what the eye actually sees. */
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+  backdrop: readonly number[],
+): number[] {
+  return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
+}
+
 function paintedBackdrop(element: Element): number[] {
   for (let node = element.parentElement; node; node = node.parentElement) {
     const style = getComputedStyle(node);
@@ -101,7 +109,10 @@ describe('dashboard AI Insights banner title contrast (NXENG-939)', () => {
 
   it(`meets ${MIN_TEXT_RATIO}:1 text contrast against the banner surface`, () => {
     const titleStyle = getComputedStyle(title);
-    const ratio = contrastRatio(parseColor(titleStyle.color).rgb, paintedBackdrop(title));
+    const backdrop = paintedBackdrop(title);
+    const titleFill = parseColor(titleStyle.color);
+    const effectiveTitle = compositeOver(titleFill, backdrop);
+    const ratio = contrastRatio(effectiveTitle, backdrop);
     expect(ratio)
       .withContext(
         `title ${titleStyle.color} on banner ${getComputedStyle(banner).backgroundColor}`,
