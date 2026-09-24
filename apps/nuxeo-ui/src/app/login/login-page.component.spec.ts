@@ -266,6 +266,12 @@ describe('LoginPageComponent', () => {
     expect(heading?.tagName).toBe('H1');
     expect(heading?.textContent?.trim()).toBe('Log in');
     expect(heading?.classList.contains('cdk-visually-hidden')).toBe(true);
+
+    const styles = getComputedStyle(heading as HTMLElement);
+    expect(styles.position).toBe('absolute');
+    expect(styles.height).toBe('1px');
+    expect(styles.width).toBe('1px');
+    expect(styles.overflow).toBe('hidden');
   });
 
   it('uses a decorative img for hero art instead of CSS background-image (NXENG-751)', () => {
