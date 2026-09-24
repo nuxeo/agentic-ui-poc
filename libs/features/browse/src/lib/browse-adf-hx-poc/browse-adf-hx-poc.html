@@ -224,8 +224,9 @@
     }
   </div>
 
-  <!-- Document viewer overlay -->
-  @if (viewerOpen(); as _open) {
+  <!-- Document viewer, opened in a dialog so it renders above the shell rather than inside the
+       sidenav content's stacking context. -->
+  <ng-template #viewerTemplate>
     @if (viewerDocument(); as doc) {
       <div class="hxp-viewer-overlay">
         <hxp-ui-document-viewer
@@ -233,8 +234,24 @@
           [fullScreen]="false"
           [showRightSidebar]="false"
           (closeViewer)="closeViewer()"
-        />
+        >
+          <!-- Upstream swaps adf-core's default toolbar, and its close button, for this slot. -->
+          <ng-template #toolbar>
+            <div class="hxp-viewer-toolbar">
+              <span class="hxp-viewer-toolbar__title">{{ doc.sys_title }}</span>
+              <button
+                type="button"
+                class="hxp-viewer-toolbar__close"
+                [attr.aria-label]="'common.close' | translate"
+                [title]="'common.close' | translate"
+                (click)="closeViewer()"
+              >
+                <hxp-icon name="close" size="md" [decorative]="true" />
+              </button>
+            </div>
+          </ng-template>
+        </hxp-ui-document-viewer>
       </div>
     }
-  }
+  </ng-template>
 </section>

@@ -53,6 +53,8 @@ const ENVIRONMENTAL_ERRORS = [
 const FIXTURE_FOLDER_PATH = '/default-domain/workspaces/kd-versions-evidence';
 const FIXTURE_DOC_NAME = 'versioned-file';
 const FIXTURE_DOC_TITLE = 'KD Versions Evidence';
+/** The fixture's main file. The viewer check asserts this exact text is on screen. */
+const FIXTURE_FILE_TEXT = 'phase-3 evidence: this text is rendered by the adf-hx document viewer';
 
 /**
  * A document carrying exactly two Nuxeo versions, 0.1 and 0.2.
@@ -82,11 +84,38 @@ async function createVersionedFixture(page, h) {
   await page.request.delete(`${api}/path${FIXTURE_FOLDER_PATH}/${FIXTURE_DOC_NAME}`, {
     failOnStatusCode: false,
   });
+
+  // A real main file, so the viewer check has content to render. A File with no blob is what let
+  // that check pass while every preview showed "Couldn't load preview".
+  const batch = await page.request.post(`${api}/upload/`, { failOnStatusCode: false });
+  const batchId = (await batch.json().catch(() => null))?.batchId;
+  const uploaded = batchId
+    ? await page.request.post(`${api}/upload/${batchId}/0`, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-File-Name': 'evidence.txt',
+          'X-File-Type': 'text/plain',
+        },
+        data: FIXTURE_FILE_TEXT,
+        failOnStatusCode: false,
+      })
+    : null;
+  h.requirePrecondition(
+    'the fixture file could be uploaded to Nuxeo',
+    Boolean(uploaded?.ok()),
+    `batch ${batch.status()}, upload ${uploaded?.status() ?? 'not attempted'} — without a file ` +
+      'the viewer has nothing to render, and an empty viewer proves nothing.',
+  );
+
   const created = await post(`/path${FIXTURE_FOLDER_PATH}`, {
     'entity-type': 'document',
     name: FIXTURE_DOC_NAME,
     type: 'File',
-    properties: { 'dc:title': FIXTURE_DOC_TITLE, 'dc:description': 'created by phase-3 evidence' },
+    properties: {
+      'dc:title': FIXTURE_DOC_TITLE,
+      'dc:description': 'created by phase-3 evidence',
+      'file:content': { 'upload-batch': batchId, 'upload-fileId': '0' },
+    },
   });
   const uid = (await created.json())?.uid;
   h.requirePrecondition(
@@ -514,31 +543,56 @@ export default async function run(page, h) {
   await page.waitForTimeout(600);
 
   h.step('Adopted: upstream document viewer');
-  // The viewer opens in an overlay for the selected document. Testing just the open/close cycle
-  // and that it renders without error — full PDF rendering is adf-core's ViewerComponent and
-  // testing pdfjs-dist is not this phase's job.
+  // Load-bearing: the fixture's own text on screen. Opening the overlay and finding the component
+  // were the only checks here once, and both passed while the viewer said "Couldn't load preview"
+  // for every file, because nothing mapped the main file to `sysfile_blob`.
   const previewBtn = page.locator('.hxp-browse-page__preview-btn');
   h.check('a Preview button appears for the selected document', (await previewBtn.count()) > 0);
 
   if ((await previewBtn.count()) > 0) {
     await previewBtn.click();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(4000);
 
-    const viewerOverlay = page.locator('.hxp-viewer-overlay');
+    const viewerOverlay = page.locator('mat-dialog-container .hxp-viewer-overlay');
     h.check(
-      'clicking Preview opens the viewer overlay',
+      'clicking Preview opens the viewer in a dialog',
       (await viewerOverlay.isVisible()) === true,
     );
 
-    const viewerComponent = page.locator('hxp-ui-document-viewer');
-    h.check('the upstream viewer component renders', (await viewerComponent.count()) > 0);
+    const renderedText = await viewerOverlay.innerText().catch(() => '');
+    h.check(
+      "the viewer renders the fixture file's own text",
+      renderedText.includes(FIXTURE_FILE_TEXT),
+      `viewer read ${JSON.stringify(renderedText.replace(/\s+/g, ' ').slice(0, 160))}`,
+    );
+    h.check(
+      'the viewer does not report an unsupported file',
+      (await viewerOverlay.locator('adf-viewer-unknown-format').count()) === 0,
+    );
+
+    // The shell's selection bar is on screen, because previewing needs a ticked row. The viewer
+    // must be above it, or the bar covers the viewer's close button.
+    const closeButton = viewerOverlay.getByRole('button', { name: 'Close', exact: true });
+    const closeOnTop = await closeButton
+      .evaluate((button) => {
+        const box = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return box.width > 0 && button.contains(hit);
+      })
+      .catch(() => false);
+    h.check("the viewer's close button is visible and not covered", closeOnTop);
 
     await h.screenshot('document-viewer');
 
-    // Close via escape or button
     await page.keyboard.press('Escape');
     await page.waitForTimeout(1500);
-    h.check('pressing Escape closes the viewer', (await viewerOverlay.isVisible()) === false);
+    h.check('pressing Escape closes the viewer', (await viewerOverlay.count()) === 0);
+
+    await previewBtn.click();
+    await page.waitForTimeout(3000);
+    await closeButton.click();
+    await page.waitForTimeout(1500);
+    h.check("the viewer's close button closes it", (await viewerOverlay.count()) === 0);
   }
 
   h.step('Health');

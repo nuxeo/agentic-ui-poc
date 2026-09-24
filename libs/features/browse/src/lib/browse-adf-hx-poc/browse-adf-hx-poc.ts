@@ -1,6 +1,16 @@
-import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  type TemplateRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, type MatDialogRef } from '@angular/material/dialog';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, map, Subject } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -257,9 +267,10 @@ export class BrowseAdfHxPocComponent {
     return selection.length === 1 ? selection[0] : null;
   });
 
-  // ── Document viewer overlay ──
-  protected readonly viewerOpen = signal(false);
+  // ── Document viewer ──
   protected readonly viewerDocument = signal<Document | null>(null);
+  private readonly viewerTemplate = viewChild.required<TemplateRef<unknown>>('viewerTemplate');
+  private viewerDialog: MatDialogRef<unknown> | null = null;
 
   /**
    * Mirrors the table's checked rows into the app-wide selection, which is what shows the shell's
@@ -289,15 +300,27 @@ export class BrowseAdfHxPocComponent {
 
   protected openViewer(): void {
     const doc = this.selectedDocument();
-    if (doc && !doc.sys_isFolderish) {
-      this.viewerDocument.set(doc);
-      this.viewerOpen.set(true);
-    }
+    if (!doc || doc.sys_isFolderish || this.viewerDialog) return;
+    this.viewerDocument.set(doc);
+    this.viewerDialog = this.dialog.open(this.viewerTemplate(), {
+      panelClass: 'hxp-viewer-dialog',
+      width: '100vw',
+      height: '100vh',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      ariaLabel: hxpDocTitle(doc),
+    });
+    this.viewerDialog
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.viewerDialog = null;
+        this.viewerDocument.set(null);
+      });
   }
 
   protected closeViewer(): void {
-    this.viewerOpen.set(false);
-    this.viewerDocument.set(null);
+    this.viewerDialog?.close();
   }
   private readonly route = inject(ActivatedRoute);
   private readonly documentService = inject(AdfHxDocumentService);

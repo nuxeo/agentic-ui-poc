@@ -615,6 +615,33 @@ instance, honouring a subfolder flag our `QUERY` port sets from one NXQL probe p
 **Ask:** a `reload()` method or a reactive `rootDocument`; expand from the tree's root rather than
 the repository's; and either an `isExpandable` input or a data-source injection token.
 
+### 4.10 `HxpUiDocumentViewerComponent` has no close button unless the host supplies a toolbar
+
+**Package:** `@alfresco/adf-hx-content-services@7.20.0-automate.292`, `@alfresco/adf-core@9.0.0`
+**Symbols:** `HxpUiDocumentViewerComponent`, `ViewerRenderComponent`, `ViewUtilService`
+
+Three things a host finds out only once a file actually renders:
+
+1. **The close button disappears.** The viewer always projects `<adf-viewer-toolbar>` with the
+   host's `#toolbar` template, or an empty one when the host passes none. A projected toolbar
+   replaces adf-core's default toolbar, which is the one carrying the title and the close
+   button. Without a host template the toolbar is 0 px tall, and Escape is the only way out.
+2. **The image viewer needs `cropperjs/dist/cropper.css`, and nothing says so.** adf-core's image
+   viewer uses cropperjs, which hides the original `<img>` only through its own stylesheet.
+   Without it the image renders twice, side by side, at full size.
+3. **WebP is not viewable.** `ViewUtilService.mimeTypes.image` lists PNG, JPEG, GIF, BMP and SVG,
+   so an `image/webp` file goes down the rendition path. `ViewerRenderComponent` declares
+   `providers: [ViewUtilService]` itself, so a host cannot extend the list without patching
+   adf-core's prototype.
+
+**Our mitigation.** `browse-adf-hx-poc.html` projects a `#toolbar` with the document title and a
+Close button, and `angular.json` adds `cropper.min.css` to the global styles. WebP stays
+unsupported. The Phase 3 evidence asserts that a fixture file's own text renders in the viewer,
+because the earlier check (overlay opens, component exists) passed while every preview failed.
+
+**Ask:** fall back to adf-core's default toolbar when no `#toolbar` template is given; document
+the cropperjs stylesheet or bundle it; add `image/webp` to the natively viewable images.
+
 ---
 
 ## What we would most like fixed, in order
