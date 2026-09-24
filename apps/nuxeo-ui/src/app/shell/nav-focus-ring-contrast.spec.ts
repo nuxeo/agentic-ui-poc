@@ -270,12 +270,12 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
           if (!packaged) return;
 
           expect(packaged.path).toBe('/expired-queue');
-          expect(PACKAGED_LABEL_BY_NAV_ID[navId]).toBe(packaged.label);
+          expect(packaged.label).toBe('Expired Queue');
 
           measure(navId, 'nuxeo', false);
           const item = link.closest('sat-platform-nav-list-item');
           expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.expiredQueue');
-          expect(link.textContent).toContain(packaged.label);
+          expect(link.textContent).toContain('Expired Queue');
         });
       }
     });
