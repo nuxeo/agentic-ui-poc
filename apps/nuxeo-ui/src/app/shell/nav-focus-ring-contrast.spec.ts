@@ -260,6 +260,24 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
           expect(link.textContent).toContain(PACKAGED_LABEL_BY_NAV_ID[navId]);
         });
       }
+
+      if (navId === 'app.navbar.expiredQueue') {
+        it('binds the packaged Expired Queue entry id, path and label (NXENG-912)', () => {
+          const packaged = PACKAGED_NAV_ITEMS.find((item) => item.id === navId);
+          expect(packaged)
+            .withContext('PACKAGED_NAV_ITEMS must still expose the Expired Queue descriptor')
+            .toBeDefined();
+          if (!packaged) return;
+
+          expect(packaged.path).toBe('/expired-queue');
+          expect(PACKAGED_LABEL_BY_NAV_ID[navId]).toBe(packaged.label);
+
+          measure(navId, 'nuxeo', false);
+          const item = link.closest('sat-platform-nav-list-item');
+          expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.expiredQueue');
+          expect(link.textContent).toContain(packaged.label);
+        });
+      }
     });
   }
 
