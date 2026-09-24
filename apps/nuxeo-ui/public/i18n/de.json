@@ -127,6 +127,7 @@
     },
     "test": {
       "platform-nav-item": "Durchsuchen",
+      "tasks-nav-item": "Aufgaben",
       "personal-space-nav-item": "Persönlicher Bereich"
     }
   }
