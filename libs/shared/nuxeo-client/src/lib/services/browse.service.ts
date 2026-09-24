@@ -357,6 +357,9 @@ export class BrowseService {
    * Nuxeo's `totalSize` and `resultsCount` count every child, so passing them through beside a
    * filtered list showed "1–3 of 5" over three rows. The filtered length is the total only when
    * this page was the whole folder; beyond that the kept count of later pages is unknown.
+   *
+   * Nuxeo reports a count it declined to compute as a negative number, so a negative or missing
+   * count stays unknown even without a next page, rather than passing as a complete total.
    */
   private keepEntries(
     list: NuxeoDocumentList,
@@ -364,7 +367,9 @@ export class BrowseService {
   ): NuxeoDocumentList {
     const entries = (list.entries ?? []).filter(keep);
     const hasNextPage = (list as { isNextPageAvailable?: boolean }).isNextPageAvailable === true;
-    const total = hasNextPage ? -2 : entries.length;
+    const counted = (count: number | undefined) => typeof count === 'number' && count >= 0;
+    const complete = !hasNextPage && counted(list.totalSize) && counted(list.resultsCount);
+    const total = complete ? entries.length : -2;
     return { ...list, entries, totalSize: total, resultsCount: total };
   }
 

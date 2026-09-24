@@ -484,7 +484,7 @@ describe('BrowseService', () => {
       child('csx.pdf', 'File'),
     ];
 
-    function flushDomain(children: { isNextPageAvailable: boolean }) {
+    function flushDomain(children: Record<string, unknown>) {
       httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain').flush(domain);
       httpMock
         .expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain/@children')
@@ -518,6 +518,24 @@ describe('BrowseService', () => {
       expect(result.entries).toHaveLength(3);
       expect(result.totalSize).toBeLessThan(0);
       expect(result.hasNextPage).toBe(true);
+    });
+
+    it('keeps a count Nuxeo declined to compute unknown, even without a next page', async () => {
+      const result$ = firstValueFrom(service.getBrowseFolderContents('/default-domain'));
+      flushDomain({ isNextPageAvailable: false, resultsCount: -2 });
+
+      const result = await result$;
+      expect(result.entries).toHaveLength(3);
+      expect(result.totalSize).toBeLessThan(0);
+    });
+
+    it('keeps the total unknown when Nuxeo reports neither the next-page flag nor a count', async () => {
+      const result$ = firstValueFrom(service.getBrowseFolderContents('/default-domain'));
+      flushDomain({ totalSize: undefined, resultsCount: undefined });
+
+      const result = await result$;
+      expect(result.entries).toHaveLength(3);
+      expect(result.totalSize).toBeLessThan(0);
     });
   });
 
