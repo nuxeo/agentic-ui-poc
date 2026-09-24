@@ -352,7 +352,7 @@
   "app.contracts-page.widget-grid-desc": "Describes what WidgetGridComponent does, in a developer-facing showcase list. A short NOUN phrase, lowercase because it follows an em dash after a class name. The class name itself is code and is deliberately NOT translatable.",
   "app.dashboard-page.ai-insights": "Visible text in dashboard-page. Rendered in apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.html.",
   "app.dashboard-page.all-clear-no-insights-right-now": "Visible text in dashboard-page. Rendered in apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.html.",
-  "app.dashboard-page.create-or-import": "Accessible name (aria-label) of a control in dashboard-page. Rendered in apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.html.",
+  "app.dashboard-page.create-or-import": "Visible label (visually hidden span and tooltip) for the Create or import FAB in dashboard-page. Rendered in apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.html.",
   "app.dashboard-page.due": "Visible text in dashboard-page. Rendered in apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.html.",
   "app.dashboard-page.last-contributor": "Visible text in dashboard-page. Rendered in apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.html.",
   "app.dashboard-page.last-viewed": "Visible text in dashboard-page. Rendered in apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.html.",
