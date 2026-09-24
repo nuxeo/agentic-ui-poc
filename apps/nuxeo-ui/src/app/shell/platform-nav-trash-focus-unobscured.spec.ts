@@ -54,6 +54,9 @@ describe('platform nav Trash focus unobscured (NXENG-868)', () => {
 
     const panel = fixture.nativeElement.querySelector('.sat-platform-nav-panel') as HTMLElement;
     panel.style.height = '480px';
+    expect(list.scrollHeight)
+      .withContext('nav list must overflow the constrained panel')
+      .toBeGreaterThan(list.clientHeight);
 
     list.scrollTop = 0;
     link.focus();
