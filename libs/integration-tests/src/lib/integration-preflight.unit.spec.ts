@@ -16,6 +16,7 @@ import {
   resolveConnection,
   runPreflightChecks,
 } from './integration-preflight';
+import { assertUntruncated } from './integration-harness';
 
 /** What the module reads from the environment. Cleared per test, not merely restored after. */
 const ENV_KEYS = ['NUXEO_URL', 'NUXEO_USER', 'NUXEO_PASS', 'ALLOW_DEFAULT_CREDENTIALS'] as const;
@@ -505,6 +506,48 @@ describe('runPreflightChecks — the default-credentials opt-in', () => {
     expect(result.problems[0]).toMatch(/refuse to run with default/);
     expect(result.problems[1]).toMatch(/Cannot reach Nuxeo/);
     expect(result.satisfied).toEqual([]);
+  });
+});
+
+describe('assertUntruncated — the data root is where the harness thinks it is', () => {
+  // The run ID's suffix is sized to spend exactly Nuxeo's 24-character path segment, so this
+  // guard is what stops the next widening from leaking silently. Measured on 2026-09-24:
+  // requesting `it-20260924-112334-3207ed6420ab7921` created `it-20260924-112334-3207e`, and
+  // because every later read of the requested path 404s, cleanup read that 404 as "already
+  // deleted" and the run went green having left the workspace behind.
+  const requested = '/default-domain/workspaces/it-20260924-112334-3207ed6420ab7921';
+  const truncated = '/default-domain/workspaces/it-20260924-112334-3207e';
+
+  it('accepts the path Nuxeo actually created when it matches', () => {
+    expect(() => assertUntruncated(requested, requested)).not.toThrow();
+  });
+
+  it('throws when Nuxeo truncated the name, naming both paths and the real length', () => {
+    const error = (() => {
+      try {
+        assertUntruncated(requested, truncated);
+      } catch (e) {
+        return e as Error;
+      }
+      throw new Error('expected the truncated path to be rejected, and it was accepted');
+    })();
+
+    expect(error.message).toMatch(/created the data root at a different path/);
+    expect(error.message).toContain(requested);
+    expect(error.message).toContain(truncated);
+    expect(error.message).toMatch(/caps a\n {2}segment at 24 characters/);
+    // The length of `it-20260924-112334-3207ed6420ab7921`, quoted so the message says why 24
+    // was exceeded rather than merely that it was.
+    expect(error.message).toMatch(/is 35\./);
+    // The consequence, not just the fact. A reader who does not know this leaks is liable to
+    // "fix" it by relaxing the comparison.
+    expect(error.message).toMatch(/does not fail — it leaks/);
+  });
+
+  it('accepts a response that carried no path rather than inventing a failure', () => {
+    // `null` means the creation response had no usable `path`, which is a different problem
+    // and is already fatal downstream. Guessing here would turn it into a misleading one.
+    expect(() => assertUntruncated(requested, null)).not.toThrow();
   });
 });
 

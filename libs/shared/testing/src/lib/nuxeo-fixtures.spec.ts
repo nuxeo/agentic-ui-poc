@@ -10,11 +10,21 @@
 import { nuxeoAce, nuxeoDocument } from '../index';
 
 describe('nuxeoDocument', () => {
-  it('fills every field of the model, with no field left undefined', () => {
-    // Design principle 1 is "every field required, no `Partial<>` escape hatch", and the
-    // compiler holds the factory to the model's *required* fields only. An exact key set is
-    // what holds the rest of it: a field dropped from the factory still compiles, and reads
-    // as `undefined` in whichever downstream spec trusted the fixture to be complete.
+  it('fills exactly the six required fields, and sets no optional one', () => {
+    // Design principle 1 is "every *required* field filled, no `Partial<>` escape hatch", and
+    // the compiler holds the factory to the model's required fields only. An exact key set is
+    // what holds the rest of it, in both directions.
+    //
+    // Downwards: a field dropped from the factory still compiles, and reads as `undefined` in
+    // whichever downstream spec trusted the fixture to be complete.
+    //
+    // Upwards, which is why the name says "and sets no optional one": `NuxeoDocument` has
+    // thirteen optional fields the factory deliberately omits, because a live Nuxeo omits them
+    // too unless the enricher that supplies them was requested. Defaulting one here would make
+    // downstream specs pass against data the server would not have sent. This test used to be
+    // called "fills every field of the model", which asserted the opposite of what the key set
+    // below checks and reintroduced, in the test report, the contract the factory
+    // documentation had just corrected.
     const doc = nuxeoDocument();
 
     expect(Object.keys(doc).sort()).toEqual([

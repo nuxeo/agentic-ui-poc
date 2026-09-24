@@ -18,9 +18,13 @@ describe('Integration Test Example', () => {
   const harness = setupIntegrationHarness();
 
   it('has a unique runId', () => {
-    // Four hex characters: the suffix is `randomBytes(2)`, not `Math.random().toString(36)`.
-    // This assertion caught the change, which is the test working.
-    expect(harness.runId).toMatch(/^\d{8}-\d{6}-[0-9a-f]{4}$/);
+    // Five base-36 characters from `randomInt`, not `Math.random().toString(36)`, and not the
+    // hex the previous version used. The width is part of the contract rather than incidental:
+    // the timestamp only resolves to the second, so the suffix is the whole of the isolation
+    // between two runs started within the same one, and `it-` plus this run ID has to stay
+    // inside Nuxeo's 24-character path segment. Both bounds are argued in `integration-harness.ts`.
+    expect(harness.runId).toMatch(/^\d{8}-\d{6}-[0-9a-z]{5}$/);
+    expect(`it-${harness.runId}`.length).toBeLessThanOrEqual(24);
     console.log(`[example] Running with runId: ${harness.runId}`);
   });
 

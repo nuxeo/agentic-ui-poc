@@ -115,44 +115,60 @@ describe('Clipboard Operations Integration Tests', () => {
 
 ## Evidence Steps to Schedule
 
-From audit §4.7, 13 beta-harness evidence steps currently run manually:
+Audit §4.7 counted 13 beta-harness evidence steps running manually, and named them from the
+phase numbering rather than from disk — nine of the thirteen (`phase-1-browse.mjs`,
+`phase-1-search.mjs`, `phase-2-browse-guard.mjs`, `phase-3-ai-chat.mjs`,
+`phase-4-document-detail.mjs`, `phase-5-collections.mjs`, `phase-6-tasks.mjs`,
+`evidence-discovery.mjs`, `phase-evidence.mjs`) have never existed. A schedule built from
+that list would have failed on nine of its entries, so the phases below are what
+`scripts/beta-harness/steps/` actually holds, verified 2026-09-24.
 
-### Phase 0: No Backend Required
+Each is invoked as `npm run beta:evidence -- <phase-id>`, never as `node <file>` — see the
+workflow below for why.
 
+### Phase 0
+
+- `phase-0-baseline.mjs` — baseline capture
 - `phase-0-no-backend.mjs` — runs without Nuxeo
 
-### Phase 1: Browse and Search
+### Phase 1
 
-- `phase-1-browse.mjs` — browse navigation
-- `phase-1-search.mjs` — search functionality
+- `phase-1-config.mjs` — Layer 0/1 configuration
+- `phase-1-tag-styles.mjs` — tag styling
 
-### Phase 2: Browse Guard
+### Phase 2
 
-- `phase-2-browse-guard.mjs` — authentication guard
+- `phase-2-registry.mjs` — extension registry
 
-### Phase 3: Search and AI
+### Phase 3
 
-- `phase-3-search.mjs` — advanced search
-- `phase-3-ai-chat.mjs` — AI chat features
+- `phase-3-adf-hx.mjs` — adf-hx component adoption
+- `phase-3-search.mjs` — search
 
-### Phase 4: Document Detail
+### Phase 4
 
-- `phase-4-document-detail.mjs` — document detail view
+- `phase-4-platform.mjs` — platform surface
 
-### Phase 5: Collections
+### Phase 5
 
-- `phase-5-collections.mjs` — collection management
+- `phase-5-harness.mjs` — harness
 
-### Phase 6: Tasks
+### Phase 6
 
-- `phase-6-tasks.mjs` — task workflows
+- `phase-6-a11y.mjs` — accessibility
 
-### Other Evidence Steps
+### Not phases, so not on this schedule
 
-- `assertion-audit.mjs` — audit assertions
-- `evidence-discovery.mjs` — discovery evidence
-- `phase-evidence.mjs` — phase-specific evidence
-- `verify-gate.mjs` — gate verification
+- `_template.mjs` — the template a new steps file is copied from
+- `nxsat-227-i18n.mjs`, `pilot-documentlist-columns.mjs`, `showcase-adf-hx.mjs` — per-ticket
+  and demo captures, run on demand
+
+### Separate gates, not evidence steps
+
+These are npm scripts under `scripts/beta-harness/`, not steps files, and take no phase ID:
+
+- `npm run beta:audit` — assertion audit
+- `npm run beta:gate` — the six-gate verification
 
 ### Scheduled Run Plan
 
@@ -189,10 +205,31 @@ jobs:
           NUXEO_PASS: Administrator
           ALLOW_DEFAULT_CREDENTIALS: true
 
-      - name: Run evidence steps
+      # A steps file exports `default async function(page, helpers, outDir)` and does nothing
+      # at import time, so `node <step>.mjs` loads the module, defines the function and exits
+      # 0 — collecting no evidence while reporting success. `beta:evidence` (the phase runner)
+      # is what launches Chromium, supplies the page and calls that export.
+      #
+      # Phases are listed rather than globbed: `steps/` also holds `_template.mjs` and
+      # per-ticket files such as `nxsat-227-i18n.mjs`, which are not phases.
+      - name: Install the browser the runner drives
+        run: npx playwright install --with-deps chromium
+
+      - name: Serve the app for the capture
         run: |
-          for step in scripts/beta-harness/steps/*.mjs; do
-            node "$step"
+          npx nx serve nuxeo-ui &
+          timeout 180 bash -c \
+            'until curl -sf http://localhost:4200 >/dev/null; do sleep 2; done'
+
+      - name: Run evidence steps
+        env:
+          APP_URL: http://localhost:4200
+          EVIDENCE_HEADLESS: '1'
+        run: |
+          for phase in phase-0-baseline phase-0-no-backend phase-1-config \
+                       phase-1-tag-styles phase-2-registry phase-3-adf-hx \
+                       phase-3-search phase-4-platform phase-5-harness phase-6-a11y; do
+            npm run beta:evidence -- "$phase"
           done
 
       - name: Upload evidence

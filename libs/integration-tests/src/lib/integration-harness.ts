@@ -30,13 +30,23 @@
  * ```
  */
 
-import { randomBytes } from 'node:crypto';
+import { randomInt } from 'node:crypto';
 import { afterAll, beforeAll } from 'vitest';
 import {
   checkIntegrationPreconditions,
   resolveConnection,
   type IntegrationTestConfig,
 } from './integration-preflight';
+
+/**
+ * Nuxeo's `PathSegmentServiceDefault` truncates a path segment at this many characters.
+ * Measured against the local stack, 2026-09-24: a 35-character request came back as 24.
+ */
+const NUXEO_PATH_SEGMENT_MAX = 24;
+/** Characters of random suffix that fit once `it-` and the timestamp have been spent. */
+const RUN_SUFFIX_LENGTH = 5;
+/** Base-36 over `RUN_SUFFIX_LENGTH` characters: 60,466,176 distinct suffixes. */
+const RUN_SUFFIX_VALUES = 36 ** RUN_SUFFIX_LENGTH;
 
 export interface IntegrationHarness {
   /** Unique ID for this test run (timestamp-based) */
@@ -77,7 +87,7 @@ export function setupIntegrationHarness(config: IntegrationTestConfig = {}): Int
   const auth = `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
 
   // Generate unique run ID: timestamp + random suffix
-  // Format: YYYYMMDD-HHMMSS-XXX (e.g., 20260921-143022-a3f)
+  // Format: YYYYMMDD-HHMMSS-XXXXX (e.g., 20260921-143022-k3f9q)
   const now = new Date();
   const timestamp = now
     .toISOString()
@@ -85,12 +95,37 @@ export function setupIntegrationHarness(config: IntegrationTestConfig = {}): Int
     .replace(/T/, '-')
     .replace(/\..+/, '')
     .slice(0, 15); // YYYYMMDD-HHMMSS
-  // `randomBytes`, not `Math.random`: SonarCloud reports the latter as `typescript:S2245`,
+  // A crypto source, not `Math.random`: SonarCloud reports the latter as `typescript:S2245`,
   // which is the only new-code security finding on this branch. The suffix is what keeps two
   // concurrent runs from sharing a data root, and a data root is the boundary every
   // destructive operation here is contained by, so a stronger source costs nothing and the
   // rule is right to ask.
-  const random = randomBytes(2).toString('hex'); // 4 chars
+  //
+  // ## Why five base-36 characters, and not simply more bytes
+  //
+  // The suffix carries the *whole* of the isolation between two runs, because the timestamp
+  // beside it only resolves to the second. Review was right that the previous `randomBytes(2)`
+  // was too narrow at 65,536 values, and a collision does not fail loudly: both runs compute
+  // the same `dataRoot`, so whichever reaches `afterAll` first deletes the other's workspace
+  // mid-run — the exact isolation guarantee this harness exists to provide.
+  //
+  // The obvious repair, a 16-character hex suffix, is worse than the defect. Nuxeo's
+  // `PathSegmentServiceDefault` truncates a path segment at **24 characters**, and `it-` plus
+  // a 15-character timestamp already spends 19 of them. Measured against the local stack on
+  // 2026-09-24: requesting `it-20260924-112334-3207ed6420ab7921` created
+  // `it-20260924-112334-3207e`. So the widening would have cut the effective randomness to the
+  // five surviving characters *anyway*, and — far worse — left `dataRoot` pointing at a path
+  // the server does not have, so every read 404s and `deleteDataRoot` takes its
+  // "already deleted or never created" branch and returns green while the workspace stays on
+  // the server forever. One run of that during review leaked exactly one workspace.
+  //
+  // Five characters is therefore the budget, and base 36 rather than hex is what buys the most
+  // inside it: 36^5 = 60,466,176 values against hex's 1,048,576, and 922x the 65,536 objected
+  // to. `randomInt` is uniform over the range, so there is no modulo bias to argue about.
+  //
+  // `assertUntruncated` below is what keeps this honest. The budget is exact — 24 of 24 — so a
+  // comment alone would be one careless edit away from silently leaking again.
+  const random = randomInt(RUN_SUFFIX_VALUES).toString(36).padStart(RUN_SUFFIX_LENGTH, '0');
   const runId = `${timestamp}-${random}`;
 
   const dataRoot = `/default-domain/workspaces/it-${runId}`;
@@ -119,6 +154,36 @@ export function setupIntegrationHarness(config: IntegrationTestConfig = {}): Int
   }, 30000); // 30s timeout for cleanup
 
   return harness;
+}
+
+/**
+ * Fail loudly when Nuxeo did not create the workspace at the path this harness computed.
+ *
+ * The run ID's random suffix is sized to spend exactly `NUXEO_PATH_SEGMENT_MAX` characters, so
+ * there is no slack: widen the suffix, lengthen the `it-` prefix, or point the suite at a
+ * deployment that configures `PathSegmentServiceDefault` lower, and the name is silently
+ * truncated. Nothing about that is noisy on its own. The POST still answers 2xx, `dataRoot`
+ * still holds the untruncated path, every subsequent read 404s, and `deleteDataRoot` reads the
+ * 404 as "already deleted or never created" and returns *successfully* — so the run reports
+ * green while its workspace stays on the server for good.
+ *
+ * That is the same shape as the defects this branch exists to remove: a check whose failure
+ * path is indistinguishable from its success path. Hence a comparison against the server's own
+ * answer rather than a comment asking the next person to be careful.
+ */
+export function assertUntruncated(expected: string, actual: string | null): void {
+  if (actual === null || actual === expected) return;
+  const name = expected.split('/').pop() ?? expected;
+  throw new Error(
+    `Nuxeo created the data root at a different path than requested:\n` +
+      `    requested  ${expected}\n` +
+      `    created    ${actual}\n\n` +
+      `  Almost certainly path-segment truncation: Nuxeo's PathSegmentServiceDefault caps a\n` +
+      `  segment at ${NUXEO_PATH_SEGMENT_MAX} characters and "${name}" is ${name.length}.\n` +
+      `  Left alone this does not fail — it leaks. Every read of the requested path 404s, and\n` +
+      `  cleanup reads that 404 as "already deleted", so the run goes green and the workspace\n` +
+      `  stays on the server. Shorten the run ID rather than raising this limit.`,
+  );
 }
 
 /**
@@ -154,6 +219,11 @@ async function createDataRoot(
         `Failed to create data root ${dataRoot}: ${res.status} ${res.statusText}\n${body}`,
       );
     }
+
+    // The server's own answer for where it put the workspace, compared against where this
+    // harness is about to tell every test and every DELETE to look. See `assertUntruncated`.
+    const created = (await res.json()) as { path?: unknown };
+    assertUntruncated(dataRoot, typeof created.path === 'string' ? created.path : null);
 
     console.log(`[integration-harness] Created data root: ${dataRoot}`);
   } catch (error) {

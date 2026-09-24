@@ -25,7 +25,10 @@ migrated all duplicate builders, and verified with negative control.
 
 - Extracted from nuxeo-document-api.spec.ts:55-63
 - Function: `nuxeoDocument(over?: Partial<NuxeoDocument>): NuxeoDocument`
-- All fields required, no escape hatch
+- Every **required** field filled — `uid`, `title`, `type`, `path`, `lastModified`,
+  `properties` — so the return value type-checks as a whole `NuxeoDocument`. The thirteen
+  optional fields are deliberately absent rather than defaulted; pass any the spec reads
+  through `over`
 - Default values: uid: 'doc-1', title: 'Invoice', type: 'File', etc.
 - File: `libs/shared/testing/src/lib/nuxeo-fixtures.ts`
 - Commit: f6155b13
@@ -143,7 +146,9 @@ Added import: `import { nuxeoAce } from '@agentic-ui/shared/testing'`
 
 ### Type Safety
 
-- Every field explicitly required (no Partial<> escape hatch)
+- Every **required** field explicitly filled, so no `Partial<>` escape hatch on the base
+  fixture — optional fields stay absent, matching what a live Nuxeo sends when the enricher
+  supplying them was not requested
 - Compile-time coupling: model changes → spec breaks
 - Negative control verified this works
 
@@ -157,10 +162,17 @@ Added import: `import { nuxeoAce } from '@agentic-ui/shared/testing'`
 
 ## Design Principles (from audit §10.2 AC2)
 
-1. **Every field required**
-   - No `Partial<>` escape hatch
-   - Incomplete fixtures are compile errors, not runtime surprises
-   - If logically optional, make it `null` explicitly
+1. **Every _required_ field filled**
+   - No `Partial<>` escape hatch on the base fixture: a factory returns a value the compiler
+     accepts as the whole model, so a missing required field is a compile error rather than a
+     runtime surprise
+   - This principle read "every field required", and that was true of neither factory.
+     `NuxeoDocument` declares thirteen genuinely optional fields and `nuxeoDocument()` sets
+     none of them, so a spec reading `doc.facets` off an un-overridden fixture gets
+     `undefined`. Any optional field a spec depends on must be passed in `over`
+   - `nuxeoAce()` is the stricter case and the reason the overstatement was plausible: every
+     field of `NuxeoAce` that looks optional is required, so all nine are filled — the type
+     permits `null` but not omission
 
 2. **One factory per model**
    - Not a god-object with 40 overrides

@@ -8,7 +8,7 @@
  * ever print FAIL, and the version after that counted navigation timeouts as assertions.
  * Both were wrong for weeks because nothing exercised them.
  *
- * So the four shapes are kept executable. `cases.case.ts` fails on purpose in each of them
+ * So the four shapes are kept executable. `cases.spec.ts` fails on purpose in each of them
  * and this asserts the reporter's verdict, including two silence assertions — a reporter
  * that counted everything would satisfy the positive check alone.
  *
@@ -18,8 +18,19 @@
  *   excluded  a failing expect() inside beforeEach, body never ran
  *   absent    a spec that passed
  *
- * Reverting the `category === 'expect'` rule to the old filename test takes the third case
- * red: its error location is a `*.spec.ts` line.
+ * ## The mutation this file's authority rests on
+ *
+ * Replace the `category === 'expect'` rule in the reporter with the old filename test —
+ * count a failure when `errorLocation.file` ends in `*.spec.ts` — and the counted total goes
+ * from **1 to 3**: the spec-line rejection and the `beforeEach` assertion both surface at a
+ * `cases.spec.ts` line and are admitted, while only the helper throw, located in `helper.ts`,
+ * is still excluded. Measured 2026-09-24.
+ *
+ * The fixture's name is what makes that mutation meaningful, and it was wrong until review
+ * pointed it out. While the file was `cases.case.ts` the old rule matched none of the four
+ * shapes, so the mutation scored 0 rather than 3 — the self-test could show the old rule
+ * counting *nothing*, which is not the defect, and could not show it over-counting, which is.
+ * See the header of `cases.spec.ts`.
  *
  * Usage: node scripts/beta-harness/assertion-reporter.selftest.mjs
  * Exit 1 if any expectation is unmet.
@@ -113,7 +124,7 @@ check(
 // written with a message — which is most of them in this suite.
 check(
   'the counted failure records where the assertion was, not where the error surfaced',
-  /^cases\.case\.ts:\d+$/.test(byTitle.get(bodyAssertion)?.assertion?.where ?? '') &&
+  /^cases\.spec\.ts:\d+$/.test(byTitle.get(bodyAssertion)?.assertion?.where ?? '') &&
     (byTitle.get(bodyAssertion)?.assertion?.assertion ?? '').length > 0,
   JSON.stringify(byTitle.get(bodyAssertion)?.assertion ?? null),
 );
