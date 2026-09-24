@@ -17,20 +17,20 @@
       "sCovered": 101
     },
     "adf-hx-bridge": {
-      "lines": 99.65,
-      "statements": 99.65,
-      "branches": 93.41,
+      "lines": 99.82,
+      "statements": 99.82,
+      "branches": 93.58,
       "functions": 100,
       "sTotal": 2258,
-      "sCovered": 2250
+      "sCovered": 2254
     },
     "administration": {
-      "lines": 96.24,
-      "statements": 96.24,
-      "branches": 91.87,
-      "functions": 94.94,
-      "sTotal": 2607,
-      "sCovered": 2509
+      "lines": 96.25,
+      "statements": 96.25,
+      "branches": 91.76,
+      "functions": 94.74,
+      "sTotal": 2615,
+      "sCovered": 2517
     },
     "assets": {
       "lines": 97.44,
@@ -49,12 +49,12 @@
       "sCovered": 3250
     },
     "collections": {
-      "lines": 94.73,
-      "statements": 94.73,
-      "branches": 86.24,
-      "functions": 93.22,
+      "lines": 95.02,
+      "statements": 95.02,
+      "branches": 86.3,
+      "functions": 94.92,
       "sTotal": 683,
-      "sCovered": 647
+      "sCovered": 649
     },
     "core": {
       "lines": 100,
@@ -73,12 +73,12 @@
       "sCovered": 4480
     },
     "integration-tests": {
-      "lines": 23.92,
-      "statements": 23.92,
-      "branches": 98.25,
+      "lines": 24.67,
+      "statements": 24.67,
+      "branches": 98.39,
       "functions": 88.89,
-      "sTotal": 602,
-      "sCovered": 144
+      "sTotal": 608,
+      "sCovered": 150
     },
     "knowledge-discovery": {
       "lines": 65.03,
@@ -99,7 +99,7 @@
     "permission-dialogs": {
       "lines": 96.43,
       "statements": 96.43,
-      "branches": 66.29,
+      "branches": 67.74,
       "functions": 93.75,
       "sTotal": 476,
       "sCovered": 459
@@ -115,8 +115,8 @@
     "shared-ai-client": {
       "lines": 97.72,
       "statements": 97.72,
-      "branches": 98.7,
-      "functions": 94.44,
+      "branches": 98.68,
+      "functions": 94.29,
       "sTotal": 219,
       "sCovered": 214
     },
@@ -157,8 +157,8 @@
       "statements": 97.4,
       "branches": 93.23,
       "functions": 92.37,
-      "sTotal": 1076,
-      "sCovered": 1048
+      "sTotal": 1077,
+      "sCovered": 1049
     },
     "testing": {
       "lines": 100,
