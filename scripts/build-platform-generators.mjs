@@ -50,6 +50,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join, relative, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -84,11 +85,15 @@ mkdirSync(OUT, { recursive: true });
 
 // tsc, invoked with flags rather than a tsconfig file: the whole configuration is four
 // options and a tsconfig would be a fifth file to keep in step with this one.
+// Run tsc's own entry script with this Node, not `npx`: `npx` is `npx.cmd` on Windows, which
+// Node only starts through a shell, and a shell re-splits any argument containing a space —
+// every path below, in a checkout under a directory such as `C:\work\Agentic UI`.
+const TSC = createRequire(import.meta.url).resolve('typescript/bin/tsc');
 try {
   execFileSync(
-    'npx',
+    process.execPath,
     [
-      'tsc',
+      TSC,
       '--outDir',
       OUT,
       '--rootDir',
@@ -113,13 +118,10 @@ try {
         .filter((f) => typeof f === 'string' && f.endsWith('.ts'))
         .map((f) => join(SRC, 'src', f)),
     ],
-    // `npx` is `npx.cmd` on Windows, which Node will not start without a shell; without this the
-    // launch fails with ENOENT and no output, and every task depending on this one is skipped.
     {
       cwd: ROOT,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
     },
   );
 } catch (error) {
