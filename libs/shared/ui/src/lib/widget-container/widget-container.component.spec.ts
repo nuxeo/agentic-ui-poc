@@ -48,13 +48,13 @@ describe('WidgetContainerComponent', () => {
     return fixture.nativeElement.querySelector(selector) as T | null;
   }
 
-  it('renders the title as a level-3 heading', () => {
+  it('renders the title as a level-2 heading', () => {
     const heading = query('.widget-header-title');
     expect(heading?.textContent?.trim()).toBe('Recently Viewed');
-    // `role="heading"` + `aria-level="3"` on a div, because the widget sits under an h2 page
-    // title; without the level the whole dashboard flattens in a screen reader's outline.
+    // `role="heading"` + `aria-level="2"` on a div: the shell page title is a native `<h1>`
+    // (NXENG-788), so widget titles must be the next level — IBM heading-order / NXENG-941.
     expect(heading?.getAttribute('role')).toBe('heading');
-    expect(heading?.getAttribute('aria-level')).toBe('3');
+    expect(heading?.getAttribute('aria-level')).toBe('2');
   });
 
   /**
