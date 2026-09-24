@@ -71,10 +71,12 @@ import type { DataColumn } from '@alfresco/adf-core';
 import {
   AppExtensionsService,
   EXTENSION_SLOTS,
+  ExtensionActionRegistry,
   type ExtensionColumnDescriptor,
 } from '@nuxeo-satori/platform/extensions';
 
 import { toDataColumns } from '../adf-hx-columns';
+import { scopeABulkActionHandlers } from './scope-a-bulk-actions';
 import {
   CreateImportDialogComponent,
   type CreateImportDialogResult,
@@ -307,6 +309,7 @@ export class BrowseAdfHxPocComponent {
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly extensions = inject(AppExtensionsService);
+  private readonly actionRegistry = inject(ExtensionActionRegistry);
   private readonly documentRouter = inject(NuxeoDocumentRouterService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly tagSearch$ = new Subject<string>();
@@ -514,6 +517,12 @@ export class BrowseAdfHxPocComponent {
     this.destroyRef.onDestroy(() => {
       this.mediaService.revokeThumbnails();
     });
+
+    // The shell's selection bar acts on the rows ticked here; its write actions stay out of Scope A.
+    const scopeABulkActions = this.actionRegistry.register(
+      scopeABulkActionHandlers((label) => this.showScopeNotice(label)),
+    );
+    this.destroyRef.onDestroy(() => scopeABulkActions.unregister());
 
     // The selection bar's Clear, or a bulk action finishing, empties the app-wide selection.
     // Upstream's table keeps its own checkboxes, so it is re-created to match.
