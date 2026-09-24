@@ -16,9 +16,9 @@ import {
 @Component({
   standalone: true,
   imports: [SatPlatformNavModule, PlatformNavRailToggleVisibleLabelDirective],
-  template: '<sat-platform-nav satPlatformNavRailToggleVisibleLabel></sat-platform-nav>',
+  templateUrl: './platform-nav-rail-toggle-visible-label.host.html',
 })
-class HostComponent {}
+class PlatformNavRailToggleVisibleLabelHostComponent {}
 
 describe('Platform nav rail toggle visible label (NXENG-927)', () => {
   describe('syncPlatformNavRailToggleVisibleLabel', () => {
@@ -62,15 +62,33 @@ describe('Platform nav rail toggle visible label (NXENG-927)', () => {
   });
 
   describe('PlatformNavRailToggleVisibleLabelDirective', () => {
-    let fixture: ComponentFixture<HostComponent>;
+    let fixture: ComponentFixture<PlatformNavRailToggleVisibleLabelHostComponent>;
+
+    function railToggle(): HTMLButtonElement {
+      const button = fixture.nativeElement.querySelector(
+        PLATFORM_NAV_RAIL_TOGGLE_SELECTOR,
+      ) as HTMLButtonElement | null;
+      expect(button).withContext('rail toggle renders').toBeTruthy();
+      return button as HTMLButtonElement;
+    }
+
+    function expectAccessibleNameContainsVisibleLabel(button: HTMLButtonElement): void {
+      const span = button.querySelector(`.${PLATFORM_NAV_RAIL_TOGGLE_VISIBLE_LABEL_CLASS}`);
+      const visible = span?.textContent?.trim() ?? '';
+      const ariaLabel = button.getAttribute('aria-label')?.trim() ?? '';
+      expect(visible.length).withContext('visible label text').toBeGreaterThan(0);
+      expect(ariaLabel)
+        .withContext(`aria-label must contain visible text "${visible}"`)
+        .toContain(visible);
+    }
 
     beforeEach(async () => {
       await TestBed.configureTestingModule({
-        imports: [HostComponent, TranslateModule.forRoot()],
+        imports: [PlatformNavRailToggleVisibleLabelHostComponent, TranslateModule.forRoot()],
         providers: [provideSatori(), provideNoopAnimations()],
       }).compileComponents();
 
-      fixture = TestBed.createComponent(HostComponent);
+      fixture = TestBed.createComponent(PlatformNavRailToggleVisibleLabelHostComponent);
       const translate = TestBed.inject(TranslateService);
       translate.setTranslation('en', {
         'sat.platform-nav.expand': '⟦Expand navigation⟧',
@@ -81,11 +99,7 @@ describe('Platform nav rail toggle visible label (NXENG-927)', () => {
     });
 
     it('renders visible label text inside the rail toggle', () => {
-      const button = fixture.nativeElement.querySelector(
-        PLATFORM_NAV_RAIL_TOGGLE_SELECTOR,
-      ) as HTMLButtonElement;
-      expect(button).withContext('rail toggle renders').toBeTruthy();
-
+      const button = railToggle();
       const span = button.querySelector(`.${PLATFORM_NAV_RAIL_TOGGLE_VISIBLE_LABEL_CLASS}`);
       expect(span?.textContent).toBe('⟦Expand navigation⟧');
 
@@ -93,6 +107,28 @@ describe('Platform nav rail toggle visible label (NXENG-927)', () => {
       expect(styles.display).not.toBe('none');
       expect(styles.visibility).not.toBe('hidden');
       expect(Number.parseFloat(styles.fontSize)).toBeGreaterThan(0);
+    });
+
+    it('keeps aria-label aligned with visible text when toggling expand and collapse', () => {
+      const button = railToggle();
+      expectAccessibleNameContainsVisibleLabel(button);
+      expect(
+        button.querySelector(`.${PLATFORM_NAV_RAIL_TOGGLE_VISIBLE_LABEL_CLASS}`)?.textContent,
+      ).toBe('⟦Expand navigation⟧');
+
+      button.click();
+      fixture.detectChanges();
+      expectAccessibleNameContainsVisibleLabel(railToggle());
+      expect(
+        railToggle().querySelector(`.${PLATFORM_NAV_RAIL_TOGGLE_VISIBLE_LABEL_CLASS}`)?.textContent,
+      ).toBe('⟦Collapse navigation⟧');
+
+      railToggle().click();
+      fixture.detectChanges();
+      expectAccessibleNameContainsVisibleLabel(railToggle());
+      expect(
+        railToggle().querySelector(`.${PLATFORM_NAV_RAIL_TOGGLE_VISIBLE_LABEL_CLASS}`)?.textContent,
+      ).toBe('⟦Expand navigation⟧');
     });
   });
 });
