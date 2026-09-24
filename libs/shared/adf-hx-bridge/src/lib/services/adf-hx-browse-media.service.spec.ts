@@ -176,6 +176,29 @@ describe('AdfHxBrowseMediaService', () => {
     });
   });
 
+  describe('revokeThumbnailUrls', () => {
+    it("revokes only the given list's URLs and leaves the other list's images live", () => {
+      // The folder list and Trash share this service; Trash reloading must not blank the folder.
+      service.loadThumbnails([hxDoc('folder-row')], () => undefined, destroyRef, false);
+      httpMock.expectOne((r) => r.url.includes('/@rendition/thumbnail')).flush(new Blob(['f']));
+      service.loadThumbnails([hxDoc('trash-row')], () => undefined, destroyRef, false);
+      httpMock.expectOne((r) => r.url.includes('/@rendition/thumbnail')).flush(new Blob(['t']));
+      const [folderUrl, trashUrl] = created;
+
+      service.revokeThumbnailUrls([trashUrl]);
+      expect(revoked).toEqual([trashUrl]);
+
+      // The folder URL is still tracked, so teardown revokes it, and the Trash URL is not revoked twice.
+      service.revokeThumbnails();
+      expect(revoked).toEqual([trashUrl, folderUrl]);
+    });
+
+    it('ignores a URL it did not create, rather than revoking a caller-owned blob', () => {
+      service.revokeThumbnailUrls(['blob:someone-else']);
+      expect(revoked).toEqual([]);
+    });
+  });
+
   describe('exportCsv', () => {
     /** A real v4 UUID: `startCsvExport` extracts the execution id by UUID pattern. */
     const EXECUTION_ID = '3f9a1c2e-4b5d-4a7f-8c1e-9d0b2a6f5e41';

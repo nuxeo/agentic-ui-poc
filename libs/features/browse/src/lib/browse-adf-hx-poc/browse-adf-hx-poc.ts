@@ -538,7 +538,7 @@ export class BrowseAdfHxPocComponent {
 
   constructor() {
     this.destroyRef.onDestroy(() => {
-      this.mediaService.revokeThumbnails();
+      this.revokeThumbnails();
     });
 
     // The shell's selection bar acts on the rows ticked here; its write actions stay out of Scope A.
@@ -861,6 +861,7 @@ export class BrowseAdfHxPocComponent {
     this.trashError.set(false);
     this.auditEntries.set([]);
     this.trashedDocuments.set([]);
+    this.trashThumbnails.set({});
     this.activityEntries.set([]);
     // The selection belongs to the folder that was on screen. Carrying it across a navigation
     // would leave Preview pointed at a document no longer in the list.
@@ -873,7 +874,7 @@ export class BrowseAdfHxPocComponent {
     this.loading.set(true);
     this.listLoading.set(true);
     this.error.set(null);
-    this.mediaService.revokeThumbnails();
+    this.revokeThumbnails();
     this.thumbnails.set({});
     this.currentNuxeoDoc.set(null);
 
@@ -1135,12 +1136,26 @@ export class BrowseAdfHxPocComponent {
   }
 
   private loadTrashThumbnails(documents: Document[]): void {
+    // Only Trash's own previous images: a reset would revoke the folder list's thumbnails as well,
+    // which the View tab and the selection popup are still showing.
+    this.mediaService.revokeThumbnailUrls(Object.values(this.trashThumbnails()));
+    this.trashThumbnails.set({});
     this.mediaService.loadThumbnails(
       documents,
       (partial) => this.trashThumbnails.update((current) => ({ ...current, ...partial })),
       this.destroyRef,
-      true,
+      false,
     );
+  }
+
+  /**
+   * Revokes every thumbnail this page created, after dropping the app-wide selection's copies.
+   * The selection keeps the preview strings for its popup and outlives a page, a sort or a folder
+   * change, so revoking first would leave the popup showing revoked images.
+   */
+  private revokeThumbnails(): void {
+    this.selection.forgetPreviews();
+    this.mediaService.revokeThumbnails();
   }
 
   private isBrowseFolderish(doc: NuxeoDocument): boolean {

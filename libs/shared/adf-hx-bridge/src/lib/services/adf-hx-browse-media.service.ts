@@ -51,6 +51,19 @@ export class AdfHxBrowseMediaService {
     this.thumbnailBlobUrls.length = 0;
   }
 
+  /**
+   * Revokes only the given thumbnail URLs, for a caller showing two lists from one service: a
+   * `reset` or {@link revokeThumbnails} would revoke the other list's images too.
+   */
+  revokeThumbnailUrls(urls: Iterable<string>): void {
+    for (const url of urls) {
+      const at = this.thumbnailBlobUrls.indexOf(url);
+      if (at === -1) continue;
+      URL.revokeObjectURL(url);
+      this.thumbnailBlobUrls.splice(at, 1);
+    }
+  }
+
   exportCsv(parentUid: string): Observable<Blob> {
     return this.browseService
       .startCsvExport(parentUid)
