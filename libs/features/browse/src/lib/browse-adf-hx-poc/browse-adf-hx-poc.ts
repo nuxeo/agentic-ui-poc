@@ -519,10 +519,14 @@ export class BrowseAdfHxPocComponent {
     });
 
     // The shell's selection bar acts on the rows ticked here; its write actions stay out of Scope A.
+    // Rows ticked here must not outlive the override, or the real handlers would act on them.
     const scopeABulkActions = this.actionRegistry.register(
       scopeABulkActionHandlers((label) => this.showScopeNotice(label)),
     );
-    this.destroyRef.onDestroy(() => scopeABulkActions.unregister());
+    this.destroyRef.onDestroy(() => {
+      this.selection.clear();
+      scopeABulkActions.unregister();
+    });
 
     // The selection bar's Clear, or a bulk action finishing, empties the app-wide selection.
     // Upstream's table keeps its own checkboxes, so it is re-created to match.
