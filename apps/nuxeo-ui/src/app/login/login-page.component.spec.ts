@@ -260,11 +260,12 @@ describe('LoginPageComponent', () => {
     expect(getComputedStyle(usernameInput).scrollMarginTop).not.toBe('0px');
   });
 
-  it('exposes a level-one heading for the login page (WCAG 1.3.1)', () => {
+  it('exposes a visually hidden level-one heading for the login page (WCAG 1.3.1)', () => {
     const el = fixture.nativeElement as HTMLElement;
-    const heading = el.querySelector('h1.login-title');
-    expect(heading).toBeTruthy();
+    const heading = el.querySelector('#login-page-heading');
+    expect(heading?.tagName).toBe('H1');
     expect(heading?.textContent?.trim()).toBe('Log in');
+    expect(heading?.classList.contains('cdk-visually-hidden')).toBe(true);
   });
 
   it('uses a decorative img for hero art instead of CSS background-image (NXENG-751)', () => {
