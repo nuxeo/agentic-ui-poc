@@ -70,13 +70,17 @@ provider explicitly rather than relying on the default.
 `a11y/playwright.config.ts`, run separately from `beta:e2e`, because the two
 suites have different prerequisites. The critical-path suite needs Playwright and a live
 stack; this also needs two tarballs no registry can supply. A colleague who has not downloaded
-them must lose the accessibility run, not thirteen critical-path specs. The base config's
-`testIgnore: '**/*.a11y.spec.ts'` is the other half of that split.
+them must lose the accessibility run, not thirteen critical-path specs.
 
-`apps/nuxeo-ui-e2e/package.json` exists only to set `"type": "module"`. a11y-scout is
-ESM-only — its `exports` map has `import` and no `require` — and Playwright transpiles specs
-to CommonJS by default, which fails with `No "exports" main defined`. Scoping ESM to this one
-directory avoids making the whole repository ESM.
+The separation is now a directory rather than a filter: every spec here lives under `a11y/`,
+which is outside `apps/nuxeo-ui-e2e`'s `testDir`, so the critical-path config needs **no
+`testIgnore`** and is byte-identical to main. A spec cannot be collected by the wrong suite
+because the two suites do not share a tree.
+
+`a11y/package.json` exists only to set `"type": "module"`. a11y-scout is ESM-only — its
+`exports` map has `import` and no `require` — and Playwright transpiles specs to CommonJS by
+default, which fails with `No "exports" main defined`. Scoping ESM to this one folder avoids
+making the whole repository ESM.
 
 ## The first baseline
 

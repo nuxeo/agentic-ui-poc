@@ -2,7 +2,7 @@
  * The screens the accessibility journey covers — the single source of truth.
  *
  * Imported by **both** `journey.a11y.spec.ts` (which declares one test per screen) and
- * `playwright.a11y.config.ts` (which declares one project per screen). Adding a screen is one
+ * `../playwright.config.ts` (which declares one project per screen). Adding a screen is one
  * edit here plus one `journeyTest()` call in the spec; nothing else needs touching, including
  * `package.json`, because `a11y:scan -- journey` selects projects with a `journey-*` wildcard.
  *

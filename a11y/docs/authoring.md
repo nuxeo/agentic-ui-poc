@@ -173,8 +173,12 @@ export const test = a11yBase.extend<{ signedIn: Page }>({
 });
 ```
 
-Credentials come from `NUXEO_USER` / `NUXEO_PASS`, defaulting to `Administrator`. Never hardcode
-them.
+Credentials come from `NUXEO_USER` / `NUXEO_PASS` and are **required, not defaulted**.
+`requireNuxeoCredentials()` in `../fixtures.ts` throws when either is unset, and `../env.mjs`
+does the same for the Node-side tooling, so a run fails at load rather than scanning as a
+guessed identity. Do not reintroduce a `?? 'Administrator'` fallback: besides the security
+rule, a default silently authenticates as the wrong user against any server that accepts it,
+and nothing in the report says so.
 
 ### 2b. Assert the surface rendered before you scan it
 
@@ -183,26 +187,30 @@ accessibility tooling and it has landed three times: a step labelled "Login surf
 scanned the dashboard, a "card view" step that scanned the table view, and `/#/collections`,
 which has no matching route and has been counting its empty result as a pass for weeks.
 
-```70:96:a11y/specs/surfaces.a11y.spec.ts
+**A visible host is not enough, and this guide used to stop there.** A failed load renders the
+same host component with an error panel inside it, which is visible — so `toBeVisible()` on the
+host passes and the scan measures the error state under the surface's name. Use
+`expectSurfaceUsable()`, which adds absence of the known error classes and non-empty content:
+
+```70:80:a11y/specs/surfaces.a11y.spec.ts
     test(`scans ${label}`, async ({ signedIn: page, a11y }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
 
       // A surface that did not render scans clean, and a clean scan of nothing is the
       // vacuous pass this repository keeps getting caught by — `phase-6-a11y.mjs` shipped
-      // a step labelled "Login surface" that actually scanned the dashboard. Asserting the
-      // host component is present first is what makes the scan's subject match its label.
-      await expect(
-        page.locator(host),
-        `${host} must render before ${label} is scanned, or the scan proves nothing`,
-      ).toBeVisible();
-
-      await a11y.scanPage({
-        level: 'AA',
-        failOnBlockers: false,
-        noFocusIndicatorScreenshots: true,
-      });
-    });
+      // a step labelled "Login surface" that actually scanned the dashboard.
+      //
+      // `expectSurfaceUsable` rather than a bare `toBeVisible` on the host: a failed load
+      // renders the same host with an error panel, which is visible. See its own comment for
+      // what it proves and what it still does not.
+      await expectSurfaceUsable(page, host, label);
 ```
+
+Be clear on its limit: it proves the surface rendered, is not in a known error state, and is
+not an empty shell. It does **not** prove repository data arrived. Where a route-specific
+success selector is known, assert that instead — `openBrowse()` in
+`interaction-states.a11y.spec.ts` waits for `.browse-row, .doc-card-wrapper`, which only exist
+when the folder request succeeded.
 
 Run `npm run a11y:scan -- routes` before authoring anything new — it tells you which routes currently
 render, so you do not spend an afternoon scanning a dead one.
@@ -262,14 +270,16 @@ report. If that assertion fails, find the surface that failed; do not adjust the
 
 ## 4. Style B — a standalone diagnostic script
 
-For targeted questions. Copy this skeleton into `scripts/a11y-<question>.mjs`:
+For targeted questions. Copy this skeleton into `a11y/diagnostics/<question>.mjs`:
 
 ```js
 #!/usr/bin/env node
 /** One paragraph: the question this answers, and why it needed its own script. */
+import { requireNuxeoCredentials } from '../env.mjs';
+
 const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
-const user = process.env['NUXEO_USER'] ?? 'Administrator';
-const pass = process.env['NUXEO_PASS'] ?? 'Administrator';
+// Required, never defaulted — a fallback scans as the wrong identity and says nothing.
+const { username: user, password: pass } = requireNuxeoCredentials();
 
 let chromium;
 try {
@@ -306,7 +316,24 @@ that turns the build red is one people stop running. It returns non-zero for _fi
 it is a gate. It must **always** return `2` rather than `0` when it could not measure, because a
 scan that silently did not happen must never read as clean.
 
-Add it to `package.json` as `a11y:<name>` so it sits with the others.
+Then add it as a **subcommand in `../run.mjs`**, not as a script in the root `package.json`:
+
+```js
+  <name>: {
+    describe: 'Diagnostic: the question it answers',
+    preflight: false,
+    argv: ['node', 'a11y/diagnostics/<question>.mjs'],
+  },
+```
+
+The root `package.json` carries exactly one accessibility line, `a11y:scan`, so that removing
+this folder is one deletion rather than seven. A diagnostic added to `package.json` instead
+becomes an orphaned root script the moment `a11y/` is deleted. See `../README.md`.
+
+`preflight: false` is the default for diagnostics, on the grounds that a twenty-second answer
+should not wait on a document query — but it means the script owns its own preconditions. If
+it measures anything that an error state can satisfy, check the backend yourself;
+`reflow-probe.mjs` does, because an error panel has perfectly measurable geometry.
 
 ## 5. Finding _new_ issues — drive state, do not just visit routes
 
@@ -366,16 +393,16 @@ assuming a fresh route means a fresh state.
 
 ## 6. Traps, each one already paid for
 
-| Trap                          | What happens                                                                   | Fix                                                                              |
-| ----------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| `npm install --no-save X`     | **Prunes** anything previously `--no-save`'d, silently removing Playwright     | Install all packages in ONE command                                              |
-| Plain `npm install <tarball>` | Writes `file:C:\Users\you\…` into the lockfile, breaking `npm ci` for everyone | Always `--no-save`                                                               |
-| a11y-scout is ESM-only        | `No "exports" main defined` — Playwright transpiles specs to CJS               | `apps/nuxeo-ui-e2e/package.json` sets `"type": "module"` for that directory only |
-| Hash routing                  | `goto('/#/x')` is **same-document**, so `APP_INITIALIZER` never re-runs        | Use a real `page.reload()` when asserting reloaded-app behaviour                 |
-| Keyboard walk is slow         | Up to 150 steps per direction; browse takes 8.8 minutes                        | Per-test timeout is 600s in `a11y/playwright.config.ts`                          |
-| A failing test                | Fragments the worker-scoped report                                             | Assert `pagesScanned.length`                                                     |
-| Dev proxy                     | `proxy.conf.json` is **not** hot-reloaded                                      | Restart `nx serve` after editing it                                              |
-| Node 22+                      | A built-in `localStorage` shadows jsdom's                                      | Node is pinned to 20 in `.nvmrc`                                                 |
+| Trap                          | What happens                                                                   | Fix                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `npm install --no-save X`     | **Prunes** anything previously `--no-save`'d, silently removing Playwright     | Install all packages in ONE command                              |
+| Plain `npm install <tarball>` | Writes `file:C:\Users\you\…` into the lockfile, breaking `npm ci` for everyone | Always `--no-save`                                               |
+| a11y-scout is ESM-only        | `No "exports" main defined` — Playwright transpiles specs to CJS               | `a11y/package.json` sets `"type": "module"` for this folder only |
+| Hash routing                  | `goto('/#/x')` is **same-document**, so `APP_INITIALIZER` never re-runs        | Use a real `page.reload()` when asserting reloaded-app behaviour |
+| Keyboard walk is slow         | Up to 150 steps per direction; browse takes 8.8 minutes                        | Per-test timeout is 600s in `a11y/playwright.config.ts`          |
+| A failing test                | Fragments the worker-scoped report                                             | Assert `pagesScanned.length`                                     |
+| Dev proxy                     | `proxy.conf.json` is **not** hot-reloaded                                      | Restart `nx serve` after editing it                              |
+| Node 22+                      | A built-in `localStorage` shadows jsdom's                                      | Node is pinned to 20 in `.nvmrc`                                 |
 
 ## 7. Before you commit a new check
 

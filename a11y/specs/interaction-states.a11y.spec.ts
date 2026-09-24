@@ -34,7 +34,7 @@ import { expect, REPORT_DIR, test } from '../fixtures';
  * The a11y-scout accumulator is a **worker-scoped** fixture, so two spec files sharing a worker
  * share one report — and `surfaces.a11y.spec.ts` asserts its report covers exactly its own
  * surfaces, which a second file appending to the same accumulator would break. Projects get
- * their own workers, so `playwright.a11y.config.ts` declares `surfaces` and `interaction-states`
+ * their own workers, so `../playwright.config.ts` declares `surfaces` and `interaction-states`
  * separately and each emits its own report.
  *
  * Run:

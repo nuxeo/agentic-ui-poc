@@ -38,7 +38,7 @@ import {
  * contain several, which is precisely the kind of self-confirming artifact this repository
  * has been bitten by before.
  *
- * A Playwright project gets its own worker, so `playwright.a11y.config.ts` declares one
+ * A Playwright project gets its own worker, so `../playwright.config.ts` declares one
  * project per screen and each accumulates and emits independently. `emitScreenReport()`
  * asserts `pagesScanned.length === 1` so that if this assumption ever stops holding — a
  * Playwright change, a fixture change — the run goes red instead of quietly emitting a
@@ -338,7 +338,7 @@ const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
  *
  * ## The two mechanisms used instead, and what each is for
  *
- *   - `httpCredentials: undefined` on this project (see `playwright.a11y.config.ts`) removes
+ *   - `httpCredentials: undefined` on this project (see `../playwright.config.ts`) removes
  *     the automatic Basic auth, so the browser genuinely has no credentials to offer.
  *   - The signed-out marker makes hydration short-circuit before it probes the server at all,
  *     so the screen does not depend on how the server answers an anonymous `/me`.
