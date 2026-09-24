@@ -6,11 +6,11 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 /**
  * NXENG-940 / IBM 9044252072 — `.ai-banner-empty` text and icon on the AI Insights banner.
  *
- * The guarantee is a measured contrast ratio against the lightest gradient stop (#eef1ff),
+ * The guarantee is a measured contrast ratio against the darkest gradient stop (#eef1ff),
  * not a grep for a hex in SCSS. Karma runs in real Chrome with the app stylesheet loaded.
  */
 
-/** Lightest stop on `.ai-insights-banner` — conservative backdrop for gradient text. */
+/** Darkest stop on `.ai-insights-banner` — conservative backdrop for gradient text. */
 const BANNER_WORST_CASE_BG: readonly number[] = [238, 241, 255];
 
 const MIN_TEXT_RATIO = 4.5;
@@ -54,7 +54,7 @@ describe('dashboard AI banner empty state contrast (NXENG-940)', () => {
     }).compileComponents();
   });
 
-  it('empty-state text and icon meet 4.5:1 on the lightest banner stop', () => {
+  it('empty-state text and icon meet 4.5:1 on the darkest banner stop', () => {
     const fixture = TestBed.createComponent(DashboardAiBannerEmptyHostComponent);
     fixture.detectChanges();
 
