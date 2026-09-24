@@ -29,16 +29,17 @@
  * - Folder navigation is not wired on this route — no row double-click or title click
  *   descends. The scene deep-links with `?path=` instead of miming a click that does
  *   nothing.
- * - Upstream's viewer opens, but the Nuxeo rendition for these fixtures does not always
- *   resolve, so it can render its own "unsupported file type" state. That is upstream's
- *   component doing upstream's error handling; the caption says so rather than implying a
- *   working preview.
+ * - Upstream's viewer previews what adf-core can show natively — PDF, PNG, JPEG, GIF, BMP,
+ *   SVG, text, audio and video. Anything else, WebP and Office files included, would need a
+ *   rendition this bridge cannot serve, so the scene previews the PDF fixture.
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
+  ADOPTED_COUNT,
+  OURS_COUNT,
   caption,
   clearOverlay,
   installOverlay,
@@ -422,14 +423,13 @@ export default async function run({ page, deckUrl, hold, playDeck }) {
       : '  [scene] HxpSpinnerComponent was never on screen long enough to annotate — NOT covered',
   );
 
-  // Beat 12 — upstream's viewer.
+  // Beat 12 — upstream's viewer, previewing the PDF fixture.
   //
-  // Three fixtures were tried — a PDF, a PNG and an image workspace document — and all three
-  // land on upstream's "Couldn't load preview" state, because the rendition it asks for does
-  // not resolve through this bridge (register entry R4: `RENDITIONS.getRenditions` returns a
-  // fixed pair and cannot answer a discovery call). The component is genuinely on screen and
-  // genuinely upstream's, and the caption says exactly that and nothing more. Captioning this
-  // frame as a working preview would be the misleading kind of evidence.
+  // Every fixture used to land on "Couldn't load preview": the bridge never mapped the main file
+  // to `sysfile_blob`, which is where the viewer reads the MIME type from, so it treated every
+  // file as unsupported. With that mapped and the DOWNLOAD port serving it from `file:content`,
+  // the viewer renders the file itself. The caption says so only if it did — an error state
+  // captioned as a preview would be the misleading kind of evidence.
   await stage(page, null);
   await clickTab(page, 'View').catch(() => {});
   await page.waitForTimeout(3000);
@@ -437,14 +437,18 @@ export default async function run({ page, deckUrl, hold, playDeck }) {
   console.log(`  [scene] preview target: ${previewTarget}`);
   const preview = page.locator('.hxp-browse-page__preview-btn');
   if (await preview.count()) {
-    await caption(
-      page,
-      'Upstream’s viewer, on screen and running. The rendition it wants does not resolve — so this is its own error state, not ours.',
-    );
     await preview
       .click({ timeout: 8000 })
       .catch((e) => console.log(`  [scene] preview: ${e.message}`));
     await page.waitForTimeout(7000);
+    const unsupported = await page.locator('adf-viewer-unknown-format').count();
+    if (unsupported) console.log('  [scene] viewer showed its unsupported-format state');
+    await caption(
+      page,
+      unsupported
+        ? 'Upstream’s viewer, open — but it could not render this file, so this is its own error state.'
+        : 'Upstream’s viewer, rendering the PDF itself, served from Nuxeo through the bridge.',
+    );
     await revealAndHold(page, ['hxp-ui-document-viewer', 'adf-viewer'], 6500, { label: 'viewer' });
     await beat(page, 'document-viewer');
     await endBeat(page);
@@ -467,13 +471,13 @@ export default async function run({ page, deckUrl, hold, playDeck }) {
   await beat(page, 'all-on-screen');
 
   // The counter's "upstream" total mixes adopted components, upstream internals and adf-core,
-  // so it reads as 8 while only 6 adf-hx components were ever adopted. These numbers are read
-  // back off the overlay rather than typed, so the caption cannot drift from the outlines.
+  // so it reads higher than the adopted count. These numbers are read back off the overlay and
+  // the registry rather than typed, so the caption cannot drift from the outlines.
   const s = await page.evaluate(() => window.__prov.summary());
   console.log(`  [scene] all-pass breakdown: ${JSON.stringify(s)}`);
   await caption(
     page,
-    `On this screen: ${s.adopted} of the 6 adopted adf-hx components, ${s.internals} upstream internals, ` +
+    `On this screen: ${s.adopted} of the ${ADOPTED_COUNT} adopted adf-hx components, ${s.internals} upstream internals, ` +
       `${s.core} from adf-core — and ${s.ours} of ours.`,
   );
   await hold(page, 7000);
@@ -481,7 +485,7 @@ export default async function run({ page, deckUrl, hold, playDeck }) {
 
   await caption(
     page,
-    'Across the whole route: 6 adf-hx components adopted, 14 of ours, 12 API ports behind them.',
+    `Across the whole route: ${ADOPTED_COUNT} adf-hx components adopted, ${OURS_COUNT} of ours, 12 API ports behind them.`,
   );
   await hold(page, 5500);
   await beat(page, 'closing-live');
