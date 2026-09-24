@@ -280,14 +280,16 @@
   align-items: center;
   gap: 8px;
   padding: 12px 0;
-  color: #667085;
+  // IBM 9044252072 / NXENG-940 — empty copy must stay ≥4.5:1 on the banner gradient
+  // (lightest stop #eef1ff). Match other dashboard empty states (`.widget-empty`).
+  color: var(--mat-sys-on-surface-variant, #474551);
   font-size: 13px;
 
   mat-icon {
     font-size: 18px;
     width: 18px;
     height: 18px;
-    color: #9aa0a9;
+    color: currentColor;
   }
 }
 
