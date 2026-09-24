@@ -243,6 +243,40 @@ sat-platform-nav #sat-platform-nav-title-icon:focus {
   outline-offset: -2px;
 }
 
+/*
+ * Rail expand/collapse toggle — NXENG-927 (IBM 4056183850, input_label_visible).
+ *
+ * Satori's toggle is icon-only while the translated expand/collapse string lives in
+ * `aria-label` only. IBM Equal Access expects visible label text; the host directive adds
+ * `.sat-platform-nav-rail-toggle-visible-label` inside the button with the same string.
+ */
+sat-platform-nav #sat-platform-nav-title-icon {
+  flex-direction: column;
+  width: auto;
+  min-width: 40px;
+  height: auto;
+  min-height: 40px;
+  padding: 2px 4px;
+  gap: 2px;
+}
+
+sat-platform-nav #sat-platform-nav-title-icon .sat-platform-nav-rail-toggle-visible-label {
+  font-family: var(--sat-platform-nav-label-medium-font, inherit);
+  font-size: 0.5rem;
+  font-weight: 500;
+  line-height: 0.625rem;
+  letter-spacing: 0.01em;
+  text-align: center;
+  max-width: 52px;
+  white-space: normal;
+  color: var(--sat-platform-nav-on-background, var(--mat-sys-on-primary, #fff));
+}
+
+sat-platform-nav #sat-platform-nav-title-icon svg.sat-platform-nav-title-icon {
+  width: 24px;
+  height: 24px;
+}
+
 /* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */
 sat-platform-nav .sat-platform-nav-list {
   overflow-y: auto;
