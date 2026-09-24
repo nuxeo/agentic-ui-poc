@@ -26,9 +26,17 @@ function contrastRatio(a: readonly number[], b: readonly number[]): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-function rgb(css: string): number[] {
-  const parts = (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
-  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
+/** Parse a computed `rgb()`/`rgba()` value into channels plus alpha. */
+function parseColor(value: string): { rgb: number[]; alpha: number } {
+  const match = /rgba?\(([^)]+)\)/.exec(value);
+  if (!match) {
+    throw new Error(`not a computed colour: "${value}"`);
+  }
+  const parts = match[1]
+    .split(/[,\s/]+/)
+    .filter(Boolean)
+    .map(Number);
+  return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
 }
 
 function paintedBackdrop(element: Element): number[] {
@@ -39,8 +47,12 @@ function paintedBackdrop(element: Element): number[] {
       throw new Error(`ancestor uses gradient background: ${bgImage}`);
     }
     const background = style.backgroundColor;
-    if (background && background !== 'rgba(0, 0, 0, 0)' && background !== 'transparent') {
-      return rgb(background);
+    if (!background || background === 'rgba(0, 0, 0, 0)' || background === 'transparent') {
+      continue;
+    }
+    const { rgb, alpha } = parseColor(background);
+    if (alpha === 1) {
+      return rgb;
     }
   }
   throw new Error('no opaque painted ancestor found for the banner title');
@@ -84,12 +96,12 @@ describe('dashboard AI Insights banner title contrast (NXENG-939)', () => {
   it('uses an opaque surface background IBM can evaluate', () => {
     const bannerStyle = getComputedStyle(banner);
     expect(bannerStyle.backgroundImage).not.toMatch(/gradient/i);
-    expect(bannerStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(parseColor(bannerStyle.backgroundColor).alpha).toBe(1);
   });
 
   it(`meets ${MIN_TEXT_RATIO}:1 text contrast against the banner surface`, () => {
     const titleStyle = getComputedStyle(title);
-    const ratio = contrastRatio(rgb(titleStyle.color), paintedBackdrop(title));
+    const ratio = contrastRatio(parseColor(titleStyle.color).rgb, paintedBackdrop(title));
     expect(ratio)
       .withContext(
         `title ${titleStyle.color} on banner ${getComputedStyle(banner).backgroundColor}`,
