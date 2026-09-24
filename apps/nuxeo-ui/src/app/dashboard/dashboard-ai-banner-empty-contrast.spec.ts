@@ -18,14 +18,7 @@ const MIN_TEXT_RATIO = 4.5;
 @Component({
   standalone: true,
   imports: [MatIconModule],
-  template: `
-    <div class="ai-insights-banner">
-      <div class="ai-banner-empty">
-        <mat-icon>check_circle</mat-icon>
-        All clear — no insights right now
-      </div>
-    </div>
-  `,
+  templateUrl: './dashboard-ai-banner-empty-contrast.host.html',
   styleUrls: ['./dashboard-page.component.scss'],
 })
 class DashboardAiBannerEmptyHostComponent {}

@@ -219,6 +219,9 @@
 
 // ── AI Insights Banner ──
 .ai-insights-banner {
+  // Fixed light panel — empty-state copy uses this token, not `--mat-sys-on-surface-variant`
+  // (which becomes a light foreground when `data-app-theme=dark`).
+  --dashboard-ai-banner-empty-fg: #474551;
   margin: 24px 24px 0;
   padding: 20px 24px 24px;
   background: linear-gradient(135deg, #f8f5ff 0%, #eef1ff 50%, #f5f8ff 100%);
@@ -281,8 +284,8 @@
   gap: 8px;
   padding: 12px 0;
   // IBM 9044252072 / NXENG-940 — empty copy must stay ≥4.5:1 on the banner gradient
-  // (lightest stop #eef1ff). Match other dashboard empty states (`.widget-empty`).
-  color: var(--mat-sys-on-surface-variant, #474551);
+  // (lightest stop #eef1ff).
+  color: var(--dashboard-ai-banner-empty-fg);
   font-size: 13px;
 
   mat-icon {
