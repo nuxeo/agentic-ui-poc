@@ -127,7 +127,6 @@
     },
     "test": {
       "platform-nav-item": "Parcourir",
-      "tasks-nav-item": "Tâches",
       "personal-space-nav-item": "Espace personnel"
     }
   }

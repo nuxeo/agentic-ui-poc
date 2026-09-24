@@ -262,11 +262,20 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
       }
 
       if (navId === 'app.navbar.tasks') {
-        it('binds the packaged Tasks entry id and label (NXENG-931)', () => {
+        it('binds the packaged Tasks entry id, path and label (NXENG-931)', () => {
+          const packaged = PACKAGED_NAV_ITEMS.find((item) => item.id === navId);
+          expect(packaged)
+            .withContext('PACKAGED_NAV_ITEMS must still expose the Tasks descriptor')
+            .toBeDefined();
+          if (!packaged) return;
+
+          expect(packaged.path).toBe('/tasks');
+          expect(packaged.label).toBe('Tasks');
+
           measure(navId, 'nuxeo', false);
           const item = link.closest('sat-platform-nav-list-item');
           expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.tasks');
-          expect(link.textContent).toContain(PACKAGED_LABEL_BY_NAV_ID[navId]);
+          expect(link.textContent).toContain('Tasks');
         });
       }
     });
