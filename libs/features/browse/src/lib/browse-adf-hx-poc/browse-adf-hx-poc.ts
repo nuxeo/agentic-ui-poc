@@ -12,9 +12,6 @@ import {
   canAddChildren,
   DOMAIN_CONTAINER_GUIDANCE,
   isBrowseRouterUrl,
-  isPermissionDeniedError,
-  nuxeoPathsEqualFlexible,
-  parentNuxeoFolderPath,
   parseBrowseNuxeoPathFromRouterUrl,
   PERMISSION_DENIED_KEY,
   SelectionService,
@@ -77,26 +74,11 @@ import {
   type ExtensionColumnDescriptor,
 } from '@nuxeo-satori/platform/extensions';
 
-import {
-  ConfirmDialogComponent,
-  type ConfirmDialogData,
-  trashDocumentConfirmData,
-  trashSelectedDocumentsConfirmData,
-} from '@nuxeo-satori/platform/ui';
-
 import { toDataColumns } from '../adf-hx-columns';
 import {
   CreateImportDialogComponent,
   type CreateImportDialogResult,
 } from '../create-import/create-import-dialog.component';
-import {
-  BrowseDriveDialogComponent,
-  type BrowseDriveDialogData,
-} from '../drive-dialog/drive-dialog';
-import {
-  EditMetadataDialogComponent,
-  type EditMetadataDialogData,
-} from '../edit-metadata-dialog/edit-metadata-dialog';
 
 /**
  * The `[parentDocument]` upstream's permissions panel gets when this document has no readable
@@ -750,11 +732,11 @@ export class BrowseAdfHxPocComponent {
       });
   }
 
-  // ── Write actions ──
+  // ── Create / Import ──
   //
-  // Production browse's own dialogs and checks, so creating, importing, editing and deleting
-  // behave the same on both pages. Afterwards the user is returned to *this* page, never to
-  // production browse.
+  // The only write action this page performs: production browse's own dialog and checks, so it
+  // behaves the same on both pages, then returns the user to *this* page, never to production
+  // browse. Drive, Edit, Delete, Share, Notify and Export still show the Scope A notice.
 
   protected openCreateImportDialog(): void {
     const doc = this.currentNuxeoDoc();
@@ -824,102 +806,6 @@ export class BrowseAdfHxPocComponent {
       queryParams: { fresh: '1', [BROWSE_RETURN_MODE_PARAM]: 'adf-hx' },
       state: { freshBlobDocument: true, freshNote: result.freshNote === true },
     });
-  }
-
-  protected openDriveDialog(): void {
-    const doc = this.currentNuxeoDoc();
-    const data: BrowseDriveDialogData = { docUid: doc?.uid ?? '', docPath: doc?.path ?? '/' };
-    this.dialog.open(BrowseDriveDialogComponent, { data });
-  }
-
-  protected openEditDialog(): void {
-    const doc = this.currentNuxeoDoc();
-    if (!doc) return;
-    if (!canWriteDocument(doc)) {
-      this.scopeNotice.set(this.translate.instant(PERMISSION_DENIED_KEY));
-      return;
-    }
-    const data: EditMetadataDialogData = {
-      uid: doc.uid,
-      title: doc.title,
-      description: (doc.properties?.['dc:description'] as string) ?? '',
-      nature: (doc.properties?.['dc:nature'] as string) ?? '',
-      subjects: (doc.properties?.['dc:subjects'] as string[]) ?? [],
-      coverage: (doc.properties?.['dc:coverage'] as string) ?? '',
-      expires: (doc.properties?.['dc:expired'] as string) ?? null,
-    };
-    this.dialog
-      .open(EditMetadataDialogComponent, { data })
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((updated?: NuxeoDocument) => {
-        if (!updated) return;
-        this.adfHxBrowseContext.requestTreeRefresh();
-        // A title change can rename the path, which is what this page is addressed by.
-        if (updated.path && !nuxeoPathsEqualFlexible(updated.path, doc.path)) {
-          void this.router.navigateByUrl(toAdfHxBrowseRouterUrl(updated.path));
-          return;
-        }
-        this.reload();
-      });
-  }
-
-  /** Trashes the ticked rows when there are any, otherwise the folder on screen — as production. */
-  protected deleteDocument(): void {
-    const selectedCount = this.selection.selectedCount();
-    if (selectedCount > 0) {
-      this.confirmThen(
-        trashSelectedDocumentsConfirmData(selectedCount, (key, params) =>
-          this.translate.instant(key, params),
-        ),
-        () =>
-          this.selection.deleteSelected().subscribe({
-            next: () => {
-              this.scopeNotice.set(this.translate.instant('browse.message.moved-to-trash'));
-              this.contentContext.requestTreeRefresh();
-              this.adfHxBrowseContext.requestTreeRefresh();
-            },
-            error: (err: unknown) => this.reportDeleteFailure(err),
-          }),
-      );
-      return;
-    }
-
-    const doc = this.currentNuxeoDoc();
-    if (!doc) return;
-    if (!canRemoveDocument(doc)) {
-      this.scopeNotice.set(this.translate.instant(PERMISSION_DENIED_KEY));
-      return;
-    }
-    this.confirmThen(
-      trashDocumentConfirmData(doc.title, (key, params) => this.translate.instant(key, params)),
-      () =>
-        this.folderService.trashDocument(doc.uid).subscribe({
-          next: () => {
-            this.adfHxBrowseContext.requestTreeRefresh();
-            void this.router.navigateByUrl(toAdfHxBrowseRouterUrl(parentNuxeoFolderPath(doc.path)));
-          },
-          error: (err: unknown) => this.reportDeleteFailure(err),
-        }),
-    );
-  }
-
-  private confirmThen(data: ConfirmDialogData, proceed: () => void): void {
-    this.dialog
-      .open(ConfirmDialogComponent, { data })
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((confirmed) => {
-        if (confirmed) proceed();
-      });
-  }
-
-  private reportDeleteFailure(err: unknown): void {
-    this.scopeNotice.set(
-      this.translate.instant(
-        isPermissionDeniedError(err) ? PERMISSION_DENIED_KEY : 'browse.message.failed-to-delete',
-      ),
-    );
   }
 
   protected showScopeNotice(action: string): void {
@@ -1008,18 +894,21 @@ export class BrowseAdfHxPocComponent {
 
   private loadNuxeoContext(document: Document): void {
     const uid = document.sys_id;
-    if (!uid || uid === ROOT_DOCUMENT.sys_id) {
+    if (!uid) {
       this.currentNuxeoDoc.set(null);
       return;
     }
 
-    this.folderService
-      .getFullDocument(uid)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (nuxeoDoc) => this.currentNuxeoDoc.set(nuxeoDoc),
-        error: () => this.currentNuxeoDoc.set(null),
-      });
+    // At the root the page holds a synthetic document; the header's permission checks —
+    // Create/Import above all — need Nuxeo's real root, which is what production browse reads.
+    const nuxeoDoc$ =
+      uid === ROOT_DOCUMENT.sys_id
+        ? this.folderService.getRepositoryRoot()
+        : this.folderService.getFullDocument(uid);
+    nuxeoDoc$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (nuxeoDoc) => this.currentNuxeoDoc.set(nuxeoDoc),
+      error: () => this.currentNuxeoDoc.set(null),
+    });
   }
 
   private loadChildren(document: Document): void {

@@ -325,18 +325,27 @@ describe('AdfHxBrowseFolderService', () => {
       expect((await restored).state).toBe('project');
     });
 
-    it('trashes a document through Document.Trash, and propagates a refusal', async () => {
-      const trashed = firstValueFrom(service.trashDocument('doc-1'));
-      const req = httpMock.expectOne((r) => r.url.includes('/automation/Document.Trash'));
-      expect(req.request.body.input).toBe('doc:doc-1');
-      req.flush(nuxeoDoc({ uid: 'doc-1' }));
-      expect((await trashed).uid).toBe('doc-1');
+    it('reads the real repository root, with its permissions', async () => {
+      const pending = firstValueFrom(service.getRepositoryRoot());
+      const req = httpMock.expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'));
+      expect(req.request.headers.get('enrichers.document')).toContain('permissions');
+      req.flush(nuxeoDoc({ uid: 'root-uid', type: 'Root', path: '/' }));
+      expect((await pending).uid).toBe('root-uid');
+    });
 
-      const refused = firstValueFrom(service.trashDocument('doc-2'));
+    it('falls back to resolving the root from a readable domain when /path/ is refused', async () => {
+      // Domain-only users get 403 on the root; production browse resolves it through NXQL.
+      const pending = firstValueFrom(service.getRepositoryRoot());
       httpMock
-        .expectOne((r) => r.url.includes('/automation/Document.Trash'))
+        .expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'))
         .flush({}, { status: 403, statusText: 'Forbidden' });
-      await expect(refused).rejects.toBeDefined();
+      httpMock
+        .expectOne((r) => r.url.includes('/search/lang/NXQL/execute'))
+        .flush({
+          entries: [nuxeoDoc({ uid: 'd1', type: 'Domain', path: '/d1', parentRef: 'root-uid' })],
+        });
+      const root = await pending;
+      expect(root.uid).toBe('root-uid');
     });
 
     it("lists the real repository root's trash, not the synthetic root's", async () => {

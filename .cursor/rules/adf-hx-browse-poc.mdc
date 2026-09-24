@@ -28,9 +28,9 @@ Shell (nuxeo-ui)
   Material in its template (the shared dialogs below are opened, not embedded).
 - **Bridge:** `libs/shared/adf-hx-bridge/` — all `hxp-*` UI + AdfHx services + Nuxeo→Hx mapper.
 - **Production browse** (`/#/browse`) is unchanged; path sync and `browseReturn=adf-hx` helpers live in `browse-path.utils.ts`.
-- **Write actions are live since 2026-09-23.** Create/Import, Nuxeo Drive, Edit and Delete open
-  the application's own shared dialogs — see *Shared dialogs* below. Share, Notify, Export, tag
-  edits and Restore still show a notice.
+- **Create/Import is the one live write action** (since 2026-09-24). It opens the application's
+  own dialog with production browse's checks — see *Shared dialogs* below. Nuxeo Drive, Edit,
+  Delete, Share, Notify, Export, tag edits and Restore still show the Scope A notice.
 
 ## UI — real adf-hx components first, `hxp-*` for what adf-hx lacks
 
@@ -59,10 +59,9 @@ this phase.
 
 ## Shared dialogs — the one allowed exception
 
-Product decision, 2026-09-23: the page may open the application's **modal dialogs** —
-`CreateImportDialogComponent`, `BrowseDriveDialogComponent`, `EditMetadataDialogComponent` and
-`ConfirmDialogComponent` — through `MatDialog`, so creating, importing, editing and deleting behave
-exactly as on production browse. adf-hx has no equivalents (its `UPLOAD` port refuses: R1).
+Product decision, 2026-09-24: the page may open the application's `CreateImportDialogComponent`
+through `MatDialog`, so creating and importing behave exactly as on production browse. adf-hx has
+no equivalent (its `UPLOAD` port refuses: R1). No other write dialog is opened from this page.
 
 - Only dialogs, opened as modals. Inline production markup, `sat-*` components and Material widgets
   in the page template stay banned.
@@ -91,4 +90,4 @@ exactly as on production browse. adf-hx has no equivalents (its `UPLOAD` port re
 ## PR blocker
 
 Any new Material, Satori, direct `BrowseService` usage, or production browse component in the above
-paths must be removed before merge — except the shared dialogs listed above, opened as modals.
+paths must be removed before merge — except the Create/Import dialog above, opened as a modal.

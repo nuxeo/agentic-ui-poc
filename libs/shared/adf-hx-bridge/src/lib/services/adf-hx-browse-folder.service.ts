@@ -36,6 +36,17 @@ export class AdfHxBrowseFolderService {
     return this.detailService.getFullDocument(uid);
   }
 
+  /**
+   * Nuxeo's real repository root, with its permissions.
+   *
+   * The bridge shows the root as a synthetic document with no Nuxeo uid, so anything that decides
+   * from Nuxeo's permissions — whether Create/Import is offered — needs the real one, which is
+   * what production browse reads at the root.
+   */
+  getRepositoryRoot(): Observable<NuxeoDocument> {
+    return this.browseService.getRepositoryRoot();
+  }
+
   getDocumentPermissions(uid: string): Observable<NuxeoDocument> {
     return this.detailService.getDocumentPermissions(uid);
   }
@@ -82,11 +93,6 @@ export class AdfHxBrowseFolderService {
     return this.browseService
       .getRepositoryRoot()
       .pipe(switchMap((root) => this.browseService.getTrashedChildren(root.uid, pageSize)));
-  }
-
-  /** Moves one document to the trash, as production browse's Delete does. */
-  trashDocument(uid: string): Observable<NuxeoDocument> {
-    return this.detailService.trashDocument(uid);
   }
 
   restoreDocument(uid: string): Observable<NuxeoDocument> {
