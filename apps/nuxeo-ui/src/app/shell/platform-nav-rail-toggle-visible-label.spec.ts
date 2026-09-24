@@ -130,5 +130,24 @@ describe('Platform nav rail toggle visible label (NXENG-927)', () => {
         railToggle().querySelector(`.${PLATFORM_NAV_RAIL_TOGGLE_VISIBLE_LABEL_CLASS}`)?.textContent,
       ).toBe('⟦Expand navigation⟧');
     });
+
+    it('refreshes visible label when the active language changes', () => {
+      const translate = TestBed.inject(TranslateService);
+      const button = railToggle();
+      expect(
+        button.querySelector(`.${PLATFORM_NAV_RAIL_TOGGLE_VISIBLE_LABEL_CLASS}`)?.textContent,
+      ).toBe('⟦Expand navigation⟧');
+
+      translate.setTranslation('de', {
+        'sat.platform-nav.expand': '⟦Navigation einblenden⟧',
+        'sat.platform-nav.collapse': '⟦Navigation ausblenden⟧',
+      });
+      translate.use('de');
+      fixture.detectChanges();
+
+      expect(
+        railToggle().querySelector(`.${PLATFORM_NAV_RAIL_TOGGLE_VISIBLE_LABEL_CLASS}`)?.textContent,
+      ).toBe('⟦Navigation einblenden⟧');
+    });
   });
 });

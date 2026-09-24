@@ -74,7 +74,11 @@ let alreadyRooted = 0;
 
 for (const report of reports) {
   // `coverage/libs/shared/ui/lcov.info` -> `libs/shared/ui`
-  const projectRoot = relative(coverageRoot, resolve(report, '..'));
+  let projectRoot = relative(coverageRoot, resolve(report, '..'));
+  // Legacy Karma output used `coverage/web/` before apps/nuxeo-ui was namespaced.
+  if (projectRoot === 'web') {
+    projectRoot = 'apps/nuxeo-ui';
+  }
   const text = readFileSync(report, 'utf8');
 
   for (const line of text.split('\n')) {

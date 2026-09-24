@@ -51,6 +51,12 @@ jobs:
         run: npx nx run-many -t test --coverage --parallel=1
         continue-on-error: true  # Don't fail the workflow if tests fail, SonarCloud will report it
 
+      # App shell (Karma) is not in the Vitest `--coverage` run; without this, new production
+      # TS under apps/nuxeo-ui/src reports 0% on the Sonar new-code coverage gate.
+      - name: Run nuxeo-ui Karma tests with coverage
+        run: npx ng test nuxeo-ui --no-watch --browsers=ChromeHeadless --code-coverage
+        continue-on-error: true
+
       # Rebases each project's lcov records onto the repository root and merges them into the
       # single `coverage/lcov.info` that sonar-project.properties names. Fails if any source
       # path does not resolve, because Sonar drops unresolvable paths silently and reports the
