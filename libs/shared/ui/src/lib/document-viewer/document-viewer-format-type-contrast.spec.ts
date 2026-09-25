@@ -2,100 +2,154 @@
  * NXENG-768 — `.format-type` in the picture viewer strip used `#999` at 11px/400, ~2.85:1 on
  * the white `.picture-cards` background (IBM `text_contrast_sufficient`, Issue 56037090).
  *
- * Pins the token-based colour against the painted card background. Packaged theme combinations
- * were checked in the Playwright evidence run; this fixture asserts the invariant in jsdom.
+ * Playwright evidence measures the live ratio; this spec renders the real component against
+ * every compiled app theme so a dark-palette `--mat-sys-on-surface-variant` cannot regress on
+ * a surface that still used a hardcoded white strip.
  */
-import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { testTranslateModule } from '@agentic-ui/testing/i18n';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { DocumentViewerComponent, type PictureView } from './document-viewer.component';
+import { DocumentViewerComponent } from './document-viewer.component';
 
-const MIN_AA_TEXT = 4.5;
+/** Mirrors `COMPILED_THEME_BASES` in `apps/nuxeo-ui/src/app/theme/app-theme.ts`. */
+const SHIPPED_THEMES = ['nuxeo', 'dark', 'kawaii', 'light'] as const;
 
-function relativeLuminance([r, g, b]: [number, number, number]): number {
-  const channel = (v: number): number => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+const WCAG_AA_NORMAL_TEXT = 4.5;
+
+function scssBlock(source: string, className: string): string {
+  const match = source.match(new RegExp(`\\.${className}\\s*\\{[^}]+\\}`, 's'));
+  return match?.[0] ?? '';
 }
 
-function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
-  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
+function parseRgb(css: string): [number, number, number] | null {
+  const m = css.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
 }
 
-function rgb(css: string): [number, number, number] {
-  const parts = (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
-  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
+function luminance([r, g, b]: readonly number[]): number {
+  const s = [r, g, b].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2];
 }
 
-function backgroundBehind(el: HTMLElement): string {
-  let node: HTMLElement | null = el;
-  while (node) {
-    const bg = getComputedStyle(node).backgroundColor;
-    if (bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(bg)) return bg;
-    node = node.parentElement;
+function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
+  const l1 = luminance(fg);
+  const l2 = luminance(bg);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function opaqueBackground(element: HTMLElement): [number, number, number] {
+  const own = parseRgb(getComputedStyle(element).backgroundColor);
+  if (own && getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+    return own;
   }
-  return 'rgb(255, 255, 255)';
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    const bg = parseRgb(getComputedStyle(node).backgroundColor);
+    if (bg && getComputedStyle(node).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      return bg;
+    }
+  }
+  return [255, 255, 255];
 }
 
-describe('document viewer — format-type text contrast (NXENG-768)', () => {
+describe('DocumentViewerComponent — format-type text contrast (NXENG-768)', () => {
+  const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
+  const scss = readFileSync(scssPath, 'utf8');
+
   let fixture: ComponentFixture<DocumentViewerComponent>;
+  let originalTheme: string | null;
+
+  beforeAll(async () => {
+    // Load compiled palettes so `data-app-theme` resolves real surface/variant pairs.
+    // eslint-disable-next-line @nx/enforce-module-boundaries -- contrast must be measured, not guessed
+    await import('../../../../../../apps/nuxeo-ui/src/styles.scss');
+  });
 
   beforeEach(async () => {
+    originalTheme = document.documentElement.getAttribute('data-app-theme');
+
     await TestBed.configureTestingModule({
-      imports: [DocumentViewerComponent, testTranslateModule()],
-      providers: [provideZonelessChangeDetection(), provideNoopAnimations()],
+      imports: [DocumentViewerComponent],
+      providers: [provideZonelessChangeDetection()],
     }).compileComponents();
 
-    document.documentElement.style.setProperty('--mat-sys-on-surface-variant', '#5c5f6b');
-
     fixture = TestBed.createComponent(DocumentViewerComponent);
-    document.body.appendChild(fixture.nativeElement);
-  });
-
-  afterEach(() => {
-    document.documentElement.style.removeProperty('--mat-sys-on-surface-variant');
-    fixture.nativeElement.remove();
-    fixture.destroy();
-  });
-
-  it('meets WCAG AA (4.5:1) for the format-type label on the picture cards strip', () => {
-    const views: PictureView[] = [
-      {
-        title: 'FullHD',
-        width: 1920,
-        height: 1080,
-        fileSize: '120 KB',
-        format: 'JPEG',
-        downloadUrl: 'blob:mock',
-      },
-    ];
-
     fixture.componentRef.setInput('mimeType', 'image/jpeg');
     fixture.componentRef.setInput('blobUrl', 'blob:mock-image');
     fixture.componentRef.setInput('rawBlobUrl', 'blob:mock-image');
     fixture.componentRef.setInput('pictureInfo', {
-      width: 800,
-      height: 600,
+      width: 1920,
+      height: 1080,
       format: 'JPEG',
-      weight: '45 KB',
+      colorSpace: 'sRGB',
+      depth: 8,
+      weight: '8 KB',
     });
-    fixture.componentRef.setInput('pictureViews', views);
+    fixture.componentRef.setInput('pictureViews', [
+      {
+        title: 'FullHD',
+        width: 1920,
+        height: 1080,
+        fileSize: '8792 Bytes',
+        format: 'JPEG',
+        downloadUrl: '/nuxeo/fullhd',
+      },
+    ]);
     fixture.detectChanges();
-
-    const label = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
-    expect(label).toBeTruthy();
-    expect(label!.textContent?.trim()).toBe('JPEG');
-
-    const fg = rgb(getComputedStyle(label!).color);
-    const bg = rgb(backgroundBehind(label!));
-    const ratio = contrastRatio(fg, bg);
-
-    expect(ratio).toBeGreaterThanOrEqual(MIN_AA_TEXT);
   });
+
+  afterEach(() => {
+    if (originalTheme === null) {
+      document.documentElement.removeAttribute('data-app-theme');
+    } else {
+      document.documentElement.setAttribute('data-app-theme', originalTheme);
+    }
+  });
+
+  it('themes .picture-cards and .format-type as a matched surface/foreground pair', () => {
+    const cards = scssBlock(scss, 'picture-cards');
+    const label = scssBlock(scss, 'format-type');
+    expect(cards).toMatch(/var\(--mat-sys-surface/);
+    expect(label).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(label).not.toMatch(/#999/i);
+  });
+
+  for (const theme of [...SHIPPED_THEMES, null] as const) {
+    const label = theme ?? 'no data-app-theme (first paint)';
+
+    it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the picture-cards surface — ${label}`, () => {
+      if (theme === null) {
+        document.documentElement.removeAttribute('data-app-theme');
+      } else {
+        document.documentElement.setAttribute('data-app-theme', theme);
+      }
+      fixture.detectChanges();
+
+      const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
+      const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
+      expect(formatLabel, 'expected a rendered .format-type label').not.toBeNull();
+      expect(cards, 'expected a rendered .picture-cards strip').not.toBeNull();
+      if (!formatLabel || !cards) return;
+
+      const fg = parseRgb(getComputedStyle(formatLabel).color);
+      expect(fg, `format-type colour: ${getComputedStyle(formatLabel).color}`).not.toBeNull();
+      if (!fg) return;
+
+      const bg = opaqueBackground(cards);
+      const ratio = contrastRatio(fg, bg);
+      expect(
+        ratio,
+        `format-type ${getComputedStyle(formatLabel).color} on picture-cards ` +
+          `${getComputedStyle(cards).backgroundColor} (opaque ${bg.join(',')})`,
+      ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+    });
+  }
 });
