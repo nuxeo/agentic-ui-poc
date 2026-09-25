@@ -55,6 +55,7 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
  */
 const NAV_ITEMS_UNDER_TEST = [
   { navId: 'app.navbar.dashboard', ticket: 'NXENG-893' },
+  { navId: 'app.navbar.trash', ticket: 'NXENG-932' },
   { navId: 'app.navbar.browse', ticket: 'NXENG-794' },
   { navId: 'app.navbar.browseAdfHx', ticket: 'NXENG-758' },
   { navId: 'app.navbar.search', ticket: 'NXENG-785' },
@@ -257,6 +258,15 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
           measure(navId, 'nuxeo', false);
           const item = link.closest('sat-platform-nav-list-item');
           expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.dashboard');
+          expect(link.textContent).toContain(PACKAGED_LABEL_BY_NAV_ID[navId]);
+        });
+      }
+
+      if (navId === 'app.navbar.trash') {
+        it('binds the packaged Trash entry id and label (NXENG-932)', () => {
+          measure(navId, 'nuxeo', false);
+          const item = link.closest('sat-platform-nav-list-item');
+          expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.trash');
           expect(link.textContent).toContain(PACKAGED_LABEL_BY_NAV_ID[navId]);
         });
       }
