@@ -1,7 +1,7 @@
 /** @typedef {import('@playwright/test').Page} Page */
 
 export const summary =
-  'Preview tab Additional Formats format-type label meets WCAG 1.4.3 AA contrast on white';
+  'Preview tab Additional Formats format-type label meets WCAG 1.4.3 AA contrast on the viewer strip';
 
 const DOC_UID = process.env['NUXEO_DOC_UID'] ?? '54016a72-5300-44b0-a96d-06937aa6a887';
 const WCAG_AA_NORMAL = 4.5;

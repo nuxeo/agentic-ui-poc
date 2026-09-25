@@ -1,5 +1,5 @@
 /**
- * NXENG-930 — measure `.format-type` contrast on `.picture-cards` under every compiled palette.
+ * NXENG-856 — measure `.format-type` contrast on `.picture-cards` under every compiled palette.
  * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -79,7 +79,7 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
   return [255, 255, 255];
 }
 
-describe('DocumentViewer format-type contrast by theme (NXENG-930)', () => {
+describe('DocumentViewer format-type contrast by theme (NXENG-856)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 

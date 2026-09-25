@@ -1,8 +1,8 @@
-/**
- * NXENG-930 — `.format-type` in the Preview tab Additional formats strip must meet WCAG 2.1
- * SC 1.4.3 (IBM `text_contrast_sufficient`). Playwright evidence measures the live ratio on
- * every compiled palette in `apps/nuxeo-ui`; this Vitest spec pins the stylesheet pairing and
- * a default-render contrast check without importing the app shell.
+﻿/**
+ * NXENG-856 — `.format-type` in the Preview tab Additional formats strip must meet WCAG 2.1
+ * SC 1.4.3 (IBM `text_contrast_sufficient`, issue 1766416709). Playwright evidence measures
+ * the live ratio on every compiled palette in `apps/nuxeo-ui`; this Vitest spec pins the
+ * stylesheet pairing and a default-render contrast check without importing the app shell.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -41,7 +41,7 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-describe('DocumentViewerComponent — format-type text contrast (NXENG-930)', () => {
+describe('DocumentViewerComponent — format-type text contrast (NXENG-856)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
 
   beforeEach(async () => {
