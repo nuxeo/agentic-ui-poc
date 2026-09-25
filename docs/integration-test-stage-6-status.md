@@ -303,15 +303,20 @@ import { setupIntegrationHarness, createTestDocument } from './integration-harne
 const harness = setupIntegrationHarness();
 ```
 
-`setupIntegrationHarness` takes no `allowDefaultCredentials` option any more, and this
-example used to pass one. Copying it verbatim now fails type-checking, which is the visible
-half of the problem; the invisible half is worse. A per-suite `allowDefaultCredentials: true`
-meant every suite silently opted itself out of the guard against
-`Administrator`/`Administrator`, so the check never fired for anyone. The opt-in moved to
-invocation time, where it has to be stated deliberately per run and is visible in the command:
+`setupIntegrationHarness` takes no `allowDefaultCredentials` option any more, and this example
+used to pass one. Copying it verbatim now fails type-checking, which is the visible half of the
+problem; the invisible half was worse. A per-suite `allowDefaultCredentials: true` meant every
+suite silently opted itself out of the credentials guard, so the check never fired for anyone.
+
+The guard it opted out of has since been replaced outright, because moving the opt-in to
+invocation time fixed its reachability without fixing what it measured: it compared the
+credentials against the Docker default, so a real production pair was recorded as _satisfying_
+it. The run-safety gate is now a host allowlist, denying by default, read from the environment
+only, with `localhost` named like anything else:
 
 ```bash
-ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration
+export INTEGRATION_ALLOWED_HOSTS=localhost:8080
+npm run beta:integration
 ```
 
 ### Follows Established Patterns ✅

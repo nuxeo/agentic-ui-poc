@@ -6,15 +6,21 @@
 
 ---
 
-> **Credentials opt-in, corrected 2026-09-23.** These examples passed
-> `{ allowDefaultCredentials: true }` to `setupIntegrationHarness`. That option was deliberately
-> removed from `IntegrationTestConfig` — every suite in the library set it, so the guard it opted
-> out of never fired in any code path that existed. Copying the old example would now fail
-> type-checking. The opt-in is an environment variable set at the point of invocation:
+> **Run-safety gate, corrected twice. Current as of 2026-09-25.** These examples once passed
+> `{ allowDefaultCredentials: true }` to `setupIntegrationHarness`, then used an
+> `ALLOW_DEFAULT_CREDENTIALS=true` environment variable. **Both are gone.** The credential
+> comparison they armed could not do what it claimed: production credentials are not the Docker
+> default, so every real production pair was recorded as _satisfying_ the guard.
+>
+> The gate is now a host allowlist, read from the environment only, denying by default and
+> special-casing nothing — `localhost` included:
 >
 > ```bash
-> ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration
+> export INTEGRATION_ALLOWED_HOSTS=localhost:8080
+> npm run beta:integration
 > ```
+>
+> An unlisted host is a precondition failure, exit 2. See `libs/integration-tests/README.md`.
 
 ---
 
@@ -201,9 +207,13 @@ jobs:
         run: npm run beta:integration
         env:
           NUXEO_URL: http://nuxeo:8080
-          NUXEO_USER: Administrator
-          NUXEO_PASS: Administrator
-          ALLOW_DEFAULT_CREDENTIALS: true
+          # From secrets, never inline. A literal pair here is a credential in the repository
+          # even in an illustrative snippet, and it is the shape scanners match.
+          NUXEO_USER: ${{ secrets.NUXEO_USER }}
+          NUXEO_PASS: ${{ secrets.NUXEO_PASS }}
+          # The suite denies by default and refuses any host not named here, `localhost`
+          # included. This is the service container above, named explicitly.
+          INTEGRATION_ALLOWED_HOSTS: nuxeo:8080
 
       # A steps file exports `default async function(page, helpers, outDir)` and does nothing
       # at import time, so `node <step>.mjs` loads the module, defines the function and exits

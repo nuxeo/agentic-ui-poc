@@ -408,13 +408,19 @@ Multiple Files (1 test):
 
 ### 1. Integration Test Harness
 
+> **Run-safety gate, corrected 2026-09-25.** These examples used to pass
+> `{ allowDefaultCredentials: true }` to `setupIntegrationHarness`. That option is gone, and so
+> is the `ALLOW_DEFAULT_CREDENTIALS` variable that replaced it — the guard they armed compared
+> the credentials against the Docker default, so every real production pair was recorded as
+> _satisfying_ it. The suite now refuses any host not named in `INTEGRATION_ALLOWED_HOSTS`,
+> denying by default and special-casing nothing, `localhost` included. Set it at the point of
+> invocation; see `libs/integration-tests/README.md`.
+
 ```typescript
 import { setupIntegrationHarness, createTestDocument } from '@agentic-ui/integration-tests';
 
 describe('My Service Tests', () => {
-  const harness = setupIntegrationHarness({
-    allowDefaultCredentials: true,
-  });
+  const harness = setupIntegrationHarness();
 
   it('tests my service', async () => {
     const doc = await createTestDocument(harness, { type: 'File', ... });
@@ -477,7 +483,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { MyService } from '@my-scope/my-service';
 
 describe('My Service Integration Tests', () => {
-  const harness = setupIntegrationHarness({ allowDefaultCredentials: true });
+  const harness = setupIntegrationHarness();
   let service: MyService;
 
   beforeAll(() => {

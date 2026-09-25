@@ -5,24 +5,47 @@ Integration specs that run against a **live Nuxeo**, not mocks.
 ## Running them
 
 ```bash
-export NUXEO_USER=Administrator NUXEO_PASS=Administrator
-ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration
+export NUXEO_USER=<your user> NUXEO_PASS=<your password>
+export INTEGRATION_ALLOWED_HOSTS=localhost:8080
+npm run beta:integration
 ```
 
 `NUXEO_USER` and `NUXEO_PASS` are **required** and have no defaults. This library issues
-`DELETE` and `Document.Trash` against whatever server it is pointed at, so a hardcoded
-`Administrator` pair would be both a credential in the repository and a default that is
-silently wrong on every instance but a local Docker one — and it would mean an _absent_
-environment selected privileged access rather than refusing. `NUXEO_URL` selects the server
-and defaults to `http://localhost:8080`.
+`DELETE` and `Document.Trash` against whatever server it is pointed at, so a fallback pair
+would be both a credential in the repository and a guess that is silently wrong on every
+instance but one — and it would mean an _absent_ environment selected privileged access rather
+than refusing. `NUXEO_URL` selects the server and defaults to `http://localhost:8080`.
 
-`ALLOW_DEFAULT_CREDENTIALS` is the env var, not `-- --allow-default-credentials`: npm appends
-extra arguments to the end of the script, and the script is a two-command chain, so the flag
-would land on vitest. Drop it entirely if the credentials are not the Docker defaults.
+### `INTEGRATION_ALLOWED_HOSTS` — the host allowlist
 
-The opt-in is read **only** from the environment or the preflight CLI's own flag. It used to
-be a `setupIntegrationHarness({ allowDefaultCredentials: true })` option, which all six
-suites set, so the guard never fired anywhere; the option no longer exists.
+**The suite refuses to run against any host not named here.** It creates and deletes documents
+and users, so the question that decides whether a run is safe is _which server_, and this is
+where you answer it.
+
+| Property                        | Behaviour                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------ |
+| Unset or blank                  | **Nothing is permitted.** There is no implicit allowlist and no fallback.            |
+| `localhost`                     | Not special-cased. Named like any other host or refused like any other host.         |
+| `localhost,ci.internal`         | Comma-separated; spaces around the commas are trimmed; matching is case-insensitive. |
+| `localhost`                     | No port, so any port on that hostname.                                               |
+| `localhost:8080`                | Carries a port, so that host **and** port exactly.                                   |
+| `evil-localhost` vs `localhost` | Whole-host equality, never a substring. A suffix match would admit both.             |
+
+Refusal is a **precondition failure, exit 2** — the environment is wrong, not the code — and the
+message names the host it refused and the exact `export` that would permit it.
+
+This replaced a guard that compared the credentials against `Administrator`/`Administrator` and
+refused that pair without an `ALLOW_DEFAULT_CREDENTIALS` opt-in. That control could not do what
+its own message claimed: production credentials are by definition not the Docker default, so
+every real production pair took the other branch, was recorded as _satisfied_, and the suite
+proceeded to delete against whatever `NUXEO_URL` named. `ALLOW_DEFAULT_CREDENTIALS`, the
+`--allow-default-credentials` flag and the `setupIntegrationHarness({ allowDefaultCredentials })`
+option are all **gone**; the allowlist is read from the environment and from nowhere else, so no
+spec and no CLI invocation can relax it on the caller's behalf.
+
+`localhost` deliberately gets no exemption. The old guard's flaw was treating one value as
+inherently safe, and `localhost` is an alias for whatever a tunnel or an `/etc/hosts` line says
+it is.
 
 ## Exit codes
 
@@ -33,8 +56,12 @@ suites set, so the guard never fired anywhere; the option no longer exists.
 | 2    | the suite never ran — **the environment is wrong**, fix it and retry |
 
 Exit 2 comes from `src/preflight-cli.ts`, which runs before vitest and refuses an absent or
-empty Nuxeo, or the default `Administrator` / `Administrator` credentials without the opt-in
-above. It is the same convention as `scripts/beta-harness/e2e-preflight.mjs`.
+empty Nuxeo, an unusable `NUXEO_URL`, or a target host not named in
+`INTEGRATION_ALLOWED_HOSTS`. It is the same convention as
+`scripts/beta-harness/e2e-preflight.mjs`.
+
+The two codes are kept distinguishable on purpose, and it is checked rather than assumed —
+refusing an unlisted host exits 2 while a genuine assertion failure in the suite exits 1.
 
 It has to be a separate process. `setupIntegrationHarness` also checks the preconditions in
 `beforeAll`, but vitest intercepts `process.exit` in the worker and converts it into a failing

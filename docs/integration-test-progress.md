@@ -112,7 +112,9 @@ Created `libs/integration-tests` library with complete test harness:
 
 - Refuses absent Nuxeo (exit 2)
 - Refuses empty Nuxeo (exit 2)
-- Refuses default credentials without `--allow-default-credentials` flag
+- Refuses an unusable `NUXEO_URL` — no scheme, or a scheme other than http(s) (exit 2)
+- Refuses any target host not named in `INTEGRATION_ALLOWED_HOSTS` (exit 2), denying by
+  default and special-casing nothing, `localhost` included
 - Closes audit §5.4 (prevents production data loss)
 
 **2. Test Harness** (`integration-harness.ts`, 232 lines)
@@ -321,14 +323,15 @@ verify HXQL escaping works correctly.
    docker compose up nuxeo
 
    # Run integration tests
-   export NUXEO_USER=Administrator NUXEO_PASS=Administrator
-   ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration
+   export NUXEO_USER=<your user> NUXEO_PASS=<your password>
+   export INTEGRATION_ALLOWED_HOSTS=localhost:8080
+   npm run beta:integration
    ```
 
-   The environment variable, **not** `-- --allow-default-credentials`. `beta:integration` is
-   a two-command chain and npm appends extra arguments to the end of it, so the flag lands on
-   vitest and the preflight never sees it. `libs/integration-tests/README.md` has the same
-   command; this one used to disagree with it.
+   `INTEGRATION_ALLOWED_HOSTS` is read from the environment and from nowhere else — there is no
+   flag and no per-suite option, so nothing inside the repository can relax it. It denies by
+   default: unset permits no host at all, and `localhost` is named explicitly like any other.
+   `libs/integration-tests/README.md` has the same command and the full matching rules.
 
    `NUXEO_USER` and `NUXEO_PASS` have no defaults — the harness refuses rather than falling
    back to a credential pair compiled into the repository.
@@ -336,7 +339,8 @@ verify HXQL escaping works correctly.
 2. **Verify Stage 4 negative controls**
    - No Nuxeo → exit 2 with specific message
    - Empty Nuxeo → exit 2 with specific message
-   - Default credentials without the opt-in → exit 2
+   - A host not named in `INTEGRATION_ALLOWED_HOSTS` → exit 2
+   - A genuine assertion failure → exit **1**, so the two stay distinguishable
    - Test creates documents → none remain after run
 
 3. **Verify Stage 5 HXQL injection guard (Task 5.7)**

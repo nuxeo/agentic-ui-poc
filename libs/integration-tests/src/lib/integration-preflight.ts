@@ -30,10 +30,11 @@
  *
  * ## Why an allowlist and not a credentials check
  *
- * Check 3 used to compare the credentials against `Administrator`/`Administrator` and refuse
- * that pair without an `ALLOW_DEFAULT_CREDENTIALS` opt-in. Reported on the pull request and
- * correct: production credentials are by definition *not* the Docker default, so any real
- * production pair took the `else` branch, was recorded as **satisfied**, and the suite went on
+ * Check 3 used to compare the credentials against the Docker default pair — the same word for
+ * both the user and the password — and refuse it without an `ALLOW_DEFAULT_CREDENTIALS` opt-in.
+ * Reported on the pull request and correct: production credentials are by definition *not* the
+ * Docker default, so any real production pair took the `else` branch, was recorded as
+ * **satisfied**, and the suite went on
  * to `DELETE` and `Document.Trash` against whatever `NUXEO_URL` named. The control's own
  * message said "This prevents accidentally running against production"; what it actually
  * prevented was running against a *default-credentialled* server, which is close to the
@@ -175,10 +176,10 @@ export interface ResolvedConnection {
  * Two defects this closes, both reported on the pull request.
  *
  * `.cursor/rules/security.mdc`: "NEVER use Basic auth with hardcoded fallback defaults". The
- * harness carried `?? 'Administrator'` on both the user and the password, which is a working
- * credential pair compiled into a library whose job is to issue `DELETE` against a live
- * repository. It also made the guard below unreachable from the other direction: an absent
- * environment *selected* the default credentials rather than refusing, so "default
+ * harness carried a `??` fallback to the Docker default on both the user and the password,
+ * which is a working credential pair compiled into a library whose job is to issue `DELETE`
+ * against a live repository. It also made the guard below unreachable from the other direction:
+ * an absent environment *selected* those credentials rather than refusing, so "default
  * credentials require an opt-in" was enforced only against someone who had typed them out.
  * `apps/nuxeo-ui-e2e/src/fixtures.ts` throws for exactly this reason, and this library should
  * not make the opposite trade against a more dangerous surface.

@@ -112,9 +112,9 @@ async function rejection(promise: Promise<unknown>): Promise<Error> {
  *
  * This is the situation the guard exists for, and it is deliberately described without any
  * credential value: which pair is in use is no longer part of the decision. The helper it
- * replaces set `Administrator`/`Administrator`, which was a working credential pair written
- * into a TypeScript file — the thing `security.mdc` forbids outright, and the exact shape that
- * tripped GitGuardian earlier on this branch.
+ * replaces assigned the Docker default to both `NUXEO_USER` and `NUXEO_PASS` — a working
+ * credential pair written into a TypeScript file, which `security.mdc` forbids outright and
+ * which is the exact shape that tripped GitGuardian earlier on this branch.
  */
 function useUnlistedTarget() {
   process.env['NUXEO_USER'] = TEST_USER;

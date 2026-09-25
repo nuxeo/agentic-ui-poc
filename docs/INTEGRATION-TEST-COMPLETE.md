@@ -309,13 +309,19 @@ Implemented comprehensive integration testing infrastructure for Nuxeo Agentic U
 
 **Usage:**
 
+> **Run-safety gate, corrected 2026-09-25.** These examples used to pass
+> `{ allowDefaultCredentials: true }` to `setupIntegrationHarness`. That option is gone, and so
+> is the `ALLOW_DEFAULT_CREDENTIALS` variable that replaced it — the guard they armed compared
+> the credentials against the Docker default, so every real production pair was recorded as
+> _satisfying_ it. The suite now refuses any host not named in `INTEGRATION_ALLOWED_HOSTS`,
+> denying by default and special-casing nothing, `localhost` included. Set it at the point of
+> invocation; see `libs/integration-tests/README.md`.
+
 ```typescript
 import { setupIntegrationHarness, createTestDocument } from '@agentic-ui/integration-tests';
 
 describe('my integration test', () => {
-  const harness = setupIntegrationHarness({
-    allowDefaultCredentials: true,
-  });
+  const harness = setupIntegrationHarness();
 
   it('creates and tests a document', async () => {
     const doc = await createTestDocument(harness, {
@@ -464,7 +470,7 @@ expect(await canWrite(harness, user.auth, docId)).toBe(true);
 
    ```typescript
    describe('Feature Tests', () => {
-     const harness = setupIntegrationHarness({ allowDefaultCredentials: true });
+     const harness = setupIntegrationHarness();
 
      it('performs operation', async () => {
        const doc = await createTestDocument(harness, { ... });
