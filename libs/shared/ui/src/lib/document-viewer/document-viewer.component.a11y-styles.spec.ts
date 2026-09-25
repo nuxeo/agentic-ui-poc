@@ -32,6 +32,6 @@ describe('DocumentViewerComponent a11y styles (NXENG-901)', () => {
     const block = scss.match(/\.format-type\s*\{[^}]+\}/s)?.[0] ?? '';
     expect(block).toContain('var(--mat-sys-on-surface-variant, #5c5f6b)');
     expect(block).not.toContain('--document-viewer-muted-on-light-surface');
-    expect(scss).not.toMatch(/:host\s*\{[^}]*--document-viewer-muted-on-light-surface/s);
+    expect(scss).toContain(":host-context(html[data-app-theme='dark']) .format-type");
   });
 });

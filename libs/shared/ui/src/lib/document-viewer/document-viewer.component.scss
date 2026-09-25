@@ -494,6 +494,11 @@
   font-size: 11px;
 }
 
+/* The picture-cards strip keeps a light surface in dark mode; theme variant text would fail on white. */
+:host-context(html[data-app-theme='dark']) .format-type {
+  color: #5c5f6b;
+}
+
 .format-download-btn {
   width: 28px !important;
   height: 28px !important;
