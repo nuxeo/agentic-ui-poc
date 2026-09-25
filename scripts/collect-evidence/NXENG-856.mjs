@@ -32,19 +32,28 @@ async function openViewTabWithKeyboard(page) {
 
   await otherTab.focus();
   await page.keyboard.press('Enter');
-  const viewerAfterLeave = await page.locator('lib-document-viewer').isVisible().catch(() => false);
-  if (viewerAfterLeave) {
-    return { ok: false, reason: 'lib-document-viewer still visible after leaving View tab' };
+  const viewSelectedAfterLeave = await viewTab.getAttribute('aria-selected');
+  const otherSelectedAfterLeave = await otherTab.getAttribute('aria-selected');
+  if (viewSelectedAfterLeave === 'true' || otherSelectedAfterLeave !== 'true') {
+    return {
+      ok: false,
+      reason: `after leaving View: view aria-selected=${viewSelectedAfterLeave}, other aria-selected=${otherSelectedAfterLeave}`,
+    };
   }
 
   await viewTab.focus();
   await page.keyboard.press('Enter');
-  const selected = await viewTab.getAttribute('aria-selected');
-  const viewerVisible = await page.locator('lib-document-viewer').isVisible().catch(() => false);
-  if (selected !== 'true' || !viewerVisible) {
+  const viewSelected = await viewTab.getAttribute('aria-selected');
+  const otherSelected = await otherTab.getAttribute('aria-selected');
+  const formatTypeVisible = await page
+    .locator('lib-document-viewer .format-type')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  if (viewSelected !== 'true' || otherSelected === 'true' || !formatTypeVisible) {
     return {
       ok: false,
-      reason: `View tab aria-selected=${selected}, viewer visible=${viewerVisible}`,
+      reason: `after keyboard View: view aria-selected=${viewSelected}, other aria-selected=${otherSelected}, .format-type visible=${formatTypeVisible}`,
     };
   }
   return { ok: true };
