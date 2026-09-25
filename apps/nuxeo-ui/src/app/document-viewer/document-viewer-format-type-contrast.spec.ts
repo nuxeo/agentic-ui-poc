@@ -90,10 +90,29 @@ describe('document viewer format-type contrast (NXENG-760)', () => {
     }
   });
 
-  it(`meets ${MIN_TEXT_RATIO}:1 for the declared SCSS fallback pair on white`, () => {
-    expect(
-      contrastRatio(FORMAT_TYPE_FOREGROUND_FALLBACK, PICTURE_CARDS_SURFACE_FALLBACK),
-    ).toBeGreaterThanOrEqual(MIN_TEXT_RATIO);
+  it(`meets ${MIN_TEXT_RATIO}:1 for authored SCSS fallbacks when theme tokens are unset`, () => {
+    document.documentElement.style.setProperty('--mat-sys-surface', 'initial');
+    document.documentElement.style.setProperty('--mat-sys-on-surface-variant', 'initial');
+    fixture.detectChanges();
+
+    const strip = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement;
+    const labelEl = fixture.nativeElement.querySelector('.format-type') as HTMLElement;
+    const stripStyle = getComputedStyle(strip);
+    const labelStyle = getComputedStyle(labelEl);
+
+    expect(parseColor(stripStyle.backgroundColor).alpha)
+      .withContext('picture-cards background must be opaque under fallback tokens')
+      .toBe(1);
+
+    const backdrop = parseColor(stripStyle.backgroundColor).rgb;
+    const painted = compositeOver(parseColor(labelStyle.color), backdrop);
+    const ratio = contrastRatio(painted, backdrop);
+
+    expect(ratio)
+      .withContext(
+        `format-type ${labelStyle.color} on picture-cards ${stripStyle.backgroundColor} (SCSS fallbacks)`,
+      )
+      .toBeGreaterThanOrEqual(MIN_TEXT_RATIO);
   });
 
   it(`meets ${MIN_TEXT_RATIO}:1 when surface tokens are invalid (CSS fallbacks)`, () => {
