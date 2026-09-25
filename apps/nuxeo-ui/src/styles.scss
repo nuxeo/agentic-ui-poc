@@ -123,9 +123,8 @@ html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-
 
 /*
  * Keyboard focus ring on the sidebar nav items — NXENG-761 (global token); batch tickets such as
- * NXENG-758 / NXENG-778 / NXENG-780 / NXENG-785 / NXENG-795 / NXENG-797 / NXENG-898 / NXENG-932
- * pin individual
- * `data-nav-id` entries
+ * NXENG-758 / NXENG-778 / NXENG-780 / NXENG-785 / NXENG-795 / NXENG-797 / NXENG-873 / NXENG-884 /
+ * NXENG-893 / NXENG-898 / NXENG-932 pin individual `data-nav-id` entries
  * in Karma specs such as `nav-focus-ring-contrast.spec.ts`,
  * `personal-space-nav-focus-visible.spec.ts`, `favorites-nav-focus-visible.spec.ts`, and
  * `nav-focus-ring-knowledge-discovery.spec.ts`. NXENG-796 pins the expand/collapse rail toggle in
@@ -217,6 +216,17 @@ html body a.sat-skip-to-content-button.sat-skip-to-content-button-visible {
 }
 
 /*
+ * Header global search — persistent caption label (NXENG-798).
+ * Single runtime declaration: base overlay styles stay in `app-shell.component.scss`.
+ */
+.header-search-label.header-search-label--caption {
+  top: 6px !important;
+  transform: none !important;
+  font-size: 11px !important;
+  opacity: 1;
+}
+
+/*
  * IBM Equal Access `style_focus_visible` (Issue 1307118137, NXENG-794) reads `:focus` only — it
  * collects `:focus-visible` and `:focus-within` and never reads them. Satori draws the ring on
  * `:focus-visible` only; mirror the same outline on `:focus` so the scanner sees an indicator.
@@ -244,10 +254,21 @@ sat-platform-nav #sat-platform-nav-title-icon:focus {
   outline-offset: -2px;
 }
 
-/* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */
-sat-platform-nav .sat-platform-nav-list {
+/*
+ * Sidebar nav list scroll — NXENG-868 (IBM element_tabbable_unobscured / WCAG 2.4.11).
+ *
+ * Satori sets `.sat-platform-nav-list { overflow-y: hidden }` on the component stylesheet,
+ * which loads after this bundle and wins a same-specificity cascade — so bottom links such as
+ * Trash stayed clipped when keyboard-focused without hovering the rail. Beat vendor specificity
+ * (`html body` + `nav` element) and give the flex child `min-height: 0` so the list scrolls
+ * inside the fixed panel above the user profile block.
+ */
+html body sat-platform-nav nav.sat-platform-nav-list {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scroll-padding-block-end: var(--sat-platform-nav-height-high, 48px);
   scrollbar-width: none;
   -ms-overflow-style: none;
 
@@ -256,7 +277,8 @@ sat-platform-nav .sat-platform-nav-list {
   }
 }
 
-sat-platform-nav .sat-platform-nav-list:hover {
+html body sat-platform-nav nav.sat-platform-nav-list:hover,
+html body sat-platform-nav nav.sat-platform-nav-list:focus-within {
   overflow-y: auto;
   overflow-x: hidden;
 }

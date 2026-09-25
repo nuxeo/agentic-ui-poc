@@ -54,12 +54,15 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
  * behind a sibling item's measurements.
  */
 const NAV_ITEMS_UNDER_TEST = [
+  { navId: 'app.navbar.dashboard', ticket: 'NXENG-893' },
   { navId: 'app.navbar.trash', ticket: 'NXENG-932' },
   { navId: 'app.navbar.browse', ticket: 'NXENG-794' },
   { navId: 'app.navbar.browseAdfHx', ticket: 'NXENG-758' },
   { navId: 'app.navbar.search', ticket: 'NXENG-785' },
   { navId: 'app.navbar.administration', ticket: 'NXENG-795' },
+  { navId: 'app.navbar.clipboard', ticket: 'NXENG-873' },
   { navId: 'app.navbar.assets', ticket: 'NXENG-797' },
+  { navId: 'app.navbar.recentlyViewed', ticket: 'NXENG-884' },
 ] as const;
 
 const PACKAGED_LABEL_BY_NAV_ID = Object.fromEntries(
@@ -201,6 +204,18 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
     };
   }
 
+  it('registers every flagged nav id in PACKAGED_NAV_ITEMS (shell manifest, not host stubs)', () => {
+    for (const { navId, ticket } of NAV_ITEMS_UNDER_TEST) {
+      const packaged = PACKAGED_NAV_ITEMS.find((item) => item.id === navId);
+      expect(packaged)
+        .withContext(`${ticket}: missing packaged nav entry for ${navId}`)
+        .toBeDefined();
+      expect(PACKAGED_LABEL_BY_NAV_ID[navId])
+        .withContext(`${ticket}: label map for ${navId}`)
+        .toBe(packaged!.label);
+    }
+  });
+
   for (const { navId, ticket } of NAV_ITEMS_UNDER_TEST) {
     describe(`${navId} (${ticket})`, () => {
       it('draws a focus indicator at all when the link is focused', () => {
@@ -251,26 +266,12 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
         // outside the box would be cut off at the rail edges. The fix changes colour only.
         expect(Number.parseFloat(getComputedStyle(link).outlineOffset)).toBeLessThan(0);
       });
-
-      if (navId === 'app.navbar.trash') {
-        it('binds the packaged Trash entry id and label (NXENG-932)', () => {
-          measure(navId, 'nuxeo', false);
-          const item = link.closest('sat-platform-nav-list-item');
-          expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.trash');
-          expect(link.textContent).toContain(PACKAGED_LABEL_BY_NAV_ID[navId]);
-        });
-      }
-
-      if (navId === 'app.navbar.administration') {
-        it('binds the packaged Administration entry id and label (NXENG-795)', () => {
-          measure(navId, 'nuxeo', false);
-          const item = link.closest('sat-platform-nav-list-item');
-          expect(item?.getAttribute('data-nav-id')).toBe('app.navbar.administration');
-          expect(link.textContent).toContain(PACKAGED_LABEL_BY_NAV_ID[navId]);
-        });
-      }
     });
   }
+
+  it('keeps the packaged Recently viewed label IBM Issue 2658127935 names (NXENG-884)', () => {
+    expect(PACKAGED_LABEL_BY_NAV_ID['app.navbar.recentlyViewed']).toBe('Recently viewed');
+  });
 
   it('declares a standalone :focus rule on nav links that IBM Equal Access can read (NXENG-794)', () => {
     const target = 'sat-platform-nav .sat-platform-nav-item:focus';
