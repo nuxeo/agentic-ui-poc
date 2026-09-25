@@ -221,9 +221,6 @@
 // NXENG-939 — IBM 9067535242: decorative gradients made automated contrast checks
 // "Needs review". Use an opaque theme surface so text contrast is measurable.
 .ai-insights-banner {
-  // Fixed light panel — empty-state copy uses this token, not `--mat-sys-on-surface-variant`
-  // (which becomes a light foreground when `data-app-theme=dark`).
-  --dashboard-ai-banner-empty-fg: #474551;
   margin: 24px 24px 0;
   padding: 20px 24px 24px;
   background: var(--mat-sys-surface-container-low, #f3f3f6);
@@ -272,9 +269,8 @@
   align-items: center;
   gap: 8px;
   padding: 12px 0;
-  // IBM 9044252072 / NXENG-940 — empty copy must stay ≥4.5:1 on the fixed light banner
-  // (not `--mat-sys-on-surface-variant`, which is light under `data-app-theme=dark`).
-  color: var(--dashboard-ai-banner-empty-fg);
+  // IBM 9044252072 / NXENG-940 — empty copy tracks the themed banner surface (NXENG-939).
+  color: var(--mat-sys-on-surface-variant, #474551);
   font-size: 13px;
 
   mat-icon {
