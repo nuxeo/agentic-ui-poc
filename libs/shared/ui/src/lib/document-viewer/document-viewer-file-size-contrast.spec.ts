@@ -4,6 +4,7 @@
  */
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
+import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentViewerComponent } from './document-viewer.component';
 
@@ -47,11 +48,15 @@ describe('DocumentViewerComponent file-size contrast (NXENG-763)', () => {
   });
 
   it('styles the file-size label with on-surface-variant, not low-contrast #888', () => {
+    const raw = 'blob:http://localhost/sample';
+    const trusted = (): SafeResourceUrl =>
+      TestBed.inject(DomSanitizer).bypassSecurityTrustResourceUrl(raw);
+
     fixture.componentRef.setInput('fileName', 'sample.csv');
     fixture.componentRef.setInput('fileSize', '182 B');
     fixture.componentRef.setInput('mimeType', 'text/csv');
-    fixture.componentRef.setInput('blobUrl', 'blob:mock' as never);
-    fixture.componentRef.setInput('rawBlobUrl', 'blob:mock');
+    fixture.componentRef.setInput('blobUrl', trusted());
+    fixture.componentRef.setInput('rawBlobUrl', raw);
     fixture.componentRef.setInput('loading', false);
     fixture.detectChanges();
 
