@@ -104,17 +104,23 @@ describe('DocumentViewerComponent — format-type text contrast (NXENG-801)', ()
     }
   });
 
-  it('themes picture-cards with mat-sys surface and format-type with the scoped light-strip token', () => {
+  it('pins picture-cards to the light-strip surface and pairs strip text with host tokens', () => {
     const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
     const scss = readFileSync(scssPath, 'utf8');
     const hostBlock = scss.match(/:host\s*\{[^}]+\}/s)?.[0] ?? '';
     const cards = scssBlock(scss, 'picture-cards');
     const label = scssBlock(scss, 'format-type');
     const size = scssBlock(scss, 'format-size');
+    const title = scssBlock(scss, 'picture-card-title');
+    const infoValue = scssBlock(scss, 'info-value');
+    expect(hostBlock).toContain('--document-viewer-light-strip-surface');
     expect(hostBlock).toContain('--document-viewer-muted-on-light-surface');
-    expect(cards).toMatch(/var\(--mat-sys-surface/);
+    expect(cards).toMatch(/var\(--document-viewer-light-strip-surface/);
+    expect(cards).not.toMatch(/var\(--mat-sys-surface/);
     expect(label).toMatch(/var\(--document-viewer-muted-on-light-surface/);
-    expect(size).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(size).toMatch(/var\(--document-viewer-muted-on-light-surface/);
+    expect(title).toMatch(/var\(--document-viewer-on-light-strip/);
+    expect(infoValue).toMatch(/var\(--document-viewer-on-light-strip/);
     expect(label).not.toMatch(/#999/i);
   });
 
