@@ -1,4 +1,5 @@
 :host {
+  --document-viewer-muted-on-light-surface: #5c5f6b;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -489,7 +490,7 @@
 }
 
 .format-type {
-  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+  color: var(--document-viewer-muted-on-light-surface);
   text-transform: uppercase;
   font-size: 11px;
 }
