@@ -1,8 +1,6 @@
-﻿/**
- * NXENG-856 — `.format-type` in the Preview tab Additional formats strip must meet WCAG 2.1
- * SC 1.4.3 (IBM `text_contrast_sufficient`, issue 1766416709). Playwright evidence measures
- * the live ratio on every compiled palette in `apps/nuxeo-ui`; this Vitest spec pins the
- * stylesheet pairing and a default-render contrast check without importing the app shell.
+/**
+ * NXENG-768 — `.format-type` / `.format-size` in the picture viewer strip must meet WCAG 2.1 SC 1.4.3.
+ * Per-theme contrast is covered in `apps/nuxeo-ui/.../document-viewer-format-type-contrast.spec.ts`.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -41,7 +39,21 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-describe('DocumentViewerComponent — format-type text contrast (NXENG-856)', () => {
+function opaqueBackground(element: HTMLElement): [number, number, number] {
+  const own = parseRgb(getComputedStyle(element).backgroundColor);
+  if (own && getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+    return own;
+  }
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    const bg = parseRgb(getComputedStyle(node).backgroundColor);
+    if (bg && getComputedStyle(node).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      return bg;
+    }
+  }
+  return [255, 255, 255];
+}
+
+describe('DocumentViewerComponent — format-type text contrast (NXENG-768)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
 
   beforeEach(async () => {
@@ -80,25 +92,31 @@ describe('DocumentViewerComponent — format-type text contrast (NXENG-856)', ()
     const scss = readFileSync(scssPath, 'utf8');
     const cards = scssBlock(scss, 'picture-cards');
     const label = scssBlock(scss, 'format-type');
+    const size = scssBlock(scss, 'format-size');
     const title = scssBlock(scss, 'picture-card-title');
     const infoValue = scssBlock(scss, 'info-value');
     expect(cards).toMatch(/var\(--mat-sys-surface/);
     expect(label).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(size).toMatch(/var\(--mat-sys-on-surface-variant/);
     expect(title).toMatch(/var\(--mat-sys-on-surface/);
     expect(infoValue).toMatch(/var\(--mat-sys-on-surface/);
     expect(label).not.toMatch(/#999/i);
+    expect(size).not.toMatch(/#999/i);
   });
 
-  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the default surface fallback`, () => {
+  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the picture-cards surface fallback`, () => {
     const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
+    const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
     expect(formatLabel).not.toBeNull();
-    if (!formatLabel) return;
+    expect(cards).not.toBeNull();
+    if (!formatLabel || !cards) return;
 
     const fg = parseRgb(getComputedStyle(formatLabel).color);
     expect(fg).not.toBeNull();
     if (!fg) return;
 
-    const ratio = contrastRatio(fg, [255, 255, 255]);
+    const bg = opaqueBackground(cards);
+    const ratio = contrastRatio(fg, bg);
     expect(ratio).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
   });
 });
