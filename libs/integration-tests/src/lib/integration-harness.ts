@@ -348,6 +348,13 @@ async function deleteDataRoot(
 /**
  * Block until a document is visible to `/search/lang/NXQL/execute`, or throw.
  *
+ * A `waitForDeindexed` mirror of this used to sit below, added so that a
+ * count-outside-the-data-root isolation test could take its second count against a current
+ * index. That test has been replaced: counting a population other suites also write to was
+ * unstable regardless of how current the index was, and the check now reads a canary by UID
+ * straight from the repository, where there is no lag to wait out. Nothing called the mirror
+ * afterwards, so it is gone rather than left as an exported helper with no caller and no test.
+ *
  * `/search/lang/NXQL/execute` is OpenSearch-backed on this deployment and lags a write by
  * roughly a second. Every index-backed read-back in this library is exposed to that, and the
  * two failure modes are not equally visible: a test asserting the document is **present**
@@ -391,51 +398,6 @@ export async function waitForIndexed(
       `(last HTTP ${lastStatus}).\n` +
       `  This is a precondition failure, not the assertion under test — an absence assertion\n` +
       `  that ran anyway would have passed for the wrong reason.`,
-  );
-}
-
-/**
- * Block until a document is *gone* from `/search/lang/NXQL/execute`, or throw.
- *
- * The mirror of `waitForIndexed`, and needed for the opposite reason. The lag documented
- * above runs both ways: measured on the local stack, a folder's two files were still counted
- * by the index for three seconds after the folder had been recursively deleted. A test that
- * counts documents, deletes something, and counts again is therefore comparing two numbers
- * that may both predate its own writes — and "the count did not change" is then a statement
- * about index latency rather than about what was deleted.
- *
- * Waiting for a sentinel this run deleted to drop out of the index is what makes the second
- * count current. Like `waitForIndexed`, it queries by `ecm:uuid` alone, so it cannot be
- * satisfied by the same predicate the caller is asserting on.
- */
-export async function waitForDeindexed(
-  harness: IntegrationHarness,
-  uid: string,
-  options: { timeoutMs?: number; intervalMs?: number } = {},
-): Promise<void> {
-  const timeoutMs = options.timeoutMs ?? 20000;
-  const intervalMs = options.intervalMs ?? 250;
-  const deadline = Date.now() + timeoutMs;
-
-  const url = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
-  url.searchParams.set('query', `SELECT * FROM Document WHERE ecm:uuid = '${uid}'`);
-
-  let lastStatus = 0;
-  while (Date.now() < deadline) {
-    const res = await fetch(url, { headers: { Authorization: harness.auth } });
-    lastStatus = res.status;
-    if (res.status === 200) {
-      const body = await res.json();
-      if (!(body.entries ?? []).some((entry: { uid?: string }) => entry.uid === uid)) return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
-  }
-
-  throw new Error(
-    `waitForDeindexed: ${uid} was still in the search index ${timeoutMs}ms after deletion ` +
-      `(last HTTP ${lastStatus}).\n` +
-      `  This is a precondition failure, not the assertion under test — a count taken against\n` +
-      `  a stale index cannot show whether anything outside the data root was touched.`,
   );
 }
 

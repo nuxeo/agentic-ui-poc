@@ -18,12 +18,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  setupIntegrationHarness,
-  createTestDocument,
-  waitForIndexed,
-  waitForDeindexed,
-} from './integration-harness';
+import { setupIntegrationHarness, createTestDocument, waitForIndexed } from './integration-harness';
 
 describe('Write Operations Integration Tests', () => {
   const harness = setupIntegrationHarness();
@@ -426,79 +421,111 @@ describe('Write Operations Integration Tests', () => {
   });
 
   describe('Data Root Isolation', () => {
-    it('destructive operations are isolated to data root only', async () => {
-      // This test verifies that our destructive operations only affect
-      // documents in the test data root, not the wider repository
-
-      // Count total documents in repository (outside our data root).
+    it('recursive cleanup removes the root it is given and nothing beside it', async () => {
+      // Three rewrites of this test, so the reasoning for the shape is worth stating.
       //
-      // `ecm:path NOT STARTSWITH` was here, and it is not NXQL — Nuxeo answered HTTP 400 with
-      // an exception body carrying neither `resultsCount` nor `entries`, so the `?? 0`
-      // fallbacks turned a rejected query into `expect(0).toBe(0)` and the test logged
-      // "0 docs outside root" against a repository holding 484 File documents. It would have
-      // passed if the harness had deleted `/default-domain` wholesale. `NOT (… STARTSWITH …)`
-      // negates the whole predicate, which NXQL does accept.
-      const countUrl = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
-      countUrl.searchParams.set(
-        'query',
-        "SELECT * FROM Document WHERE ecm:primaryType = 'File' AND ecm:isTrashed = 0 " +
-          `AND NOT (ecm:path STARTSWITH '${harness.dataRoot}')`,
-      );
-      countUrl.searchParams.set('pageSize', '1000');
+      // It began as "count the File documents outside the data root, delete something inside
+      // it, count again, assert equal". That could not detect damage, for two independent
+      // reasons, and neither was visible while it was passing.
+      //
+      // 1. `/search/lang/NXQL/execute` is OpenSearch-backed and lags the repository by
+      //    seconds, so a wholesale deletion outside the root left both counts identical
+      //    simply because neither had reached the index yet.
+      // 2. Worse, and what the previous fix missed: the population it counted was not
+      //    stable. Every other suite in this library has its own data root, so their
+      //    documents are "outside" this one's, and they create and delete throughout the
+      //    run. Adding a seventh spec file to the project was enough to expose it —
+      //    `expected 1097 to be 1099`, a legitimate difference caused by another suite's
+      //    `afterAll` and nothing to do with isolation. Waiting for the index made the
+      //    measurement current without making it *mine*.
+      //
+      // So there is no counting here at all. A canary this suite owns, outside the root, read
+      // back by UID; a throwaway root it also owns, deleted by the same recursive path the
+      // harness's cleanup uses. Every read is `/nuxeo/api/v1/id/:uid`, which goes to the
+      // repository rather than the index — no lag to wait out — and every document involved is
+      // this run's, so no concurrently running suite can move the result either way.
+      const unique = `iso-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+      const workspaces = '/default-domain/workspaces';
 
-      // The status is asserted, and the `?? 0` fallbacks are gone. They are what converted a
-      // server error into a pass, so a missing `resultsCount` must now fail the test rather
-      // than be read as a count of nothing.
-      const countOutsideRoot = async (): Promise<number> => {
-        const res = await fetch(countUrl, { headers: { Authorization: harness.auth } });
-        expect(res.status).toBe(200);
-        const data: any = await res.json();
-        expect(data.resultsCount).toBeTypeOf('number');
-        return data.resultsCount;
+      /** Create a document by path, returning the server's entity. */
+      const createAt = async (parentPath: string, name: string, type: string) => {
+        const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${parentPath}`, {
+          method: 'POST',
+          headers: {
+            Authorization: harness.auth,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            'entity-type': 'document',
+            name,
+            type,
+            properties: { 'dc:title': name },
+          }),
+        });
+        expect(res.status).toBe(201);
+        return (await res.json()) as any;
       };
 
-      // The sentinel is what makes the counts mean anything.
+      /** The status of a direct repository read. 404 means gone, 200 means present. */
+      const readStatus = async (uid: string): Promise<number> => {
+        const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${uid}`, {
+          headers: { Authorization: harness.auth },
+        });
+        return res.status;
+      };
+
+      // The canary: outside the data root, a sibling of it, owned by this run.
+      const canary = await createAt(workspaces, `${unique}-canary`, 'File');
+
+      // The throwaway root, and a child inside it. The child is what makes the deletion's
+      // recursiveness observable: a DELETE that removed only the workspace and orphaned its
+      // contents would still leave the root 404, and this test would not notice.
       //
-      // `/search/lang/NXQL/execute` is Elasticsearch-backed and lags the repository by
-      // seconds. Measured on the local stack: two files created inside a folder still counted
-      // 0 immediately afterwards, and counted 2 for three seconds *after* the folder had been
-      // recursively deleted. So the original "count before, delete, count after, assert equal"
-      // could not detect damage — a wholesale deletion outside the root would leave the
-      // before/after counts identical simply because neither had reached the index yet, and
-      // the test would report isolation it had never observed.
-      //
-      // Deleting the sentinel and waiting for the index to drop it proves the index reflects
-      // this run's deletions *at the moment the second count is taken*. Only then is
-      // "unchanged outside the root" evidence of anything.
-      const sentinel: any = await createTestDocument(harness, {
-        type: 'File',
-        name: 'isolated-delete-test',
-        title: 'Delete Test',
-      });
-      await waitForIndexed(harness, sentinel.uid);
+      // `throwaway.path` comes from the server and is used verbatim below rather than rebuilt
+      // from `unique` — the lesson `assertUntruncated` in the harness was written for.
+      // Nuxeo's `PathSegmentServiceDefault` caps a segment at 24 characters, and it bit during
+      // this test's own development: a canary asked for as `…-canary` was created as `…-canar`.
+      // Reads here go by UID so truncation cannot mislead them, but the DELETE goes by path,
+      // and a reconstructed path would have 404'd on a workspace that existed.
+      const throwaway = await createAt(workspaces, `${unique}-root`, 'Workspace');
+      const inside = await createAt(throwaway.path, 'child', 'File');
 
-      // Taken only once the index is known to be current, so it is comparable with the count
-      // after the delete.
-      const beforeCount = await countOutsideRoot();
+      // Everything is really there before the destructive step, or the assertions afterwards
+      // are satisfied by documents that never existed.
+      expect(await readStatus(canary.uid)).toBe(200);
+      expect(await readStatus(throwaway.uid)).toBe(200);
+      expect(await readStatus(inside.uid)).toBe(200);
 
-      // Belt and braces: an empty or rejected result must not be able to satisfy this test.
-      // Preflight already refuses an empty repository, so zero here means the query is wrong.
-      expect(beforeCount).toBeGreaterThan(0);
-
-      const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${sentinel.uid}`, {
+      // The destructive operation under test: the same `DELETE /api/v1/path<root>` that
+      // `deleteDataRoot` issues in the harness's `afterAll`, against a root of the same shape
+      // in the same parent. Exercising the real cleanup function would have to run inside this
+      // suite's own `afterAll` and would take the rest of the suite's fixtures with it.
+      const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${throwaway.path}`, {
         method: 'DELETE',
         headers: { Authorization: harness.auth },
       });
-      expect(deleteRes.status).toBe(204);
+      expect(deleteRes.ok).toBe(true);
 
-      await waitForDeindexed(harness, sentinel.uid);
+      // The root is gone, and so is its child — so the delete was recursive.
+      expect(await readStatus(throwaway.uid)).toBe(404);
+      expect(await readStatus(inside.uid)).toBe(404);
 
-      const afterCount = await countOutsideRoot();
+      // The point of the test: the sibling outside the deleted root is untouched. This is the
+      // assertion that fails if a cleanup ever deletes a parent rather than its own root, and
+      // it cannot be satisfied by index lag, because it is a repository read.
+      expect(await readStatus(canary.uid)).toBe(200);
 
-      expect(afterCount).toBe(beforeCount);
+      // Leave nothing behind. Deliberately after the assertions, so a failure above leaves the
+      // evidence on the server to look at.
+      const canaryDelete = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${canary.uid}`, {
+        method: 'DELETE',
+        headers: { Authorization: harness.auth },
+      });
+      expect(canaryDelete.ok).toBe(true);
+      expect(await readStatus(canary.uid)).toBe(404);
 
       console.log(
-        `[write-ops] Isolation verified against a current index: ${beforeCount} docs outside root before, ${afterCount} after`,
+        `[write-ops] Isolation verified by repository read: ${throwaway.path} and its child removed, canary survived`,
       );
     });
   });
