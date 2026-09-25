@@ -1,6 +1,6 @@
 /**
- * NXENG-768 — `.format-type`, `.format-size`, and related strip text on themed `.picture-cards`
- * must consume `--mat-sys-on-surface-variant` and meet WCAG 2.1 SC 1.4.3 under every compiled palette.
+ * NXENG-768 / NXENG-760 — strip text on themed `.picture-cards` must consume mat-sys tokens and meet
+ * WCAG 2.1 SC 1.4.3 under every compiled palette and when CSS fallbacks apply (unset/invalid tokens).
  * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -80,7 +80,33 @@ function assertContrast(element: HTMLElement, cards: HTMLElement, label: string)
     .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
 }
 
-describe('DocumentViewer format-type contrast by theme (NXENG-768)', () => {
+function assertFormatTypeOnCards(
+  fixture: ComponentFixture<DocumentViewerComponent>,
+  context: string,
+): void {
+  const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
+  const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
+  expect(formatLabel).withContext(`${context}: expected .format-type`).not.toBeNull();
+  expect(cards).withContext(`${context}: expected .picture-cards`).not.toBeNull();
+  if (!formatLabel || !cards) return;
+
+  const stripStyle = getComputedStyle(cards);
+  const labelStyle = getComputedStyle(formatLabel);
+  expect(parseColor(stripStyle.backgroundColor).alpha)
+    .withContext(`${context}: picture-cards background must be opaque`)
+    .toBe(1);
+
+  const backdrop = parseColor(stripStyle.backgroundColor).rgb;
+  const painted = compositeOver(parseColor(labelStyle.color), backdrop);
+  const ratio = contrastRatio(painted, backdrop);
+  expect(ratio)
+    .withContext(
+      `format-type ${labelStyle.color} on picture-cards ${stripStyle.backgroundColor} (${context})`,
+    )
+    .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+}
+
+describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
@@ -120,6 +146,9 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768)', () => {
 
   afterEach(() => {
     fixture.nativeElement.remove();
+    document.documentElement.style.removeProperty('--mat-sys-surface');
+    document.documentElement.style.removeProperty('--mat-sys-on-surface-variant');
+    (fixture.nativeElement as HTMLElement).style.removeProperty('--mat-sys-surface');
     (fixture.nativeElement as HTMLElement).style.removeProperty('--mat-sys-on-surface-variant');
     if (originalTheme === null) {
       document.documentElement.removeAttribute('data-app-theme');
@@ -139,6 +168,23 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768)', () => {
     fixture.detectChanges();
 
     expect(getComputedStyle(formatLabel).color).toBe(sentinel);
+  });
+
+  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 for authored SCSS fallbacks when root theme tokens are unset`, () => {
+    document.documentElement.style.setProperty('--mat-sys-surface', 'initial');
+    document.documentElement.style.setProperty('--mat-sys-on-surface-variant', 'initial');
+    fixture.detectChanges();
+    assertFormatTypeOnCards(fixture, 'SCSS fallbacks (unset root tokens)');
+  });
+
+  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 when surface tokens are invalid on the viewer host`, () => {
+    (fixture.nativeElement as HTMLElement).style.setProperty('--mat-sys-surface', 'initial');
+    (fixture.nativeElement as HTMLElement).style.setProperty(
+      '--mat-sys-on-surface-variant',
+      'initial',
+    );
+    fixture.detectChanges();
+    assertFormatTypeOnCards(fixture, 'invalid host tokens');
   });
 
   for (const theme of [...COMPILED_THEME_BASES, null] as const) {
