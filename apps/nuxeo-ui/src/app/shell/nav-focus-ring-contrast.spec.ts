@@ -64,6 +64,7 @@ const NAV_ITEMS_UNDER_TEST = [
   { navId: 'app.navbar.assets', ticket: 'NXENG-797' },
   { navId: 'app.navbar.recentlyViewed', ticket: 'NXENG-884' },
   { navId: 'app.navbar.expiredQueue', ticket: 'NXENG-912' },
+  { navId: 'app.navbar.tasks', ticket: 'NXENG-931' },
 ] as const;
 
 const PACKAGED_LABEL_BY_NAV_ID = Object.fromEntries(
@@ -281,6 +282,15 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
       .toBeDefined();
     expect(packaged!.path).toBe('/expired-queue');
     expect(packaged!.label).toBe('Expired Queue');
+  });
+
+  it('keeps the packaged Tasks descriptor IBM Issue 4267408435 names (NXENG-931)', () => {
+    const packaged = PACKAGED_NAV_ITEMS.find((item) => item.id === 'app.navbar.tasks');
+    expect(packaged)
+      .withContext('PACKAGED_NAV_ITEMS must expose the Tasks descriptor')
+      .toBeDefined();
+    expect(packaged!.path).toBe('/tasks');
+    expect(packaged!.label).toBe('Tasks');
   });
 
   it('declares a standalone :focus rule on nav links that IBM Equal Access can read (NXENG-794)', () => {
