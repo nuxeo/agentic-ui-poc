@@ -1,6 +1,4 @@
 :host {
-  /* AA secondary text on the viewer's fixed #fff footer/cards (not theme-adaptive). */
-  --document-viewer-muted-on-light-surface: #5c5f6b;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -366,8 +364,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  border-top: 1px solid #eee;
-  background: #fff;
+  border-top: 1px solid var(--mat-sys-outline-variant, #eee);
+  background: var(--mat-sys-surface, #fff);
   flex-shrink: 0;
 }
 
@@ -379,7 +377,7 @@
 
 .file-name {
   font-size: 13px;
-  color: #333;
+  color: var(--mat-sys-on-surface, #333);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -387,7 +385,7 @@
 
 .file-size {
   font-size: 11px;
-  color: var(--document-viewer-muted-on-light-surface);
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
 }
 
 .viewer-footer-actions {
@@ -396,10 +394,10 @@
   flex-shrink: 0;
 
   button {
-    color: #555;
+    color: var(--mat-sys-on-surface-variant, #555);
 
     &.active-toggle {
-      color: #0073e6;
+      color: var(--mat-sys-primary, #0073e6);
     }
 
     &.footer-remove-btn {

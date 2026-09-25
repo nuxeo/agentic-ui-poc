@@ -1,131 +1,119 @@
 /**
- * NXENG-790 — IBM Equal Access issue 300762098 (`text_contrast_sufficient`, WCAG 1.4.3 AA)
- * on `.file-size` in the document viewer footer (11px secondary label on a white footer).
+ * NXENG-763 — `.file-size` in the viewer footer must meet WCAG 2.1 SC 1.4.3 (IBM 56037090).
+ * Per-theme contrast is covered in `apps/nuxeo-ui/.../document-viewer-file-size-contrast.spec.ts`.
  */
-import { Component, provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { describe, expect, it, afterEach, beforeEach } from 'vitest';
+import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-function relativeLuminance([r, g, b]: readonly number[]): number {
-  const channel = (v: number): number => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+import { DocumentViewerComponent } from './document-viewer.component';
+
+const WCAG_AA_NORMAL_TEXT = 4.5;
+
+function scssBlock(source: string, className: string): string {
+  const match = source.match(new RegExp(`\\.${className}\\s*\\{[^}]+\\}`, 's'));
+  return match?.[0] ?? '';
 }
 
-function contrastRatio(a: readonly number[], b: readonly number[]): number {
-  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
+function scssNestedBlock(source: string, parentClass: string, nestedSelector: string): string {
+  const parent = source.match(new RegExp(`\\.${parentClass}\\s*\\{[\\s\\S]*?\\n\\}`, 'm'));
+  return parent?.[0]?.includes(nestedSelector) ? parent[0] : '';
 }
 
-function parseColor(value: string): { rgb: number[]; alpha: number } {
-  const match = /rgba?\(([^)]+)\)/.exec(value);
-  if (!match) {
-    throw new Error(`not a computed colour: "${value}"`);
+function parseRgb(css: string): [number, number, number] | null {
+  const m = css.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+}
+
+function luminance([r, g, b]: readonly number[]): number {
+  const s = [r, g, b].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2];
+}
+
+function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
+  const l1 = luminance(fg);
+  const l2 = luminance(bg);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function opaqueBackground(element: HTMLElement): [number, number, number] {
+  const own = parseRgb(getComputedStyle(element).backgroundColor);
+  if (own && getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+    return own;
   }
-  const parts = match[1]
-    .split(/[,\s/]+/)
-    .filter(Boolean)
-    .map(Number);
-  return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
-}
-
-function compositeOver(
-  fg: { rgb: number[]; alpha: number },
-  backdrop: readonly number[],
-): number[] {
-  return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
-}
-
-function opaqueBackdrop(element: HTMLElement): number[] {
   for (let node: HTMLElement | null = element; node; node = node.parentElement) {
-    const { rgb, alpha } = parseColor(getComputedStyle(node).backgroundColor);
-    if (alpha === 1) {
-      return rgb;
+    const bg = parseRgb(getComputedStyle(node).backgroundColor);
+    if (bg && getComputedStyle(node).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      return bg;
     }
   }
   return [255, 255, 255];
 }
 
-const MIN_TEXT_RATIO = 4.5;
-/** Dark-theme M3 on-surface-variant is a light foreground — must not be used on the #fff footer. */
-const DARK_THEME_LIGHT_SURFACE_VARIANT = '#c7c7c7';
-
-function assertFileSizeContrast(fixtureRoot: HTMLElement): number {
-  const footer = fixtureRoot.querySelector('.viewer-footer') as HTMLElement;
-  const label = fixtureRoot.querySelector('.file-size') as HTMLElement;
-  const labelStyle = getComputedStyle(label);
-  const backdrop = opaqueBackdrop(footer);
-  const painted = compositeOver(parseColor(labelStyle.color), backdrop);
-  const ratio = contrastRatio(painted, backdrop);
-  expect(ratio)
-    .withContext(`file-size ${labelStyle.color} on footer backdrop rgb(${backdrop.join(',')})`)
-    .toBeGreaterThanOrEqual(MIN_TEXT_RATIO);
-  return ratio;
-}
-
-@Component({
-  standalone: true,
-  styleUrls: ['./document-viewer.component.scss'],
-  templateUrl: './document-viewer-file-size-contrast.host.html',
-})
-class DocumentViewerFileSizeContrastHostComponent {}
-
-describe('document viewer file size label — text contrast (NXENG-790)', () => {
-  let fixture: ComponentFixture<DocumentViewerFileSizeContrastHostComponent>;
-  let originalTheme: string | null;
-  let originalSurfaceVariant: string;
+describe('DocumentViewerComponent — file-size text contrast (NXENG-763)', () => {
+  let fixture: ComponentFixture<DocumentViewerComponent>;
 
   beforeEach(async () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
     await TestBed.configureTestingModule({
-      imports: [DocumentViewerFileSizeContrastHostComponent],
+      imports: [DocumentViewerComponent],
       providers: [provideZonelessChangeDetection()],
     }).compileComponents();
 
-    originalTheme = document.documentElement.getAttribute('data-app-theme');
-    originalSurfaceVariant = document.documentElement.style.getPropertyValue(
-      '--mat-sys-on-surface-variant',
-    );
-    fixture = TestBed.createComponent(DocumentViewerFileSizeContrastHostComponent);
-    document.body.appendChild(fixture.nativeElement);
-    fixture.detectChanges();
+    fixture = TestBed.createComponent(DocumentViewerComponent);
   });
 
-  afterEach(() => {
-    fixture.nativeElement.remove();
-    if (originalTheme === null) {
-      document.documentElement.removeAttribute('data-app-theme');
-    } else {
-      document.documentElement.setAttribute('data-app-theme', originalTheme);
-    }
-    if (originalSurfaceVariant) {
-      document.documentElement.style.setProperty(
-        '--mat-sys-on-surface-variant',
-        originalSurfaceVariant,
-      );
-    } else {
-      document.documentElement.style.removeProperty('--mat-sys-on-surface-variant');
-    }
+  it('themes .viewer-footer, .file-size, and footer actions as mat-sys pairs', () => {
+    const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
+    const scss = readFileSync(scssPath, 'utf8');
+    const footer = scssBlock(scss, 'viewer-footer');
+    const label = scssBlock(scss, 'file-size');
+    const actions = scssNestedBlock(scss, 'viewer-footer-actions', 'button');
+    expect(footer).toMatch(/var\(--mat-sys-surface/);
+    expect(label).toMatch(/var\(--mat-sys-on-surface-variant,\s*#5c5f6b\)/);
+    expect(label).not.toMatch(/#888/i);
+    expect(actions).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(actions).toMatch(/var\(--mat-sys-primary/);
+    expect(actions).not.toMatch(/color:\s*#555/i);
   });
 
-  it(`meets ${MIN_TEXT_RATIO}:1 on the fixed white footer`, () => {
-    assertFileSizeContrast(fixture.nativeElement);
-  });
+  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the footer surface fallback`, () => {
+    const raw = 'blob:http://localhost/sample';
+    const trusted = (): SafeResourceUrl =>
+      TestBed.inject(DomSanitizer).bypassSecurityTrustResourceUrl(raw);
 
-  it('does not follow a light on-surface-variant when dark theme tokens are on :root', () => {
-    document.documentElement.setAttribute('data-app-theme', 'dark');
-    document.documentElement.style.setProperty(
-      '--mat-sys-on-surface-variant',
-      DARK_THEME_LIGHT_SURFACE_VARIANT,
-    );
+    fixture.componentRef.setInput('fileName', 'sample.csv');
+    fixture.componentRef.setInput('fileSize', '182 B');
+    fixture.componentRef.setInput('mimeType', 'text/csv');
+    fixture.componentRef.setInput('blobUrl', trusted());
+    fixture.componentRef.setInput('rawBlobUrl', raw);
+    fixture.componentRef.setInput('loading', false);
     fixture.detectChanges();
 
-    const label = fixture.nativeElement.querySelector('.file-size') as HTMLElement;
-    const labelRgb = parseColor(getComputedStyle(label).color).rgb;
-    const lightSurfaceVariantRgb = parseColor('rgb(199, 199, 199)').rgb;
-    expect(labelRgb).not.toEqual(lightSurfaceVariantRgb);
+    const fileSize = fixture.nativeElement.querySelector('.file-size') as HTMLElement | null;
+    const footer = fixture.nativeElement.querySelector('.viewer-footer') as HTMLElement | null;
+    expect(fileSize).not.toBeNull();
+    expect(footer).not.toBeNull();
+    if (!fileSize || !footer) return;
 
-    assertFileSizeContrast(fixture.nativeElement);
+    const fg = parseRgb(getComputedStyle(fileSize).color);
+    expect(fg).not.toBeNull();
+    if (!fg) return;
+
+    const bg = opaqueBackground(footer);
+    const ratio = contrastRatio(fg, bg);
+    expect(ratio).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
   });
 });
