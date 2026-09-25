@@ -120,6 +120,11 @@ export const scenes = [
         highlight: 'lib-document-viewer .viewer-footer',
         label: 'Viewer footer',
       });
+      await h.expectNoConsoleErrors('document detail preview', [
+        /automation\/AI\./,
+        '/nuxeo/logout',
+        '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
+      ]);
     },
   },
 ];
