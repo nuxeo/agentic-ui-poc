@@ -69,6 +69,7 @@ import { AppNavItem, SETTINGS_DRAWER_ITEMS, toAppNavItem } from '../platform-nav
 import { ThemingFeatureFlagService } from '../theme/theming-feature-flag.service';
 import { drawerItemForPath } from './drawer-route-match';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
+import { PlatformNavRailToggleVisibleLabelDirective } from './platform-nav-rail-toggle-visible-label.directive';
 import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
 
 @Component({
@@ -87,6 +88,7 @@ import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
     MatSidenavModule,
     MatTooltipModule,
     NavDrawerComponent,
+    PlatformNavRailToggleVisibleLabelDirective,
     SelectionTopbarComponent,
     FormsModule,
     AiMarkdownPipe,
