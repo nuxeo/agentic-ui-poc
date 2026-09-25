@@ -221,13 +221,19 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760, NX
         '.picture-card-title',
       ) as HTMLElement | null;
       const infoValue = fixture.nativeElement.querySelector('.info-value') as HTMLElement | null;
+      const downloadIcon = fixture.nativeElement.querySelector(
+        '.format-download-btn mat-icon',
+      ) as HTMLElement | null;
 
       expect(formatLabel).withContext(`${label}: expected .format-type`).not.toBeNull();
       expect(formatSize).withContext(`${label}: expected .format-size`).not.toBeNull();
       expect(cards).withContext(`${label}: expected .picture-cards`).not.toBeNull();
       expect(cardTitle).withContext(`${label}: expected .picture-card-title`).not.toBeNull();
       expect(infoValue).withContext(`${label}: expected .info-value`).not.toBeNull();
-      if (!formatLabel || !formatSize || !cards || !cardTitle || !infoValue) return;
+      expect(downloadIcon).withContext(`${label}: expected download icon`).not.toBeNull();
+      if (!formatLabel || !formatSize || !cards || !cardTitle || !infoValue || !downloadIcon) {
+        return;
+      }
 
       expect(getComputedStyle(cards).backgroundColor)
         .withContext(`picture-cards background in ${label}`)
@@ -240,6 +246,7 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760, NX
       assertContrast(formatSize, cards, 'format-size');
       assertContrast(cardTitle, cards, 'picture-card-title');
       assertContrast(infoValue, cards, 'info-value');
+      assertContrast(downloadIcon, cards, 'format-download icon');
     });
   }
 });

@@ -122,6 +122,9 @@ describe('DocumentViewerComponent — format-type text contrast (NXENG-801)', ()
     expect(title).toMatch(/var\(--document-viewer-on-light-strip/);
     expect(infoValue).toMatch(/var\(--document-viewer-on-light-strip/);
     expect(label).not.toMatch(/#999/i);
+    expect(scss).toMatch(
+      /\.format-download-btn[\s\S]*mat-icon[\s\S]*var\(--document-viewer-muted-on-light-surface/,
+    );
   });
 
   it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the picture-cards strip (including dark theme)`, () => {
