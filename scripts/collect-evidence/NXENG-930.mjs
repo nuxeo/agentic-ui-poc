@@ -97,7 +97,7 @@ export const scenes = [
       h.check(
         'format-type contrast meets WCAG AA (4.5:1)',
         ratio >= WCAG_AA_NORMAL,
-        `ratio=${ratio.toFixed(2)} color=${raw.color} bg=${raw.backgroundColor}`,
+        `ratio=${ratio.toFixed(2)} color=${raw.color} bg=rgb(${bg.join(',')})`,
       );
       await h.shot('format-type-label', {
         highlight: 'lib-document-viewer .format-type',
@@ -107,9 +107,9 @@ export const scenes = [
   },
   {
     act: 3,
-    title: 'Confirm preview tab layout and auth still work',
-    intent: 'Neighbouring viewer controls remain usable after the contrast fix',
-    criterion: 'AC-3',
+    title: 'Confirm preview tab layout after the contrast fix',
+    intent: 'Smoke check that the viewer footer still renders on document detail (not a keyboard/auth regression suite)',
+    criterion: 'AC-2',
     async run(page, h) {
       await h.expectVisible('viewer footer still present', 'lib-document-viewer .viewer-footer');
       const url = page.url();
