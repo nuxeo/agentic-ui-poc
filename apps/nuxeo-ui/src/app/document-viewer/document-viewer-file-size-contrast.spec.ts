@@ -130,6 +130,31 @@ describe('DocumentViewer file-size contrast by theme (NXENG-763)', () => {
           `file-size on viewer-footer in ${label}: ${getComputedStyle(fileSize).color} vs ${footerBg}`,
         )
         .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+
+      const actionButtons = Array.from(
+        fixture.nativeElement.querySelectorAll(
+          '.viewer-footer-actions button:not(.footer-remove-btn)',
+        ),
+      ) as HTMLElement[];
+      expect(actionButtons.length)
+        .withContext(`footer icon buttons in ${label}`)
+        .toBeGreaterThan(0);
+
+      for (const button of actionButtons) {
+        const fgBtn = parseRgb(getComputedStyle(button).color);
+        expect(fgBtn)
+          .withContext(`footer action colour ${getComputedStyle(button).color} in ${label}`)
+          .not.toBeNull();
+        if (!fgBtn) continue;
+
+        const bgBtn = opaqueBackground(footer);
+        const btnRatio = contrastRatio(fgBtn, bgBtn);
+        expect(btnRatio)
+          .withContext(
+            `footer action on viewer-footer in ${label}: ${getComputedStyle(button).color} vs ${footerBg}`,
+          )
+          .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+      }
     });
   }
 });

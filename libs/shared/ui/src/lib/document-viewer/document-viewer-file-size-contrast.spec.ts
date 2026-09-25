@@ -18,6 +18,11 @@ function scssBlock(source: string, className: string): string {
   return match?.[0] ?? '';
 }
 
+function scssNestedBlock(source: string, parentClass: string, nestedSelector: string): string {
+  const parent = source.match(new RegExp(`\\.${parentClass}\\s*\\{[\\s\\S]*?\\n\\}`, 'm'));
+  return parent?.[0]?.includes(nestedSelector) ? parent[0] : '';
+}
+
 function parseRgb(css: string): [number, number, number] | null {
   const m = css.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
   if (!m) return null;
@@ -70,14 +75,18 @@ describe('DocumentViewerComponent — file-size text contrast (NXENG-763)', () =
     fixture = TestBed.createComponent(DocumentViewerComponent);
   });
 
-  it('themes .viewer-footer and .file-size as a matched surface/foreground pair', () => {
+  it('themes .viewer-footer, .file-size, and footer actions as mat-sys pairs', () => {
     const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
     const scss = readFileSync(scssPath, 'utf8');
     const footer = scssBlock(scss, 'viewer-footer');
     const label = scssBlock(scss, 'file-size');
+    const actions = scssNestedBlock(scss, 'viewer-footer-actions', 'button');
     expect(footer).toMatch(/var\(--mat-sys-surface/);
     expect(label).toMatch(/var\(--mat-sys-on-surface-variant/);
     expect(label).not.toMatch(/#888/i);
+    expect(actions).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(actions).toMatch(/var\(--mat-sys-primary/);
+    expect(actions).not.toMatch(/color:\s*#555/i);
   });
 
   it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the footer surface fallback`, () => {

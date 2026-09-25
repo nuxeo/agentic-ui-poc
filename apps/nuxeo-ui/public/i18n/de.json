@@ -126,6 +126,7 @@
       "menu": "Einstellungsmenü"
     },
     "test": {
+      "clipboard-nav-item": "Zwischenablage",
       "platform-nav-item": "Durchsuchen",
       "personal-space-nav-item": "Persönlicher Bereich"
     }
