@@ -24,6 +24,7 @@
  *   - `exit: 2` and the log lines go into **one** ordered array, so "the exit came first, and
  *     everything after it is unreachable in a real process" is itself an assertion.
  */
+import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -88,7 +89,11 @@ async function runCli(argv: string[] = []): Promise<CliRun> {
 // Composed rather than quoted: a literal assigned to a `password` field beside a `user`
 // and a URL is what GitGuardian's generic-password detector matches, and it fired on that
 // shape in the sibling spec. Nothing here is a credential.
-const fake = (label: string) => `fake-${label}`;
+//
+// Random per run for the same reason as the sibling spec: a derivable constant can be written
+// into the code under test, so an assertion against one proves the value was reproduced rather
+// than passed through.
+const fake = (label: string) => `fake-${label}-${randomUUID().slice(0, 8)}`;
 const connection = {
   nuxeoUrl: 'http://nuxeo.test',
   user: fake('test-user'),

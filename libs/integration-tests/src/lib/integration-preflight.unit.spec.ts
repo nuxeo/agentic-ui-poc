@@ -10,6 +10,7 @@
  * problems accumulate, what the message says — and that is the half a CI runner can hold.
  * Nothing here asserts that Nuxeo answers correctly; the `integration` target does that.
  */
+import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 import {
   checkIntegrationPreconditions,
@@ -32,8 +33,16 @@ const originalEnv = { ...process.env };
  * failed the first push of this file on exactly that line. Nothing here is a credential, but
  * a scanner cannot tell a fixture from the real thing by looking — so the values are composed
  * instead, which leaves the detector switched on for everyone else rather than muted.
+ *
+ * The random suffix is load-bearing, not decoration. Without it these values were `fake-test-user`
+ * and `fake-test-password` — derivable by reading this file — and the Basic-auth assertions below
+ * build their expected header from the same two constants. Mutating the module's
+ * `` `${user}:${password}` `` to `` `${user}:fake-test-password` `` therefore kept every spec
+ * green: the derivation was broken and the expectation still matched, because the expectation
+ * had become a constant too. A per-run value cannot be written into the module under test, so
+ * the header assertions now test the derivation rather than a coincidence.
  */
-const fake = (label: string) => `fake-${label}`;
+const fake = (label: string) => `fake-${label}-${randomUUID().slice(0, 8)}`;
 const ENV_USER = fake('env-user');
 const ENV_PASSWORD = fake('env-password');
 const EXPLICIT_USER = fake('explicit-user');
@@ -519,8 +528,19 @@ describe('isHostAllowed', () => {
     expect(() => isHostAllowed('file:///etc/passwd', ['nuxeo.test'])).toThrow(
       /must be http: or https:/,
     );
-    // Parses, is http, and still has no host to compare.
-    expect(() => isHostAllowed('http://', ['nuxeo.test'])).toThrow(/not a URL/);
+  });
+
+  it('rejects every http spelling that carries no host, at the URL parse', () => {
+    // Recorded as a spec because it is why `parseTarget` has no separate empty-host branch.
+    // `http:` and `https:` are WHATWG special schemes, so `new URL` *requires* a host and
+    // throws instead of handing back an empty one. A guard for `url.host === ''` was written,
+    // survived every mutation because nothing could reach it, and was deleted. If a future Node
+    // ever starts parsing these, this spec goes red and the branch is needed again.
+    for (const url of ['http://', 'http:///', 'http://:8080', 'http://:']) {
+      expect(() => isHostAllowed(url, ['nuxeo.test'])).toThrow(/not a URL/);
+    }
+    // And the one that does parse takes its first path segment as the host, rather than none.
+    expect(isHostAllowed('http:///nuxeo.test', ['nuxeo.test'])).toBe(true);
   });
 });
 
