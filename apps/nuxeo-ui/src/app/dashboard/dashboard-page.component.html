@@ -269,8 +269,10 @@
     [matTooltip]="'app.dashboard-page.create-or-import' | translate"
     matTooltipPosition="above"
     matTooltipShowDelay="300"
-    [attr.aria-label]="'app.dashboard-page.create-or-import' | translate"
   >
-    <mat-icon>add</mat-icon>
+    <span class="cdk-visually-hidden" cdkAriaLive="off">{{
+      'app.dashboard-page.create-or-import' | translate
+    }}</span>
+    <mat-icon aria-hidden="true">add</mat-icon>
   </button>
 </div>
