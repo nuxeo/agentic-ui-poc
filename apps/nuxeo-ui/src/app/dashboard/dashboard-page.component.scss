@@ -218,28 +218,17 @@
 }
 
 // ── AI Insights Banner ──
+// NXENG-939 — IBM 9067535242: decorative gradients made automated contrast checks
+// "Needs review". Use an opaque theme surface so text contrast is measurable.
 .ai-insights-banner {
   // Fixed light panel — empty-state copy uses this token, not `--mat-sys-on-surface-variant`
   // (which becomes a light foreground when `data-app-theme=dark`).
   --dashboard-ai-banner-empty-fg: #474551;
   margin: 24px 24px 0;
   padding: 20px 24px 24px;
-  background: linear-gradient(135deg, #f8f5ff 0%, #eef1ff 50%, #f5f8ff 100%);
-  border: 1px solid #e0d8f5;
+  background: var(--mat-sys-surface-container-low, #f3f3f6);
+  border: 1px solid var(--mat-sys-outline-variant, #c8c6cc);
   border-radius: 16px;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: -40px;
-    right: -40px;
-    width: 160px;
-    height: 160px;
-    background: radial-gradient(circle, rgba(124, 77, 255, 0.06) 0%, transparent 70%);
-    pointer-events: none;
-  }
 }
 
 .ai-banner-header {
@@ -256,7 +245,7 @@
 }
 
 .ai-banner-icon {
-  color: #7c4dff;
+  color: var(--mat-sys-primary, #6750a4);
   font-size: 22px;
   width: 22px;
   height: 22px;
@@ -265,15 +254,15 @@
 .ai-banner-title {
   font-size: 16px;
   font-weight: 700;
-  color: #1a1c2e;
+  color: var(--mat-sys-on-surface, #1a1c1e);
   letter-spacing: -0.02em;
 }
 
 .ai-banner-count {
   font-size: 12px;
-  color: #7c4dff;
+  color: var(--mat-sys-primary, #6750a4);
   font-weight: 500;
-  background: rgba(124, 77, 255, 0.08);
+  background: color-mix(in srgb, var(--mat-sys-primary, #6750a4) 8%, transparent);
   padding: 3px 10px;
   border-radius: 20px;
 }
@@ -283,8 +272,8 @@
   align-items: center;
   gap: 8px;
   padding: 12px 0;
-  // IBM 9044252072 / NXENG-940 — empty copy must stay ≥4.5:1 on the banner gradient
-  // (darkest stop #eef1ff).
+  // IBM 9044252072 / NXENG-940 — empty copy must stay ≥4.5:1 on the fixed light banner
+  // (not `--mat-sys-on-surface-variant`, which is light under `data-app-theme=dark`).
   color: var(--dashboard-ai-banner-empty-fg);
   font-size: 13px;
 
