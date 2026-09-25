@@ -385,7 +385,7 @@
 
 .file-size {
   font-size: 11px;
-  color: var(--mat-sys-on-surface-variant);
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
 }
 
 .viewer-footer-actions {

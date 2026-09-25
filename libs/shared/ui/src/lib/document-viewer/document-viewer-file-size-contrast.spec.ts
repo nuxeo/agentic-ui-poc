@@ -82,7 +82,7 @@ describe('DocumentViewerComponent — file-size text contrast (NXENG-763)', () =
     const label = scssBlock(scss, 'file-size');
     const actions = scssNestedBlock(scss, 'viewer-footer-actions', 'button');
     expect(footer).toMatch(/var\(--mat-sys-surface/);
-    expect(label).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(label).toMatch(/var\(--mat-sys-on-surface-variant,\s*#5c5f6b\)/);
     expect(label).not.toMatch(/#888/i);
     expect(actions).toMatch(/var\(--mat-sys-on-surface-variant/);
     expect(actions).toMatch(/var\(--mat-sys-primary/);
