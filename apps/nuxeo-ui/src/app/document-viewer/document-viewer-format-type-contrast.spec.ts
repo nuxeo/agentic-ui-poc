@@ -34,6 +34,37 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+function parseColor(value: string): { rgb: number[]; alpha: number } {
+  const match = /rgba?\(([^)]+)\)/.exec(value);
+  if (!match) {
+    throw new Error(`not a computed colour: "${value}"`);
+  }
+  const parts = match[1]
+    .split(/[,\s/]+/)
+    .filter(Boolean)
+    .map(Number);
+  return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
+}
+
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+  backdrop: readonly number[],
+): number[] {
+  return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
+}
+
+function assertContrast(element: HTMLElement, cards: HTMLElement, label: string): void {
+  const fgParsed = parseColor(getComputedStyle(element).color);
+  const bg = opaqueBackground(cards);
+  const painted = compositeOver(fgParsed, bg);
+  const ratio = contrastRatio(painted, bg);
+  expect(ratio)
+    .withContext(
+      `${label} ${getComputedStyle(element).color} on picture-cards ${getComputedStyle(cards).backgroundColor}`,
+    )
+    .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+}
+
 function opaqueBackground(element: HTMLElement): [number, number, number] {
   const own = parseRgb(getComputedStyle(element).backgroundColor);
   if (own && getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)') {
@@ -112,20 +143,18 @@ describe('DocumentViewer format-type contrast by theme (NXENG-856)', () => {
       expect(cards).withContext('expected .picture-cards').not.toBeNull();
       if (!formatLabel || !cards) return;
 
-      const fg = parseRgb(getComputedStyle(formatLabel).color);
-      expect(fg)
-        .withContext(`format-type colour ${getComputedStyle(formatLabel).color}`)
-        .not.toBeNull();
-      if (!fg) return;
+      assertContrast(formatLabel, cards, 'format-type');
 
-      const bg = opaqueBackground(cards);
-      const ratio = contrastRatio(fg, bg);
-      expect(ratio)
-        .withContext(
-          `format-type on picture-cards in ${label}: ${getComputedStyle(formatLabel).color} vs ` +
-            `${getComputedStyle(cards).backgroundColor}`,
-        )
-        .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+      const cardTitle = fixture.nativeElement.querySelector(
+        '.picture-card-title',
+      ) as HTMLElement | null;
+      const infoValue = fixture.nativeElement.querySelector('.info-value') as HTMLElement | null;
+      if (cardTitle) {
+        assertContrast(cardTitle, cards, 'picture-card-title');
+      }
+      if (infoValue) {
+        assertContrast(infoValue, cards, 'info-value');
+      }
     });
   }
 });

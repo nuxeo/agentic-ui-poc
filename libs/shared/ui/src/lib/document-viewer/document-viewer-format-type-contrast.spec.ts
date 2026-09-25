@@ -75,13 +75,17 @@ describe('DocumentViewerComponent — format-type text contrast (NXENG-856)', ()
     fixture.detectChanges();
   });
 
-  it('themes .picture-cards and .format-type as a matched surface/foreground pair', () => {
+  it('themes picture-cards foregrounds with the surface token pair', () => {
     const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
     const scss = readFileSync(scssPath, 'utf8');
     const cards = scssBlock(scss, 'picture-cards');
     const label = scssBlock(scss, 'format-type');
+    const title = scssBlock(scss, 'picture-card-title');
+    const infoValue = scssBlock(scss, 'info-value');
     expect(cards).toMatch(/var\(--mat-sys-surface/);
     expect(label).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(title).toMatch(/var\(--mat-sys-on-surface/);
+    expect(infoValue).toMatch(/var\(--mat-sys-on-surface/);
     expect(label).not.toMatch(/#999/i);
   });
 

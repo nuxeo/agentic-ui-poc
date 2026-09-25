@@ -411,14 +411,14 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
   background: var(--mat-sys-surface, #fff);
   flex-shrink: 0;
 }
 
 .picture-card {
   padding: 16px 20px;
-  border-right: 1px solid #eee;
+  border-right: 1px solid var(--mat-sys-outline-variant, #eee);
 
   &:last-child {
     border-right: none;
@@ -428,7 +428,7 @@
 .picture-card-title {
   font-size: 13px;
   font-weight: 600;
-  color: #333;
+  color: var(--mat-sys-on-surface, #333);
   margin: 0 0 12px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -448,14 +448,14 @@
 
 .info-label {
   font-size: 12px;
-  color: #777;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
   min-width: 0;
   white-space: nowrap;
 }
 
 .info-value {
   font-size: 13px;
-  color: #333;
+  color: var(--mat-sys-on-surface, #333);
   font-weight: 500;
 }
 
@@ -468,7 +468,7 @@
 
 .format-name {
   font-size: 12px;
-  color: #333;
+  color: var(--mat-sys-on-surface, #333);
   font-weight: 500;
   min-width: 100px;
   white-space: nowrap;
@@ -476,7 +476,7 @@
 
 .format-details {
   font-size: 12px;
-  color: #666;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
   flex: 1;
   display: flex;
   align-items: center;
@@ -485,7 +485,7 @@
 }
 
 .format-size {
-  color: #999;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
 }
 
 .format-type {
@@ -504,6 +504,6 @@
     font-size: 18px !important;
     width: 18px !important;
     height: 18px !important;
-    color: #666;
+    color: var(--mat-sys-on-surface-variant, #5c5f6b);
   }
 }
