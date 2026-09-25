@@ -95,6 +95,26 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
     expect(closeSpy).toHaveBeenCalledWith(true);
   });
 
+  it('handles permission creation when notification is not sent', () => {
+    addExternalPermissionWithNotification.mockReturnValue(
+      of({
+        document: { uid: 'doc-1' },
+        notificationSent: false,
+      }),
+    );
+
+    snackBarOpenSpy.mockClear();
+
+    fixture.componentInstance.create(false);
+
+    // The load-bearing assertion. `notificationSent: false` with no `notificationError` makes
+    // `successMessage` return null, so nothing should be announced — but the dialog still closes
+    // with `true`, exactly as it does on success. Asserting only the close leaves this test green
+    // if a regression starts reporting success for an email that was never sent.
+    expect(snackBarOpenSpy).not.toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledWith(true);
+  });
+
   it('resets form on create-and-add-another without closing', () => {
     fixture.componentInstance.create(true);
 
