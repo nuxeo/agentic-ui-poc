@@ -119,15 +119,14 @@ export const scenes = [
   },
   {
     act: 3,
-    title: 'Confirm viewer chrome still works',
-    intent: 'Ensure the fix did not break navigation or keyboard access on Preview',
-    criterion: 'AC-3',
+    title: 'Confirm viewer chrome still renders',
+    intent: 'Layout smoke after the contrast fix (keyboard/auth covered by document-detail unit tests)',
+    criterion: 'AC-2',
     async run(page, h) {
-      const formatType = await openPreviewFormatType(page, h);
-      h.note('format-type is presentational text (span) — keyboard focus stays on interactive controls');
+      await openPreviewFormatType(page, h);
       const download = page.locator('lib-document-viewer .format-download-btn').first();
       if (await download.isVisible().catch(() => false)) {
-        h.check('download control remains visible', true);
+        await h.expectVisible('format download control still visible', 'lib-document-viewer .format-download-btn');
       } else {
         h.note('No format download button on this document — skipped download visibility check');
       }
