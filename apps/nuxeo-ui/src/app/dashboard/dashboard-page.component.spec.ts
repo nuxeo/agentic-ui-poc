@@ -72,7 +72,7 @@ describe('DashboardPageComponent', () => {
     fixture.detectChanges();
   });
 
-  it('labels the Create or import FAB with visible text that matches its accessible name (WCAG 2.5.3)', () => {
+  it('keeps the Create or import FAB naming text in a cdk-visually-hidden span (WCAG 2.5.3)', () => {
     const fab = fixture.nativeElement.querySelector('button.dashboard-create-fab');
     expect(fab).withContext('Create or import FAB').not.toBeNull();
     if (!(fab instanceof HTMLButtonElement)) {
@@ -80,8 +80,8 @@ describe('DashboardPageComponent', () => {
       return;
     }
 
-    const visibleLabel = fab.querySelector('.cdk-visually-hidden');
-    expect(visibleLabel?.textContent?.trim()).toBe('Create or import');
+    const accessibleNameSpan = fab.querySelector('.cdk-visually-hidden');
+    expect(accessibleNameSpan?.textContent?.trim()).toBe('Create or import');
 
     const icon = fab.querySelector('mat-icon');
     expect(icon?.getAttribute('aria-hidden')).toBe('true');
