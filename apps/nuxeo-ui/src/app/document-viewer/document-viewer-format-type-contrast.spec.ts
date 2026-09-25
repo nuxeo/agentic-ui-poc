@@ -96,6 +96,29 @@ describe('document viewer format-type contrast (NXENG-760)', () => {
     ).toBeGreaterThanOrEqual(MIN_TEXT_RATIO);
   });
 
+  it(`meets ${MIN_TEXT_RATIO}:1 when surface tokens are invalid (CSS fallbacks)`, () => {
+    fixture.nativeElement.style.setProperty('--mat-sys-surface', 'initial');
+    fixture.nativeElement.style.setProperty('--mat-sys-on-surface-variant', 'initial');
+    fixture.detectChanges();
+
+    const strip = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement;
+    const labelEl = fixture.nativeElement.querySelector('.format-type') as HTMLElement;
+    const stripStyle = getComputedStyle(strip);
+    const labelStyle = getComputedStyle(labelEl);
+    const backdrop =
+      parseColor(stripStyle.backgroundColor).alpha === 1
+        ? parseColor(stripStyle.backgroundColor).rgb
+        : PICTURE_CARDS_SURFACE_FALLBACK;
+    const painted = compositeOver(parseColor(labelStyle.color), backdrop);
+    const ratio = contrastRatio(painted, backdrop);
+
+    expect(ratio)
+      .withContext(
+        `format-type ${labelStyle.color} on picture-cards ${stripStyle.backgroundColor} (invalid tokens)`,
+      )
+      .toBeGreaterThanOrEqual(MIN_TEXT_RATIO);
+  });
+
   for (const theme of SHIPPED_THEMES) {
     const label = theme ?? 'no data-app-theme (first paint)';
 
