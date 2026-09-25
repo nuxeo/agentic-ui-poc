@@ -5,7 +5,8 @@ import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { TranslateModule } from '@ngx-translate/core';
 
-import { testTranslateModule } from '../i18n/translate-testing';
+import { PACKAGED_NAV_ITEMS } from '@nuxeo-satori/platform/extensions';
+
 import { COMPILED_THEME_BASES } from '../theme/app-theme';
 
 /**
@@ -20,8 +21,17 @@ import { COMPILED_THEME_BASES } from '../theme/app-theme';
 
 const ACTIVE_CLASS = 'sat-platform-nav-item-active';
 
-const FAVORITES_LINK =
-  'sat-platform-nav-list-item[data-nav-id="app.navbar.favorites"] .sat-platform-nav-item';
+function favoritesNavDescriptor() {
+  const descriptor = PACKAGED_NAV_ITEMS.find((item) => item.id === 'app.navbar.favorites');
+  if (!descriptor) {
+    throw new Error('PACKAGED_NAV_ITEMS must include app.navbar.favorites (NXENG-898)');
+  }
+  return descriptor;
+}
+
+const FAVORITES_NAV = favoritesNavDescriptor();
+
+const FAVORITES_LINK = `sat-platform-nav-list-item[data-nav-id="${FAVORITES_NAV.id}"] .sat-platform-nav-item`;
 
 @Component({
   standalone: true,
@@ -30,6 +40,8 @@ const FAVORITES_LINK =
 })
 class FavoritesNavHostComponent {
   readonly active = signal(false);
+  readonly navId = signal(FAVORITES_NAV.id);
+  readonly label = signal(FAVORITES_NAV.label);
 }
 
 function luminance([r, g, b]: readonly number[]): number {
@@ -84,10 +96,7 @@ describe('Favorites sidebar nav — keyboard focus visible (NXENG-898)', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [
-        FavoritesNavHostComponent,
-        testTranslateModule({ 'shell.test.favorites-nav-item': 'Favorites' }),
-      ],
+      imports: [FavoritesNavHostComponent, TranslateModule.forRoot()],
       providers: [provideSatori(), provideNoopAnimations()],
     }).compileComponents();
     originalTheme = document.documentElement.getAttribute('data-app-theme');

@@ -1,5 +1,5 @@
 <sat-platform-nav>
-  <sat-platform-nav-list-item [active]="active()" data-nav-id="app.navbar.favorites">{{
-    'shell.test.favorites-nav-item' | translate
+  <sat-platform-nav-list-item [active]="active()" [attr.data-nav-id]="navId()">{{
+    label()
   }}</sat-platform-nav-list-item>
 </sat-platform-nav>
