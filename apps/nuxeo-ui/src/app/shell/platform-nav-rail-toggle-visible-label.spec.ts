@@ -107,6 +107,17 @@ describe('Platform nav rail toggle visible label (NXENG-927)', () => {
       expect(styles.display).not.toBe('none');
       expect(styles.visibility).not.toBe('hidden');
       expect(Number.parseFloat(styles.fontSize)).toBeGreaterThan(0);
+      expect(Number.parseFloat(styles.opacity))
+        .withContext('visible label must be painted')
+        .toBeGreaterThan(0);
+
+      const { width, height } = (span as HTMLElement).getBoundingClientRect();
+      expect(width)
+        .withContext('visible label must occupy horizontal layout space')
+        .toBeGreaterThan(0);
+      expect(height)
+        .withContext('visible label must occupy vertical layout space')
+        .toBeGreaterThan(0);
     });
 
     it('keeps aria-label aligned with visible text when toggling expand and collapse', () => {
