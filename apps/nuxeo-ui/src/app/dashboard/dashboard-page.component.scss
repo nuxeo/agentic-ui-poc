@@ -269,14 +269,15 @@
   align-items: center;
   gap: 8px;
   padding: 12px 0;
-  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+  // IBM 9044252072 / NXENG-940 — empty copy tracks the themed banner surface (NXENG-939).
+  color: var(--mat-sys-on-surface-variant, #474551);
   font-size: 13px;
 
   mat-icon {
     font-size: 18px;
     width: 18px;
     height: 18px;
-    color: var(--mat-sys-outline, #79747e);
+    color: currentColor;
   }
 }
 
