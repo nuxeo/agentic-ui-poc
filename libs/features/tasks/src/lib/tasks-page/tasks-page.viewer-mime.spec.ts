@@ -7,7 +7,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateModule } from '@ngx-translate/core';
 import { Subject, of, type Observable } from 'rxjs';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CURRENT_USERNAME,
@@ -23,6 +23,7 @@ import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
 
 import { TasksPageComponent } from './tasks-page.component';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
+import { tasksRoutes } from '../lib.routes';
 
 /**
  * Asserts which MIME type the tasks preview actually *binds* to the document viewer.
@@ -65,11 +66,54 @@ class ResizeObserverStub {
   }
 }
 
+/**
+ * jsdom implements neither object-URL method, and `loadPreviewBlob` mints one for every preview.
+ *
+ * `vi.spyOn(URL, 'createObjectURL')` cannot be used: the property is `undefined` under jsdom and
+ * `spyOn` throws on an absent one. So the methods are assigned — and the prior values are captured
+ * first, so `afterAll` puts back whatever was there rather than deleting unconditionally. Under
+ * jsdom there is nothing to put back and the effect is a delete; if some other suite in the worker
+ * had provided real implementations, deleting would have removed theirs for every later spec.
+ */
+const priorCreateObjectURL = URL.createObjectURL;
+const priorRevokeObjectURL = URL.revokeObjectURL;
+
+beforeAll(() => {
+  global.URL.createObjectURL = vi.fn(() => 'blob:http://localhost/test');
+  global.URL.revokeObjectURL = vi.fn();
+});
+
+afterAll(() => {
+  restoreObjectUrlMethod('createObjectURL', priorCreateObjectURL);
+  restoreObjectUrlMethod('revokeObjectURL', priorRevokeObjectURL);
+});
+
+/** Puts `prior` back, or removes the stub entirely when there was nothing there to begin with. */
+function restoreObjectUrlMethod<K extends 'createObjectURL' | 'revokeObjectURL'>(
+  name: K,
+  prior: (typeof URL)[K] | undefined,
+): void {
+  if (prior === undefined) {
+    delete (URL as Partial<typeof URL>)[name];
+    return;
+  }
+  URL[name] = prior;
+}
+
 describe('TasksPageComponent — the MIME type bound to the viewer', () => {
   let fixture: ComponentFixture<TasksPageComponent>;
   let component: TasksPageComponent;
 
-  const emptyList = { entries: [] as NuxeoDocument[] };
+  /**
+   * `getUserTasks` resolves to `Observable<NuxeoTask[]>` — a bare array, not a paginated envelope.
+   *
+   * This was `{ entries: [] }`, which is the shape of the REST payload rather than of what the
+   * service returns. It did not throw, so nothing noticed: `loadTasks` assigned the object to
+   * `tasks` and then evaluated `entries.length > 0` as `undefined > 0`, silently skipping the
+   * auto-select branch. Harmless for the MIME assertions this file makes, and exactly the kind of
+   * quiet fixture drift that stops a spec meaning what it appears to mean.
+   */
+  const noTasks: NuxeoTask[] = [];
   /** What `@rendition/thumbnail` returns for a non-media document: an image, not the document. */
   const thumbnailBlob = new Blob(['png-bytes'], { type: 'image/png' });
 
@@ -83,7 +127,7 @@ describe('TasksPageComponent — the MIME type bound to the viewer', () => {
       imports: [TasksPageComponent, NoopAnimationsModule, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
-        provideRouter([], withDisabledInitialNavigation()),
+        provideRouter([{ path: 'tasks', children: tasksRoutes }], withDisabledInitialNavigation()),
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: new Map() }, params: of({}) },
@@ -93,7 +137,7 @@ describe('TasksPageComponent — the MIME type bound to the viewer', () => {
           // more of it than a stubbed one did.
           provide: TaskService,
           useValue: {
-            getUserTasks: vi.fn((): Observable<unknown> => of(emptyList)),
+            getUserTasks: vi.fn((): Observable<NuxeoTask[]> => of(noTasks)),
             getTask: vi.fn((): Observable<unknown> => of(null)),
             notifyTasksChanged: vi.fn(),
           },
