@@ -11,20 +11,30 @@ async function contrastRatioFor(page, selector) {
     const el = document.querySelector(sel);
     if (!el) return { ok: false, reason: 'missing element' };
     const fg = getComputedStyle(el).color;
+    const parseColor = (css) => {
+      if (!css || css.trim() === 'transparent') return null;
+      const m = /^rgba?\(([^)]+)\)$/.exec(css.trim());
+      if (!m) return null;
+      const parts = m[1]
+        .split(/[,\s/]+/)
+        .filter(Boolean)
+        .map(Number);
+      if (parts.length < 3 || parts.some((n) => Number.isNaN(n))) return null;
+      return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
+    };
     let node = el.parentElement;
     let bg = 'rgb(255, 255, 255)';
     while (node) {
       const c = getComputedStyle(node).backgroundColor;
-      if (c && c !== 'rgba(0, 0, 0, 0)' && !c.startsWith('rgba(0, 0, 0,')) {
+      const parsed = parseColor(c);
+      if (parsed && parsed.alpha === 1) {
         bg = c;
         break;
       }
       node = node.parentElement;
     }
-    const parse = (css) => {
-      const m = css.match(/[\d.]+/g)?.map(Number) ?? [];
-      return [m[0] ?? 0, m[1] ?? 0, m[2] ?? 0];
-    };
+    const compositeOver = (color, backdropRgb) =>
+      color.rgb.map((c, i) => Math.round(c * color.alpha + backdropRgb[i] * (1 - color.alpha)));
     const lum = ([r, g, b]) => {
       const ch = (v) => {
         const s = v / 255;
@@ -32,11 +42,17 @@ async function contrastRatioFor(page, selector) {
       };
       return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
     };
-    const ratio = (a, b) => {
-      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    const ratio = (fgRgb, bgRgb) => {
+      const [hi, lo] = [lum(fgRgb), lum(bgRgb)].sort((x, y) => y - x);
       return (hi + 0.05) / (lo + 0.05);
     };
-    const r = ratio(parse(fg), parse(bg));
+    const fgColor = parseColor(fg);
+    const bgColor = parseColor(bg);
+    if (!fgColor || !bgColor || bgColor.alpha !== 1) {
+      return { ok: false, reason: `unmeasurable colours fg=${fg} bg=${bg}`, fg, bg };
+    }
+    const painted = compositeOver(fgColor, bgColor.rgb);
+    const r = ratio(painted, bgColor.rgb);
     return { ok: true, ratio: r, fg, bg, text: el.textContent?.trim() ?? '' };
   }, selector);
 }
