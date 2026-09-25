@@ -9,7 +9,7 @@
 }
 
 <sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
-  <sat-platform-nav>
+  <sat-platform-nav satPlatformNavRailToggleVisibleLabel>
     @for (item of navItems(); track item.id) {
       <sat-platform-nav-list-item
         [attr.data-nav-id]="item.id"
@@ -57,16 +57,27 @@
         (click)="$event.stopPropagation()"
         (focusout)="onGlobalSearchFocusOut($event)"
       >
-        <div class="header-search-input-wrap">
-          <mat-icon class="header-search-icon">search</mat-icon>
+        <div
+          class="header-search-input-wrap"
+          [class.header-search-filled]="globalSearchTerm().trim().length > 0"
+        >
+          <mat-icon class="header-search-icon" aria-hidden="true">search</mat-icon>
           <input
+            id="global-header-search-input"
             type="text"
             class="header-search-input"
-            [placeholder]="'shell.search.placeholder' | translate"
+            placeholder=" "
             [value]="globalSearchTerm()"
             (focus)="onGlobalSearchFocus()"
             (input)="onGlobalSearchInput($any($event.target).value)"
           />
+          <label
+            class="header-search-label"
+            [class.header-search-label--caption]="globalSearchTerm().trim().length > 0"
+            for="global-header-search-input"
+          >
+            {{ 'shell.search.placeholder' | translate }}
+          </label>
         </div>
 
         @if (globalSearchOpen()) {
