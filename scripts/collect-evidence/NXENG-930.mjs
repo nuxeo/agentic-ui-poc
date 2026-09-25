@@ -109,7 +109,7 @@ export const scenes = [
     act: 3,
     title: 'Confirm preview tab layout after the contrast fix',
     intent: 'Smoke check that the viewer footer still renders on document detail (not a keyboard/auth regression suite)',
-    criterion: 'AC-2',
+    criterion: 'AC-3',
     async run(page, h) {
       await h.expectVisible('viewer footer still present', 'lib-document-viewer .viewer-footer');
       const url = page.url();
