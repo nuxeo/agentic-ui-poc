@@ -93,9 +93,14 @@ describe('dashboard AI banner empty state contrast (NXENG-940)', () => {
       else document.documentElement.setAttribute('data-app-theme', theme);
 
       const fixture = TestBed.createComponent(DashboardAiBannerEmptyHostComponent);
+      document.body.appendChild(fixture.nativeElement);
       fixture.detectChanges();
 
-      assertEmptyStateContrast(fixture.nativeElement, themeLabel);
+      try {
+        assertEmptyStateContrast(fixture.nativeElement, themeLabel);
+      } finally {
+        fixture.nativeElement.remove();
+      }
     });
   }
 });
