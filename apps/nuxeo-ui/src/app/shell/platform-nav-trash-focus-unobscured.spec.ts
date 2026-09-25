@@ -38,6 +38,7 @@ describe('platform nav Trash focus unobscured (NXENG-868)', () => {
 
   afterEach(() => {
     fixture.nativeElement.remove();
+    fixture.destroy();
   });
 
   it('keeps the nav list vertically scrollable after Satori styles load', () => {
