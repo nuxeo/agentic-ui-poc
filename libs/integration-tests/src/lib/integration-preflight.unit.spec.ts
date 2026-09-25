@@ -525,7 +525,14 @@ describe('isHostAllowed', () => {
       /scheme is nuxeo\.test: and must be http: or https:/,
     );
     expect(() => isHostAllowed('not a url at all', ['nuxeo.test'])).toThrow(/not a URL/);
-    expect(() => isHostAllowed('file:///etc/passwd', ['nuxeo.test'])).toThrow(
+    // `file:` and `ftp:` stand for "a scheme that is not http(s)". The path is irrelevant to
+    // what this asserts, so it is `/tmp/x`. The first draft used the conventional Unix
+    // password-file path, and GitGuardian's generic-password detector matched it and reported a
+    // hardcoded secret. Nothing was leaked, but a needlessly evocative fixture cost a round —
+    // and the string is kept out of this comment too, or the comment re-triggers the detector
+    // that the change exists to satisfy.
+    expect(() => isHostAllowed('file:///tmp/x', ['nuxeo.test'])).toThrow(/must be http: or https:/);
+    expect(() => isHostAllowed('ftp://nuxeo.test', ['nuxeo.test'])).toThrow(
       /must be http: or https:/,
     );
   });
