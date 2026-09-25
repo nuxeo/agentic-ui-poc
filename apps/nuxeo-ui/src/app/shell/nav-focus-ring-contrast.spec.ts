@@ -62,6 +62,7 @@ const NAV_ITEMS_UNDER_TEST = [
   { navId: 'app.navbar.administration', ticket: 'NXENG-795' },
   { navId: 'app.navbar.clipboard', ticket: 'NXENG-873' },
   { navId: 'app.navbar.assets', ticket: 'NXENG-797' },
+  { navId: 'app.navbar.recentlyViewed', ticket: 'NXENG-884' },
 ] as const;
 
 const PACKAGED_LABEL_BY_NAV_ID = Object.fromEntries(
@@ -267,6 +268,10 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
       });
     });
   }
+
+  it('keeps the packaged Recently viewed label IBM Issue 2658127935 names (NXENG-884)', () => {
+    expect(PACKAGED_LABEL_BY_NAV_ID['app.navbar.recentlyViewed']).toBe('Recently viewed');
+  });
 
   it('declares a standalone :focus rule on nav links that IBM Equal Access can read (NXENG-794)', () => {
     const target = 'sat-platform-nav .sat-platform-nav-item:focus';
