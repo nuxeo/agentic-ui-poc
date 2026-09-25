@@ -1,70 +1,164 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { provideZonelessChangeDetection } from '@angular/core';
 
-/**
- * NXENG-801 — `.format-type` in the Preview/View tab additional-formats row must meet
- * WCAG 2.1 AA 4.5:1 for 11px regular text (IBM issue 374303107).
- *
- * Asserts the authored token in component SCSS rather than a computed style in jsdom,
- * because Vitest here does not load component styles into a real layout engine.
- */
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-const SCSS_PATH = resolve(import.meta.dirname, 'document-viewer.component.scss');
+import { beforeEach, describe, expect, it, afterEach } from 'vitest';
 
-function luminance([r, g, b]: readonly number[]): number {
-  const channel = (c: number) => {
-    const s = c / 255;
+import { DocumentViewerComponent } from './document-viewer.component';
+
+const WCAG_AA_NORMAL_TEXT = 4.5;
+
+function relativeLuminance([r, g, b]: readonly number[]): number {
+  const channel = (v: number): number => {
+    const s = v / 255;
+
     return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
   };
+
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
-function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
-  const [hi, lo] = [luminance(fg), luminance(bg)].sort((a, b) => b - a);
+function contrastRatio(a: readonly number[], b: readonly number[]): number {
+  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+
   return (hi + 0.05) / (lo + 0.05);
 }
 
-function parseHex(hex: string): number[] {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) throw new Error(`not a #rrggbb colour: ${hex}`);
-  const n = Number.parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+function parseColor(value: string): { rgb: number[]; alpha: number } {
+  const match = /rgba?\(([^)]+)\)/.exec(value);
+
+  if (!match) {
+    throw new Error(`not a computed colour: "${value}"`);
+  }
+
+  const parts = match[1]
+
+    .split(/[,\s/]+/)
+
+    .filter(Boolean)
+
+    .map(Number);
+
+  return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
 }
 
-function formatTypeColourFromScss(source: string): string {
-  const block = /\.format-type\s*\{([^}]+)\}/s.exec(source);
-  if (!block) {
-    throw new Error('.format-type rule missing from document-viewer.component.scss');
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+
+  backdrop: readonly number[],
+): number[] {
+  return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
+}
+
+function opaqueBackdrop(element: HTMLElement): number[] {
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    const { rgb, alpha } = parseColor(getComputedStyle(node).backgroundColor);
+
+    if (alpha === 1) {
+      return rgb;
+    }
   }
-  const colourLine = block[1]
-    .split('\n')
-    .map((l) => l.trim())
-    .find((l) => l.startsWith('color:'));
-  if (!colourLine) {
-    throw new Error('colour declaration missing on .format-type');
-  }
-  return colourLine;
+
+  return [255, 255, 255];
 }
 
 describe('document viewer format-type contrast (NXENG-801)', () => {
-  const scss = readFileSync(SCSS_PATH, 'utf8');
-  const colourDecl = formatTypeColourFromScss(scss);
+  let fixture: ComponentFixture<DocumentViewerComponent>;
 
-  it('does not use the failing #999 grey literal', () => {
-    expect(colourDecl).not.toMatch(/#999\b/i);
+  let originalTheme: string | null;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [DocumentViewerComponent],
+
+      providers: [provideZonelessChangeDetection()],
+    }).compileComponents();
+
+    originalTheme = document.documentElement.getAttribute('data-app-theme');
+
+    fixture = TestBed.createComponent(DocumentViewerComponent);
+
+    fixture.componentRef.setInput('mimeType', 'image/jpeg');
+
+    fixture.componentRef.setInput('blobUrl', 'blob:mock-image');
+
+    fixture.componentRef.setInput('rawBlobUrl', 'blob:mock-image');
+
+    fixture.componentRef.setInput('pictureInfo', {
+      width: 1920,
+
+      height: 1080,
+
+      format: 'JPEG',
+
+      colorSpace: 'sRGB',
+
+      depth: 8,
+
+      weight: '8 KB',
+    });
+
+    fixture.componentRef.setInput('pictureViews', [
+      {
+        title: 'FullHD',
+
+        width: 1920,
+
+        height: 1080,
+
+        fileSize: '8792 Bytes',
+
+        format: 'JPEG',
+
+        downloadUrl: '/nuxeo/fullhd',
+      },
+    ]);
+
+    fixture.detectChanges();
   });
 
-  it('uses the Material on-surface-variant token with an AA-safe fallback', () => {
-    expect(colourDecl).toContain('var(--mat-sys-on-surface-variant');
-    const fallback = /--mat-sys-on-surface-variant,\s*(#[0-9a-f]{6})/i.exec(colourDecl);
-    expect(fallback?.[1], 'token fallback hex').toBeTruthy();
-    const fg = parseHex(fallback?.[1] ?? '');
-    for (const bg of [
-      [255, 255, 255],
-      [244, 243, 247],
-    ] as const) {
-      expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
+  afterEach(() => {
+    if (originalTheme === null) {
+      document.documentElement.removeAttribute('data-app-theme');
+    } else {
+      document.documentElement.setAttribute('data-app-theme', originalTheme);
+    }
+  });
+
+  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the fixed white picture-cards strip`, () => {
+    for (const theme of ['dark', null] as const) {
+      if (theme === null) {
+        document.documentElement.removeAttribute('data-app-theme');
+      } else {
+        document.documentElement.setAttribute('data-app-theme', theme);
+      }
+
+      fixture.detectChanges();
+
+      const strip = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement;
+
+      const label = fixture.nativeElement.querySelector('.format-type') as HTMLElement;
+
+      expect(strip).not.toBeNull();
+
+      expect(label).not.toBeNull();
+
+      if (!strip || !label) return;
+
+      const labelStyle = getComputedStyle(label);
+
+      const backdrop = opaqueBackdrop(strip);
+
+      const painted = compositeOver(parseColor(labelStyle.color), backdrop);
+
+      const ratio = contrastRatio(painted, backdrop);
+
+      expect(ratio)
+        .withContext(
+          `format-type ${labelStyle.color} on picture-cards backdrop rgb(${backdrop.join(',')}) (${theme ?? 'default'})`,
+        )
+
+        .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
     }
   });
 });
