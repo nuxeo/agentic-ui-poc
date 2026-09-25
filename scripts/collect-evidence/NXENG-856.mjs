@@ -5,15 +5,49 @@ export const summary =
 
 const DOC_UID = process.env['NUXEO_DOC_UID']?.trim();
 
-/** @param {import('@playwright/test').Page} page */
+/**
+ * Leave View on another tab, then activate View with keyboard (Enter) so AC-3 is not a no-op.
+ * @param {import('@playwright/test').Page} page
+ */
 async function openViewTabWithKeyboard(page) {
   const viewTab = page.getByRole('tab', { name: /view|preview/i }).first();
-  if (!(await viewTab.isVisible().catch(() => false))) {
-    return false;
+  const tabs = page.getByRole('tab');
+  const tabCount = await tabs.count();
+  if (tabCount < 2 || !(await viewTab.isVisible().catch(() => false))) {
+    return { ok: false, reason: 'need a visible View tab and at least one other tab' };
   }
+
+  let otherTab = null;
+  for (let i = 0; i < tabCount; i += 1) {
+    const candidate = tabs.nth(i);
+    const label = (await candidate.innerText()).trim();
+    if (!/view|preview/i.test(label)) {
+      otherTab = candidate;
+      break;
+    }
+  }
+  if (!otherTab) {
+    return { ok: false, reason: 'no non-View tab found to switch away from View' };
+  }
+
+  await otherTab.focus();
+  await page.keyboard.press('Enter');
+  const viewerAfterLeave = await page.locator('lib-document-viewer').isVisible().catch(() => false);
+  if (viewerAfterLeave) {
+    return { ok: false, reason: 'lib-document-viewer still visible after leaving View tab' };
+  }
+
   await viewTab.focus();
   await page.keyboard.press('Enter');
-  return true;
+  const selected = await viewTab.getAttribute('aria-selected');
+  const viewerVisible = await page.locator('lib-document-viewer').isVisible().catch(() => false);
+  if (selected !== 'true' || !viewerVisible) {
+    return {
+      ok: false,
+      reason: `View tab aria-selected=${selected}, viewer visible=${viewerVisible}`,
+    };
+  }
+  return { ok: true };
 }
 
 /** @param {import('@playwright/test').Page} page */
@@ -83,11 +117,11 @@ export const scenes = [
       );
       await h.goToDoc(DOC_UID);
       await h.expectVisible('document detail loads', 'lib-document-detail');
-      const openedWithKeyboard = await openViewTabWithKeyboard(page);
+      const keyboardResult = await openViewTabWithKeyboard(page);
       h.check(
-        'View tab opens from keyboard (Enter)',
-        openedWithKeyboard && (await page.locator('lib-document-viewer').isVisible()),
-        'lib-document-viewer visible after keyboard activation',
+        'View tab opens from keyboard after leaving another tab',
+        keyboardResult.ok === true,
+        keyboardResult.reason ?? 'View selected and lib-document-viewer visible',
       );
       await h.shot('doc-detail', { highlight: 'lib-document-detail', label: 'Document detail' });
     },
