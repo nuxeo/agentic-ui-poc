@@ -1,5 +1,6 @@
 /**
- * NXENG-856 — measure `.format-type` contrast on `.picture-cards` under every compiled palette.
+ * NXENG-901 / NXENG-856 — `.format-type` on themed `.picture-cards` must consume
+ * `--mat-sys-on-surface-variant` and meet WCAG 2.1 SC 1.4.3 under every compiled palette.
  * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -79,7 +80,7 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
   return [255, 255, 255];
 }
 
-describe('DocumentViewer format-type contrast by theme (NXENG-856)', () => {
+describe('DocumentViewer format-type contrast by theme (NXENG-901)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
@@ -119,11 +120,25 @@ describe('DocumentViewer format-type contrast by theme (NXENG-856)', () => {
 
   afterEach(() => {
     fixture.nativeElement.remove();
+    (fixture.nativeElement as HTMLElement).style.removeProperty('--mat-sys-on-surface-variant');
     if (originalTheme === null) {
       document.documentElement.removeAttribute('data-app-theme');
     } else {
       document.documentElement.setAttribute('data-app-theme', originalTheme);
     }
+  });
+
+  it('wires format-type colour through --mat-sys-on-surface-variant on the viewer host', () => {
+    const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
+    expect(formatLabel).withContext('expected .format-type').not.toBeNull();
+    if (!formatLabel) return;
+
+    const host = fixture.nativeElement as HTMLElement;
+    const sentinel = 'rgb(1, 2, 3)';
+    host.style.setProperty('--mat-sys-on-surface-variant', sentinel);
+    fixture.detectChanges();
+
+    expect(getComputedStyle(formatLabel).color).toBe(sentinel);
   });
 
   for (const theme of [...COMPILED_THEME_BASES, null] as const) {
