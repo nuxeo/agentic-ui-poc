@@ -212,6 +212,9 @@ describe('Feature Workflows Integration Tests', () => {
           headers: {
             Authorization: harness.auth,
             'Content-Type': 'application/json',
+            // Without this the response carries no `uid` properties at all and the assertions
+            // below cannot distinguish a failed version from an unrequested schema.
+            'X-NXproperties': 'uid',
           },
           body: JSON.stringify({
             input: `doc:${doc.uid}`,
@@ -224,10 +227,21 @@ describe('Feature Workflows Integration Tests', () => {
 
       expect(versionRes.status).toBe(200);
 
+      // The version label is not a top-level field on the document entity — Nuxeo carries it in
+      // the `uid` schema, and only when that schema is asked for. `versioned.versionLabel` was
+      // therefore `undefined` no matter how well the version had been created, so the assertion
+      // failed on a working operation. Read the parts and check them.
       const versioned: any = await versionRes.json();
-      expect(versioned.versionLabel).toBeDefined();
+      const major = versioned.properties?.['uid:major_version'];
+      const minor = versioned.properties?.['uid:minor_version'];
+      expect(major).toBeDefined();
+      expect(minor).toBeDefined();
+      // `increment: 'Minor'` on a document that has never been versioned gives 0.1 exactly.
+      // Asserting the value rather than its mere presence is what makes this a test of the
+      // increment rather than of the response having fields.
+      expect(`${major}.${minor}`).toBe('0.1');
 
-      console.log(`[feature-workflows] Created version ${versioned.versionLabel} of ${doc.uid}`);
+      console.log(`[feature-workflows] Created version ${major}.${minor} of ${doc.uid}`);
     });
 
     it('can retrieve version history', async () => {
@@ -252,18 +266,34 @@ describe('Feature Workflows Integration Tests', () => {
         }),
       });
 
-      // Get version history
-      const historyRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${doc.uid}/@versions`, {
-        headers: {
-          Authorization: harness.auth,
+      // `Document.GetVersions`, not the `@versions` adapter. There is no such adapter on this
+      // server — it answered 404 `"Service versions not found for object"` regardless of how
+      // many versions the document had, so the test failed on a working repository.
+      //
+      // The operation is also repository-backed rather than index-backed, which matters here:
+      // the version was created moments ago, and the equivalent NXQL
+      // (`ecm:versionVersionableId = …`) still counted 0 at this point because OpenSearch had
+      // not caught up. Querying the index would have swapped a permanent failure for an
+      // intermittent one.
+      const historyRes = await fetch(
+        `${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.GetVersions`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: harness.auth,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ input: `doc:${doc.uid}` }),
         },
-      });
+      );
 
       expect(historyRes.status).toBe(200);
 
       const history: any = await historyRes.json();
       expect(Array.isArray(history.entries)).toBe(true);
-      expect(history.entries.length).toBeGreaterThan(0);
+      // Exactly the one version created above. `toBeGreaterThan(0)` would also have been
+      // satisfied by a response listing every version in the repository.
+      expect(history.entries.length).toBe(1);
 
       console.log(
         `[feature-workflows] Retrieved ${history.entries.length} version(s) for ${doc.uid}`,
@@ -372,7 +402,13 @@ describe('Feature Workflows Integration Tests', () => {
           'entity-type': 'document',
           properties: {
             'dc:description': 'Updated description via integration test',
-            'dc:subject': ['test', 'integration'],
+            // `dc:subjects`, not `dc:subject`: the latter is not in the dublincore schema, and
+            // Nuxeo drops an unknown property without complaining, so the write "succeeded"
+            // with a 200 and the read-back never matched. The values have to be real
+            // `l10nsubjects` vocabulary entries for the same reason — arbitrary strings are
+            // dropped just as quietly, so `['test', 'integration']` would have swapped one
+            // silent no-op for another. Both behaviours measured against the local stack.
+            'dc:subjects': ['art/cinema', 'art/culture'],
           },
         }),
       });
@@ -389,7 +425,7 @@ describe('Feature Workflows Integration Tests', () => {
 
       const updated: any = await verifyRes.json();
       expect(updated.properties['dc:description']).toBe('Updated description via integration test');
-      expect(updated.properties['dc:subject']).toEqual(['test', 'integration']);
+      expect(updated.properties['dc:subjects']).toEqual(['art/cinema', 'art/culture']);
 
       console.log(`[feature-workflows] Updated metadata for ${doc.uid}`);
     });

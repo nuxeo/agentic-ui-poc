@@ -171,19 +171,62 @@ export function setupIntegrationHarness(config: IntegrationTestConfig = {}): Int
  * path is indistinguishable from its success path. Hence a comparison against the server's own
  * answer rather than a comment asking the next person to be careful.
  */
-export function assertUntruncated(expected: string, actual: string | null): void {
+export function assertUntruncated(
+  expected: string,
+  actual: string | null,
+  reclaimed: string | null = null,
+): void {
   if (actual === null || actual === expected) return;
   const name = expected.split('/').pop() ?? expected;
   throw new Error(
     `Nuxeo created the data root at a different path than requested:\n` +
       `    requested  ${expected}\n` +
-      `    created    ${actual}\n\n` +
+      `    created    ${actual}\n` +
+      `    cleanup    ${reclaimed ?? 'not attempted'}\n\n` +
       `  Almost certainly path-segment truncation: Nuxeo's PathSegmentServiceDefault caps a\n` +
       `  segment at ${NUXEO_PATH_SEGMENT_MAX} characters and "${name}" is ${name.length}.\n` +
-      `  Left alone this does not fail — it leaks. Every read of the requested path 404s, and\n` +
-      `  cleanup reads that 404 as "already deleted", so the run goes green and the workspace\n` +
-      `  stays on the server. Shorten the run ID rather than raising this limit.`,
+      `  Left undetected this does not fail — it leaks. Every read of the requested path 404s,\n` +
+      `  and cleanup reads that 404 as "already deleted", so the run goes green and the\n` +
+      `  workspace stays on the server. Shorten the run ID rather than raising this limit.`,
   );
+}
+
+/**
+ * Delete a workspace Nuxeo created somewhere other than where we asked, and say what happened.
+ *
+ * Throwing on the mismatch without this leaves the leak in place and merely makes it audible:
+ * `afterAll` deletes `dataRoot`, that read 404s because the workspace is at `actual`, and
+ * `deleteDataRoot` reads the 404 as "already deleted or never created" and returns
+ * successfully. The stray workspace then outlives the run exactly as it did before the guard
+ * existed. Review caught that, and it is the same mistake one level up from the one the guard
+ * was added for.
+ *
+ * Best effort by design, and it reports rather than throws: the caller is already about to
+ * fail with a better message, and a cleanup error thrown from here would replace the
+ * explanation of *why* the run is failing with an explanation of a secondary symptom. The
+ * outcome string is quoted in that message so an unremoved workspace is never silent.
+ *
+ * @returns a human-readable outcome for the failure message
+ */
+async function reclaimMisplacedDataRoot(
+  nuxeoUrl: string,
+  auth: string,
+  actual: string,
+): Promise<string> {
+  const url = `${nuxeoUrl}/nuxeo/api/v1/path${actual}`;
+  try {
+    const del = await fetch(url, { method: 'DELETE', headers: { Authorization: auth } });
+    if (!del.ok && del.status !== 404) {
+      return `FAILED — DELETE ${actual} answered ${del.status}; remove it by hand`;
+    }
+    // Same reasoning as `deleteDataRoot`: a 2xx is Nuxeo accepting the call, not evidence.
+    const confirm = await fetch(url, { headers: { Authorization: auth } });
+    return confirm.status === 404
+      ? `removed ${actual} (confirmed absent)`
+      : `FAILED — ${actual} still readable after DELETE (HTTP ${confirm.status}); remove it by hand`;
+  } catch (error) {
+    return `FAILED — ${error instanceof Error ? error.message : String(error)}; remove ${actual} by hand`;
+  }
 }
 
 /**
@@ -223,7 +266,17 @@ async function createDataRoot(
     // The server's own answer for where it put the workspace, compared against where this
     // harness is about to tell every test and every DELETE to look. See `assertUntruncated`.
     const created = (await res.json()) as { path?: unknown };
-    assertUntruncated(dataRoot, typeof created.path === 'string' ? created.path : null);
+    const actual = typeof created.path === 'string' ? created.path : null;
+
+    // Throwing alone would fail loudly and still leak: `dataRoot` is what `afterAll` deletes,
+    // that read 404s, and `deleteDataRoot` treats a 404 as "already deleted". So the workspace
+    // the server really made has to be removed here, while its path is still in hand.
+    const reclaimed =
+      actual !== null && actual !== dataRoot
+        ? await reclaimMisplacedDataRoot(nuxeoUrl, auth, actual)
+        : null;
+
+    assertUntruncated(dataRoot, actual, reclaimed);
 
     console.log(`[integration-harness] Created data root: ${dataRoot}`);
   } catch (error) {
@@ -338,6 +391,51 @@ export async function waitForIndexed(
       `(last HTTP ${lastStatus}).\n` +
       `  This is a precondition failure, not the assertion under test — an absence assertion\n` +
       `  that ran anyway would have passed for the wrong reason.`,
+  );
+}
+
+/**
+ * Block until a document is *gone* from `/search/lang/NXQL/execute`, or throw.
+ *
+ * The mirror of `waitForIndexed`, and needed for the opposite reason. The lag documented
+ * above runs both ways: measured on the local stack, a folder's two files were still counted
+ * by the index for three seconds after the folder had been recursively deleted. A test that
+ * counts documents, deletes something, and counts again is therefore comparing two numbers
+ * that may both predate its own writes — and "the count did not change" is then a statement
+ * about index latency rather than about what was deleted.
+ *
+ * Waiting for a sentinel this run deleted to drop out of the index is what makes the second
+ * count current. Like `waitForIndexed`, it queries by `ecm:uuid` alone, so it cannot be
+ * satisfied by the same predicate the caller is asserting on.
+ */
+export async function waitForDeindexed(
+  harness: IntegrationHarness,
+  uid: string,
+  options: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<void> {
+  const timeoutMs = options.timeoutMs ?? 20000;
+  const intervalMs = options.intervalMs ?? 250;
+  const deadline = Date.now() + timeoutMs;
+
+  const url = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', harness.nuxeoUrl);
+  url.searchParams.set('query', `SELECT * FROM Document WHERE ecm:uuid = '${uid}'`);
+
+  let lastStatus = 0;
+  while (Date.now() < deadline) {
+    const res = await fetch(url, { headers: { Authorization: harness.auth } });
+    lastStatus = res.status;
+    if (res.status === 200) {
+      const body = await res.json();
+      if (!(body.entries ?? []).some((entry: { uid?: string }) => entry.uid === uid)) return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(
+    `waitForDeindexed: ${uid} was still in the search index ${timeoutMs}ms after deletion ` +
+      `(last HTTP ${lastStatus}).\n` +
+      `  This is a precondition failure, not the assertion under test — a count taken against\n` +
+      `  a stale index cannot show whether anything outside the data root was touched.`,
   );
 }
 

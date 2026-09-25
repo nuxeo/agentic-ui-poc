@@ -18,7 +18,12 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setupIntegrationHarness, createTestDocument, waitForIndexed } from './integration-harness';
+import {
+  setupIntegrationHarness,
+  createTestDocument,
+  waitForIndexed,
+  waitForDeindexed,
+} from './integration-harness';
 
 describe('Write Operations Integration Tests', () => {
   const harness = setupIntegrationHarness();
@@ -33,7 +38,11 @@ describe('Write Operations Integration Tests', () => {
       });
 
       expect(doc.uid).toBeDefined();
-      expect(doc.isTrashed).toBeFalsy(); // Initially not trashed
+      // `toBe(false)`, not `toBeFalsy()`: `isTrashed` is optional on the entity, so `toBeFalsy`
+      // was also satisfied by the field being absent — the precondition passed whether or not
+      // the server had said anything about the trash state. Nuxeo does return it on create,
+      // so requiring the literal `false` asserts the state instead of tolerating silence.
+      expect(doc.isTrashed).toBe(false);
 
       // Trash the document via Document.Trash automation
       const trashRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/Document.Trash`, {
@@ -448,32 +457,48 @@ describe('Write Operations Integration Tests', () => {
         return data.resultsCount;
       };
 
+      // The sentinel is what makes the counts mean anything.
+      //
+      // `/search/lang/NXQL/execute` is Elasticsearch-backed and lags the repository by
+      // seconds. Measured on the local stack: two files created inside a folder still counted
+      // 0 immediately afterwards, and counted 2 for three seconds *after* the folder had been
+      // recursively deleted. So the original "count before, delete, count after, assert equal"
+      // could not detect damage — a wholesale deletion outside the root would leave the
+      // before/after counts identical simply because neither had reached the index yet, and
+      // the test would report isolation it had never observed.
+      //
+      // Deleting the sentinel and waiting for the index to drop it proves the index reflects
+      // this run's deletions *at the moment the second count is taken*. Only then is
+      // "unchanged outside the root" evidence of anything.
+      const sentinel: any = await createTestDocument(harness, {
+        type: 'File',
+        name: 'isolated-delete-test',
+        title: 'Delete Test',
+      });
+      await waitForIndexed(harness, sentinel.uid);
+
+      // Taken only once the index is known to be current, so it is comparable with the count
+      // after the delete.
       const beforeCount = await countOutsideRoot();
 
       // Belt and braces: an empty or rejected result must not be able to satisfy this test.
       // Preflight already refuses an empty repository, so zero here means the query is wrong.
       expect(beforeCount).toBeGreaterThan(0);
 
-      // Perform destructive operation INSIDE our data root
-      const docInRoot: any = await createTestDocument(harness, {
-        type: 'File',
-        name: 'isolated-delete-test',
-        title: 'Delete Test',
-      });
-
-      const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${docInRoot.uid}`, {
+      const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${sentinel.uid}`, {
         method: 'DELETE',
         headers: { Authorization: harness.auth },
       });
       expect(deleteRes.status).toBe(204);
 
-      // Count again - should be unchanged outside our root
+      await waitForDeindexed(harness, sentinel.uid);
+
       const afterCount = await countOutsideRoot();
 
       expect(afterCount).toBe(beforeCount);
 
       console.log(
-        `[write-ops] Isolation verified: ${beforeCount} docs outside root before, ${afterCount} after`,
+        `[write-ops] Isolation verified against a current index: ${beforeCount} docs outside root before, ${afterCount} after`,
       );
     });
   });

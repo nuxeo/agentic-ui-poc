@@ -50,20 +50,37 @@ const allowDefaultCredentials =
 // `"type": "module"`, so `tsx` transforms this file as CJS and esbuild rejects a top-level
 // `await` outright. A `.mts` extension would fix that and fall out of `tsconfig.lib.json`'s
 // `src/**/*.ts` include, which is the one thing type-checking this file.
+/** Report a precondition failure and leave with the code that says "fix the environment". */
+function precondition(problems: string[], satisfied: string[] = []): never {
+  console.error(`\nintegration-preflight: PRECONDITION NOT MET — ${problems.length} problem(s)\n`);
+  for (const problem of problems) console.error(`- ${problem}\n`);
+  if (satisfied.length > 0) console.error(`  Satisfied: ${satisfied.join('; ')}\n`);
+  // 2, not 1: fix the environment, do not iterate on the code.
+  process.exit(2);
+}
+
 async function main(): Promise<void> {
-  const { nuxeoUrl } = resolveConnection();
+  // `resolveConnection` throws when `NUXEO_USER`/`NUXEO_PASS` are unset, and unset credentials
+  // are an environment precondition — the single clearest example of one. Left uncaught it
+  // reached the handler below instead, which exited 1 and printed "crashed. This is a defect
+  // in the preflight, not a precondition" over a message that was precisely a precondition.
+  // The one entry point whose job is to distinguish the two codes got this case backwards.
+  //
+  // The catch is scoped to this call rather than wrapping the body: `resolveConnection` reads
+  // environment variables and validates them, so everything it throws is a configuration
+  // problem by construction. Widening the scope would start reporting real defects as
+  // preconditions, which is the same confusion in the other direction.
+  let nuxeoUrl: string;
+  try {
+    ({ nuxeoUrl } = resolveConnection());
+  } catch (error) {
+    precondition([error instanceof Error ? error.message : String(error)]);
+  }
+
   const result = await runPreflightChecks({ nuxeoUrl }, { allowDefaultCredentials });
 
   if (!result.ok) {
-    console.error(
-      `\nintegration-preflight: PRECONDITION NOT MET — ${result.problems.length} problem(s)\n`,
-    );
-    for (const problem of result.problems) console.error(`- ${problem}\n`);
-    if (result.satisfied.length > 0) {
-      console.error(`  Satisfied: ${result.satisfied.join('; ')}\n`);
-    }
-    // 2, not 1: fix the environment, do not iterate on the code.
-    process.exit(2);
+    precondition(result.problems, result.satisfied);
   }
 
   console.log(`integration-preflight: pass — ${nuxeoUrl} is ready`);

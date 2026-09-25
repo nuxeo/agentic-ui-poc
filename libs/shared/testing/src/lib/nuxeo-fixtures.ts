@@ -22,6 +22,10 @@
  *    model breaks compilation in exactly the specs that use these fixtures — that's the negative
  *    control that proves they're coupled correctly.
  *
+ *    `Partial<T>` alone does not deliver this, which is why `withoutUndefined` exists below:
+ *    without `exactOptionalPropertyTypes` the compiler accepts `{ uid: undefined }` and the
+ *    spread then overwrites the default with nothing. Required fields survive any override.
+ *
  * Extracted from duplicate builders in:
  * - libs/shared/adf-hx-bridge/src/lib/api/nuxeo-document-api.spec.ts (lines 42-63)
  * - libs/shared/adf-hx-bridge/src/lib/api/nuxeo-copy-move-api.spec.ts (lines 22-30)
@@ -30,6 +34,29 @@
  */
 
 import type { NuxeoDocument, NuxeoAce } from '@nuxeo-satori/platform/nuxeo-client';
+
+/**
+ * Drop keys whose value is `undefined`, so an override cannot delete a default.
+ *
+ * `Partial<T>` does not mean "these keys may be omitted" unless `exactOptionalPropertyTypes` is
+ * on, and it is not set anywhere in this workspace. It means "these keys may also be
+ * `undefined`" — so `nuxeoDocument({ uid: undefined })` compiled without complaint and returned
+ * a document whose required `uid` was `undefined`, with the key present. Both factories below
+ * promise the opposite in their first line, and a spec reading `doc.uid` off that fixture got
+ * `undefined` from a helper whose whole purpose is that it cannot.
+ *
+ * Filtering here rather than turning the compiler flag on: `exactOptionalPropertyTypes` is a
+ * workspace-wide change with a blast radius far beyond two fixtures, and the guarantee these
+ * factories make should not depend on a setting a future tsconfig edit could quietly drop.
+ *
+ * Only `undefined` is removed. `null` is a value these models use deliberately — every
+ * `nuxeoAce` default below is one — and overriding a field to `null` still works.
+ */
+function withoutUndefined<T extends object>(over: Partial<T>): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(over).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
 
 /**
  * A Nuxeo document with every **required** field of `NuxeoDocument` filled: `uid`, `title`,
@@ -64,7 +91,7 @@ export function nuxeoDocument(over: Partial<NuxeoDocument> = {}): NuxeoDocument 
     path: '/default-domain/workspaces/ws/Invoice',
     lastModified: '2026-01-01T00:00:00.000Z',
     properties: {},
-    ...over,
+    ...withoutUndefined(over),
   };
 }
 
@@ -104,6 +131,6 @@ export function nuxeoAce(over: Partial<NuxeoAce> = {}): NuxeoAce {
     begin: null,
     end: null,
     status: 'effective',
-    ...over,
+    ...withoutUndefined(over),
   };
 }

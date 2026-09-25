@@ -522,15 +522,18 @@ describe('assertUntruncated — the data root is where the harness thinks it is'
     expect(() => assertUntruncated(requested, requested)).not.toThrow();
   });
 
+  /** @param over the third argument, the outcome of the stray-workspace cleanup */
+  const rejection = (over?: string) => {
+    try {
+      assertUntruncated(requested, truncated, over);
+    } catch (e) {
+      return e as Error;
+    }
+    throw new Error('expected the truncated path to be rejected, and it was accepted');
+  };
+
   it('throws when Nuxeo truncated the name, naming both paths and the real length', () => {
-    const error = (() => {
-      try {
-        assertUntruncated(requested, truncated);
-      } catch (e) {
-        return e as Error;
-      }
-      throw new Error('expected the truncated path to be rejected, and it was accepted');
-    })();
+    const error = rejection();
 
     expect(error.message).toMatch(/created the data root at a different path/);
     expect(error.message).toContain(requested);
@@ -542,6 +545,28 @@ describe('assertUntruncated — the data root is where the harness thinks it is'
     // The consequence, not just the fact. A reader who does not know this leaks is liable to
     // "fix" it by relaxing the comparison.
     expect(error.message).toMatch(/does not fail — it leaks/);
+  });
+
+  // Throwing on the mismatch is not on its own enough: the workspace Nuxeo really created is
+  // at `truncated`, and `afterAll` deletes `requested`, gets a 404 and calls that success. So
+  // the caller removes the stray workspace and reports the outcome here, and the message has
+  // to carry it either way — a failed reclaim that printed nothing would be the original
+  // silent leak with extra steps.
+  it('reports a successful reclaim of the workspace Nuxeo actually created', () => {
+    expect(rejection(`removed ${truncated} (confirmed absent)`).message).toMatch(
+      new RegExp(`cleanup {4}removed ${truncated} \\(confirmed absent\\)`),
+    );
+  });
+
+  it('says so loudly when the stray workspace could not be removed', () => {
+    const error = rejection(`FAILED — DELETE ${truncated} answered 500; remove it by hand`);
+
+    expect(error.message).toMatch(/cleanup {4}FAILED/);
+    expect(error.message).toMatch(/remove it by hand/);
+  });
+
+  it('does not claim a cleanup happened when none was attempted', () => {
+    expect(rejection().message).toMatch(/cleanup {4}not attempted/);
   });
 
   it('accepts a response that carried no path rather than inventing a failure', () => {

@@ -155,3 +155,33 @@ describe('nuxeoAce', () => {
     expect(nuxeoAce()).not.toBe(nuxeoAce());
   });
 });
+
+// `Partial<T>` permits an explicit `undefined` for every key unless
+// `exactOptionalPropertyTypes` is on, and it is not set anywhere in this workspace. So these
+// calls compile, and before `withoutUndefined` they returned a "complete" fixture with a
+// required field missing — the one thing these factories exist to make impossible.
+describe('an explicit undefined override', () => {
+  it('cannot blank a required field on a document', () => {
+    const doc = nuxeoDocument({ uid: undefined, title: undefined });
+
+    expect(doc.uid).toBe('doc-1');
+    expect(doc.title).toBe('Invoice');
+  });
+
+  it('cannot blank a required field on an ACE', () => {
+    const ace = nuxeoAce({ permission: undefined, granted: undefined });
+
+    expect(ace.permission).toBe('Read');
+    expect(ace.granted).toBe(true);
+  });
+
+  it('still allows null, which these models use as a real value', () => {
+    // Only `undefined` is filtered. Overriding a field *to* null has to keep working, or the
+    // fix would have replaced one silent wrong answer with another.
+    const ace = nuxeoAce({ creator: null, begin: null, end: null });
+
+    expect(ace.creator).toBeNull();
+    expect(ace.begin).toBeNull();
+    expect(ace.end).toBeNull();
+  });
+});
