@@ -68,11 +68,6 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
   return [255, 255, 255];
 }
 
-function stripIsLight(cards: HTMLElement): boolean {
-  const bg = opaqueBackground(cards);
-  return luminance(bg) >= 0.5;
-}
-
 function assertContrast(element: HTMLElement, cards: HTMLElement, label: string): void {
   const fgParsed = parseColor(getComputedStyle(element).color);
   const bg = opaqueBackground(cards);
@@ -158,6 +153,10 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760, NX
     (fixture.nativeElement as HTMLElement).style.removeProperty(
       '--document-viewer-muted-on-light-surface',
     );
+    (fixture.nativeElement as HTMLElement).style.removeProperty(
+      '--document-viewer-light-strip-surface',
+    );
+    (fixture.nativeElement as HTMLElement).style.removeProperty('--document-viewer-on-light-strip');
     if (originalTheme === null) {
       document.documentElement.removeAttribute('data-app-theme');
     } else {
@@ -233,11 +232,11 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760, NX
       expect(getComputedStyle(cards).backgroundColor)
         .withContext(`picture-cards background in ${label}`)
         .not.toBe('rgba(0, 0, 0, 0)');
+      expect(luminance(opaqueBackground(cards)))
+        .withContext(`picture-cards must stay a light strip in ${label}`)
+        .toBeGreaterThanOrEqual(0.5);
 
-      // NXENG-801: `.format-type` uses a fixed light-strip token; only assert on light surfaces.
-      if (stripIsLight(cards)) {
-        assertContrast(formatLabel, cards, 'format-type');
-      }
+      assertContrast(formatLabel, cards, 'format-type');
       assertContrast(formatSize, cards, 'format-size');
       assertContrast(cardTitle, cards, 'picture-card-title');
       assertContrast(infoValue, cards, 'info-value');
