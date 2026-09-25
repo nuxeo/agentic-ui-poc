@@ -4,7 +4,6 @@
  */
 import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
 import { COMPILED_THEME_BASES } from '../theme/app-theme';
 
 function relativeLuminance([r, g, b]: readonly number[]): number {
@@ -31,6 +30,24 @@ function parseColor(value: string): { rgb: number[]; alpha: number } {
     .map(Number);
   return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
 }
+
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+  backdrop: readonly number[],
+): number[] {
+  return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
+}
+
+function parseHex(hex: string): number[] {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) throw new Error(`not a #rrggbb colour: ${hex}`);
+  const n = Number.parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Authored fallbacks in document-viewer.component.scss — keep in sync with the SCSS. */
+const PICTURE_CARDS_SURFACE_FALLBACK = parseHex('#ffffff');
+const FORMAT_TYPE_FOREGROUND_FALLBACK = parseHex('#5c5f6b');
 
 @Component({
   standalone: true,
@@ -64,11 +81,19 @@ describe('document viewer format-type contrast (NXENG-760)', () => {
 
   afterEach(() => {
     fixture.nativeElement.remove();
+    document.documentElement.style.removeProperty('--mat-sys-surface');
+    document.documentElement.style.removeProperty('--mat-sys-on-surface-variant');
     if (originalTheme === null) {
       document.documentElement.removeAttribute('data-app-theme');
     } else {
       document.documentElement.setAttribute('data-app-theme', originalTheme);
     }
+  });
+
+  it(`meets ${MIN_TEXT_RATIO}:1 for the declared SCSS fallback pair on white`, () => {
+    expect(
+      contrastRatio(FORMAT_TYPE_FOREGROUND_FALLBACK, PICTURE_CARDS_SURFACE_FALLBACK),
+    ).toBeGreaterThanOrEqual(MIN_TEXT_RATIO);
   });
 
   for (const theme of SHIPPED_THEMES) {
@@ -91,9 +116,12 @@ describe('document viewer format-type contrast (NXENG-760)', () => {
         .withContext(`${label} picture-cards background must be opaque`)
         .toBe(1);
 
-      const bg = parseColor(stripStyle.backgroundColor).rgb;
-      const fg = parseColor(labelStyle.color).rgb;
-      const ratio = contrastRatio(fg, bg);
+      const backdrop =
+        parseColor(stripStyle.backgroundColor).alpha === 1
+          ? parseColor(stripStyle.backgroundColor).rgb
+          : PICTURE_CARDS_SURFACE_FALLBACK;
+      const painted = compositeOver(parseColor(labelStyle.color), backdrop);
+      const ratio = contrastRatio(painted, backdrop);
 
       expect(ratio)
         .withContext(
