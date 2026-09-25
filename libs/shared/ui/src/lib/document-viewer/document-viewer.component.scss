@@ -489,7 +489,7 @@
 }
 
 .format-type {
-  color: #999;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
   text-transform: uppercase;
   font-size: 11px;
 }
