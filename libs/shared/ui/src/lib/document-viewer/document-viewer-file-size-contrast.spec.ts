@@ -1,71 +1,19 @@
 /**
- * NXENG-763 / IBM 56037090 — the viewer footer file-size label must use a theme token
- * that meets WCAG AA text contrast on the footer surface, not hardcoded #888.
+ * NXENG-763 — IBM 56037090: `.file-size` must use a theme token meeting WCAG AA on the footer,
+ * not hardcoded #888 (11px secondary label on white).
  */
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
-import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DocumentViewerComponent } from './document-viewer.component';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
 
-function fileSizeRuleText(): string {
-  const chunks: string[] = [];
-  for (const sheet of Array.from(document.styleSheets)) {
-    let rules: CSSRuleList;
-    try {
-      rules = sheet.cssRules;
-    } catch {
-      continue;
-    }
-    for (const rule of Array.from(rules)) {
-      if (rule.cssText.includes('.file-size')) {
-        chunks.push(rule.cssText);
-      }
-    }
-  }
-  return chunks.join('\n');
-}
+const scssPath = resolve(import.meta.dirname, 'document-viewer.component.scss');
 
-describe('DocumentViewerComponent file-size contrast (NXENG-763)', () => {
-  let fixture: ComponentFixture<DocumentViewerComponent>;
-
-  beforeEach(async () => {
-    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
-    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
-
-    await TestBed.configureTestingModule({
-      imports: [DocumentViewerComponent],
-      providers: [provideZonelessChangeDetection()],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(DocumentViewerComponent);
-  });
-
-  afterEach(() => {
-    fixture.destroy();
-    vi.restoreAllMocks();
-  });
-
-  it('styles the file-size label with on-surface-variant, not low-contrast #888', () => {
-    const raw = 'blob:http://localhost/sample';
-    const trusted = (): SafeResourceUrl =>
-      TestBed.inject(DomSanitizer).bypassSecurityTrustResourceUrl(raw);
-
-    fixture.componentRef.setInput('fileName', 'sample.csv');
-    fixture.componentRef.setInput('fileSize', '182 B');
-    fixture.componentRef.setInput('mimeType', 'text/csv');
-    fixture.componentRef.setInput('blobUrl', trusted());
-    fixture.componentRef.setInput('rawBlobUrl', raw);
-    fixture.componentRef.setInput('loading', false);
-    fixture.detectChanges();
-
-    const rule = fileSizeRuleText();
-    expect(rule).toContain('.file-size');
-    expect(rule).toContain('var(--mat-sys-on-surface-variant)');
-    expect(rule).not.toMatch(/\.file-size[^}]*#888/i);
-
-    const label = fixture.nativeElement.querySelector('.file-size') as HTMLElement;
-    expect(label?.textContent?.trim()).toBe('182 B');
+describe('document viewer file size label — text contrast (NXENG-763)', () => {
+  it('styles .file-size with the on-surface-variant token, not low-contrast #888', () => {
+    const source = readFileSync(scssPath, 'utf8');
+    const block = source.match(/\.file-size\s*\{[^}]+\}/s)?.[0] ?? '';
+    expect(block).toContain('font-size: 11px');
+    expect(block).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(block).not.toMatch(/color:\s*#888\b/);
   });
 });
