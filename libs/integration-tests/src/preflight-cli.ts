@@ -35,16 +35,15 @@
  * `resolveConnection` selects the server and the credentials, so this entry point and
  * `setupIntegrationHarness` cannot disagree about which Nuxeo is being checked.
  *
- * The `--allow-default-credentials` flag is read here and passed in as a `PreflightOptions`,
- * because a flag is something a CLI can legitimately take and a spec file cannot. The library
- * itself reads only `ALLOW_DEFAULT_CREDENTIALS`.
+ * This entry point takes **no flags**. It used to read `--allow-default-credentials` and pass
+ * it through as a `PreflightOptions`, on the reasoning that a flag is something a CLI can
+ * legitimately take. That opt-in is gone: the guard it armed compared the credentials against
+ * the Docker default and so let every real production pair through, and its replacement is a
+ * host allowlist read from `INTEGRATION_ALLOWED_HOSTS` in the environment only. One way in,
+ * with no override this process can apply on the caller's behalf.
  */
 
 import { resolveConnection, runPreflightChecks } from './lib/integration-preflight';
-
-const allowDefaultCredentials =
-  process.argv.includes('--allow-default-credentials') ||
-  process.env['ALLOW_DEFAULT_CREDENTIALS'] === 'true';
 
 // Wrapped rather than run at the top level: the nearest `package.json` declares no
 // `"type": "module"`, so `tsx` transforms this file as CJS and esbuild rejects a top-level
@@ -77,7 +76,7 @@ async function main(): Promise<void> {
     precondition([error instanceof Error ? error.message : String(error)]);
   }
 
-  const result = await runPreflightChecks({ nuxeoUrl }, { allowDefaultCredentials });
+  const result = await runPreflightChecks({ nuxeoUrl });
 
   if (!result.ok) {
     precondition(result.problems, result.satisfied);

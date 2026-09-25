@@ -96,7 +96,7 @@ const connection = {
 };
 
 beforeEach(() => {
-  delete process.env['ALLOW_DEFAULT_CREDENTIALS'];
+  delete process.env['INTEGRATION_ALLOWED_HOSTS'];
   mocks.resolveConnection.mockReturnValue(connection);
 });
 
@@ -112,7 +112,7 @@ describe('preflight-cli exit codes', () => {
     mocks.runPreflightChecks.mockResolvedValue({
       ok: false,
       problems: ['Nuxeo is not there', 'and it is empty'],
-      satisfied: ['non-default credentials'],
+      satisfied: ['nuxeo.test is named in INTEGRATION_ALLOWED_HOSTS'],
     });
 
     const run = await runCli();
@@ -121,7 +121,7 @@ describe('preflight-cli exit codes', () => {
     expect(run.stderr).toMatch(/PRECONDITION NOT MET — 2 problem\(s\)/);
     expect(run.stderr).toMatch(/- Nuxeo is not there/);
     expect(run.stderr).toMatch(/- and it is empty/);
-    expect(run.stderr).toMatch(/Satisfied: non-default credentials/);
+    expect(run.stderr).toMatch(/Satisfied: nuxeo\.test is named in INTEGRATION_ALLOWED_HOSTS/);
 
     // Everything after the exit is unreachable in a real process. Asserted rather than
     // assumed, because the stub is what makes it reachable here.
@@ -193,55 +193,48 @@ describe('preflight-cli argument and connection handing', () => {
     await runCli();
 
     expect(mocks.resolveConnection).toHaveBeenCalledWith();
-    expect(mocks.runPreflightChecks).toHaveBeenCalledWith(
-      { nuxeoUrl: 'http://nuxeo.test' },
-      expect.anything(),
-    );
+    expect(mocks.runPreflightChecks).toHaveBeenCalledWith({ nuxeoUrl: 'http://nuxeo.test' });
   });
 
-  it('reads --allow-default-credentials from argv', async () => {
-    // A flag is something a CLI can legitimately take and a spec file cannot, which is why
-    // the option exists on this side of the boundary only.
+  it('passes no second argument, so this CLI cannot relax the allowlist', async () => {
+    // The guarantee that replaces the old `--allow-default-credentials` plumbing. That flag
+    // armed a guard which compared the credentials against the Docker default and therefore
+    // let every real production pair through; its replacement is read from
+    // `INTEGRATION_ALLOWED_HOSTS` inside `runPreflightChecks` and from nowhere else. Asserting
+    // the *arity* is what keeps a future option from quietly reappearing here.
+    mocks.runPreflightChecks.mockResolvedValue({ ok: true, problems: [], satisfied: [] });
+
+    await runCli();
+
+    expect(mocks.runPreflightChecks.mock.calls[0]).toHaveLength(1);
+  });
+
+  it('ignores an argv flag that looks like an opt-in', async () => {
+    // The negative control for the above. Someone reaching for the old incantation gets no
+    // effect rather than a silent one, and the refusal still comes from the allowlist.
     mocks.runPreflightChecks.mockResolvedValue({ ok: true, problems: [], satisfied: [] });
 
     await runCli(['--allow-default-credentials']);
 
-    expect(mocks.runPreflightChecks.mock.calls[0][1]).toEqual({
-      allowDefaultCredentials: true,
-    });
+    expect(mocks.runPreflightChecks.mock.calls[0]).toEqual([{ nuxeoUrl: 'http://nuxeo.test' }]);
   });
 
-  it('reads ALLOW_DEFAULT_CREDENTIALS=true from the environment', async () => {
-    process.env['ALLOW_DEFAULT_CREDENTIALS'] = 'true';
-    mocks.runPreflightChecks.mockResolvedValue({ ok: true, problems: [], satisfied: [] });
-
-    await runCli();
-
-    expect(mocks.runPreflightChecks.mock.calls[0][1]).toEqual({
-      allowDefaultCredentials: true,
+  it('refuses an unlisted host with exit 2, carrying the guard message through', async () => {
+    // The CLI half of the allowlist decision: the refusal is a precondition failure, so it has
+    // to leave with 2. Exit 1 would read as a product defect and send the reader into the code.
+    mocks.runPreflightChecks.mockResolvedValue({
+      ok: false,
+      problems: [
+        'Integration tests refuse to run against prod.example.com — it is not named in ' +
+          'INTEGRATION_ALLOWED_HOSTS.',
+      ],
+      satisfied: [],
     });
-  });
 
-  it('withholds the opt-in when neither the flag nor the variable is set', async () => {
-    // The negative control. Without it every assertion above is satisfied by a CLI that
-    // hardcodes `true`, which is the same as having no guard.
-    mocks.runPreflightChecks.mockResolvedValue({ ok: true, problems: [], satisfied: [] });
+    const run = await runCli();
 
-    await runCli(['--some-other-flag']);
-
-    expect(mocks.runPreflightChecks.mock.calls[0][1]).toEqual({
-      allowDefaultCredentials: false,
-    });
-  });
-
-  it('treats ALLOW_DEFAULT_CREDENTIALS=1 as not set', async () => {
-    process.env['ALLOW_DEFAULT_CREDENTIALS'] = '1';
-    mocks.runPreflightChecks.mockResolvedValue({ ok: true, problems: [], satisfied: [] });
-
-    await runCli();
-
-    expect(mocks.runPreflightChecks.mock.calls[0][1]).toEqual({
-      allowDefaultCredentials: false,
-    });
+    expect(run.exits).toEqual([2]);
+    expect(run.exits).not.toContain(1);
+    expect(run.stderr).toMatch(/not named in INTEGRATION_ALLOWED_HOSTS/);
   });
 });

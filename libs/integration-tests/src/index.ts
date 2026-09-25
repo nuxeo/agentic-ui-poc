@@ -2,7 +2,8 @@
  * Integration test harness for Nuxeo Agentic UI.
  *
  * Stage 4 of the integration-test plan. Provides:
- * - Precondition checking (refuse to run against absent/empty Nuxeo or default credentials)
+ * - Precondition checking (refuse to run against an absent or empty Nuxeo, or against any host
+ *   not named in `INTEGRATION_ALLOWED_HOSTS`)
  * - Per-run data root under /default-domain/workspaces/it-<runid>
  * - Guaranteed cleanup (even on test failure)
  * - Helper functions for common test operations

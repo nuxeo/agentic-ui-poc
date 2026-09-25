@@ -24,9 +24,32 @@
  * 2. **Nuxeo is not empty.** Integration tests assert repository data. An empty Nuxeo passes
  *    every presence assertion vacuously and proves nothing.
  *
- * 3. **Default credentials require opt-in.** `Administrator` / `Administrator` is the Docker
- *    default, so pointing a test at an arbitrary Nuxeo without checking destroys production
- *    data. `ALLOW_DEFAULT_CREDENTIALS=true` makes the risk explicit.
+ * 3. **The target host is named in an allowlist.** This suite creates and deletes documents
+ *    and users, so the question that matters is *which server* it is pointed at. See
+ *    `INTEGRATION_ALLOWED_HOSTS` below.
+ *
+ * ## Why an allowlist and not a credentials check
+ *
+ * Check 3 used to compare the credentials against `Administrator`/`Administrator` and refuse
+ * that pair without an `ALLOW_DEFAULT_CREDENTIALS` opt-in. Reported on the pull request and
+ * correct: production credentials are by definition *not* the Docker default, so any real
+ * production pair took the `else` branch, was recorded as **satisfied**, and the suite went on
+ * to `DELETE` and `Document.Trash` against whatever `NUXEO_URL` named. The control's own
+ * message said "This prevents accidentally running against production"; what it actually
+ * prevented was running against a *default-credentialled* server, which is close to the
+ * opposite population.
+ *
+ * The replacement asks about the target instead of the credentials, and **fails closed**:
+ *
+ * - **Default deny.** An empty or unset `INTEGRATION_ALLOWED_HOSTS` permits nothing. There is
+ *   no implicit allowlist to fall back to.
+ * - **`localhost` is not special-cased.** It is named like any other host or it is refused.
+ *   The old guard's flaw was treating one value as inherently safe, and a hardcoded
+ *   `localhost` exemption would reproduce it: an SSH tunnel or a `/etc/hosts` entry makes
+ *   `localhost` an alias for anything at all.
+ * - **Environment only.** No parameter, no CLI flag, no per-suite option. The previous opt-in
+ *   was reachable three ways and two of them were compiled into the specs that needed
+ *   guarding.
  *
  * Usage:
  *   ```ts
@@ -38,8 +61,13 @@
  *   ```
  */
 
-const DEFAULT_USER = 'Administrator';
-const DEFAULT_PASS = 'Administrator';
+/**
+ * The one variable that decides which servers this suite may be pointed at.
+ *
+ * Named here rather than inlined at its two use sites so the reader, the refusal message and
+ * the specs cannot drift onto different spellings of it.
+ */
+export const ALLOWED_HOSTS_ENV = 'INTEGRATION_ALLOWED_HOSTS';
 
 export interface IntegrationTestConfig {
   /** Nuxeo base URL. Default: NUXEO_URL env, then http://localhost:8080 */
@@ -51,20 +79,80 @@ export interface IntegrationTestConfig {
 }
 
 /**
- * The opt-in that lets the suite run against `Administrator`/`Administrator`.
+ * Split `INTEGRATION_ALLOWED_HOSTS` into entries.
  *
- * **Not** part of `IntegrationTestConfig`, and that is the point. It used to be, and all six
- * suites in this library set it to `true`, so the guard below never fired in any code path
- * that existed — a control two status documents recorded as implemented. A per-suite knob is
- * a constant compiled into the spec; the decision belongs at the point of invocation, where
- * whoever is pointing the run at a server is the one making it.
+ * Trimmed and lower-cased because hostnames are case-insensitive and a copied-in value picks
+ * up spaces after the commas. Empty entries are dropped rather than kept as a host that
+ * matches nothing, so `a,,b` and a trailing comma are two hosts, not three — and crucially an
+ * unset or blank variable yields `[]`, which permits nothing.
  *
- * So the suites cannot reach it: `setupIntegrationHarness` reads `ALLOW_DEFAULT_CREDENTIALS`
- * from the environment and nothing else, and this parameter exists for `preflight-cli.ts`,
- * which is a CLI and can legitimately take a flag.
+ * Exported for the specs: this is half the decision, and the half that a stray `.filter` could
+ * silently turn into "everything allowed".
  */
-export interface PreflightOptions {
-  allowDefaultCredentials?: boolean;
+export function parseAllowedHosts(raw: string | undefined): string[] {
+  return (raw ?? '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0);
+}
+
+/**
+ * The target's `host` and `hostname`, lower-cased, or a thrown explanation.
+ *
+ * `new URL` throwing is **not** a sufficient test, which is the whole reason this exists as its
+ * own function. `new URL('nuxeo.test:8080')` — a `NUXEO_URL` with the scheme left off, the most
+ * likely way to get this wrong — does not throw: it parses `nuxeo.test:` as the *scheme* and
+ * `8080` as an opaque path, leaving `host` the empty string. Relying on the throw therefore
+ * produced a refusal that named no host and printed
+ * `export INTEGRATION_ALLOWED_HOSTS=` with nothing after it, which is a guard telling the
+ * reader to set a variable to nothing. Observed, not anticipated: two specs below caught it.
+ *
+ * So both facts are checked. An http(s) scheme, because that is what a Nuxeo server speaks and
+ * it is also what rules out the missing-scheme shape; and a non-empty host, because a host is
+ * the thing being compared.
+ */
+function parseTarget(nuxeoUrl: string): { host: string; hostname: string } {
+  let url: URL;
+  try {
+    url = new URL(nuxeoUrl);
+  } catch {
+    throw new Error(`not a URL: ${nuxeoUrl}`);
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`scheme is ${url.protocol} and must be http: or https:`);
+  }
+  if (url.host === '') {
+    throw new Error(`names no host: ${nuxeoUrl}`);
+  }
+
+  return { host: url.host.toLowerCase(), hostname: url.hostname.toLowerCase() };
+}
+
+/**
+ * Whether `nuxeoUrl`'s host is named in `allowed`.
+ *
+ * Two shapes of entry, because both questions are legitimate:
+ *
+ * - `localhost:8080` contains a colon and must match **host and port** exactly.
+ * - `localhost` has no colon and matches **any port** on that hostname.
+ *
+ * The port-bearing form exists so a run can be pinned when the port is what distinguishes a
+ * disposable stack from something that matters — a forwarded tunnel on `localhost:9000` is not
+ * the Docker container on `localhost:8080`, and nothing else in this file could tell them
+ * apart.
+ *
+ * Matching is `===` against a whole host, never a substring: `endsWith('localhost')` admits
+ * `evil-localhost`, and a registrable domain passing a safety allowlist is the entire risk.
+ *
+ * Throws, via `parseTarget`, on a target with no usable host. The caller reports that as its
+ * own problem rather than swallowing it: answering `false` would file an unparseable
+ * `NUXEO_URL` as an allowlist miss and send the reader to edit the wrong variable.
+ */
+export function isHostAllowed(nuxeoUrl: string, allowed: string[]): boolean {
+  const { host, hostname } = parseTarget(nuxeoUrl);
+
+  return allowed.some((entry) => (entry.includes(':') ? entry === host : entry === hostname));
 }
 
 export interface PreflightResult {
@@ -108,11 +196,12 @@ export function resolveConnection(config: IntegrationTestConfig = {}): ResolvedC
     throw new Error(
       'NUXEO_USER and NUXEO_PASS must both be set to run the integration suite.\n\n' +
         '  There is deliberately no default. This library issues DELETE and Document.Trash\n' +
-        '  against whatever server it is pointed at, and a hardcoded Administrator pair is\n' +
-        '  both a credential in the repository and a default that is silently wrong on every\n' +
-        '  instance but a local Docker one.\n\n' +
-        '    export NUXEO_USER=Administrator NUXEO_PASS=Administrator\n' +
-        '    ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration',
+        '  against whatever server it is pointed at, so a fallback pair would be both a\n' +
+        '  credential in the repository and a guess that is silently wrong on every instance\n' +
+        '  but one.\n\n' +
+        '  Set both from your own environment, then name the target host:\n\n' +
+        `    export ${ALLOWED_HOSTS_ENV}=<host>\n` +
+        '    npm run beta:integration',
     );
   }
 
@@ -130,8 +219,9 @@ export function resolveConnection(config: IntegrationTestConfig = {}): ResolvedC
 export async function checkIntegrationPreconditions(
   config: IntegrationTestConfig = {},
 ): Promise<void> {
-  // No `PreflightOptions` argument on purpose: the in-test path takes its opt-in from the
-  // environment only, so no spec can switch the default-credentials guard off.
+  // There is no options argument to forward, and that is deliberate rather than incidental:
+  // the allowlist is read from the environment inside `runPreflightChecks`, so no spec in this
+  // library can name a host for itself.
   const result = await runPreflightChecks(config);
 
   if (!result.ok) {
@@ -157,41 +247,59 @@ export async function checkIntegrationPreconditions(
  */
 export async function runPreflightChecks(
   config: IntegrationTestConfig = {},
-  options: PreflightOptions = {},
 ): Promise<PreflightResult> {
   const { nuxeoUrl, user, password } = resolveConnection(config);
-  // `||`, not `??`. `Array.prototype.includes` returns a boolean and is never nullish, so the
-  // `??` chain this replaces could never reach its `ALLOW_DEFAULT_CREDENTIALS` branch — the
-  // opt-in the guard's own message tells you to use was unreachable from the library. The
-  // flag is read by `preflight-cli.ts` and arrives here through `options`; it is not read
-  // from `process.argv` here, because inside a vitest worker that argv belongs to vitest.
-  const allowDefault =
-    options.allowDefaultCredentials === true || process.env['ALLOW_DEFAULT_CREDENTIALS'] === 'true';
 
   const problems: string[] = [];
   const satisfied: string[] = [];
 
-  // Check 1: Refuse default credentials without explicit opt-in
-  // This is the §5.4 fix: pointing a test at an arbitrary Nuxeo with default credentials
-  // can destroy production data if someone misconfigures NUXEO_URL.
-  const isDefaultCreds = user === DEFAULT_USER && password === DEFAULT_PASS;
-  if (isDefaultCreds && !allowDefault) {
+  // Check 1: the target host is named in the allowlist.
+  //
+  // Read from the environment and nowhere else — no parameter, no flag, no per-suite option.
+  // The guard this replaces could be switched off three ways, and all six suites in this
+  // library switched it off, so it had never fired in any code path that existed.
+  const rawAllowedHosts = process.env[ALLOWED_HOSTS_ENV];
+  const allowedHosts = parseAllowedHosts(rawAllowedHosts);
+
+  // `targetHost` is only set when the URL yielded one, so the refusal below can always name a
+  // real host. The alternative — reaching for `new URL(nuxeoUrl).host` again at the message —
+  // is what printed `export INTEGRATION_ALLOWED_HOSTS=` with an empty value.
+  let targetHost: string | null = null;
+  let hostAllowed = false;
+  try {
+    targetHost = parseTarget(nuxeoUrl).host;
+    hostAllowed = isHostAllowed(nuxeoUrl, allowedHosts);
+  } catch (error) {
+    // A target with no usable host has nothing to compare. Reported as its own problem rather
+    // than as an allowlist miss, which would send the reader to edit the wrong variable.
     problems.push(
-      `Integration tests refuse to run with default Administrator/Administrator credentials\n` +
-        `  without explicit opt-in. This prevents accidentally running against production.\n\n` +
-        `  If you are CERTAIN this is a disposable Docker instance:\n` +
-        `    ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration\n\n` +
-        `  The env var, not \`-- --allow-default-credentials\`: npm appends extra arguments to\n` +
-        `  the END of the script, and this script is a two-command chain, so the flag lands on\n` +
-        `  vitest instead of the preflight and the message you are reading repeats forever.\n\n` +
-        `  Or set non-default credentials:\n` +
-        `    export NUXEO_USER=testuser\n` +
-        `    export NUXEO_PASS=testpass`,
+      `NUXEO_URL is not a usable Nuxeo address — ${
+        error instanceof Error ? error.message : String(error)
+      }\n` + `  Expected something like http://localhost:8080, scheme included.`,
     );
-  } else if (isDefaultCreds) {
-    satisfied.push('default credentials allowed by explicit opt-in');
-  } else {
-    satisfied.push(`non-default credentials (user: ${user})`);
+  }
+
+  if (targetHost !== null && !hostAllowed) {
+    problems.push(
+      `Integration tests refuse to run against ${targetHost} — it is not named in ` +
+        `${ALLOWED_HOSTS_ENV}.\n\n` +
+        `  This suite CREATES AND DELETES documents and users on whatever server NUXEO_URL\n` +
+        `  names. There is no default allowlist and no host is implicitly safe, localhost\n` +
+        `  included: the target is named explicitly or the run is refused.\n\n` +
+        `  To allow this run:\n` +
+        `    export ${ALLOWED_HOSTS_ENV}=${targetHost}\n\n` +
+        `  Comma-separated for several hosts. An entry carrying a port must match host and\n` +
+        `  port exactly; an entry without one matches any port on that hostname.\n\n` +
+        `  ${ALLOWED_HOSTS_ENV} is currently ` +
+        (rawAllowedHosts === undefined
+          ? 'unset'
+          : allowedHosts.length === 0
+            ? `set but names no host (${JSON.stringify(rawAllowedHosts)})`
+            : `naming: ${allowedHosts.join(', ')}`) +
+        `.`,
+    );
+  } else if (hostAllowed) {
+    satisfied.push(`${targetHost} is named in ${ALLOWED_HOSTS_ENV}`);
   }
 
   // Check 2: Nuxeo is reachable

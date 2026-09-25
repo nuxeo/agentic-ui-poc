@@ -13,13 +13,15 @@
 import { vi } from 'vitest';
 import {
   checkIntegrationPreconditions,
+  isHostAllowed,
+  parseAllowedHosts,
   resolveConnection,
   runPreflightChecks,
 } from './integration-preflight';
 import { assertUntruncated } from './integration-harness';
 
 /** What the module reads from the environment. Cleared per test, not merely restored after. */
-const ENV_KEYS = ['NUXEO_URL', 'NUXEO_USER', 'NUXEO_PASS', 'ALLOW_DEFAULT_CREDENTIALS'] as const;
+const ENV_KEYS = ['NUXEO_URL', 'NUXEO_USER', 'NUXEO_PASS', 'INTEGRATION_ALLOWED_HOSTS'] as const;
 const originalEnv = { ...process.env };
 
 /**
@@ -69,11 +71,18 @@ const withDocuments = (resultsCount: number): StubResponse => ({
   json: () => Promise.resolve({ resultsCount }),
 });
 
-/** Credentials that are not the Docker default, so the opt-in guard stays out of the way. */
-function useNonDefaultCredentials() {
+/**
+ * A configured, permitted target, so the checks under test are the ones after check 1.
+ *
+ * The allowlist is set here rather than left to a default, because there is no default: an
+ * unset `INTEGRATION_ALLOWED_HOSTS` refuses every host, `nuxeo.test` included. Every spec that
+ * calls this is therefore also evidence that naming a host is what permits it.
+ */
+function useAllowedTarget() {
   process.env['NUXEO_USER'] = TEST_USER;
   process.env['NUXEO_PASS'] = TEST_PASSWORD;
   process.env['NUXEO_URL'] = 'http://nuxeo.test';
+  process.env['INTEGRATION_ALLOWED_HOSTS'] = 'nuxeo.test';
 }
 
 /**
@@ -89,11 +98,20 @@ async function rejection(promise: Promise<unknown>): Promise<Error> {
   throw new Error('expected the call to reject, and it resolved');
 }
 
-/** The pair the guard exists for. */
-function useDefaultCredentials() {
-  process.env['NUXEO_USER'] = 'Administrator';
-  process.env['NUXEO_PASS'] = 'Administrator';
+/**
+ * A configured but **unlisted** target — credentials present, host named nowhere.
+ *
+ * This is the situation the guard exists for, and it is deliberately described without any
+ * credential value: which pair is in use is no longer part of the decision. The helper it
+ * replaces set `Administrator`/`Administrator`, which was a working credential pair written
+ * into a TypeScript file — the thing `security.mdc` forbids outright, and the exact shape that
+ * tripped GitGuardian earlier on this branch.
+ */
+function useUnlistedTarget() {
+  process.env['NUXEO_USER'] = TEST_USER;
+  process.env['NUXEO_PASS'] = TEST_PASSWORD;
   process.env['NUXEO_URL'] = 'http://nuxeo.test';
+  delete process.env['INTEGRATION_ALLOWED_HOSTS'];
 }
 
 beforeEach(() => {
@@ -149,9 +167,8 @@ describe('resolveConnection', () => {
   it('refuses to invent credentials when neither config nor environment has them', () => {
     // The security regression test. `security.mdc`: "NEVER use Basic auth with hardcoded
     // fallback defaults". This library issues DELETE against whatever it is pointed at, so a
-    // reintroduced `?? 'Administrator'` would make an unconfigured run destructive AND make
-    // the default-credentials guard unreachable — an absent environment would *select* the
-    // defaults rather than refuse them.
+    // reintroduced `?? '<some admin>'` fallback would make an unconfigured run destructive
+    // while reading as configured.
     expect(() => resolveConnection()).toThrow(/NUXEO_USER and NUXEO_PASS must both be set/);
     expect(() => resolveConnection()).toThrow(/deliberately no default/);
   });
@@ -178,7 +195,7 @@ describe('resolveConnection', () => {
 
 describe('runPreflightChecks — reachability', () => {
   it('asks the repository path endpoint with Basic auth and a timeout', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     const fetchMock = stubFetch({ status: 200 }, withDocuments(1));
 
     await runPreflightChecks();
@@ -213,7 +230,7 @@ describe('runPreflightChecks — reachability', () => {
   });
 
   it('reports a 401 as a credentials problem and does not go on to query', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     const fetchMock = stubFetch({ status: 401 });
 
     const result = await runPreflightChecks();
@@ -227,7 +244,7 @@ describe('runPreflightChecks — reachability', () => {
   });
 
   it('reports any other status verbatim rather than guessing at it', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     const fetchMock = stubFetch({ status: 503 });
 
     const result = await runPreflightChecks();
@@ -238,7 +255,7 @@ describe('runPreflightChecks — reachability', () => {
   });
 
   it('reports an unreachable server as one problem carrying the cause', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     const fetchMock = stubFetch(new Error('connect ECONNREFUSED 127.0.0.1:8080'));
 
     const result = await runPreflightChecks();
@@ -255,7 +272,7 @@ describe('runPreflightChecks — reachability', () => {
     // `AbortSignal.timeout` rejects with a `DOMException`, and undici throws shapes that are
     // not always `Error`. The ternary exists for that; without it the message reads
     // `[object Object]` and says nothing.
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch('socket hang up');
 
     const result = await runPreflightChecks();
@@ -266,7 +283,7 @@ describe('runPreflightChecks — reachability', () => {
 
 describe('runPreflightChecks — the empty-repository check', () => {
   it('queries for File documents with pageSize 1 and the wildcard properties header', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     const fetchMock = stubFetch({ status: 200 }, withDocuments(1));
 
     await runPreflightChecks();
@@ -289,7 +306,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
   });
 
   it('passes when the repository holds File documents, and says how many', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch({ status: 200 }, withDocuments(42));
 
     const result = await runPreflightChecks();
@@ -300,7 +317,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
   });
 
   it('falls back to the entry count when the response omits resultsCount', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch(
       { status: 200 },
       { status: 200, json: () => Promise.resolve({ entries: [{ uid: 'a' }, { uid: 'b' }] }) },
@@ -319,7 +336,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
   it('refuses a reachable but empty repository', async () => {
     // The whole reason this check exists: every presence assertion in the suite passes
     // vacuously against an empty Nuxeo, so the run reports green having tested nothing.
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch({ status: 200 }, withDocuments(0));
 
     const result = await runPreflightChecks();
@@ -339,7 +356,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
   // mentioned in review.
   for (const sentinel of [-1, -2]) {
     it(`treats resultsCount ${sentinel} as unknown and trusts the returned entries`, async () => {
-      useNonDefaultCredentials();
+      useAllowedTarget();
       stubFetch(
         { status: 200 },
         {
@@ -360,7 +377,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
     it(`still refuses an empty repository when resultsCount is ${sentinel}`, async () => {
       // The sentinel must not become a way to pass with nothing in the repository: with no
       // entries there is still no evidence of a document.
-      useNonDefaultCredentials();
+      useAllowedTarget();
       stubFetch(
         { status: 200 },
         { status: 200, json: () => Promise.resolve({ resultsCount: sentinel, entries: [] }) },
@@ -374,7 +391,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
   }
 
   it('treats a response with neither count as empty', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch({ status: 200 }, { status: 200, json: () => Promise.resolve({}) });
 
     const result = await runPreflightChecks();
@@ -384,7 +401,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
   });
 
   it('reports a failed query separately from an unreachable server', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch({ status: 200 }, { status: 500 });
 
     const result = await runPreflightChecks();
@@ -397,7 +414,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
   });
 
   it('reports a thrown query as a query problem, not as unreachable', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch({ status: 200 }, new Error('The operation was aborted due to timeout'));
 
     const result = await runPreflightChecks();
@@ -409,7 +426,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
   });
 
   it('stringifies a non-Error query rejection', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch({ status: 200 }, 'terminated');
 
     const result = await runPreflightChecks();
@@ -418,92 +435,206 @@ describe('runPreflightChecks — the empty-repository check', () => {
   });
 });
 
-describe('runPreflightChecks — the default-credentials opt-in', () => {
-  it('refuses Administrator/Administrator with no opt-in', async () => {
-    useDefaultCredentials();
+describe('parseAllowedHosts', () => {
+  it('yields nothing for an unset variable, so nothing is permitted', () => {
+    // The default-deny half of the decision, stated on its own. If this ever returns a
+    // non-empty list, the guard is armed with hosts nobody named.
+    expect(parseAllowedHosts(undefined)).toEqual([]);
+  });
+
+  it('yields nothing for a blank or comma-only value', () => {
+    for (const raw of ['', '   ', ',', ' , , ']) {
+      expect(parseAllowedHosts(raw)).toEqual([]);
+    }
+  });
+
+  it('splits on commas and trims the spaces a copied-in value carries', () => {
+    expect(parseAllowedHosts('localhost, nuxeo.test ,ci.internal')).toEqual([
+      'localhost',
+      'nuxeo.test',
+      'ci.internal',
+    ]);
+  });
+
+  it('lower-cases, because hostnames are case-insensitive', () => {
+    expect(parseAllowedHosts('LocalHost,NUXEO.TEST')).toEqual(['localhost', 'nuxeo.test']);
+  });
+
+  it('drops empty entries rather than keeping a host that matches nothing', () => {
+    expect(parseAllowedHosts('localhost,,nuxeo.test,')).toEqual(['localhost', 'nuxeo.test']);
+  });
+});
+
+describe('isHostAllowed', () => {
+  it('permits a hostname entry on any port of that host', () => {
+    expect(isHostAllowed('http://localhost:8080', ['localhost'])).toBe(true);
+    expect(isHostAllowed('http://localhost:4210', ['localhost'])).toBe(true);
+  });
+
+  it('requires an exact host:port match when the entry carries a port', () => {
+    // The stricter form, and why it exists: a forwarded tunnel on localhost:9000 is not the
+    // disposable container on localhost:8080, and nothing else here could tell them apart.
+    expect(isHostAllowed('http://localhost:8080', ['localhost:8080'])).toBe(true);
+    expect(isHostAllowed('http://localhost:9000', ['localhost:8080'])).toBe(false);
+  });
+
+  it('refuses a host that is merely a suffix or prefix of an allowed one', () => {
+    // `===`, not `endsWith`. `evil-localhost` and `localhost.evil.com` both pass a substring
+    // test, and an attacker-registrable domain passing a safety allowlist is the whole risk.
+    expect(isHostAllowed('http://evil-localhost:8080', ['localhost'])).toBe(false);
+    expect(isHostAllowed('http://localhost.evil.com', ['localhost'])).toBe(false);
+    expect(isHostAllowed('http://nuxeo.test.evil.com', ['nuxeo.test'])).toBe(false);
+  });
+
+  it('does not treat localhost as inherently safe', () => {
+    // The point of the decision. The guard this replaced held one value to be safe by
+    // construction; naming localhost is the only thing that permits it.
+    expect(isHostAllowed('http://localhost:8080', [])).toBe(false);
+    // Nor are the two spellings interchangeable: an allowlist is a list of names.
+    expect(isHostAllowed('http://127.0.0.1:8080', ['localhost'])).toBe(false);
+  });
+
+  it('permits nothing against an empty allowlist, whatever the target', () => {
+    for (const url of ['http://localhost:8080', 'https://prod.example.com', 'http://127.0.0.1']) {
+      expect(isHostAllowed(url, [])).toBe(false);
+    }
+  });
+
+  it('compares the host case-insensitively', () => {
+    expect(isHostAllowed('http://NUXEO.TEST:8080', ['nuxeo.test'])).toBe(true);
+  });
+
+  it('throws on a target with no usable host rather than answering false', () => {
+    // Answering false would report an unusable NUXEO_URL as an allowlist miss and send the
+    // reader to edit the wrong variable.
+    //
+    // `nuxeo.test:8080` is the load-bearing case and the reason this is not just a `new URL`
+    // try/catch: it does NOT throw. `new URL` reads `nuxeo.test:` as the scheme and `8080` as
+    // an opaque path, so `host` comes back empty and the earlier version of this guard refused
+    // a nameless host while telling the reader to `export INTEGRATION_ALLOWED_HOSTS=`.
+    expect(() => isHostAllowed('nuxeo.test:8080', ['nuxeo.test'])).toThrow(
+      /scheme is nuxeo\.test: and must be http: or https:/,
+    );
+    expect(() => isHostAllowed('not a url at all', ['nuxeo.test'])).toThrow(/not a URL/);
+    expect(() => isHostAllowed('file:///etc/passwd', ['nuxeo.test'])).toThrow(
+      /must be http: or https:/,
+    );
+    // Parses, is http, and still has no host to compare.
+    expect(() => isHostAllowed('http://', ['nuxeo.test'])).toThrow(/not a URL/);
+  });
+});
+
+describe('runPreflightChecks — the host allowlist', () => {
+  it('refuses a host that is not named, naming the host and what to set', async () => {
+    useUnlistedTarget();
     stubFetch({ status: 200 }, withDocuments(1));
 
     const result = await runPreflightChecks();
 
     expect(result.ok).toBe(false);
-    expect(result.problems[0]).toMatch(/refuse to run with default Administrator\/Administrator/);
-    expect(result.problems[0]).toMatch(/ALLOW_DEFAULT_CREDENTIALS=true npm run beta:integration/);
+    expect(result.problems[0]).toMatch(/refuse to run against nuxeo\.test/);
+    expect(result.problems[0]).toMatch(/not named in INTEGRATION_ALLOWED_HOSTS/);
+    // The message has to carry the command with the real host substituted in — a guard that
+    // says only "not allowed" makes the reader guess at the spelling of both.
+    expect(result.problems[0]).toMatch(/export INTEGRATION_ALLOWED_HOSTS=nuxeo\.test/);
+    expect(result.problems[0]).toMatch(/INTEGRATION_ALLOWED_HOSTS is currently unset/);
   });
 
-  it('accepts the opt-in when the CLI passes it as an option', async () => {
-    // The route that actually exists. The flag is `preflight-cli.ts`'s to read; a spec
-    // cannot reach this parameter, because `checkIntegrationPreconditions` does not take it.
-    useDefaultCredentials();
+  it('refuses localhost as readily as anything else', async () => {
+    // Not a special case, which is the substance of the decision rather than a detail of it.
+    process.env['NUXEO_USER'] = TEST_USER;
+    process.env['NUXEO_PASS'] = TEST_PASSWORD;
+    process.env['NUXEO_URL'] = 'http://localhost:8080';
     stubFetch({ status: 200 }, withDocuments(1));
 
-    const result = await runPreflightChecks({}, { allowDefaultCredentials: true });
+    const result = await runPreflightChecks();
 
-    expect(result.ok).toBe(true);
-    expect(result.satisfied).toContain('default credentials allowed by explicit opt-in');
+    expect(result.ok).toBe(false);
+    expect(result.problems[0]).toMatch(/refuse to run against localhost:8080/);
+    expect(result.problems[0]).toMatch(/no host is implicitly safe, localhost\n {2}included/);
   });
 
-  it('accepts the opt-in from the environment', async () => {
-    useDefaultCredentials();
-    process.env['ALLOW_DEFAULT_CREDENTIALS'] = 'true';
+  it('refuses when the variable is set but names no host', async () => {
+    useUnlistedTarget();
+    process.env['INTEGRATION_ALLOWED_HOSTS'] = ' , ';
+    stubFetch({ status: 200 }, withDocuments(1));
+
+    const result = await runPreflightChecks();
+
+    expect(result.ok).toBe(false);
+    // Distinguished from unset, because "but I did set it" is the next thing the reader says.
+    expect(result.problems[0]).toMatch(/set but names no host \(" , "\)/);
+  });
+
+  it('permits the run once the host is named, and records it as satisfied', async () => {
+    useAllowedTarget();
     stubFetch({ status: 200 }, withDocuments(1));
 
     const result = await runPreflightChecks();
 
     expect(result.ok).toBe(true);
-    expect(result.satisfied).toContain('default credentials allowed by explicit opt-in');
+    expect(result.satisfied).toContain('nuxeo.test is named in INTEGRATION_ALLOWED_HOSTS');
   });
 
-  it('accepts only the exact string `true` as the environment opt-in', async () => {
-    // `=== 'true'`, so `1`, `yes` and `TRUE` are refusals rather than near-misses that
-    // silently arm a destructive run.
-    useDefaultCredentials();
-
-    for (const value of ['1', 'yes', 'TRUE', '']) {
-      process.env['ALLOW_DEFAULT_CREDENTIALS'] = value;
-      stubFetch({ status: 200 }, withDocuments(1));
-
-      const result = await runPreflightChecks();
-
-      expect(result.ok).toBe(false);
-      expect(result.problems[0]).toMatch(/refuse to run with default/);
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it('is `||`, not `??`, so the environment still reaches the guard', async () => {
-    // The reachability bug the module's own comment records: the `??` chain this replaced
-    // short-circuited on a boolean that is never nullish, so the opt-in the error message
-    // tells you to use could not be reached from the library at all.
-    useDefaultCredentials();
-    process.env['ALLOW_DEFAULT_CREDENTIALS'] = 'true';
-    stubFetch({ status: 200 }, withDocuments(1));
-
-    const result = await runPreflightChecks({}, { allowDefaultCredentials: false });
-
-    expect(result.ok).toBe(true);
-  });
-
-  it('counts only the exact default pair as default', async () => {
-    useDefaultCredentials();
-    process.env['NUXEO_PASS'] = 'something-else';
+  it('names the hosts it does know about when the target is not among them', async () => {
+    useUnlistedTarget();
+    process.env['INTEGRATION_ALLOWED_HOSTS'] = 'localhost,ci.internal';
     stubFetch({ status: 200 }, withDocuments(1));
 
     const result = await runPreflightChecks();
 
-    expect(result.ok).toBe(true);
-    expect(result.satisfied).toContain('non-default credentials (user: Administrator)');
+    expect(result.ok).toBe(false);
+    expect(result.problems[0]).toMatch(/currently naming: localhost, ci\.internal/);
+  });
+
+  it('is credential-independent: one pair, refused then permitted by host alone', async () => {
+    // The defect in the guard this replaces, stated as a spec. It keyed on the credentials, so
+    // a real production pair was *recorded as satisfying* it. Here the credentials are held
+    // constant and only the allowlist moves.
+    process.env['NUXEO_USER'] = TEST_USER;
+    process.env['NUXEO_PASS'] = TEST_PASSWORD;
+    process.env['NUXEO_URL'] = 'https://prod.example.com';
+
+    stubFetch({ status: 200 }, withDocuments(1));
+    expect((await runPreflightChecks()).ok).toBe(false);
+    vi.unstubAllGlobals();
+
+    process.env['INTEGRATION_ALLOWED_HOSTS'] = 'prod.example.com';
+    stubFetch({ status: 200 }, withDocuments(1));
+    expect((await runPreflightChecks()).ok).toBe(true);
+  });
+
+  it('reports a scheme-less NUXEO_URL as its own problem, not an allowlist miss', async () => {
+    // Regression test for a message this guard really produced. `nuxeo.test:8080` parses, so
+    // the allowlist branch ran with an empty host and printed "refuse to run against  —" over
+    // "export INTEGRATION_ALLOWED_HOSTS=". Two failures, one of them a guard instructing the
+    // reader to set the variable to nothing.
+    process.env['NUXEO_USER'] = TEST_USER;
+    process.env['NUXEO_PASS'] = TEST_PASSWORD;
+    process.env['NUXEO_URL'] = 'nuxeo.test:8080';
+    process.env['INTEGRATION_ALLOWED_HOSTS'] = 'nuxeo.test';
+    stubFetch({ status: 200 }, withDocuments(1));
+
+    const result = await runPreflightChecks();
+
+    expect(result.ok).toBe(false);
+    expect(result.problems[0]).toMatch(/NUXEO_URL is not a usable Nuxeo address/);
+    expect(result.problems[0]).toMatch(/scheme is nuxeo\.test:/);
+    // The allowlist must stay quiet here, and must not emit a refusal naming nothing.
+    expect(result.problems.join('\n')).not.toMatch(/not named in/);
+    expect(result.problems.join('\n')).not.toMatch(/ALLOWED_HOSTS=$/m);
   });
 
   it('collects every problem instead of stopping at the first', async () => {
-    // Three checks, two independent failures. Reporting one at a time turns a single fix-up
-    // into three runs, and hides that the server is absent behind a credentials complaint.
-    useDefaultCredentials();
+    // Two checks, two independent failures. Reporting one at a time turns a single fix-up into
+    // two runs, and hides that the server is absent behind the allowlist complaint.
+    useUnlistedTarget();
     stubFetch(new Error('connect ECONNREFUSED'));
 
     const result = await runPreflightChecks();
 
     expect(result.problems).toHaveLength(2);
-    expect(result.problems[0]).toMatch(/refuse to run with default/);
+    expect(result.problems[0]).toMatch(/not named in INTEGRATION_ALLOWED_HOSTS/);
     expect(result.problems[1]).toMatch(/Cannot reach Nuxeo/);
     expect(result.satisfied).toEqual([]);
   });
@@ -578,24 +709,37 @@ describe('assertUntruncated — the data root is where the harness thinks it is'
 
 describe('checkIntegrationPreconditions', () => {
   it('resolves silently when every precondition holds', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch({ status: 200 }, withDocuments(1));
 
     await expect(checkIntegrationPreconditions()).resolves.toBeUndefined();
   });
 
-  it('takes its opt-in from the environment, since it accepts no options', async () => {
-    // Stated as a spec because it is the guarantee the parameter's absence buys: no spec in
-    // this library can switch the default-credentials guard off from inside itself.
-    useDefaultCredentials();
-    process.env['ALLOW_DEFAULT_CREDENTIALS'] = 'true';
+  it('reads the allowlist from the environment, since it accepts no options', async () => {
+    // Stated as a spec because it is the guarantee the missing parameter buys: no spec in this
+    // library can name a host for itself, so the in-test backstop enforces the same allowlist
+    // the CLI does. The suites passed the previous opt-in as an option, all six of them, which
+    // is how that guard came to have never fired.
+    useUnlistedTarget();
+    process.env['INTEGRATION_ALLOWED_HOSTS'] = 'nuxeo.test';
     stubFetch({ status: 200 }, withDocuments(1));
 
     await expect(checkIntegrationPreconditions()).resolves.toBeUndefined();
+  });
+
+  it('refuses from inside a spec too, not only from the CLI', async () => {
+    // The backstop half: someone running vitest directly gets the same refusal, as a thrown
+    // setup failure rather than exit 2, because vitest owns the exit code in a worker.
+    useUnlistedTarget();
+    stubFetch({ status: 200 }, withDocuments(1));
+
+    const error = await rejection(checkIntegrationPreconditions());
+
+    expect(error.message).toMatch(/not named in INTEGRATION_ALLOWED_HOSTS/);
   });
 
   it('throws a message that names the count, every problem and what was satisfied', async () => {
-    useNonDefaultCredentials();
+    useAllowedTarget();
     stubFetch(new Error('connect ECONNREFUSED'));
 
     const error = await rejection(checkIntegrationPreconditions());
@@ -603,9 +747,7 @@ describe('checkIntegrationPreconditions', () => {
     expect(error.message).toMatch(/integration-preflight: PRECONDITION NOT MET/);
     expect(error.message).toMatch(/1 problem\(s\)/);
     expect(error.message).toMatch(/^ {2}- Cannot reach Nuxeo/m);
-    expect(error.message).toMatch(
-      new RegExp(`Satisfied: non-default credentials \\(user: ${TEST_USER}\\)`),
-    );
+    expect(error.message).toMatch(/Satisfied: nuxeo\.test is named in INTEGRATION_ALLOWED_HOSTS/);
   });
 
   it('omits the Satisfied line when nothing was satisfied', async () => {
@@ -613,7 +755,7 @@ describe('checkIntegrationPreconditions', () => {
     // the ternary turns this red. Unguarded, `Satisfied: ${[].join('; ')}` prints a bare
     // "Satisfied:" with nothing after it, which reads as though something passed.
     // `.filter(Boolean)` only removes the blank lines those empty entries would leave.
-    useDefaultCredentials();
+    useUnlistedTarget();
     stubFetch(new Error('connect ECONNREFUSED'));
 
     const error = await rejection(checkIntegrationPreconditions());
