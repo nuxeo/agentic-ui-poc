@@ -216,6 +216,17 @@ html body a.sat-skip-to-content-button.sat-skip-to-content-button-visible {
 }
 
 /*
+ * Header global search — persistent caption label (NXENG-798).
+ * Single runtime declaration: base overlay styles stay in `app-shell.component.scss`.
+ */
+.header-search-label.header-search-label--caption {
+  top: 6px !important;
+  transform: none !important;
+  font-size: 11px !important;
+  opacity: 1;
+}
+
+/*
  * IBM Equal Access `style_focus_visible` (Issue 1307118137, NXENG-794) reads `:focus` only — it
  * collects `:focus-visible` and `:focus-within` and never reads them. Satori draws the ring on
  * `:focus-visible` only; mirror the same outline on `:focus` so the scanner sees an indicator.
