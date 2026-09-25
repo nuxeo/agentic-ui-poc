@@ -601,5 +601,22 @@ describe('NuxeoQueryApi', () => {
         }),
       ).rejects.toThrow('Cannot translate HXQL field');
     });
+
+    it('applies a sort array when the query has no ORDER BY clause', async () => {
+      // Lines 406-409: When hxqlOrderBy is empty but sort.length > 0,
+      // toNuxeoSort translates the sort array and adds ORDER BY to NXQL
+      const pending = api.getDocumentsByQuery({
+        query: 'SELECT * FROM SysContent WHERE sys_fulltext = "report"',
+        sort: ['sys_title asc', 'sys_modified desc'],
+        limit: 25,
+      });
+
+      const search = httpMock.expectOne((r) => r.url.includes('/search/lang/NXQL/execute'));
+      const nxql = search.request.params.get('query') ?? '';
+      // The sort should be translated and appended as ORDER BY
+      expect(nxql).toContain('ORDER BY dc:title ASC, dc:modified DESC');
+      search.flush({ entries: [], resultsCount: 0 });
+      await pending;
+    });
   });
 });
