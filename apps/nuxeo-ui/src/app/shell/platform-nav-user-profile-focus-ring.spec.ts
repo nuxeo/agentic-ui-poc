@@ -102,6 +102,9 @@ describe('User profile sidebar button focus ring (NXENG-889)', () => {
     button.focus({ focusVisible: false } as FocusOptions);
 
     expect(button.matches(':focus')).toBe(true);
+    expect(button.matches(':focus-visible'))
+      .withContext('IBM :focus path must be exercised without :focus-visible')
+      .toBe(false);
 
     const styles = getComputedStyle(button);
     const panel = paintedBackdrop(button);
