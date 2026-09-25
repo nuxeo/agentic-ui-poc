@@ -3,9 +3,39 @@ set -euo pipefail
 
 # E2E Negative Control: Bogus Credentials Sensitivity
 #
-# Runs the E2E suite with wrong credentials and asserts that at least N specs fail.
-# This prevents the §9.1 class of defect: assertions that pass vacuously because they
-# never actually check repository data.
+# Runs the E2E suite with wrong credentials and asserts that at least N specs fail at an
+# `expect` of their own.
+#
+# ## What this control does and does not establish — read before quoting its output
+#
+# It measures **credential sensitivity**: that a spec's own assertion changes outcome when the
+# session is invalid, so the spec is not asserting a server-independent constant. That is a
+# real property and it is the §9.1 class of defect it catches.
+#
+# It does **not** establish that the assertion observed *repository data*. `NUXEO_PASS` gates
+# the session, so an assertion about post-login chrome, routing or authentication state fails
+# under a wrong password having read no document at all. This script claimed the stronger thing
+# for three rounds — "so those assertions depend on repository data rather than on constants" —
+# and that claim was false, which the run below demonstrates rather than supposes. Of the ten
+# counted failures on 2026-09-25 against the local stack, chromium:
+#
+#   src/browse.spec.ts:50   browse > the shell renders its chrome on an authenticated route
+#
+# is an assertion about chrome on an authenticated route. It failed because authentication
+# failed. Several others — "exposes the tab surfaces the Beta scope covers", "the adf-hx search
+# surface has no text input to type into", "lib-search should render" — are surface-presence
+# assertions in the same position. The measurement was sound; the sentence drawn from it was
+# not, so the sentence is what changed.
+#
+# ## Why the counted population is not narrowed to repository-data assertions
+#
+# Review proposed counting only explicitly annotated repository-data checks, or keeping an
+# allowlist of them. Declined deliberately, and this is the fourth round on this control, so
+# the reason matters: an annotation is a claim by whoever wrote the spec that nothing verifies.
+# A spec tagged `repository-data` while asserting `'Root'` would be counted, and the tag would
+# read as a control while being an assertion about an assertion. That is the defect class this
+# audit exists to remove, reintroduced one level up. Narrowing the *claim* costs nothing and
+# cannot rot; narrowing the *population* by self-declared metadata can.
 #
 # Context from audit §9.1.1: cross-browser.spec.ts:49-52 records that running the suite
 # under bad credentials caught two vacuous specs. That negative control existed only as
@@ -191,9 +221,16 @@ echo ""
 if [ "$ACTUAL_FAILURES" -ge "$MIN_FAILURES" ]; then
   echo "✅ PASS: Negative control succeeded"
   echo "${ACTUAL_FAILURES} spec(s) failed at an expect() of their own when the credentials were"
-  echo "wrong, so those assertions depend on repository data rather than on constants."
+  echo "wrong, so those assertions are CREDENTIAL-SENSITIVE: their outcome depends on a valid"
+  echo "session rather than on a server-independent constant."
   echo ""
-  echo "It says nothing about the specs that still PASSED with a wrong password, or about"
+  echo "That is the whole of the claim. It does NOT establish that those assertions read"
+  echo "repository data — NUXEO_PASS gates the session, so an assertion about post-login chrome,"
+  echo "routing or authentication state fails here having read no document at all. Read the list"
+  echo "above before treating any individual spec as data-backed; several are surface-presence"
+  echo "checks. This script asserted the stronger thing for three rounds and was wrong."
+  echo ""
+  echo "It also says nothing about the specs that still PASSED with a wrong password, or about"
   echo "the ${SETUP_FAILURES} that never reached an assertion. Both are gaps, not evidence."
   exit 0
 else
@@ -206,8 +243,8 @@ else
     echo "body, so it demonstrates nothing about what it asserts."
     echo ""
   fi
-  echo "Either some specs pass vacuously — asserting constants rather than verifying that"
-  echo "repository data arrived — or the run collapsed in setup before it could tell."
+  echo "Either some specs pass vacuously — asserting constants that hold whether or not a valid"
+  echo "session returned anything — or the run collapsed in setup before it could tell."
   echo ""
   echo "Fix: review the specs that passed and ensure they use API-discovered values, not"
   echo "hardcoded constants like 'Root'. If the setup count is high, fix that first: the"

@@ -103,6 +103,14 @@ acceptance item inside Task 2.2, the `trash` `test` target, is **not** delivered
   - 1: FAIL (too few failures = vacuous assertions)
   - 2: Environment issue (no Nuxeo)
 - **Commit:** 93dcd2d3
+- **Scope, narrowed 2026-09-25 after a third review round.** What a pass establishes is
+  **credential sensitivity** — the counted assertions change outcome when the session is
+  invalid, so they are not server-independent constants. It does **not** establish that they
+  read repository data: `NUXEO_PASS` gates the session, so an assertion about post-login
+  chrome, routing or authentication state fails under a wrong password having read no
+  document. A live run confirmed it rather than supposing it — `browse > the shell renders its
+chrome on an authenticated route` was among the counted failures. The script said the
+  stronger thing for three rounds; its output now says only the narrower one.
 - **Verification needed:** Run once to establish baseline failure count
 
 ### Blocked Tasks ⏸️
