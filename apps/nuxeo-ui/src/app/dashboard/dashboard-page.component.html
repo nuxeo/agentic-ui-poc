@@ -270,7 +270,9 @@
     matTooltipPosition="above"
     matTooltipShowDelay="300"
   >
-    <span class="cdk-visually-hidden">{{ 'app.dashboard-page.create-or-import' | translate }}</span>
+    <span class="cdk-visually-hidden" cdkAriaLive="off">{{
+      'app.dashboard-page.create-or-import' | translate
+    }}</span>
     <mat-icon aria-hidden="true">add</mat-icon>
   </button>
 </div>

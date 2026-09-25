@@ -15,6 +15,8 @@ import { AiFeatureFlagService, AiGatewayService } from '@agentic-ui/shared/ai-cl
 
 import { AuthService } from '../auth/auth.service';
 import { DashboardPageComponent } from './dashboard-page.component';
+import { TranslateService } from '@ngx-translate/core';
+
 import { testTranslateModule } from '../i18n/translate-testing';
 
 globalThis.ResizeObserver ??= class implements ResizeObserver {
@@ -73,6 +75,9 @@ describe('DashboardPageComponent', () => {
   });
 
   it('keeps the Create or import FAB naming text in a cdk-visually-hidden span (WCAG 2.5.3)', () => {
+    const translate = TestBed.inject(TranslateService);
+    const expectedLabel = translate.instant('app.dashboard-page.create-or-import');
+
     const fab = fixture.nativeElement.querySelector('button.dashboard-create-fab');
     expect(fab).withContext('Create or import FAB').not.toBeNull();
     if (!(fab instanceof HTMLButtonElement)) {
@@ -81,7 +86,7 @@ describe('DashboardPageComponent', () => {
     }
 
     const accessibleNameSpan = fab.querySelector('.cdk-visually-hidden');
-    expect(accessibleNameSpan?.textContent?.trim()).toBe('Create or import');
+    expect(accessibleNameSpan?.textContent?.trim()).toBe(expectedLabel);
 
     const icon = fab.querySelector('mat-icon');
     expect(icon?.getAttribute('aria-hidden')).toBe('true');
