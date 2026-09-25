@@ -38,6 +38,7 @@ describe('platform nav Trash focus unobscured (NXENG-868)', () => {
 
   afterEach(() => {
     fixture.nativeElement.remove();
+    fixture.destroy();
   });
 
   it('keeps the nav list vertically scrollable after Satori styles load', () => {
@@ -59,11 +60,18 @@ describe('platform nav Trash focus unobscured (NXENG-868)', () => {
       .toBeGreaterThan(list.clientHeight);
 
     list.scrollTop = 0;
+    const initialListRect = list.getBoundingClientRect();
+    const initialLinkRect = link.getBoundingClientRect();
+    expect(initialLinkRect.bottom)
+      .withContext('Trash should start below the visible nav list so focus has to scroll it in')
+      .toBeGreaterThan(initialListRect.bottom + 1);
+
     link.focus();
     fixture.detectChanges();
 
     const listRect = list.getBoundingClientRect();
     const linkRect = link.getBoundingClientRect();
+    expect(list.scrollTop).withContext('keyboard focus should scroll the list').toBeGreaterThan(0);
     expect(linkRect.top).toBeGreaterThanOrEqual(listRect.top - 1);
     expect(linkRect.bottom).toBeLessThanOrEqual(listRect.bottom + 1);
 
