@@ -63,6 +63,7 @@ const NAV_ITEMS_UNDER_TEST = [
   { navId: 'app.navbar.clipboard', ticket: 'NXENG-873' },
   { navId: 'app.navbar.assets', ticket: 'NXENG-797' },
   { navId: 'app.navbar.recentlyViewed', ticket: 'NXENG-884' },
+  { navId: 'app.navbar.expiredQueue', ticket: 'NXENG-912' },
 ] as const;
 
 const PACKAGED_LABEL_BY_NAV_ID = Object.fromEntries(
@@ -271,6 +272,15 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
 
   it('keeps the packaged Recently viewed label IBM Issue 2658127935 names (NXENG-884)', () => {
     expect(PACKAGED_LABEL_BY_NAV_ID['app.navbar.recentlyViewed']).toBe('Recently viewed');
+  });
+
+  it('keeps the packaged Expired Queue descriptor IBM Issue 3416250941 names (NXENG-912)', () => {
+    const packaged = PACKAGED_NAV_ITEMS.find((item) => item.id === 'app.navbar.expiredQueue');
+    expect(packaged)
+      .withContext('PACKAGED_NAV_ITEMS must expose the Expired Queue descriptor')
+      .toBeDefined();
+    expect(packaged!.path).toBe('/expired-queue');
+    expect(packaged!.label).toBe('Expired Queue');
   });
 
   it('declares a standalone :focus rule on nav links that IBM Equal Access can read (NXENG-794)', () => {
