@@ -39,6 +39,20 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+function opaqueBackground(element: HTMLElement): [number, number, number] {
+  const own = parseRgb(getComputedStyle(element).backgroundColor);
+  if (own && getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+    return own;
+  }
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    const bg = parseRgb(getComputedStyle(node).backgroundColor);
+    if (bg && getComputedStyle(node).backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      return bg;
+    }
+  }
+  return [255, 255, 255];
+}
+
 describe('DocumentViewerComponent — format-type text contrast (NXENG-768)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
 
@@ -83,16 +97,19 @@ describe('DocumentViewerComponent — format-type text contrast (NXENG-768)', ()
     expect(label).not.toMatch(/#999/i);
   });
 
-  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the default surface fallback`, () => {
+  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the picture-cards surface fallback`, () => {
     const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
+    const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
     expect(formatLabel).not.toBeNull();
-    if (!formatLabel) return;
+    expect(cards).not.toBeNull();
+    if (!formatLabel || !cards) return;
 
     const fg = parseRgb(getComputedStyle(formatLabel).color);
     expect(fg).not.toBeNull();
     if (!fg) return;
 
-    const ratio = contrastRatio(fg, [255, 255, 255]);
+    const bg = opaqueBackground(cards);
+    const ratio = contrastRatio(fg, bg);
     expect(ratio).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
   });
 });

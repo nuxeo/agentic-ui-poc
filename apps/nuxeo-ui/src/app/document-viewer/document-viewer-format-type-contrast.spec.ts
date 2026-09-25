@@ -106,11 +106,25 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768)', () => {
       }
       fixture.detectChanges();
 
+      if (theme !== null) {
+        const onSurfaceVariant = getComputedStyle(document.documentElement)
+          .getPropertyValue('--mat-sys-on-surface-variant')
+          .trim();
+        expect(onSurfaceVariant)
+          .withContext(`theme ${theme} should define --mat-sys-on-surface-variant`)
+          .not.toBe('');
+      }
+
       const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
       const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
       expect(formatLabel).withContext('expected .format-type').not.toBeNull();
       expect(cards).withContext('expected .picture-cards').not.toBeNull();
       if (!formatLabel || !cards) return;
+
+      const cardsBg = getComputedStyle(cards).backgroundColor;
+      expect(cardsBg)
+        .withContext(`picture-cards background in ${label}`)
+        .not.toBe('rgba(0, 0, 0, 0)');
 
       const fg = parseRgb(getComputedStyle(formatLabel).color);
       expect(fg)
