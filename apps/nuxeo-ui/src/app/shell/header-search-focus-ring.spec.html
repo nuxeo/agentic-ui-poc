@@ -5,11 +5,15 @@
 -->
 <div class="header-search">
   <div class="header-search-input-wrap">
-    <mat-icon class="header-search-icon">search</mat-icon>
+    <mat-icon class="header-search-icon" aria-hidden="true">search</mat-icon>
     <input
+      id="global-header-search-input"
       type="text"
       class="header-search-input"
-      [placeholder]="'shell.search.placeholder' | translate"
+      placeholder=" "
     />
+    <label class="header-search-label" for="global-header-search-input">
+      {{ 'shell.search.placeholder' | translate }}
+    </label>
   </div>
 </div>
