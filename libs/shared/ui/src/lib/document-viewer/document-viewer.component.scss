@@ -1,4 +1,6 @@
 :host {
+  /* AA secondary text on the viewer's fixed #fff footer/cards (not theme-adaptive). */
+  --document-viewer-muted-on-light-surface: #5c5f6b;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -385,7 +387,7 @@
 
 .file-size {
   font-size: 11px;
-  color: #888;
+  color: var(--document-viewer-muted-on-light-surface);
 }
 
 .viewer-footer-actions {
