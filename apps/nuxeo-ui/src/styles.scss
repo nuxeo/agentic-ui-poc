@@ -243,10 +243,21 @@ sat-platform-nav #sat-platform-nav-title-icon:focus {
   outline-offset: -2px;
 }
 
-/* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */
-sat-platform-nav .sat-platform-nav-list {
+/*
+ * Sidebar nav list scroll — NXENG-868 (IBM element_tabbable_unobscured / WCAG 2.4.11).
+ *
+ * Satori sets `.sat-platform-nav-list { overflow-y: hidden }` on the component stylesheet,
+ * which loads after this bundle and wins a same-specificity cascade — so bottom links such as
+ * Trash stayed clipped when keyboard-focused without hovering the rail. Beat vendor specificity
+ * (`html body` + `nav` element) and give the flex child `min-height: 0` so the list scrolls
+ * inside the fixed panel above the user profile block.
+ */
+html body sat-platform-nav nav.sat-platform-nav-list {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scroll-padding-block-end: var(--sat-platform-nav-height-high, 48px);
   scrollbar-width: none;
   -ms-overflow-style: none;
 
@@ -255,7 +266,8 @@ sat-platform-nav .sat-platform-nav-list {
   }
 }
 
-sat-platform-nav .sat-platform-nav-list:hover {
+html body sat-platform-nav nav.sat-platform-nav-list:hover,
+html body sat-platform-nav nav.sat-platform-nav-list:focus-within {
   overflow-y: auto;
   overflow-x: hidden;
 }
