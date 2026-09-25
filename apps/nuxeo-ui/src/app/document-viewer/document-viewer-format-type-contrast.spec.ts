@@ -1,5 +1,6 @@
 /**
- * NXENG-768 — measure `.format-type` contrast on `.picture-cards` under every compiled palette.
+ * NXENG-768 — `.format-type`, `.format-size`, and related strip text on themed `.picture-cards`
+ * must consume `--mat-sys-on-surface-variant` and meet WCAG 2.1 SC 1.4.3 under every compiled palette.
  * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -34,6 +35,25 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
+function parseColor(value: string): { rgb: number[]; alpha: number } {
+  const match = /rgba?\(([^)]+)\)/.exec(value);
+  if (!match) {
+    throw new Error(`not a computed colour: "${value}"`);
+  }
+  const parts = match[1]
+    .split(/[,\s/]+/)
+    .filter(Boolean)
+    .map(Number);
+  return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
+}
+
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+  backdrop: readonly number[],
+): number[] {
+  return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
+}
+
 function opaqueBackground(element: HTMLElement): [number, number, number] {
   const own = parseRgb(getComputedStyle(element).backgroundColor);
   if (own && getComputedStyle(element).backgroundColor !== 'rgba(0, 0, 0, 0)') {
@@ -46,6 +66,18 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
     }
   }
   return [255, 255, 255];
+}
+
+function assertContrast(element: HTMLElement, cards: HTMLElement, label: string): void {
+  const fgParsed = parseColor(getComputedStyle(element).color);
+  const bg = opaqueBackground(cards);
+  const painted = compositeOver(fgParsed, bg);
+  const ratio = contrastRatio(painted, bg);
+  expect(ratio)
+    .withContext(
+      `${label} ${getComputedStyle(element).color} on picture-cards ${getComputedStyle(cards).backgroundColor}`,
+    )
+    .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
 }
 
 describe('DocumentViewer format-type contrast by theme (NXENG-768)', () => {
@@ -88,11 +120,25 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768)', () => {
 
   afterEach(() => {
     fixture.nativeElement.remove();
+    (fixture.nativeElement as HTMLElement).style.removeProperty('--mat-sys-on-surface-variant');
     if (originalTheme === null) {
       document.documentElement.removeAttribute('data-app-theme');
     } else {
       document.documentElement.setAttribute('data-app-theme', originalTheme);
     }
+  });
+
+  it('wires format-type colour through --mat-sys-on-surface-variant on the viewer host', () => {
+    const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
+    expect(formatLabel).withContext('expected .format-type').not.toBeNull();
+    if (!formatLabel) return;
+
+    const host = fixture.nativeElement as HTMLElement;
+    const sentinel = 'rgb(1, 2, 3)';
+    host.style.setProperty('--mat-sys-on-surface-variant', sentinel);
+    fixture.detectChanges();
+
+    expect(getComputedStyle(formatLabel).color).toBe(sentinel);
   });
 
   for (const theme of [...COMPILED_THEME_BASES, null] as const) {
@@ -116,30 +162,28 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768)', () => {
       }
 
       const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
+      const formatSize = fixture.nativeElement.querySelector('.format-size') as HTMLElement | null;
       const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
-      expect(formatLabel).withContext('expected .format-type').not.toBeNull();
-      expect(cards).withContext('expected .picture-cards').not.toBeNull();
-      if (!formatLabel || !cards) return;
+      const cardTitle = fixture.nativeElement.querySelector(
+        '.picture-card-title',
+      ) as HTMLElement | null;
+      const infoValue = fixture.nativeElement.querySelector('.info-value') as HTMLElement | null;
 
-      const cardsBg = getComputedStyle(cards).backgroundColor;
-      expect(cardsBg)
+      expect(formatLabel).withContext(`${label}: expected .format-type`).not.toBeNull();
+      expect(formatSize).withContext(`${label}: expected .format-size`).not.toBeNull();
+      expect(cards).withContext(`${label}: expected .picture-cards`).not.toBeNull();
+      expect(cardTitle).withContext(`${label}: expected .picture-card-title`).not.toBeNull();
+      expect(infoValue).withContext(`${label}: expected .info-value`).not.toBeNull();
+      if (!formatLabel || !formatSize || !cards || !cardTitle || !infoValue) return;
+
+      expect(getComputedStyle(cards).backgroundColor)
         .withContext(`picture-cards background in ${label}`)
         .not.toBe('rgba(0, 0, 0, 0)');
 
-      const fg = parseRgb(getComputedStyle(formatLabel).color);
-      expect(fg)
-        .withContext(`format-type colour ${getComputedStyle(formatLabel).color}`)
-        .not.toBeNull();
-      if (!fg) return;
-
-      const bg = opaqueBackground(cards);
-      const ratio = contrastRatio(fg, bg);
-      expect(ratio)
-        .withContext(
-          `format-type on picture-cards in ${label}: ${getComputedStyle(formatLabel).color} vs ` +
-            `${getComputedStyle(cards).backgroundColor}`,
-        )
-        .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+      assertContrast(formatLabel, cards, 'format-type');
+      assertContrast(formatSize, cards, 'format-size');
+      assertContrast(cardTitle, cards, 'picture-card-title');
+      assertContrast(infoValue, cards, 'info-value');
     });
   }
 });

@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { CdkAriaLive } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { WidgetContainerComponent, WidgetGridComponent } from '@nuxeo-satori/platform/ui';
@@ -45,6 +46,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
     MatIconModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    CdkAriaLive,
     WidgetGridComponent,
     WidgetContainerComponent,
     SatTagModule,

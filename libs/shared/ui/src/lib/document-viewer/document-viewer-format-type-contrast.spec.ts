@@ -1,5 +1,5 @@
 /**
- * NXENG-768 — `.format-type` in the picture viewer strip must meet WCAG 2.1 SC 1.4.3 (IBM 56037090).
+ * NXENG-768 — `.format-type` / `.format-size` in the picture viewer strip must meet WCAG 2.1 SC 1.4.3.
  * Per-theme contrast is covered in `apps/nuxeo-ui/.../document-viewer-format-type-contrast.spec.ts`.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -87,14 +87,21 @@ describe('DocumentViewerComponent — format-type text contrast (NXENG-768)', ()
     fixture.detectChanges();
   });
 
-  it('themes .picture-cards and .format-type as a matched surface/foreground pair', () => {
+  it('themes picture-cards foregrounds with the surface token pair', () => {
     const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
     const scss = readFileSync(scssPath, 'utf8');
     const cards = scssBlock(scss, 'picture-cards');
     const label = scssBlock(scss, 'format-type');
+    const size = scssBlock(scss, 'format-size');
+    const title = scssBlock(scss, 'picture-card-title');
+    const infoValue = scssBlock(scss, 'info-value');
     expect(cards).toMatch(/var\(--mat-sys-surface/);
     expect(label).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(size).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(title).toMatch(/var\(--mat-sys-on-surface/);
+    expect(infoValue).toMatch(/var\(--mat-sys-on-surface/);
     expect(label).not.toMatch(/#999/i);
+    expect(size).not.toMatch(/#999/i);
   });
 
   it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the picture-cards surface fallback`, () => {

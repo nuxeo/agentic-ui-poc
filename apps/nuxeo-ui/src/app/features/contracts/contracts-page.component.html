@@ -50,7 +50,10 @@
   </p>
 
   <lib-widget-grid [columns]="3">
-    <lib-widget-container [title]="'app.contracts-page.active-contracts' | translate">
+    <lib-widget-container
+      [headingLevel]="3"
+      [title]="'app.contracts-page.active-contracts' | translate"
+    >
       <div class="stat">
         <mat-icon class="stat-icon info">description</mat-icon>
         <p class="stat-value">24</p>
@@ -58,7 +61,10 @@
       </div>
     </lib-widget-container>
 
-    <lib-widget-container [title]="'app.contracts-page.expiring-soon' | translate">
+    <lib-widget-container
+      [headingLevel]="3"
+      [title]="'app.contracts-page.expiring-soon' | translate"
+    >
       <div class="stat">
         <mat-icon class="stat-icon warning">warning</mat-icon>
         <p class="stat-value warning">3</p>
@@ -66,7 +72,7 @@
       </div>
     </lib-widget-container>
 
-    <lib-widget-container [title]="'app.contracts-page.total-value' | translate">
+    <lib-widget-container [headingLevel]="3" [title]="'app.contracts-page.total-value' | translate">
       <div class="stat">
         <mat-icon class="stat-icon success">attach_money</mat-icon>
         <p class="stat-value">$2.4M</p>
@@ -87,7 +93,10 @@
     >
   </p>
 
-  <lib-widget-container [title]="'app.contracts-page.recent-activity' | translate">
+  <lib-widget-container
+    [headingLevel]="3"
+    [title]="'app.contracts-page.recent-activity' | translate"
+  >
     <div class="activity">
       <div class="activity-list">
         <div class="activity-item">
@@ -123,7 +132,10 @@
   <p class="section-note">{{ 'app.contracts-page.click-the-buttons-at-the-top' | translate }}</p>
 
   <lib-widget-grid [columns]="2">
-    <lib-widget-container [title]="'app.contracts-page.dialogs-overlays' | translate">
+    <lib-widget-container
+      [headingLevel]="3"
+      [title]="'app.contracts-page.dialogs-overlays' | translate"
+    >
       <div class="demo-panel">
         <ul class="component-list">
           <li>
@@ -155,7 +167,10 @@
       </div>
     </lib-widget-container>
 
-    <lib-widget-container [title]="'app.contracts-page.viewers-display' | translate">
+    <lib-widget-container
+      [headingLevel]="3"
+      [title]="'app.contracts-page.viewers-display' | translate"
+    >
       <div class="demo-panel">
         <ul class="component-list">
           <li>
