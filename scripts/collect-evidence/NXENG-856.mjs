@@ -3,7 +3,7 @@
 export const summary =
   'Document detail Preview tab format-type label meets WCAG AA text contrast';
 
-const DOC_UID = process.env['NUXEO_DOC_UID'];
+const DOC_UID = process.env['NUXEO_DOC_UID']?.trim();
 
 /** @param {import('@playwright/test').Page} page */
 async function contrastRatioFor(page, selector) {
@@ -111,9 +111,9 @@ export const scenes = [
         );
       }
       await h.expectNoConsoleErrors('view tab', [
+        /automation\/AI\./,
+        '/nuxeo/logout',
         '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
-        /AI\.Insights/i,
-        /\/nuxeo\/logout/i,
       ]);
       await h.shot('format-type-contrast', {
         highlight: 'lib-document-viewer .format-type',
