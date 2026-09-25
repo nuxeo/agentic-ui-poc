@@ -4,8 +4,10 @@
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
 
+import { testTranslateModule } from '../i18n/translate-testing';
 import { COMPILED_THEME_BASES } from '../theme/app-theme';
 
 const WCAG_AA_NORMAL_TEXT = 4.5;
@@ -54,11 +56,12 @@ describe('DocumentViewer format-type contrast by theme (NXENG-856)', () => {
     originalTheme = document.documentElement.getAttribute('data-app-theme');
 
     await TestBed.configureTestingModule({
-      imports: [DocumentViewerComponent],
-      providers: [provideZonelessChangeDetection()],
+      imports: [DocumentViewerComponent, testTranslateModule()],
+      providers: [provideZonelessChangeDetection(), provideNoopAnimations()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DocumentViewerComponent);
+    document.body.appendChild(fixture.nativeElement);
     fixture.componentRef.setInput('mimeType', 'image/jpeg');
     fixture.componentRef.setInput('blobUrl', 'blob:mock-image');
     fixture.componentRef.setInput('rawBlobUrl', 'blob:mock-image');
@@ -84,6 +87,7 @@ describe('DocumentViewer format-type contrast by theme (NXENG-856)', () => {
   });
 
   afterEach(() => {
+    fixture.nativeElement.remove();
     if (originalTheme === null) {
       document.documentElement.removeAttribute('data-app-theme');
     } else {
