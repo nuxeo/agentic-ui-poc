@@ -73,12 +73,12 @@
       "sCovered": 4480
     },
     "integration-tests": {
-      "lines": 26.81,
-      "statements": 26.81,
-      "branches": 96.97,
-      "functions": 50,
-      "sTotal": 623,
-      "sCovered": 167
+      "lines": 30.36,
+      "statements": 30.36,
+      "branches": 94.25,
+      "functions": 57.14,
+      "sTotal": 695,
+      "sCovered": 211
     },
     "knowledge-discovery": {
       "lines": 65.03,
@@ -165,8 +165,8 @@
       "statements": 100,
       "branches": 100,
       "functions": 100,
-      "sTotal": 26,
-      "sCovered": 26
+      "sTotal": 31,
+      "sCovered": 31
     },
     "ui": {
       "lines": 97.78,
