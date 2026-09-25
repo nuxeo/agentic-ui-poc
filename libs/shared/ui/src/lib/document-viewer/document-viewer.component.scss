@@ -1,4 +1,5 @@
 :host {
+  --document-viewer-format-type-on-light-strip: #5c5f6b;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -496,7 +497,7 @@
 
 /* The picture-cards strip keeps a light surface in dark mode; theme variant text would fail on white. */
 :host-context(html[data-app-theme='dark']) .format-type {
-  color: #5c5f6b;
+  color: var(--document-viewer-format-type-on-light-strip);
 }
 
 .format-download-btn {
