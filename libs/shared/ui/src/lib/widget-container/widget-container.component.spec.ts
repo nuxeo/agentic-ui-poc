@@ -48,12 +48,28 @@ describe('WidgetContainerComponent', () => {
     return fixture.nativeElement.querySelector(selector) as T | null;
   }
 
-  it('renders the title as a level-3 heading', () => {
+  it('renders the title as a level-2 heading by default', () => {
     const heading = query('.widget-header-title');
     expect(heading?.textContent?.trim()).toBe('Recently Viewed');
-    // `role="heading"` + `aria-level="3"` on a div, because the widget sits under an h2 page
-    // title; without the level the whole dashboard flattens in a screen reader's outline.
+    // Default level 2: the shell page title is a native `<h1>` (NXENG-788), so dashboard widgets
+    // must be the next level — IBM heading-order / NXENG-941.
     expect(heading?.getAttribute('role')).toBe('heading');
+    expect(heading?.getAttribute('aria-level')).toBe('2');
+  });
+
+  it('honours headingLevel when widgets sit under a section heading', async () => {
+    @Component({
+      standalone: true,
+      imports: [WidgetContainerComponent],
+      template: `<lib-widget-container [title]="'Nested'" [headingLevel]="3" />`,
+    })
+    class NestedHostComponent {}
+
+    const nestedFixture = TestBed.createComponent(NestedHostComponent);
+    nestedFixture.detectChanges();
+    await nestedFixture.whenStable();
+
+    const heading = nestedFixture.nativeElement.querySelector('.widget-header-title');
     expect(heading?.getAttribute('aria-level')).toBe('3');
   });
 
