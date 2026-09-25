@@ -226,11 +226,6 @@ html body a.sat-skip-to-content-button.sat-skip-to-content-button-visible {
   opacity: 1;
 }
 
-.header-search-input-wrap.header-search-filled .header-search-input {
-  padding-top: 15px;
-  padding-bottom: 5px;
-}
-
 /*
  * IBM Equal Access `style_focus_visible` (Issue 1307118137, NXENG-794) reads `:focus` only — it
  * collects `:focus-visible` and `:focus-within` and never reads them. Satori draws the ring on
