@@ -92,8 +92,6 @@ export const scenes = [
         /automation\/AI\./,
         '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
         '/nuxeo/logout',
-        /ExpressionChangedAfterItHasBeenCheckedError/,
-        /_DashboardPageComponent/,
       ]);
       await h.shot('footer-actions');
     },
