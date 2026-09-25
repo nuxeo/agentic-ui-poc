@@ -127,7 +127,6 @@
     },
     "test": {
       "platform-nav-item": "Durchsuchen",
-      "favorites-nav-item": "Favoriten",
       "personal-space-nav-item": "Persönlicher Bereich"
     }
   }

@@ -1812,7 +1812,6 @@
   "shell.settings.menu": "Accessible name for the header button that opens the settings menu. A noun phrase naming the menu, not an instruction.",
   "shell.slot-empty": "Empty state for an extension slot with nothing registered. {{ name }} is the slot or item label — already translated before it arrives here.",
   "shell.test.platform-nav-item": "Label on a platform nav list item in a unit-test host template only. Not shown in the product UI; uses the same word as the real Browse nav entry for focus-ring contrast tests.",
-  "shell.test.favorites-nav-item": "Label on the Favorites nav list item in a unit-test host template only. Not shown in the product UI; matches the real Favorites sidebar entry for NXENG-898 focus-visible tests.",
   "shell.test.personal-space-nav-item": "Label on the Personal Space nav list item in a unit-test host template only. Not shown in the product UI; matches the real Personal Space sidebar entry for NXENG-778 focus-visible tests.",
   "tab.tabs-ai-insights": "Tab label on the document detail page. A NOUN naming the panel it opens. Descriptor id `app.tabs.aiInsights`.",
   "tab.tabs-annotations": "Tab label on the document detail page. A NOUN naming the panel it opens. Descriptor id `app.tabs.annotations`.",

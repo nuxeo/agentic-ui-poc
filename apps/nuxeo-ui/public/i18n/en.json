@@ -2169,7 +2169,6 @@
     "slot-empty": "Content for \"{{ name }}\" will appear here.",
     "test": {
       "platform-nav-item": "Browse",
-      "favorites-nav-item": "Favorites",
       "personal-space-nav-item": "Personal Space"
     }
   },
