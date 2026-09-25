@@ -28,6 +28,9 @@
 
     <sat-platform-nav-user>
       <sat-platform-nav-user-profile (click)="toggleSettingsDrawer()">
+        <!-- NXENG-894: a projected icon skips auto-generated initials inside the vendor
+             profile button; those initials were visible text not contained in aria-label. -->
+        <mat-icon aria-hidden="true">account_circle</mat-icon>
         {{ displayName() }}
       </sat-platform-nav-user-profile>
     </sat-platform-nav-user>
