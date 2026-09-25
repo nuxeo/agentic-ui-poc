@@ -106,7 +106,7 @@ function assertFormatTypeOnCards(
     .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
 }
 
-describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760)', () => {
+describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760, NXENG-801)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
@@ -150,6 +150,13 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760)', 
     document.documentElement.style.removeProperty('--mat-sys-on-surface-variant');
     (fixture.nativeElement as HTMLElement).style.removeProperty('--mat-sys-surface');
     (fixture.nativeElement as HTMLElement).style.removeProperty('--mat-sys-on-surface-variant');
+    (fixture.nativeElement as HTMLElement).style.removeProperty(
+      '--document-viewer-muted-on-light-surface',
+    );
+    (fixture.nativeElement as HTMLElement).style.removeProperty(
+      '--document-viewer-light-strip-surface',
+    );
+    (fixture.nativeElement as HTMLElement).style.removeProperty('--document-viewer-on-light-strip');
     if (originalTheme === null) {
       document.documentElement.removeAttribute('data-app-theme');
     } else {
@@ -157,14 +164,14 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760)', 
     }
   });
 
-  it('wires format-type colour through --mat-sys-on-surface-variant on the viewer host', () => {
+  it('wires format-type colour through --document-viewer-muted-on-light-surface on the viewer host', () => {
     const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
     expect(formatLabel).withContext('expected .format-type').not.toBeNull();
     if (!formatLabel) return;
 
     const host = fixture.nativeElement as HTMLElement;
     const sentinel = 'rgb(1, 2, 3)';
-    host.style.setProperty('--mat-sys-on-surface-variant', sentinel);
+    host.style.setProperty('--document-viewer-muted-on-light-surface', sentinel);
     fixture.detectChanges();
 
     expect(getComputedStyle(formatLabel).color).toBe(sentinel);
@@ -214,22 +221,32 @@ describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760)', 
         '.picture-card-title',
       ) as HTMLElement | null;
       const infoValue = fixture.nativeElement.querySelector('.info-value') as HTMLElement | null;
+      const downloadIcon = fixture.nativeElement.querySelector(
+        '.format-download-btn mat-icon',
+      ) as HTMLElement | null;
 
       expect(formatLabel).withContext(`${label}: expected .format-type`).not.toBeNull();
       expect(formatSize).withContext(`${label}: expected .format-size`).not.toBeNull();
       expect(cards).withContext(`${label}: expected .picture-cards`).not.toBeNull();
       expect(cardTitle).withContext(`${label}: expected .picture-card-title`).not.toBeNull();
       expect(infoValue).withContext(`${label}: expected .info-value`).not.toBeNull();
-      if (!formatLabel || !formatSize || !cards || !cardTitle || !infoValue) return;
+      expect(downloadIcon).withContext(`${label}: expected download icon`).not.toBeNull();
+      if (!formatLabel || !formatSize || !cards || !cardTitle || !infoValue || !downloadIcon) {
+        return;
+      }
 
       expect(getComputedStyle(cards).backgroundColor)
         .withContext(`picture-cards background in ${label}`)
         .not.toBe('rgba(0, 0, 0, 0)');
+      expect(luminance(opaqueBackground(cards)))
+        .withContext(`picture-cards must stay a light strip in ${label}`)
+        .toBeGreaterThanOrEqual(0.5);
 
       assertContrast(formatLabel, cards, 'format-type');
       assertContrast(formatSize, cards, 'format-size');
       assertContrast(cardTitle, cards, 'picture-card-title');
       assertContrast(infoValue, cards, 'info-value');
+      assertContrast(downloadIcon, cards, 'format-download icon');
     });
   }
 });
