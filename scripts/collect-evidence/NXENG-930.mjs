@@ -1,105 +1,107 @@
-/** @typedef {import('@playwright/test').Page} Page */
+/** NXENG-930 — Preview tab `.format-type` label WCAG 1.4.3 AA contrast (IBM 4250318785). */
 
 export const summary =
-  'Preview tab Additional Formats format-type label meets WCAG 1.4.3 AA contrast on the viewer strip';
+  'Document detail Preview tab format-type label meets WCAG AA text contrast';
 
-const DOC_UID = process.env['NUXEO_DOC_UID'] ?? '54016a72-5300-44b0-a96d-06937aa6a887';
-const WCAG_AA_NORMAL = 4.5;
+const DOC_UID = process.env['NUXEO_DOC_UID']?.trim();
 
-function parseRgb(cssColor) {
-  const m = cssColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!m) return null;
-  return [Number(m[1]), Number(m[2]), Number(m[3])];
-}
-
-function luminance([r, g, b]) {
-  const s = [r, g, b].map((v) => {
-    const c = v / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2];
-}
-
-function contrastRatio(fg, bg) {
-  const l1 = luminance(fg);
-  const l2 = luminance(bg);
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
-async function measureFormatTypeContrast(page) {
-  return page.evaluate(() => {
-    const el = document.querySelector('lib-document-viewer .format-type');
-    if (!el) return { found: false };
-
-    function parseRgba(css) {
-      const m = css.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+/** @param {import('@playwright/test').Page} page */
+async function contrastRatioFor(page, selector) {
+  return page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (!el) return { ok: false, reason: 'missing element' };
+    const fg = getComputedStyle(el).color;
+    const parseColor = (css) => {
+      if (!css || css.trim() === 'transparent') return null;
+      const m = /^rgba?\(([^)]+)\)$/.exec(css.trim());
       if (!m) return null;
-      return { rgb: [Number(m[1]), Number(m[2]), Number(m[3])], alpha: m[4] !== undefined ? Number(m[4]) : 1 };
-    }
-
-    function opaqueBackground(node) {
-      let cur = node;
-      while (cur && cur instanceof Element) {
-        const parsed = parseRgba(getComputedStyle(cur).backgroundColor);
-        if (parsed && parsed.alpha > 0.05) return parsed.rgb;
-        cur = cur.parentElement;
-      }
-      return [255, 255, 255];
-    }
-
-    const style = getComputedStyle(el);
-    const fg = parseRgba(style.color)?.rgb;
-    const bg = opaqueBackground(el);
-    return {
-      found: true,
-      text: el.textContent?.trim() ?? '',
-      color: style.color,
-      backgroundRgb: bg,
-      fontSize: style.fontSize,
-      fontWeight: style.fontWeight,
-      fgRgb: fg,
+      const parts = m[1]
+        .split(/[,\s/]+/)
+        .filter(Boolean)
+        .map(Number);
+      if (parts.length < 3 || parts.some((n) => Number.isNaN(n))) return null;
+      return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
     };
-  });
+    let node = el.parentElement;
+    let bg = 'rgb(255, 255, 255)';
+    while (node) {
+      const c = getComputedStyle(node).backgroundColor;
+      const parsed = parseColor(c);
+      if (parsed && parsed.alpha === 1) {
+        bg = c;
+        break;
+      }
+      node = node.parentElement;
+    }
+    const compositeOver = (color, backdropRgb) =>
+      color.rgb.map((c, i) => Math.round(c * color.alpha + backdropRgb[i] * (1 - color.alpha)));
+    const lum = ([r, g, b]) => {
+      const ch = (v) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+    };
+    const ratio = (fgRgb, bgRgb) => {
+      const [hi, lo] = [lum(fgRgb), lum(bgRgb)].sort((x, y) => y - x);
+      return (hi + 0.05) / (lo + 0.05);
+    };
+    const fgColor = parseColor(fg);
+    const bgColor = parseColor(bg);
+    if (!fgColor || !bgColor || bgColor.alpha !== 1) {
+      return { ok: false, reason: `unmeasurable colours fg=${fg} bg=${bg}`, fg, bg };
+    }
+    const painted = compositeOver(fgColor, bgColor.rgb);
+    const r = ratio(painted, bgColor.rgb);
+    return { ok: true, ratio: r, fg, bg, text: el.textContent?.trim() ?? '' };
+  }, selector);
 }
 
 export const scenes = [
   {
     act: 1,
-    title: 'Open the Picture document on Document detail',
-    intent: 'A user reviewing image renditions in the Preview tab',
+    title: 'Open a picture on Document detail',
+    intent: 'Review additional renditions in the Preview tab viewer strip',
     criterion: 'AC-3',
     async run(page, h) {
       await h.login();
-      await h.goTo(`/#/doc/${DOC_UID}`);
+      await h.requirePrecondition(
+        'NUXEO_DOC_UID is set',
+        Boolean(DOC_UID),
+        'Set NUXEO_DOC_UID to a Picture with Additional formats',
+      );
+      await h.goToDoc(DOC_UID);
       await h.expectVisible('document detail loads', 'lib-document-detail');
       await h.shot('doc-detail-preview', { highlight: 'lib-document-viewer', label: 'Preview viewer' });
     },
   },
   {
     act: 2,
-    title: 'Read the format label in Additional Formats',
-    intent: 'The JPEG/PNG format tag beside each rendition size in the viewer strip',
+    title: 'Measure contrast on the format-type label',
+    intent: 'WCAG 2.1 SC 1.4.3 AA requires 4.5:1 for 11px body text',
     criterion: 'AC-1',
-    hold: 2000,
+    hold: 2500,
     spotlight: { selector: 'lib-document-viewer .format-type', label: 'Format type label' },
     async run(page, h) {
-      await h.expectVisible('additional formats section', 'lib-document-viewer .picture-card');
-      const format = page.locator('lib-document-viewer .format-type').filter({ hasText: /\S/ }).first();
-      await format.waitFor({ state: 'visible', timeout: 60000 });
-      const raw = await measureFormatTypeContrast(page);
-      h.check('format-type element is present', raw.found === true, JSON.stringify(raw));
-      const fg = raw.fgRgb ?? parseRgb(raw.color);
-      const bg = raw.backgroundRgb ?? [255, 255, 255];
-      let ratio = 0;
-      if (fg && bg) ratio = contrastRatio(fg, bg);
+      const viewTab = page.getByRole('tab', { name: /view|preview/i }).first();
+      if (await viewTab.isVisible().catch(() => false)) {
+        await viewTab.click({ timeout: 15000 }).catch(() => {});
+      }
+      await h.expectVisible('format-type label', 'lib-document-viewer .format-type');
+      const result = await contrastRatioFor(page, 'lib-document-viewer .format-type');
       h.check(
-        'format-type contrast meets WCAG AA (4.5:1)',
-        ratio >= WCAG_AA_NORMAL,
-        `ratio=${ratio.toFixed(2)} color=${raw.color} bg=rgb(${bg.join(',')})`,
+        'contrast ratio is measurable',
+        result.ok === true,
+        result.reason ?? `fg ${result.fg} on ${result.bg}`,
       );
-      await h.shot('format-type-label', {
+      if (result.ok) {
+        h.check(
+          'format-type meets WCAG AA 4.5:1',
+          result.ratio >= 4.5,
+          `${result.ratio.toFixed(2)}:1 for "${result.text}"`,
+        );
+      }
+      await h.shot('format-type-contrast', {
         highlight: 'lib-document-viewer .format-type',
         label: 'Format type label',
       });
@@ -108,7 +110,7 @@ export const scenes = [
   {
     act: 3,
     title: 'Confirm preview tab layout after the contrast fix',
-    intent: 'Smoke check that the viewer footer still renders on document detail (not a keyboard/auth regression suite)',
+    intent: 'Smoke check that the viewer footer still renders on document detail',
     criterion: 'AC-3',
     async run(page, h) {
       await h.expectVisible('viewer footer still present', 'lib-document-viewer .viewer-footer');
