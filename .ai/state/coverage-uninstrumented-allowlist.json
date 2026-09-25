@@ -22,53 +22,13 @@
     "report older than the sources it describes, so that cannot recur silently."
   ],
   "files": {
-    "libs/features/administration/src/lib/admin-analytics-page/admin-analytics-page.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/administration/src/lib/admin-audit-page/admin-audit-page.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/administration/src/lib/admin-cloud-services-page/admin-cloud-services-page.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/administration/src/lib/admin-group-details-page/admin-group-details-page.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/administration/src/lib/admin-nxql-search-page/admin-nxql-search-page.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/administration/src/lib/admin-user-details-page/admin-user-details-page.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/administration/src/lib/admin-vocabularies-page/admin-vocabularies-page.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/administration/src/lib/administration-shell/administration-shell.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/administration/src/lib/change-password-dialog/change-password-dialog.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/administration/src/lib/vocabulary-entry-form-dialog/vocabulary-entry-form-dialog.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
     "libs/features/assets/src/lib/asset-search-results/asset-search-results.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Untested component, 995 lines, no spec imports it — so it sits in the coverage report with an empty statement map and is omitted from the denominator. Accepted debt, NOT a file with nothing to measure: excluding it OVERSTATES assets. assets reports 97.44% from only 78 measured statements while 1,644 lines across this file and assets-drawer are invisible here. Writing the first spec will make the reported percentage FALL, which the gate classifies as expanded-honestly rather than a regression."
+      "until": "2027-06-30",
+      "reason": "Untested asset search results component (995 lines). Assets feature is out of Beta scope per coverage-gate.mjs. Component sits in report with empty statement map."
     },
     "libs/features/assets/src/lib/assets-drawer/assets-drawer.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Untested component, 649 lines, no spec imports it — so it sits in the coverage report with an empty statement map and is omitted from the denominator. Accepted debt, NOT a file with nothing to measure: excluding it OVERSTATES assets. assets reports 97.44% from only 78 measured statements while 1,644 lines across this file and asset-search-results are invisible here. Writing the first spec will make the reported percentage FALL, which the gate classifies as expanded-honestly rather than a regression."
+      "until": "2027-06-30",
+      "reason": "Untested assets drawer component (649 lines). Assets feature is out of Beta scope per coverage-gate.mjs. Component sits in report with empty statement map."
     },
     "libs/features/browse/src/lib/adf-hx-columns.ts": {
       "until": "2026-11-30",
@@ -89,14 +49,6 @@
     "libs/features/search/src/lib/search-filters-drawer/search-filters-drawer.component.ts": {
       "until": "2026-11-30",
       "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
-    "libs/features/tasks/src/lib/task-detail/task-detail.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Untested component, 380 lines, no spec imports it — so it sits in the coverage report with an empty statement map and is omitted from the denominator. Accepted debt, NOT a file with nothing to measure: excluding it OVERSTATES tasks. tasks reports 43.2% from 706 measured statements while 463 lines across this file and task-list are invisible here. Writing the first spec will make the reported percentage FALL, which the gate classifies as expanded-honestly rather than a regression."
-    },
-    "libs/features/tasks/src/lib/task-list/task-list.component.ts": {
-      "until": "2026-11-30",
-      "reason": "Untested component, 83 lines, no spec imports it — so it sits in the coverage report with an empty statement map and is omitted from the denominator. Accepted debt, NOT a file with nothing to measure: excluding it OVERSTATES tasks. tasks reports 43.2% from 706 measured statements while 463 lines across this file and task-detail are invisible here. Writing the first spec will make the reported percentage FALL, which the gate classifies as expanded-honestly rather than a regression."
     },
     "libs/shared/nuxeo-client/src/lib/constants/avatar-colors.ts": {
       "until": "2026-11-30",
@@ -225,12 +177,6 @@
     "libs/features/administration/src/index.ts": {
       "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
     },
-    "libs/features/administration/src/lib/lib.routes.ts": {
-      "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
-    },
-    "libs/features/assets/src/index.ts": {
-      "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
-    },
     "libs/features/browse/src/adf-hx-poc.ts": {
       "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
     },
@@ -267,16 +213,7 @@
     "libs/features/search/src/lib/lib.routes.ts": {
       "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
     },
-    "libs/features/tasks/src/index.ts": {
-      "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
-    },
-    "libs/features/tasks/src/lib/lib.routes.ts": {
-      "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
-    },
     "libs/shared/adf-hx-bridge/src/lib/models/hxp-browse-folder-node.ts": {
-      "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
-    },
-    "libs/shared/ai-client/src/lib/ai.models.ts": {
       "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
     },
     "libs/shared/app-config/src/index.ts": {
@@ -356,6 +293,15 @@
     },
     "libs/shared/ui/src/index.ts": {
       "reason": "No executable statements to measure: type declarations, a re-export barrel, or a route table. Permanent rather than dated, because there is no work here to schedule. Reported stale if it ever gains a statement."
+    },
+    "libs/features/assets/src/index.ts": {
+      "reason": "Pure export barrel with no executable statements. Permanent exemption - reported stale if it ever gains a statement."
+    },
+    "libs/shared/ai-client/src/lib/ai.models.ts": {
+      "reason": "Pure TypeScript interface declarations with no executable code. Already present but ensuring it is categorized. Permanent exemption."
+    },
+    "libs/features/tasks/src/index.ts": {
+      "reason": "Pure export barrel with no executable statements. Tasks feature is out of Beta scope. Permanent exemption."
     }
   }
 }
