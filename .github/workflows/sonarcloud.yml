@@ -55,7 +55,6 @@ jobs:
       # TS under apps/nuxeo-ui/src reports 0% on the Sonar new-code coverage gate.
       - name: Run nuxeo-ui Karma tests with coverage
         run: npx ng test nuxeo-ui --no-watch --browsers=ChromeHeadless --code-coverage
-        continue-on-error: true
 
       # Rebases each project's lcov records onto the repository root and merges them into the
       # single `coverage/lcov.info` that sonar-project.properties names. Fails if any source

@@ -55,6 +55,9 @@ function findReports(dir) {
 
 const reports = findReports(coverageRoot);
 
+const nuxeoUiLcov = resolve(coverageRoot, 'apps/nuxeo-ui/lcov.info');
+const hasNuxeoUiReport = reports.some((report) => resolve(report) === nuxeoUiLcov);
+
 if (reports.length === 0) {
   console.error(
     'lcov-merge: no per-project lcov.info found under `coverage/`.\n' +
@@ -64,6 +67,15 @@ if (reports.length === 0) {
       '  `test.coverage.reporter` — the Vitest defaults do NOT include it, and neither\n' +
       '  `--coverageReporters=lcov` nor `--coverage.reporter=lcov` is passed through by the\n' +
       '  Nx executor.',
+  );
+  process.exit(1);
+}
+
+if (!hasNuxeoUiReport) {
+  console.error(
+    'lcov-merge: FAIL — missing `coverage/apps/nuxeo-ui/lcov.info`.\n' +
+      '  The Sonar workflow expects Karma coverage for the app shell. Run:\n' +
+      '    npx ng test nuxeo-ui --no-watch --browsers=ChromeHeadless --code-coverage',
   );
   process.exit(1);
 }
