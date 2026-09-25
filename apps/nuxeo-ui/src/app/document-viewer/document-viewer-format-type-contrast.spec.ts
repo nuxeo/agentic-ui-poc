@@ -139,22 +139,19 @@ describe('DocumentViewer format-type contrast by theme (NXENG-856)', () => {
 
       const formatLabel = fixture.nativeElement.querySelector('.format-type') as HTMLElement | null;
       const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
-      expect(formatLabel).withContext('expected .format-type').not.toBeNull();
-      expect(cards).withContext('expected .picture-cards').not.toBeNull();
-      if (!formatLabel || !cards) return;
-
-      assertContrast(formatLabel, cards, 'format-type');
-
       const cardTitle = fixture.nativeElement.querySelector(
         '.picture-card-title',
       ) as HTMLElement | null;
       const infoValue = fixture.nativeElement.querySelector('.info-value') as HTMLElement | null;
-      if (cardTitle) {
-        assertContrast(cardTitle, cards, 'picture-card-title');
-      }
-      if (infoValue) {
-        assertContrast(infoValue, cards, 'info-value');
-      }
+
+      expect(formatLabel).withContext(`${label}: expected .format-type`).not.toBeNull();
+      expect(cards).withContext(`${label}: expected .picture-cards`).not.toBeNull();
+      expect(cardTitle).withContext(`${label}: expected .picture-card-title`).not.toBeNull();
+      expect(infoValue).withContext(`${label}: expected .info-value`).not.toBeNull();
+
+      assertContrast(formatLabel!, cards!, 'format-type');
+      assertContrast(cardTitle!, cards!, 'picture-card-title');
+      assertContrast(infoValue!, cards!, 'info-value');
     });
   }
 });

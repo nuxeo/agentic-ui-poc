@@ -6,6 +6,17 @@ export const summary =
 const DOC_UID = process.env['NUXEO_DOC_UID']?.trim();
 
 /** @param {import('@playwright/test').Page} page */
+async function openViewTabWithKeyboard(page) {
+  const viewTab = page.getByRole('tab', { name: /view|preview/i }).first();
+  if (!(await viewTab.isVisible().catch(() => false))) {
+    return false;
+  }
+  await viewTab.focus();
+  await page.keyboard.press('Enter');
+  return true;
+}
+
+/** @param {import('@playwright/test').Page} page */
 async function contrastRatioFor(page, selector) {
   return page.evaluate((sel) => {
     const el = document.querySelector(sel);
@@ -72,6 +83,12 @@ export const scenes = [
       );
       await h.goToDoc(DOC_UID);
       await h.expectVisible('document detail loads', 'lib-document-detail');
+      const openedWithKeyboard = await openViewTabWithKeyboard(page);
+      h.check(
+        'View tab opens from keyboard (Enter)',
+        openedWithKeyboard && (await page.locator('lib-document-viewer').isVisible()),
+        'lib-document-viewer visible after keyboard activation',
+      );
       await h.shot('doc-detail', { highlight: 'lib-document-detail', label: 'Document detail' });
     },
   },
