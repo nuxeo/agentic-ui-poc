@@ -19,7 +19,12 @@ import {
   resolveConnection,
   runPreflightChecks,
 } from './integration-preflight';
-import { assertUntruncated } from './integration-harness';
+import {
+  assertUntruncated,
+  reclaimMisplacedDataRoot,
+  reclaimRefusal,
+  teardownDataRoot,
+} from './integration-harness';
 
 /** What the module reads from the environment. Cleared per test, not merely restored after. */
 const ENV_KEYS = ['NUXEO_URL', 'NUXEO_USER', 'NUXEO_PASS', 'INTEGRATION_ALLOWED_HOSTS'] as const;
@@ -867,5 +872,242 @@ describe('checkIntegrationPreconditions', () => {
     // line, and an unlisted host still satisfies nothing, so it remains exercised.
     expect(error.message).toMatch(/1 problem\(s\)/);
     expect(error.message).not.toMatch(/Satisfied:/);
+  });
+});
+
+describe('reclaimMisplacedDataRoot — nothing unverified is deleted', () => {
+  const RUN_ID = '20260926-112233-ab3cd';
+  const REQUESTED = `/default-domain/workspaces/it-${RUN_ID}`;
+
+  /**
+   * `fetch`, stubbed, so what the reclaim *sends* is the thing under test.
+   *
+   * Every assertion below is about the absence or presence of a DELETE, not about a return
+   * value or an exit code. That is deliberate: the guard exists to stop a request, so only the
+   * requests can show whether it works. `mockResolvedValue` rather than `…Once` because a
+   * refusing path should consume none of them and a queue would hide the difference.
+   */
+  const stub = () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 404, text: async () => '' });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  const deletes = (fetchMock: ReturnType<typeof vi.fn>): string[] =>
+    fetchMock.mock.calls
+      .filter(([, init]) => (init as { method?: string } | undefined)?.method === 'DELETE')
+      .map(([url]) => String(url));
+
+  // The catastrophic case, first and by name. A recursive DELETE here removes every run's data
+  // root on a machine where nine worktrees share one Nuxeo.
+  it('refuses the workspace root itself, and sends nothing', async () => {
+    const fetchMock = stub();
+
+    const outcome = await reclaimMisplacedDataRoot(
+      'http://nuxeo.test',
+      'Basic redacted',
+      '/default-domain/workspaces',
+      RUN_ID,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(deletes(fetchMock)).not.toContain(
+      'http://nuxeo.test/nuxeo/api/v1/path/default-domain/workspaces',
+    );
+    expect(outcome).toMatch(/REFUSED to delete \/default-domain\/workspaces/);
+    expect(outcome).toMatch(/Nothing was sent/);
+  });
+
+  it.each([
+    ['/default-domain', 'a parent of the workspace root'],
+    ['/', 'the repository root'],
+    ['/default-domain/workspaces/', 'the workspace root with a trailing slash'],
+  ])('refuses %s (%s)', async (path) => {
+    const fetchMock = stub();
+
+    const outcome = await reclaimMisplacedDataRoot(
+      'http://nuxeo.test',
+      'Basic redacted',
+      path,
+      RUN_ID,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(outcome).toMatch(/^REFUSED to delete/);
+  });
+
+  it('refuses a path outside the expected parent', async () => {
+    const fetchMock = stub();
+
+    const outcome = await reclaimMisplacedDataRoot(
+      'http://nuxeo.test',
+      'Basic redacted',
+      `/default-domain/UserWorkspaces/it-${RUN_ID}`,
+      RUN_ID,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(outcome).toMatch(/not under \/default-domain\/workspaces/);
+  });
+
+  it("refuses a path that does not carry this run's id", async () => {
+    const fetchMock = stub();
+
+    // Correct parent, correct depth, plausible name — and another run's workspace. This is the
+    // case that makes the marker check load-bearing rather than decorative.
+    const outcome = await reclaimMisplacedDataRoot(
+      'http://nuxeo.test',
+      'Basic redacted',
+      '/default-domain/workspaces/it-20260926-999999-zzzzz',
+      RUN_ID,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(outcome).toMatch(/is not what this run asked for/);
+  });
+
+  it('refuses a traversal that resolves above the parent it appears to be under', async () => {
+    const fetchMock = stub();
+
+    // Passes a naive `startsWith` and a naive `includes(runId)`, and names the repository root.
+    const outcome = await reclaimMisplacedDataRoot(
+      'http://nuxeo.test',
+      'Basic redacted',
+      `/default-domain/workspaces/it-${RUN_ID}/../..`,
+      RUN_ID,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(outcome).toMatch(/relative segment/);
+  });
+
+  it('refuses a name truncated so far that too little of the run id survives', async () => {
+    const fetchMock = stub();
+
+    const outcome = await reclaimMisplacedDataRoot(
+      'http://nuxeo.test',
+      'Basic redacted',
+      '/default-domain/workspaces/it-2026',
+      RUN_ID,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(outcome).toMatch(/too\s+little of this run's id survived/);
+  });
+
+  // The positive control. Without it every assertion above is satisfied by a function that
+  // refuses everything, which would be a guard that has disabled the feature it guards.
+  it('DOES delete a legitimately truncated path that passes all three checks', async () => {
+    const fetchMock = stub();
+    // Exactly the shape measured against the local stack: the requested name, cut by Nuxeo's
+    // 24-character path-segment cap, keeping the whole timestamp.
+    const truncated = '/default-domain/workspaces/it-20260926-112233-ab3';
+
+    const outcome = await reclaimMisplacedDataRoot(
+      'http://nuxeo.test',
+      'Basic redacted',
+      truncated,
+      RUN_ID,
+    );
+
+    expect(reclaimRefusal(truncated, RUN_ID)).toBeNull();
+    expect(deletes(fetchMock)).toEqual([`http://nuxeo.test/nuxeo/api/v1/path${truncated}`]);
+    expect(outcome).toMatch(/removed .* \(confirmed absent\)/);
+  });
+
+  it('DOES delete a sibling misplacement that carries the full run id', async () => {
+    const fetchMock = stub();
+    // Not truncated, just not where it was asked for — the other half of what `actual !==
+    // dataRoot` can mean.
+    const outcome = await reclaimMisplacedDataRoot(
+      'http://nuxeo.test',
+      'Basic redacted',
+      REQUESTED,
+      RUN_ID,
+    );
+
+    expect(deletes(fetchMock)).toEqual([`http://nuxeo.test/nuxeo/api/v1/path${REQUESTED}`]);
+    expect(outcome).toMatch(/removed .* \(confirmed absent\)/);
+  });
+});
+
+describe('teardownDataRoot — only a run that created the root may delete it', () => {
+  const RUN_ID = '20260926-112233-ab3cd';
+  const DATA_ROOT = `/default-domain/workspaces/it-${RUN_ID}`;
+
+  const stub = () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 404, text: async () => '' });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  /**
+   * The assertion the exit code could not make.
+   *
+   * `afterAll` runs even when `beforeAll` rejected, so a preflight that REFUSED the host was
+   * followed by a teardown that sent `Authorization: Basic` to it regardless — the same
+   * disclosure the allowlist exists to prevent, one hook later. Asserted on the network, not on
+   * the verdict: the run had already failed, it simply talked to the host on the way out.
+   */
+  it('sends NO request when the root was never created', async () => {
+    const fetchMock = stub();
+
+    await teardownDataRoot(
+      { creationAttempted: false, ownsDataRoot: false },
+      'http://nuxeo.test',
+      'Basic redacted',
+      DATA_ROOT,
+      RUN_ID,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('sends NO request when creation was attempted but did not complete, and says so loudly', async () => {
+    const fetchMock = stub();
+    const errors: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args) => {
+      errors.push(args.map(String).join(' '));
+    });
+
+    await teardownDataRoot(
+      { creationAttempted: true, ownsDataRoot: false },
+      'http://nuxeo.test',
+      'Basic redacted',
+      DATA_ROOT,
+      RUN_ID,
+    );
+    spy.mockRestore();
+
+    // Not deleted, because this run cannot prove the path is its own...
+    expect(fetchMock).not.toHaveBeenCalled();
+    // ...and NOT silent, because a workspace may be sitting there. The silent-success shape is
+    // what made cleanup untrustworthy in the first place, so skipping quietly here would
+    // reintroduce it one level up.
+    expect(errors.join('\n')).toMatch(/NOT deleting/);
+    expect(errors.join('\n')).toContain(DATA_ROOT);
+    expect(errors.join('\n')).toMatch(/MAY exist/);
+  });
+
+  it('DOES delete, and confirms absence, when this run owns the root', async () => {
+    const fetchMock = stub();
+
+    await teardownDataRoot(
+      { creationAttempted: true, ownsDataRoot: true },
+      'http://nuxeo.test',
+      'Basic redacted',
+      DATA_ROOT,
+      RUN_ID,
+    );
+
+    // The positive control for the two assertions above: they must not be satisfiable by a
+    // teardown that never deletes anything under any circumstances.
+    expect(fetchMock).toHaveBeenCalled();
+    const urls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(urls[0]).toBe(`http://nuxeo.test/nuxeo/api/v1/path${DATA_ROOT}`);
+    // Authenticated, which is precisely what is withheld in the two cases above.
+    expect(
+      (fetchMock.mock.calls[0][1] as { headers: Record<string, string> }).headers.Authorization,
+    ).toBe('Basic redacted');
   });
 });

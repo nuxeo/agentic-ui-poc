@@ -43,6 +43,27 @@ import {
  * Measured against the local stack, 2026-09-24: a 35-character request came back as 24.
  */
 const NUXEO_PATH_SEGMENT_MAX = 24;
+
+/**
+ * The one parent every data root of this suite is a direct child of.
+ *
+ * Named once rather than spelled inline, because `reclaimRefusal` compares against it and
+ * `createDataRoot` POSTs to it: the check and the thing it checks must not be able to drift.
+ */
+const DATA_ROOT_PARENT = '/default-domain/workspaces';
+
+/** `default-domain`, `workspaces`, `it-<runid>` — the exact depth of a data root. */
+const RECLAIM_MIN_SEGMENTS = 3;
+
+/**
+ * The shortest workspace name a reclaim will act on: `it-` plus the 15-character timestamp.
+ *
+ * A truncated name is a prefix of the requested one, so what matters is how much survived. The
+ * timestamp resolves to the second and is already this run's; the five random characters after
+ * it only separate two runs that started in the same second. Losing the random suffix is
+ * therefore tolerable for identification; losing part of the timestamp is not.
+ */
+const RECLAIM_MIN_NAME_LENGTH = 'it-'.length + 15;
 /** Characters of random suffix that fit once `it-` and the timestamp have been spent. */
 const RUN_SUFFIX_LENGTH = 5;
 /** Base-36 over `RUN_SUFFIX_LENGTH` characters: 60,466,176 distinct suffixes. */
@@ -128,7 +149,24 @@ export function setupIntegrationHarness(config: IntegrationTestConfig = {}): Int
   const random = randomInt(RUN_SUFFIX_VALUES).toString(36).padStart(RUN_SUFFIX_LENGTH, '0');
   const runId = `${timestamp}-${random}`;
 
-  const dataRoot = `/default-domain/workspaces/it-${runId}`;
+  const dataRoot = `${DATA_ROOT_PARENT}/it-${runId}`;
+
+  /**
+   * What this run knows about the data root, which decides whether teardown may touch the
+   * server at all.
+   *
+   * `afterAll` runs even when `beforeAll` rejected, and teardown used to delete unconditionally.
+   * Against a host the preflight had just REFUSED, that sent `Authorization: Basic` to it
+   * anyway — the same credential disclosure the allowlist exists to prevent, reached one hook
+   * later. Reproduced before this was written: with the host unlisted, the refusal was printed
+   * and `deleteDataRoot` still logged `Data root … not found`, a line it can only reach after
+   * issuing an authenticated GET.
+   *
+   * Two flags, not one, because "no root exists" and "a root might exist" need different
+   * answers. Skipping silently is right for the first and is exactly the silent-success shape
+   * that made cleanup untrustworthy for the second.
+   */
+  const state = { creationAttempted: false, ownsDataRoot: false };
 
   const harness: IntegrationHarness = {
     runId,
@@ -138,14 +176,20 @@ export function setupIntegrationHarness(config: IntegrationTestConfig = {}): Int
     password,
     auth,
     cleanup: async () => {
-      await deleteDataRoot(nuxeoUrl, auth, dataRoot, runId);
+      await teardownDataRoot(state, nuxeoUrl, auth, dataRoot, runId);
     },
   };
 
   // Run preconditions and setup before all tests
   beforeAll(async () => {
     await checkIntegrationPreconditions(resolved);
+    // Set BEFORE the call, not after: from here on a workspace may exist on the server even if
+    // the call rejects — `createDataRoot` can POST successfully and then throw on
+    // `assertUntruncated`. Teardown must know the difference between that and never having
+    // asked.
+    state.creationAttempted = true;
     await createDataRoot(nuxeoUrl, auth, dataRoot, runId);
+    state.ownsDataRoot = true;
   }, 30000); // 30s timeout for setup
 
   // Guaranteed cleanup after all tests
@@ -221,6 +265,124 @@ export function assertUntruncated(
   );
 }
 
+/** What a run knows about its data root by the time teardown is reached. */
+export interface DataRootOwnership {
+  /** Whether `createDataRoot` was called at all, so a workspace may exist on the server. */
+  creationAttempted: boolean;
+  /** Whether it completed, so this run owns the workspace and may delete it. */
+  ownsDataRoot: boolean;
+}
+
+/**
+ * Tear down the data root, but only if this run created it.
+ *
+ * Exported for the unit tests, which assert at the **network** level — with `fetch` stubbed —
+ * that a run which never created a root issues no request. The exit code could not have caught
+ * the defect this replaces: the run already failed, it simply contacted the refused host on the
+ * way out.
+ *
+ * Three cases, and the middle one is the reason this is not a single boolean:
+ *
+ *  - **owns it** — delete and verify, exactly as before.
+ *  - **tried and did not finish** — a workspace may be on the server and this run cannot prove
+ *    it owns the path, so it is NOT deleted. Reported at `console.error` naming the path,
+ *    because a leak that nothing mentions is the failure mode this whole harness is about.
+ *  - **never tried** — nothing can exist, and the host may be one the preflight refused, so
+ *    nothing is sent and nothing is claimed. Noted at `console.log`, not `error`: this is the
+ *    ordinary shape of a run that stopped on its preconditions, and crying leak here would
+ *    train the reader to ignore the case above.
+ */
+export async function teardownDataRoot(
+  state: DataRootOwnership,
+  nuxeoUrl: string,
+  auth: string,
+  dataRoot: string,
+  runId: string,
+): Promise<void> {
+  if (state.ownsDataRoot) {
+    await deleteDataRoot(nuxeoUrl, auth, dataRoot, runId);
+    return;
+  }
+
+  if (state.creationAttempted) {
+    console.error(
+      `[integration-harness] NOT deleting ${dataRoot} (run ${runId}): creation did not\n` +
+        `  complete, so this run cannot prove the workspace at that path is its own. A\n` +
+        `  workspace MAY exist there. Check it and remove it by hand — deleting a path this\n` +
+        `  run does not own is the one mistake here that cannot be undone.`,
+    );
+    return;
+  }
+
+  console.log(
+    `[integration-harness] Skipping teardown of ${dataRoot}: it was never created, so there\n` +
+      `  is nothing to remove and no request is sent. A preflight refusal lands here, and the\n` +
+      `  refused host must not be contacted by the teardown of the run it refused.`,
+  );
+}
+
+/**
+ * Why the path Nuxeo reported must NOT be deleted, or `null` if it may be.
+ *
+ * This function is the whole of the safety argument for the recursive DELETE below, so it is
+ * exported and unit-tested against hand-built malformed responses rather than trusted.
+ *
+ * Until review caught it, `reclaimMisplacedDataRoot` deleted whatever path the creation
+ * response reported, unchecked. Nothing but Nuxeo behaving well stood between a malformed or
+ * unexpected `path` and `DELETE /nuxeo/api/v1/path/default-domain/workspaces` — recursive, and
+ * against the tree every worktree on this machine shares, including other runs' live data
+ * roots. The exposure needed an unusual response rather than an ordinary one, which is a reason
+ * to check calmly, not a reason to leave it.
+ *
+ * Three independent conditions, each of which alone rules out the catastrophic case:
+ *
+ *  1. **Parent** — the path is a direct child of `DATA_ROOT_PARENT`. This alone rejects the
+ *     workspace root, `/default-domain`, and `/`.
+ *  2. **Depth floor** — at least `RECLAIM_MIN_SEGMENTS` segments, and no `.` or `..` among
+ *     them. Without the traversal check, `…/workspaces/it-<runid>/../..` satisfies both the
+ *     parent and marker tests and resolves to the repository root.
+ *  3. **Marker** — the final segment is what the server made of the name *this run* asked for.
+ *
+ * The marker is a **prefix** relationship, not `includes(runId)`, and that is not a loosening:
+ * truncation is the entire reason this function exists, and truncation cuts the run id. A
+ * requested `it-20260924-112334-3207ed6420ab7921` was created as `it-20260924-112334-3207e`, so
+ * a containment test on the full id would refuse every legitimate reclaim there is. What is
+ * verifiable is that the created name is a leading substring of the requested one, and that
+ * enough of it survived to still be this run's: `RECLAIM_MIN_NAME_LENGTH` keeps the whole
+ * timestamp, which is already unique to the second. A name cut shorter than that is a
+ * misconfigured deployment, and refusing is the right answer to it.
+ */
+export function reclaimRefusal(actual: string, runId: string): string | null {
+  const path = actual.replace(/\/+$/, '');
+  const segments = path.split('/').filter((segment) => segment !== '');
+
+  if (!path.startsWith(`${DATA_ROOT_PARENT}/`)) {
+    return `it is not under ${DATA_ROOT_PARENT}`;
+  }
+  if (segments.some((segment) => segment === '.' || segment === '..')) {
+    return 'it contains a relative segment, so the path it names is not the path it reads as';
+  }
+  if (segments.length < RECLAIM_MIN_SEGMENTS) {
+    return `it has ${segments.length} segment(s), fewer than the ${RECLAIM_MIN_SEGMENTS} a data root has`;
+  }
+  if (segments.length > RECLAIM_MIN_SEGMENTS) {
+    return `it is nested below a data root (${segments.length} segments), so it is not one`;
+  }
+
+  const requestedName = `it-${runId}`;
+  const actualName = segments[segments.length - 1];
+  if (!requestedName.startsWith(actualName)) {
+    return `its name "${actualName}" is not what this run asked for ("${requestedName}")`;
+  }
+  if (actualName.length < RECLAIM_MIN_NAME_LENGTH) {
+    return (
+      `its name "${actualName}" is shorter than ${RECLAIM_MIN_NAME_LENGTH} characters, so too ` +
+      `little of this run's id survived to identify it`
+    );
+  }
+  return null;
+}
+
 /**
  * Delete a workspace Nuxeo created somewhere other than where we asked, and say what happened.
  *
@@ -231,18 +393,35 @@ export function assertUntruncated(
  * existed. Review caught that, and it is the same mistake one level up from the one the guard
  * was added for.
  *
- * Best effort by design, and it reports rather than throws: the caller is already about to
+ * Validated by `reclaimRefusal` before anything is sent. A refusal returns without issuing the
+ * DELETE and names the path loudly: the caller embeds this string in the `assertUntruncated`
+ * failure, so the run stops as a precondition failure with the stray path on the screen for a
+ * human to deal with. Deleting an unverified path is the one outcome that cannot be undone, so
+ * it is the one this function will not reach for.
+ *
+ * Best effort otherwise, and it reports rather than throws: the caller is already about to
  * fail with a better message, and a cleanup error thrown from here would replace the
  * explanation of *why* the run is failing with an explanation of a secondary symptom. The
  * outcome string is quoted in that message so an unremoved workspace is never silent.
  *
  * @returns a human-readable outcome for the failure message
  */
-async function reclaimMisplacedDataRoot(
+export async function reclaimMisplacedDataRoot(
   nuxeoUrl: string,
   auth: string,
   actual: string,
+  runId: string,
 ): Promise<string> {
+  const refusal = reclaimRefusal(actual, runId);
+  if (refusal !== null) {
+    return (
+      `REFUSED to delete ${actual} — ${refusal}.\n` +
+      `    Nothing was sent. This is a recursive DELETE against the tree every run on this\n` +
+      `    machine shares, so an unverified path is not deleted on the strength of the server\n` +
+      `    having reported it. Inspect ${actual} by hand and remove it if it is this run's.`
+    );
+  }
+
   const url = `${nuxeoUrl}/nuxeo/api/v1/path${actual}`;
   try {
     const del = await fetch(url, { method: 'DELETE', headers: { Authorization: auth } });
@@ -269,7 +448,7 @@ async function createDataRoot(
   runId: string,
 ): Promise<void> {
   try {
-    const res = await fetch(`${nuxeoUrl}/nuxeo/api/v1/path/default-domain/workspaces`, {
+    const res = await fetch(`${nuxeoUrl}/nuxeo/api/v1/path${DATA_ROOT_PARENT}`, {
       method: 'POST',
       headers: {
         Authorization: auth,
@@ -303,7 +482,7 @@ async function createDataRoot(
     // the server really made has to be removed here, while its path is still in hand.
     const reclaimed =
       actual !== null && actual !== dataRoot
-        ? await reclaimMisplacedDataRoot(nuxeoUrl, auth, actual)
+        ? await reclaimMisplacedDataRoot(nuxeoUrl, auth, actual, runId)
         : null;
 
     assertUntruncated(dataRoot, actual, reclaimed);
