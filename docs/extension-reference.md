@@ -173,10 +173,10 @@ Packaged entries carry both a `label` (the English literal) and a `labelKey` (a 
 The renderer prefers the key when it resolves. That gives you two ways to change the text, and
 they are not interchangeable.
 
-| You want                       | Set                                    | Result                                                                    |
-| ------------------------------ | -------------------------------------- | ------------------------------------------------------------------------- |
-| One wording, every language    | `overrides["app.navbar.browse"].label` | Your literal, verbatim, in all locales. Translation is bypassed entirely. |
-| Different wording per language | `labels["nav.item.browse"]` (Layer 0)  | Your text wherever that key resolves, per catalogue.                      |
+| You want                       | Set                                         | Result                                                                    |
+| ------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------- |
+| One wording, every language    | `overrides["app.navbar.collections"].label` | Your literal, verbatim, in all locales. Translation is bypassed entirely. |
+| Different wording per language | `labels["nav.item.collections"]` (Layer 0)  | Your text wherever that key resolves, per catalogue.                      |
 
 **Setting `label` disables the key for that entry**, deliberately and by design: a manifest
 literal is an instruction to show exactly that string, so it must win. If you set both, `label`
@@ -192,7 +192,7 @@ Find an entry's `labelKey` in `PACKAGED_NAV_ITEMS`; they follow `nav.item.<slug>
 {
   "overrides": {
     "app.navbar.trash": { "visible": false },
-    "app.navbar.browse": { "label": "Repository", "order": 5 },
+    "app.navbar.collections": { "label": "Repository", "order": 5 },
     "app.navbar.administration": { "rule": "app.rules.isAdministrator" }
   }
 }
@@ -208,8 +208,8 @@ Registered by `PACKAGED_NAV_ITEMS` in `libs/shared/extensions/src/lib/nav-items.
 | ------------------------------- | ------------------- | ---------------------- | ----- | ----------------------------------- |
 | `app.navbar.knowledgeDiscovery` | Knowledge Discovery | `/knowledge-discovery` | 10    | —                                   |
 | `app.navbar.dashboard`          | Dashboard           | `/dashboard`           | 20    | —                                   |
-| `app.navbar.browse`             | Browse              | `/browse`              | 30    | —                                   |
-| `app.navbar.browseAdfHx`        | Browse (adf-hx POC) | `/browse-adf-hx`       | 40    | —                                   |
+| `app.navbar.browse`             | Browse              | `/browse`              | 30    | — (`disabled`, see below)           |
+| `app.navbar.browseAdfHx`        | Browse              | `/browse-adf-hx`       | 40    | —                                   |
 | `app.navbar.recentlyViewed`     | Recently viewed     | `/recently-viewed`     | 50    | —                                   |
 | `app.navbar.search`             | Search filters      | `/search`              | 60    | —                                   |
 | `app.navbar.expiredQueue`       | Expired Queue       | `/expired-queue`       | 70    | —                                   |
@@ -221,6 +221,13 @@ Registered by `PACKAGED_NAV_ITEMS` in `libs/shared/extensions/src/lib/nav-items.
 | `app.navbar.clipboard`          | Clipboard           | `/clipboard`           | 130   | —                                   |
 | `app.navbar.trash`              | Trash               | `/trash`               | 140   | —                                   |
 | `app.navbar.administration`     | Administration      | `/administration`      | 150   | `app.rules.hasAdministrationAccess` |
+
+`app.navbar.browse` ships `disabled: true` and is therefore not rendered: `/browse-adf-hx`
+is the browse entry the product offers. The descriptor stays registered because `/browse`
+is still a live route, so it still supplies that page's title. An `overrides` entry cannot
+bring it back — `visible` is the only visibility field there and `disabled` outranks it.
+Restating the ID as a `navbar` slot addition with `"disabled": false` does, which is the
+supported route for a customer who wants both browse surfaces.
 
 **Hiding an entry hides the navigation, not the route.** `{"visible": false}` and a
 denying `rule` both remove the entry from the sidebar; neither removes the route,
@@ -770,8 +777,8 @@ rather than reimplemented, so behaviour matches the upstream documentation.
   "extensions": {
     "$references": ["baseline", "acme"],
     "$layers": {
-      "baseline": { "overrides": { "app.navbar.browseAdfHx": { "visible": false } } },
-      "acme": { "overrides": { "app.navbar.browse": { "label": "Repository" } } }
+      "baseline": { "overrides": { "app.navbar.trash": { "visible": false } } },
+      "acme": { "overrides": { "app.navbar.collections": { "label": "Repository" } } }
     }
   }
 }

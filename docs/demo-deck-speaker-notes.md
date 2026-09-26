@@ -116,15 +116,28 @@ The strongest thing on this slide is not visible, so say it:
 This is the slide that sells Layer 1. Do not undersell it by reading ids.
 
 > "This is not a settings heading. These are the words their users read all day. Browse becomes Claim
-> Files. Collections becomes Policies. Tasks becomes Underwriting Queue. And three entries this
+> Files. Collections becomes Policies. Tasks becomes Underwriting Queue. And two entries this
 > customer has no use for are hidden outright — not greyed out, **gone**."
 
-> "All fifteen packaged navigation entries work this way, addressed by id. The same mechanism renames
-> list columns, so Last Contributor becomes Adjuster."
+> "All fourteen navigation entries we render by default work this way, addressed by id. The same
+> mechanism renames list columns, so Last Contributor becomes Adjuster."
 
-**If asked about translations:** this is not i18n. The `labels` catalogue is a separate mechanism and
-it **cannot** reach navigation — nav labels are literal strings on descriptors. Use
-`overrides.<id>.label`. Getting that wrong is a silent no-op.
+**Fourteen rendered, fifteen registered.** `PACKAGED_NAV_ITEMS` still carries the legacy
+`app.navbar.browse`, shipped `disabled` so a single Browse entry reaches the user. It is
+addressable like any other id, and restorable — as a `navbar` slot entry restating the id with
+`"disabled": false`, not an `overrides` entry. Say "fourteen by default", not "fourteen packaged",
+if a technical audience is counting.
+
+**If asked about translations:** both routes work, and which one you want depends on the answer to
+"one wording, or one per language?".
+
+- `overrides.<id>.label` — your literal, verbatim, in every locale. Translation is bypassed.
+- Layer 0 `labels["nav.item.<slug>"]` — per-locale text, resolved through the descriptor's
+  `labelKey`. The manifest's `labels` layer last over the shipped catalogue
+  (`app-translate-loader.ts`), and the shell resolves `labelKey` before falling back to `label`.
+
+Setting **both** is the trap: the override wins outright and the `labels` entry is silently inert.
+That precedence is documented in `docs/extension-reference.md`.
 
 ---
 

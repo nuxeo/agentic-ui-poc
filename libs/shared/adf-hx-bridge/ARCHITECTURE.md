@@ -10,7 +10,7 @@ Parallel browse experience that uses Hyland **HxCS / adf-hx** APIs and UI (`hxp-
 
 ```
 apps/nuxeo-ui (shell)
-  ├── Platform nav: Browse | Browse (adf-hx POC)
+  ├── Platform nav: Browse  (the adf-hx entry; the production one ships disabled)
   ├── Nav drawer: hxp-browse-nav-drawer (adf-hx) OR Material tree (production)
   └── Router outlet
         ├── /#/browse/...           → BrowseComponent (production)
@@ -71,7 +71,7 @@ Helpers (in `@nuxeo-satori/platform/nuxeo-client`):
 - `parseBrowseNuxeoPathFromRouterUrl()` / `parseAdfHxBrowsePathFromRouterUrl()`
 - `BROWSE_RETURN_MODE_PARAM` (`browseReturn=adf-hx`) — document detail returns to adf-hx when opened from POC
 
-**Shell path sync:** Clicking **Browse** vs **Browse (adf-hx POC)** in platform nav copies the current folder path across modes (`app-shell.component.ts`).
+**Shell path sync:** Clicking between the two browse entries in platform nav copies the current folder path across modes (`app-shell.component.ts`). Only the adf-hx entry is rendered now — `app.navbar.browse` ships `disabled` — so this path runs only where a manifest has restored the production entry, and on a direct `/#/browse` URL.
 
 ---
 
