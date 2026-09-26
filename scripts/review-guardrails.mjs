@@ -1210,47 +1210,82 @@ function checkNoHardcodedUiText() {
    * themselves in, and nothing reported it. A blanket rule cannot distinguish the file someone
    * checked from the file that merely shares its ending.
    *
-   * So the two properties the suffix was standing in for are checked per file, and the check
+   * So the properties the suffix was standing in for are checked per file, and the check
    * FAILS CLOSED — an unproven fixture is held to the same standard as any shipped template:
    *
-   *   1. exactly one `*.spec.ts` names it, so it is a fixture rather than shared markup, and
-   *   2. no `project.json`, `angular.json` or asset glob names it, so nothing serves it.
+   *   1. exactly one `*.spec.ts` names it, so it is a fixture rather than shared markup;
+   *   2. NO non-spec source names it, so no shipped component compiles it; and
+   *   3. it lies under no `assets` input directory and is named by no build config.
    *
    * Only then is its text test DATA — markup chosen to reproduce a rendering bug, where keying
    * the strings would make the fixture describe something other than the case under test.
+   *
+   * (2) and the directory half of (3) close two holes review found in the first version of this
+   * function, which compared basenames and nothing else. A production component doing
+   * `templateUrl: './thing.host.html'` was not a `.spec.ts` and not a config, so it did not
+   * count against the fixture at all — a shipped template could hold the proof of its own
+   * exemption. And an `assets` entry of `{ "glob": "**\/*", "input": "…" }` serves a whole
+   * directory without ever writing a basename; every asset entry in this repository is of
+   * exactly that form, so the basename scan could not have detected any of them. Both are
+   * checked structurally now rather than textually.
    *
    * Adding a fixture is still easy; adding one that is *served* no longer silently disables the
    * guard for it.
    */
   const provenFixtures = (() => {
     const isFixtureName = (path) => /\.(?:host|spec)\.html$/.test(path);
-    const fixtures = [
-      ...walk('apps', isFixtureName),
-      ...walk('libs', isFixtureName),
-    ];
+    const fixtures = [...walk('apps', isFixtureName), ...walk('libs', isFixtureName)];
     if (fixtures.length === 0) return new Set();
 
-    const specBodies = [
-      ...walk('apps', (path) => path.endsWith('.spec.ts')),
-      ...walk('libs', (path) => path.endsWith('.spec.ts')),
-    ].map(read);
+    const sources = [
+      ...walk('apps', (path) => path.endsWith('.ts')),
+      ...walk('libs', (path) => path.endsWith('.ts')),
+    ].map((path) => ({ isSpec: /\.spec\.ts$/.test(path), body: read(path) }));
 
-    // `angular.json` at the root plus every project config: between them they hold every
-    // `assets` glob and `templateUrl`-adjacent build input that could cause a file to be served.
-    const configBodies = [
+    const configPaths = [
       ...walk('apps', (path) => /(?:^|\/)(?:project|angular)\.json$/.test(path)),
       ...walk('libs', (path) => /(?:^|\/)(?:project|angular)\.json$/.test(path)),
       ...(fileExists('angular.json') ? ['angular.json'] : []),
-    ].map(read);
+    ];
+    const configBodies = configPaths.map(read);
+
+    /**
+     * Every directory a build copies wholesale, from any `{ glob, input }` asset entry.
+     *
+     * The glob itself is deliberately not interpreted: `**\/*` is the only form here, and
+     * anything narrower is still a pattern this script would have to implement to rule out. The
+     * directory is the part that decides, so a fixture inside a copied tree is unproven whatever
+     * the glob says.
+     */
+    const assetInputs = [];
+    for (const body of configBodies) {
+      let parsed;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        // A config this script cannot parse cannot be cleared, so nothing is proven from it.
+        return new Set();
+      }
+      const visit = (node) => {
+        if (Array.isArray(node)) return node.forEach(visit);
+        if (!node || typeof node !== 'object') return;
+        if (typeof node.input === 'string' && typeof node.glob === 'string') {
+          assetInputs.push(node.input.replace(/\/+$/, ''));
+        }
+        Object.values(node).forEach(visit);
+      };
+      visit(parsed);
+    }
 
     const proven = new Set();
     for (const fixture of fixtures) {
       const name = fixture.slice(fixture.lastIndexOf('/') + 1);
-      // Matched on the basename, because a spec names its fixture relative to itself
-      // (`./thing.host.html`) and a build config would name it by a path or a glob. A basename
-      // hit in either place is enough to make the decision, and counting them is the point.
-      if (specBodies.filter((body) => body.includes(name)).length !== 1) continue;
+      const naming = sources.filter(({ body }) => body.includes(name));
+      // Exactly one spec, and nothing else at all.
+      if (naming.filter(({ isSpec }) => isSpec).length !== 1) continue;
+      if (naming.some(({ isSpec }) => !isSpec)) continue;
       if (configBodies.some((body) => body.includes(name))) continue;
+      if (assetInputs.some((input) => input !== '' && fixture.startsWith(`${input}/`))) continue;
       proven.add(fixture);
     }
     return proven;

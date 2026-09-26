@@ -116,6 +116,22 @@ set -euo pipefail
 #   2 - Environment issue (no Nuxeo, preflight failed, no results file)
 
 MIN_FAILURES="${1:-5}"
+# Validated, because the whole control is the comparison against this number. `0` — or a
+# negative, or a word — made `FAILURE_COUNT >= MIN_FAILURES` true for every possible run,
+# so the control reported success while proving nothing, and `-- 0` was enough to disable it
+# by accident. A threshold of at least 1 is the minimum that can fail.
+case "$MIN_FAILURES" in
+  '' | *[!0-9]*)
+    echo "ERROR: min-expected-failures must be a positive integer, got '${MIN_FAILURES}'"
+    exit 2
+    ;;
+esac
+if [ "$MIN_FAILURES" -lt 1 ]; then
+  echo "ERROR: min-expected-failures must be at least 1, got '${MIN_FAILURES}'"
+  echo "  A threshold of 0 makes this control unconditional: it would pass on a run in which"
+  echo "  nothing failed, which is the opposite of what it exists to detect."
+  exit 2
+fi
 # Written by the `json` reporter registered in apps/nuxeo-ui-e2e/playwright.config.ts.
 RESULTS_FILE="dist/e2e/results.json"
 # Written by assertion-failure-reporter.ts, registered beside it. This is what the count
