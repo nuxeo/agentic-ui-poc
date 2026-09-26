@@ -785,10 +785,27 @@ describe('assertUntruncated — the data root is where the harness thinks it is'
     expect(rejection().message).toMatch(/cleanup {4}not attempted/);
   });
 
-  it('accepts a response that carried no path rather than inventing a failure', () => {
-    // `null` means the creation response had no usable `path`, which is a different problem
-    // and is already fatal downstream. Guessing here would turn it into a misleading one.
-    expect(() => assertUntruncated(requested, null)).not.toThrow();
+  it('fails closed when the response carried no path at all', () => {
+    // This spec asserted the opposite — that `null` is accepted, because a missing `path` is
+    // "a different problem, already fatal downstream". It is fatal to the tests, which all
+    // 404; it is not fatal to the leak, and the leak is what this guard is for. With `actual`
+    // unknown, `reclaimMisplacedDataRoot` is never attempted, `afterAll` deletes the requested
+    // path, that read 404s, and `deleteDataRoot` calls a 404 "already deleted". The workspace
+    // survives the run and nothing says so — which is the vacuity this branch exists to remove,
+    // sitting inside the guard written to remove it.
+    let error: Error | null = null;
+    try {
+      assertUntruncated(requested, null);
+    } catch (e) {
+      error = e as Error;
+    }
+
+    expect(error, 'a response with no path must not be accepted as confirmation').not.toBeNull();
+    expect(error?.message).toMatch(/did not report where it created the data root/);
+    expect(error?.message).toMatch(/carried no usable `path`/);
+    // It must not print "created null", and must not claim a reclaim it could not attempt.
+    expect(error?.message).not.toMatch(/created {4}null/);
+    expect(error?.message).toMatch(/Nothing could be reclaimed automatically/);
   });
 });
 

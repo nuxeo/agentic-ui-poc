@@ -176,8 +176,38 @@ export function assertUntruncated(
   actual: string | null,
   reclaimed: string | null = null,
 ): void {
-  if (actual === null || actual === expected) return;
+  if (actual === expected) return;
   const name = expected.split('/').pop() ?? expected;
+
+  // A response that carried no usable `path` fails CLOSED, and used to return here as though
+  // it had confirmed something.
+  //
+  // The reasoning it replaces was that a missing `path` is "a different problem, already fatal
+  // downstream". Fatal to the *tests*, yes — every read 404s. But this guard is not here to make
+  // tests fail, it is here to stop the workspace being left behind, and on this path it did not:
+  // `reclaimMisplacedDataRoot` is only attempted when `actual` is known, `afterAll` deletes the
+  // *requested* path, that read 404s, and `deleteDataRoot` reads the 404 as "already deleted".
+  // Green run, workspace still on the server — the exact leak described above, reached by the
+  // one route the guard waved through.
+  //
+  // Nor is stopping a guess. Nuxeo's create response does carry `path` (verified against the
+  // running server: `/default-domain/workspaces/<name>`), so `null` means the API shape changed
+  // or the answer was not understood — which is precisely when a containment check must not
+  // assume containment.
+  if (actual === null) {
+    throw new Error(
+      `Nuxeo did not report where it created the data root:\n` +
+        `    requested  ${expected}\n` +
+        `    created    unknown — the creation response carried no usable \`path\`\n\n` +
+        `  Containment cannot be confirmed, so this fails closed rather than assuming the\n` +
+        `  workspace landed where it was asked for. If it did not, every read of the requested\n` +
+        `  path 404s and cleanup reads that 404 as "already deleted", so the run would go green\n` +
+        `  and leave the workspace on the server for good.\n\n` +
+        `  Nothing could be reclaimed automatically, because the server did not say where to\n` +
+        `  look. Check for a stray workspace near "${name}" by hand.`,
+    );
+  }
+
   throw new Error(
     `Nuxeo created the data root at a different path than requested:\n` +
       `    requested  ${expected}\n` +
