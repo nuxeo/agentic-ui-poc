@@ -38,8 +38,10 @@
     background: var(--hxp-surface-container-low);
   }
 
+  // Keeps the primary fill: the rule above would otherwise swap in the pale surface under white
+  // text. An 8% on-primary tint, as production's Material flat button shows on hover.
   &--primary:hover {
-    filter: brightness(1.05);
+    background: color-mix(in srgb, var(--hxp-primary) 92%, var(--hxp-on-primary));
   }
 }
 

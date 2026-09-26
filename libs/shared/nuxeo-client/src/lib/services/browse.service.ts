@@ -305,10 +305,7 @@ export class BrowseService {
     if (parent.type === 'Domain') {
       const safePath = parent.path?.replace(/\/+$/, '') ?? '';
       return this.getChildren(safePath, pageSize).pipe(
-        map((list) => ({
-          ...list,
-          entries: (list.entries ?? []).filter((doc) => isFolderishDocument(doc)),
-        })),
+        map((list) => this.keepEntries(list, (doc) => isFolderishDocument(doc))),
       );
     }
     // User workspaces expose Favorites (type Favorites) via @children; tree_children omits it
@@ -316,13 +313,64 @@ export class BrowseService {
     if (parent.type === 'Workspace' && isUserWorkspacePath(parent.path ?? '')) {
       const safePath = parent.path?.replace(/\/+$/, '') ?? '';
       return this.getChildren(safePath, pageSize).pipe(
-        map((list) => ({
-          ...list,
-          entries: (list.entries ?? []).filter((doc) => isBrowsableNavNode(doc)),
-        })),
+        map((list) => this.keepEntries(list, (doc) => isBrowsableNavNode(doc))),
       );
     }
     return this.getTreeChildrenWithPathFallback(parent, pageSize);
+  }
+
+  /**
+   * Which of these folders contain at least one folder the browse tree would list.
+   *
+   * One query for a whole tree level, matching the `tree_children` page provider's own filter, so
+   * a tree can drop the expand arrow from folders that hold only files. `null` when the answer is
+   * incomplete — more matches than one page — so a caller keeps the arrow rather than hiding a
+   * branch that exists.
+   */
+  getFolderIdsWithSubfolders(
+    parentUids: readonly string[],
+  ): Observable<ReadonlySet<string> | null> {
+    if (parentUids.length === 0) {
+      return of(new Set<string>());
+    }
+    const ids = parentUids.map((uid) => `'${escapeNxqlLiteral(uid)}'`).join(', ');
+    const query =
+      `SELECT * FROM Document WHERE ecm:parentId IN (${ids}) ` +
+      `AND ecm:mixinType = 'Folderish' AND ecm:mixinType != 'HiddenInNavigation' ` +
+      `AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0`;
+    return this.api
+      .nxqlSearch(query, BrowseService.SUBFOLDER_PROBE_PAGE_SIZE, { properties: 'dublincore' })
+      .pipe(
+        map((list) =>
+          (list as { isNextPageAvailable?: boolean }).isNextPageAvailable
+            ? null
+            : new Set((list.entries ?? []).map((doc) => doc.parentRef ?? '').filter(Boolean)),
+        ),
+      );
+  }
+
+  private static readonly SUBFOLDER_PROBE_PAGE_SIZE = 1000;
+
+  /**
+   * Filters a page of children and keeps its counts consistent with what is kept.
+   *
+   * Nuxeo's `totalSize` and `resultsCount` count every child, so passing them through beside a
+   * filtered list showed "1–3 of 5" over three rows. The filtered length is the total only when
+   * this page was the whole folder; beyond that the kept count of later pages is unknown.
+   *
+   * Nuxeo reports a count it declined to compute as a negative number, so a negative or missing
+   * count stays unknown even without a next page, rather than passing as a complete total.
+   */
+  private keepEntries(
+    list: NuxeoDocumentList,
+    keep: (doc: NuxeoDocument) => boolean,
+  ): NuxeoDocumentList {
+    const entries = (list.entries ?? []).filter(keep);
+    const hasNextPage = (list as { isNextPageAvailable?: boolean }).isNextPageAvailable === true;
+    const counted = (count: number | undefined) => typeof count === 'number' && count >= 0;
+    const complete = !hasNextPage && counted(list.totalSize) && counted(list.resultsCount);
+    const total = complete ? entries.length : -2;
+    return { ...list, entries, totalSize: total, resultsCount: total };
   }
 
   private getTreeChildrenWithPathFallback(

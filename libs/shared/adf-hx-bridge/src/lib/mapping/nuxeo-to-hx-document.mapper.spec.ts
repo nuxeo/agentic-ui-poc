@@ -168,6 +168,23 @@ describe('nuxeo-to-hx-document.mapper', () => {
       });
     });
 
+    it("gives the main file as HxPR's sysfile_blob, which the viewer takes its MIME type from", () => {
+      // Without it upstream's viewer found no MIME type, treated every file as unsupported and
+      // showed "Couldn't load preview".
+      expect(mapNuxeoDocumentToHx(invoice)['sysfile_blob']).toEqual({
+        filename: 'invoice.pdf',
+        mimeType: 'application/pdf',
+        length: 84213,
+      });
+    });
+
+    it('leaves sysfile_blob unset on a document with no main file', () => {
+      // Upstream's `hasBlob()` is `!!document.sysfile_blob`, so an empty object would offer a
+      // download and a preview for a note or a folder.
+      const note = { ...invoice, properties: { 'dc:title': 'Note' } } as typeof invoice;
+      expect('sysfile_blob' in mapNuxeoDocumentToHx(note)).toBe(false);
+    });
+
     it('drops the blob download URL rather than showing it as metadata', () => {
       const blob = mapNuxeoDocumentToHx(invoice)['file_content'] as Record<string, unknown>;
       expect('data' in blob).toBe(false);

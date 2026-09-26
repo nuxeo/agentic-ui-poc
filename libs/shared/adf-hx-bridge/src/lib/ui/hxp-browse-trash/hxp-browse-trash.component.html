@@ -3,6 +3,14 @@
     <div class="hxp-trash__loading">
       <hxp-spinner diameter="24" />
     </div>
+  } @else if (error()) {
+    <div class="hxp-trash__empty">
+      <hxp-icon name="error-outline" size="lg" [decorative]="true" />
+      <p role="alert">{{ 'hxp.hxp-browse-trash.failed-to-load' | translate }}</p>
+      <button type="button" class="hxp-trash__restore" (click)="retry.emit()">
+        {{ 'hxp.hxp-browse-trash.retry' | translate }}
+      </button>
+    </div>
   } @else if (documents().length === 0) {
     <div class="hxp-trash__empty">
       <hxp-icon name="delete-outline" size="lg" [decorative]="true" />

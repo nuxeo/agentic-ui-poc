@@ -62,12 +62,32 @@ const PANELS = [
     root: 'lib-browse',
     expect: 'Workspaces',
     callouts: [
-      { selector: 'sat-breadcrumbs', label: 'sat-breadcrumbs', note: 'Satori breadcrumbs — root reads "Root"' },
+      {
+        selector: 'sat-breadcrumbs',
+        label: 'sat-breadcrumbs',
+        note: 'Satori breadcrumbs — root reads "Root"',
+      },
       // mat-tab-header, not mat-tab-group: the group's box includes the whole tab body.
-      { selector: 'lib-browse mat-tab-header', label: 'mat-tab-header', note: 'Angular Material tab strip' },
-      { selector: 'lib-browse mat-form-field', label: 'mat-form-field', note: 'Material outlined filters with a date-range picker' },
-      { selector: 'lib-browse .mat-mdc-icon-button', label: 'header actions', note: 'Upload, edit, delete, download — all live' },
-      { noteOnly: true, label: 'list rows', note: 'Plain divs with mat-checkbox and sat-avatar — no table component to point at' },
+      {
+        selector: 'lib-browse mat-tab-header',
+        label: 'mat-tab-header',
+        note: 'Angular Material tab strip',
+      },
+      {
+        selector: 'lib-browse mat-form-field',
+        label: 'mat-form-field',
+        note: 'Material outlined filters with a date-range picker',
+      },
+      {
+        selector: 'lib-browse .mat-mdc-icon-button',
+        label: 'header actions',
+        note: 'Upload, edit, delete, download — all live',
+      },
+      {
+        noteOnly: true,
+        label: 'list rows',
+        note: 'Plain divs with mat-checkbox and sat-avatar — no table component to point at',
+      },
     ],
   },
   {
@@ -79,11 +99,31 @@ const PANELS = [
     root: 'lib-browse-adf-hx-poc',
     expect: 'Workspaces',
     callouts: [
-      { selector: 'hxp-breadcrumb', label: 'hxp-breadcrumb', note: 'Root reads "Repository" — a synthetic root the bridge fabricates' },
-      { selector: 'hxp-browse-tabs', label: 'hxp-browse-tabs', note: 'Native role=tab buttons, no Material' },
-      { selector: 'hxp-browse-toolbar', label: 'hxp-browse-toolbar', note: 'Native inputs and browser date pickers; filters the 50 loaded rows in memory' },
-      { selector: 'hxp-folder-header', label: 'hxp-folder-header', note: 'Icon-only actions — every write shows a Scope A notice' },
-      { selector: 'hxp-document-list', label: 'hxp-document-list', note: 'Real Nuxeo children through the bridge DOCUMENT_API / QUERY_API ports' },
+      {
+        selector: 'hxp-ui-breadcrumb',
+        label: 'hxp-ui-breadcrumb',
+        note: 'Ancestors plus the current folder, which the page supplies; upstream renders the list',
+      },
+      {
+        selector: 'hxp-browse-tabs',
+        label: 'hxp-browse-tabs',
+        note: 'Native role=tab buttons, no Material',
+      },
+      {
+        selector: 'hxp-browse-toolbar',
+        label: 'hxp-browse-toolbar',
+        note: 'Native inputs and browser date pickers; filters the 50 loaded rows in memory',
+      },
+      {
+        selector: 'hxp-folder-header',
+        label: 'hxp-folder-header',
+        note: 'Create/Import opens the shared dialog; the other writes show a Scope A notice',
+      },
+      {
+        selector: 'hxp-document-list',
+        label: 'hxp-document-list',
+        note: 'Real Nuxeo children through the bridge DOCUMENT_API / QUERY_API ports',
+      },
     ],
   },
 ];
@@ -93,7 +133,11 @@ const COMPARISON = [
   ['Component stack', 'Satori + Angular Material', 'Hand-written hxp-* (no adf-hx package yet)'],
   ['Breadcrumb root', 'Root', 'Repository (synthetic, fabricated by the bridge)'],
   ['Filter controls', 'Material outlined fields', 'Native HTML inputs, browser date pickers'],
-  ['Write actions', 'Live (Create / Import, edit, delete)', 'Rendered but stubbed — show a Scope A notice'],
+  [
+    'Write actions',
+    'Live (Create / Import, edit, delete)',
+    'Create / Import via the shared dialog; drive, edit, delete, share and export stubbed',
+  ],
   ['Data source', 'BrowseService → Nuxeo REST', 'Bridge ports → BrowseService → Nuxeo REST'],
   ['Rows returned', '6', '6 — identical data'],
   ['Paging', 'Server paged', 'Fixed 50, first page only, no pager'],
@@ -299,5 +343,8 @@ function renderHtml(capturedAt) {
 
 /** @param {string} s */
 function esc(s) {
-  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  return String(s).replace(
+    /[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+  );
 }
