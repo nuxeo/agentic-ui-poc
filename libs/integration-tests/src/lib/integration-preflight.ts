@@ -303,6 +303,21 @@ export async function runPreflightChecks(
     satisfied.push(`${targetHost} is named in ${ALLOWED_HOSTS_ENV}`);
   }
 
+  // The refusal has to RETURN, not merely be recorded.
+  //
+  // Check 2 sends `Authorization: Basic <user:pass>` to `nuxeoUrl`. Accumulating the miss above
+  // and falling through would disclose the credentials to the very host the allowlist just
+  // refused — before refusing it. The exit code was right the whole time, which is what made
+  // this hard to see: the run did stop, just one request too late. A guard whose purpose is to
+  // avoid touching a server it should not touch cannot first ask that server a question.
+  //
+  // `hostAllowed` is false for an unusable URL as well as for an unlisted host, so the
+  // permitted path is the only one that reaches the network. That is deliberate: the default is
+  // to send nothing.
+  if (!hostAllowed) {
+    return { ok: false, problems, satisfied };
+  }
+
   // Check 2: Nuxeo is reachable
   let nuxeoReachable = false;
   try {

@@ -228,6 +228,11 @@ describe('runPreflightChecks — reachability', () => {
     process.env['NUXEO_USER'] = TEST_USER;
     process.env['NUXEO_PASS'] = TEST_PASSWORD;
     process.env['NUXEO_URL'] = 'http://elsewhere:8080';
+    // Named, because the subject here is which URL gets requested and the preflight now sends
+    // nothing at all to a host it has not been given. Without this the spec asserted the
+    // resolved URL by observing a request to an unlisted server, which is the defect fixed
+    // alongside it.
+    process.env['INTEGRATION_ALLOWED_HOSTS'] = 'elsewhere:8080';
     const fetchMock = stubFetch({ status: 200 }, withDocuments(1));
 
     const result = await runPreflightChecks();
@@ -652,18 +657,71 @@ describe('runPreflightChecks — the host allowlist', () => {
     expect(result.problems.join('\n')).not.toMatch(/ALLOWED_HOSTS=$/m);
   });
 
-  it('collects every problem instead of stopping at the first', async () => {
-    // Two checks, two independent failures. Reporting one at a time turns a single fix-up into
-    // two runs, and hides that the server is absent behind the allowlist complaint.
+  it('sends NO request at all to a host that is not named', async () => {
+    // The assertion that the exit code cannot make. Refusing after the request still discloses
+    // `Authorization: Basic <user:pass>` to a server the allowlist just rejected, and against a
+    // production target that disclosure is the whole of the damage — the non-zero exit arrives
+    // afterwards and repairs nothing. So the claim under test is about the network, not the
+    // verdict: the refused host is never contacted.
     useUnlistedTarget();
-    stubFetch(new Error('connect ECONNREFUSED'));
+    const fetchMock = stubFetch({ status: 200 }, withDocuments(1));
 
     const result = await runPreflightChecks();
 
-    expect(result.problems).toHaveLength(2);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.ok).toBe(false);
     expect(result.problems[0]).toMatch(/not named in INTEGRATION_ALLOWED_HOSTS/);
-    expect(result.problems[1]).toMatch(/Cannot reach Nuxeo/);
+    // Nothing may be recorded as satisfied either: reaching a server is the only way to earn an
+    // entry here, so a non-empty list would mean a check ran that should not have.
     expect(result.satisfied).toEqual([]);
+  });
+
+  it('sends the credential-bearing request once the host IS named', async () => {
+    // The other half, and the one that stops the test above from passing on a preflight that
+    // never calls `fetch` under any condition at all. Same credentials, same URL as the refused
+    // case in spirit — only the allowlist moves, and the request appears.
+    useAllowedTarget();
+    const fetchMock = stubFetch({ status: 200 }, withDocuments(1));
+
+    const result = await runPreflightChecks();
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(fetchMock.mock.calls[0][0]).toBe('http://nuxeo.test/nuxeo/api/v1/repo/default/path/');
+    // Naming the header explicitly: this is the thing withheld from an unlisted host, so the
+    // spec should say that it is what travels to a listed one.
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toMatch(/^Basic /);
+    expect(result.ok).toBe(true);
+  });
+
+  it('stops at the allowlist, and keeps collecting problems past it', async () => {
+    // This replaces a spec that asserted the opposite — that an unlisted target reported BOTH
+    // the miss and `Cannot reach Nuxeo`, on the reasoning that one problem at a time turns a
+    // single fix-up into two runs. That reasoning was sound about diagnostics and wrong about
+    // this boundary: the second problem could only be discovered by making the request the
+    // guard exists to prevent, so the convenience was being paid for in disclosed credentials.
+    //
+    // Collecting more than one problem is still the behaviour everywhere the target is
+    // permitted, which is what the second half here holds onto.
+    useUnlistedTarget();
+    stubFetch(new Error('connect ECONNREFUSED'));
+
+    const refused = await runPreflightChecks();
+
+    expect(refused.problems).toHaveLength(1);
+    expect(refused.problems[0]).toMatch(/not named in INTEGRATION_ALLOWED_HOSTS/);
+    expect(refused.problems.join('\n')).not.toMatch(/Cannot reach Nuxeo/);
+
+    vi.unstubAllGlobals();
+
+    // Permitted, unreachable: the reachability problem is reported, proving the early return
+    // above is scoped to the allowlist and has not turned the rest into a first-failure exit.
+    useAllowedTarget();
+    stubFetch(new Error('connect ECONNREFUSED'));
+
+    const permitted = await runPreflightChecks();
+
+    expect(permitted.problems[0]).toMatch(/Cannot reach Nuxeo/);
+    expect(permitted.satisfied).toContain('nuxeo.test is named in INTEGRATION_ALLOWED_HOSTS');
   });
 });
 
@@ -787,7 +845,10 @@ describe('checkIntegrationPreconditions', () => {
 
     const error = await rejection(checkIntegrationPreconditions());
 
-    expect(error.message).toMatch(/2 problem\(s\)/);
+    // One, not two: the allowlist miss returns before the reachability check, so the queued
+    // ECONNREFUSED is never delivered. The subject of this spec is the omitted `Satisfied:`
+    // line, and an unlisted host still satisfies nothing, so it remains exercised.
+    expect(error.message).toMatch(/1 problem\(s\)/);
     expect(error.message).not.toMatch(/Satisfied:/);
   });
 });
