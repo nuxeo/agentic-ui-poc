@@ -1,5 +1,7 @@
 import { test as base, expect, request, type APIRequestContext, type Page } from '@playwright/test';
 
+import { nuxeoCredentials } from './nuxeo-credentials';
+
 /**
  * The session shape `AuthService` writes after a successful sign-in.
  *
@@ -80,31 +82,13 @@ export const E2E_BASE_URL = process.env['E2E_BASE_URL'] ?? 'http://localhost:420
 /**
  * Nuxeo credentials from the environment, with **no** fallback.
  *
- * `.cursor/rules/security.mdc`: "NEVER use Basic auth with hardcoded fallback defaults". Several
- * callers in this directory each carried a `??` fallback on both the user and the password — a
- * working credential pair compiled into the repository. This is the one place either value is
- * read, so there is no longer anywhere for such a fallback to live.
- *
- * Throwing is the point. A default that happens to be right on a developer's Docker is a
- * default that is silently wrong everywhere else, and the failure it produces there is an
- * unexplained empty listing rather than "you did not set NUXEO_USER".
- *
- * The message names the variables and nothing else. Spelling the discouraged pair out in the
- * prose recreated the very string the rule exists to keep out of source — a credential does not
- * stop being one for being quoted inside its own warning.
+ * Re-exported from `./nuxeo-credentials` rather than defined here. The docblock that stood in
+ * this place claimed this file was "the one place either value is read"; review showed it was
+ * not — `playwright.config.ts` read both with its own `??` fallback pair — and a config cannot
+ * import this module without evaluating `base.extend(...)` at config-load time. See
+ * `nuxeo-credentials.ts` for why the helper is its own module.
  */
-export function nuxeoCredentials(): { username: string; password: string } {
-  const username = process.env['NUXEO_USER'];
-  const password = process.env['NUXEO_PASS'];
-  if (!username || !password) {
-    throw new Error(
-      'NUXEO_USER and NUXEO_PASS must both be set to run the e2e API helpers.\n' +
-        '  There is deliberately no default, because a default that suits one instance is wrong\n' +
-        '  on every other and embeds a usable credential in the repository.',
-    );
-  }
-  return { username, password };
-}
+export { nuxeoCredentials };
 
 /**
  * An authenticated request context against the served app, which proxies `/nuxeo` onward.
