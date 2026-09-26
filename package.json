@@ -43,6 +43,7 @@
     "a11y": "node scripts/a11y-scan.mjs",
     "a11y:all": "node scripts/a11y-scan.mjs --all",
     "a11y:baseline": "node scripts/a11y-scan.mjs --update-baseline",
+    "a11y:scan": "node a11y/run.mjs",
     "sonar:scan": "sonar-scanner",
     "sonar:scan:local": "npm run test -- --coverage && sonar-scanner",
     "review:pre-pr": "node scripts/pre-pr-review.mjs",
