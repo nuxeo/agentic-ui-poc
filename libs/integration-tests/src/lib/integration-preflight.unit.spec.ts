@@ -1107,7 +1107,7 @@ describe('teardownDataRoot — only a run that created the root may delete it', 
     expect(urls[0]).toBe(`http://nuxeo.test/nuxeo/api/v1/path${DATA_ROOT}`);
     // Authenticated, which is precisely what is withheld in the two cases above.
     expect(
-      (fetchMock.mock.calls[0][1] as { headers: Record<string, string> }).headers.Authorization,
+      (fetchMock.mock.calls[0][1] as { headers: Record<string, string> }).headers['Authorization'],
     ).toBe('Basic redacted');
   });
 });
