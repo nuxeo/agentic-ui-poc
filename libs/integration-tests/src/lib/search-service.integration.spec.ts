@@ -415,30 +415,43 @@ describe('SearchService Integration Tests', () => {
       const url = `${harness.nuxeoUrl}/nuxeo/api/v1/id/${savedSearchId}`;
       const headers = { Authorization: harness.auth };
 
+      /**
+       * A leak THROWS from here, rather than being reported and left green.
+       *
+       * The first version of this logged the failure and returned, reasoning that an exception
+       * in teardown would replace the real failure with a secondary one. Review pointed out
+       * that it converts a detected cleanup failure into a green run, and it is right — and it
+       * is also inconsistent with `deleteDataRoot` in the harness, which throws for this exact
+       * situation and whose docblock says why: "A cleanup failure is therefore the loudest thing
+       * in the file, not the quietest." The masking worry does not survive contact with Vitest
+       * either; a failing `afterAll` is reported as a suite error *beside* the failing test, not
+       * instead of it.
+       */
+      const leaked = (detail: string) =>
+        new Error(
+          `[search-integration] saved search ${savedSearchId} was not removed: ${detail}\n` +
+            `  It is per-user state outside the data root, so the harness cannot reclaim it and\n` +
+            `  a later run's "can list saved searches" reads the same user's list. Delete it by\n` +
+            `  hand before the next run.`,
+        );
+
+      let after: number;
       try {
         // 404 here is the normal outcome on a fully passing suite: the delete test removed it.
         if ((await fetch(url, { headers })).status === 404) return;
-
         await fetch(url, { method: 'DELETE', headers });
-
         // A DELETE answering 2xx is Nuxeo accepting the call, not evidence it is gone.
-        const after = (await fetch(url, { headers })).status;
-        if (after === 404) {
-          console.log(`[search-integration] teardown removed saved search ${savedSearchId}`);
-        } else {
-          console.error(
-            `[search-integration] teardown FAILED to remove saved search ${savedSearchId} ` +
-              `(still readable, HTTP ${after}) — delete it by hand`,
-          );
-        }
+        after = (await fetch(url, { headers })).status;
       } catch (error) {
-        // Reported, never thrown: an exception here would replace the real failure with a
-        // teardown one. Named so an operator can remove it by hand.
-        console.error(
-          `[search-integration] teardown FAILED to remove saved search ${savedSearchId} — ` +
-            `delete it by hand: ${error instanceof Error ? error.message : String(error)}`,
+        throw leaked(
+          `the cleanup request itself failed (${error instanceof Error ? error.message : String(error)})`,
         );
       }
+
+      if (after !== 404) {
+        throw leaked(`it is still readable after the DELETE (HTTP ${after})`);
+      }
+      console.log(`[search-integration] teardown removed saved search ${savedSearchId}`);
     });
 
     it('can create a saved search', async () => {
