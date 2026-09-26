@@ -126,7 +126,9 @@
       "menu": "Menu des paramètres"
     },
     "test": {
-      "platform-nav-item": "Parcourir"
+      "clipboard-nav-item": "Presse-papiers",
+      "platform-nav-item": "Parcourir",
+      "personal-space-nav-item": "Espace personnel"
     }
   }
 }

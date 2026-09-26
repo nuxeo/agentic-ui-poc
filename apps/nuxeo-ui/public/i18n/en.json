@@ -1520,9 +1520,11 @@
     },
     "hxp-browse-trash": {
       "actions": "Actions",
+      "failed-to-load": "Could not load the trash.",
       "last-modified": "Last Modified",
       "name": "Name",
       "restore": "Restore",
+      "retry": "Retry",
       "trash-is-empty": "Trash is empty",
       "type": "Type"
     },
@@ -2168,7 +2170,9 @@
     },
     "slot-empty": "Content for \"{{ name }}\" will appear here.",
     "test": {
-      "platform-nav-item": "Browse"
+      "clipboard-nav-item": "Clipboard",
+      "platform-nav-item": "Browse",
+      "personal-space-nav-item": "Personal Space"
     }
   },
   "tab": {

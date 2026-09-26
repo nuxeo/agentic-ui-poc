@@ -110,6 +110,10 @@ sat-platform-nav-container.has-selection-topbar {
   height: 42px;
   border-radius: 20px;
   background: #fff;
+  // Pill is always light; foreground tokens stay on the wrapper so label, icon and input
+  // share one scheme regardless of page theme (NXENG-798).
+  --shell-header-search-muted-foreground: #667085;
+  --shell-header-search-foreground: #101828;
 }
 
 .header-search-icon {
@@ -122,7 +126,7 @@ sat-platform-nav-container.has-selection-topbar {
   transform: translateY(-50%);
   z-index: 1;
   pointer-events: none;
-  color: #667085;
+  color: var(--shell-header-search-muted-foreground);
   font-size: 20px;
   width: 20px;
   height: 20px;
@@ -138,7 +142,49 @@ sat-platform-nav-container.has-selection-topbar {
   outline: none;
   background: transparent;
   font-size: 14px;
-  color: #101828;
+  color: var(--shell-header-search-foreground);
+}
+
+// Visible label for the global search field (NXENG-798). Overlays the empty field like a
+// placeholder, then shrinks to a persistent caption above the typed query so the control
+// keeps a visible name in every state (IBM input_label_visible / WCAG 2.5.3).
+//
+.header-search-label {
+  position: absolute;
+  left: 40px;
+  right: 13px;
+  pointer-events: none;
+  color: var(--shell-header-search-muted-foreground);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    top 0.15s ease,
+    transform 0.15s ease,
+    font-size 0.15s ease;
+}
+
+// Empty-field overlay only — filled caption geometry is global in `styles.scss`.
+.header-search-label:not(.header-search-label--caption) {
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+}
+
+// Filled-state caption geometry lives in `styles.scss` (single declaration for app + Karma).
+
+.header-search-input:focus + .header-search-label {
+  top: 6px;
+  transform: none;
+  font-size: 11px;
+  opacity: 1;
+}
+
+.header-search-input-wrap.header-search-filled .header-search-input,
+.header-search-input:focus {
+  padding-top: 15px;
+  padding-bottom: 5px;
 }
 
 // `outline-offset` puts the ring entirely outside the field, with the gap showing what is
@@ -148,6 +194,7 @@ sat-platform-nav-container.has-selection-topbar {
 // against the header across the four packaged themes and both OS schemes: lowest 5.80:1
 // (light theme), highest 10.11:1 (dark theme). Forcing it light dropped it to 2.65:1.
 //
+// NXENG-909 / IBM issue 3350142295 — same control as NXENG-775.
 // Keep this as its own selector. IBM Equal Access's `style_focus_visible` reads the
 // element's `:focus` styles only — it collects `:focus-visible` and `:focus-within` and
 // then never looks at them — and its lookup does not resolve selector lists, so writing
@@ -156,6 +203,15 @@ sat-platform-nav-container.has-selection-topbar {
 // whenever it is focused, mouse included.
 .header-search-input:focus {
   outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+// Same IBM `style_focus_visible` constraints as `.header-search-input:focus` above.
+// Chain Material's own classes so this wins over MDC's `outline-style: none` on icon buttons.
+.header-settings-menu-button.mat-mdc-icon-button:focus {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-color: var(--mat-sys-primary);
   outline-offset: 2px;
 }
 

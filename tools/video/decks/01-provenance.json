@@ -64,7 +64,7 @@
     },
     {
       "eyebrow": "The honest split",
-      "title": "Six upstream components. Fourteen of ours.",
+      "title": "Five upstream components. Thirteen of ours.",
       "lede": "The `Hxp*` prefix is upstream's naming convention, and our bridge components mirror it — so the prefix tells you nothing about origin. What tells you is the import.",
       "blocks": [
         {
@@ -73,24 +73,22 @@
             {
               "series": "adfhx",
               "title": "Imported from @alfresco",
-              "sub": "Genuinely upstream — 6",
+              "sub": "Genuinely upstream — 5",
               "items": [
                 "`HxpDocumentListComponent`",
                 "`HxpDocumentTreeComponent`",
-                "`HxpBreadcrumbComponent`",
-                "`HxpPropertiesSidebarComponent`",
+                "`HxpUiBreadcrumbComponent`",
                 "`HxpUiDocumentViewerComponent`",
-                "`ManageVersionsSidebarComponent`"
+                "`PermissionsManagementPanelComponent`"
               ]
             },
             {
               "series": "ours",
               "title": "Declared in adf-hx-bridge",
-              "sub": "Ours, named to mirror upstream — 14",
+              "sub": "Ours, named to mirror upstream — 13",
               "items": [
                 "`HxpBrowseToolbarComponent`, `HxpBrowseTabsComponent`",
                 "`HxpBrowseNavDrawerComponent`, `HxpBrowsePagerComponent`",
-                "`HxpBrowsePermissionsComponent` — read-only, ours",
                 "`HxpBrowseDetailsPanelComponent`, `HxpBrowseHistoryComponent`",
                 "`HxpBrowseTrashComponent`, `HxpColumnPickerComponent`",
                 "`HxpDocumentCardsComponent`, `HxpFolderHeaderComponent`",
@@ -100,7 +98,7 @@
           ]
         }
       ],
-      "footnote": "Phase 3 reported \"8 of 8 components delivered\". Two of those eight — permissions and search — are **ours**, not adopted: the permissions panel is a read-only display we wrote because the upstream editable one needs write operations that are out of scope, and the search page is our component consuming upstream's list."
+      "footnote": "Phase 3 reported \"8 of 8 components delivered\". Search is **ours**, not adopted: our component consuming upstream's list. Permissions started as a read-only display of ours and is now upstream's own panel. Upstream's Properties and Versions sidebars left this route in NXSAT-290, so its folder tabs match production browse; both panels stay on the document page."
     },
     {
       "eyebrow": "The bridge",

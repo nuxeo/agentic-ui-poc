@@ -420,6 +420,125 @@ describe('BrowseService', () => {
     expect(result.entries).toHaveLength(1);
   });
 
+  describe('getFolderIdsWithSubfolders', () => {
+    it('asks once for every folder, with the tree provider filter, and returns their parents', async () => {
+      const result$ = firstValueFrom(service.getFolderIdsWithSubfolders(['a', "o'b"]));
+      const req = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/search/lang/NXQL/execute');
+      const query = req.request.params.get('query') ?? '';
+      // The id is escaped: an apostrophe in a uid must not end the literal.
+      expect(query).toContain("ecm:parentId IN ('a', 'o\\'b')");
+      expect(query).toContain("ecm:mixinType = 'Folderish'");
+      expect(query).toContain("ecm:mixinType != 'HiddenInNavigation'");
+      expect(query).toContain('ecm:isTrashed = 0');
+      req.flush({ entries: [{ uid: 'x', parentRef: 'a' }], isNextPageAvailable: false });
+
+      expect([...((await result$) ?? [])]).toEqual(['a']);
+    });
+
+    it('answers unknown rather than "none" when there are more matches than one page', async () => {
+      const result$ = firstValueFrom(service.getFolderIdsWithSubfolders(['a', 'b']));
+      httpMock
+        .expectOne((r) => r.url === '/nuxeo/api/v1/search/lang/NXQL/execute')
+        .flush({ entries: [{ uid: 'x', parentRef: 'a' }], isNextPageAvailable: true });
+
+      expect(await result$).toBeNull();
+    });
+
+    it('makes no request for an empty level', async () => {
+      expect((await firstValueFrom(service.getFolderIdsWithSubfolders([])))?.size).toBe(0);
+      httpMock.expectNone(() => true);
+    });
+
+    it('propagates a failed probe', async () => {
+      const result$ = firstValueFrom(service.getFolderIdsWithSubfolders(['a']));
+      httpMock
+        .expectOne((r) => r.url === '/nuxeo/api/v1/search/lang/NXQL/execute')
+        .flush({}, { status: 500, statusText: 'Server Error' });
+      await expect(result$).rejects.toBeDefined();
+    });
+  });
+
+  describe('a domain listing, which keeps only folders', () => {
+    const domain = {
+      uid: 'dom-uid',
+      title: 'Domain',
+      type: 'Domain',
+      path: '/default-domain',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    };
+    const child = (uid: string, type: string, facets: string[] = []) => ({
+      uid,
+      title: uid,
+      type,
+      path: `/default-domain/${uid}`,
+      facets,
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    });
+    const threeFoldersTwoFiles = [
+      child('sections', 'SectionRoot', ['Folderish']),
+      child('templates', 'TemplateRoot', ['Folderish']),
+      child('workspaces', 'WorkspaceRoot', ['Folderish']),
+      child('tour.pdf', 'File'),
+      child('csx.pdf', 'File'),
+    ];
+
+    function flushDomain(children: Record<string, unknown>) {
+      httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain').flush(domain);
+      httpMock
+        .expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain/@children')
+        .flush({
+          entries: threeFoldersTwoFiles,
+          totalSize: 5,
+          resultsCount: 5,
+          currentPageSize: 5,
+          currentPageIndex: 0,
+          numberOfPages: 1,
+          ...children,
+        });
+    }
+
+    it('counts the folders it shows, not every child Nuxeo counted', async () => {
+      // Nuxeo counted five children; three are folders. Passing its 5 through beside three rows
+      // is what showed "1–3 of 5" in the adf-hx pager.
+      const result$ = firstValueFrom(service.getBrowseFolderContents('/default-domain'));
+      flushDomain({ isNextPageAvailable: false });
+
+      const result = await result$;
+      expect(result.entries.map((e) => e.uid)).toEqual(['sections', 'templates', 'workspaces']);
+      expect(result.totalSize).toBe(3);
+    });
+
+    it('reports the total as unknown when Nuxeo has more pages to filter', async () => {
+      const result$ = firstValueFrom(service.getBrowseFolderContents('/default-domain'));
+      flushDomain({ isNextPageAvailable: true });
+
+      const result = await result$;
+      expect(result.entries).toHaveLength(3);
+      expect(result.totalSize).toBeLessThan(0);
+      expect(result.hasNextPage).toBe(true);
+    });
+
+    it('keeps a count Nuxeo declined to compute unknown, even without a next page', async () => {
+      const result$ = firstValueFrom(service.getBrowseFolderContents('/default-domain'));
+      flushDomain({ isNextPageAvailable: false, resultsCount: -2 });
+
+      const result = await result$;
+      expect(result.entries).toHaveLength(3);
+      expect(result.totalSize).toBeLessThan(0);
+    });
+
+    it('keeps the total unknown when Nuxeo reports neither the next-page flag nor a count', async () => {
+      const result$ = firstValueFrom(service.getBrowseFolderContents('/default-domain'));
+      flushDomain({ totalSize: undefined, resultsCount: undefined });
+
+      const result = await result$;
+      expect(result.entries).toHaveLength(3);
+      expect(result.totalSize).toBeLessThan(0);
+    });
+  });
+
   it('getBrowseFolderContents loads Favorites members via default_content_collection', async () => {
     const result$ = firstValueFrom(
       service.getBrowseFolderContents('/default-domain/UserWorkspaces/user-readonly01/Favorites'),

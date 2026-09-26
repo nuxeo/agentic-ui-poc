@@ -5,7 +5,7 @@
     [canWrite]="canWrite()"
     [canRemove]="canRemove()"
     [isSubscribed]="isSubscribed()"
-    (createImport)="showScopeNotice('Create / Import')"
+    (createImport)="openCreateImportDialog()"
     (drive)="showScopeNotice('Nuxeo Drive')"
     (edit)="showScopeNotice('Edit metadata')"
     (deleteDoc)="showScopeNotice('Delete')"
@@ -19,7 +19,7 @@
     <p class="hxp-browse-scope-notice" role="status">{{ notice }}</p>
   }
 
-  <hxp-breadcrumb [document]="currentDocument()" />
+  <hxp-ui-breadcrumb [documents]="breadcrumbDocuments()" />
   <hxp-domain-hint [document]="currentDocument()" [browsePath]="browsePath()" />
 
   <div class="hxp-browse-page__body">
@@ -99,7 +99,7 @@
                 [title]="'browse.browse-adf-hx-poc.manage-columns' | translate"
                 (click)="openColumnPicker()"
               >
-                {{ 'browse.browse-adf-hx-poc.columns' | translate }}
+                <hxp-icon name="tune" size="md" [decorative]="true" />
               </button>
               @if (columnPickerOpen()) {
                 <hxp-column-picker
@@ -109,16 +109,20 @@
                   (dismiss)="closeColumnPicker()"
                 />
               }
-              <hxp-document-list
-                [documents]="filteredDocuments()"
-                [isLoading]="loading() || listLoading()"
-                [schema]="schema()"
-                [multiselect]="true"
-                [contextMenuActions]="false"
-                (rowClicked)="onUpstreamRowClicked($event)"
-                (selectedDocuments)="onSelectedDocuments($event)"
-                (sortingClicked)="onSortingClicked($event)"
-              />
+              <!-- Re-created when the app-wide selection is cleared from the selection bar:
+                   upstream's table keeps its own checkboxes and offers no way to reset them. -->
+              @for (key of [listResetKey()]; track key) {
+                <hxp-document-list
+                  [documents]="filteredDocuments()"
+                  [isLoading]="loading() || listLoading()"
+                  [schema]="schema()"
+                  [multiselect]="true"
+                  [contextMenuActions]="false"
+                  (rowClicked)="onUpstreamRowClicked($event)"
+                  (selectedDocuments)="onSelectedDocuments($event)"
+                  (sortingClicked)="onSortingClicked($event)"
+                />
+              }
               <hxp-browse-pager
                 [pageIndex]="pageIndex()"
                 [pageSize]="pageSize()"
@@ -160,39 +164,6 @@
               </p>
             </div>
           }
-        } @else if (activeTab() === 'properties') {
-          <!-- Same selection guard as Versions, for the same reason: properties belong to a
-               document, and the folder being browsed is not the one the user means. -->
-          @if (selectedDocument(); as target) {
-            <div class="hxp-poc-properties">
-              <hxp-properties-sidebar
-                [document]="target"
-                [editable]="false"
-                (closePropertySidebar)="onCloseProperties()"
-              />
-            </div>
-          } @else {
-            <div class="hxp-poc-empty">
-              <p>{{ 'browse.browse-adf-hx-poc.select-a-single-document-in-the' | translate }}</p>
-            </div>
-          }
-        } @else if (activeTab() === 'versions') {
-          <!-- Upstream's panel takes one document. Without a single selected row there is
-               nothing to show, and saying so beats rendering the browsed folder's versions —
-               a folder always has a "current version" entry, so that would look like a
-               working feature answering the wrong question. -->
-          @if (selectedDocument(); as target) {
-            <div class="hxp-poc-versions">
-              <hxp-manage-versions-sidebar
-                [document]="target"
-                (closeVersionsSidebar)="onCloseVersions()"
-              />
-            </div>
-          } @else {
-            <div class="hxp-poc-empty">
-              <p>{{ 'browse.browse-adf-hx-poc.select-a-single-document-in-the-2' | translate }}</p>
-            </div>
-          }
         } @else if (activeTab() === 'history') {
           <hxp-browse-history
             [loading]="auditLoading()"
@@ -221,10 +192,12 @@
           />
         } @else if (activeTab() === 'trash') {
           <hxp-browse-trash
-            [loading]="trashLoading()"
+            [loading]="trashLoading() || loading()"
+            [error]="trashError()"
             [documents]="trashedDocuments()"
             [thumbnails]="trashThumbnails()"
             (restore)="onRestoreTrash($event)"
+            (retry)="onRetryTrash()"
           />
         }
       </div>
@@ -251,8 +224,9 @@
     }
   </div>
 
-  <!-- Document viewer overlay -->
-  @if (viewerOpen(); as _open) {
+  <!-- Document viewer, opened in a dialog so it renders above the shell rather than inside the
+       sidenav content's stacking context. -->
+  <ng-template #viewerTemplate>
     @if (viewerDocument(); as doc) {
       <div class="hxp-viewer-overlay">
         <hxp-ui-document-viewer
@@ -260,8 +234,24 @@
           [fullScreen]="false"
           [showRightSidebar]="false"
           (closeViewer)="closeViewer()"
-        />
+        >
+          <!-- Upstream swaps adf-core's default toolbar, and its close button, for this slot. -->
+          <ng-template #toolbar>
+            <div class="hxp-viewer-toolbar">
+              <span class="hxp-viewer-toolbar__title">{{ doc.sys_title }}</span>
+              <button
+                type="button"
+                class="hxp-viewer-toolbar__close"
+                [attr.aria-label]="'common.close' | translate"
+                [title]="'common.close' | translate"
+                (click)="closeViewer()"
+              >
+                <hxp-icon name="close" size="md" [decorative]="true" />
+              </button>
+            </div>
+          </ng-template>
+        </hxp-ui-document-viewer>
       </div>
     }
-  }
+  </ng-template>
 </section>

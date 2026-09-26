@@ -238,12 +238,14 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
    * name comes from the level-1 heading carrying the page title, not from the word mark.
    */
   it('keeps the header level-1 heading exposed to assistive technology', () => {
-    // Both attributes: `aria-level` alone sets no role, so an element carrying only it is not
-    // exposed as a heading at all and selecting on it would keep this green while the
-    // header's heading had gone.
-    const heading = header.querySelector('[role="heading"][aria-level="1"]');
-    expect(heading).withContext('the header must expose a level-1 heading').toBeTruthy();
+    // Native `<h1>`: IBM Equal Access `text_block_heading` (NXENG-788) flags a styled block
+    // with `role="heading"`; the vendor header slot is documented as `<h2 satAppHeaderTitle>`.
+    const heading = header.querySelector('h1.sat-app-header-title');
+    expect(heading).withContext('the header must expose a native level-1 heading').toBeTruthy();
     expect(heading?.textContent?.trim()).toBeTruthy();
+    expect(heading?.getAttribute('role'))
+      .withContext('a native h1 must not carry a redundant role attribute')
+      .toBeNull();
     expect(ariaHiddenAncestorOf(heading as Element))
       .withContext('the heading naming the page must not sit inside an aria-hidden subtree')
       .toBeNull();
@@ -254,6 +256,27 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
    * (`aria_hidden_focus_misuse`). A vendor release that added a focusable element inside the
    * lockup would reintroduce it, so this is asserted rather than checked once by hand.
    */
+  /**
+   * NXENG-909 (IBM issue 3350142295, same control as NXENG-775). The scan names
+   * `sat-app-header` and `input.header-search-input` on live routes; this asserts the ring
+   * on the **rendered** shell header, not only in the isolated search fixture spec.
+   */
+  it('shows a visible keyboard focus ring on the global search input', () => {
+    const input = header.querySelector('input.header-search-input');
+    expect(input).withContext('the header must render the global search field').toBeTruthy();
+
+    (input as HTMLInputElement).focus();
+    expect(document.activeElement).toBe(input);
+
+    const style = getComputedStyle(input as Element);
+    expect(style.outlineStyle)
+      .withContext('IBM style_focus_visible reads :focus outline')
+      .toBe('solid');
+    expect(parseFloat(style.outlineWidth))
+      .withContext('outline width must be non-zero (WCAG 2.4.7)')
+      .toBeGreaterThan(0);
+  });
+
   it('puts nothing focusable inside an aria-hidden subtree in the header', () => {
     // A sanity check on the census, not on the fix: Angular Material's icon hosts are
     // aria-hidden too, so this stays true with or without the word mark hidden. Claiming it

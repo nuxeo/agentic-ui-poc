@@ -1,5 +1,6 @@
 /**
- * NXENG-775 — the header global-search input must show a keyboard focus indicator.
+ * NXENG-775 / NXENG-909 (IBM 3350142295) — the header global-search input must show a
+ * keyboard focus indicator.
  *
  * `.header-search-input` declared `outline: none` with no replacement anywhere, and
  * `apps/nuxeo-ui/src/styles.scss` has no global `:focus-visible` fallback. The input is the

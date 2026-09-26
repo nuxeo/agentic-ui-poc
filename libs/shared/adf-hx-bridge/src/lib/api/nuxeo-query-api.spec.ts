@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 import { NuxeoQueryApi } from './nuxeo-query-api';
-import { ROOT_DOCUMENT } from '../tokens/adf-hx-bridge.tokens';
+import { HXP_HAS_SUBFOLDERS, ROOT_DOCUMENT } from '../tokens/adf-hx-bridge.tokens';
 
 describe('NuxeoQueryApi', () => {
   let api: NuxeoQueryApi;
@@ -56,10 +56,23 @@ describe('NuxeoQueryApi', () => {
       totalSize: 1,
     });
 
+    // The subfolder probe for the tree level, after the port's `await` continues.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const probe = httpMock.expectOne(
+      (r) =>
+        r.url.includes('/search/lang/NXQL/execute') &&
+        (r.params.get('query') ?? '').includes("ecm:parentId IN ('domain-1')"),
+    );
+    probe.flush({
+      entries: [{ uid: 'ws-root', parentRef: 'domain-1' }],
+      isNextPageAvailable: false,
+    });
+
     const response = await pending;
     expect(response.data.documents).toHaveLength(1);
     expect(response.data.documents?.[0]?.sys_title).toBe('Default Domain');
     expect(response.data.documents?.[0]?.sys_isFolderish).toBe(true);
+    expect(response.data.documents?.[0]?.[HXP_HAS_SUBFOLDERS]).toBe(true);
   });
 
   describe('the sort, which used to be silently discarded', () => {
@@ -321,13 +334,67 @@ describe('NuxeoQueryApi', () => {
             lastModified: '2026-02-01T00:00:00.000Z',
             properties: {},
           },
+          {
+            uid: 'child-2',
+            title: 'Files only',
+            type: 'Folder',
+            path: '/default-domain/workspaces/ws/files-only',
+            lastModified: '2026-02-01T00:00:00.000Z',
+            properties: {},
+          },
         ],
-        totalSize: 1,
+        totalSize: 2,
       });
+      await tick();
+
+      // One probe for the whole level; only child-1 has a folder inside it.
+      const probe = httpMock.expectOne((r) => r.url.includes('/search/lang/NXQL/execute'));
+      expect(probe.request.params.get('query')).toContain("ecm:parentId IN ('child-1', 'child-2')");
+      expect(probe.request.params.get('query')).toContain("ecm:mixinType = 'Folderish'");
+      probe.flush({ entries: [{ uid: 'grandchild', parentRef: 'child-1' }] });
 
       const result = (await pending).data;
-      expect(result.documents?.map((d) => d.sys_title)).toEqual(['Child']);
-      expect(result.totalCount).toBe(1);
+      expect(result.documents?.map((d) => d.sys_title)).toEqual(['Child', 'Files only']);
+      expect(result.documents?.map((d) => d[HXP_HAS_SUBFOLDERS])).toEqual([true, false]);
+      expect(result.totalCount).toBe(2);
+    });
+
+    it('leaves tree children unmarked when the subfolder probe fails or is incomplete', async () => {
+      // Unmarked keeps upstream's arrow. Marking everything `false` on a failure would hide
+      // branches the user can open.
+      for (const answer of ['error', 'incomplete'] as const) {
+        const pending = api.getDocumentsByNamedQuery({
+          queryName: 'tree_children',
+          parameters: { parentId: 'ws-1' },
+          limit: 50,
+        });
+        httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/id/ws-1')).flush(workspace);
+        await tick();
+        httpMock
+          .expectOne((r) => r.url.includes('/search/pp/tree_children/execute'))
+          .flush({
+            entries: [
+              {
+                uid: 'child-1',
+                title: 'Child',
+                type: 'Folder',
+                path: '/default-domain/workspaces/ws/child',
+                properties: {},
+              },
+            ],
+            totalSize: 1,
+          });
+        await tick();
+        const probe = httpMock.expectOne((r) => r.url.includes('/search/lang/NXQL/execute'));
+        if (answer === 'error') {
+          probe.flush({}, { status: 500, statusText: 'Server Error' });
+        } else {
+          probe.flush({ entries: [], isNextPageAvailable: true });
+        }
+
+        const [child] = (await pending).data.documents ?? [];
+        expect(child?.[HXP_HAS_SUBFOLDERS], answer).toBeUndefined();
+      }
     });
 
     it('serves advanced_document_content at the root from the nav bootstrap, not @children', async () => {
@@ -600,6 +667,23 @@ describe('NuxeoQueryApi', () => {
           query: `SELECT * FROM SysContent WHERE sys_madeUpField = 'x'`,
         }),
       ).rejects.toThrow('Cannot translate HXQL field');
+    });
+
+    it('applies a sort array when the query has no ORDER BY clause', async () => {
+      // Lines 406-409: When hxqlOrderBy is empty but sort.length > 0,
+      // toNuxeoSort translates the sort array and adds ORDER BY to NXQL
+      const pending = api.getDocumentsByQuery({
+        query: 'SELECT * FROM SysContent WHERE sys_fulltext = "report"',
+        sort: ['sys_title asc', 'sys_modified desc'],
+        limit: 25,
+      });
+
+      const search = httpMock.expectOne((r) => r.url.includes('/search/lang/NXQL/execute'));
+      const nxql = search.request.params.get('query') ?? '';
+      // The sort should be translated and appended as ORDER BY
+      expect(nxql).toContain('ORDER BY dc:title ASC, dc:modified DESC');
+      search.flush({ entries: [], resultsCount: 0 });
+      await pending;
     });
   });
 });

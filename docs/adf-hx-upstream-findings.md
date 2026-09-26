@@ -15,9 +15,11 @@ reproducible against published packages, with a version, a path and a reproducti
 
 **Context.** We are adopting adf-hx components over a **Nuxeo** back end by implementing the twelve
 `*_API_TOKEN` ports against Nuxeo's REST API, rather than against HxPR. Eleven of the twelve are
-implemented. Five components render against live data: document list, breadcrumb, document tree,
-manage-versions and the properties sidebar. So these findings come from working code, not from
-reading the source.
+implemented. Five components were rendered against live data: document list, breadcrumb, document
+tree, manage-versions and the properties sidebar. So these findings come from working code, not
+from reading the source. The last two are no longer rendered in our browse page, which since
+2026-09-23 keeps per-document panels on the document page as production browse does; the findings
+about them were observed while they were.
 
 **Deliberately excluded.** Problems caused by _our_ environment are not listed here — a Node 25
 `localStorage` global, a macOS lockfile pruning platform-optional entries, and Angular replacing
@@ -491,7 +493,15 @@ evidence captures failed on this before we understood it.
 Not a defect — but it is not documented, and it makes "the breadcrumb renders links" untestable
 without navigating two levels deep.
 
-**Ask:** document the behaviour.
+Users read it as broken: a folder's own name is missing and its parent cannot be clicked. We now
+render the inner `HxpUiBreadcrumbComponent` with the ancestors plus the current document.
+
+A related trap: the crumbs bind `DocumentRouterService.urlFor()` to `[routerLink]`, which treats
+a **string** as path segments and escapes any `?`. A host whose routes carry a query parameter
+gets links to `/route%3Fparam%3D…`. We return a `UrlTree` from our substitute to avoid it.
+
+**Ask:** document the behaviour, and consider an input to include the current document. Type
+`urlFor()` as `string | UrlTree` so a substitute can return a tree without casting.
 
 ### 4.4 `CheckInApi` also declares a copy operation
 
@@ -540,6 +550,97 @@ accessible name is non-empty in our accessibility capture so it cannot regress.
 **Ask:** separate the two. Either use distinct keys (`…expand.tooltip` / `…expand.label`), or take
 the accessible name from an `@Input()` that a host can set without touching the tooltip. An empty
 tooltip string should not be able to produce an unnamed control.
+
+### 4.7 `ObjectDataColumn` drops `formatTooltip`, so a column's tooltip function never runs
+
+**Package:** `@alfresco/adf-core@9.0.0`
+**Symbols:** `ObjectDataColumn` constructor, `DataTableComponent.getCellTooltip`
+
+`DataColumn` declares `formatTooltip`, and the DataTable template binds
+`[tooltip]="getCellTooltip(row, col)"`, which calls `col.formatTooltip`. But the table builds an
+`ObjectDataColumn` from each `[columns]` entry, and that constructor copies a fixed list of
+properties that does not include `formatTooltip`. The function is discarded before the table sees
+it, with no warning.
+
+**Reproduce:** pass `[columns]="[{ key: 'name', type: 'text', formatTooltip: () => 'x' }]"` to
+`adf-datatable` (or a `[schema]` to `hxp-document-list`) and inspect a body cell: its
+`.adf-datatable-cell-value` span carries `title=""`.
+
+**Our mitigation.** `maxTextLength` survives the copy, so long values are shortened and get their
+full text as the tooltip. Values short enough to escape that limit but still clipped by
+`adf-ellipsis-cell` get no tooltip. Recorded as W16 in `docs/adf-hx-workarounds.md`.
+
+**Ask:** copy `formatTooltip` in `ObjectDataColumn`, alongside the properties it already copies.
+
+### 4.8 `.adf-datatable` forces a full-height table with a permanent scrollbar
+
+**Package:** `@alfresco/adf-core@9.0.0`
+**Rule:** `.adf-datatable { overflow-y: scroll; height: 100%; display: block }`
+
+`overflow-y: scroll` draws a scrollbar track whether or not anything overflows, and `height: 100%`
+stretches a short list to fill its container. A folder of six documents therefore renders as a
+full-height table with an empty band beneath the rows and a scrollbar that scrolls nothing. The
+body already scrolls on its own (`.adf-datatable-body`), so neither is needed for long lists.
+
+**Reproduce:** render `hxp-document-list` with a handful of documents inside a container taller
+than the rows.
+
+**Our mitigation.** Overridden from the host (W17 in `docs/adf-hx-workarounds.md`), which reaches
+into upstream's markup with `::ng-deep`.
+
+**Ask:** use `overflow-y: auto`, and leave the table's height to the host.
+
+### 4.9 `HxpDocumentTreeComponent` cannot reload, re-root or show a leaf folder as a leaf
+
+**Package:** `@alfresco/adf-hx-content-services@7.20.0-automate.292`
+**Symbols:** `HxpDocumentTreeComponent`, `DocumentTreeDatabaseService`
+
+Three gaps, each of which a host has to work around:
+
+1. **`rootDocument` is read once, in `ngOnInit`, and there is no reload.** A host that scopes the
+   tree to the selected domain, or offers a Refresh button, must destroy and re-create the
+   component.
+2. **`[documents]` expansion stops at the first ancestor it cannot find.** `openNodes` walks the
+   ancestor chain from the repository root, so a tree rooted at a domain never opens below it.
+3. **Every folder is expandable.** `isExpandable(child)` returns `isFolder(child)` — its own
+   comment says it should check for children — so a folder holding only files shows an arrow
+   that expands to nothing. The tree also omits the toggle on a non-expandable node instead of
+   keeping its space, so a leaf is misaligned against its siblings. `DocumentTreeDatabaseService`
+   is provided by the component itself, so a host cannot substitute a better one.
+
+**Our mitigation.** W18 in `docs/adf-hx-workarounds.md`: the drawer re-creates the tree on a
+key, opens the branch from the tree's own root, and replaces `isExpandable` on the tree's
+instance, honouring a subfolder flag our `QUERY` port sets from one NXQL probe per level.
+
+**Ask:** a `reload()` method or a reactive `rootDocument`; expand from the tree's root rather than
+the repository's; and either an `isExpandable` input or a data-source injection token.
+
+### 4.10 `HxpUiDocumentViewerComponent` has no close button unless the host supplies a toolbar
+
+**Package:** `@alfresco/adf-hx-content-services@7.20.0-automate.292`, `@alfresco/adf-core@9.0.0`
+**Symbols:** `HxpUiDocumentViewerComponent`, `ViewerRenderComponent`, `ViewUtilService`
+
+Three things a host finds out only once a file actually renders:
+
+1. **The close button disappears.** The viewer always projects `<adf-viewer-toolbar>` with the
+   host's `#toolbar` template, or an empty one when the host passes none. A projected toolbar
+   replaces adf-core's default toolbar, which is the one carrying the title and the close
+   button. Without a host template the toolbar is 0 px tall, and Escape is the only way out.
+2. **The image viewer needs `cropperjs/dist/cropper.css`, and nothing says so.** adf-core's image
+   viewer uses cropperjs, which hides the original `<img>` only through its own stylesheet.
+   Without it the image renders twice, side by side, at full size.
+3. **WebP is not viewable.** `ViewUtilService.mimeTypes.image` lists PNG, JPEG, GIF, BMP and SVG,
+   so an `image/webp` file goes down the rendition path. `ViewerRenderComponent` declares
+   `providers: [ViewUtilService]` itself, so a host cannot extend the list without patching
+   adf-core's prototype.
+
+**Our mitigation.** `browse-adf-hx-poc.html` projects a `#toolbar` with the document title and a
+Close button, and `angular.json` adds `cropper.min.css` to the global styles. WebP stays
+unsupported. The Phase 3 evidence asserts that a fixture file's own text renders in the viewer,
+because the earlier check (overlay opens, component exists) passed while every preview failed.
+
+**Ask:** fall back to adf-core's default toolbar when no `#toolbar` template is given; document
+the cropperjs stylesheet or bundle it; add `image/webp` to the natively viewable images.
 
 ---
 

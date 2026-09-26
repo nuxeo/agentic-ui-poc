@@ -308,9 +308,11 @@ DocumentService`. The chain, read from the published bundle:
     awaiting one. It must survive every adf-hx bump; the `bundle` gate goes red if the
     real library returns, and a future release importing a _different_ test helper shows
     up as a new fingerprint rather than as a silent regression.
-  - **`angular-oauth2-oidc` and `cropperjs` are kept**, unused, on the basis that they
-    cause no issue today — `pdfjs-dist` tree-shakes out entirely, these two do not. Not
-    a blocker; revisit only if something breaks or the SCA position changes.
+  - **`angular-oauth2-oidc` is kept**, unused, on the basis that it causes no issue
+    today — `pdfjs-dist` tree-shakes out entirely, this does not. Not a blocker; revisit
+    only if something breaks or the SCA position changes. `cropperjs` was kept on the same
+    basis until NXSAT-290, which made it used: its stylesheet is a global style, because
+    adf-core's image viewer renders every image twice without it.
   - **The initial-bundle cost of adf-hx is accepted.** It stopped being a deferrable
     question the moment the ports had to go in the root injector, so the budget was
     raised deliberately: `maximumWarning` 1.5 → 2.5 MB, `maximumError` 2.0 → 3.5 MB.
@@ -348,7 +350,11 @@ DocumentService`. The chain, read from the published bundle:
   a secondary entry point in the bridge library, or the shell must stop importing the
   bridge barrel.** The entry point was built and the initial bundle returned to 1.71 MB with
   the ports bound; it is now 3.24 MB for a different and accepted reason — see the
-  root-injector fact above. **Nothing eagerly loaded may import from `providers.ts`.**
+  root-injector fact above. **Do not add new eager imports from `providers.ts`.** The lazy POC
+  route remains the intended consumer for most of this surface; two product decisions already
+  pull adf-hx into the initial bundle on purpose — `provideAdfHxNuxeoBridge()` in
+  `app.config.ts` and `HxpBrowseNavDrawerComponent` in the shell nav drawer (see the guardrail
+  allowlist in `scripts/review-guardrails.mjs`).
 - **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
   A second `install.xml` copy step with `overwrite="false"` puts customer
   configuration in a _sibling_ of the bundle, outside the destructive copy's

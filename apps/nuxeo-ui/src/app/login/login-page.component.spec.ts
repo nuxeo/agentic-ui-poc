@@ -2,7 +2,8 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of, Observable } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
+import { firstValueFrom, of, Observable } from 'rxjs';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -13,6 +14,54 @@ import { testTranslateModule } from '../i18n/translate-testing';
 /** Synthetic values for unit tests only — not Nuxeo or dev default credentials. */
 const MOCK_LOGIN_USER = 'nxeng-login-spec-user';
 const MOCK_LOGIN_SECRET = 'nxeng-login-spec-secret';
+
+/**
+ * Every element under `root`, following open shadow roots — an element focusable inside one
+ * still takes focus away from a keyboard user.
+ */
+function allDescendants(root: Element): Element[] {
+  const found: Element[] = [];
+  const visit = (node: Element | ShadowRoot) => {
+    // Checked on entry, not per child, so a shadow root attached to `root` itself is
+    // traversed too — the caller's own element is exactly where a component under test
+    // attaches one.
+    if (node instanceof Element && node.shadowRoot) {
+      visit(node.shadowRoot);
+    }
+    for (const child of Array.from(node.children)) {
+      found.push(child);
+      visit(child);
+    }
+  };
+  visit(root);
+  return found;
+}
+
+/**
+ * Whether an element can actually take focus — asked of the browser, by focusing it.
+ *
+ * Not a selector list. The first version of this guard enumerated
+ * `a[href],button,input,…` and the reviewer was right that such a list is permanently
+ * incomplete: it missed `area[href]`, `iframe`, `object`, `audio[controls]`,
+ * `video[controls]` and `summary`, and it would miss whatever the next HTML revision makes
+ * focusable. `@angular/cdk/a11y`'s `InteractivityChecker` has the same gap, being a
+ * maintained list rather than a complete one.
+ *
+ * These specs run in real Chrome, so focus semantics are available directly, and the
+ * question `aria-hidden` actually raises — can a keyboard user land on something inside a
+ * subtree screen readers cannot see — is exactly what `focus()` answers.
+ *
+ * Focus moving anywhere off `<body>` counts: an element inside a shadow root reports its
+ * host as `document.activeElement`, so comparing against the element itself would read a
+ * real focus move as a miss.
+ */
+function canTakeFocus(element: Element): boolean {
+  (document.activeElement as HTMLElement | null)?.blur();
+  (element as HTMLElement).focus?.();
+  const took = document.activeElement !== null && document.activeElement !== document.body;
+  (document.activeElement as HTMLElement | null)?.blur();
+  return took;
+}
 
 describe('LoginPageComponent', () => {
   let fixture: ComponentFixture<LoginPageComponent>;
@@ -33,8 +82,6 @@ describe('LoginPageComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [
-        // Visible label and error text, which the fallback map does not hold — it carries
-        // accessible names only. These are the strings this spec asserts a user sees.
         testTranslateModule({
           'app.login-page.log-in': 'Log in',
           'app.login-page.sign-in-credentials': 'Sign in credentials',
@@ -44,6 +91,7 @@ describe('LoginPageComponent', () => {
           'app.login-page.password-is-required': 'Password is required',
           'app.login-page.copyright-c-1992-2026-hyland-software':
             'Copyright (C) 1992–2026 Hyland Software, Inc.',
+          'login.skip-link': 'Skip to sign in',
         }),
         LoginPageComponent,
       ],
@@ -53,9 +101,74 @@ describe('LoginPageComponent', () => {
       ],
     }).compileComponents();
 
+    await firstValueFrom(TestBed.inject(TranslateService).use('en'));
+
     fixture = TestBed.createComponent(LoginPageComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it('provides a skip link to the sign-in landmark (WCAG 2.4.1)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const skip = el.querySelector('a.login-skip-link');
+    expect(skip).toBeTruthy();
+    expect(skip?.getAttribute('href')).toBe('#login-main');
+    expect(skip?.textContent?.trim()).toContain('Skip to sign in');
+
+    const landmark = el.querySelector('#login-main');
+    expect(landmark).toBeTruthy();
+    expect(landmark?.getAttribute('tabindex')).toBe('-1');
+    expect(landmark?.getAttribute('aria-label')).toBe('Log in');
+  });
+
+  it('focuses the username field and cancels navigation when the skip link is activated', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const usernameInput = el.querySelector('input[formcontrolname="username"]') as HTMLInputElement;
+    const event = new MouseEvent('click', { cancelable: true, bubbles: true });
+    const preventSpy = spyOn(event, 'preventDefault').and.callThrough();
+
+    component.skipToSignIn(event);
+    fixture.detectChanges();
+
+    expect(preventSpy).toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(usernameInput);
+  });
+
+  it('does not expose redundant aria-required on username when HTML required is set (NXENG-753)', async () => {
+    const usernameInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement;
+    expect(usernameInput.required).toBe(true);
+    expect(usernameInput.getAttribute('aria-required')).toBeNull();
+
+    const strippedAfterMaterialRestore = new Promise<void>((resolve) => {
+      const watch = new MutationObserver(() => {
+        if (usernameInput.getAttribute('aria-required') === null) {
+          watch.disconnect();
+          resolve();
+        }
+      });
+      watch.observe(usernameInput, {
+        attributes: true,
+        attributeFilter: ['aria-required'],
+      });
+      usernameInput.setAttribute('aria-required', 'true');
+    });
+
+    await strippedAfterMaterialRestore;
+    expect(usernameInput.getAttribute('aria-required')).toBeNull();
+  });
+
+  it('disconnects the username aria-required observer on destroy (NXENG-753)', async () => {
+    const usernameInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement;
+
+    fixture.destroy();
+    usernameInput.setAttribute('aria-required', 'true');
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(usernameInput.getAttribute('aria-required')).toBe('true');
   });
 
   it('does not expose redundant aria-required on password when HTML required is set (NXENG-755)', async () => {
@@ -134,24 +247,31 @@ describe('LoginPageComponent', () => {
     expect(errors).toContain('Username is required');
   });
 
-  it('keeps the username outline wrapper from clipping focused input (NXENG-748)', () => {
+  it('keeps the username field focus affordance visible (NXENG-748)', () => {
     const usernameInput = fixture.nativeElement.querySelector(
       'input[formcontrolname="username"]',
     ) as HTMLInputElement;
     usernameInput.focus();
     fixture.detectChanges();
 
-    const wrapper = usernameInput.closest('.mat-mdc-text-field-wrapper') as HTMLElement;
-    expect(wrapper).toBeTruthy();
-    expect(getComputedStyle(wrapper).overflow).toBe('visible');
+    const field = usernameInput.closest('.login-field-username') as HTMLElement;
+    expect(field).toBeTruthy();
+    expect(getComputedStyle(field).overflow).toBe('visible');
     expect(getComputedStyle(usernameInput).scrollMarginTop).not.toBe('0px');
   });
 
-  it('exposes a level-one heading for the login page (WCAG 1.3.1)', () => {
+  it('exposes a visually hidden level-one heading for the login page (WCAG 1.3.1)', () => {
     const el = fixture.nativeElement as HTMLElement;
-    const heading = el.querySelector('h1.login-title');
-    expect(heading).toBeTruthy();
+    const heading = el.querySelector('#login-page-heading');
+    expect(heading?.tagName).toBe('H1');
     expect(heading?.textContent?.trim()).toBe('Log in');
+    expect(heading?.classList.contains('cdk-visually-hidden')).toBe(true);
+
+    const styles = getComputedStyle(heading as HTMLElement);
+    expect(styles.position).toBe('absolute');
+    expect(styles.height).toBe('1px');
+    expect(styles.width).toBe('1px');
+    expect(styles.overflow).toBe('hidden');
   });
 
   it('uses a decorative img for hero art instead of CSS background-image (NXENG-751)', () => {
@@ -188,6 +308,89 @@ describe('LoginPageComponent', () => {
     expect(el.textContent).not.toContain('Azure SAML');
     expect(el.textContent).not.toContain('Okta SAML');
     expect(el.textContent).toContain('Log in');
+  });
+
+  /**
+   * NXENG-743 / NXENG-746. The brand link renders the Satori logo lockup, whose two marks are
+   * vendor components each drawing an unlabelled `<svg>`. An `<svg>` with no accessible name is
+   * announced as an unnamed image — WCAG 2.1 1.1.1 Non-text Content, level A — and nothing in
+   * this repo can put an attribute on that `<svg>`, because the markup belongs to
+   * `@hylandsoftware/satori-ui/logo`.
+   *
+   * The assertion is the guarantee rather than the attribute's placement: no graphic inside the
+   * brand link reaches assistive technology, and the link still carries the name. A test for
+   * `aria-hidden` on one specific element would pass while a newly added third mark went
+   * unhidden.
+   *
+   * It also enforces both preconditions that make `aria-hidden` the right tool here, rather
+   * than leaving them as prose in the PR. `aria-hidden` over focusable content is itself a
+   * violation, and a vendor release that adds a focusable element inside the lockup would
+   * otherwise introduce `aria_hidden_focus_misuse` with every check still green — the repo's
+   * runtime axe harness records the login page as unreachable, so nothing else covers it.
+   */
+  it('hides the decorative brand logo from assistive technology', () => {
+    const link = (fixture.nativeElement as HTMLElement).querySelector('a.login-brand');
+    expect(link).toBeTruthy();
+    expect(link!.getAttribute('aria-label')).toBe('Hyland');
+    // The link itself must stay exposed: it is the only thing that conveys "Hyland".
+    expect(link!.closest('[aria-hidden="true"]')).toBeNull();
+
+    const graphics = Array.from(link!.querySelectorAll('svg'));
+    expect(graphics).toHaveSize(2);
+    for (const svg of graphics) {
+      expect(svg.closest('[aria-hidden="true"]')).toBeTruthy();
+    }
+
+    const hiddenSubtrees = Array.from(link!.querySelectorAll('[aria-hidden="true"]'));
+    expect(hiddenSubtrees).toHaveSize(1);
+    for (const hidden of hiddenSubtrees) {
+      expect(canTakeFocus(hidden)).toBe(false);
+      for (const element of allDescendants(hidden)) {
+        expect(canTakeFocus(element)).toBe(false);
+      }
+    }
+  });
+
+  /**
+   * The negative control for the guard above, committed rather than run once by hand: an
+   * assertion nobody has watched fail is not coverage, and the risk it guards against —
+   * a vendor release adding focusable content inside the logo lockup — cannot be staged from
+   * our own template, because `<sat-logo>` projects only the two mark components.
+   *
+   * So the focusable elements are injected into the rendered hidden subtree here. Each is one
+   * the earlier hand-written selector missed.
+   */
+  it('detects focusable content that a vendor release could add inside the hidden lockup', () => {
+    const link = (fixture.nativeElement as HTMLElement).querySelector('a.login-brand');
+    const hidden = link!.querySelector('[aria-hidden="true"]');
+    expect(hidden).toBeTruthy();
+
+    for (const html of [
+      '<div tabindex="0">focusable div</div>',
+      '<iframe title="probe"></iframe>',
+      '<video controls></video>',
+      '<audio controls></audio>',
+      '<details><summary>probe</summary>body</details>',
+      '<a href="#probe">probe</a>',
+      '<button type="button">probe</button>',
+    ]) {
+      hidden!.insertAdjacentHTML('beforeend', html);
+      const injected = hidden!.lastElementChild!;
+      const reached = [injected, ...allDescendants(injected)].some(canTakeFocus);
+      expect(reached).withContext(`the guard must see ${html} as focusable`).toBe(true);
+      injected.remove();
+    }
+
+    // The same, one level deeper: focusable content inside a shadow root attached to the
+    // element the walk starts from. An earlier version of `allDescendants` checked only its
+    // children's shadow roots, so this case walked straight past.
+    const host = document.createElement('div');
+    hidden!.append(host);
+    host.attachShadow({ mode: 'open' }).innerHTML = '<button type="button">probe</button>';
+    expect([host, ...allDescendants(host)].some(canTakeFocus))
+      .withContext('the guard must see focusable content inside a shadow root on the host')
+      .toBe(true);
+    host.remove();
   });
 
   it('names required fields in the label instead of a color-only marker', () => {
@@ -241,8 +444,9 @@ describe('LoginPageComponent', () => {
       'button.login-submit',
     ) as HTMLButtonElement;
     expect(submit.getAttribute('aria-disabled')).toBe('true');
-    expect(submit.disabled).toBe(false);
     expect(submit.tabIndex).toBeGreaterThanOrEqual(0);
+    submit.focus();
+    expect(document.activeElement).toBe(submit);
   });
 
   it('enables Log in when username and password are present', () => {
@@ -315,6 +519,7 @@ describe('LoginPageComponent', () => {
       const root = fixture.nativeElement as HTMLElement;
       const main = root.querySelector('main.login-panel');
       expect(main).not.toBeNull();
+      expect(main?.getAttribute('id')).toBe('login-main');
       expect(main?.getAttribute('aria-label')).toBe('Log in');
       expect(main?.querySelector('form.login-form')).not.toBeNull();
       expect(main?.querySelector('footer.login-footer')).not.toBeNull();

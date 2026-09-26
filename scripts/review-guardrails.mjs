@@ -928,8 +928,10 @@ function checkAdfHxWorkaroundIds() {
  *    bundle — measured at 1.70 → 2.65 MB when that happened, which is why
  *    `libs/shared/adf-hx-bridge/src/providers.ts` exists as a separate entry point.
  *
- * The bridge's `providers.ts` is the sanctioned exception: it is a secondary entry point that only
- * the lazily-loaded POC route imports, and its whole purpose is to hold the adf-hx-facing code.
+ * The bridge's `providers.ts` is the secondary entry point for adf-hx-facing code. Most consumers
+ * are lazy (the POC route); the shell nav drawer and `app.config.ts` also import it eagerly on
+ * purpose — see the allowlist below — so the gate watches the main barrel, not "never import
+ * providers at startup".
  */
 function checkNoAdfHxInPublicApi() {
   // Scoped to the two heavy packages, deliberately. `@alfresco/adf-extensions` is also an
@@ -2362,17 +2364,18 @@ function checkAccessibleNameFallbacks() {
     .filter((file) => /^(libs|apps)\/.+\.html$/.test(file));
 
   // `[attr.aria-label]`, `[aria-label]`, `[attr.title]`, `[title]` and `[placeholder]` bound to a
-  // single translate-piped literal key. A ternary or a concatenation is not matched, deliberately:
-  // this stays a check with no judgement calls in it.
+  // single translate-piped literal key, plus visible `<label>` text using the same interpolation
+  // shape (NXENG-798 moved global search naming off placeholder). A ternary or a concatenation is
+  // not matched, deliberately: this stays a check with no judgement calls in it.
   //
-  // `placeholder` is here because for the two shell text inputs it is the ONLY thing naming them —
-  // neither carries an `aria-label`. HTML-AAM accepts it as the accessible name of last resort, and
-  // the evidence harness's unnamed-control sweep was taught to honour it for that reason. Which
-  // opened a hole this gate could not see: neither `shell.search.placeholder` nor
-  // `shell.ai.input-placeholder` was in `EN_FALLBACK_TRANSLATIONS`, so a failed catalogue fetch
-  // named the global search box `shell.search.placeholder` — a raw key as an accessible name, the
-  // precise WCAG 4.1.2 failure this gate exists to stop — while every check passed, including the
-  // raw-key sweep, which did not read placeholders either.
+  // `placeholder` remains because the AI assistant input is still placeholder-named. HTML-AAM
+  // accepts placeholder as the accessible name of last resort, and the evidence harness's
+  // unnamed-control sweep was taught to honour it for that reason. Which opened a hole this gate
+  // could not see: neither `shell.search.placeholder` nor `shell.ai.input-placeholder` was in
+  // `EN_FALLBACK_TRANSLATIONS`, so a failed catalogue fetch named the global search box
+  // `shell.search.placeholder` — a raw key as an accessible name, the precise WCAG 4.1.2 failure
+  // this gate exists to stop — while every check passed, including the raw-key sweep, which did not
+  // read placeholders or visible labels either.
   //
   // The optional `: { … }` is the pipe's PARAMETERS, and leaving it out made this gate blind to
   // the binding shape the accessible-name fix itself introduced. `nav-drawer.component.html` binds
@@ -2383,6 +2386,14 @@ function checkAccessibleNameFallbacks() {
   // it is the form INFO-144's no-concatenation rule pushes every label with a value towards.
   const BINDING =
     /\[(?:attr\.)?(aria-label|title|placeholder)\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
+
+  // NXENG-798: global search names via a visible `<label>`, not `[placeholder]`. Only this control
+  // is wired here — a repo-wide `<label>{{ … | translate }}</label>` scan would surface dozens of
+  // pre-existing catalogue keys that never passed through the attribute binding pattern.
+  const HEADER_SEARCH_LABEL_BLOCK =
+    /<label\b[^>]*\bfor="global-header-search-input"[^>]*>([\s\S]*?)<\/label>/g;
+  const TRANSLATE_INTERPOLATION =
+    /\{\{\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*\}\}/g;
 
   // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
   // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns
@@ -2400,26 +2411,40 @@ function checkAccessibleNameFallbacks() {
    */
   const isUpstreamShaped = (key) => /^[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+$/.test(key);
 
+  function recordBinding(template, attribute, key) {
+    bindings += 1;
+    if (!owned.has(key)) {
+      // A key absent from the catalogue used to be waved through as upstream-owned. That is true
+      // for a SCREAMING_CASE key and false for one of ours: `shell.ai.opne` is not upstream's,
+      // it is a typo, and ngx-translate renders a missing key as the key itself — so the gate
+      // that exists to stop a raw key naming a control could not see the commonest way of
+      // producing one. Absence is now only an excuse for the shape that belongs to upstream.
+      if (!isUpstreamShaped(key)) {
+        if (!undefinedKeys.has(key)) undefinedKeys.set(key, { attribute, sites: [] });
+        undefinedKeys.get(key).sites.push(template);
+      }
+      return;
+    }
+    if (fallback.has(key) && fallback.get(key).trim() !== '') return;
+
+    if (!offences.has(key)) offences.set(key, { attribute, sites: [] });
+    offences.get(key).sites.push(template);
+  }
+
   for (const template of templates) {
     if (!fileExists(template)) continue;
     for (const [, attribute, key] of read(template).matchAll(BINDING)) {
-      bindings += 1;
-      if (!owned.has(key)) {
-        // A key absent from the catalogue used to be waved through as upstream-owned. That is true
-        // for a SCREAMING_CASE key and false for one of ours: `shell.ai.opne` is not upstream's,
-        // it is a typo, and ngx-translate renders a missing key as the key itself — so the gate
-        // that exists to stop a raw key naming a control could not see the commonest way of
-        // producing one. Absence is now only an excuse for the shape that belongs to upstream.
-        if (!isUpstreamShaped(key)) {
-          if (!undefinedKeys.has(key)) undefinedKeys.set(key, { attribute, sites: [] });
-          undefinedKeys.get(key).sites.push(template);
-        }
-        continue;
-      }
-      if (fallback.has(key) && fallback.get(key).trim() !== '') continue;
+      recordBinding(template, attribute, key);
+    }
+  }
 
-      if (!offences.has(key)) offences.set(key, { attribute, sites: [] });
-      offences.get(key).sites.push(template);
+  const shellTemplate = 'apps/nuxeo-ui/src/app/shell/app-shell.component.html';
+  if (fileExists(shellTemplate)) {
+    const shellHtml = read(shellTemplate);
+    for (const [, labelInner] of shellHtml.matchAll(HEADER_SEARCH_LABEL_BLOCK)) {
+      for (const [, key] of labelInner.matchAll(TRANSLATE_INTERPOLATION)) {
+        recordBinding(shellTemplate, 'visible label text', key);
+      }
     }
   }
 

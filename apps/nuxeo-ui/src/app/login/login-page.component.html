@@ -1,20 +1,41 @@
 <div class="login-page">
-  <main class="login-panel" [attr.aria-label]="'app.login-page.log-in' | translate">
+  <a class="login-skip-link" mat-raised-button href="#login-main" (click)="skipToSignIn($event)">{{
+    'login.skip-link' | translate
+  }}</a>
+  <main
+    id="login-main"
+    tabindex="-1"
+    class="login-panel"
+    [attr.aria-label]="'app.login-page.log-in' | translate"
+  >
     <div class="login-panel-inner">
       <a
         routerLink="/login"
         class="login-brand"
         [attr.aria-label]="'app.login-page.hyland' | translate"
       >
-        <sat-logo direction="horizontal">
+        <!--
+          The lockup is decorative: this link already carries the name "Hyland". Each mark is a
+          vendor component whose <svg> we cannot label from here, so the whole lockup is hidden
+          from assistive technology instead — otherwise both SVGs are announced as unnamed
+          images (WCAG 1.1.1, NXENG-743 / NXENG-746).
+        -->
+        <sat-logo direction="horizontal" aria-hidden="true">
           <sat-h-mark-logo />
           <sat-word-mark-logo />
         </sat-logo>
       </a>
 
-      <h1 class="login-title">{{ 'app.login-page.log-in' | translate }}</h1>
+      <h1 id="login-page-heading" class="cdk-visually-hidden">
+        {{ 'app.login-page.log-in' | translate }}
+      </h1>
 
-      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+      <form
+        class="login-form"
+        aria-labelledby="login-page-heading"
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+      >
         <fieldset class="login-credentials">
           <legend class="cdk-visually-hidden">
             {{ 'app.login-page.sign-in-credentials' | translate }}

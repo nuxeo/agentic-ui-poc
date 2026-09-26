@@ -4,6 +4,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { TranslateModule } from '@ngx-translate/core';
+import { PACKAGED_NAV_ITEMS } from '@nuxeo-satori/platform/extensions';
 
 /**
  * Regression test for NXENG-761 — the keyboard focus indicator on the sidebar nav links.
@@ -53,9 +54,22 @@ const ACTIVE_CLASS = 'sat-platform-nav-item-active';
  * behind a sibling item's measurements.
  */
 const NAV_ITEMS_UNDER_TEST = [
+  { navId: 'app.navbar.dashboard', ticket: 'NXENG-893' },
+  { navId: 'app.navbar.trash', ticket: 'NXENG-932' },
+  { navId: 'app.navbar.browse', ticket: 'NXENG-794' },
   { navId: 'app.navbar.browseAdfHx', ticket: 'NXENG-758' },
   { navId: 'app.navbar.search', ticket: 'NXENG-785' },
+  { navId: 'app.navbar.administration', ticket: 'NXENG-795' },
+  { navId: 'app.navbar.clipboard', ticket: 'NXENG-873' },
+  { navId: 'app.navbar.assets', ticket: 'NXENG-797' },
+  { navId: 'app.navbar.recentlyViewed', ticket: 'NXENG-884' },
+  { navId: 'app.navbar.expiredQueue', ticket: 'NXENG-912' },
+  { navId: 'app.navbar.tasks', ticket: 'NXENG-931' },
 ] as const;
+
+const PACKAGED_LABEL_BY_NAV_ID = Object.fromEntries(
+  PACKAGED_NAV_ITEMS.map((item) => [item.id, item.label]),
+) as Record<string, string>;
 
 /** Focusable anchor inside the list item under test — never a bare `.sat-platform-nav-item`. */
 function linkSelector(navId: string): string {
@@ -152,6 +166,7 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
     // Satori's class by hand — otherwise a rename of that class would leave this spec
     // measuring a plain item while still reporting on the current one.
     fixture.componentInstance.navId.set(navId);
+    fixture.componentInstance.label.set(PACKAGED_LABEL_BY_NAV_ID[navId] ?? navId);
     fixture.componentInstance.active.set(asCurrentRoute);
     fixture.detectChanges();
 
@@ -190,6 +205,18 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
       ratioVsPanel: contrastRatio(compositeOver(ring, panel), panel),
     };
   }
+
+  it('registers every flagged nav id in PACKAGED_NAV_ITEMS (shell manifest, not host stubs)', () => {
+    for (const { navId, ticket } of NAV_ITEMS_UNDER_TEST) {
+      const packaged = PACKAGED_NAV_ITEMS.find((item) => item.id === navId);
+      expect(packaged)
+        .withContext(`${ticket}: missing packaged nav entry for ${navId}`)
+        .toBeDefined();
+      expect(PACKAGED_LABEL_BY_NAV_ID[navId])
+        .withContext(`${ticket}: label map for ${navId}`)
+        .toBe(packaged!.label);
+    }
+  });
 
   for (const { navId, ticket } of NAV_ITEMS_UNDER_TEST) {
     describe(`${navId} (${ticket})`, () => {
@@ -243,6 +270,55 @@ describe('sidebar nav focus ring contrast (NXENG-761)', () => {
       });
     });
   }
+
+  it('keeps the packaged Recently viewed label IBM Issue 2658127935 names (NXENG-884)', () => {
+    expect(PACKAGED_LABEL_BY_NAV_ID['app.navbar.recentlyViewed']).toBe('Recently viewed');
+  });
+
+  it('keeps the packaged Expired Queue descriptor IBM Issue 3416250941 names (NXENG-912)', () => {
+    const packaged = PACKAGED_NAV_ITEMS.find((item) => item.id === 'app.navbar.expiredQueue');
+    expect(packaged)
+      .withContext('PACKAGED_NAV_ITEMS must expose the Expired Queue descriptor')
+      .toBeDefined();
+    expect(packaged!.path).toBe('/expired-queue');
+    expect(packaged!.label).toBe('Expired Queue');
+  });
+
+  it('keeps the packaged Tasks descriptor IBM Issue 4267408435 names (NXENG-931)', () => {
+    const packaged = PACKAGED_NAV_ITEMS.find((item) => item.id === 'app.navbar.tasks');
+    expect(packaged)
+      .withContext('PACKAGED_NAV_ITEMS must expose the Tasks descriptor')
+      .toBeDefined();
+    expect(packaged!.path).toBe('/tasks');
+    expect(packaged!.label).toBe('Tasks');
+  });
+
+  it('declares a standalone :focus rule on nav links that IBM Equal Access can read (NXENG-794)', () => {
+    const target = 'sat-platform-nav .sat-platform-nav-item:focus';
+    let matched: CSSStyleRule | undefined;
+    for (const sheet of Array.from(document.styleSheets)) {
+      let sheetRules: CSSRuleList;
+      try {
+        sheetRules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      for (const rule of Array.from(sheetRules)) {
+        const styleRule = rule as CSSStyleRule;
+        const canonical = styleRule.selectorText?.replace(/\[_ngcontent-[^\]]+\]/g, '').trim();
+        if (canonical === target) {
+          matched = styleRule;
+          break;
+        }
+      }
+      if (matched) break;
+    }
+    expect(matched)
+      .withContext(`stylesheet must contain ${target} without a comma list`)
+      .toBeDefined();
+    expect(matched!.cssText).toMatch(/outline:\s*2px\s+solid/);
+    expect(matched!.cssText).toMatch(/outline-offset:\s*-2px/);
+  });
 
   it('takes the ring colour from --agentic-nav-focus-outline-color when it is set', () => {
     // A custom property written onto `<html>` is exactly how `AppThemeService.applyTheme`

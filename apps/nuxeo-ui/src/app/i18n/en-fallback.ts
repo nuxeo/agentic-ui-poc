@@ -93,6 +93,7 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'app.dashboard-page.loading': 'Loading',
   'app.login-page.hyland': 'Hyland',
   'app.login-page.log-in': 'Log in',
+  'login.skip-link': 'Skip to sign in',
   'app.nav.toggle': 'Toggle navigation menu',
   'app.nuxeo-drive-page.remove-synchronization-root': 'Remove synchronization root',
   'app.personal-space-page.loading': 'Loading',

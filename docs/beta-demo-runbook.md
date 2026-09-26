@@ -137,10 +137,8 @@ The reliable test is the import. Our POC feature code aliases every upstream com
 | Selector                           | Where                                              |
 | ---------------------------------- | -------------------------------------------------- |
 | `hxp-document-list`                | browse POC, adf-hx search                          |
-| `hxp-breadcrumb`                   | browse POC                                         |
-| `hxp-properties-sidebar`           | browse POC, Properties tab                         |
+| `hxp-ui-breadcrumb`                | browse POC, fed ancestors plus the current folder  |
 | `hxp-ui-document-viewer`           | browse POC                                         |
-| `hxp-manage-versions-sidebar`      | browse POC, Versions tab                           |
 | `hxp-permissions-management-panel` | browse POC, Permissions tab                        |
 | `hxp-document-tree`                | nav drawer, wrapped by our `hxp-browse-nav-drawer` |
 
@@ -279,10 +277,8 @@ it is customisation without forking.
 ### Beat 2 — adf-hx vs ours (4 min)
 
 Follow the table in Part 1. Open `/#/browse` and `/#/browse-adf-hx?path=%2Fdefault-domain` in two
-tabs and switch between them. Tick a checkbox, show Properties, then Versions.
-
-Do not scroll the Properties panel far — below the fold it exposes raw uppercase property keys
-(`CONTRIBUTORS`, `IS_WEB_CONTAINER`).
+tabs and switch between them. The folder tabs are the same on both: View, Permissions, History and
+Trash. Properties and Versions are not browse tabs on either — open a document for them.
 
 ### Beat 3 — Rebrand, no rebuild (3 min)
 
@@ -799,8 +795,8 @@ a stub that throws if called. Expect this question from a security reviewer; the
 is neutralised, not tolerated.
 
 **"Can I edit metadata in the adf-hx panel?"**
-No. Upstream does not export the cache service its metadata sidebar needs, so the read-only
-properties panel renders instead.
+No. Upstream does not export the cache service its metadata sidebar needs. Browse no longer
+renders upstream's read-only properties panel either; metadata is on the document page.
 
 ---
 
