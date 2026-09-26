@@ -188,6 +188,22 @@ green(
   'reached only when: !scene.criterion',
 );
 
+// Shadowing and reassignment, which the binding maps cannot resolve because they are keyed by
+// identifier text for the whole file. An ambiguous name must classify as UNKNOWN, so the check
+// stays exempt — a false rejection here would report a genuinely conditional check as
+// unfalsifiable, which is the worse direction of the two errors available.
+green(
+  'a name declared twice does not let one declaration classify the other',
+  `export async function run(h, scene) {\n  const guard = {};\n  if (guard) h.step('s');\n  const inner = () => { const guard = scene.criterion; if (!guard) h.check('real', false, 'why'); };\n  inner();\n}\n`,
+  'reached only when: !guard',
+);
+
+green(
+  'a reassigned name is not classified from its initialiser',
+  `export async function run(h, scene) {\n  let guard = {};\n  guard = scene.criterion;\n  if (!guard) h.check('real', false, 'why');\n}\n`,
+  'reached only when: !guard',
+);
+
 green(
   'a guarded failure report reached through a logical AND stays exempt',
   `export async function run(h, asserted) {\n  !asserted && h.check('scene asserts something', false, 'why');\n}\n`,

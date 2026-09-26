@@ -123,8 +123,47 @@ function auditFile(rel, src, ast) {
   const arrayBindings = new Map();
   /** Names bound to something truthy by construction, so `if (name)` cannot be false. */
   const truthyBindings = new Map();
+  /**
+   * Names this file cannot resolve to one value, which are therefore resolved to NONE of them.
+   *
+   * These maps are keyed by identifier text for the whole file, with no lexical scope. That is
+   * fine while a name is declared once and never written to, and wrong the moment it is not:
+   * two functions each declaring `guard`, or `let guard = {}; guard = runtimeValue`, would let
+   * one declaration classify the other's reference. The direction of that error is the bad one
+   * — it makes the audit *reject* a genuinely conditional check on the strength of an unrelated
+   * binding.
+   *
+   * Rather than claim scope analysis this walker does not do, an ambiguous name is dropped from
+   * every map and classifies as unknown. That is the conservative direction: the worst case is
+   * that one shadowed or reassigned name keeps the laundering hole the maps exist to close,
+   * instead of a valid check being reported as unfalsifiable.
+   */
+  const declaredCount = new Map();
+  const reassigned = new Set();
+  walk(ast, (node) => {
+    if (node.type === 'VariableDeclarator' && node.id?.type === 'Identifier') {
+      declaredCount.set(node.id.name, (declaredCount.get(node.id.name) ?? 0) + 1);
+    }
+    // A parameter shadows an outer binding just as effectively as a second declaration.
+    if (Array.isArray(node.params)) {
+      for (const param of node.params) {
+        if (param?.type === 'Identifier') {
+          declaredCount.set(param.name, (declaredCount.get(param.name) ?? 0) + 1);
+        }
+      }
+    }
+    if (node.type === 'AssignmentExpression' && node.left?.type === 'Identifier') {
+      reassigned.add(node.left.name);
+    }
+    if (node.type === 'UpdateExpression' && node.argument?.type === 'Identifier') {
+      reassigned.add(node.argument.name);
+    }
+  });
+  const ambiguous = (name) => (declaredCount.get(name) ?? 0) > 1 || reassigned.has(name);
+
   walk(ast, (node) => {
     if (node.type !== 'VariableDeclarator' || node.id?.type !== 'Identifier') return;
+    if (ambiguous(node.id.name)) return;
     if (node.init?.type === 'Literal') literalBindings.set(node.id.name, node.init.value);
     // `const guard = {}` is `const guard = true` for the purposes of `if (guard)`. Only the
     // literal initialisers were recorded, so an identifier bound to an object, array, function
