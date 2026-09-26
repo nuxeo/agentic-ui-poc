@@ -64,6 +64,10 @@ const ALWAYS_TRUTHY = {
   FunctionExpression: 'a function expression',
   ArrowFunctionExpression: 'an arrow function',
   ClassExpression: 'a class expression',
+  // `new X()` evaluates to an object whatever the constructor does — a primitive `return` is
+  // discarded by `new`. So `if (new Date()) h.check('x', false)` is `if (true)`, and without
+  // this entry it read as a real guard and exempted the unconditional check beneath it.
+  NewExpression: 'a constructor call, which always yields an object',
 };
 
 const files = explicit.length ? explicit.map((p) => resolve(process.cwd(), p)) : await defaultTargets();
@@ -117,9 +121,17 @@ function auditFile(rel, src, ast) {
   const literalBindings = new Map();
   /** Array literals, so a shared `ENVIRONMENTAL_ERRORS` const resolves to its patterns. */
   const arrayBindings = new Map();
+  /** Names bound to something truthy by construction, so `if (name)` cannot be false. */
+  const truthyBindings = new Map();
   walk(ast, (node) => {
     if (node.type !== 'VariableDeclarator' || node.id?.type !== 'Identifier') return;
     if (node.init?.type === 'Literal') literalBindings.set(node.id.name, node.init.value);
+    // `const guard = {}` is `const guard = true` for the purposes of `if (guard)`. Only the
+    // literal initialisers were recorded, so an identifier bound to an object, array, function
+    // or `new` read as unknown and `guardedBy` accepted it as a real condition.
+    if (node.init && ALWAYS_TRUTHY[node.init.type]) {
+      truthyBindings.set(node.id.name, ALWAYS_TRUTHY[node.init.type]);
+    }
     if (node.init?.type === 'ArrayExpression') {
       arrayBindings.set(
         node.id.name,
@@ -177,7 +189,7 @@ function auditFile(rel, src, ast) {
       return;
     }
 
-    const verdict = classify(condition, src, literalBindings);
+    const verdict = classify(condition, src, literalBindings, truthyBindings);
     if (!verdict) return;
 
     // `if (!scene.criterion) check('scene names an acceptance criterion', false, …)` is the
@@ -186,7 +198,7 @@ function auditFile(rel, src, ast) {
     // stop making the claim, so it was recorded instead — and a gate nobody can satisfy is one
     // that gets suppressed. The guard is still listed below, because an exemption nobody has
     // to look at is how a real one hides.
-    const guard = guardedBy(node, parents, src, literalBindings);
+    const guard = guardedBy(node, parents, src, literalBindings, truthyBindings);
     if (verdict.kind === 'literal-false' && guard) {
       guardedFailures.push({ file: rel, line, label, guard });
       return;
@@ -223,7 +235,7 @@ function auditFile(rel, src, ast) {
  * @param {Map<string, unknown>} bindings
  * @returns {{ kind: string, why: string } | null}
  */
-function classify(node, src, bindings) {
+function classify(node, src, bindings, truthyBindings = new Map()) {
   if (node.type === 'Literal') {
     // A regex literal is an object, so it is truthy whether or not the parser filled in
     // `value` — which it leaves null when the pattern uses a flag it cannot model.
@@ -254,8 +266,15 @@ function classify(node, src, bindings) {
 
   // `!0`, `!!true`, `!''`
   if (node.type === 'UnaryExpression' && node.operator === '!') {
-    const inner = classify(node.argument, src, bindings);
+    const inner = classify(node.argument, src, bindings, truthyBindings);
     if (inner) return { kind: 'negated-constant', why: `negates a constant (\`${text(src, node)}\`)` };
+  }
+
+  if (node.type === 'Identifier' && truthyBindings.has(node.name)) {
+    return {
+      kind: 'constant-binding',
+      why: `asserts \`${node.name}\`, bound to ${truthyBindings.get(node.name)}`,
+    };
   }
 
   if (node.type === 'Identifier' && bindings.has(node.name)) {
@@ -267,7 +286,7 @@ function classify(node, src, bindings) {
 
   // `Boolean(true)`, `Boolean(1)`
   if (node.type === 'CallExpression' && calleeName(node) === 'Boolean' && node.arguments.length === 1) {
-    const inner = classify(node.arguments[0], src, bindings);
+    const inner = classify(node.arguments[0], src, bindings, truthyBindings);
     if (inner) return { kind: 'boolean-of-constant', why: `wraps a constant (\`${text(src, node)}\`)` };
   }
 
@@ -324,17 +343,17 @@ function classify(node, src, bindings) {
  * @param {Map<string, unknown>} bindings
  * @returns {string | null} the guard's source text, for the report
  */
-function guardedBy(node, parents, src, bindings) {
+function guardedBy(node, parents, src, bindings, truthyBindings = new Map()) {
   let child = node;
   let parent = parents.get(child);
   while (parent) {
     if (parent.type === 'IfStatement' || parent.type === 'ConditionalExpression') {
       if (child !== parent.consequent && child !== parent.alternate) return null;
-      return classify(parent.test, src, bindings) ? null : text(src, parent.test);
+      return classify(parent.test, src, bindings, truthyBindings) ? null : text(src, parent.test);
     }
     if (parent.type === 'LogicalExpression') {
       if (child !== parent.right) return null;
-      return classify(parent.left, src, bindings) ? null : text(src, parent.left);
+      return classify(parent.left, src, bindings, truthyBindings) ? null : text(src, parent.left);
     }
     if (!isTransparentWrapper(parent, child)) return null;
     child = parent;

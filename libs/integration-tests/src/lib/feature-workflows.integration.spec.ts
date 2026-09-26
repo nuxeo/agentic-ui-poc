@@ -14,6 +14,11 @@
  * Acceptance criteria (from audit §11 Stage 8):
  * - Each workflow tested end-to-end with API verification
  * - Features that modify repository state verified with follow-up queries
+ *
+ * One workflow does NOT meet the first criterion and is named rather than counted as though it
+ * did: CSV export is asserted only as far as the export STARTING. Completing it means polling
+ * `/@async/<id>/status` and downloading the blob, and the test is named for what it checks so
+ * the gap is visible in the result rather than only in a comment beside it.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -329,7 +334,11 @@ describe('Feature Workflows Integration Tests', () => {
   });
 
   describe('CSV Export', () => {
-    it('can export search results to CSV', async () => {
+    // Named for what it asserts. It was `can export search results to CSV`, which a green tick
+    // reads as "CSV export works" — and this test still passes if the job fails or never
+    // produces a file. The body already recorded that limitation in a comment; a comment does
+    // not travel with the result, and the name does.
+    it('starts a CSV export and gets back an execution id to poll', async () => {
       // Create a few documents
       await Promise.all([
         createTestDocument(harness, {

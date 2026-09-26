@@ -129,11 +129,31 @@ const laundered = {
   'a literal true': 'true',
   'a negated constant': '!0',
   'a regex literal': '/x/',
+  // `new` discards a primitive `return`, so this is an object and the guard cannot be false.
+  // Review found it exempt; these last two are the holes that round closed.
+  'a constructor call': 'new Date()',
 };
 for (const [description, guard] of Object.entries(laundered)) {
   red(
     `${description} does not launder an unconditional check(name, false)`,
     `export async function run(h) {\n  if (${guard}) h.check('laundered', false, 'why');\n}\n`,
+    'asserts a literal falsy value',
+  );
+}
+
+// The same laundering one indirection away. Only *literal* initialisers were recorded as
+// bindings, so `const guard = {}` read as an unknown value and `if (guard)` passed for a real
+// condition. Written out rather than folded into `laundered` above because it needs the
+// declaration as well as the guard.
+for (const [description, init] of Object.entries({
+  'an object literal': '{}',
+  'an array literal': '[]',
+  'an arrow function': '() => false',
+  'a constructor call': 'new Date()',
+})) {
+  red(
+    `a binding to ${description} does not launder an unconditional check either`,
+    `export async function run(h) {\n  const guard = ${init};\n  if (guard) h.check('laundered', false, 'why');\n}\n`,
     'asserts a literal falsy value',
   );
 }
