@@ -1,4 +1,5 @@
-import { expect, expectSurfaceWithData, test } from './fixtures';
+import { aRootChild, expect, expectSurfaceWithData, newNuxeoApiContext, test } from './fixtures';
+import { type APIRequestContext } from '@playwright/test';
 
 /**
  * Browse — the primary authenticated surface, and the one every other path starts from.
@@ -8,11 +9,23 @@ import { expect, expectSurfaceWithData, test } from './fixtures';
  * `toBeVisible` check, and proof of nothing. That distinction is the reason
  * `expectSurfaceWithData` exists.
  */
+
+let api: APIRequestContext;
+
+test.beforeAll(async () => {
+  api = await newNuxeoApiContext();
+});
+
+test.afterAll(async () => {
+  await api?.dispose();
+});
+
 test.describe('browse', () => {
   test('lists repository content at the root', async ({ signedIn: page }) => {
     await page.goto('/#/browse', { waitUntil: 'networkidle' });
 
-    await expectSurfaceWithData(page, 'lib-browse', 'Root');
+    const rootChild = await aRootChild(api);
+    await expectSurfaceWithData(page, 'lib-browse', rootChild.title);
     // The empty-state copy the app shows for a folder with no children. Its presence at
     // the root would mean the listing failed, so this is a negative assertion with teeth.
     await expect(page.locator('lib-browse')).toContainText('Create / Import');
@@ -20,7 +33,9 @@ test.describe('browse', () => {
 
   test('offers navigation into the repository tree', async ({ signedIn: page }) => {
     await page.goto('/#/browse', { waitUntil: 'networkidle' });
-    await expectSurfaceWithData(page, 'lib-browse', 'Root');
+
+    const rootChild = await aRootChild(api);
+    await expectSurfaceWithData(page, 'lib-browse', rootChild.title);
 
     // The root's children in a stock Nuxeo. Named individually rather than counting rows:
     // a count assertion passes on the wrong rows.

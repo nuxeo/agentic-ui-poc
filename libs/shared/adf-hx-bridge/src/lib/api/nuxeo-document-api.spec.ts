@@ -1,11 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
-import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { NuxeoDocumentApi, ROOT_DOCUMENT as ROOT_DOCUMENT_FROM_PORT } from './nuxeo-document-api';
 import { NuxeoAclService } from '../services/nuxeo-acl.service';
 import { NuxeoPrincipalResolver } from '../services/nuxeo-principal-resolver.service';
 import { DEFAULT_REPOSITORY_ID, ROOT_DOCUMENT } from '../tokens/adf-hx-bridge.tokens';
+import { nuxeoDocument, nuxeoAce } from '@agentic-ui/shared/testing';
 
 describe('NuxeoDocumentApi', () => {
   let api: NuxeoDocumentApi;
@@ -35,32 +35,8 @@ describe('NuxeoDocumentApi', () => {
    */
   const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
-  /**
-   * One complete Nuxeo ACE. Every optional-looking field on `NuxeoAce` is in fact required, so a
-   * partial literal only compiles behind a cast — which is what hid an incomplete fixture here.
-   */
-  const nuxeoAce = (over: Partial<NuxeoAce> = {}): NuxeoAce => ({
-    id: '1',
-    username: 'jdoe',
-    externalUser: false,
-    permission: 'Read',
-    granted: true,
-    creator: null,
-    begin: null,
-    end: null,
-    status: 'effective',
-    ...over,
-  });
-
-  const nuxeoDoc = (over: Partial<NuxeoDocument> = {}): NuxeoDocument => ({
-    uid: 'doc-1',
-    title: 'Invoice',
-    type: 'File',
-    path: '/default-domain/workspaces/ws/Invoice',
-    lastModified: '2026-01-01T00:00:00.000Z',
-    properties: {},
-    ...over,
-  });
+  // Migrated to @agentic-ui/shared/testing (Stage 3.4) — the original builders are now imported
+  // from libs/shared/testing/src/lib/nuxeo-fixtures.ts instead of being duplicated here.
 
   it('returns synthetic repository root for root id', async () => {
     const response = await api.getDocumentById(ROOT_DOCUMENT.sys_id);
@@ -97,7 +73,7 @@ describe('NuxeoDocumentApi', () => {
     expect(req.request.method).toBe('GET');
     expect(req.request.headers.get('enrichers.document')).toContain('acls');
     expect(req.request.headers.get('properties')).toBe('*');
-    req.flush(nuxeoDoc());
+    req.flush(nuxeoDocument());
   });
 
   it('resolves a path to a document, asking Nuxeo by path rather than by id', async () => {
@@ -108,7 +84,7 @@ describe('NuxeoDocumentApi', () => {
     );
     expect(req.request.method).toBe('GET');
     req.flush(
-      nuxeoDoc({
+      nuxeoDocument({
         uid: 'ws-1',
         title: 'Workspace',
         type: 'Workspace',
@@ -130,7 +106,9 @@ describe('NuxeoDocumentApi', () => {
     const req = httpMock.expectOne(
       (r) => r.url === '/nuxeo/api/v1/path/default-domain/workspaces/ws',
     );
-    req.flush(nuxeoDoc({ uid: 'ws-1', type: 'Workspace', path: '/default-domain/workspaces/ws' }));
+    req.flush(
+      nuxeoDocument({ uid: 'ws-1', type: 'Workspace', path: '/default-domain/workspaces/ws' }),
+    );
 
     expect((await pending).data.sys_id).toBe('ws-1');
   });
@@ -159,7 +137,7 @@ describe('NuxeoDocumentApi', () => {
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
       .flush(
-        nuxeoDoc({
+        nuxeoDocument({
           contextParameters: {
             acls: [
               {
@@ -231,7 +209,7 @@ describe('NuxeoDocumentApi', () => {
     // `undefined`, not `[]`. An empty array would assert the document has no ACL, which a read
     // that did not request the enricher cannot know.
     const pending = api.getDocumentById('doc-1');
-    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDoc());
+    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDocument());
 
     const { data } = await pending;
     expect('sys_acl' in data).toBe(false);
@@ -243,7 +221,7 @@ describe('NuxeoDocumentApi', () => {
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain/workspaces/ws')
       .flush(
-        nuxeoDoc({
+        nuxeoDocument({
           uid: 'ws-1',
           type: 'Workspace',
           path: '/default-domain/workspaces/ws',
@@ -260,7 +238,7 @@ describe('NuxeoDocumentApi', () => {
 
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
-      .flush(nuxeoDoc({ path: '/default-domain/workspaces/ws/Invoice' }));
+      .flush(nuxeoDocument({ path: '/default-domain/workspaces/ws/Invoice' }));
     await settle();
 
     // One request per ancestor, deepest last, and none for `/` or for the document itself.
@@ -273,7 +251,7 @@ describe('NuxeoDocumentApi', () => {
       httpMock
         .expectOne((r) => r.url === url)
         .flush(
-          nuxeoDoc({
+          nuxeoDocument({
             uid: `anc-${i}`,
             type: i === 0 ? 'Domain' : 'Workspace',
             path: url.replace('/nuxeo/api/v1/path', ''),
@@ -302,7 +280,9 @@ describe('NuxeoDocumentApi', () => {
     // A single trip to read the document, then nothing: `/` has no ancestors, and the loop
     // starts at `i = 1` so a one-segment path yields none either.
     const pending = api.getDocumentAncestors('doc-1');
-    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDoc({ path: '/' }));
+    httpMock
+      .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
+      .flush(nuxeoDocument({ path: '/' }));
     await settle();
 
     expect((await pending).data.ancestors).toEqual([]);
@@ -313,7 +293,7 @@ describe('NuxeoDocumentApi', () => {
     const pending = api.getDocumentAncestors('doc-1');
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
-      .flush(nuxeoDoc({ path: '/default-domain' }));
+      .flush(nuxeoDocument({ path: '/default-domain' }));
     await settle();
 
     expect((await pending).data.ancestors).toEqual([]);
@@ -326,7 +306,7 @@ describe('NuxeoDocumentApi', () => {
     const pending = api.getDocumentAncestors('doc-1');
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
-      .flush(nuxeoDoc({ path: '/default-domain/workspaces/ws/Invoice' }));
+      .flush(nuxeoDocument({ path: '/default-domain/workspaces/ws/Invoice' }));
     await settle();
 
     httpMock
@@ -334,10 +314,14 @@ describe('NuxeoDocumentApi', () => {
       .flush({ message: 'no' }, { status: 403, statusText: 'Forbidden' });
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain/workspaces')
-      .flush(nuxeoDoc({ uid: 'anc-1', type: 'Workspace', path: '/default-domain/workspaces' }));
+      .flush(
+        nuxeoDocument({ uid: 'anc-1', type: 'Workspace', path: '/default-domain/workspaces' }),
+      );
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/path/default-domain/workspaces/ws')
-      .flush(nuxeoDoc({ uid: 'anc-2', type: 'Workspace', path: '/default-domain/workspaces/ws' }));
+      .flush(
+        nuxeoDocument({ uid: 'anc-2', type: 'Workspace', path: '/default-domain/workspaces/ws' }),
+      );
 
     await expect(pending).rejects.toBeDefined();
   });
@@ -397,7 +381,7 @@ describe('NuxeoDocumentApi', () => {
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
       .flush(
-        nuxeoDoc({
+        nuxeoDocument({
           contextParameters: {
             acls: [
               {
@@ -430,7 +414,7 @@ describe('NuxeoDocumentApi', () => {
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
       .flush(
-        nuxeoDoc({
+        nuxeoDocument({
           contextParameters: {
             acls: [
               {
@@ -445,7 +429,7 @@ describe('NuxeoDocumentApi', () => {
       );
     await settle();
 
-    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDoc());
+    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDocument());
     await settle();
 
     // The replay fails on the first grant.
@@ -455,7 +439,7 @@ describe('NuxeoDocumentApi', () => {
     await settle();
 
     // Compensation: clear again, then put the previous ACL back.
-    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDoc());
+    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDocument());
     await settle();
 
     const restore = httpMock.expectOne((r) => r.url.includes('Document.AddPermission'));
@@ -463,7 +447,7 @@ describe('NuxeoDocumentApi', () => {
     expect(restore.request.body.params.permission).toBe('Read');
     // The creator travels with the restore, so "Granted by" is not re-stamped to the saver.
     expect(restore.request.body.params.creator).toBe('admin');
-    restore.flush(nuxeoDoc());
+    restore.flush(nuxeoDocument());
     await settle();
 
     const message = String(await pending);
@@ -506,7 +490,7 @@ describe('NuxeoDocumentApi', () => {
     httpMock
       .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
       .flush(
-        nuxeoDoc({
+        nuxeoDocument({
           contextParameters: {
             acls: [{ name: 'local', aces: [nuxeoAce({ username: 'jdoe', permission: 'Read' })] }],
           },
@@ -514,7 +498,7 @@ describe('NuxeoDocumentApi', () => {
       );
     await settle();
 
-    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDoc());
+    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDocument());
     await settle();
     httpMock
       .expectOne((r) => r.url.includes('Document.AddPermission'))
@@ -543,22 +527,22 @@ describe('NuxeoDocumentApi', () => {
       ],
     });
 
-    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDoc());
+    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDocument());
     await settle();
-    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDoc());
+    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDocument());
     await settle();
 
     const grant = httpMock.expectOne((r) => r.url.includes('Document.AddPermission'));
     order.push('grant');
-    grant.flush(nuxeoDoc());
+    grant.flush(nuxeoDocument());
     await settle();
 
     const block = httpMock.expectOne((r) => r.url.includes('Document.BlockPermissionInheritance'));
     order.push('block');
-    block.flush(nuxeoDoc());
+    block.flush(nuxeoDocument());
     await settle();
 
-    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDoc());
+    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDocument());
     await pending;
 
     expect(order).toEqual(['grant', 'block']);

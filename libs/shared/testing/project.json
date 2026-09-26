@@ -1,0 +1,30 @@
+{
+  "name": "testing",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/testing/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:testing"],
+  "// targets": "to see all targets run: nx show project testing --web",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/shared/testing"
+      },
+      "$comment": "The target has to exist for the README's `nx test testing` to work, and for `nx affected -t test` to notice the library at all. `passWithNoTests` lives in vitest.config.mts, which is where review-guardrails.mjs looks for it."
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "$comment": "@nx/eslint/plugin infers this as `eslint:lint`, which `nx affected -t lint` does NOT match — the same reason libs/shared/ai-client declares it explicitly. Without it the eslint.config.mjs beside this file is never invoked."
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --build tsconfig.lib.json tsconfig.spec.json",
+        "cwd": "libs/shared/testing"
+      },
+      "$comment": "The library shipped with `\"targets\": {}`, so nothing in the pipeline looked at it. Its only source file imported a path alias that does not exist, and the repo-wide spec-types gate found it through a *different* project's tsconfig."
+    }
+  }
+}

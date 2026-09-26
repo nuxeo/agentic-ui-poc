@@ -56,7 +56,19 @@ try {
 /** Assertion helpers whose second argument is the condition under test. */
 const CONDITION_AT_1 = new Set(['check', 'requirePrecondition']);
 /** Helpers that assert against the live page — always falsifiable by construction. */
-const PAGE_ASSERTIONS = new Set(['expectVisible', 'expectText', 'expectNoConsoleErrors']);
+const PAGE_ASSERTIONS = new Set(['expectVisible', 'expectText', 'expectNoConsoleErrors', 'expectNoA11yViolations']);
+/** Expression forms that evaluate to a fresh object, so they are truthy whatever they contain. */
+const ALWAYS_TRUTHY = {
+  ObjectExpression: 'an object literal',
+  ArrayExpression: 'an array literal',
+  FunctionExpression: 'a function expression',
+  ArrowFunctionExpression: 'an arrow function',
+  ClassExpression: 'a class expression',
+  // `new X()` evaluates to an object whatever the constructor does — a primitive `return` is
+  // discarded by `new`. So `if (new Date()) h.check('x', false)` is `if (true)`, and without
+  // this entry it read as a real guard and exempted the unconditional check beneath it.
+  NewExpression: 'a constructor call, which always yields an object',
+};
 
 const files = explicit.length ? explicit.map((p) => resolve(process.cwd(), p)) : await defaultTargets();
 
@@ -70,6 +82,7 @@ const findings = [];
 let totalAssertions = 0;
 let constantAssertions = 0;
 const allowlists = [];
+const guardedFailures = [];
 
 for (const file of files) {
   const src = await readFile(file, 'utf8');
@@ -108,9 +121,56 @@ function auditFile(rel, src, ast) {
   const literalBindings = new Map();
   /** Array literals, so a shared `ENVIRONMENTAL_ERRORS` const resolves to its patterns. */
   const arrayBindings = new Map();
+  /** Names bound to something truthy by construction, so `if (name)` cannot be false. */
+  const truthyBindings = new Map();
+  /**
+   * Names this file cannot resolve to one value, which are therefore resolved to NONE of them.
+   *
+   * These maps are keyed by identifier text for the whole file, with no lexical scope. That is
+   * fine while a name is declared once and never written to, and wrong the moment it is not:
+   * two functions each declaring `guard`, or `let guard = {}; guard = runtimeValue`, would let
+   * one declaration classify the other's reference. The direction of that error is the bad one
+   * — it makes the audit *reject* a genuinely conditional check on the strength of an unrelated
+   * binding.
+   *
+   * Rather than claim scope analysis this walker does not do, an ambiguous name is dropped from
+   * every map and classifies as unknown. That is the conservative direction: the worst case is
+   * that one shadowed or reassigned name keeps the laundering hole the maps exist to close,
+   * instead of a valid check being reported as unfalsifiable.
+   */
+  const declaredCount = new Map();
+  const reassigned = new Set();
+  walk(ast, (node) => {
+    if (node.type === 'VariableDeclarator' && node.id?.type === 'Identifier') {
+      declaredCount.set(node.id.name, (declaredCount.get(node.id.name) ?? 0) + 1);
+    }
+    // A parameter shadows an outer binding just as effectively as a second declaration.
+    if (Array.isArray(node.params)) {
+      for (const param of node.params) {
+        if (param?.type === 'Identifier') {
+          declaredCount.set(param.name, (declaredCount.get(param.name) ?? 0) + 1);
+        }
+      }
+    }
+    if (node.type === 'AssignmentExpression' && node.left?.type === 'Identifier') {
+      reassigned.add(node.left.name);
+    }
+    if (node.type === 'UpdateExpression' && node.argument?.type === 'Identifier') {
+      reassigned.add(node.argument.name);
+    }
+  });
+  const ambiguous = (name) => (declaredCount.get(name) ?? 0) > 1 || reassigned.has(name);
+
   walk(ast, (node) => {
     if (node.type !== 'VariableDeclarator' || node.id?.type !== 'Identifier') return;
+    if (ambiguous(node.id.name)) return;
     if (node.init?.type === 'Literal') literalBindings.set(node.id.name, node.init.value);
+    // `const guard = {}` is `const guard = true` for the purposes of `if (guard)`. Only the
+    // literal initialisers were recorded, so an identifier bound to an object, array, function
+    // or `new` read as unknown and `guardedBy` accepted it as a real condition.
+    if (node.init && ALWAYS_TRUTHY[node.init.type]) {
+      truthyBindings.set(node.id.name, ALWAYS_TRUTHY[node.init.type]);
+    }
     if (node.init?.type === 'ArrayExpression') {
       arrayBindings.set(
         node.id.name,
@@ -122,6 +182,8 @@ function auditFile(rel, src, ast) {
   /** Steps, so a step that photographs without asserting can be spotted. */
   const steps = [];
   let current = null;
+
+  const parents = parentMap(ast);
 
   walk(ast, (node) => {
     if (node.type !== 'CallExpression') return;
@@ -166,17 +228,29 @@ function auditFile(rel, src, ast) {
       return;
     }
 
-    const verdict = classify(condition, src, literalBindings);
-    if (verdict) {
-      constantAssertions += 1;
-      findings.push({
-        file: rel,
-        line,
-        kind: verdict.kind,
-        severity: 'fail',
-        message: `\`${name}("${label}")\` ${verdict.why}. It cannot fail, so it is not evidence.`,
-      });
+    const verdict = classify(condition, src, literalBindings, truthyBindings);
+    if (!verdict) return;
+
+    // `if (!scene.criterion) check('scene names an acceptance criterion', false, …)` is the
+    // deliberate report-this-as-failed idiom: the literal `false` is the verdict and the
+    // enclosing `if` is the assertion. Reported as a constant, the idiom's only escape was to
+    // stop making the claim, so it was recorded instead — and a gate nobody can satisfy is one
+    // that gets suppressed. The guard is still listed below, because an exemption nobody has
+    // to look at is how a real one hides.
+    const guard = guardedBy(node, parents, src, literalBindings, truthyBindings);
+    if (verdict.kind === 'literal-false' && guard) {
+      guardedFailures.push({ file: rel, line, label, guard });
+      return;
     }
+
+    constantAssertions += 1;
+    findings.push({
+      file: rel,
+      line,
+      kind: verdict.kind,
+      severity: 'fail',
+      message: `\`${name}("${label}")\` ${verdict.why}. It cannot fail, so it is not evidence.`,
+    });
   });
 
   for (const s of steps) {
@@ -200,17 +274,46 @@ function auditFile(rel, src, ast) {
  * @param {Map<string, unknown>} bindings
  * @returns {{ kind: string, why: string } | null}
  */
-function classify(node, src, bindings) {
+function classify(node, src, bindings, truthyBindings = new Map()) {
   if (node.type === 'Literal') {
+    // A regex literal is an object, so it is truthy whether or not the parser filled in
+    // `value` — which it leaves null when the pattern uses a flag it cannot model.
+    if (node.regex) return { kind: 'literal-true', why: `asserts the regex \`${text(src, node)}\`` };
     return node.value
       ? { kind: 'literal-true', why: `asserts the literal \`${JSON.stringify(node.value)}\`` }
       : { kind: 'literal-false', why: 'asserts a literal falsy value, so it always fails' };
   }
 
+  // Expressions whose *syntax* makes them truthy. `if ({})` is `if (true)` in another
+  // spelling, and so is `if (() => false)` — the arrow is an object, its body never runs.
+  // Without these the guard exemption below launders precisely what `literal-false` exists
+  // to catch: six of these seven shapes were verified to make an unconditional
+  // `check(name, false)` exempt. See `assertion-audit.selftest.mjs`.
+  const truthyByConstruction = ALWAYS_TRUTHY[node.type];
+  if (truthyByConstruction) {
+    return { kind: 'constant-truthy', why: `asserts ${truthyByConstruction}, which is always truthy` };
+  }
+
+  // A template with nothing to interpolate is a string literal written with backticks.
+  // One that interpolates could be empty, so it is left alone.
+  if (node.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    const value = node.quasis.map((q) => q.value.cooked ?? '').join('');
+    return value
+      ? { kind: 'literal-true', why: `asserts the constant template \`${text(src, node)}\`` }
+      : { kind: 'literal-false', why: 'asserts an empty template literal, so it always fails' };
+  }
+
   // `!0`, `!!true`, `!''`
   if (node.type === 'UnaryExpression' && node.operator === '!') {
-    const inner = classify(node.argument, src, bindings);
+    const inner = classify(node.argument, src, bindings, truthyBindings);
     if (inner) return { kind: 'negated-constant', why: `negates a constant (\`${text(src, node)}\`)` };
+  }
+
+  if (node.type === 'Identifier' && truthyBindings.has(node.name)) {
+    return {
+      kind: 'constant-binding',
+      why: `asserts \`${node.name}\`, bound to ${truthyBindings.get(node.name)}`,
+    };
   }
 
   if (node.type === 'Identifier' && bindings.has(node.name)) {
@@ -222,7 +325,7 @@ function classify(node, src, bindings) {
 
   // `Boolean(true)`, `Boolean(1)`
   if (node.type === 'CallExpression' && calleeName(node) === 'Boolean' && node.arguments.length === 1) {
-    const inner = classify(node.arguments[0], src, bindings);
+    const inner = classify(node.arguments[0], src, bindings, truthyBindings);
     if (inner) return { kind: 'boolean-of-constant', why: `wraps a constant (\`${text(src, node)}\`)` };
   }
 
@@ -254,6 +357,86 @@ function classify(node, src, bindings) {
   }
 
   return null;
+}
+
+/**
+ * The condition a `check(_, false)` exists to report, or `null` if there is not one.
+ *
+ * Narrow on purpose, in two directions, because the first cut of this was not and both
+ * failures showed up the moment it was tested against a deliberate violation.
+ *
+ * It climbs only through wrappers that add nothing — `await`, an expression statement, a
+ * `return`, and a block whose *sole* statement is the one it came from — and stops at the
+ * first conditional. So `if (!scene.criterion) check(n, false)` qualifies, while a
+ * `check(n, false)` buried among twenty other statements inside some outer `if` does not: the
+ * enclosing block is doing plenty besides reporting, so the `if` is not this call's guard.
+ * Climbing the whole ancestor chain made every statement inside a top-level `if (declarative)`
+ * exempt, which is the rule relaxed until it passes.
+ *
+ * The guard's own test must also not be a constant, or `if (true) check(n, false)` would
+ * launder precisely what `literal-false` exists to catch.
+ *
+ * @param {object} node
+ * @param {Map<object, object>} parents
+ * @param {string} src
+ * @param {Map<string, unknown>} bindings
+ * @returns {string | null} the guard's source text, for the report
+ */
+function guardedBy(node, parents, src, bindings, truthyBindings = new Map()) {
+  let child = node;
+  let parent = parents.get(child);
+  while (parent) {
+    if (parent.type === 'IfStatement' || parent.type === 'ConditionalExpression') {
+      if (child !== parent.consequent && child !== parent.alternate) return null;
+      return classify(parent.test, src, bindings, truthyBindings) ? null : text(src, parent.test);
+    }
+    if (parent.type === 'LogicalExpression') {
+      if (child !== parent.right) return null;
+      return classify(parent.left, src, bindings, truthyBindings) ? null : text(src, parent.left);
+    }
+    if (!isTransparentWrapper(parent, child)) return null;
+    child = parent;
+    parent = parents.get(child);
+  }
+  return null;
+}
+
+/** A node that neither guards nor accompanies its child — see `guardedBy`. */
+function isTransparentWrapper(parent, child) {
+  if (parent.type === 'AwaitExpression') return parent.argument === child;
+  if (parent.type === 'ExpressionStatement') return parent.expression === child;
+  if (parent.type === 'ReturnStatement') return parent.argument === child;
+  if (parent.type === 'BlockStatement') return parent.body.length === 1 && parent.body[0] === child;
+  return false;
+}
+
+/**
+ * Child node -> its nearest node ancestor, so a finding can be read in the context that
+ * reaches it. Arrays are traversed through rather than recorded, so an element's parent is
+ * the node holding the array.
+ *
+ * @param {object} ast
+ * @returns {Map<object, object>}
+ */
+function parentMap(ast) {
+  const parents = new Map();
+  const descend = (node, parent) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      for (const n of node) descend(n, parent);
+      return;
+    }
+    if (typeof node.type === 'string') {
+      if (parent) parents.set(node, parent);
+      parent = node;
+    }
+    for (const key of Object.keys(node)) {
+      if (key === 'loc' || key === 'range') continue;
+      descend(node[key], parent);
+    }
+  };
+  descend(ast, null);
+  return parents;
 }
 
 /**
@@ -296,6 +479,7 @@ function report() {
           totalAssertions,
           constantAssertions,
           findings,
+          guardedFailures,
           consoleErrorAllowlists: allowlists,
         },
         null,
@@ -314,6 +498,17 @@ function report() {
   for (const f of warns) {
     console.log(`  [warn] ${f.file}:${f.line}  (${f.kind})`);
     console.log(`         ${f.message}`);
+  }
+
+  if (guardedFailures.length) {
+    console.log(
+      '\n  Guarded failure reports — a literal `false` reached only when its guard holds,\n' +
+        '  so the guard is the assertion. Listed because the exemption is real:',
+    );
+    for (const g of guardedFailures) {
+      console.log(`    ${g.file}:${g.line}  "${g.label}"`);
+      console.log(`      reached only when: ${g.guard.replace(/\s+/g, ' ').slice(0, 90)}`);
+    }
   }
 
   if (allowlists.length) {
@@ -346,7 +541,7 @@ function report() {
 
 /** @returns {Promise<string[]>} */
 async function defaultTargets() {
-  const dirs = [resolve(repoRoot, 'scripts/beta-harness/steps'), resolve(repoRoot, 'scripts/collect-evidence/steps')];
+  const dirs = [resolve(repoRoot, 'scripts/beta-harness/steps'), resolve(repoRoot, 'scripts/collect-evidence')];
   const out = [];
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;

@@ -1,0 +1,264 @@
+# Integration Test Stage 3 Status — libs/shared/testing
+
+**Stage:** 3 of 9 (Shared Test Fixtures)  
+**Goal:** Extract typed test fixtures to eliminate duplication and make field-type changes break compilation  
+**Last Updated:** 2026-09-21
+
+## Completion Status
+
+**Overall:** 7/7 tasks complete ✅
+
+Stage 3 complete! Created `libs/shared/testing` with typed NuxeoDocument and NuxeoAce factories,
+migrated all duplicate builders, and verified with negative control.
+
+### Completed Tasks ✅
+
+#### Task 3.1: Create libs/shared/testing library
+
+- Created with Nx generator: `@nx/js:library`
+- Tagged: `scope:shared`, `type:testing`
+- Added to tsconfig.base.json paths as `@agentic-ui/shared/testing`
+- Configured with Vitest test runner
+- Commit: f6155b13
+
+#### Task 3.2: Create typed NuxeoDocument factory
+
+- Extracted from nuxeo-document-api.spec.ts:55-63
+- Function: `nuxeoDocument(over?: Partial<NuxeoDocument>): NuxeoDocument`
+- Every **required** field filled — `uid`, `title`, `type`, `path`, `lastModified`,
+  `properties` — so the return value type-checks as a whole `NuxeoDocument`. The thirteen
+  optional fields are deliberately absent rather than defaulted; pass any the spec reads
+  through `over`
+- Default values: uid: 'doc-1', title: 'Invoice', type: 'File', etc.
+- File: `libs/shared/testing/src/lib/nuxeo-fixtures.ts`
+- Commit: f6155b13
+
+#### Task 3.3: Create typed NuxeoAce factory
+
+- Extracted from nuxeo-document-api.spec.ts:42-53
+- Function: `nuxeoAce(over?: Partial<NuxeoAce>): NuxeoAce`
+- All 9 fields explicitly provided
+- Default values: Read permission for user 'jdoe', no time bounds
+- File: `libs/shared/testing/src/lib/nuxeo-fixtures.ts`
+- Commit: f6155b13
+
+#### Task 3.4: Migrate 3 duplicate nuxeoDoc builders
+
+- **File 1:** `nuxeo-document-api.spec.ts` (lines 55-63)
+  - Removed local builder
+  - Added import: `import { nuxeoDocument } from '@agentic-ui/shared/testing'`
+  - Renamed all `nuxeoDoc(` → `nuxeoDocument(`
+
+- **File 2:** `nuxeo-copy-move-api.spec.ts` (lines 22-30)
+  - Original defaults: uid: 'copy-1', path: '/default-domain/workspaces/target/Invoice'
+  - Migrated to shared factory
+  - Call sites override where needed
+
+- **File 3:** `nuxeo-checkin-api.spec.ts` (lines 23-31)
+  - Original default: lastModified: '2026-03-02T00:00:00.000Z'
+  - Migrated to shared factory
+  - Documented difference in comment
+
+All 3 files: removed duplicate builder functions, added imports, renamed usages
+
+- Commit: f6155b13
+
+#### Task 3.5: Migrate duplicate nuxeoAce builders
+
+- **File 1:** `nuxeo-document-api.spec.ts` (lines 42-53)
+  - Already migrated as part of 3.4 (same file as nuxeoDoc)
+
+- **File 2:** `nuxeo-acl-write.spec.ts` (lines 271-282)
+  - In `describe('inexpressibleLocalAces')` block
+  - Changed `const ace = (over...) => ({...})` to `const ace = nuxeoAce`
+
+- **File 3:** `nuxeo-acl-write.spec.ts` (lines 341-352)
+  - In `describe('restorableLocalAcl')` block
+  - Changed `const ace = (over...) => ({...})` to `const ace = nuxeoAce`
+
+Added import: `import { nuxeoAce } from '@agentic-ui/shared/testing'`
+
+- Commit: f6155b13
+
+#### Task 3.6: Add type:testing to eslint depConstraints
+
+- Updated `eslint.config.mjs` depConstraints section
+- Commit: f6155b13, **narrowed 2026-09-23**
+- **As it stands now** — `'type:testing'` appears in `onlyDependOnLibsWithTags` for:
+  - `sourceTag: 'scope:features'`
+  - `sourceTag: 'scope:shared'`
+  - `sourceTag: 'type:extension'`
+  - `sourceTag: 'type:publishable'`
+  - `sourceTag: 'type:integration-test'`
+- **Not** for `type:app`, and **not** for `scope:core`, which still permits `scope:core` only.
+- **Correction:** this section said "All projects can now depend on testing library". Four of the
+  six original additions were no-ops — `libs/shared/testing` is already tagged `scope:shared` and
+  Nx permits a dependency when any tag matches — and the two that were not (`type:app` and
+  `scope:core`) widened boundaries nothing in the diff needed. `scope:core` is documented in
+  `AGENTS/00-architecture.md` as never reaching upward. Both were reverted.
+
+#### Task 3.7: Verify Stage 3 with negative control ✅
+
+**Verification results:**
+
+1. **Lint passes:** ✅
+   - `npx nx affected -t lint --base=origin/main`
+   - 27 projects linted successfully at the time. **29 today** — the count moves as libraries are
+     added, so it is a measurement with a date on it, not an acceptance criterion.
+   - Only pre-existing warnings (console statements)
+   - All new imports allowed by depConstraints
+
+2. **Typecheck passes:** ✅
+   - `npx nx affected -t typecheck --base=origin/main`
+   - 4 projects (shared-extensions, acme-extensions, nuxeo-satori-template, nuxeo-ui)
+   - No type errors
+
+3. **Tests pass:** ✅
+   - `NODE_OPTIONS="--no-experimental-webstorage" npx nx test adf-hx-bridge`
+   - 32 test files, 453 tests passed
+   - No behavior change from migration
+
+4. **Negative control:** ✅ VERIFIED
+   - Changed `NuxeoDocument.title` from `string` to `number`
+   - Ran `npx tsc -p libs/shared/adf-hx-bridge/tsconfig.spec.json --noEmit`
+   - **Result:** 24+ type errors in exactly the expected places:
+     - `nuxeo-fixtures.ts:26` — `title: 'Invoice'` is string, not number
+     - `nuxeo-document-api.spec.ts` — all `nuxeoDocument({ title: '...' })` calls
+     - `nuxeo-copy-move-api.spec.ts` — all title overrides
+     - `nuxeo-checkin-api.spec.ts` — all title overrides
+     - Plus propagated errors in mapper specs and service specs
+   - Reverted change, typecheck clean again
+   - **Conclusion:** Field-type changes break compilation in exactly the dependent specs ✅
+
+---
+
+## What Was Achieved
+
+### Eliminated Duplication
+
+- **Before:** 6 duplicate fixture builders across 5 files
+  - 3 `nuxeoDoc` builders (document-api, copy-move, checkin)
+  - 3 `nuxeoAce`/`ace` builders (document-api, acl-write ×2)
+
+- **After:** 2 shared factories, 5 files importing them
+  - `nuxeoDocument()` in `@agentic-ui/shared/testing`
+  - `nuxeoAce()` in `@agentic-ui/shared/testing`
+
+### Type Safety
+
+- Every **required** field explicitly filled, so no `Partial<>` escape hatch on the base
+  fixture — optional fields stay absent, matching what a live Nuxeo sends when the enricher
+  supplying them was not requested
+- Compile-time coupling: model changes → spec breaks
+- Negative control verified this works
+
+### Maintainability
+
+- Single source of truth for test fixtures
+- DRY principle: define once, import everywhere
+- Clear documentation of design principles
+
+---
+
+## Design Principles (from audit §10.2 AC2)
+
+1. **Every _required_ field filled**
+   - No `Partial<>` escape hatch on the base fixture: a factory returns a value the compiler
+     accepts as the whole model, so a missing required field is a compile error rather than a
+     runtime surprise
+   - This principle read "every field required", and that was true of neither factory.
+     `NuxeoDocument` declares thirteen genuinely optional fields and `nuxeoDocument()` sets
+     none of them, so a spec reading `doc.facets` off an un-overridden fixture gets
+     `undefined`. Any optional field a spec depends on must be passed in `over`
+   - `nuxeoAce()` is the stricter case and the reason the overstatement was plausible: every
+     field of `NuxeoAce` that looks optional is required, so all nine are filled — the type
+     permits `null` but not omission
+
+2. **One factory per model**
+   - Not a god-object with 40 overrides
+   - Each factory fills one specific shape completely
+   - Simple, focused, readable
+
+3. **Type-safe overrides**
+   - `over` parameter accepts `Partial<T>` for selective override
+   - Base fixture provides every required field
+   - Field-type changes break compilation (verified!)
+
+4. **Coupling point documented**
+   - eslint `type:testing` tag weakens boundary enforcement
+   - Trade-off accepted: convenience > strict isolation for test fixtures
+   - Alternative (duplication) was worse
+
+---
+
+## Evidence
+
+**Commits:**
+
+- f6155b13: feat(testing): create libs/shared/testing with typed fixtures (Stage 3)
+
+**Files Created:**
+
+- `libs/shared/testing/src/lib/nuxeo-fixtures.ts` (102 lines, 2 factories)
+- `libs/shared/testing/src/index.ts` (exports)
+- `libs/shared/testing/project.json` (Nx config)
+- `libs/shared/testing/README.md` (generated)
+- Various tsconfig and tooling files
+
+**Files Modified:**
+
+- `eslint.config.mjs` (added type:testing to 6 depConstraints)
+- `nx.json` (added testing project)
+- `tsconfig.base.json` (added @agentic-ui/shared/testing path)
+- `libs/shared/adf-hx-bridge/src/lib/api/nuxeo-document-api.spec.ts`
+- `libs/shared/adf-hx-bridge/src/lib/api/nuxeo-copy-move-api.spec.ts`
+- `libs/shared/adf-hx-bridge/src/lib/api/nuxeo-checkin-api.spec.ts`
+- `libs/shared/adf-hx-bridge/src/lib/services/nuxeo-acl-write.spec.ts`
+
+**Test Results:**
+
+- 27 projects linted (all pass)
+- 4 projects typechecked (all pass)
+- 453 tests in adf-hx-bridge (all pass)
+- Negative control: 24+ type errors when deliberately breaking model (as expected)
+
+---
+
+## Next Steps
+
+**Stage 4:** Integration harness and precondition contract
+
+- Create `libs/integration-tests` project
+- Reuse `e2e-preflight` exit-2 convention
+- Per-run data root under `/default-domain/workspaces/it-<runid>`
+- Guaranteed teardown (no fixture leaks)
+- Refuse to run against any host not named in `INTEGRATION_ALLOWED_HOSTS`, which denies by
+  default and has no implicitly safe host — `localhost` included. This replaced an earlier
+  "refuse default credentials without opt-in" item, and the replacement is not a rewording:
+  the credentials-based guard compared the pair against the Docker default, so a real
+  production pair was _recorded as satisfying_ it. There is no default-credential opt-in to
+  describe, and describing one would point future work back at the design that failed.
+
+See docs/integration-test-audit.md §11 Stage 4.
+
+---
+
+## Notes
+
+- The testing library is `scope:shared, type:testing`, not a feature
+- Five source categories may depend on it, not all of them: `scope:features`, `scope:shared`,
+  `type:integration-test`, `type:extension` and `type:publishable` list `type:testing` in their
+  `onlyDependOnLibsWithTags` in `eslint.config.mjs`. **`type:app` and `scope:core` do not** —
+  `type:app` may reach only `type:feature`, `type:ui`, `type:data-access`, `type:util`,
+  `type:extension` and `type:publishable`, and `scope:core` may reach only `scope:core`. So
+  `apps/nuxeo-ui` cannot import the testing library. "All projects can depend on it" was
+  written against the permissive `'*' → ['*']` default that these constraints replaced.
+- The factories follow the discipline from nuxeo-document-api.spec.ts:39-41
+- The negative control proves the compile-time coupling works
+- This pattern can extend to other models (NuxeoComment, result pages, audit entries)
+
+Stage 3 acceptance criteria met:
+
+- ✅ Three specs migrated with no behavior change
+- ✅ Deliberate field-type change breaks compilation in exactly one set of files (the migrated specs)
+- ✅ `nx affected -t typecheck` passes (after reverting the deliberate break)

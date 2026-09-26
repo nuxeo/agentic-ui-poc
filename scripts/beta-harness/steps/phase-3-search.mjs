@@ -42,8 +42,38 @@
  *   npm run beta:evidence -- phase-3-search
  */
 
+import { PreconditionError } from '../helpers.mjs';
+
 const NUXEO = 'http://localhost:8080/nuxeo';
-const AUTH = `Basic ${Buffer.from('Administrator:Administrator').toString('base64')}`;
+
+/**
+ * Credentials from the environment, with **no** fallback.
+ *
+ * `.cursor/rules/security.mdc`: "NEVER use Basic auth with hardcoded fallback defaults".
+ * Moving the literal `Administrator:Administrator` out of the `Buffer.from` and into a `??`
+ * default leaves the same working credential pair in the repository — it is the spelling
+ * that changed, not the fact. `apps/nuxeo-ui-e2e/src/fixtures.ts` and
+ * `scripts/collect-evidence/story-runner.mjs` both throw here, and this file should match
+ * them rather than the older harness scripts that still default.
+ */
+const USER = process.env['NUXEO_USER'];
+const PASS = process.env['NUXEO_PASS'];
+if (!USER || !PASS) {
+  // `PreconditionError`, not `Error`. This throw happens while `phase-runner.mjs` is doing
+  // `await import(stepsFile)` inside its try, and its catch keys on the error's NAME: a
+  // `PreconditionError` sets `preconditionFailure` and the run exits 2, anything else exits 1.
+  // Absent credentials are an environment precondition, and the runner's own docblock says
+  // exit 1 means "iterate, this is a defect" while exit 2 means "do NOT iterate; fix the
+  // environment". As a plain `Error` this reported `[error] steps aborted` and exited 1,
+  // inviting someone to change working code to satisfy a step that was never applicable.
+  throw new PreconditionError(
+    '\nNUXEO_USER and NUXEO_PASS must both be set to run the phase-3-search evidence step.\n\n' +
+      '  export NUXEO_USER=<user> NUXEO_PASS=<password>\n\n' +
+      '  There is deliberately no default: a hardcoded Administrator pair is a credential in\n' +
+      '  the repository, and one that is wrong on every instance but a local Docker one.',
+  );
+}
+const AUTH = `Basic ${Buffer.from(`${USER}:${PASS}`).toString('base64')}`;
 
 /** Ask Nuxeo directly, so the UI is compared against an independent answer. */
 async function restSearch(term, pageSize = 20) {
@@ -97,12 +127,12 @@ async function signIn(page, baseUrl) {
   await username.waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
   if (!(await username.isVisible().catch(() => false))) return false;
 
-  await username.fill(process.env['NUXEO_USER'] ?? 'Administrator');
+  await username.fill(USER);
   await page.locator('button[type="submit"]').first().click();
 
   const password = page.locator('input[formcontrolname="password"]');
   await password.waitFor({ state: 'visible', timeout: 15000 });
-  await password.fill(process.env['NUXEO_PASS'] ?? 'Administrator');
+  await password.fill(PASS);
   await page.locator('button[type="submit"]').first().click();
   await page.waitForTimeout(3500);
   return !(await password.isVisible().catch(() => false));

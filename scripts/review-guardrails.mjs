@@ -1190,19 +1190,106 @@ function checkNoHardcodedUiText() {
     // A standalone debug page, not referenced by `angular.json` and not copied as an asset, so
     // it is never served to anyone.
     /^apps\/nuxeo-ui\/src\/diagnostic\.html$/,
-    // Spec fixtures. A `*.host.html` is the template of a test host component, compiled only by
-    // the spec that names it and served by no build config — verified for all three: each is
-    // referenced by exactly one `.spec.ts` and appears in no `assets` glob. Their text is test
-    // DATA, chosen to reproduce a rendering bug, so keying it would make the fixture describe
-    // something other than the case under test. They arrived from `main` after this sweep went
-    // repo-wide, which is why the list did not already cover them.
-    /\.host\.html$/,
+    // Spec fixtures are NOT exempted by suffix here. `provenTestOnlyFixtures()` below decides
+    // them one file at a time, by checking the property the suffix used to assume.
     // The document shell. `checkNoTemplateSyntaxInDocumentShell` REQUIRES its title to be a
     // literal — Angular never compiles this file, so a pipe there renders as visible braces.
     // Without this exemption the two gates contradict each other and one of them has to be
     // wrong. The title is replaced at runtime from Layer 0 `branding.documentTitle`.
     /(^|\/)src\/index\.html$/,
   ];
+
+  /**
+   * Fixture templates whose test-only status is PROVEN, not assumed from the filename.
+   *
+   * `/\.host\.html$/` and `/\.spec\.html$/` used to sit in `EXEMPT` as suffix patterns, which
+   * admitted every future file with those names rather than the ones anyone had looked at. That
+   * is not a hypothetical cost: the `.spec.html` entry was justified against two named,
+   * hand-verified fixtures, and by the time it was reviewed there were FOUR `.spec.html` files.
+   * `dashboard-ai-banner-contrast.spec.html` and `header-settings-focus-ring.spec.html` had let
+   * themselves in, and nothing reported it. A blanket rule cannot distinguish the file someone
+   * checked from the file that merely shares its ending.
+   *
+   * So the properties the suffix was standing in for are checked per file, and the check
+   * FAILS CLOSED — an unproven fixture is held to the same standard as any shipped template:
+   *
+   *   1. exactly one `*.spec.ts` names it, so it is a fixture rather than shared markup;
+   *   2. NO non-spec source names it, so no shipped component compiles it; and
+   *   3. it lies under no `assets` input directory and is named by no build config.
+   *
+   * Only then is its text test DATA — markup chosen to reproduce a rendering bug, where keying
+   * the strings would make the fixture describe something other than the case under test.
+   *
+   * (2) and the directory half of (3) close two holes review found in the first version of this
+   * function, which compared basenames and nothing else. A production component doing
+   * `templateUrl: './thing.host.html'` was not a `.spec.ts` and not a config, so it did not
+   * count against the fixture at all — a shipped template could hold the proof of its own
+   * exemption. And an `assets` entry of `{ "glob": "**\/*", "input": "…" }` serves a whole
+   * directory without ever writing a basename; every asset entry in this repository is of
+   * exactly that form, so the basename scan could not have detected any of them. Both are
+   * checked structurally now rather than textually.
+   *
+   * Adding a fixture is still easy; adding one that is *served* no longer silently disables the
+   * guard for it.
+   */
+  const provenFixtures = (() => {
+    const isFixtureName = (path) => /\.(?:host|spec)\.html$/.test(path);
+    const fixtures = [...walk('apps', isFixtureName), ...walk('libs', isFixtureName)];
+    if (fixtures.length === 0) return new Set();
+
+    const sources = [
+      ...walk('apps', (path) => path.endsWith('.ts')),
+      ...walk('libs', (path) => path.endsWith('.ts')),
+    ].map((path) => ({ isSpec: /\.spec\.ts$/.test(path), body: read(path) }));
+
+    const configPaths = [
+      ...walk('apps', (path) => /(?:^|\/)(?:project|angular)\.json$/.test(path)),
+      ...walk('libs', (path) => /(?:^|\/)(?:project|angular)\.json$/.test(path)),
+      ...(fileExists('angular.json') ? ['angular.json'] : []),
+    ];
+    const configBodies = configPaths.map(read);
+
+    /**
+     * Every directory a build copies wholesale, from any `{ glob, input }` asset entry.
+     *
+     * The glob itself is deliberately not interpreted: `**\/*` is the only form here, and
+     * anything narrower is still a pattern this script would have to implement to rule out. The
+     * directory is the part that decides, so a fixture inside a copied tree is unproven whatever
+     * the glob says.
+     */
+    const assetInputs = [];
+    for (const body of configBodies) {
+      let parsed;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        // A config this script cannot parse cannot be cleared, so nothing is proven from it.
+        return new Set();
+      }
+      const visit = (node) => {
+        if (Array.isArray(node)) return node.forEach(visit);
+        if (!node || typeof node !== 'object') return;
+        if (typeof node.input === 'string' && typeof node.glob === 'string') {
+          assetInputs.push(node.input.replace(/\/+$/, ''));
+        }
+        Object.values(node).forEach(visit);
+      };
+      visit(parsed);
+    }
+
+    const proven = new Set();
+    for (const fixture of fixtures) {
+      const name = fixture.slice(fixture.lastIndexOf('/') + 1);
+      const naming = sources.filter(({ body }) => body.includes(name));
+      // Exactly one spec, and nothing else at all.
+      if (naming.filter(({ isSpec }) => isSpec).length !== 1) continue;
+      if (naming.some(({ isSpec }) => !isSpec)) continue;
+      if (configBodies.some((body) => body.includes(name))) continue;
+      if (assetInputs.some((input) => input !== '' && fixture.startsWith(`${input}/`))) continue;
+      proven.add(fixture);
+    }
+    return proven;
+  })();
 
   /**
    * Every template, not only the changed ones.
@@ -1216,7 +1303,7 @@ function checkNoHardcodedUiText() {
   const templates = [
     ...walk('apps', (path) => path.endsWith('.html')),
     ...walk('libs', (path) => path.endsWith('.html')),
-  ].filter((path) => !EXEMPT.some((pattern) => pattern.test(path)));
+  ].filter((path) => !EXEMPT.some((pattern) => pattern.test(path)) && !provenFixtures.has(path));
 
   if (templates.length === 0) {
     fail('No templates were found under apps/ or libs/, so this gate asserted nothing.');

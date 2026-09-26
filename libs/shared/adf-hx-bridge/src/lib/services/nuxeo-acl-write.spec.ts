@@ -3,7 +3,8 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { firstValueFrom } from 'rxjs';
 import type { ACE } from '@hylandsoftware/hxcs-js-client';
-import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import { nuxeoAce } from '@agentic-ui/shared/testing';
 
 import {
   NuxeoAclService,
@@ -268,18 +269,8 @@ describe('NuxeoAclService.localAclFor', () => {
  * that would delete anything it cannot express.
  */
 describe('inexpressibleLocalAces', () => {
-  const ace = (over: Partial<NuxeoAce> = {}): NuxeoAce => ({
-    id: '1',
-    username: 'jdoe',
-    externalUser: false,
-    permission: 'Read',
-    granted: true,
-    creator: null,
-    begin: null,
-    end: null,
-    status: 'effective',
-    ...over,
-  });
+  // Migrated to @agentic-ui/shared/testing (Stage 3.5) — nuxeoAce is now imported.
+  const ace = nuxeoAce;
 
   it('accepts the three levels upstream can rank', () => {
     expect(
@@ -338,18 +329,8 @@ describe('inexpressibleLocalAces', () => {
 });
 
 describe('restorableLocalAcl', () => {
-  const ace = (over: Partial<NuxeoAce> = {}): NuxeoAce => ({
-    id: '1',
-    username: 'jdoe',
-    externalUser: false,
-    permission: 'Read',
-    granted: true,
-    creator: null,
-    begin: null,
-    end: null,
-    status: 'effective',
-    ...over,
-  });
+  // Migrated to @agentic-ui/shared/testing (Stage 3.5) — nuxeoAce is now imported.
+  const ace = nuxeoAce;
 
   it('carries the creator, so a restore does not re-stamp "Granted by"', () => {
     expect(restorableLocalAcl([ace({ username: 'jdoe', creator: 'admin' })]).grants).toEqual([

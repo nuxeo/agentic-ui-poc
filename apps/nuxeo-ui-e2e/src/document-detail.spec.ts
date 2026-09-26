@@ -1,4 +1,4 @@
-import { expect, expectSurfaceWithData, test } from './fixtures';
+import { expect, expectSurfaceWithData, nuxeoCredentials, test } from './fixtures';
 import { request, type APIRequestContext } from '@playwright/test';
 
 /**
@@ -18,8 +18,9 @@ test.beforeAll(async () => {
   api = await request.newContext({
     baseURL,
     httpCredentials: {
-      username: process.env['NUXEO_USER'] ?? 'Administrator',
-      password: process.env['NUXEO_PASS'] ?? 'Administrator',
+      // Not read from the environment here: the same default-pair `??` fallback lived on these
+      // two lines, and one shared helper that throws is what stops it coming back.
+      ...nuxeoCredentials(),
       origin: baseURL,
     },
   });

@@ -52,7 +52,7 @@ export default [
             // the fix is to move it — which is what happened to the permission dialogs.
             {
               sourceTag: 'scope:features',
-              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core'],
+              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core', 'type:testing'],
             },
             // Shared code must not depend on a feature. This is the direction that makes
             // a shared library un-shareable, and it is the one `libs/shared/drawers` got
@@ -60,12 +60,29 @@ export default [
             // nobody.
             {
               sourceTag: 'scope:shared',
-              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core'],
+              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core', 'type:testing'],
             },
             // The lowest layer. `libs/core` underpins shared code, so it may not reach up.
             {
               sourceTag: 'scope:core',
               onlyDependOnLibsWithTags: ['scope:core'],
+            },
+            // The live-Nuxeo integration harness. It issues `DELETE /nuxeo/api/v1/path/…` and
+            // `Document.Trash`, so it may read the platform it drives and **nothing may depend
+            // on it**: no rule above lists `type:integration-test`, which is what makes it
+            // undependable. That is the whole point of the tag, and it is stated here rather
+            // than left as an absence for someone to read as an oversight and "fix".
+            //
+            // It was tagged `['scope:shared', 'type:integration-test']`, and Nx permits a
+            // dependency when *any* tag matches, so `scope:shared` let every feature library
+            // import it while `type:integration-test` appeared in no rule at all.
+            //
+            // A source rule is required, not optional: with no matching `sourceTag` Nx reports
+            // `projectWithoutTagsCannotHaveDependencies` and the harness could not import the
+            // platform services it is built on.
+            {
+              sourceTag: 'type:integration-test',
+              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core', 'type:testing'],
             },
             // A customer extension library must see only what a customer sees: the
             // published platform entry points. **This rule cannot enforce that**, and the
@@ -85,12 +102,12 @@ export default [
             // rule's to make.
             {
               sourceTag: 'type:extension',
-              onlyDependOnLibsWithTags: ['type:publishable', 'scope:shared'],
+              onlyDependOnLibsWithTags: ['type:publishable', 'scope:shared', 'type:testing'],
             },
             // The published package's own entry points wrap the shared libraries.
             {
               sourceTag: 'type:publishable',
-              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core'],
+              onlyDependOnLibsWithTags: ['scope:shared', 'scope:core', 'type:testing'],
             },
           ],
         },

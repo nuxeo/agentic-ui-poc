@@ -111,7 +111,25 @@ if (appStatus !== null) {
       );
     } else {
       const body = await res.json();
-      const count = body.resultsCount ?? body.entries?.length ?? 0;
+      // A negative `resultsCount` is UNKNOWN, not a count, and the entries decide.
+      //
+      // Nuxeo's page provider answers -1 (`UNKNOWN_SIZE`) and -2 (`UNKNOWN_SIZE_AFTER_QUERY`)
+      // when the total exceeds its count limit, and `??` passes both straight through because
+      // neither is null or undefined. A populated repository therefore scored -2, failed
+      // `count > 0`, and this preflight reported "holds no File documents" and exited 2 —
+      // inverting its answer on exactly the large repositories it is least able to doubt.
+      // Identical defect and identical fix to `libs/integration-tests/…/integration-preflight.ts`,
+      // where four unit cases cover both sentinels in both directions; it survived here because
+      // this file is a separate copy of the same logic. `scripts/e2e-negative-control.sh` runs
+      // this preflight as its first step, so the control could not start against a real
+      // repository.
+      //
+      // The entries are the evidence in any case: `pageSize=1` is asked for, so one returned row
+      // IS proof the repository has something to assert against. The total is only the nicer
+      // number to print.
+      const entries = Array.isArray(body.entries) ? body.entries.length : 0;
+      const total = typeof body.resultsCount === 'number' && body.resultsCount >= 0 ? body.resultsCount : null;
+      const count = total ?? entries;
       if (count > 0) {
         ok.push(`Nuxeo has ${count} File document(s) the specs can assert against`);
       } else {

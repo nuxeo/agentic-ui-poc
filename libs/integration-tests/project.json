@@ -1,0 +1,51 @@
+{
+  "name": "integration-tests",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/integration-tests/src",
+  "projectType": "library",
+  "tags": ["type:integration-test"],
+  "$tagsComment": "`scope:shared` was here alongside `type:integration-test`. Nx permits a dependency when ANY tag matches, so `scope:shared` let any feature library import a harness that issues `DELETE /nuxeo/api/v1/path/...` and `Document.Trash`, while `type:integration-test` appeared in no rule in `eslint.config.mjs` and governed nothing. The single tag is now the only one, and `eslint.config.mjs` names it as a source but never as a permitted target — so this library may read the platform it drives and nothing may depend on it. Verified by importing it from a feature library and watching lint reject the edge.",
+  "// targets": "to see all targets run: nx show project integration-tests --web",
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "$comment": "The unit half only, and it cannot become anything else: `vitest.unit.config.mts` includes `*.unit.spec.ts` and the `integration` target's config includes `*.integration.spec.ts`, so no file can match both. What runs here is the preflight's decision logic and the CLI's exit-code mapping with `fetch` stubbed — no Nuxeo, no Angular, nothing that a CI runner lacks.",
+      "$whyComment": "The `integration` target does not run on CI, so until this existed the gate that decides whether the whole suite may run was itself unexercised there, and its exit-2-versus-exit-1 behaviour rested on one manual observation. A one-character edit could have collapsed the two codes with nothing going red.",
+      "options": {
+        "configFile": "libs/integration-tests/vitest.unit.config.mts",
+        "reportsDirectory": "coverage/libs/integration-tests"
+      }
+    },
+    "integration": {
+      "executor": "nx:run-commands",
+      "$comment": "Named `integration`, not `test`, so no `-t test` invocation can reach the specs it runs. Those require a live Nuxeo; CI runners have none, so `nx affected -t test` and `nx run-many -t test` would fail every one of them on a precondition. An exclusion list in each workflow would work only for as long as everyone remembers to extend it — the name cannot be forgotten. The `test` target added beside this one does not weaken that: the two configs select on disjoint filename patterns, so a live spec has to be renamed before `-t test` can see it, and a rename is visible in a diff.",
+      "$preflightComment": "Preflight first, so an absent or empty Nuxeo — or a target host that is not allowed — reports as a precondition rather than as sixty-odd product failures. Same shape as nuxeo-ui-e2e's `e2e`. Note that `nx` normalises a failed command to exit 1, so the preflight's exit 2 does NOT survive `nx run integration-tests:integration` — `npm run beta:integration` chains the same two commands with `&&` and does preserve it. That is why both exist, exactly as `beta:e2e` exists beside `nuxeo-ui-e2e:e2e`.",
+      "$allowlistComment": "This target needs `NUXEO_USER`, `NUXEO_PASS` and `INTEGRATION_ALLOWED_HOSTS` in the environment. The last one is the run-safety gate and it denies by default: a host it does not name is refused with exit 2, `localhost` included, because the guard it replaced compared the credentials against the Docker default and so recorded every real production pair as satisfying it. It is read from the environment only — no flag, no per-suite option — so nothing in this repository can relax it on the caller's behalf. See libs/integration-tests/README.md.",
+      "$cacheComment": "Deliberately NOT cached: the result depends on a live Nuxeo's contents, and a cached green would assert something about a server state that has since changed.",
+      "cache": false,
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "commands": [
+          "npx tsx libs/integration-tests/src/preflight-cli.ts",
+          "npx vitest run --config libs/integration-tests/vitest.config.mts"
+        ],
+        "parallel": false
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "$comment": "`preflight-cli.ts` is neither a spec nor part of any bundle, so `spec-typecheck.mjs` does not reach it and there is no `build` target that would. Without this target the one file in the repository whose job is to exit with the right code would be the one file nothing type-checks.",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "tsc -p libs/integration-tests/tsconfig.lib.json --noEmit"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  },
+  "$testTargetHistory": "This project deliberately had NO `test` target, so that the live specs could not be reached by `-t test`. That reasoning survives — see the two targets above — but the blanket version of it had a cost that was not noticed until SonarCloud reported 0% coverage on the new code: `scripts/beta-harness/coverage-gate.mjs` discovers projects by the presence of `targets.test`, so the library was outside the ratchet entirely, and the preflight and its CLI were measured by nothing. The narrow `test` target puts only the server-free half in that population. `integration-harness.ts` and `user-fixtures.ts` are deliberately NOT unit-tested — they issue real DELETEs against a real repository, and a mocked version of that would assert the mock — so they sit in the report at 0% and drag the project's figure to ~28%. That is the honest number and it is meant to be read as debt, not patched away: they need no allowlist entry, because v8 instruments them and they are inside the denominator rather than invisible outside it, which is the state the allowlist exists to record. `nuxeo-ui-e2e` remains in the original position, with no `test` target and no entry."
+}
