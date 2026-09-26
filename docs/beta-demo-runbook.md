@@ -225,12 +225,17 @@ The interesting engineering detail, and it is worth reading aloud from
 - the app bundle is copied with `overwrite="true"` — replaced on every upgrade;
 - the config directory is copied **separately**, to a **sibling** path, with `overwrite="false"`.
 
-So a customer's branding file is seeded on first install and **left untouched on every upgrade
-after it**. Configuration was deliberately put where the installer cannot reach it. That is a
-real decision with a stated failure mode, not a diagram.
+So a customer's branding file is seeded on first install and the installer is **configured not to
+replace it** on later upgrades. Configuration was deliberately put outside the tree the installer
+overwrites. That is a real decision with a stated failure mode, not a diagram — but say it as the
+mechanism, because it is read from `install.xml` and not observed: intended effect of the copy layout; no marketplace install or upgrade has been run — R7.
 
-> **Unverified:** nobody ran Maven. Do **not** claim the marketplace ZIP builds or installs. Only
-> the Angular half was built (`nx build nuxeo-ui --configuration=production`, exit 0, 7.7 MB).
+> **Updated 2026-09-26: the ZIP builds and publishes; it has still never been installed.** Maven
+> runs in CI on every pull request, and `2026.0.1-20260926071953-BUILD-1109` is live on the preprod
+> listing (run 36226401180). So "the marketplace package builds" is now demoable — point at the
+> listing. What is written above about `overwrite="true"` / `overwrite="false"` is still **read from
+> `install.xml`, not observed**: no one has installed the ZIP on a server, let alone upgraded one.
+> Claim the build and the publish; do not claim the install or the upgrade.
 
 ### The support boundary
 
@@ -336,7 +341,10 @@ Reset: `git checkout -- nuxeo-agentic-ui-package/src/main/config/bootstrap.json`
 "Appearance", button "Use this one". The manifest layers **last** over the shipped catalogue, so
 the customer always wins.
 
-`labels` **cannot** relabel navigation — see F5.
+`labels` **does** relabel navigation too, per locale, through each descriptor's `labelKey` —
+`labels["nav.item.collections"]` renames Collections in that language alone. Use
+`overrides.<id>.label` when you want one literal in every locale; set both and the override wins.
+This corrects F5, which was withdrawn on 2026-09-26.
 
 ### Beat 5 — Nav: hide one, add one, and the security question (4 min)
 
@@ -361,9 +369,16 @@ the customer always wins.
 }
 ```
 
-"Browse (adf-hx POC)" disappears; "Contracts" appears between Browse and where it was. `order` is
-spaced by ten, so 35 lands exactly between 30 and 40. Verified live: 15 entries, `acme.navbar.contracts`
-at index 3, directly between `app.navbar.browse` and `app.navbar.recentlyViewed`.
+"Browse" disappears; "Contracts" appears where it was. `order` is spaced by ten, so 35 lands
+exactly between 30 and 40.
+
+> **The figures below were re-derived, not re-verified live.** They were "15 entries,
+> `acme.navbar.contracts` at index 3, between `app.navbar.browse` and `app.navbar.recentlyViewed`",
+> measured before `app.navbar.browse` was given `disabled: true`. With the legacy Browse entry no
+> longer rendered, the navigation renders 14 of the 15 packaged entries, this manifest still
+> renders 14, and
+> `acme.navbar.contracts` lands at index 2 — between `app.navbar.dashboard` and
+> `app.navbar.recentlyViewed`. Read the numbers off the screen before you quote them.
 
 > **Expand the nav rail before this beat.** It is collapsed by default, so labels are hidden by CSS
 > and a new entry shows only as an icon — measured: every item's `innerText` is empty while
@@ -758,9 +773,13 @@ No. Manifest visibility is presentation. Nuxeo's server-side permissions are the
 boundary, and they still apply. Demonstrate it — Beat 5.
 
 **"Does my customisation survive your upgrades?"**
-Yes, and by two different deliberate mechanisms. The Nuxeo document is outside the filesystem the
-installer touches. The branding file is installed to a sibling directory with `overwrite="false"`
-precisely because the app directory is copied with `overwrite="true"`. Then show Beat 8.
+Two different deliberate mechanisms, and they are **not equally evidenced** — say which is which.
+The Nuxeo document is outside the filesystem the installer touches at all, so nothing can overwrite
+it. The branding file is installed to a sibling directory with `overwrite="false"` precisely because
+the app directory is copied with `overwrite="true"` — that is the installer's _configuration_, read
+from `install.xml`, and **no marketplace install or upgrade has been run** (R7). Then show Beat 8,
+and say what it proves: the **npm** upgrade rehearsal, eight assertions across Layers 0-2, not the
+marketplace installer.
 
 **"Can I change the logo?"**
 Not today. Product name and theme colours, yes. There is no logo or favicon key. Say so plainly.
@@ -792,26 +811,28 @@ renders upstream's read-only properties panel either; metadata is on the documen
 
 ## Part 6 — Do NOT demo these
 
-| #       | What                                                                                     | Why                                                                                                                                                                                                                                                                                                              |
-| ------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **F0**  | **The customer extension on** `:4200`                                                    | `nuxeo-ui` never registers `acme.`*. No manifest can add it — Layer 1 only addresses IDs that code registered. Layer 2 lives on `:4310`.                                                                                                                                                                         |
-| **F1**  | **A logo change**                                                                        | `AppBrandingConfig` has only `applicationTitle` and `documentTitle`. No logo, favicon or image key exists. Not achievable at Layer 0 or 1.                                                                                                                                                                       |
-| **F2**  | `applicationTitle` **in the header**                                                     | The route label wins. With the brand set, `/#/browse` still reads "Browse". It only surfaces on a route no nav entry matches. Demo `documentTitle` — the browser tab — which changes everywhere.                                                                                                                 |
-| **F3**  | **Branding via the Nuxeo document**                                                      | Two separate stores. Branding is the `bootstrap.json` file.                                                                                                                                                                                                                                                      |
-| **F4**  | `overrides` **with** `hiddenByDefault` **/** `sortable` **/** `field`                    | Silently dropped; `overrides` honours only `order`, `label`, `rule`, `visible`. Use `slots.documentList`. The doc example was wrong and is now fixed.                                                                                                                                                            |
-| **F5**  | `labels` **to rename nav entries**                                                       | Nav labels are literal strings on descriptors. Use `overrides.<id>.label`.                                                                                                                                                                                                                                       |
-| **F6**  | `toolbar`**,** `contextMenu`**,** `tabs`**,** `routes` **slots**                         | Reserved and inert. Verified in-browser with marker labels: nothing renders, and `/#/zzz-marker` creates no route.                                                                                                                                                                                               |
-| **F7**  | `app.rules.canWriteSelection` **/** `canRemoveSelection`                                 | Still inert, always `false`, so they hide whatever you gate on them.                                                                                                                                                                                                                                             |
-| **F8**  | `npm run beta:evidence -- showcase-adf-hx` **live**                                      | It **fails** (21/22). Three of ten screenshots are byte-identical duplicates, and steps 8-10 photograph the repository root, so panels captioned "reads real Nuxeo ACLs" show "no local permissions" and "No audit entries found." Use only `02-agentic-ui-production-browse.png` + `03-adf-hx-browse-list.png`. |
-| **F9**  | `/#/search-adf-hx` **with an empty box**                                                 | Shows repository plumbing: personal workspaces, `My Favorites`, rows titled `1783067622304`. Type a term first. Use `test 01` (5 results), **not** `Domain` (104 of 137 — looks broken). It also has **no nav entry**; bookmark the URL.                                                                         |
-| **F10** | `acme.panel.policySummary`**,** `acme.actions.exportClaim`**,** `acme.rules.isLegalTeam` | Registered but never placed. Nothing renders them.                                                                                                                                                                                                                                                               |
-| **F11** | **A statically served production build past sign-in**                                    | Stock Docker Nuxeo sends no CORS headers, so a static bundle cannot authenticate. Use `nx serve`. The rebrand _is_ demoable statically, because brand and tab title render pre-sign-in.                                                                                                                          |
-| **F12** | **Layer 1 on the template app**                                                          | `/default-domain/config/satori-template` exists but its `note:note` is **empty** — deliberately, so the "before" state is honest. `manifest.example.json` will not be visible unless someone pastes it in first. There is no one-command way.                                                                    |
-| **F13** | **"The marketplace package builds"**                                                     | Unverified. Nobody ran Maven.                                                                                                                                                                                                                                                                                    |
+| #       | What                                                                                                               | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **F0**  | **The customer extension on** `:4200`                                                                              | `nuxeo-ui` never registers `acme.`*. No manifest can add it — Layer 1 only addresses IDs that code registered. Layer 2 lives on `:4310`.                                                                                                                                                                                                                                                                                                                                                                                        |
+| **F1**  | **A logo change**                                                                                                  | `AppBrandingConfig` has only `applicationTitle` and `documentTitle`. No logo, favicon or image key exists. Not achievable at Layer 0 or 1.                                                                                                                                                                                                                                                                                                                                                                                      |
+| **F2**  | `applicationTitle` **in the header**                                                                               | The route label wins. With the brand set, `/#/browse` still reads "Browse". It only surfaces on a route no nav entry matches. Demo `documentTitle` — the browser tab — which changes everywhere.                                                                                                                                                                                                                                                                                                                                |
+| **F3**  | **Branding via the Nuxeo document**                                                                                | Two separate stores. Branding is the `bootstrap.json` file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **F4**  | `overrides` **with** `hiddenByDefault` **/** `sortable` **/** `field`                                              | Silently dropped; `overrides` honours only `order`, `label`, `rule`, `visible`. Use `slots.documentList`. The doc example was wrong and is now fixed.                                                                                                                                                                                                                                                                                                                                                                           |
+| **F5**  | ~~`labels` **to rename nav entries**~~ — **withdrawn 2026-09-26, it is demoable**                                  | This entry was wrong. Descriptors carry `labelKey`, the rail (`app-shell.component.html:25`) and the drawer (`nav-drawer.component.html:10`) both resolve it, and the manifest's `labels` layer last over the catalogue (`app-translate-loader.ts:220`). So `labels["nav.item.<slug>"]` renames a nav entry in that locale alone. `overrides.<id>.label` is still how you set one literal in every locale, and wins when both are set.                                                                                          |
+| **F6**  | ~~`toolbar`**,** `contextMenu`**,** `tabs`**,** `routes` **slots**~~ — **withdrawn 2026-09-26, all four are live** | This entry was wrong, and `docs/demo-deck-claims.md` recorded it as withdrawn while this row still told presenters the opposite. All four are registered (`provide-app-extensions.ts:104-106`) and consumed: `toolbar` at `document-detail.html:156`, `tabs` at `document-detail.ts:397`, `contextMenu` at `browse.ts:469-471`, and `routes` through `provideExtensionRoutes()` (`provide-app-extensions.ts:218`), which calls `router.resetConfig` at `extension-routes.ts:112`. Re-checked against those lines on 2026-09-26. |
+| **F7**  | `app.rules.canWriteSelection` **/** `canRemoveSelection`                                                           | Still inert, always `false`, so they hide whatever you gate on them.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **F8**  | `npm run beta:evidence -- showcase-adf-hx` **live**                                                                | It **fails** (21/22). Three of ten screenshots are byte-identical duplicates, and steps 8-10 photograph the repository root, so panels captioned "reads real Nuxeo ACLs" show "no local permissions" and "No audit entries found." Use only `02-agentic-ui-production-browse.png` + `03-adf-hx-browse-list.png`.                                                                                                                                                                                                                |
+| **F9**  | `/#/search-adf-hx` **with an empty box**                                                                           | Shows repository plumbing: personal workspaces, `My Favorites`, rows titled `1783067622304`. Type a term first. Use `test 01` (5 results), **not** `Domain` (104 of 137 — looks broken). It also has **no nav entry**; bookmark the URL.                                                                                                                                                                                                                                                                                        |
+| **F10** | `acme.panel.policySummary`**,** `acme.actions.exportClaim`**,** `acme.rules.isLegalTeam`                           | Registered but never placed. Nothing renders them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **F11** | **A statically served production build past sign-in**                                                              | Stock Docker Nuxeo sends no CORS headers, so a static bundle cannot authenticate. Use `nx serve`. The rebrand _is_ demoable statically, because brand and tab title render pre-sign-in.                                                                                                                                                                                                                                                                                                                                         |
+| **F12** | **Layer 1 on the template app**                                                                                    | `/default-domain/config/satori-template` exists but its `note:note` is **empty** — deliberately, so the "before" state is honest. `manifest.example.json` will not be visible unless someone pastes it in first. There is no one-command way.                                                                                                                                                                                                                                                                                   |
+| **F13** | ~~**"The marketplace package builds"**~~ — **withdrawn 2026-09-26, it builds and publishes**                       | This entry was wrong from the day CI started running Maven on every pull request. `2026.0.1-20260926071953-BUILD-1109` was built and published to preprod by run 36226401180 and is live on the listing under the title **Nuxeo Satori**. Demo it by opening the listing. **Installing** that ZIP is still unverified, and so is everything downstream of an install — the `install.xml` overwrite semantics and the upgrade path. Claim the build and the publish, not the install.                                            |
 
 ### Cosmetic things a sharp audience will notice
 
-- The nav entry literally reads **"Browse (adf-hx POC)"** — a customer sees "POC" in a Beta.
+- ~~The nav entry literally reads **"Browse (adf-hx POC)"**~~ — fixed. It reads **"Browse"**, and
+  the production `app.navbar.browse` entry ships `disabled`, so there is one Browse in the nav.
+  `/#/browse` is still routable and still reachable from the dashboard.
 - The POC filter row is visibly unstyled: native `dd/mm/yyyy` date inputs, a bare `Columns`
   button. **Those are ours, not upstream's** — do not blame adf-hx.
 - The POC list has no file-type icons; production browse does.

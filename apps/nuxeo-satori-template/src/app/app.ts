@@ -21,9 +21,9 @@ import { TemplateSessionService } from './template-session.service';
  * no change to this component.
  *
  * It calls `AppExtensionsService.resolve()` directly rather than injecting
- * `APP_NAV_ITEMS`. That token's factory registers the *product's* fifteen nav
- * entries as a side effect of being injected, which would point a fork at fifteen
- * routes it does not have.
+ * `APP_NAV_ITEMS`. That token's factory registers the *product's* own nav entries
+ * as a side effect of being injected, which would point a fork at routes it does
+ * not have.
  *
  * The brand comes from Layer 0. It used to be the literal string "Nuxeo Satori"
  * in the template, which quietly weakened the whole rebrand claim: `bootstrap.json`
