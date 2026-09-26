@@ -57,6 +57,23 @@ const HXP_FIELD_BY_COLUMN: Readonly<Record<string, string>> = {
 const DATE_COLUMNS = new Set(['modified', 'created']);
 
 /**
+ * adf-core's own truncation class: one line, clipped with an ellipsis.
+ *
+ * Without it a text cell wraps, and an unbroken title wraps at every character — a 240-character
+ * name made each row 240–340 px tall.
+ */
+const ELLIPSIS_CELL_CLASS = 'adf-ellipsis-cell';
+
+/**
+ * Past this many characters adf-core shortens the value and puts the full text in the cell's
+ * tooltip. Roughly what fits in upstream's `max-width: 320px` text cell.
+ *
+ * WORKAROUND(adf-hx): W16 — `maxTextLength` rather than `formatTooltip`, because adf-core's
+ * `ObjectDataColumn` does not copy `formatTooltip` and a tooltip set that way never renders.
+ */
+export const TEXT_CELL_MAX_LENGTH = 40;
+
+/**
  * Turn Layer 1 descriptors into a schema upstream's document list can actually read.
  *
  * `sortable` is **not** forced on: it is taken from the descriptor, because a column
@@ -79,7 +96,11 @@ export function toDataColumns(
   return descriptors.map((descriptor) => ({
     ...(DATE_COLUMNS.has(descriptor.field)
       ? { type: 'date' as const, format: 'mediumDate' }
-      : { type: 'text' as const }),
+      : {
+          type: 'text' as const,
+          cssClass: ELLIPSIS_CELL_CLASS,
+          maxTextLength: TEXT_CELL_MAX_LENGTH,
+        }),
     key: HXP_FIELD_BY_COLUMN[descriptor.field] ?? descriptor.field,
     title: descriptorLabel(descriptor, translate),
     sortable: descriptor.sortable ?? false,

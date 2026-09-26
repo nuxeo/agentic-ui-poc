@@ -1,12 +1,31 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import {
+  Component,
+  DestroyRef,
+  type TemplateRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+  viewChild,
+} from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { MatDialog, type MatDialogRef } from '@angular/material/dialog';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, map, Subject } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 import {
   auditActivityLabel,
+  BROWSE_RETURN_MODE_PARAM,
+  BrowseContextService,
   canAddChildren,
+  DOMAIN_CONTAINER_GUIDANCE,
+  isBrowseRouterUrl,
+  parseBrowseNuxeoPathFromRouterUrl,
+  PERMISSION_DENIED_KEY,
+  SelectionService,
+  toAdfHxBrowseRouterUrl,
   canRemoveDocument,
   canViewDocumentAuditLog,
   canWriteDocument,
@@ -52,11 +71,9 @@ import {
   AdfHxDocumentService,
 } from '@agentic-ui/shared/adf-hx-bridge/providers';
 import {
-  HxpBreadcrumbComponent as UpstreamBreadcrumbComponent,
+  HxpUiBreadcrumbComponent as UpstreamBreadcrumbComponent,
   HxpDocumentListComponent as UpstreamDocumentListComponent,
-  HxpPropertiesSidebarComponent as UpstreamPropertiesSidebarComponent,
   HxpUiDocumentViewerComponent as UpstreamDocumentViewerComponent,
-  ManageVersionsSidebarComponent as UpstreamManageVersionsSidebarComponent,
   PermissionsManagementPanelComponent as UpstreamPermissionsPanelComponent,
 } from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
@@ -64,10 +81,16 @@ import type { DataColumn } from '@alfresco/adf-core';
 import {
   AppExtensionsService,
   EXTENSION_SLOTS,
+  ExtensionActionRegistry,
   type ExtensionColumnDescriptor,
 } from '@nuxeo-satori/platform/extensions';
 
 import { toDataColumns } from '../adf-hx-columns';
+import { scopeABulkActionHandlers } from './scope-a-bulk-actions';
+import {
+  CreateImportDialogComponent,
+  type CreateImportDialogResult,
+} from '../create-import/create-import-dialog.component';
 
 /**
  * The `[parentDocument]` upstream's permissions panel gets when this document has no readable
@@ -93,9 +116,7 @@ const NO_PARENT_DOCUMENT: Document = { sys_primaryType: '', sys_effectiveAcl: []
     UpstreamBreadcrumbComponent,
     UpstreamDocumentListComponent,
     UpstreamDocumentViewerComponent,
-    UpstreamManageVersionsSidebarComponent,
     UpstreamPermissionsPanelComponent,
-    UpstreamPropertiesSidebarComponent,
     HxpDocumentCardsComponent,
     HxpColumnPickerComponent,
     HxpBrowsePagerComponent,
@@ -232,74 +253,86 @@ export class BrowseAdfHxPocComponent {
     this.documentRouter.navigateTo(document);
   }
 
-  // ── Per-document tabs: Properties and Versions ──
+  // ── Selection ──
   //
   // MISSING(adf-hx): M6 — deciding *which* document a per-document panel acts on. Upstream's
-  // panels each take one `[document]` and are built as drawers; choosing the target from a
-  // selection, and saying so when there is none, is the host's job.
-  //
-  // Both belong to a document, not to the folder being browsed, so they act on the row
-  // **selected** in the View tab rather than on `currentDocument()`. Binding Versions to the
-  // folder would have looked like a working feature: upstream always prepends a "current
-  // version" entry, so a folder with no versions still renders one row.
+  // viewer takes one `[document]`; choosing it from the selection is the host's job.
 
   /** The rows checked in upstream's DataTable, from its `selectedDocuments` output. */
   private readonly selectedDocuments = signal<readonly Document[]>([]);
 
-  /**
-   * The document the per-document tabs act on, or `null` when the selection is not a single row.
-   *
-   * Shared by Properties and Versions: both take one `[document]`, and both are meaningless
-   * without a choice of which.
-   */
+  /** The document Preview opens, or `null` when the selection is not a single row. */
   protected readonly selectedDocument = computed<Document | null>(() => {
     const selection = this.selectedDocuments();
     return selection.length === 1 ? selection[0] : null;
   });
 
-  // ── Document viewer overlay ──
-  protected readonly viewerOpen = signal(false);
+  // ── Document viewer ──
   protected readonly viewerDocument = signal<Document | null>(null);
+  private readonly viewerTemplate = viewChild.required<TemplateRef<unknown>>('viewerTemplate');
+  private viewerDialog: MatDialogRef<unknown> | null = null;
 
+  /**
+   * Mirrors the table's checked rows into the app-wide selection, which is what shows the shell's
+   * selection bar and its bulk actions — production browse does the same. Without it, ticking
+   * rows here selected nothing any bulk action could see.
+   */
   protected onSelectedDocuments(documents: Document[]): void {
     this.selectedDocuments.set(documents);
+    const ids: string[] = [];
+    const labels: Record<string, string> = {};
+    const previews: Record<string, string | null> = {};
+    const types: Record<string, string> = {};
+    const thumbnails = this.thumbnails();
+    for (const doc of documents) {
+      const id = doc.sys_id;
+      if (!id) continue;
+      ids.push(id);
+      labels[id] = hxpDocTitle(doc);
+      previews[id] = thumbnails[id] ?? null;
+      if (doc.sys_primaryType) types[id] = doc.sys_primaryType;
+    }
+    this.selection.selectAll(ids, labels, previews, types);
   }
+
+  /** Bumped to re-create upstream's table, the only way to clear its checkboxes from outside. */
+  protected readonly listResetKey = signal(0);
 
   protected openViewer(): void {
     const doc = this.selectedDocument();
-    if (doc && !doc.sys_isFolderish) {
-      this.viewerDocument.set(doc);
-      this.viewerOpen.set(true);
-    }
+    if (!doc || doc.sys_isFolderish || this.viewerDialog) return;
+    this.viewerDocument.set(doc);
+    this.viewerDialog = this.dialog.open(this.viewerTemplate(), {
+      panelClass: 'hxp-viewer-dialog',
+      width: '100vw',
+      height: '100vh',
+      maxWidth: '100vw',
+      maxHeight: '100vh',
+      ariaLabel: hxpDocTitle(doc),
+    });
+    this.viewerDialog
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.viewerDialog = null;
+        this.viewerDocument.set(null);
+      });
   }
 
   protected closeViewer(): void {
-    this.viewerOpen.set(false);
-    this.viewerDocument.set(null);
+    this.viewerDialog?.close();
   }
-
-  /** Upstream's panel emits its own close; there is no drawer here, so fall back to View. */
-  protected onCloseVersions(): void {
-    this.activeTab.set('view');
-  }
-
-  /**
-   * The properties panel acts on the same selection as Versions.
-   *
-   * It is rendered with `[editable]="false"`, which is upstream's own read-only mode rather than
-   * our scope-notice path. Scope A does not write, and suppressing the edit affordance entirely
-   * is more honest than offering one that always refuses.
-   */
-  protected onCloseProperties(): void {
-    this.activeTab.set('view');
-  }
-
   private readonly route = inject(ActivatedRoute);
   private readonly documentService = inject(AdfHxDocumentService);
   private readonly folderService = inject(AdfHxBrowseFolderService);
   private readonly mediaService = inject(AdfHxBrowseMediaService);
   private readonly adfHxBrowseContext = inject(AdfHxBrowseContextService);
+  private readonly selection = inject(SelectionService);
+  private readonly contentContext = inject(BrowseContextService);
+  private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   private readonly extensions = inject(AppExtensionsService);
+  private readonly actionRegistry = inject(ExtensionActionRegistry);
   private readonly documentRouter = inject(NuxeoDocumentRouterService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly tagSearch$ = new Subject<string>();
@@ -339,6 +372,8 @@ export class BrowseAdfHxPocComponent {
   protected readonly listLoading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly currentDocument = signal<Document>(ROOT_DOCUMENT);
+  protected readonly breadcrumbDocuments = signal<Document[]>([{ ...ROOT_DOCUMENT }]);
+  private breadcrumbRequestId = 0;
   protected readonly currentNuxeoDoc = signal<NuxeoDocument | null>(null);
   protected readonly documents = signal<Document[]>([]);
   protected readonly thumbnails = signal<Record<string, string>>({});
@@ -402,7 +437,10 @@ export class BrowseAdfHxPocComponent {
 
   protected readonly trashedDocuments = signal<Document[]>([]);
   protected readonly trashLoading = signal(false);
+  protected readonly trashError = signal(false);
   private trashLoaded = false;
+  /** Bumped per request and on navigation, so a late answer for a folder no longer shown is dropped. */
+  private trashRequestId = 0;
 
   protected readonly activityEntries = signal<AuditEntry[]>([]);
   protected readonly activityLoading = signal(false);
@@ -500,7 +538,39 @@ export class BrowseAdfHxPocComponent {
 
   constructor() {
     this.destroyRef.onDestroy(() => {
-      this.mediaService.revokeThumbnails();
+      this.revokeThumbnails();
+    });
+
+    // The shell's selection bar acts on the rows ticked here; its write actions stay out of Scope A.
+    // Rows ticked here must not outlive the override, or the real handlers would act on them.
+    const scopeABulkActions = this.actionRegistry.register(
+      scopeABulkActionHandlers((label) => this.showScopeNotice(label)),
+    );
+    this.destroyRef.onDestroy(() => {
+      this.selection.clear();
+      scopeABulkActions.unregister();
+    });
+
+    // The selection bar's Clear, or a bulk action finishing, empties the app-wide selection.
+    // Upstream's table keeps its own checkboxes, so it is re-created to match.
+    effect(() => {
+      const count = this.selection.selectedCount();
+      if (count === 0 && untracked(() => this.selectedDocuments().length) > 0) {
+        untracked(() => {
+          this.selectedDocuments.set([]);
+          this.listResetKey.update((key) => key + 1);
+        });
+      }
+    });
+
+    // Bulk actions — delete, move — signal a content change here, as they do for production
+    // browse, so the folder is re-read after them.
+    // The tick is app-wide and may already be non-zero from production browse; only a change
+    // after this page opened means its folder changed.
+    const openedAtTick = this.contentContext.treeRefreshTick();
+    effect(() => {
+      if (this.contentContext.treeRefreshTick() === openedAtTick) return;
+      untracked(() => this.loadFolder(this.browsePath()));
     });
 
     this.tagSearch$
@@ -546,12 +616,16 @@ export class BrowseAdfHxPocComponent {
       this.loadFolder(path);
     });
 
+    // Trash loads once its tab is open and the folder has finished loading, so opening the tab
+    // mid-navigation waits for the new folder instead of reading the previous one or none.
     effect(() => {
-      const refreshTick = this.adfHxBrowseContext.treeRefreshTick();
-      if (refreshTick === 0) {
-        return;
-      }
-      this.loadFolder(this.browsePath());
+      if (this.activeTab() !== 'trash' || this.loading()) return;
+      const folder = this.currentDocument();
+      untracked(() => {
+        if (!this.trashLoaded && !this.trashLoading() && !this.trashError()) {
+          this.loadTrash(folder);
+        }
+      });
     });
 
     effect(() => {
@@ -578,9 +652,10 @@ export class BrowseAdfHxPocComponent {
       }
       this.loadAuditLog();
     }
-    if (tab === 'trash' && !this.trashLoaded) {
-      this.loadTrash();
-    }
+  }
+
+  protected onRetryTrash(): void {
+    this.loadTrash(this.currentDocument());
   }
 
   protected togglePanel(): void {
@@ -645,24 +720,29 @@ export class BrowseAdfHxPocComponent {
     }
 
     this.csvExporting.set(true);
-    this.mediaService
-      .exportCsv(uid)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (blob) => {
-          const url = URL.createObjectURL(blob);
-          const anchor = document.createElement('a');
-          anchor.href = url;
-          anchor.download = `${hxpDocTitle(doc)}.csv`;
-          anchor.click();
-          URL.revokeObjectURL(url);
-          this.csvExporting.set(false);
-        },
-        error: () => {
-          this.csvExporting.set(false);
-          this.scopeNotice.set(this.translate.instant('browse.message.csv-export-failed'));
-        },
-      });
+    // The export runs as a server-side bulk action and can take seconds, so say so, as
+    // production browse does.
+    this.scopeNotice.set(this.translate.instant('browse.message.starting-csv-export'));
+    const export$ =
+      uid === ROOT_DOCUMENT.sys_id
+        ? this.mediaService.exportCsvOfRepositoryRoot()
+        : this.mediaService.exportCsv(uid);
+    export$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${hxpDocTitle(doc)}.csv`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        this.csvExporting.set(false);
+        this.scopeNotice.set(this.translate.instant('browse.message.csv-exported-successfully'));
+      },
+      error: () => {
+        this.csvExporting.set(false);
+        this.scopeNotice.set(this.translate.instant('browse.message.csv-export-failed'));
+      },
+    });
   }
 
   protected downloadAll(): void {
@@ -688,6 +768,82 @@ export class BrowseAdfHxPocComponent {
       });
   }
 
+  // ── Create / Import ──
+  //
+  // The only write action this page performs: production browse's own dialog and checks, so it
+  // behaves the same on both pages, then returns the user to *this* page, never to production
+  // browse. Drive, Edit, Delete, Share, Notify and Export still show the Scope A notice.
+
+  protected openCreateImportDialog(): void {
+    const doc = this.currentNuxeoDoc();
+    if (!doc || !this.isBrowseFolderish(doc)) {
+      this.scopeNotice.set(
+        this.translate.instant('browse.message.open-a-folder-to-create-or-import'),
+      );
+      return;
+    }
+    if (!canAddChildren(doc)) {
+      this.scopeNotice.set(this.translate.instant(PERMISSION_DENIED_KEY));
+      return;
+    }
+    if (isDomainParentType(doc.type) || isRestrictedImportParentPath(doc.path)) {
+      this.scopeNotice.set(DOMAIN_CONTAINER_GUIDANCE);
+      return;
+    }
+    this.dialog
+      .open(CreateImportDialogComponent, {
+        width: '960px',
+        height: '680px',
+        maxWidth: '95vw',
+        maxHeight: '95vh',
+        data: { parentPath: doc.path, parentTitle: doc.title },
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result?: CreateImportDialogResult) => this.afterCreateImport(result));
+  }
+
+  private afterCreateImport(result: CreateImportDialogResult | undefined): void {
+    if (!result) return;
+    if (result.navigateToUid || result.navigateToUrl || result.refreshed) {
+      this.adfHxBrowseContext.requestTreeRefresh();
+    }
+    // Production's order: the explicit URL, then the created path, then the created document.
+    const url = result.navigateToUrl;
+    if (url?.startsWith('/doc/')) {
+      this.openCreatedDocument(url.slice('/doc/'.length).split('?')[0], result);
+      return;
+    }
+    if (url && isBrowseRouterUrl(url)) {
+      // A folder was created: open it here rather than on production browse.
+      void this.router.navigateByUrl(
+        toAdfHxBrowseRouterUrl(parseBrowseNuxeoPathFromRouterUrl(url)),
+      );
+      return;
+    }
+    if (url) {
+      void this.router.navigateByUrl(url);
+      return;
+    }
+    const createdPath = result.navigateToPath?.replace(/\/+$/, '');
+    if (createdPath) {
+      void this.router.navigateByUrl(toAdfHxBrowseRouterUrl(createdPath));
+      return;
+    }
+    if (result.navigateToUid) {
+      this.openCreatedDocument(result.navigateToUid, result);
+      return;
+    }
+    if (result.refreshed) this.reload();
+  }
+
+  private openCreatedDocument(uid: string, result: CreateImportDialogResult): void {
+    void this.router.navigate(['/doc', uid], {
+      queryParams: { fresh: '1', [BROWSE_RETURN_MODE_PARAM]: 'adf-hx' },
+      state: { freshBlobDocument: true, freshNote: result.freshNote === true },
+    });
+  }
+
   protected showScopeNotice(action: string): void {
     this.scopeNotice.set(`${action} is not available in Scope A (read-only POC).`);
   }
@@ -700,19 +856,25 @@ export class BrowseAdfHxPocComponent {
     this.permissionsParent.set(NO_PARENT_DOCUMENT);
     this.historyDirectoriesLoaded = false;
     this.trashLoaded = false;
+    this.trashRequestId++;
+    this.trashLoading.set(false);
+    this.trashError.set(false);
     this.auditEntries.set([]);
     this.trashedDocuments.set([]);
+    this.trashThumbnails.set({});
     this.activityEntries.set([]);
     // The selection belongs to the folder that was on screen. Carrying it across a navigation
-    // would leave the Versions tab pointed at a document no longer in the list.
+    // would leave Preview pointed at a document no longer in the list.
     this.selectedDocuments.set([]);
+    // `?path=` changing is not a route change, so the shell does not clear the selection itself.
+    this.selection.clear();
   }
 
   private loadFolder(path: string): void {
     this.loading.set(true);
     this.listLoading.set(true);
     this.error.set(null);
-    this.mediaService.revokeThumbnails();
+    this.revokeThumbnails();
     this.thumbnails.set({});
     this.currentNuxeoDoc.set(null);
 
@@ -725,6 +887,7 @@ export class BrowseAdfHxPocComponent {
       next: (document) => {
         this.currentDocument.set(document);
         this.documentService.notifyDocumentLoaded(document);
+        this.loadBreadcrumb(document);
         this.loadNuxeoContext(document);
         this.loadChildren(document);
       },
@@ -736,20 +899,53 @@ export class BrowseAdfHxPocComponent {
     });
   }
 
+  /**
+   * Ancestors plus the folder itself, as production browse's breadcrumb shows.
+   *
+   * Upstream's `hxp-breadcrumb` renders ancestors only and leaves the last one unlinked, so the
+   * folder on screen never appeared and its parent could not be clicked. Its inner
+   * `hxp-ui-breadcrumb` renders whatever list it is given, which is fed here instead.
+   */
+  private loadBreadcrumb(document: Document): void {
+    const requestId = ++this.breadcrumbRequestId;
+    if (document.sys_id === ROOT_DOCUMENT.sys_id) {
+      this.breadcrumbDocuments.set([document]);
+      return;
+    }
+    // Shown straight away so a slow ancestor lookup never leaves the previous folder's trail.
+    this.breadcrumbDocuments.set([{ ...ROOT_DOCUMENT }, document]);
+    this.documentService
+      .getAncestors(document.sys_id ?? '')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (ancestors) => {
+          if (requestId === this.breadcrumbRequestId) {
+            this.breadcrumbDocuments.set([...ancestors, document]);
+          }
+        },
+        error: () => {
+          /* the root-and-self trail set above stays */
+        },
+      });
+  }
+
   private loadNuxeoContext(document: Document): void {
     const uid = document.sys_id;
-    if (!uid || uid === ROOT_DOCUMENT.sys_id) {
+    if (!uid) {
       this.currentNuxeoDoc.set(null);
       return;
     }
 
-    this.folderService
-      .getFullDocument(uid)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (nuxeoDoc) => this.currentNuxeoDoc.set(nuxeoDoc),
-        error: () => this.currentNuxeoDoc.set(null),
-      });
+    // At the root the page holds a synthetic document; the header's permission checks —
+    // Create/Import above all — need Nuxeo's real root, which is what production browse reads.
+    const nuxeoDoc$ =
+      uid === ROOT_DOCUMENT.sys_id
+        ? this.folderService.getRepositoryRoot()
+        : this.folderService.getFullDocument(uid);
+    nuxeoDoc$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (nuxeoDoc) => this.currentNuxeoDoc.set(nuxeoDoc),
+      error: () => this.currentNuxeoDoc.set(null),
+    });
   }
 
   private loadChildren(document: Document): void {
@@ -870,26 +1066,43 @@ export class BrowseAdfHxPocComponent {
       });
   }
 
-  private loadTrash(): void {
-    const doc = this.currentNuxeoDoc();
-    if (!doc?.uid) {
+  /**
+   * Reads the trash of the folder on screen.
+   *
+   * Takes the folder rather than `currentNuxeoDoc()`: that is null at the repository root by
+   * design and still loading just after a navigation, and either way the tab used to report
+   * "Trash is empty" without asking.
+   */
+  private loadTrash(folder: Document): void {
+    const uid = folder.sys_id;
+    if (!uid) {
       return;
     }
 
+    const requestId = ++this.trashRequestId;
     this.trashLoading.set(true);
-    this.folderService
-      .getTrashedChildren(doc.uid, 50)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (res) => {
-          const hxDocs = this.folderService.mapTrashedToHx(res.entries);
-          this.trashedDocuments.set(hxDocs);
-          this.trashLoading.set(false);
-          this.trashLoaded = true;
-          this.loadTrashThumbnails(hxDocs);
-        },
-        error: () => this.trashLoading.set(false),
-      });
+    this.trashError.set(false);
+    const trash$ =
+      uid === ROOT_DOCUMENT.sys_id
+        ? this.folderService.getTrashedChildrenOfRepositoryRoot(50)
+        : this.folderService.getTrashedChildren(uid, 50);
+
+    trash$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (res) => {
+        if (requestId !== this.trashRequestId) return;
+        const hxDocs = this.folderService.mapTrashedToHx(res.entries);
+        this.trashedDocuments.set(hxDocs);
+        this.trashLoading.set(false);
+        this.trashLoaded = true;
+        this.loadTrashThumbnails(hxDocs);
+      },
+      error: () => {
+        if (requestId !== this.trashRequestId) return;
+        this.trashedDocuments.set([]);
+        this.trashLoading.set(false);
+        this.trashError.set(true);
+      },
+    });
   }
 
   private loadActivity(uid: string): void {
@@ -923,12 +1136,26 @@ export class BrowseAdfHxPocComponent {
   }
 
   private loadTrashThumbnails(documents: Document[]): void {
+    // Only Trash's own previous images: a reset would revoke the folder list's thumbnails as well,
+    // which the View tab and the selection popup are still showing.
+    this.mediaService.revokeThumbnailUrls(Object.values(this.trashThumbnails()));
+    this.trashThumbnails.set({});
     this.mediaService.loadThumbnails(
       documents,
       (partial) => this.trashThumbnails.update((current) => ({ ...current, ...partial })),
       this.destroyRef,
-      true,
+      false,
     );
+  }
+
+  /**
+   * Revokes every thumbnail this page created, after dropping the app-wide selection's copies.
+   * The selection keeps the preview strings for its popup and outlives a page, a sort or a folder
+   * change, so revoking first would leave the popup showing revoked images.
+   */
+  private revokeThumbnails(): void {
+    this.selection.forgetPreviews();
+    this.mediaService.revokeThumbnails();
   }
 
   private isBrowseFolderish(doc: NuxeoDocument): boolean {

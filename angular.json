@@ -54,7 +54,10 @@
                 "output": "assets/satori-ui/i18n"
               }
             ],
-            "styles": ["apps/nuxeo-ui/src/styles.scss"]
+            "styles": [
+              "apps/nuxeo-ui/src/styles.scss",
+              "node_modules/cropperjs/dist/cropper.min.css"
+            ]
           },
           "configurations": {
             "production": {

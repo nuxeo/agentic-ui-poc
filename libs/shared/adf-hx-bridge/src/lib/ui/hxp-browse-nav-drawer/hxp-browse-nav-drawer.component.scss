@@ -52,6 +52,13 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+
+  // WORKAROUND(adf-hx): W18 — upstream omits the 40px toggle on a node that cannot expand rather
+  // than keeping its space, so once leaf folders lost their arrow they sat 40px left of their
+  // expandable siblings.
+  ::ng-deep mat-tree-node:not(:has(> button)) > hxp-folder-icon {
+    margin-left: 40px;
+  }
 }
 
 .tree-loading {

@@ -325,6 +325,58 @@ describe('AdfHxBrowseFolderService', () => {
       expect((await restored).state).toBe('project');
     });
 
+    it('reads the real repository root, with its permissions', async () => {
+      const pending = firstValueFrom(service.getRepositoryRoot());
+      const req = httpMock.expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'));
+      expect(req.request.headers.get('enrichers.document')).toContain('permissions');
+      req.flush(nuxeoDoc({ uid: 'root-uid', type: 'Root', path: '/' }));
+      expect((await pending).uid).toBe('root-uid');
+    });
+
+    it('falls back to resolving the root from a readable domain when /path/ is refused', async () => {
+      // Domain-only users get 403 on the root; production browse resolves it through NXQL.
+      const pending = firstValueFrom(service.getRepositoryRoot());
+      httpMock
+        .expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'))
+        .flush({}, { status: 403, statusText: 'Forbidden' });
+      httpMock
+        .expectOne((r) => r.url.includes('/search/lang/NXQL/execute'))
+        .flush({
+          entries: [nuxeoDoc({ uid: 'd1', type: 'Domain', path: '/d1', parentRef: 'root-uid' })],
+        });
+      const root = await pending;
+      expect(root.uid).toBe('root-uid');
+    });
+
+    it("lists the real repository root's trash, not the synthetic root's", async () => {
+      // The bridge's root has an all-zero id that Nuxeo does not know, so querying its children
+      // returned nothing and the Trash tab at the root reported empty without asking.
+      const pending = firstValueFrom(service.getTrashedChildrenOfRepositoryRoot(10));
+      httpMock
+        .expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'))
+        .flush(nuxeoDoc({ uid: 'root-uid', type: 'Root', path: '/' }));
+
+      const req = httpMock.expectOne((r) => r.url.includes('/search/lang/NXQL/execute'));
+      expect(req.request.params.get('query')).toContain("ecm:parentId = 'root-uid'");
+      expect(req.request.params.get('query')).toContain('ecm:isTrashed = 1');
+      expect(req.request.params.get('pageSize')).toBe('10');
+      req.flush({ entries: [nuxeoDoc({ uid: 'gone-domain', type: 'Domain' })], resultsCount: 1 });
+
+      expect((await pending).entries?.map((d) => d.uid)).toEqual(['gone-domain']);
+    });
+
+    it('propagates a failed root trash query rather than emitting an empty trash', async () => {
+      const pending = firstValueFrom(service.getTrashedChildrenOfRepositoryRoot());
+      httpMock
+        .expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'))
+        .flush(nuxeoDoc({ uid: 'root-uid', type: 'Root', path: '/' }));
+      httpMock
+        .expectOne((r) => r.url.includes('/search/lang/NXQL/execute'))
+        .flush({}, { status: 500, statusText: 'Server Error' });
+
+      await expect(pending).rejects.toBeDefined();
+    });
+
     it('searches tags and narrows the vocabulary to the typed term', async () => {
       const pending = firstValueFrom(service.searchTags('URG'));
       httpMock

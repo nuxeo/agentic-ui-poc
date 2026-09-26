@@ -18,8 +18,11 @@ export class HxpBrowseTrashComponent {
   readonly loading = input(false);
   readonly documents = input<Document[]>([]);
   readonly thumbnails = input<Record<string, string>>({});
+  /** Set when the trash could not be read, so a failure is not shown as an empty trash. */
+  readonly error = input(false);
 
   readonly restore = output<Document>();
+  readonly retry = output<void>();
 
   protected docTitle(doc: Document): string {
     return hxpDocTitle(doc);

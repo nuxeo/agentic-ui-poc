@@ -588,6 +588,7 @@ class BrowseService {
     getFolderContext(nuxeoPath: string): Observable<NuxeoDocument>;
     getCreatableSubtypes(nuxeoPath: string): Observable<string[]>;
     getNavTreeChildren(parent: NuxeoDocument, pageSize?: number): Observable<NuxeoDocumentList>;
+    getFolderIdsWithSubfolders(parentUids: readonly string[]): Observable<ReadonlySet<string> | null>;
     getChildren(nuxeoPath: string, pageSize?: number, currentPageIndex?: number, sort?: {
     sortBy: string;
     sortOrder: 'ASC' | 'DESC';
@@ -2211,8 +2212,9 @@ class WidgetContainerComponent {
     readonly title: _angular_core.InputSignal<string>;
     readonly icon: _angular_core.InputSignal<string | undefined>;
     readonly iconColor: _angular_core.InputSignal<string>;
+    readonly headingLevel: _angular_core.InputSignal<2 | 3>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<WidgetContainerComponent, never>;
-    static ɵcmp: _angular_core.ɵɵComponentDeclaration<WidgetContainerComponent, "lib-widget-container", never, { "title": { "alias": "title"; "required": true; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; "iconColor": { "alias": "iconColor"; "required": false; "isSignal": true; }; }, {}, never, ["[widgetActions]", "*"], true, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<WidgetContainerComponent, "lib-widget-container", never, { "title": { "alias": "title"; "required": true; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; "iconColor": { "alias": "iconColor"; "required": false; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; }, {}, never, ["[widgetActions]", "*"], true, never>;
     }
 }
 class WidgetGridComponent {

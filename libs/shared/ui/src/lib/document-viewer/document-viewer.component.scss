@@ -1,4 +1,8 @@
 :host {
+  /* NXENG-801 — metadata strip stays a fixed light panel in every theme (IBM 374303107). */
+  --document-viewer-light-strip-surface: #ffffff;
+  --document-viewer-on-light-strip: #333333;
+  --document-viewer-muted-on-light-surface: #5c5f6b;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -364,8 +368,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  border-top: 1px solid #eee;
-  background: #fff;
+  border-top: 1px solid var(--mat-sys-outline-variant, #eee);
+  background: var(--mat-sys-surface, #fff);
   flex-shrink: 0;
 }
 
@@ -377,7 +381,7 @@
 
 .file-name {
   font-size: 13px;
-  color: #333;
+  color: var(--mat-sys-on-surface, #333);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -385,7 +389,7 @@
 
 .file-size {
   font-size: 11px;
-  color: #888;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
 }
 
 .viewer-footer-actions {
@@ -394,10 +398,10 @@
   flex-shrink: 0;
 
   button {
-    color: #555;
+    color: var(--mat-sys-on-surface-variant, #555);
 
     &.active-toggle {
-      color: #0073e6;
+      color: var(--mat-sys-primary, #0073e6);
     }
 
     &.footer-remove-btn {
@@ -411,14 +415,14 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0;
-  border-top: 1px solid #e0e0e0;
-  background: #fff;
+  border-top: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+  background: var(--document-viewer-light-strip-surface);
   flex-shrink: 0;
 }
 
 .picture-card {
   padding: 16px 20px;
-  border-right: 1px solid #eee;
+  border-right: 1px solid var(--mat-sys-outline-variant, #eee);
 
   &:last-child {
     border-right: none;
@@ -428,7 +432,7 @@
 .picture-card-title {
   font-size: 13px;
   font-weight: 600;
-  color: #333;
+  color: var(--document-viewer-on-light-strip);
   margin: 0 0 12px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -448,14 +452,14 @@
 
 .info-label {
   font-size: 12px;
-  color: #777;
+  color: var(--document-viewer-muted-on-light-surface);
   min-width: 0;
   white-space: nowrap;
 }
 
 .info-value {
   font-size: 13px;
-  color: #333;
+  color: var(--document-viewer-on-light-strip);
   font-weight: 500;
 }
 
@@ -468,7 +472,7 @@
 
 .format-name {
   font-size: 12px;
-  color: #333;
+  color: var(--document-viewer-on-light-strip);
   font-weight: 500;
   min-width: 100px;
   white-space: nowrap;
@@ -476,7 +480,7 @@
 
 .format-details {
   font-size: 12px;
-  color: #666;
+  color: var(--document-viewer-muted-on-light-surface);
   flex: 1;
   display: flex;
   align-items: center;
@@ -484,12 +488,13 @@
   white-space: nowrap;
 }
 
+/* NXENG-768 — secondary size label in the format row (was #999 ~2.85:1 on the strip). */
 .format-size {
-  color: #999;
+  color: var(--document-viewer-muted-on-light-surface);
 }
 
 .format-type {
-  color: #999;
+  color: var(--document-viewer-muted-on-light-surface);
   text-transform: uppercase;
   font-size: 11px;
 }
@@ -504,6 +509,6 @@
     font-size: 18px !important;
     width: 18px !important;
     height: 18px !important;
-    color: #666;
+    color: var(--document-viewer-muted-on-light-surface);
   }
 }
