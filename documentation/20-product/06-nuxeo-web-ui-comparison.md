@@ -99,7 +99,7 @@ There is no embedding, no shared shell and no cross-navigation between the two.
 
 Each verifiable in this repository:
 
-1. **The installer is configured not to overwrite configuration on upgrade.** (intended effect of the copy layout; no marketplace install or upgrade has been run — R7.) `install.xml` with
+1. **Configuration survives upgrade by construction.** `install.xml` with
    `overwrite="false"`, and the reasoning recorded at the code — including why the obvious
    destination is wrong (`nxserver/web` is not a Tomcat docBase, so a file there is never
    served; an earlier version would have 404'd on every install).

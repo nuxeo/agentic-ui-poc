@@ -110,7 +110,7 @@ flowchart TD
   subgraph theirs [Customer owns]
     fork["Forked template<br/>their agent works here"]
     extlib["Their extension library<br/>components, rules, actions"]
-    cfg["Their configuration<br/>survives upgrade"]
+    cfg["Their configuration<br/>installer leaves it in place"]
   end
   libs --> fork
   tmpl --> fork

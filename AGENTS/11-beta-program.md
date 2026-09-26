@@ -544,7 +544,7 @@ completion is not completion; see section 6.
 | Phase              | Deliverable                                                                      | Evidence steps file          |
 | ------------------ | -------------------------------------------------------------------------------- | ---------------------------- |
 | `phase-0-baseline` | Dependencies install, gates run, CI validates the branch                         | `steps/phase-0-baseline.mjs` |
-| `phase-1-config`   | Runtime configuration that survives upgrade, runtime theming, i18n for the slice | `steps/phase-1-config.mjs`   |
+| `phase-1-config`   | Runtime configuration held outside the installed app tree, runtime theming, i18n | `steps/phase-1-config.mjs`   |
 | `phase-2-registry` | Extension registry, rules, nav and routes from manifest, action registry         | `steps/phase-2-registry.mjs` |
 | `phase-3-adf-hx`   | ~10 of 12 Nuxeo-backed API ports, component swap, encapsulation gate             | to be added                  |
 | `phase-4-platform` | Publishable libraries, public API, semver, template and starter                  | to be added                  |

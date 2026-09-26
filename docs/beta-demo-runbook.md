@@ -773,9 +773,13 @@ No. Manifest visibility is presentation. Nuxeo's server-side permissions are the
 boundary, and they still apply. Demonstrate it — Beat 5.
 
 **"Does my customisation survive your upgrades?"**
-Yes, and by two different deliberate mechanisms. The Nuxeo document is outside the filesystem the
-installer touches. The branding file is installed to a sibling directory with `overwrite="false"`
-precisely because the app directory is copied with `overwrite="true"`. Then show Beat 8.
+Two different deliberate mechanisms, and they are **not equally evidenced** — say which is which.
+The Nuxeo document is outside the filesystem the installer touches at all, so nothing can overwrite
+it. The branding file is installed to a sibling directory with `overwrite="false"` precisely because
+the app directory is copied with `overwrite="true"` — that is the installer's _configuration_, read
+from `install.xml`, and **no marketplace install or upgrade has been run** (R7). Then show Beat 8,
+and say what it proves: the **npm** upgrade rehearsal, eight assertions across Layers 0-2, not the
+marketplace installer.
 
 **"Can I change the logo?"**
 Not today. Product name and theme colours, yes. There is no logo or favicon key. Say so plainly.
