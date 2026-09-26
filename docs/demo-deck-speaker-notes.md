@@ -119,7 +119,7 @@ This is the slide that sells Layer 1. Do not undersell it by reading ids.
 > Files. Collections becomes Policies. Tasks becomes Underwriting Queue. And three entries this
 > customer has no use for are hidden outright — not greyed out, **gone**."
 
-> "All fifteen packaged navigation entries work this way, addressed by id. The same mechanism renames
+> "All fourteen packaged navigation entries work this way, addressed by id. The same mechanism renames
 > list columns, so Last Contributor becomes Adjuster."
 
 **If asked about translations:** this is not i18n. The `labels` catalogue is a separate mechanism and

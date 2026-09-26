@@ -1442,7 +1442,7 @@
   "nav.item.administration": "Navigation entry for the admin area: users, groups, vocabularies, audit. A noun naming a section.",
   "nav.item.assets": "Navigation entry for digital assets - images, video, rich media. A noun, plural. Domain term: 'asset' here means a media file, not a financial asset.",
   "nav.item.browse": "Navigation entry for the folder tree and document list. A VERB, imperative - 'browse the repository', not the noun 'a browse'.",
-  "nav.item.browse-adf-hx": "Navigation entry for the proof-of-concept browse page built on upstream components. ACRONYM: 'POC' means proof of concept. 'adf-hx' is a library name and MUST stay in English. Internal-facing; it will not ship to customers.",
+  "nav.item.browse-adf-hx": "Navigation entry for the folder tree and document list. A VERB, imperative - 'browse the repository', not the noun 'a browse'. Customer-facing. The 'adf-hx' in the key is an internal library name that must not appear in the translation; translate it the same way as nav.item.browse.",
   "nav.item.clipboard": "Navigation entry for the in-application staging area used for copy and move. NOT the operating system clipboard; if the target language distinguishes them, use the application sense.",
   "nav.item.collections": "Navigation entry for user-curated sets of documents. A noun, plural. Nuxeo domain term: a 'collection' is a named set a user assembles.",
   "nav.item.dashboard": "Navigation entry for the landing page of summary cards. A noun naming the page.",

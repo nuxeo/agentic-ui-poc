@@ -165,9 +165,11 @@ const CUSTOM_PAGES_MANIFEST = {
   extensions: {
     $name: 'acme-insurance',
     overrides: {
-      'app.navbar.browse': { label: 'Claim Files', order: 10 },
+      // `app.navbar.browseAdfHx` is the browse entry the product renders — the
+      // legacy `app.navbar.browse` ships `disabled`, so relabelling it would
+      // photograph a nav with no Claim Files in it.
+      'app.navbar.browseAdfHx': { label: 'Claim Files', order: 10 },
       'app.navbar.knowledgeDiscovery': { visible: false },
-      'app.navbar.browseAdfHx': { visible: false },
     },
     slots: {
       // The `routes` slot went live in 7fd5e46. `app.page.contracts` is registered in
@@ -238,8 +240,8 @@ const SHOTS = [
       extensions: {
         $name: 'acme-insurance',
         overrides: {
-          // Every one of the fifteen packaged nav ids is relabellable this way.
-          'app.navbar.browse': { label: 'Claim Files', order: 10 },
+          // Every one of the packaged nav ids is relabellable this way.
+          'app.navbar.browseAdfHx': { label: 'Claim Files', order: 10 },
           'app.navbar.collections': { label: 'Policies', order: 20 },
           'app.navbar.tasks': { label: 'Underwriting Queue', order: 30 },
           'app.navbar.favorites': { label: 'Flagged Claims', order: 40 },
@@ -247,7 +249,6 @@ const SHOTS = [
           'app.navbar.recentlyViewed': { label: 'Recent Activity', order: 60 },
           // Irrelevant to this customer — hidden outright.
           'app.navbar.knowledgeDiscovery': { visible: false },
-          'app.navbar.browseAdfHx': { visible: false },
           'app.navbar.assets': { visible: false },
           // The list speaks their language too.
           'app.documentList.lastContributor': { label: 'Adjuster', order: 5 },

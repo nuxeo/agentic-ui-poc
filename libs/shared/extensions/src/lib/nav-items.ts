@@ -100,11 +100,19 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
     icon: 'folder',
     order: 30,
     hasDrawer: true,
+    // The adf-hx entry below is the browse experience we ship, so this one is
+    // dropped from the navigation. The descriptor stays registered: `/browse`
+    // is still a live route, still linked from the dashboard and still needs
+    // this entry for its page title.
+    disabled: true,
   },
   {
     id: 'app.navbar.browseAdfHx',
+    // The key keeps its `-adf-hx` slug: it is the published label contract a
+    // customer's `labels` map already targets, and renaming it would silently
+    // drop their text. Only the text it resolves to changed.
     labelKey: 'nav.item.browse-adf-hx',
-    label: 'Browse (adf-hx POC)',
+    label: 'Browse',
     path: '/browse-adf-hx',
     icon: 'folder_open',
     order: 40,

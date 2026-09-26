@@ -365,9 +365,15 @@ the customer always wins.
 }
 ```
 
-"Browse (adf-hx POC)" disappears; "Contracts" appears between Browse and where it was. `order` is
-spaced by ten, so 35 lands exactly between 30 and 40. Verified live: 15 entries, `acme.navbar.contracts`
-at index 3, directly between `app.navbar.browse` and `app.navbar.recentlyViewed`.
+"Browse" disappears; "Contracts" appears where it was. `order` is spaced by ten, so 35 lands
+exactly between 30 and 40.
+
+> **The figures below were re-derived, not re-verified live.** They were "15 entries,
+> `acme.navbar.contracts` at index 3, between `app.navbar.browse` and `app.navbar.recentlyViewed`",
+> measured before `app.navbar.browse` was given `disabled: true`. With the legacy Browse entry no
+> longer rendered, the packaged navigation is 14 entries, this manifest still renders 14, and
+> `acme.navbar.contracts` lands at index 2 — between `app.navbar.dashboard` and
+> `app.navbar.recentlyViewed`. Read the numbers off the screen before you quote them.
 
 > **Expand the nav rail before this beat.** It is collapsed by default, so labels are hidden by CSS
 > and a new entry shows only as an icon — measured: every item's `innerText` is empty while
@@ -815,7 +821,9 @@ properties panel renders instead.
 
 ### Cosmetic things a sharp audience will notice
 
-- The nav entry literally reads **"Browse (adf-hx POC)"** — a customer sees "POC" in a Beta.
+- ~~The nav entry literally reads **"Browse (adf-hx POC)"**~~ — fixed. It reads **"Browse"**, and
+  the production `app.navbar.browse` entry ships `disabled`, so there is one Browse in the nav.
+  `/#/browse` is still routable and still reachable from the dashboard.
 - The POC filter row is visibly unstyled: native `dd/mm/yyyy` date inputs, a bare `Columns`
   button. **Those are ours, not upstream's** — do not blame adf-hx.
 - The POC list has no file-type icons; production browse does.

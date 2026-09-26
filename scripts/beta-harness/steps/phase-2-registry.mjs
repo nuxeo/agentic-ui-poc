@@ -10,11 +10,12 @@
  *
  * **Load-bearing** — these fail if the registry is not actually doing the work:
  *
- * - Step 1: the fifteen packaged nav entries, asserted by **exact id list in
- *   exact order** against a list transcribed from the pre-Phase-2 `const`. This
- *   is the "a customer who changes nothing sees no difference" proof, and it is
- *   an equality assertion rather than a count, so a reorder or a dropped entry
- *   fails it.
+ * - Step 1: the packaged nav entries, asserted by **exact id list in exact
+ *   order** against a list transcribed from the pre-Phase-2 `const`. This is the
+ *   "a customer who changes nothing sees no difference" proof, and it is an
+ *   equality assertion rather than a count, so a reorder or a dropped entry
+ *   fails it. It is fourteen entries, not the pre-Phase-2 fifteen: the legacy
+ *   `app.navbar.browse` entry now ships `disabled` — see `PACKAGED_NAV`.
  * - Steps 4-8: hide, add, reorder, relabel and rule-gate, each asserted against
  *   the DOM after a real reload. The DOM assertions are the load-bearing part.
  *   The nine bundle digests alongside them are **not**: the dev server does not
@@ -28,7 +29,7 @@
  *   placeholder, so this is the check that the nav array is no longer decorative.
  * - Step 11: the fail-open contract — an unknown rule id leaves the entry
  *   visible. The same manifest carries a second, independently observable
- *   override (Browse relabelled), so the *arrival* of the payload is proven by
+ *   override (Collections relabelled), so the *arrival* of the payload is proven by
  *   an effect the harness cannot fake. An earlier draft asserted the unknown
  *   rule id against the harness's own local variable, which proved only that the
  *   harness had constructed what it intended to send, and paired it with a check
@@ -93,12 +94,18 @@ const MANIFEST_ROUTE = '**/api/v1/path/default-domain/config/agentic-ui';
  *
  * Asserted as an ordered equality, which is what makes "the default reproduces
  * today's behaviour" falsifiable rather than a count that a reorder would pass.
+ *
+ * **It diverges from that transcription by one entry, deliberately.** The product
+ * now ships a single browse surface: `app.navbar.browse` carries `disabled: true`
+ * and the adf-hx entry reads "Browse". So this list is fourteen entries, not
+ * fifteen, and the equality below proves "the packaged default is what we
+ * intended to ship" rather than "nothing has changed since Phase 2". Restoring
+ * the legacy entry means restoring its row here too.
  */
 const PACKAGED_NAV = [
   ['app.navbar.knowledgeDiscovery', 'Knowledge Discovery'],
   ['app.navbar.dashboard', 'Dashboard'],
-  ['app.navbar.browse', 'Browse'],
-  ['app.navbar.browseAdfHx', 'Browse (adf-hx POC)'],
+  ['app.navbar.browseAdfHx', 'Browse'],
   ['app.navbar.recentlyViewed', 'Recently viewed'],
   ['app.navbar.search', 'Search filters'],
   ['app.navbar.expiredQueue', 'Expired Queue'],
@@ -300,9 +307,18 @@ export default async function run(page, h) {
     `rendered: ${JSON.stringify(added)}`,
   );
   h.check(
-    'the configured order places it between Browse and the adf-hx POC route',
+    // `order: 35` used to land between the legacy Browse entry (30) and the
+    // adf-hx one (40). With Browse disabled its left-hand neighbour is Dashboard,
+    // which is the point of spaced orders: the slot between 20 and 40 is still there.
+    //
+    // Both neighbours are asserted. The version this replaced named two entries and
+    // checked only the left one, so an entry that landed after Dashboard but in the
+    // wrong place further down would have passed a check claiming it was between them.
+    'the configured order places it between Dashboard and Browse',
     added.findIndex(([id]) => id === 'acme.navbar.contracts') ===
-      added.findIndex(([id]) => id === 'app.navbar.browse') + 1,
+      added.findIndex(([id]) => id === 'app.navbar.dashboard') + 1 &&
+      added.findIndex(([id]) => id === 'app.navbar.browseAdfHx') ===
+        added.findIndex(([id]) => id === 'acme.navbar.contracts') + 1,
     `rendered: ${JSON.stringify(added.map(([id]) => id))}`,
   );
   h.check(
@@ -334,19 +350,22 @@ export default async function run(page, h) {
   await h.screenshot('manifest-reorders-nav');
 
   h.step('A manifest relabels a navigation entry, with no rebuild');
+  // Collections rather than Browse: the legacy Browse entry ships `disabled`, so an
+  // override on it has nothing to relabel and this step would assert against an
+  // entry that is not in the DOM at all.
   const relabelled = await applyManifest(
-    { overrides: { 'app.navbar.browse': { label: 'Repository' } } },
+    { overrides: { 'app.navbar.collections': { label: 'Repository' } } },
     'relabel',
     baselineBundle,
   );
   h.check(
     'the relabelled entry shows the configured text',
-    relabelled.some(([id, label]) => id === 'app.navbar.browse' && label === 'Repository'),
+    relabelled.some(([id, label]) => id === 'app.navbar.collections' && label === 'Repository'),
     `rendered: ${JSON.stringify(relabelled)}`,
   );
   h.check(
     'no other label changed',
-    relabelled.filter(([, label]) => label === 'Browse').length === 0 &&
+    relabelled.filter(([, label]) => label === 'Collections').length === 0 &&
       relabelled.length === PACKAGED_NAV.length,
     `rendered: ${JSON.stringify(relabelled)}`,
   );
@@ -430,11 +449,11 @@ export default async function run(page, h) {
       $layers: {
         baseline: {
           overrides: {
-            'app.navbar.browse': { label: 'Baseline label' },
+            'app.navbar.collections': { label: 'Baseline label' },
             'app.navbar.trash': { visible: false },
           },
         },
-        acme: { overrides: { 'app.navbar.browse': { label: 'Acme wins' } } },
+        acme: { overrides: { 'app.navbar.collections': { label: 'Acme wins' } } },
       },
     },
     '$references',
@@ -442,7 +461,7 @@ export default async function run(page, h) {
   );
   h.check(
     'the later layer overrides the earlier one on the same key',
-    layered.some(([id, label]) => id === 'app.navbar.browse' && label === 'Acme wins'),
+    layered.some(([id, label]) => id === 'app.navbar.collections' && label === 'Acme wins'),
     `rendered: ${JSON.stringify(layered)}`,
   );
   h.check(
@@ -460,7 +479,7 @@ export default async function run(page, h) {
   // asserted from the harness's own variables.
   //
   // 1. The payload actually reached the app. The manifest therefore carries a
-  //    **second** override — Browse relabelled — whose effect is visible in the
+  //    **second** override — Collections relabelled — whose effect is visible in the
   //    DOM. The same fetch carries both, so seeing the relabel proves the app
   //    received the unknown rule id too. Asserting the rule id against
   //    `manifestBody` instead, as an earlier draft did, would only prove the
@@ -473,7 +492,7 @@ export default async function run(page, h) {
     {
       overrides: {
         'app.navbar.trash': { rule: 'acme.rules.notInThisBuild' },
-        'app.navbar.browse': { label: 'Delivery receipt' },
+        'app.navbar.collections': { label: 'Delivery receipt' },
       },
     },
     'unknown rule',
@@ -481,8 +500,12 @@ export default async function run(page, h) {
   );
   h.check(
     'the manifest carrying the unknown rule id demonstrably reached the app',
-    failedOpen.some(([id, label]) => id === 'app.navbar.browse' && label === 'Delivery receipt'),
-    `Browse was not relabelled, so this manifest was never applied: ${JSON.stringify(failedOpen)}`,
+    failedOpen.some(
+      ([id, label]) => id === 'app.navbar.collections' && label === 'Delivery receipt',
+    ),
+    `Collections was not relabelled, so this manifest was never applied: ${JSON.stringify(
+      failedOpen,
+    )}`,
   );
   h.check(
     'the entry is still rendered, so a typo cannot strip working navigation',

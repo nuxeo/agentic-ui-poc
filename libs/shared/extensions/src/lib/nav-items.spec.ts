@@ -31,6 +31,11 @@ describe('APP_NAV_ITEMS — Administration gating', () => {
     return TestBed.inject(APP_NAV_ITEMS)().map((item) => item.id);
   }
 
+  /** Packaged ids the registry is expected to render: `disabled` entries never are. */
+  function enabledPackagedIds(): readonly string[] {
+    return PACKAGED_NAV_ITEMS.filter((item) => !item.disabled).map((item) => item.id);
+  }
+
   beforeEach(setUp);
 
   it('shows Administration to a user with administration access', () => {
@@ -48,11 +53,7 @@ describe('APP_NAV_ITEMS — Administration gating', () => {
     expect(ids).not.toContain('app.navbar.administration');
     // Nothing else may disappear with it — a filter that removed too much would
     // otherwise pass the assertion above.
-    expect(ids).toEqual(
-      PACKAGED_NAV_ITEMS.filter((item) => item.id !== 'app.navbar.administration').map(
-        (item) => item.id,
-      ),
-    );
+    expect(ids).toEqual(enabledPackagedIds().filter((id) => id !== 'app.navbar.administration'));
   });
 
   it('hides Administration when the gating rule has not been registered at all', () => {
@@ -77,6 +78,43 @@ describe('APP_NAV_ITEMS — Administration gating', () => {
       'app.rules.hasAdministrationAccess': () => true,
     });
     TestBed.inject(ExtensionRuleContextService).isAdministrator.set(true);
-    expect(navIds()).toEqual(PACKAGED_NAV_ITEMS.map((item) => item.id));
+    expect(navIds()).toEqual(enabledPackagedIds());
+  });
+
+  it('does not render the legacy Browse entry, leaving only the adf-hx one', () => {
+    // Two entries reading "Browse" was the bug. `disabled` on the descriptor is
+    // what removes it, so this fails the moment that flag is dropped.
+    const ids = navIds();
+    expect(ids).not.toContain('app.navbar.browse');
+    expect(ids).toContain('app.navbar.browseAdfHx');
+  });
+
+  it('keeps the disabled descriptor in the packaged list, which the shell reads for titles', () => {
+    // The reason `app.navbar.browse` is `disabled` rather than deleted: the shell's
+    // `pageTitle` matches the route against the **unfiltered** `PACKAGED_NAV_ITEMS`, so
+    // deleting the entry would leave `/#/browse` — still routable, still linked from the
+    // dashboard — headed with the product name instead of "Browse".
+    //
+    // This asserts the descriptor's presence, not the rendered heading; `pageTitle` lives
+    // in `AppShellComponent` and has no spec of its own.
+    const browse = PACKAGED_NAV_ITEMS.find((item) => item.id === 'app.navbar.browse');
+    expect(browse?.path).toBe('/browse');
+    expect(browse?.label).toBe('Browse');
+  });
+
+  it('lets a manifest restore the legacy Browse entry by clearing disabled', () => {
+    // `docs/extension-reference.md` tells a customer who wants both browse
+    // surfaces to re-state the id as a slot addition, and says an `overrides`
+    // entry will not do it. Both halves of that promise are asserted here.
+    manifest.set({ extensions: { overrides: { 'app.navbar.browse': { visible: true } } } });
+    expect(navIds()).not.toContain('app.navbar.browse');
+
+    manifest.set({ extensions: { slots: { navbar: [{ id: 'app.navbar.browse' }] } } });
+    expect(navIds()).not.toContain('app.navbar.browse');
+
+    manifest.set({
+      extensions: { slots: { navbar: [{ id: 'app.navbar.browse', disabled: false }] } },
+    });
+    expect(navIds()).toContain('app.navbar.browse');
   });
 });
