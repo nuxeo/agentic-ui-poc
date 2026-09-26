@@ -45,7 +45,7 @@
  *   The block that used to stand in for it in this file could not fail; see below.
  */
 
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, afterAll, beforeAll, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
@@ -385,6 +385,61 @@ describe('SearchService Integration Tests', () => {
       new Promise((resolve, reject) => {
         searchService.getSavedSearchById(id).subscribe({ next: resolve, error: reject });
       });
+
+    /**
+     * Best-effort removal of the saved search, whatever happened to the tests.
+     *
+     * A saved search is per-USER state and lives outside `harness.dataRoot`, so the harness's
+     * own teardown cannot reach it. Until now the only thing that removed it was the
+     * `can delete a saved search` test at the end of this block — so any earlier failure, or a
+     * failure of that assertion itself, left it on a shared instance for good, where the
+     * `can list saved searches` test of a later run reads the same user's list.
+     *
+     * The delete test stays exactly as it was: it is a behaviour check, and this is
+     * housekeeping. By the time this runs on a fully passing suite the search is already gone,
+     * which is why an absent one is a normal outcome here and not an error.
+     */
+    afterAll(async () => {
+      if (!savedSearchId) return;
+
+      // Raw `fetch` and a direct `/id/:uid` read, NOT `searchService`.
+      //
+      // The first version of this teardown went through `getSavedSearches()` to decide whether
+      // the search was still there, and it silently did nothing. Two reasons compound: the
+      // TestBed that provided the service is torn down by the time `afterAll` runs, and
+      // `getSavedSearches` swallows a failure into an EMPTY LIST — so the presence check read
+      // "already gone" and returned quietly. Measured, by making the delete test target the
+      // wrong id: the run failed as intended and left `Updated Test Search …` on the server,
+      // with this teardown printing nothing at all. A cleanup that cannot tell "absent" from
+      // "could not look" is the same defect as the guards this branch exists to remove.
+      const url = `${harness.nuxeoUrl}/nuxeo/api/v1/id/${savedSearchId}`;
+      const headers = { Authorization: harness.auth };
+
+      try {
+        // 404 here is the normal outcome on a fully passing suite: the delete test removed it.
+        if ((await fetch(url, { headers })).status === 404) return;
+
+        await fetch(url, { method: 'DELETE', headers });
+
+        // A DELETE answering 2xx is Nuxeo accepting the call, not evidence it is gone.
+        const after = (await fetch(url, { headers })).status;
+        if (after === 404) {
+          console.log(`[search-integration] teardown removed saved search ${savedSearchId}`);
+        } else {
+          console.error(
+            `[search-integration] teardown FAILED to remove saved search ${savedSearchId} ` +
+              `(still readable, HTTP ${after}) — delete it by hand`,
+          );
+        }
+      } catch (error) {
+        // Reported, never thrown: an exception here would replace the real failure with a
+        // teardown one. Named so an operator can remove it by hand.
+        console.error(
+          `[search-integration] teardown FAILED to remove saved search ${savedSearchId} — ` +
+            `delete it by hand: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    });
 
     it('can create a saved search', async () => {
       // `saveSavedSearch` is typed `Observable<unknown>`, so the identity of the created

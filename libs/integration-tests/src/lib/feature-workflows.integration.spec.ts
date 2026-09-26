@@ -49,6 +49,19 @@ describe('Feature Workflows Integration Tests', () => {
       expect(collection.type).toBe('Collection');
       expect(collection.title).toContain('test-collection');
 
+      // The operation's own response is not evidence that anything persisted — it is the
+      // operation describing what it believes it did, and this file's header requires
+      // repository modifications to be verified by a follow-up read. An implementation that
+      // returned a well-formed Collection entity and committed nothing satisfied every
+      // assertion above. Read by UID, so the repository answers rather than the index.
+      const readBack = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${collection.uid}`, {
+        headers: { Authorization: harness.auth },
+      });
+      expect(readBack.status).toBe(200);
+      const persisted: any = await readBack.json();
+      expect(persisted.type).toBe('Collection');
+      expect(persisted.title).toBe(collection.title);
+
       console.log(`[feature-workflows] Created collection: ${collection.uid}`);
     });
 
@@ -71,7 +84,21 @@ describe('Feature Workflows Integration Tests', () => {
         },
       );
 
+      // Checked, not assumed. This status was not asserted at all, so a failed
+      // `Collection.Create` was carried forward into `Document.AddToCollection` and surfaced
+      // as a membership failure — the right test failing for the wrong reason, several lines
+      // from the cause.
+      expect(collectionRes.status).toBe(200);
       const collection: any = await collectionRes.json();
+
+      // And the collection really exists before it is used as a target, for the same reason
+      // as in the test above: the operation response is a claim, not a read.
+      const collectionReadBack = await fetch(
+        `${harness.nuxeoUrl}/nuxeo/api/v1/id/${collection.uid}`,
+        { headers: { Authorization: harness.auth } },
+      );
+      expect(collectionReadBack.status).toBe(200);
+      expect(((await collectionReadBack.json()) as any).type).toBe('Collection');
 
       // Create a document
       const doc: any = await createTestDocument(harness, {
