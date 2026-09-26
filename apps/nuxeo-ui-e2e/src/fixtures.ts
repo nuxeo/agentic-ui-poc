@@ -34,8 +34,12 @@ export const test = base.extend<{ signedIn: Page }>({
    * specs perform.
    */
   signedIn: async ({ page }, use) => {
-    const username = process.env['NUXEO_USER'] ?? 'Administrator';
-    const password = process.env['NUXEO_PASS'] ?? 'Administrator';
+    // Through the same helper as every other caller. These two lines each carried a `??`
+    // fallback on the user AND the password — the working default pair, compiled into the
+    // repository, which is the exact construction `.cursor/rules/security.mdc` forbids. The
+    // docblock on `nuxeoCredentials` already described that fallback as removed while it
+    // survived here.
+    const { username, password } = nuxeoCredentials();
 
     await page.addInitScript(
       ({ key, signedOutKey, value }) => {
@@ -76,22 +80,27 @@ export const E2E_BASE_URL = process.env['E2E_BASE_URL'] ?? 'http://localhost:420
 /**
  * Nuxeo credentials from the environment, with **no** fallback.
  *
- * `.cursor/rules/security.mdc`: "NEVER use Basic auth with hardcoded fallback defaults". The
- * two copies of `aRootChild` this replaces each carried `?? 'Administrator'` on both the user
- * and the password, which is a working credential pair compiled into the repository.
+ * `.cursor/rules/security.mdc`: "NEVER use Basic auth with hardcoded fallback defaults". Several
+ * callers in this directory each carried a `??` fallback on both the user and the password — a
+ * working credential pair compiled into the repository. This is the one place either value is
+ * read, so there is no longer anywhere for such a fallback to live.
  *
  * Throwing is the point. A default that happens to be right on a developer's Docker is a
  * default that is silently wrong everywhere else, and the failure it produces there is an
  * unexplained empty listing rather than "you did not set NUXEO_USER".
+ *
+ * The message names the variables and nothing else. Spelling the discouraged pair out in the
+ * prose recreated the very string the rule exists to keep out of source — a credential does not
+ * stop being one for being quoted inside its own warning.
  */
-function nuxeoCredentials(): { username: string; password: string } {
+export function nuxeoCredentials(): { username: string; password: string } {
   const username = process.env['NUXEO_USER'];
   const password = process.env['NUXEO_PASS'];
   if (!username || !password) {
     throw new Error(
       'NUXEO_USER and NUXEO_PASS must both be set to run the e2e API helpers.\n' +
-        '  There is deliberately no default: a hardcoded Administrator/Administrator pair is a\n' +
-        '  credential in the repository, and one that is wrong on every instance but Docker.',
+        '  There is deliberately no default, because a default that suits one instance is wrong\n' +
+        '  on every other and embeds a usable credential in the repository.',
     );
   }
   return { username, password };

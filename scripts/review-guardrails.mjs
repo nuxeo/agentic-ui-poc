@@ -1190,26 +1190,71 @@ function checkNoHardcodedUiText() {
     // A standalone debug page, not referenced by `angular.json` and not copied as an asset, so
     // it is never served to anyone.
     /^apps\/nuxeo-ui\/src\/diagnostic\.html$/,
-    // Spec fixtures. A `*.host.html` is the template of a test host component, and a
-    // `*.spec.html` is the markup a spec compiles directly; both are loaded only by the spec
-    // that names them and served by no build config — verified for all five: each is
-    // referenced by exactly one `.spec.ts` and appears in no `assets` glob, no
-    // `project.json` and no `angular.json`. Their text is test DATA, chosen to reproduce a
-    // rendering bug, so keying it would make the fixture describe something other than the
-    // case under test. They arrived from `main` after this sweep went repo-wide, which is
-    // why the list did not already cover them.
-    //
-    // `.spec.html` was added for `apps/nuxeo-ui/src/app/shell/header-search-focus-ring.spec.html`
-    // and `libs/shared/ui/src/lib/document-viewer/angular-security-context.spec.html`, which
-    // arrived from `main` the same way `.host.html` did and carry the identical argument.
-    /\.host\.html$/,
-    /\.spec\.html$/,
+    // Spec fixtures are NOT exempted by suffix here. `provenTestOnlyFixtures()` below decides
+    // them one file at a time, by checking the property the suffix used to assume.
     // The document shell. `checkNoTemplateSyntaxInDocumentShell` REQUIRES its title to be a
     // literal — Angular never compiles this file, so a pipe there renders as visible braces.
     // Without this exemption the two gates contradict each other and one of them has to be
     // wrong. The title is replaced at runtime from Layer 0 `branding.documentTitle`.
     /(^|\/)src\/index\.html$/,
   ];
+
+  /**
+   * Fixture templates whose test-only status is PROVEN, not assumed from the filename.
+   *
+   * `/\.host\.html$/` and `/\.spec\.html$/` used to sit in `EXEMPT` as suffix patterns, which
+   * admitted every future file with those names rather than the ones anyone had looked at. That
+   * is not a hypothetical cost: the `.spec.html` entry was justified against two named,
+   * hand-verified fixtures, and by the time it was reviewed there were FOUR `.spec.html` files.
+   * `dashboard-ai-banner-contrast.spec.html` and `header-settings-focus-ring.spec.html` had let
+   * themselves in, and nothing reported it. A blanket rule cannot distinguish the file someone
+   * checked from the file that merely shares its ending.
+   *
+   * So the two properties the suffix was standing in for are checked per file, and the check
+   * FAILS CLOSED — an unproven fixture is held to the same standard as any shipped template:
+   *
+   *   1. exactly one `*.spec.ts` names it, so it is a fixture rather than shared markup, and
+   *   2. no `project.json`, `angular.json` or asset glob names it, so nothing serves it.
+   *
+   * Only then is its text test DATA — markup chosen to reproduce a rendering bug, where keying
+   * the strings would make the fixture describe something other than the case under test.
+   *
+   * Adding a fixture is still easy; adding one that is *served* no longer silently disables the
+   * guard for it.
+   */
+  const provenFixtures = (() => {
+    const isFixtureName = (path) => /\.(?:host|spec)\.html$/.test(path);
+    const fixtures = [
+      ...walk('apps', isFixtureName),
+      ...walk('libs', isFixtureName),
+    ];
+    if (fixtures.length === 0) return new Set();
+
+    const specBodies = [
+      ...walk('apps', (path) => path.endsWith('.spec.ts')),
+      ...walk('libs', (path) => path.endsWith('.spec.ts')),
+    ].map(read);
+
+    // `angular.json` at the root plus every project config: between them they hold every
+    // `assets` glob and `templateUrl`-adjacent build input that could cause a file to be served.
+    const configBodies = [
+      ...walk('apps', (path) => /(?:^|\/)(?:project|angular)\.json$/.test(path)),
+      ...walk('libs', (path) => /(?:^|\/)(?:project|angular)\.json$/.test(path)),
+      ...(fileExists('angular.json') ? ['angular.json'] : []),
+    ].map(read);
+
+    const proven = new Set();
+    for (const fixture of fixtures) {
+      const name = fixture.slice(fixture.lastIndexOf('/') + 1);
+      // Matched on the basename, because a spec names its fixture relative to itself
+      // (`./thing.host.html`) and a build config would name it by a path or a glob. A basename
+      // hit in either place is enough to make the decision, and counting them is the point.
+      if (specBodies.filter((body) => body.includes(name)).length !== 1) continue;
+      if (configBodies.some((body) => body.includes(name))) continue;
+      proven.add(fixture);
+    }
+    return proven;
+  })();
 
   /**
    * Every template, not only the changed ones.
@@ -1223,7 +1268,7 @@ function checkNoHardcodedUiText() {
   const templates = [
     ...walk('apps', (path) => path.endsWith('.html')),
     ...walk('libs', (path) => path.endsWith('.html')),
-  ].filter((path) => !EXEMPT.some((pattern) => pattern.test(path)));
+  ].filter((path) => !EXEMPT.some((pattern) => pattern.test(path)) && !provenFixtures.has(path));
 
   if (templates.length === 0) {
     fail('No templates were found under apps/ or libs/, so this gate asserted nothing.');
