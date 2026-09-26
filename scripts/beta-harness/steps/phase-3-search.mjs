@@ -42,6 +42,8 @@
  *   npm run beta:evidence -- phase-3-search
  */
 
+import { PreconditionError } from '../helpers.mjs';
+
 const NUXEO = 'http://localhost:8080/nuxeo';
 
 /**
@@ -57,7 +59,14 @@ const NUXEO = 'http://localhost:8080/nuxeo';
 const USER = process.env['NUXEO_USER'];
 const PASS = process.env['NUXEO_PASS'];
 if (!USER || !PASS) {
-  throw new Error(
+  // `PreconditionError`, not `Error`. This throw happens while `phase-runner.mjs` is doing
+  // `await import(stepsFile)` inside its try, and its catch keys on the error's NAME: a
+  // `PreconditionError` sets `preconditionFailure` and the run exits 2, anything else exits 1.
+  // Absent credentials are an environment precondition, and the runner's own docblock says
+  // exit 1 means "iterate, this is a defect" while exit 2 means "do NOT iterate; fix the
+  // environment". As a plain `Error` this reported `[error] steps aborted` and exited 1,
+  // inviting someone to change working code to satisfy a step that was never applicable.
+  throw new PreconditionError(
     '\nNUXEO_USER and NUXEO_PASS must both be set to run the phase-3-search evidence step.\n\n' +
       '  export NUXEO_USER=<user> NUXEO_PASS=<password>\n\n' +
       '  There is deliberately no default: a hardcoded Administrator pair is a credential in\n' +
