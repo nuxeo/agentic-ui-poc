@@ -18,7 +18,12 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setupIntegrationHarness, createTestDocument, waitForIndexed } from './integration-harness';
+import {
+  setupIntegrationHarness,
+  createTestDocument,
+  waitForIndexed,
+  deleteDataRoot,
+} from './integration-harness';
 
 describe('Write Operations Integration Tests', () => {
   const harness = setupIntegrationHarness();
@@ -490,39 +495,88 @@ describe('Write Operations Integration Tests', () => {
       const throwaway = await createAt(workspaces, `${unique}-root`, 'Workspace');
       const inside = await createAt(throwaway.path, 'child', 'File');
 
-      // Everything is really there before the destructive step, or the assertions afterwards
-      // are satisfied by documents that never existed.
-      expect(await readStatus(canary.uid)).toBe(200);
-      expect(await readStatus(throwaway.uid)).toBe(200);
-      expect(await readStatus(inside.uid)).toBe(200);
+      /**
+       * Best-effort removal of one fixture, RECORDED rather than asserted.
+       *
+       * Both fixtures live outside `harness.dataRoot`, so the harness's own `afterAll` cannot
+       * reach them — they are this test's to remove, and until now it removed them only on the
+       * happy path, after every assertion had passed. The reasoning was that a failure should
+       * "leave the evidence on the server to look at", and on a shared Nuxeo that trade is the
+       * wrong way round: the evidence is a workspace nobody ever collects, sitting next to nine
+       * other worktrees' data, and the next run's presence assertions can pass on it. That is
+       * the precise failure this harness exists to prevent.
+       *
+       * So cleanup moves into `finally` and the evidence is preserved as a reported outcome
+       * instead: every removal names its path, and a failed one says LEAKED, so nothing is
+       * silent. Nothing here throws or asserts, because an `expect` in teardown would replace
+       * the explanation of why the test failed with a secondary symptom.
+       */
+      const removals: string[] = [];
+      const removeQuietly = async (label: string, uid: string, path: string) => {
+        try {
+          const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${uid}`, {
+            method: 'DELETE',
+            headers: { Authorization: harness.auth },
+          });
+          // A 2xx is Nuxeo accepting the call, not evidence the document is gone; 404 means it
+          // was already removed, which the happy path expects for the throwaway root.
+          const confirmed = res.ok || res.status === 404 ? await readStatus(uid) : 0;
+          removals.push(
+            confirmed === 404
+              ? `${label} removed (${path})`
+              : `${label} LEAKED at ${path} — DELETE ${res.status}, read back ${confirmed}`,
+          );
+        } catch (error) {
+          removals.push(
+            `${label} LEAKED at ${path} — ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      };
 
-      // The destructive operation under test: the same `DELETE /api/v1/path<root>` that
-      // `deleteDataRoot` issues in the harness's `afterAll`, against a root of the same shape
-      // in the same parent. Exercising the real cleanup function would have to run inside this
-      // suite's own `afterAll` and would take the rest of the suite's fixtures with it.
-      const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${throwaway.path}`, {
-        method: 'DELETE',
-        headers: { Authorization: harness.auth },
-      });
-      expect(deleteRes.ok).toBe(true);
+      try {
+        // Everything is really there before the destructive step, or the assertions afterwards
+        // are satisfied by documents that never existed.
+        expect(await readStatus(canary.uid)).toBe(200);
+        expect(await readStatus(throwaway.uid)).toBe(200);
+        expect(await readStatus(inside.uid)).toBe(200);
 
-      // The root is gone, and so is its child — so the delete was recursive.
-      expect(await readStatus(throwaway.uid)).toBe(404);
-      expect(await readStatus(inside.uid)).toBe(404);
+        // The destructive operation under test is `deleteDataRoot` ITSELF, not a DELETE shaped
+        // like the one it issues.
+        //
+        // This used to hand-roll `fetch(DELETE /api/v1/path${throwaway.path})` and say that
+        // exercising the real function "would have to run inside this suite's own `afterAll`
+        // and would take the rest of the suite's fixtures with it". That was wrong on both
+        // counts: the path is a parameter, so pointing it at the throwaway root touches nothing
+        // else — and while the reimplementation was correct, a regression in the real cleanup
+        // could not reach this test. Rebuilding a truncated path, or widening the target to the
+        // parent, would have left it green while the claim underneath it ("the assertion that
+        // fails if a cleanup ever deletes a parent rather than its own root") quietly stopped
+        // being true. The test asserted Nuxeo's recursive-delete semantics; the harness's
+        // behaviour was the thing that needed asserting.
+        await deleteDataRoot(harness.nuxeoUrl, harness.auth, throwaway.path, `${unique}-isolation`);
 
-      // The point of the test: the sibling outside the deleted root is untouched. This is the
-      // assertion that fails if a cleanup ever deletes a parent rather than its own root, and
-      // it cannot be satisfied by index lag, because it is a repository read.
-      expect(await readStatus(canary.uid)).toBe(200);
+        // The root is gone, and so is its child — so the delete was recursive.
+        expect(await readStatus(throwaway.uid)).toBe(404);
+        expect(await readStatus(inside.uid)).toBe(404);
 
-      // Leave nothing behind. Deliberately after the assertions, so a failure above leaves the
-      // evidence on the server to look at.
-      const canaryDelete = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/id/${canary.uid}`, {
-        method: 'DELETE',
-        headers: { Authorization: harness.auth },
-      });
-      expect(canaryDelete.ok).toBe(true);
-      expect(await readStatus(canary.uid)).toBe(404);
+        // The point of the test: the sibling outside the deleted root is untouched. This is the
+        // assertion that fails if a cleanup ever deletes a parent rather than its own root, and
+        // it cannot be satisfied by index lag, because it is a repository read.
+        expect(await readStatus(canary.uid)).toBe(200);
+      } finally {
+        await removeQuietly('canary', canary.uid, `${workspaces}/${unique}-canary`);
+        // Already removed by `deleteDataRoot` on the happy path, so this reads back 404 and
+        // reports "removed". It is here for the paths where the delete under test did not run.
+        await removeQuietly('throwaway root', throwaway.uid, throwaway.path);
+        console.log(`[write-ops] isolation teardown: ${removals.join('; ')}`);
+      }
+
+      // Teardown is reported, not asserted — so it is asserted here, on the path where the test
+      // otherwise passed. A green isolation test that leaked its own fixtures would be the
+      // exact contradiction this suite is about.
+      expect(removals.join('; '), 'the isolation test must not leak its own fixtures').not.toMatch(
+        /LEAKED/,
+      );
 
       console.log(
         `[write-ops] Isolation verified by repository read: ${throwaway.path} and its child removed, canary survived`,

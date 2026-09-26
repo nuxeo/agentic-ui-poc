@@ -232,7 +232,12 @@ Added import: `import { nuxeoAce } from '@agentic-ui/shared/testing'`
 - Reuse `e2e-preflight` exit-2 convention
 - Per-run data root under `/default-domain/workspaces/it-<runid>`
 - Guaranteed teardown (no fixture leaks)
-- Refuse to run against default credentials without opt-in
+- Refuse to run against any host not named in `INTEGRATION_ALLOWED_HOSTS`, which denies by
+  default and has no implicitly safe host — `localhost` included. This replaced an earlier
+  "refuse default credentials without opt-in" item, and the replacement is not a rewording:
+  the credentials-based guard compared the pair against the Docker default, so a real
+  production pair was _recorded as satisfying_ it. There is no default-credential opt-in to
+  describe, and describing one would point future work back at the design that failed.
 
 See docs/integration-test-audit.md §11 Stage 4.
 
@@ -241,7 +246,13 @@ See docs/integration-test-audit.md §11 Stage 4.
 ## Notes
 
 - The testing library is `scope:shared, type:testing`, not a feature
-- All projects can depend on it (eslint allows it)
+- Five source categories may depend on it, not all of them: `scope:features`, `scope:shared`,
+  `type:integration-test`, `type:extension` and `type:publishable` list `type:testing` in their
+  `onlyDependOnLibsWithTags` in `eslint.config.mjs`. **`type:app` and `scope:core` do not** —
+  `type:app` may reach only `type:feature`, `type:ui`, `type:data-access`, `type:util`,
+  `type:extension` and `type:publishable`, and `scope:core` may reach only `scope:core`. So
+  `apps/nuxeo-ui` cannot import the testing library. "All projects can depend on it" was
+  written against the permissive `'*' → ['*']` default that these constraints replaced.
 - The factories follow the discipline from nuxeo-document-api.spec.ts:39-41
 - The negative control proves the compile-time coupling works
 - This pattern can extend to other models (NuxeoComment, result pages, audit entries)

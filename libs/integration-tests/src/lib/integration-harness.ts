@@ -333,7 +333,7 @@ async function createDataRoot(
  * it a verification rather than a request — a `DELETE` answering 2xx is Nuxeo accepting the
  * call, not evidence the workspace is gone.
  */
-async function deleteDataRoot(
+export async function deleteDataRoot(
   nuxeoUrl: string,
   auth: string,
   dataRoot: string,
