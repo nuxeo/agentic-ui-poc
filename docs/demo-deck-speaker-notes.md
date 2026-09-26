@@ -116,7 +116,7 @@ The strongest thing on this slide is not visible, so say it:
 This is the slide that sells Layer 1. Do not undersell it by reading ids.
 
 > "This is not a settings heading. These are the words their users read all day. Browse becomes Claim
-> Files. Collections becomes Policies. Tasks becomes Underwriting Queue. And three entries this
+> Files. Collections becomes Policies. Tasks becomes Underwriting Queue. And two entries this
 > customer has no use for are hidden outright — not greyed out, **gone**."
 
 > "All fourteen navigation entries we render by default work this way, addressed by id. The same

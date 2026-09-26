@@ -65,12 +65,17 @@ export interface NavItemDescriptor extends ExtensionElement {
 /**
  * The navigation the product ships with.
  *
- * This is the same list, in the same order, with the same labels, paths and
- * icons that `apps/nuxeo-ui/src/app/platform-nav-items.ts` held as a compiled
- * `const` before Phase 2 — reproducing today's behaviour exactly is the whole
- * requirement. What changed is that it is now **registered into a slot** rather
- * than imported, so a manifest can reorder it, relabel it, hide entries, gate
- * them behind a rule, or add its own.
+ * Phase 2 took the compiled `const` that `apps/nuxeo-ui/src/app/platform-nav-items.ts`
+ * held and **registered it into a slot** instead, so a manifest can reorder it, relabel
+ * it, hide entries, gate them behind a rule, or add its own. Reproducing the pre-Phase-2
+ * navigation exactly was that phase's requirement, and it did.
+ *
+ * **Two entries have deliberately diverged from it since.** `app.navbar.browse` carries
+ * `disabled: true` and `app.navbar.browseAdfHx` now reads "Browse", so the product offers
+ * one browse surface: fifteen descriptors are registered here and fourteen render by
+ * default. Both are commented where they are declared. Anything reading this list as
+ * "what the user sees" must filter it — `resolve()` does, `pageTitle` deliberately does
+ * not.
  *
  * `order` is explicit and spaced by ten so a customer can insert between two
  * packaged entries without restating the list.
