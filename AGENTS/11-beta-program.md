@@ -364,7 +364,7 @@ DocumentService`. The chain, read from the published bundle:
   not a docBase, and anything installed there is never served. Phase 1 shipped the
   `nxserver/web/…` variant and it would have 404'd in every deployment; the
   corrected path is verified served on the local container. **Risk R7 is still
-  Medium:** no package has been built, installed and upgraded on a real server.
+  Medium:** since 2026-09-26 the package is built and published — `2026.0.1-20260926071953-BUILD-1109`, live on the preprod listing — but never installed or upgraded on a real server.
   That is the Phase 6 upgrade rehearsal.
 - **Configuration is loaded, not compiled.** `libs/shared/app-config` reads a
   static bootstrap file pre-auth and a runtime manifest from the Nuxeo document
