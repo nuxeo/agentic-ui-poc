@@ -240,7 +240,9 @@ const SHOTS = [
       extensions: {
         $name: 'acme-insurance',
         overrides: {
-          // Every one of the packaged nav ids is relabellable this way.
+          // Every nav id the product renders is relabellable this way. The
+          // fifteenth, `app.navbar.browse`, ships `disabled`, so an override on
+          // it is applied to a descriptor the registry drops — see nav-items.ts.
           'app.navbar.browseAdfHx': { label: 'Claim Files', order: 10 },
           'app.navbar.collections': { label: 'Policies', order: 20 },
           'app.navbar.tasks': { label: 'Underwriting Queue', order: 30 },

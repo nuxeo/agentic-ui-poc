@@ -73,7 +73,7 @@ describe('APP_NAV_ITEMS — Administration gating', () => {
     expect(navIds()).toContain('app.navbar.administration');
   });
 
-  it('reproduces the packaged navigation exactly for an administrator', () => {
+  it('renders every enabled packaged entry, in order, for an administrator', () => {
     TestBed.inject(AppExtensionsService).registerRules({
       'app.rules.hasAdministrationAccess': () => true,
     });

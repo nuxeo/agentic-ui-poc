@@ -2,7 +2,13 @@
  * Phase 2 — Layer 1: extension registry.
  *
  * The claim: **a manifest edit changes the addressable surface with no rebuild,
- * and the shipped default reproduces today's behaviour exactly.**
+ * and the shipped default is exactly the navigation the product intends to ship.**
+ *
+ * That second half used to read "reproduces today's behaviour exactly", meaning
+ * the pre-Phase-2 `const`. It is no longer what the assertion establishes: the
+ * packaged default now deliberately differs from that transcription by one
+ * entry, so a run emitting the old wording would publish a false evidence claim
+ * while passing. See `PACKAGED_NAV`.
  *
  * ## Which checks are load-bearing, and which are not
  *
@@ -11,11 +17,11 @@
  * **Load-bearing** — these fail if the registry is not actually doing the work:
  *
  * - Step 1: the packaged nav entries, asserted by **exact id list in exact
- *   order** against a list transcribed from the pre-Phase-2 `const`. This is the
- *   "a customer who changes nothing sees no difference" proof, and it is an
- *   equality assertion rather than a count, so a reorder or a dropped entry
- *   fails it. It is fourteen entries, not the pre-Phase-2 fifteen: the legacy
- *   `app.navbar.browse` entry now ships `disabled` — see `PACKAGED_NAV`.
+ *   order** against the navigation the product ships. This is the "a customer
+ *   who changes nothing sees what we intended" proof, and it is an equality
+ *   assertion rather than a count, so a reorder or a dropped entry fails it. It
+ *   is the fourteen **enabled** entries: `PACKAGED_NAV_ITEMS` holds fifteen, and
+ *   the legacy `app.navbar.browse` ships `disabled` — see `PACKAGED_NAV`.
  * - Steps 4-8: hide, add, reorder, relabel and rule-gate, each asserted against
  *   the DOM after a real reload. The DOM assertions are the load-bearing part.
  *   The nine bundle digests alongside them are **not**: the dev server does not
@@ -92,15 +98,15 @@ const MANIFEST_ROUTE = '**/api/v1/path/default-domain/config/agentic-ui';
  * transcribed from `git show 4aae518:apps/nuxeo-ui/src/app/platform-nav-items.ts`
  * and paired with the ids Phase 2 assigned.
  *
- * Asserted as an ordered equality, which is what makes "the default reproduces
- * today's behaviour" falsifiable rather than a count that a reorder would pass.
+ * Asserted as an ordered equality, which is what makes "the packaged default is
+ * what we meant to ship" falsifiable rather than a count that a reorder would pass.
  *
  * **It diverges from that transcription by one entry, deliberately.** The product
  * now ships a single browse surface: `app.navbar.browse` carries `disabled: true`
- * and the adf-hx entry reads "Browse". So this list is fourteen entries, not
- * fifteen, and the equality below proves "the packaged default is what we
- * intended to ship" rather than "nothing has changed since Phase 2". Restoring
- * the legacy entry means restoring its row here too.
+ * and the adf-hx entry reads "Browse". So this list is the fourteen entries the
+ * registry renders, out of fifteen registered, and the equality below proves "the
+ * packaged default is what we intended to ship" rather than "nothing has changed
+ * since Phase 2". Restoring the legacy entry means restoring its row here too.
  */
 const PACKAGED_NAV = [
   ['app.navbar.knowledgeDiscovery', 'Knowledge Discovery'],
@@ -220,9 +226,9 @@ export default async function run(page, h) {
   };
 
   // ---------------------------------------------------------------------------
-  // LOAD-BEARING: the shipped default reproduces today's behaviour exactly.
+  // LOAD-BEARING: the shipped default is exactly the navigation we mean to ship.
   // ---------------------------------------------------------------------------
-  h.step('The packaged default reproduces the pre-Phase-2 navigation exactly');
+  h.step('The packaged default renders exactly the navigation the product ships');
   await h.login();
   await h.expectVisible('app shell rendered', 'app-shell');
 
@@ -240,7 +246,7 @@ export default async function run(page, h) {
     `rendered ${defaultNav.length} addressable entries, expected ${PACKAGED_NAV.length}`,
   );
   h.check(
-    'the ids and labels match the pre-Phase-2 const, in the same order',
+    'the ids and labels match the packaged enabled set, in the same order',
     JSON.stringify(defaultNav) === JSON.stringify(PACKAGED_NAV),
     `rendered:\n  ${JSON.stringify(defaultNav)}\nexpected:\n  ${JSON.stringify(PACKAGED_NAV)}`,
   );
@@ -363,11 +369,22 @@ export default async function run(page, h) {
     relabelled.some(([id, label]) => id === 'app.navbar.collections' && label === 'Repository'),
     `rendered: ${JSON.stringify(relabelled)}`,
   );
+  // An ordered equality against the packaged list with the one override applied,
+  // which is what the label claims. The version this replaced asserted only that
+  // no entry still read "Collections" and that the count was unchanged — so a
+  // manifest that relabelled Collections *and* silently rewrote Trash would have
+  // passed a check titled "no other label changed".
   h.check(
     'no other label changed',
-    relabelled.filter(([, label]) => label === 'Collections').length === 0 &&
-      relabelled.length === PACKAGED_NAV.length,
-    `rendered: ${JSON.stringify(relabelled)}`,
+    JSON.stringify(relabelled) ===
+      JSON.stringify(
+        PACKAGED_NAV.map(([id, label]) =>
+          id === 'app.navbar.collections' ? [id, 'Repository'] : [id, label],
+        ),
+      ),
+    `rendered:\n  ${JSON.stringify(relabelled)}\nexpected only Collections to change from:\n  ${JSON.stringify(
+      PACKAGED_NAV,
+    )}`,
   );
   await h.screenshot('manifest-relabels-nav');
 

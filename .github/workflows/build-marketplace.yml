@@ -59,7 +59,15 @@ jobs:
             # branch name a customer-visible string on the Marketplace listing, which is worse
             # than the ambiguity it solved. The publishing run is recorded in Actions; the
             # version does not have to carry it.
-            VERSION="${BASE_VERSION}-$(date +%Y%m%d%H%M%S)"
+            #
+            # The run number is what the dropped slug had been doing for uniqueness. The
+            # `concurrency` group above is keyed on `github.ref`, so it serialises publishes
+            # from one ref and nothing at all across two — dispatch from `main` and from a
+            # branch in the same second and a timestamp alone resolves to the same string on
+            # both, which is a colliding upload rather than an ambiguous listing. Run numbers
+            # are unique per workflow across every ref, so the suffix is branch-neutral and
+            # the timestamp still orders the list.
+            VERSION="${BASE_VERSION}-$(date +%Y%m%d%H%M%S)-BUILD-${{ github.run_number }}"
           fi
 
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
