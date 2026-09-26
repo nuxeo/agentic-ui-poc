@@ -225,12 +225,17 @@ The interesting engineering detail, and it is worth reading aloud from
 - the app bundle is copied with `overwrite="true"` — replaced on every upgrade;
 - the config directory is copied **separately**, to a **sibling** path, with `overwrite="false"`.
 
-So a customer's branding file is seeded on first install and **left untouched on every upgrade
-after it**. Configuration was deliberately put where the installer cannot reach it. That is a
-real decision with a stated failure mode, not a diagram.
+So a customer's branding file is seeded on first install and the installer is **configured not to
+replace it** on later upgrades. Configuration was deliberately put outside the tree the installer
+overwrites. That is a real decision with a stated failure mode, not a diagram — but say it as the
+mechanism, because it is read from `install.xml` and not observed: intended effect of the copy layout; no marketplace install or upgrade has been run — R7.
 
-> **Unverified:** nobody ran Maven. Do **not** claim the marketplace ZIP builds or installs. Only
-> the Angular half was built (`nx build nuxeo-ui --configuration=production`, exit 0, 7.7 MB).
+> **Updated 2026-09-26: the ZIP builds and publishes; it has still never been installed.** Maven
+> runs in CI on every pull request, and `2026.0.1-20260926071953-BUILD-1109` is live on the preprod
+> listing (run 36226401180). So "the marketplace package builds" is now demoable — point at the
+> listing. What is written above about `overwrite="true"` / `overwrite="false"` is still **read from
+> `install.xml`, not observed**: no one has installed the ZIP on a server, let alone upgraded one.
+> Claim the build and the publish; do not claim the install or the upgrade.
 
 ### The support boundary
 
@@ -768,9 +773,13 @@ No. Manifest visibility is presentation. Nuxeo's server-side permissions are the
 boundary, and they still apply. Demonstrate it — Beat 5.
 
 **"Does my customisation survive your upgrades?"**
-Yes, and by two different deliberate mechanisms. The Nuxeo document is outside the filesystem the
-installer touches. The branding file is installed to a sibling directory with `overwrite="false"`
-precisely because the app directory is copied with `overwrite="true"`. Then show Beat 8.
+Two different deliberate mechanisms, and they are **not equally evidenced** — say which is which.
+The Nuxeo document is outside the filesystem the installer touches at all, so nothing can overwrite
+it. The branding file is installed to a sibling directory with `overwrite="false"` precisely because
+the app directory is copied with `overwrite="true"` — that is the installer's _configuration_, read
+from `install.xml`, and **no marketplace install or upgrade has been run** (R7). Then show Beat 8,
+and say what it proves: the **npm** upgrade rehearsal, eight assertions across Layers 0-2, not the
+marketplace installer.
 
 **"Can I change the logo?"**
 Not today. Product name and theme colours, yes. There is no logo or favicon key. Say so plainly.
@@ -817,7 +826,7 @@ renders upstream's read-only properties panel either; metadata is on the documen
 | **F10** | `acme.panel.policySummary`**,** `acme.actions.exportClaim`**,** `acme.rules.isLegalTeam`                           | Registered but never placed. Nothing renders them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | **F11** | **A statically served production build past sign-in**                                                              | Stock Docker Nuxeo sends no CORS headers, so a static bundle cannot authenticate. Use `nx serve`. The rebrand _is_ demoable statically, because brand and tab title render pre-sign-in.                                                                                                                                                                                                                                                                                                                                         |
 | **F12** | **Layer 1 on the template app**                                                                                    | `/default-domain/config/satori-template` exists but its `note:note` is **empty** — deliberately, so the "before" state is honest. `manifest.example.json` will not be visible unless someone pastes it in first. There is no one-command way.                                                                                                                                                                                                                                                                                   |
-| **F13** | **"The marketplace package builds"**                                                                               | Unverified. Nobody ran Maven.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **F13** | ~~**"The marketplace package builds"**~~ — **withdrawn 2026-09-26, it builds and publishes**                       | This entry was wrong from the day CI started running Maven on every pull request. `2026.0.1-20260926071953-BUILD-1109` was built and published to preprod by run 36226401180 and is live on the listing under the title **Nuxeo Satori**. Demo it by opening the listing. **Installing** that ZIP is still unverified, and so is everything downstream of an install — the `install.xml` overwrite semantics and the upgrade path. Claim the build and the publish, not the install.                                            |
 
 ### Cosmetic things a sharp audience will notice
 
