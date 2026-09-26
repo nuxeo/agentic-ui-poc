@@ -225,9 +225,10 @@ The interesting engineering detail, and it is worth reading aloud from
 - the app bundle is copied with `overwrite="true"` — replaced on every upgrade;
 - the config directory is copied **separately**, to a **sibling** path, with `overwrite="false"`.
 
-So a customer's branding file is seeded on first install and **left untouched on every upgrade
-after it**. Configuration was deliberately put where the installer cannot reach it. That is a
-real decision with a stated failure mode, not a diagram.
+So a customer's branding file is seeded on first install and the installer is **configured not to
+replace it** on later upgrades. Configuration was deliberately put outside the tree the installer
+overwrites. That is a real decision with a stated failure mode, not a diagram — but say it as the
+mechanism, because it is read from `install.xml` and not observed: intended effect of the copy layout; no marketplace install or upgrade has been run — R7.
 
 > **Updated 2026-09-26: the ZIP builds and publishes; it has still never been installed.** Maven
 > runs in CI on every pull request, and `2026.0.1-20260926071953-BUILD-1109` is live on the preprod

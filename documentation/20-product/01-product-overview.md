@@ -72,14 +72,14 @@ product follows from it.
 
 ## What a customer actually receives
 
-| Artifact                                  | What they do with it                                                                                              |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **The marketplace package**               | Install into Nuxeo. Gets the application, plus a `bootstrap.json` seeded in a location that **survives upgrades** |
-| **`@nuxeo-satori/platform`** (npm)        | Depend on it from their own extension library. 4 entry points, 10 declared peers, 347 kB                          |
-| **The app template**                      | Fork it. Deliberately thin, and ships **no design system**, so they add their own rather than removing ours       |
-| **The generators**                        | `npx nx g @nuxeo-satori/platform:extension-library …` — shipped inside the package                                |
-| **The guardrail script**                  | Run in their own CI, so an AI agent can verify its own output before a human reviews it                           |
-| **`AGENTS.md` + the extension reference** | A knowledge base any AI coding tool can read, versioned as a product artifact                                     |
+| Artifact                                  | What they do with it                                                                                                                    |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **The marketplace package**               | Install into Nuxeo. Gets the application, plus a `bootstrap.json` seeded in a location the installer is **configured not to overwrite** |
+| **`@nuxeo-satori/platform`** (npm)        | Depend on it from their own extension library. 4 entry points, 10 declared peers, 347 kB                                                |
+| **The app template**                      | Fork it. Deliberately thin, and ships **no design system**, so they add their own rather than removing ours                             |
+| **The generators**                        | `npx nx g @nuxeo-satori/platform:extension-library …` — shipped inside the package                                                      |
+| **The guardrail script**                  | Run in their own CI, so an AI agent can verify its own output before a human reviews it                                                 |
+| **`AGENTS.md` + the extension reference** | A knowledge base any AI coding tool can read, versioned as a product artifact                                                           |
 
 ---
 
@@ -146,7 +146,7 @@ the API-surface gate and the upgrade rehearsal exist.**
 
 ## Key differentiators
 
-1. **Configuration and wiring survive upgrades — by construction.** `install.xml` seeds
+1. **The installer is configured not to overwrite configuration or wiring on upgrade.** (intended effect of the copy layout; no marketplace install or upgrade has been run — R7.) `install.xml` seeds
    config with `overwrite="false"`, and the Layer 1 manifest is a **Nuxeo document**, so it
    inherits the repository's versioning, audit, ACLs and per-tenant scoping.
 2. **The customisation surface is addressable by ID, not by class name.** A manifest never

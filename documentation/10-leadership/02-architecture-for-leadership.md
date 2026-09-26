@@ -95,13 +95,13 @@ deliberately _not_ published — which is what keeps third-party types out of ou
 
 ## What is architecturally strong
 
-| Strength                                           | Why it matters commercially                                     |
-| -------------------------------------------------- | --------------------------------------------------------------- |
-| Configuration survives upgrade **by construction** | Removes the single largest historical customisation complaint   |
-| Customisation addressed **by ID, not class name**  | We can refactor internals without breaking customers            |
-| Layer boundaries **machine-enforced**              | Prevents the architecture eroding under delivery pressure       |
-| adf-hx components shared with Alfresco             | Component investment is shared, not duplicated                  |
-| Verification apparatus                             | The credible answer to "how do you ship AI-written code safely" |
+| Strength                                                           | Why it matters commercially                                     |
+| ------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Installer **configured** not to overwrite configuration on upgrade | Removes the single largest historical customisation complaint   |
+| Customisation addressed **by ID, not class name**                  | We can refactor internals without breaking customers            |
+| Layer boundaries **machine-enforced**                              | Prevents the architecture eroding under delivery pressure       |
+| adf-hx components shared with Alfresco                             | Component investment is shared, not duplicated                  |
+| Verification apparatus                                             | The credible answer to "how do you ship AI-written code safely" |
 
 ## What is architecturally thin
 

@@ -358,14 +358,15 @@ DocumentService`. The chain, read from the published bundle:
 - **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
   A second `install.xml` copy step with `overwrite="false"` puts customer
   configuration in a _sibling_ of the bundle, outside the destructive copy's
-  source tree, so it survives an upgrade. **The destination must be under
+  source tree, so the installer does not replace it (intended effect of the copy layout; no marketplace install or upgrade has been run — R7). **The destination must be under
   `nxserver/nuxeo.war`** — that is the Tomcat docBase for the `/nuxeo` context
   (`docBase="../nxserver/nuxeo.war"`). `nxserver/web` holds only `root.war`, is
   not a docBase, and anything installed there is never served. Phase 1 shipped the
   `nxserver/web/…` variant and it would have 404'd in every deployment; the
   corrected path is verified served on the local container. **Risk R7 is still
   Medium:** since 2026-09-26 the package is built and published — `2026.0.1-20260926071953-BUILD-1109`, live on the preprod listing — but never installed or upgraded on a real server.
-  That is the Phase 6 upgrade rehearsal.
+  The outstanding exercise is a **marketplace install rehearsal**, distinct from the
+  `upgrade-rehearsal` gate, which is done and crosses a version boundary for the npm tarball.
 - **Configuration is loaded, not compiled.** `libs/shared/app-config` reads a
   static bootstrap file pre-auth and a runtime manifest from the Nuxeo document
   at `/default-domain/config/agentic-ui` post-auth. Eleven `InjectionToken`
