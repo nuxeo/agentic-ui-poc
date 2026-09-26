@@ -30,10 +30,6 @@
       "until": "2027-06-30",
       "reason": "Untested assets drawer component (649 lines). Assets feature is out of Beta scope per coverage-gate.mjs. Component sits in report with empty statement map."
     },
-    "libs/features/browse/src/lib/adf-hx-columns.ts": {
-      "until": "2026-11-30",
-      "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
-    },
     "libs/features/browse/src/lib/browse-adf-hx-poc/browse-adf-hx-poc.ts": {
       "until": "2026-11-30",
       "reason": "Present in the coverage report with an empty statement map, because no test imports it. Contributes nothing to the denominator, so it cannot lower the percentage."
