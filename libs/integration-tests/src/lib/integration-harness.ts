@@ -55,15 +55,6 @@ const DATA_ROOT_PARENT = '/default-domain/workspaces';
 /** `default-domain`, `workspaces`, `it-<runid>` — the exact depth of a data root. */
 const RECLAIM_MIN_SEGMENTS = 3;
 
-/**
- * The shortest workspace name a reclaim will act on: `it-` plus the 15-character timestamp.
- *
- * A truncated name is a prefix of the requested one, so what matters is how much survived. The
- * timestamp resolves to the second and is already this run's; the five random characters after
- * it only separate two runs that started in the same second. Losing the random suffix is
- * therefore tolerable for identification; losing part of the timestamp is not.
- */
-const RECLAIM_MIN_NAME_LENGTH = 'it-'.length + 15;
 /** Characters of random suffix that fit once `it-` and the timestamp have been spent. */
 const RUN_SUFFIX_LENGTH = 5;
 /** Base-36 over `RUN_SUFFIX_LENGTH` characters: 60,466,176 distinct suffixes. */
@@ -341,16 +332,31 @@ export async function teardownDataRoot(
  *  2. **Depth floor** — at least `RECLAIM_MIN_SEGMENTS` segments, and no `.` or `..` among
  *     them. Without the traversal check, `…/workspaces/it-<runid>/../..` satisfies both the
  *     parent and marker tests and resolves to the repository root.
- *  3. **Marker** — the final segment is what the server made of the name *this run* asked for.
+ *  3. **Marker** — the final segment is *exactly* the name this run asked for.
  *
- * The marker is a **prefix** relationship, not `includes(runId)`, and that is not a loosening:
- * truncation is the entire reason this function exists, and truncation cuts the run id. A
- * requested `it-20260924-112334-3207ed6420ab7921` was created as `it-20260924-112334-3207e`, so
- * a containment test on the full id would refuse every legitimate reclaim there is. What is
- * verifiable is that the created name is a leading substring of the requested one, and that
- * enough of it survived to still be this run's: `RECLAIM_MIN_NAME_LENGTH` keeps the whole
- * timestamp, which is already unique to the second. A name cut shorter than that is a
- * misconfigured deployment, and refusing is the right answer to it.
+ * ## Why the marker is exact, and not a tolerated prefix
+ *
+ * It used to accept any prefix of the requested name down to `it-` plus the timestamp, on the
+ * argument that truncation is the reason this function exists and the timestamp alone is
+ * "already unique to the second". Review showed the second half of that is the flaw: the
+ * timestamp resolves *to* the second, so two runs started within the same second share it
+ * entirely, and the random suffix is the only thing that separates them. A name cut back to
+ * `it-<timestamp>` is therefore a name **both** runs recognise as their own — and what follows
+ * recognition here is a recursive DELETE, so the loser of that race loses a live data root
+ * mid-run. That is the precise disaster conditions 1 and 2 exist to prevent, reached through
+ * condition 3.
+ *
+ * The prefix tolerance was also obsolete. It was measured when the suffix was 16 hex characters
+ * and the requested name was 35 — `it-20260924-112334-3207ed6420ab7921` came back as
+ * `it-20260924-112334-3207e`. The suffix is now five base-36 characters, so the whole name is
+ * exactly `NUXEO_PATH_SEGMENT_MAX`: re-measured against the local stack on 2026-09-27,
+ * `it-20260927-093000-zq7k1` (24 characters) was created untruncated. So exactness costs
+ * nothing on a correctly configured server, and on one that truncates anyway it refuses and
+ * prints the path for a human — which is the only safe answer when the name can no longer
+ * identify its owner.
+ *
+ * The positive control in the unit tests is now the full-name sibling misplacement, which is
+ * what a real reclaim looks like.
  */
 export function reclaimRefusal(actual: string, runId: string): string | null {
   const path = actual.replace(/\/+$/, '');
@@ -374,10 +380,12 @@ export function reclaimRefusal(actual: string, runId: string): string | null {
   if (!requestedName.startsWith(actualName)) {
     return `its name "${actualName}" is not what this run asked for ("${requestedName}")`;
   }
-  if (actualName.length < RECLAIM_MIN_NAME_LENGTH) {
+  if (actualName !== requestedName) {
     return (
-      `its name "${actualName}" is shorter than ${RECLAIM_MIN_NAME_LENGTH} characters, so too ` +
-      `little of this run's id survived to identify it`
+      `its name "${actualName}" is a truncation of this run's "${requestedName}", so it does ` +
+      `not carry the random suffix — and the timestamp that survived only resolves to the ` +
+      `second, which another run started in the same second shares. Both runs would recognise ` +
+      `this path as their own. Reclaim it by hand`
     );
   }
   return null;

@@ -981,7 +981,7 @@ describe('reclaimMisplacedDataRoot — nothing unverified is deleted', () => {
     expect(outcome).toMatch(/relative segment/);
   });
 
-  it('refuses a name truncated so far that too little of the run id survives', async () => {
+  it('refuses a name truncated to almost nothing of the run id', async () => {
     const fetchMock = stub();
 
     const outcome = await reclaimMisplacedDataRoot(
@@ -992,15 +992,18 @@ describe('reclaimMisplacedDataRoot — nothing unverified is deleted', () => {
     );
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(outcome).toMatch(/too\s+little of this run's id survived/);
+    expect(outcome).toMatch(/is a truncation of this run's/);
   });
 
-  // The positive control. Without it every assertion above is satisfied by a function that
-  // refuses everything, which would be a guard that has disabled the feature it guards.
-  it('DOES delete a legitimately truncated path that passes all three checks', async () => {
+  // This used to assert the opposite — that a truncated name still identified its run well
+  // enough to delete. Review showed it does not: the surviving `it-<timestamp>` resolves only
+  // to the second, so a run started in the same second produces the same prefix and BOTH would
+  // accept this path as their own. What follows acceptance is a recursive DELETE of a live data
+  // root. Since the suffix shrank to five base-36 characters the whole name is exactly the
+  // 24-character cap and does not truncate at all (re-measured 2026-09-27), so refusing here
+  // costs nothing real and is the only safe answer when the name cannot identify its owner.
+  it('refuses a truncated name, because a same-second run would claim it too', async () => {
     const fetchMock = stub();
-    // Exactly the shape measured against the local stack: the requested name, cut by Nuxeo's
-    // 24-character path-segment cap, keeping the whole timestamp.
     const truncated = '/default-domain/workspaces/it-20260926-112233-ab3';
 
     const outcome = await reclaimMisplacedDataRoot(
@@ -1010,11 +1013,29 @@ describe('reclaimMisplacedDataRoot — nothing unverified is deleted', () => {
       RUN_ID,
     );
 
-    expect(reclaimRefusal(truncated, RUN_ID)).toBeNull();
-    expect(deletes(fetchMock)).toEqual([`http://nuxeo.test/nuxeo/api/v1/path${truncated}`]);
-    expect(outcome).toMatch(/removed .* \(confirmed absent\)/);
+    expect(reclaimRefusal(truncated, RUN_ID)).toMatch(/is a truncation of this run's/);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(outcome).toMatch(/REFUSED to delete/);
   });
 
+  // The cut-back-to-the-timestamp case spelled out, since it is the one the old floor allowed.
+  it('refuses a name cut back to just `it-` and the timestamp', async () => {
+    const fetchMock = stub();
+
+    const outcome = await reclaimMisplacedDataRoot(
+      'http://nuxeo.test',
+      'Basic redacted',
+      '/default-domain/workspaces/it-20260926-112233',
+      RUN_ID,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(outcome).toMatch(/REFUSED to delete/);
+  });
+
+  // The positive control, and now the only one. Without it every refusal assertion above is
+  // satisfied by a function that refuses everything, which would be a guard that has disabled
+  // the feature it guards. This is what a real reclaim looks like: the full name, elsewhere.
   it('DOES delete a sibling misplacement that carries the full run id', async () => {
     const fetchMock = stub();
     // Not truncated, just not where it was asked for — the other half of what `actual !==
