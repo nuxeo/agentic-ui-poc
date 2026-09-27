@@ -1213,8 +1213,9 @@ function checkNoHardcodedUiText() {
    * So the properties the suffix was standing in for are checked per file, and the check
    * FAILS CLOSED — an unproven fixture is held to the same standard as any shipped template:
    *
-   *   1. exactly one `*.spec.ts` names it, so it is a fixture rather than shared markup;
-   *   2. NO non-spec source names it, so no shipped component compiles it; and
+   *   1. exactly one `*.spec.ts` REFERENCES it — by a path that resolves to this exact file,
+   *      so it is a fixture rather than shared markup;
+   *   2. NO non-spec source references or even names it, so no shipped component compiles it;
    *   3. it lies under no `assets` input directory and is named by no build config.
    *
    * Only then is its text test DATA — markup chosen to reproduce a rendering bug, where keying
@@ -1229,6 +1230,24 @@ function checkNoHardcodedUiText() {
    * exactly that form, so the basename scan could not have detected any of them. Both are
    * checked structurally now rather than textually.
    *
+   * ## Round three: (1) is a reference, not a name anywhere
+   *
+   * Fixing (2) left (1) still matching a basename against whole file bodies, which is not the
+   * property it claims. `a/x.host.html` and `b/x.host.html` both saw the single spec that
+   * referenced only `a/`, so `b/` — named by nobody — was exempted on the strength of `a/`'s
+   * proof. A quoted `.html` path is now resolved against the referring file's own directory and
+   * compared to the walked path by equality, so a reference proves the file it points at.
+   *
+   * **What this still does not prove.** A reference has to be a quoted literal to be resolved:
+   * a `templateUrl` assembled by concatenation resolves to nothing. On the spec side that is
+   * fail-closed and needs no fallback — no resolved reference means no proof, so the fixture is
+   * scanned like any template. On the non-spec side it would be fail-OPEN, so the blunt
+   * basename mention is kept there deliberately. The consequence is asymmetric on purpose:
+   * a production file mentioning `x.host.html` anywhere, even in a comment, blocks every
+   * same-named fixture in the repository. That is a false rejection, whose cost is that a
+   * fixture gets held to the shipped-template standard — the safe direction, and the direction
+   * this check has had to be corrected toward twice.
+   *
    * Adding a fixture is still easy; adding one that is *served* no longer silently disables the
    * guard for it.
    */
@@ -1237,10 +1256,44 @@ function checkNoHardcodedUiText() {
     const fixtures = [...walk('apps', isFixtureName), ...walk('libs', isFixtureName)];
     if (fixtures.length === 0) return new Set();
 
+    /**
+     * `./thing.host.html` in `a/b/c.spec.ts` -> `a/b/thing.host.html`.
+     *
+     * Repo-relative and normalised, so a reference can be compared to a walked path by
+     * equality rather than by basename. A reference that resolves outside the tree, or is not
+     * relative at all, simply matches no fixture — the textual fallback below is what keeps
+     * that fail-closed.
+     */
+    const resolveRef = (fromFile, ref) => {
+      const base = fromFile.slice(0, fromFile.lastIndexOf('/'));
+      const out = [];
+      for (const segment of `${base}/${ref}`.split('/')) {
+        if (segment === '' || segment === '.') continue;
+        if (segment === '..') {
+          out.pop();
+          continue;
+        }
+        out.push(segment);
+      }
+      return out.join('/');
+    };
+
+    /** Every `.html` path a source file quotes, resolved against that file's own directory. */
+    const htmlRefs = (path, body) => {
+      const refs = new Set();
+      for (const [, ref] of body.matchAll(/['"`]([^'"`\n]*\.html)['"`]/g)) {
+        refs.add(resolveRef(path, ref));
+      }
+      return refs;
+    };
+
     const sources = [
       ...walk('apps', (path) => path.endsWith('.ts')),
       ...walk('libs', (path) => path.endsWith('.ts')),
-    ].map((path) => ({ isSpec: /\.spec\.ts$/.test(path), body: read(path) }));
+    ].map((path) => {
+      const body = read(path);
+      return { isSpec: /\.spec\.ts$/.test(path), body, refs: htmlRefs(path, body) };
+    });
 
     const configPaths = [
       ...walk('apps', (path) => /(?:^|\/)(?:project|angular)\.json$/.test(path)),
@@ -1280,10 +1333,23 @@ function checkNoHardcodedUiText() {
     const proven = new Set();
     for (const fixture of fixtures) {
       const name = fixture.slice(fixture.lastIndexOf('/') + 1);
-      const naming = sources.filter(({ body }) => body.includes(name));
-      // Exactly one spec, and nothing else at all.
-      if (naming.filter(({ isSpec }) => isSpec).length !== 1) continue;
-      if (naming.some(({ isSpec }) => !isSpec)) continue;
+
+      // Exactly one spec must reference THIS path. Resolved, not basename-matched: two
+      // fixtures sharing a basename used to satisfy each other's proof, so the one no spec
+      // named was exempted on the strength of the other's reference.
+      if (sources.filter(({ isSpec, refs }) => isSpec && refs.has(fixture)).length !== 1) continue;
+
+      // Nothing outside a spec may reference it — a shipped `templateUrl` pointing here means
+      // the file is compiled into the product, so its text is not test data.
+      if (sources.some(({ isSpec, refs }) => !isSpec && refs.has(fixture))) continue;
+
+      // ...and a non-spec that merely MENTIONS the basename blocks it too, resolved or not.
+      // This is the deliberately blunt half: a `templateUrl` built by concatenation quotes no
+      // full path for `htmlRefs` to resolve, so exact matching alone could exempt a served
+      // template. Basename scope makes it over-broad rather than under-broad, and the cost of
+      // a false rejection here is that a fixture gets scanned for hard-coded strings.
+      if (sources.some(({ isSpec, body }) => !isSpec && body.includes(name))) continue;
+
       if (configBodies.some((body) => body.includes(name))) continue;
       if (assetInputs.some((input) => input !== '' && fixture.startsWith(`${input}/`))) continue;
       proven.add(fixture);

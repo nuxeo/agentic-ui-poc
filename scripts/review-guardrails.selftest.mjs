@@ -588,6 +588,112 @@ expectRed(
   /introduces placeholder="Search documents"/,
 );
 
+/* ---------------- checkNoHardcodedUiText: the proven-fixture exemption ---------------- */
+//
+// This exemption had NO controls at all, which is how it was wrong twice before review caught
+// a third. It decides whether a `*.host.html` / `*.spec.html` is test data — exempt from the
+// hard-coded-English gate — or a template like any other, and it is meant to FAIL CLOSED.
+//
+// Round one compared basenames against whole file bodies and nothing else. Round two added the
+// non-spec and asset-directory rules. Round three, here, is the half left over: "exactly one
+// spec NAMES it" was still a basename appearing anywhere, which is not the property claimed. A
+// reference is now resolved against the referring file's directory and compared by equality.
+
+/** A fixture whose markup is deliberately the kind of prose the gate exists to catch. */
+const FIXTURE_PROSE = '<div><span>Show details</span></div>\n';
+
+/** A spec that really does host `name` as its template. */
+const hostingSpec = (name) => `import { Component } from '@angular/core';
+
+@Component({
+  standalone: true,
+  selector: 'test-host',
+  templateUrl: './${name}',
+})
+class TestHost {}
+
+it('renders', () => expect(TestHost).toBeTruthy());
+`;
+
+expectGreen('a fixture referenced by exactly one sibling spec is exempt', 'checkNoHardcodedUiText', {
+  ...APP,
+  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+});
+
+// Copilot's case. `dashboard/widget.host.html` is referenced by nothing, but under basename
+// matching it saw `shell/widget.spec.ts` — a spec for a DIFFERENT file — and was exempted on
+// the strength of that. A fixture nobody hosts is just an unreferenced template.
+expectRed(
+  'a same-named fixture in another directory is not exempted by the first one’s spec',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+    'apps/nuxeo-ui/src/app/dashboard/widget.host.html': FIXTURE_PROSE,
+  },
+  null,
+  /dashboard\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// The other direction of the same defect, and the reason resolution beats a stricter basename
+// rule: two fixtures that legitimately share a basename each have their own hosting spec. Under
+// basename matching both saw two specs, failed the "exactly one" test, and NEITHER was exempt —
+// a false rejection. Resolution gives each its own proof.
+expectGreen('two same-named fixtures each with their own hosting spec are both exempt', 'checkNoHardcodedUiText', {
+  ...APP,
+  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+  'apps/nuxeo-ui/src/app/dashboard/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/dashboard/widget.spec.ts': hostingSpec('widget.host.html'),
+});
+
+// A mention is not a reference. Under basename matching, a spec that only talked ABOUT the file
+// — in a comment, in a string, in a variable name — proved it was a fixture.
+expectRed(
+  'a bare mention in a spec comment does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      '// See widget.host.html for the markup that reproduced this.\nit('
+      + "'passes', () => expect(true).toBe(true));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// Round two's property, also never controlled: a shipped component compiling the file means its
+// text is not test data, so the fixture cannot hold the proof of its own exemption.
+expectRed(
+  'a fixture a production component hosts is not exempt',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.component.ts': hostingSpec('widget.host.html'),
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// Shared markup is not a fixture: if two specs host the same file, keying its strings is a
+// decision about shared code, so it stays inside the gate.
+expectRed(
+  'a template hosted by two specs is shared markup, not a proven fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+    'apps/nuxeo-ui/src/app/shell/widget-two.spec.ts': hostingSpec('widget.host.html'),
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
 /**
  * The false-positive controls. Each is a thing that sits where prose sits and is not prose; if
  * any of these went red the guardrail would be unusable and someone would switch it off, which
