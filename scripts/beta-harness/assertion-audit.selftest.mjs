@@ -3,8 +3,8 @@
  * Negative controls for `assertion-audit.mjs` — proof that each rule can actually fail.
  *
  * `CLAUDE.md`: *a gate is not evidence until you have seen it fail on purpose.* This audit
- * has now been wrong twice in the same place, both times in the `literal-false` guard
- * exemption, and both times it was caught by someone thinking to try a specific input
+ * has now been wrong FOUR times in the same place, every time in the `literal-false` guard
+ * exemption, and every time it was caught by someone thinking to try a specific input
  * rather than by anything that runs:
  *
  *   1. The first cut climbed the whole ancestor chain to the top-level `if (declarative)`,
@@ -13,6 +13,16 @@
  *      `classify` only knew about literals, so `if ({})`, `if ([])`, `if (() => false)`,
  *      `if (function () {})`, `if (class {})` and `` if (`x`) `` all reached the exemption
  *      as ordinary guards. Six spellings of `if (true)` that the rule did not recognise.
+ *   3. The third closed those six and `new Date()`, one indirection included.
+ *   4. The fourth was `if (1 + 1)`. Probing found seventeen more spellings equally silent.
+ *
+ * Rounds 2 to 4 are the same error three times: the rule was asking *"is this always
+ * truthy?"*, a question whose answers have no closed list, so each round bought exactly the
+ * cases it thought of. The rule was therefore narrowed rather than patched again — it now
+ * decides only whether a condition reads anything the run can change, and states the
+ * constants it does NOT decide in its own output. The controls below are in three groups:
+ * the rules shown red, the exemption shown still usable, and the declared boundary shown
+ * deliberately silent. The third group is new and is the point of round four.
  *
  * Unlike `sanitizer-audit.selftest.mjs`, nothing here perturbs a tracked file: the audit
  * accepts explicit paths, so every control is a fixture written to a fresh temp directory
@@ -176,6 +186,64 @@ red(
   'could not be parsed',
 );
 
+// ---- round four: constant BY CONSTRUCTION, after enumerating truthiness was abandoned ------
+//
+// Review found `if (1 + 1)` exempt. Probing the same hole found seventeen more spellings, all
+// silent, which settled the argument that the rule could not be fixed by adding cases: it was
+// answering "is this always truthy?", a question with no closed list of answers. It now answers
+// "does this read anything the run can change?" instead — decided structurally, nothing
+// evaluated — so every spelling below is refused by one rule rather than seventeen.
+//
+// `1 - 1` and `void 0` are in here deliberately: both are FALSY, so the guard never holds and
+// the check never runs. A constant guard is refused whatever it evaluates to, because the
+// rule does not evaluate it.
+for (const [description, guard] of Object.entries({
+  'literal arithmetic': '1 + 1',
+  'falsy literal arithmetic': '1 - 1',
+  'literal multiplication': '2 * 3',
+  'string concatenation': "'a' + 'b'",
+  'a comparison outside the equality list': '5 > 3',
+  'a logical AND of literals': '1 && 2',
+  'a logical OR of literals': '0 || 3',
+  'a typeof on a literal': 'typeof 1',
+  'a void expression': 'void 0',
+  'a bitwise complement': '~0',
+  'a negated literal number': '-1',
+  'a sequence expression': '(1, 2)',
+  'a conditional over literals': 'true ? 1 : 2',
+  'a nullish coalesce of literals': 'null ?? 7',
+  'a template interpolating only literals': '`${1 + 1}`',
+})) {
+  red(
+    `${description} does not launder an unconditional check(name, false)`,
+    `export async function run(h) {\n  if (${guard}) h.check('laundered', false, 'why');\n}\n`,
+    'asserts a literal falsy value',
+  );
+}
+
+red(
+  'literal arithmetic one binding away does not launder it either',
+  `export async function run(h) {\n  const two = 2;\n  if (two + two) h.check('laundered', false, 'why');\n}\n`,
+  'asserts a literal falsy value',
+);
+
+// The same rule in the other position: not a guard laundering a `false`, but a constant used
+// directly as the thing being asserted.
+red(
+  'a constant-by-construction condition is reported in the assertion position',
+  `export async function run(h) {\n  h.check('arithmetic', 1 + 1, 'why');\n}\n`,
+  'built only from literals and pure operators, so its value is fixed before the run',
+);
+
+// The rule does not evaluate, so it does not know whether a given constant always passes or
+// always fails — and must not say "it cannot fail" of one that always fails. This control
+// exists because that blanket wording was the previous round's overstatement in miniature.
+red(
+  'a constant assertion is not described as one that "cannot fail"',
+  `export async function run(h) {\n  h.check('falsy arithmetic', 1 - 1, 'why');\n}\n`,
+  'Its outcome is identical on every run, so it is not evidence.',
+);
+
 // ---- and the other half: the idiom the exemption exists for must still pass ------------------
 //
 // Without these, every control above is satisfied by an audit that reports everything — which
@@ -221,6 +289,56 @@ green(
 green(
   'an ordinary falsifiable check is not reported',
   `export async function run(h, res) {\n  h.check('status is 200', res.status === 200, 'why');\n}\n`,
+);
+
+// ---- the declared boundary: cases the rule no longer claims to decide ------------------------
+//
+// These are the reason the rule was narrowed rather than patched a fifth time. Each one is a
+// constant a human can see and the audit deliberately does not, because seeing it needs a call
+// or a property read — evaluation this rule does not do. They assert SILENCE on purpose: the
+// point of narrowing is that the unclaimed territory is real, stated in `DECLARED_LIMITS`, and
+// therefore cannot be mistaken later for a hole nobody noticed. If a future round teaches the
+// rule to decide one of these, its control here must move to `red` and the limit must come out
+// of the printed list in the same commit.
+
+green(
+  'a guard calling a function that always returns true is NOT claimed, and stays exempt',
+  `export async function run(h) {\n  const alwaysTrue = () => true;\n  if (alwaysTrue()) h.check('not claimed', false, 'why');\n}\n`,
+  'reached only when: alwaysTrue()',
+);
+
+green(
+  'a guard reading a property is NOT claimed, and stays exempt',
+  `export async function run(h, CONFIG) {\n  if (CONFIG.enabled) h.check('not claimed', false, 'why');\n}\n`,
+  'reached only when: CONFIG.enabled',
+);
+
+green(
+  'a property read on a literal is NOT claimed, even though it is constant',
+  `export async function run(h) {\n  if ('abc'.length) h.check('not claimed', false, 'why');\n}\n`,
+  "reached only when: 'abc'.length",
+);
+
+// The false-positive direction of the new rule, which is the one that would turn the gate into
+// something nobody can satisfy: arithmetic is only constant when every operand is. One runtime
+// operand anywhere in the tree must make the whole expression unknown.
+green(
+  'arithmetic with a runtime operand is not reported as constant',
+  `export async function run(h, res) {\n  h.check('count is positive', res.count + 1 > 0, 'why');\n}\n`,
+);
+
+// The boundary is only honest if it is visible where the verdict is read, so the printed list
+// is itself a tested property — on a pass, which is when the verdict gets quoted.
+green(
+  'a passing audit prints the boundary of what it did not decide',
+  `export async function run(h, res) {\n  h.check('status is 200', res.status === 200, 'why');\n}\n`,
+  'NOT claimed by this audit',
+);
+
+red(
+  'a failing audit prints the boundary too, not just the failures',
+  `export async function run(h) {\n  h.check('constant', true, 'why');\n}\n`,
+  'NOT claimed by this audit',
 );
 
 // ---- report ----------------------------------------------------------------------------------

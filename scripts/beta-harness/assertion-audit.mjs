@@ -18,10 +18,19 @@
  * constant, or whose two sides are the same expression, cannot fail — so it is not
  * evidence, and counting it as evidence is what let a dead feature reach sign-off.
  *
- * What this CANNOT do: judge whether a falsifiable assertion asserts the *right*
- * thing. `expectVisible('app shell')` can fail, so it passes this audit, and it
- * still only proves the app booted. That judgement is a reviewer's job — see
- * `AGENTS/12-review-agents.md`. This tool removes the mechanical excuses.
+ * What this CANNOT do, stated narrowly on purpose because the constant-condition
+ * rule has been wrong four times by claiming more reach than it had:
+ *
+ *   - It does not decide every constant. It decides whether a condition's whole
+ *     expression tree is literals and pure operators over them — "constant by
+ *     construction" — and returns unknown for anything needing a call or a
+ *     property read to see. `DECLARED_LIMITS` lists that territory and is printed
+ *     on every run, pass or fail. See `classify` for why enumerating truthiness
+ *     was abandoned.
+ *   - It does not judge whether a falsifiable assertion asserts the *right* thing.
+ *     `expectVisible('app shell')` can fail, so it passes this audit, and it still
+ *     only proves the app booted. That judgement is a reviewer's job — see
+ *     `AGENTS/12-review-agents.md`. This tool removes the mechanical excuses.
  *
  * Usage:
  *   node scripts/beta-harness/assertion-audit.mjs [--json] [paths...]
@@ -69,6 +78,23 @@ const ALWAYS_TRUTHY = {
   // this entry it read as a real guard and exempted the unconditional check beneath it.
   NewExpression: 'a constructor call, which always yields an object',
 };
+
+/**
+ * The boundary of the constant-condition rule, printed on every run.
+ *
+ * The rule decides one question — whether a condition reads anything the run can change —
+ * and there is a large class of constants it deliberately does not decide. That class is
+ * stated here rather than left implied, because this rule has been wrong four times by
+ * claiming reach it did not have, and a check that overstates itself is worse than a
+ * narrower one that is honest: people trust the overstatement. Same treatment the e2e
+ * negative control got for the same reason. See `classify`.
+ */
+const DECLARED_LIMITS = [
+  'a call that always returns the same value — `check(n, alwaysTrue())`, `if (alwaysTrue())`',
+  'a property read that never varies — `CONFIG.enabled`, an imported constant',
+  'a name declared twice or reassigned, which this file resolves to no value on purpose',
+  'whether a falsifiable assertion asserts the RIGHT thing — that is a reviewer’s job',
+];
 
 const files = explicit.length ? explicit.map((p) => resolve(process.cwd(), p)) : await defaultTargets();
 
@@ -249,7 +275,10 @@ function auditFile(rel, src, ast) {
       line,
       kind: verdict.kind,
       severity: 'fail',
-      message: `\`${name}("${label}")\` ${verdict.why}. It cannot fail, so it is not evidence.`,
+      // `verdict.soWhat` exists because the blanket "it cannot fail" is untrue of half of
+      // what this rule now reports: `check(n, 1 - 1)` is constant and always FAILS. Saying
+      // "cannot fail" there would be the same overstatement this round exists to remove.
+      message: `\`${name}("${label}")\` ${verdict.why}. ${verdict.soWhat ?? 'It cannot fail, so it is not evidence.'}`,
     });
   });
 
@@ -267,12 +296,43 @@ function auditFile(rel, src, ast) {
 }
 
 /**
- * Decide whether a condition expression is incapable of being false.
+ * Decide whether a condition expression's outcome is fixed before the run.
+ *
+ * ## What this decides, and what it refuses to
+ *
+ * This rule has been wrong four times in the same place, every time in the same direction:
+ * it tried to answer *"is this expression always truthy?"*, discovered another spelling of
+ * `true` it had not enumerated, and grew one more case. The spellings do not run out. After
+ * the six always-truthy forms were closed, review found `if (1 + 1)`; probing the same hole
+ * found seventeen more (`2 * 3`, `'a' + 'b'`, `5 > 3`, `typeof 1`, `void 0`, `~0`, `(1, 2)`,
+ * `true ? 1 : 2`, `null ?? 7`, …). Enumerating truthiness is a game this cannot win.
+ *
+ * So it no longer plays it. The question it answers instead is narrower and decidable:
+ *
+ *   **Does this expression read anything the run can change?**
+ *
+ * An expression whose whole tree is literals, literal-bound identifiers and pure operators
+ * over them is fixed at parse time. `1 + 1` and `1 - 1` are both settled before anything
+ * executes — and it does not matter which is truthy, because either way the assertion's
+ * outcome is the same on every run, which is precisely what disqualifies it as evidence.
+ * That is decided structurally, by recursion over a closed whitelist of node types. Nothing
+ * is evaluated: no constant folding, no `eval`, no `new Function`.
+ *
+ * **Declared boundary — what this does NOT catch.** Anything reading a runtime input is
+ * returned as unknown and treated as a real condition, even when a human can see it is
+ * constant. Specifically it does not catch a call that always returns the same value
+ * (`check(n, alwaysTrue())`, `if (alwaysTrue())`), a property read that never varies
+ * (`CONFIG.enabled`, an imported constant), or a name this file cannot resolve to one value
+ * because it is declared twice or reassigned. Those are unclaimed territory, stated in the
+ * audit's own output by `DECLARED_LIMITS` so nobody reads silence here as a clean bill.
+ *
+ * Unknown is the deliberate direction: the worse error is rejecting a genuinely conditional
+ * check as unfalsifiable, which turns the gate into one nobody can satisfy.
  *
  * @param {object} node
  * @param {string} src
  * @param {Map<string, unknown>} bindings
- * @returns {{ kind: string, why: string } | null}
+ * @returns {{ kind: string, why: string, soWhat?: string } | null}
  */
 function classify(node, src, bindings, truthyBindings = new Map()) {
   if (node.type === 'Literal') {
@@ -356,7 +416,70 @@ function classify(node, src, bindings, truthyBindings = new Map()) {
     }
   }
 
+  // Last, because every rule above says something more specific about the same expression.
+  // This is the catch-all for the spellings nobody enumerated: it does not ask what the
+  // expression evaluates to, only whether anything the run does can change it.
+  if (constantByConstruction(node, bindings)) {
+    return {
+      kind: 'constant-by-construction',
+      why:
+        `asserts \`${text(src, node).replace(/\s+/g, ' ')}\`, which is built only from literals ` +
+        `and pure operators, so its value is fixed before the run`,
+      // Deliberately not "it cannot fail": this rule does not evaluate, so it does not know
+      // whether this one always passes or always fails. It knows the outcome is the same
+      // every run, which is what disqualifies it either way.
+      soWhat: 'Its outcome is identical on every run, so it is not evidence.',
+    };
+  }
+
   return null;
+}
+
+/**
+ * Whether `node`'s value is settled at parse time because it reads no runtime input.
+ *
+ * Sound without evaluating anything: every accepted form is a pure operator over operands
+ * that are themselves accepted, bottoming out at literals and identifiers this file has
+ * resolved to a literal. No member reads, no calls, no `this`, no `await`, no assignment —
+ * those are the runtime inputs whose absence is the whole claim. `instanceof` and `in` are
+ * excluded because their right operand is an object, and a tagged template is excluded
+ * because the tag is a function call.
+ *
+ * Returns false for anything not on the whitelist, which is the conservative direction: an
+ * unrecognised form is treated as a real condition rather than reported as unfalsifiable.
+ *
+ * @param {object} node
+ * @param {Map<string, unknown>} bindings identifiers resolved to a literal, non-ambiguous
+ * @returns {boolean}
+ */
+function constantByConstruction(node, bindings) {
+  if (!node || typeof node.type !== 'string') return false;
+  const constant = (n) => constantByConstruction(n, bindings);
+
+  switch (node.type) {
+    case 'Literal':
+      return true;
+    case 'Identifier':
+      // `undefined`/`NaN`/`Infinity` parse as identifiers, and `bindings` holds only names
+      // this file resolved to a literal and saw declared exactly once.
+      return bindings.has(node.name) || ['undefined', 'NaN', 'Infinity'].includes(node.name);
+    case 'TemplateLiteral':
+      return node.expressions.every(constant);
+    case 'UnaryExpression':
+      return ['!', '-', '+', '~', 'typeof', 'void'].includes(node.operator) && constant(node.argument);
+    case 'BinaryExpression':
+      return !['instanceof', 'in'].includes(node.operator) && constant(node.left) && constant(node.right);
+    case 'LogicalExpression':
+      return constant(node.left) && constant(node.right);
+    case 'ConditionalExpression':
+      return constant(node.test) && constant(node.consequent) && constant(node.alternate);
+    case 'SequenceExpression':
+      return node.expressions.every(constant);
+    case 'ParenthesizedExpression':
+      return constant(node.expression);
+    default:
+      return false;
+  }
 }
 
 /**
@@ -374,7 +497,11 @@ function classify(node, src, bindings, truthyBindings = new Map()) {
  * exempt, which is the rule relaxed until it passes.
  *
  * The guard's own test must also not be a constant, or `if (true) check(n, false)` would
- * launder precisely what `literal-false` exists to catch.
+ * launder precisely what `literal-false` exists to catch. "Constant" here means whatever
+ * `classify` can decide, which since the fourth round is *constant by construction* rather
+ * than a list of truthy spellings — so `if (1 + 1)` and `if (1 - 1)` are both refused. A
+ * guard that calls a function or reads a property is still accepted at its word; that is
+ * the declared limit, not an oversight, and `DECLARED_LIMITS` says so in the output.
  *
  * @param {object} node
  * @param {Map<object, object>} parents
@@ -481,6 +608,9 @@ function report() {
           findings,
           guardedFailures,
           consoleErrorAllowlists: allowlists,
+          // Machine-visible for the same reason it is printed: a consumer reading `ok: true`
+          // needs the boundary of that claim in the same payload.
+          declaredLimits: DECLARED_LIMITS,
         },
         null,
         2,
@@ -503,7 +633,9 @@ function report() {
   if (guardedFailures.length) {
     console.log(
       '\n  Guarded failure reports — a literal `false` reached only when its guard holds,\n' +
-        '  so the guard is the assertion. Listed because the exemption is real:',
+        '  so the guard is the assertion. Listed because the exemption is real, and because\n' +
+        '  a guard is only refused when it is constant BY CONSTRUCTION: a guard that calls a\n' +
+        '  function or reads a property is taken at its word. Read these, do not skim them:',
     );
     for (const g of guardedFailures) {
       console.log(`    ${g.file}:${g.line}  "${g.label}"`);
@@ -527,14 +659,21 @@ function report() {
     );
   } else {
     console.log(
-      `assertion-audit: pass — every assertion is capable of failing` +
+      `assertion-audit: pass — no assertion was shown to have a fixed outcome` +
         `${warns.length ? `, with ${warns.length} warning(s)` : ''}.`,
     );
-    console.log(
-      '  This says nothing about whether they assert the RIGHT thing. A falsifiable\n' +
-        '  check on the app shell still only proves the app booted.',
-    );
   }
+
+  // Printed on pass AND fail. On a pass it is the more important of the two, because that is
+  // when the number above gets quoted as "every assertion is capable of failing" — which is
+  // not what was measured. What was measured is the absence of a constant this rule can see.
+  console.log('\n  NOT claimed by this audit — constants it does not decide:');
+  for (const limit of DECLARED_LIMITS) console.log(`    - ${limit}`);
+  console.log(
+    '  A condition is reported only when its whole expression tree is literals and pure\n' +
+      '  operators over them. Nothing here is evaluated, so any constant that needs a call\n' +
+      '  or a property read to see is outside this rule and passes silently.',
+  );
 }
 
 /* ---------- helpers ---------- */
