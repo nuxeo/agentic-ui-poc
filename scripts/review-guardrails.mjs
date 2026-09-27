@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import ts from 'typescript';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -1238,8 +1239,10 @@ function checkNoHardcodedUiText() {
    * proof. A quoted `.html` path is now resolved against the referring file's own directory and
    * compared to the walked path by equality, so a reference proves the file it points at.
    *
-   * **What this still does not prove.** A reference has to be a quoted literal to be resolved:
-   * a `templateUrl` assembled by concatenation resolves to nothing. On the spec side that is
+   * **What this still does not prove.** A reference has to be a quoted literal **in code** to
+   * be resolved — references come from parsed string-literal tokens, so a quoted path in a
+   * comment is not one, which review caught the text-scanning version getting wrong. A
+   * `templateUrl` assembled by concatenation resolves to nothing. On the spec side that is
    * fail-closed and needs no fallback — no resolved reference means no proof, so the fixture is
    * scanned like any template. On the non-spec side it would be fail-OPEN, so the blunt
    * basename mention is kept there deliberately. The consequence is asymmetric on purpose:
@@ -1278,12 +1281,36 @@ function checkNoHardcodedUiText() {
       return out.join('/');
     };
 
-    /** Every `.html` path a source file quotes, resolved against that file's own directory. */
+    /**
+     * Every `.html` path a source file quotes **in code**, resolved against its own directory.
+     *
+     * Parsed, not scanned. The first cut of this matched quoted paths in the raw text, which
+     * review found exempts a fixture nobody hosts on the strength of a comment:
+     * `// See './widget.host.html'` read as a reference, and the control written alongside it
+     * used an UNQUOTED name so it did not catch the case. A comment is not part of the AST, so
+     * taking references from string-literal tokens rules that out structurally rather than by
+     * another pattern — which is the same reason the assertion audit stopped enumerating
+     * spellings of `true`.
+     *
+     * **Boundary.** A quoted path in executable code counts as a reference whether or not the
+     * value is used; the check does not attempt to prove the literal reaches a `templateUrl`.
+     * A path assembled by concatenation is not a literal and so resolves to nothing — which is
+     * why the non-spec side keeps a textual basename fallback below, where missing a reference
+     * would be fail-open.
+     */
     const htmlRefs = (path, body) => {
       const refs = new Set();
-      for (const [, ref] of body.matchAll(/['"`]([^'"`\n]*\.html)['"`]/g)) {
-        refs.add(resolveRef(path, ref));
-      }
+      const source = ts.createSourceFile(path, body, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+      const visit = (node) => {
+        if (
+          (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+          node.text.endsWith('.html')
+        ) {
+          refs.add(resolveRef(path, node.text));
+        }
+        node.forEachChild(visit);
+      };
+      source.forEachChild(visit);
       return refs;
     };
 
@@ -1292,7 +1319,13 @@ function checkNoHardcodedUiText() {
       ...walk('libs', (path) => path.endsWith('.ts')),
     ].map((path) => {
       const body = read(path);
-      return { isSpec: /\.spec\.ts$/.test(path), body, refs: htmlRefs(path, body) };
+      return {
+        isSpec: /\.spec\.ts$/.test(path),
+        body,
+        // Parsing every `.ts` in the repository to find a handful of fixture references is
+        // waste; a file with no `.html` anywhere in it cannot hold one.
+        refs: body.includes('.html') ? htmlRefs(path, body) : new Set(),
+      };
     });
 
     const configPaths = [

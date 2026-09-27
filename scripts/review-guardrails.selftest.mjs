@@ -665,6 +665,35 @@ expectRed(
   /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
 );
 
+// The same thing again with the path QUOTED, which is the shape the control above missed.
+// References are taken from parsed string-literal tokens now, and a comment is not in the AST,
+// so this is ruled out structurally rather than by a pattern that has to anticipate it. Kept as
+// a separate control from the bare mention because a text scan passes one and fails the other.
+expectRed(
+  'a QUOTED path in a spec comment does not prove a fixture either',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      "// See './widget.host.html' for the markup that reproduced this.\nit("
+      + "'passes', () => expect(true).toBe(true));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// ...and the other side of that: a reference in real code must still count, or the parser change
+// would simply have disabled the exemption. `hostingSpec` puts it in a `templateUrl`, so this is
+// the positive control for the AST path specifically.
+expectGreen('a fixture referenced from a block-commented spec’s live code is still exempt', 'checkNoHardcodedUiText', {
+  ...APP,
+  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/shell/widget.spec.ts':
+    "/* Hosts './other.host.html' in an older revision — kept for context. */\n" +
+    hostingSpec('widget.host.html'),
+});
+
 // Round two's property, also never controlled: a shipped component compiling the file means its
 // text is not test data, so the fixture cannot hold the proof of its own exemption.
 expectRed(
