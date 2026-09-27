@@ -1,5 +1,5 @@
-import { expect, expectSurfaceWithData, nuxeoCredentials, test } from './fixtures';
-import { request, type APIRequestContext } from '@playwright/test';
+import { expect, expectSurfaceWithData, newNuxeoApiContext, test } from './fixtures';
+import { type APIRequestContext } from '@playwright/test';
 
 /**
  * Document detail — metadata, permissions and the tab surfaces.
@@ -12,18 +12,16 @@ import { request, type APIRequestContext } from '@playwright/test';
  */
 let api: APIRequestContext;
 
-const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
-
 test.beforeAll(async () => {
-  api = await request.newContext({
-    baseURL,
-    httpCredentials: {
-      // Not read from the environment here: the same default-pair `??` fallback lived on these
-      // two lines, and one shared helper that throws is what stops it coming back.
-      ...nuxeoCredentials(),
-      origin: baseURL,
-    },
-  });
+  // `newNuxeoApiContext()` rather than a context of its own. The hand-rolled one here passed
+  // `httpCredentials`, which Playwright only sends in answer to a `401` challenge — and this
+  // endpoint never issues one, so the credentials were never sent and `aDocument()` discovered
+  // its fixture as `Anonymous`. Not as an empty result that would have been noticed: measured
+  // on a populated instance, this exact `File` query returns `resultsCount: 1` anonymously
+  // against `1154` authenticated, so the spec found a document, asserted a title and went
+  // green against the wrong identity. The shared helper sets the header explicitly and proves
+  // the identity before returning.
+  api = await newNuxeoApiContext();
 });
 
 test.afterAll(async () => {
@@ -38,7 +36,10 @@ async function aDocument(): Promise<{ uid: string; title: string }> {
     },
     headers: { 'X-NXproperties': '*' },
   });
-  expect(response.status(), 'the proxy should answer an authenticated NXQL query').toBe(200);
+  // Status only — it says the proxy answered, and nothing about who as. `200` is exactly what
+  // an anonymous query returns here, so the authentication claim this message used to make
+  // belongs where it can be checked: `newNuxeoApiContext()` asserts the identity on creation.
+  expect(response.status(), 'the proxy should answer the NXQL query').toBe(200);
 
   const body = await response.json();
   const entry = body.entries?.[0];

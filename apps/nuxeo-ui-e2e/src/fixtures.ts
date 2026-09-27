@@ -99,19 +99,71 @@ export { nuxeoCredentials };
  * query with **HTTP 200, `resultsCount: 0` and no `WWW-Authenticate` header at all**, so no
  * challenge is ever issued, the credentials are never sent, and the query runs as Anonymous.
  *
- * Verified directly: the same NXQL that returns two `WorkspaceRoot`s with a Basic header
+ * Verified directly: the same NXQL that returns every `WorkspaceRoot` with a Basic header
  * returns `200` with zero entries without one. Both copies of `aRootChild` relied on
  * `httpCredentials`, so even with a valid predicate they would have found nothing — and
  * "200 with no rows" is exactly the shape that makes a repository-data assertion vacuous.
+ *
+ * ## Why the identity is then checked rather than assumed
+ *
+ * Setting the header is not the same as the header working, and no status code distinguishes
+ * the two: Nuxeo answers as `Anonymous` with `200`. Nor is an empty result a reliable tell —
+ * measured on a populated instance, the `WorkspaceRoot` query above returns `resultsCount: 0`
+ * anonymously, but `SELECT * FROM Document WHERE ecm:primaryType = 'File'` returns
+ * `resultsCount: 1` against `1154` authenticated. A spec discovering a fixture through the
+ * second query gets a document, a title and a green assertion while running as the wrong
+ * user. So the identity is asserted once, here, against `/nuxeo/api/v1/me`, which is the only
+ * response that names who the request ran as.
  */
-export function newNuxeoApiContext(): Promise<APIRequestContext> {
+export async function newNuxeoApiContext(): Promise<APIRequestContext> {
   const { username, password } = nuxeoCredentials();
-  return request.newContext({
+  const api = await request.newContext({
     baseURL: E2E_BASE_URL,
     extraHTTPHeaders: {
       Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
     },
   });
+  try {
+    await expectAuthenticatedAs(api, username);
+  } catch (error) {
+    await api.dispose();
+    throw error;
+  }
+  return api;
+}
+
+/**
+ * Assert the context's requests actually run as `username`, not as `Anonymous`.
+ *
+ * `/nuxeo/api/v1/me` reports the authenticated principal, so it is the one check that can tell
+ * a working `Authorization` header from an ignored one. Every other signal this suite has is
+ * shared by both identities: the status is `200` either way, there is no `WWW-Authenticate`
+ * to observe, and a non-empty result set only means *something* was readable.
+ *
+ * Throwing rather than `expect`ing so it is usable from `beforeAll`, where a failed assertion
+ * would otherwise be reported against the first test rather than the fixture.
+ */
+export async function expectAuthenticatedAs(
+  api: APIRequestContext,
+  username: string,
+): Promise<void> {
+  const response = await api.get('/nuxeo/api/v1/me');
+  if (!response.ok()) {
+    throw new Error(
+      `Could not confirm the API context is authenticated: /nuxeo/api/v1/me answered ` +
+        `${response.status()}. Without this the suite cannot tell an authenticated query from ` +
+        `an anonymous one, because both return 200.`,
+    );
+  }
+  const me = (await response.json()) as { id?: string; isAnonymous?: boolean };
+  if (me.isAnonymous || me.id !== username) {
+    throw new Error(
+      `The API context is NOT authenticated: /nuxeo/api/v1/me reports \`${me.id}\`, expected ` +
+        `\`${username}\`. The Authorization header was not accepted, so every query this ` +
+        `context makes runs with the wrong permissions — and still returns 200, which is why ` +
+        `this is checked rather than inferred from a green result.`,
+    );
+  }
 }
 
 /**
