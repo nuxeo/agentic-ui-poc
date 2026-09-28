@@ -1,5 +1,6 @@
 /**
- * NXENG-763 — measure `.file-size` contrast on `.viewer-footer` under every compiled palette.
+ * NXENG-763 — footer light strip + action contrast on `.viewer-footer` (IBM 56037090).
+ * NXENG-764 — `.file-size` contrast on that footer under every compiled palette (IBM 67686130).
  * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -49,7 +50,7 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
   return [255, 255, 255];
 }
 
-describe('DocumentViewer file-size contrast by theme (NXENG-763)', () => {
+describe('DocumentViewer footer/file-size contrast by theme (NXENG-763, NXENG-764)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
@@ -74,6 +75,7 @@ describe('DocumentViewer file-size contrast by theme (NXENG-763)', () => {
     fixture.componentRef.setInput('blobUrl', trusted());
     fixture.componentRef.setInput('rawBlobUrl', raw);
     fixture.componentRef.setInput('loading', false);
+    fixture.componentRef.setInput('showMainFileControls', true);
     fixture.detectChanges();
   });
 
@@ -131,10 +133,15 @@ describe('DocumentViewer file-size contrast by theme (NXENG-763)', () => {
         )
         .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
 
+      const removeBtn = fixture.nativeElement.querySelector(
+        '.viewer-footer-actions button.footer-remove-btn',
+      ) as HTMLElement | null;
+      expect(removeBtn)
+        .withContext(`footer remove action in ${label} (showMainFileControls=true)`)
+        .not.toBeNull();
+
       const actionButtons = Array.from(
-        fixture.nativeElement.querySelectorAll(
-          '.viewer-footer-actions button:not(.footer-remove-btn)',
-        ),
+        fixture.nativeElement.querySelectorAll('.viewer-footer-actions button'),
       ) as HTMLElement[];
       expect(actionButtons.length)
         .withContext(`footer icon buttons in ${label}`)
