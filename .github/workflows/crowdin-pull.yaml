@@ -148,9 +148,9 @@ jobs:
           #
           # It has NEVER BEEN EXERCISED, though. Until this, `BOT_GITHUB_TOKEN` appeared only in
           # comments in `changelog.yml` and `release.yml`, offered as an option nobody took;
-          # both use the default token. So its scopes are unverified. It needs
-          # `contents: write` and `pull_requests: write` on this repository, and the symptom of
-          # it being wrong is a pull request that opens with no checks rather than a failure
-          # here — which is exactly the outcome the preflight above exists to prevent. Confirm
-          # it on the first real run instead of assuming it.
+          # both use the default token. Its ability to push a branch and create a pull request is
+          # therefore unverified; missing either permission makes the action fail. Separately, a
+          # successful push made with the repository `GITHUB_TOKEN` would suppress follow-on
+          # workflows and leave the pull request with no checks. Confirm on the first real run that
+          # this token completes both operations and that checks start on the resulting pull request.
           GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
