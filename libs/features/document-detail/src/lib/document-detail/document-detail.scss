@@ -335,7 +335,8 @@ sat-breadcrumbs {
 
 .doc-info-label {
   font-size: 12px;
-  color: #888;
+  /* NXENG-774 — #888 was 3.54:1 on the panel (IBM 280073873). */
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
   min-width: 100px;
   flex-shrink: 0;
   padding-top: 2px;
