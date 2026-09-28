@@ -12,6 +12,11 @@
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
     "sourceMap": false,
+    // So `fixtures.ts` can import `surface.mjs` and the error-state selector list has ONE
+    // definition rather than a TypeScript copy and a Node copy drifting apart. The `.mjs`
+    // files carry JSDoc types, which `checkJs` then actually enforces.
+    "allowJs": true,
+    "checkJs": true,
     // `@playwright/test` and the two a11y-scout tarballs are installed with `--no-save`, so on
     // a machine that has not run that install their types are absent and every spec reports
     // TS2307. That is an environment fact, not a code defect, and failing the repo-wide

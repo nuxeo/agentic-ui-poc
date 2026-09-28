@@ -36,13 +36,18 @@
  */
 
 import { nuxeoBasicAuthHeader, requireNuxeoCredentials } from '../env.mjs';
+import { surfaceUnusableReason } from '../surface.mjs';
 
 const REFLOW_WIDTH = 320;
 const REFLOW_HEIGHT = 256;
 const TOLERANCE = 4;
 const EXEMPT = ['table', 'pre', 'svg', '[role="img"]', '[role="application"]'];
 
-const baseUrl = process.env['A11Y_BASE_URL'] ?? 'http://localhost:4200';
+// `APP_URL`, matching `route-render-check.mjs`, `axe-differential.mjs` and the authoring
+// guide. This file alone read `A11Y_BASE_URL`, so the documented override silently did
+// nothing here and the probe kept scanning localhost while the others moved. Flagged in
+// review on PR #225.
+const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
 // Required, never defaulted — see `../env.mjs` for why a default is worse than an error here.
 const { username: user, password: pass } = requireNuxeoCredentials();
 
@@ -139,7 +144,17 @@ for (const [label, route, host] of ROUTES) {
   try {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle', timeout: 45_000 });
-    await page.locator(host).first().waitFor({ state: 'visible', timeout: 20_000 });
+
+    // Waiting for the host is not enough, and the `/me` preflight does not cover this: it
+    // proves the backend is reachable, not that THIS route's data request succeeded. A route
+    // whose data failed renders the same host with an error panel inside it, and an error
+    // panel is the one layout guaranteed not to overflow — it would be measured as `fits`.
+    const unusable = await surfaceUnusableReason(page, host, label);
+    if (unusable) {
+      couldNotMeasure += 1;
+      rows.push({ label, error: unusable });
+      continue;
+    }
 
     await page.setViewportSize({ width: REFLOW_WIDTH, height: REFLOW_HEIGHT });
     await page.addStyleTag({
@@ -274,6 +289,16 @@ if (process.argv.includes('--negative-control')) {
   });
   const p2 = await ctx2.newPage();
   await p2.goto(`${baseUrl}/#/browse`, { waitUntil: 'networkidle', timeout: 45_000 });
+
+  // Same check as the measurement loop. A control run against an error panel would still
+  // "prove" the detection path works, but it would prove it on a page nobody is measuring.
+  const controlUnusable = await surfaceUnusableReason(p2, 'lib-browse', 'negative control');
+  if (controlUnusable) {
+    console.error(`\nreflow-probe: cannot run the negative control — ${controlUnusable}\n`);
+    await ctx2.close();
+    await browser2.close();
+    process.exit(2);
+  }
 
   const before = await p2.evaluate(() => document.documentElement.scrollWidth);
   await p2.evaluate(() => {

@@ -1,5 +1,13 @@
 import { test as a11yBase } from '@a11y-scout/playwright';
 import { expect as expectFn, type Page } from '@playwright/test';
+// One definition of each of these, shared with the Node-side diagnostics rather than copied.
+// `allowJs` in tsconfig.json exists for these two imports; the alternative was a TypeScript
+// copy and a `.mjs` copy of the same list and the same eight-line credential check, which is
+// exactly the drift this folder keeps being reviewed for.
+import { requireNuxeoCredentials } from './env.mjs';
+import { ERROR_STATE_SELECTOR } from './surface.mjs';
+
+export { requireNuxeoCredentials };
 
 /**
  * The `test` object for the accessibility suite, and the session helper it needs.
@@ -31,37 +39,6 @@ import { expect as expectFn, type Page } from '@playwright/test';
  * stable regardless of where the command was typed.
  */
 export const REPORT_DIR = 'a11y/reports';
-
-/**
- * Nuxeo credentials, required rather than defaulted.
- *
- * `.cursor/rules/security.mdc`: no hardcoded credentials, "NEVER use Basic auth with hardcoded
- * fallback defaults", environment only, "with startup validation". This folder previously
- * wrote `?? 'Administrator'`, copying the pattern in `apps/nuxeo-ui-e2e`; that the pattern
- * exists elsewhere is not a defence the rule admits, and review on PR #225 said so.
- *
- * Beyond the rule: against a server that happens to accept `Administrator`, a default silently
- * scans as the wrong identity and the report never mentions it.
- *
- * `env.mjs` holds the same eight lines for the Node-side tooling. One copy per language rather
- * than a cross-language import, which would mean loosening the compiler settings for the whole
- * folder to allow a `.ts` file to import a `.mjs` one.
- */
-export function requireNuxeoCredentials(): { username: string; password: string } {
-  const username = process.env['NUXEO_USER'];
-  const password = process.env['NUXEO_PASS'];
-
-  const missing = [...(username ? [] : ['NUXEO_USER']), ...(password ? [] : ['NUXEO_PASS'])];
-  if (missing.length > 0) {
-    throw new Error(
-      `${missing.join(' and ')} must be set. This folder does not default them: a default ` +
-        'would scan as the wrong identity against any server that accepts it, and the report ' +
-        'would not say so. Run `npm run a11y:scan -- preflight` for the exact commands.',
-    );
-  }
-
-  return { username: username as string, password: password as string };
-}
 
 /** Mirrors `STORAGE_KEY` in `apps/nuxeo-ui/src/app/auth/auth.service.ts`. */
 const SESSION_KEY = 'agentic_ui_nuxeo_session';
@@ -104,26 +81,6 @@ export async function installSession(page: Page): Promise<void> {
     },
   );
 }
-
-/**
- * Every error-state class the scanned features actually render, collected from their
- * templates rather than invented. There is no shared error component in this application —
- * each feature rolls its own — so this list is the closest thing to one.
- */
-const ERROR_STATE_SELECTOR = [
-  '.browse-error',
-  '.detail-error',
-  '.results-error',
-  '.task-error',
-  '.tab-error',
-  '.kd-error',
-  '.kd-banner--error',
-  '.gd-error',
-  '.hxp-poc-error',
-  '.cpd-error',
-  '.nxql-error',
-  '.picker-error',
-].join(', ');
 
 /**
  * Assert a surface is worth scanning: rendered, not empty, and not showing an error.

@@ -25,11 +25,15 @@ export function requireNuxeoCredentials() {
   const username = process.env['NUXEO_USER'];
   const password = process.env['NUXEO_PASS'];
 
-  const missing = [
-    ...(username ? [] : ['NUXEO_USER']),
-    ...(password ? [] : ['NUXEO_PASS']),
-  ];
-  if (missing.length > 0) {
+  // `if (!username || !password)` rather than a count of a `missing` array, so the compiler
+  // narrows both to `string` on the way out. With `checkJs` on, the array form returned
+  // `string | undefined` and the JSDoc `@returns` was quietly a lie — caught by turning
+  // `checkJs` on to share this function with the TypeScript side.
+  if (!username || !password) {
+    const missing = [
+      ...(username ? [] : ['NUXEO_USER']),
+      ...(password ? [] : ['NUXEO_PASS']),
+    ];
     throw new Error(
       `${missing.join(' and ')} must be set. This folder does not default them: a default ` +
         'would scan as the wrong identity against any server that accepts it, and the report ' +

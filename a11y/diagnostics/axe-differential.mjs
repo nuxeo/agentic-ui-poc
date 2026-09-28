@@ -47,6 +47,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { requireNuxeoCredentials } from '../env.mjs';
+import { surfaceUnusableReason } from '../surface.mjs';
 
 /**
  * This file lives at `a11y/diagnostics/`, so the repository root is two levels up.
@@ -210,17 +211,19 @@ try {
     await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(1200);
 
-    // The host assertion is the difference between a scan and a clean-looking blank. phase-6 omits
-    // it on five of its routes, which is how it has been scanning `/#/collections` — a path with no
-    // matching route — and counting the empty result as a pass.
-    const rendered = await page
-      .locator(host)
-      .first()
-      .isVisible()
-      .catch(() => false);
-    if (!rendered) {
-      console.log(`- SKIPPED, ${host} did not render (nothing to scan, NOT a pass)`);
-      rows.push({ surface, rule: '(did not render)', impact: '-', variant: '-', nodes: 0, targets: [host] });
+    // The surface assertion is the difference between a scan and a clean-looking blank. phase-6
+    // omits it on five of its routes, which is how it has been scanning `/#/collections` — a path
+    // with no matching route — and counting the empty result as a pass.
+    //
+    // Host visibility alone is not the assertion, and the `/me` preflight does not cover the gap
+    // either: it proves the backend answers, not that THIS route's data request did. A route whose
+    // data failed renders the same host with an error panel inside it, and both tag sets would then
+    // be compared against that error DOM while the route is recorded as measured — so any rule that
+    // only fires on real content reads as "did not reproduce". Flagged in review on PR #225.
+    const unusable = await surfaceUnusableReason(page, host, surface);
+    if (unusable) {
+      console.log(`- SKIPPED, ${unusable} (nothing to compare, NOT a pass)`);
+      rows.push({ surface, rule: '(not measurable)', impact: '-', variant: '-', nodes: 0, targets: [unusable] });
       continue;
     }
 

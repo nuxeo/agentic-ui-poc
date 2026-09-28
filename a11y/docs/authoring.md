@@ -359,8 +359,15 @@ Each of these is a place to point a new script:
 - **Loading states** — spinners had 101 unnamed instances repo-wide, found only because knowledge
   discovery happened to be rendering one at scan time
 - **Expanded/collapsed** trees, filter panels, column pickers
-- **The login surface**, which no capture can reach today: the runner sets `httpCredentials`, so
-  the app authenticates before login can render
+- **Password-manager and autofill states** on the sign-in form. The form itself is covered —
+  `journey.a11y.spec.ts` reaches the real signed-out page — but only in its empty, untouched
+  state. Validation errors, a populated field and the browser's own autofill styling are not
+
+The login surface used to be listed here as unreachable, on the grounds that `httpCredentials`
+makes the app authenticate before the form can render. That was true of the mechanism and wrong
+as a conclusion: the journey suite drops `httpCredentials` for its login project and sets the
+app's `agentic_ui_signed_out` marker, and scans the real form against a live backend. Worth
+remembering as a pattern — "the harness prevents it" is a statement about the harness.
 
 ### Reaching a state without lying about it
 
