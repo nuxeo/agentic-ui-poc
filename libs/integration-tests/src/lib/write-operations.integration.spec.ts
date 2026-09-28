@@ -388,7 +388,7 @@ describe('Write Operations Integration Tests', () => {
         }),
       ]);
 
-      const docIds = docs.map((d: any) => d.uid);
+      const docIds = docs.map((d) => d.uid);
 
       // Bulk delete via Document.Delete automation
       const bulkDeleteRes = await fetch(

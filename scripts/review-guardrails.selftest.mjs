@@ -735,6 +735,25 @@ expectRed(
   /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
 );
 
+// Round five, and the reason "restrict it to `templateUrl`" was not yet enough: `templateUrl`
+// is just a property name, so any object literal carrying one counted. A decoy that hosts
+// nothing — `const proof = { templateUrl: './widget.host.html' }` — exempted the fixture again.
+// The property now has to sit in the object literal passed to `@Component(...)`, which is the
+// only place it means "this file is my template". Reported on the pull request.
+expectRed(
+  'a decoy object literal with a templateUrl property does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      "const proof = { templateUrl: './widget.host.html' };\n" +
+      "it('passes', () => expect(typeof proof.templateUrl).toBe('string'));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
 // Round two's property, also never controlled: a shipped component compiling the file means its
 // text is not test data, so the fixture cannot hold the proof of its own exemption.
 expectRed(

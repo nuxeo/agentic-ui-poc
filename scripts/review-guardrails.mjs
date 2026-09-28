@@ -1245,8 +1245,10 @@ function checkNoHardcodedUiText() {
    * in executable code counted, so an unused `const ref = './widget.host.html'` was proof;
    * and `resolveRef` popped on `..` without checking, so a path climbing above the repository
    * root was clamped back onto an in-repo file and proved that file instead. Both reported on
-   * the pull request. A reference is now the value of a `templateUrl` property specifically,
-   * and a traversal that underflows resolves to nothing at all.
+   * the pull request. A traversal that underflows now resolves to nothing at all, and a
+   * reference is the `templateUrl` of an `@Component(...)` object literal specifically — the
+   * first attempt matched any property called `templateUrl`, which a decoy object literal
+   * satisfies without hosting anything, and review caught that too.
    *
    * **What this still does not prove.** A `templateUrl` assembled by concatenation resolves to
    * nothing. On the spec side that is fail-closed and needs no fallback — no resolved
@@ -1307,14 +1309,20 @@ function checkNoHardcodedUiText() {
      * pattern — which is the same reason the assertion audit stopped enumerating spellings of
      * `true`.
      *
-     * Parsing alone was not enough either. Any quoted `.html` literal in executable code
-     * counted, used or not, so an unused `const ref = './widget.host.html'` exempted a
-     * template nobody serves — still fail-open, just one layer down. Reported on the pull
-     * request. A reference is now specifically the value of a `templateUrl` property, which is
-     * the only shape that makes the file a template under test and the same shape the non-spec
-     * rule below is looking for in production code.
+     * Parsing alone was not enough either, and neither was the first narrowing. Any quoted
+     * `.html` literal in executable code counted, used or not, so an unused
+     * `const ref = './widget.host.html'` exempted a template nobody serves. Restricting that
+     * to a `templateUrl` property left the same hole one layer in, because `templateUrl` is
+     * only a property name: a decoy `const proof = { templateUrl: './widget.host.html' }`
+     * hosts nothing and still counted. Both reported on the pull request.
      *
-     * **Boundary.** A `templateUrl` assembled by concatenation is not a literal and resolves to
+     * A reference is therefore the `templateUrl` of the object literal passed to
+     * `@Component(...)`, which is the only position where the property means "this file is my
+     * template" — and the same position the non-spec rule below is looking for in production
+     * code.
+     *
+     * **Boundary.** A `templateUrl` assembled by concatenation is not a literal, and component
+     * metadata spread in from a variable is not an object literal here; both resolve to
      * nothing. On the spec side that is fail-closed and needs no fallback — no resolved
      * reference means no proof, so the fixture is scanned like any template. On the non-spec
      * side it would be fail-OPEN, which is why the blunt textual basename fallback is kept
@@ -1323,17 +1331,29 @@ function checkNoHardcodedUiText() {
     const htmlRefs = (path, body) => {
       const refs = new Set();
       const source = ts.createSourceFile(path, body, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+
+      // `@Component({ ... })` is a decorator wrapping a call expression, so matching the call
+      // covers the decorator form and the rare direct one without special-casing either.
+      const componentMetadata = (node) =>
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === 'Component' &&
+        node.arguments.length > 0 &&
+        ts.isObjectLiteralExpression(node.arguments[0])
+          ? node.arguments[0]
+          : null;
+
       const visit = (node) => {
-        const isTemplateUrl =
-          ts.isPropertyAssignment(node) &&
-          (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
-          node.name.text === 'templateUrl';
-        const value = isTemplateUrl ? node.initializer : null;
-        if (
-          value &&
-          (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) &&
-          value.text.endsWith('.html')
-        ) {
+        const metadata = componentMetadata(node);
+        for (const property of metadata ? metadata.properties : []) {
+          if (!ts.isPropertyAssignment(property)) continue;
+          if (!ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name)) continue;
+          if (property.name.text !== 'templateUrl') continue;
+
+          const value = property.initializer;
+          if (!ts.isStringLiteral(value) && !ts.isNoSubstitutionTemplateLiteral(value)) continue;
+          if (!value.text.endsWith('.html')) continue;
+
           const resolved = resolveRef(path, value.text);
           if (resolved !== null) refs.add(resolved);
         }
