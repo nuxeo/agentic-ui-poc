@@ -658,11 +658,18 @@ describe('isHostAllowed', () => {
   });
 
   it('rejects every http spelling that carries no host, at the URL parse', () => {
-    // Recorded as a spec because it is why `parseTarget` has no separate empty-host branch.
     // `http:` and `https:` are WHATWG special schemes, so `new URL` *requires* a host and
-    // throws instead of handing back an empty one. A guard for `url.host === ''` was written,
-    // survived every mutation because nothing could reach it, and was deleted. If a future Node
-    // ever starts parsing these, this spec goes red and the branch is needed again.
+    // throws instead of handing back an empty one. This spec is what pins that, and it is why
+    // `parseTarget`'s `url.host === ''` branch survives every mutation: on this Node nothing
+    // can reach it.
+    //
+    // This comment used to say the branch "was deleted", and it was not — the branch is still
+    // there, three lines below the scheme check. Two other documents said the same thing. The
+    // branch is KEPT, because what it guards against is a refusal naming no host at all, which
+    // is the exact message this file has already had to correct once; and because deleting a
+    // backstop on the strength of one parser's current behaviour is the wrong trade for a
+    // safety control. If a future Node ever starts parsing these, this spec goes red and the
+    // branch starts earning its place.
     for (const url of ['http://', 'http:///', 'http://:8080', 'http://:']) {
       expect(() => isHostAllowed(url, ['nuxeo.test'])).toThrow(/not a URL/);
     }

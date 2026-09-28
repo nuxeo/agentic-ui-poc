@@ -17,7 +17,7 @@
  * - Destructive operations isolated in data root (cleanup verified)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   setupIntegrationHarness,
   createTestDocument,

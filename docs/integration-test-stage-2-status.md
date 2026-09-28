@@ -99,7 +99,9 @@ target, was added and then reverted, and is recorded as unresolved in the Fixes 
 
 #### Task 2.5: Created bogus-credentials negative control
 
-- **Issue:** No automated guard against vacuous E2E assertions (audit §9.1)
+- **Issue:** No automated guard against server-independent E2E assertions (audit §9.1). The
+  line here said "vacuous E2E assertions", which is the claim the scope note below already
+  retracts — a summary contradicting its own detail two paragraphs later.
 - **Fix:** Created executable control script
 - **Files:**
   - `scripts/e2e-negative-control.sh` — runs E2E with NUXEO_PASS=wrong, asserts N+ specs fail
@@ -118,7 +120,13 @@ target, was added and then reverted, and is recorded as unresolved in the Fixes 
   document. A live run confirmed it rather than supposing it — `browse > the shell renders its
 chrome on an authenticated route` was among the counted failures. The script said the
   stronger thing for three rounds; its output now says only the narrower one.
-- **Verification needed:** Run once to establish baseline failure count
+- **Measured baseline, 2026-09-27:** **10** specs counted as failing at an assertion of their
+  own, 4 excluded as failing in a hook, against the live stack — byte-identical across both
+  branches of the change, same specs in the same order. The default threshold stays at **5**,
+  deliberately below the measured figure, so a real regression in a handful of specs does not
+  read as a control failure. `threshold 99` was run to watch it exit 1, because a floor nobody
+  has seen reject anything is not a floor. This entry read "Verification needed" after that run
+  had happened and been recorded on the pull request.
 
 ### Blocked Tasks ⏸️
 

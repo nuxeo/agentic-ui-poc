@@ -19,7 +19,7 @@ describe('nuxeoDocument', () => {
     // whichever downstream spec trusted the fixture to be complete.
     //
     // Upwards, which is why the name says "and sets no optional one": `NuxeoDocument` has
-    // thirteen optional fields the factory deliberately omits, because a live Nuxeo omits them
+    // twelve optional fields the factory deliberately omits, because a live Nuxeo omits them
     // too unless the enricher that supplies them was requested. Defaulting one here would make
     // downstream specs pass against data the server would not have sent. This test used to be
     // called "fills every field of the model", which asserted the opposite of what the key set
