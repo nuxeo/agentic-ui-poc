@@ -3026,7 +3026,26 @@ const YAML_UNREADABLE = /^\*|\$\{\{/;
  * "Crowdin steps" skipped it and passed by absence. Raised in review; the failure direction is the
  * dangerous one, because an unrecognised step is an unchecked step.
  */
-const CROWDIN_ACTION = /['"]?uses['"]?:\s*['"]?crowdin\/github-action/;
+/**
+ * Whether a step runs the Crowdin action, judged on its STEP-LEVEL `uses` key.
+ *
+ * Depth matters in both directions. A `uses:` nested under `env:`, under `with:` or inside a block
+ * scalar belongs to some other action's configuration, and treating such a step as Crowdin's made
+ * the fail-closed rules fire on inputs that never reach Crowdin — a false positive on a valid
+ * workflow. A step-level `uses` is the only one GitHub acts on.
+ *
+ * Liberal about spelling and strict about position: quotes optional on the key and on the value,
+ * because the action honours all of those; depth exact, because that is what makes it a step.
+ *
+ * @param {string} stepText one step, as returned by `workflowSteps`
+ * @returns {boolean}
+ */
+function isCrowdinStep(stepText) {
+  return yamlValues(stepText, 'uses').some(
+    ({ value, indent }) =>
+      indent === stepKeyIndent(stepText) && /^['"]?crowdin\/github-action/.test(value),
+  );
+}
 
 /**
  * The inputs that hand text straight to the Crowdin CLI.
@@ -3048,7 +3067,7 @@ const ARG_INPUTS = 'command|command_args|download_translations_args';
  * @returns {{text: string, offset: number}[]}
  */
 function crowdinActionSteps(body) {
-  return workflowSteps(body).filter((step) => CROWDIN_ACTION.test(step.text));
+  return workflowSteps(body).filter((step) => isCrowdinStep(step.text));
 }
 
 /**
@@ -3435,7 +3454,7 @@ function checkCrowdinConfig() {
   // the step does not download, does not sign and does not skip anything — yet every assertion
   // here was satisfied by their presence anywhere in the step.
   const crowdinSteps = pullSteps
-    .filter((step) => CROWDIN_ACTION.test(step))
+    .filter((step) => isCrowdinStep(step))
     .map((step) => stepWithBlock(step)?.text ?? '');
   // Through `yamlInputIsTrue`, so a REQUIRED input follows the same YAML semantics as every other
   // one. `download_translations: 'true'` is honoured by the action, and rejecting it reported that
@@ -3480,7 +3499,7 @@ function checkCrowdinConfig() {
   // and the boolean was the only one guarded:
   //
   //   1. `skip_untranslated_files: true`            — the action input
-  //   2. `download_translations_args`, `command_args`, `upload_*_args` — appended VERBATIM to the
+  //   2. `command`, `command_args`, `download_translations_args` — appended VERBATIM to the
   //      command (`entrypoint.sh` 82-83 and 408-409), so `--skip-untranslated-files` passes straight
   //      through
   //   3. `crowdin-conf.yml`                         — `FileBean` validates the same pair there
@@ -3603,7 +3622,10 @@ function checkCrowdinConfig() {
     }
   }
 
-  if (/skip_untranslated_files/.test(stripYamlComments(read(config)))) {
+  // A KEY, not a substring. `stripYamlComments` drops whole-line comments only, so an inline
+  // one — `'preserve_hierarchy': true # skip_untranslated_files stays off` — was read as the
+  // option being set, and the gate reported a defect in a correct file.
+  if (yamlValues(stripYamlComments(read(config)), 'skip_untranslated_files').length > 0) {
     fail(
       `${config} sets \`skip_untranslated_files\`.\n` +
         '    The CLI validates the pair in the CONFIG FILE too, via `FileBean`, so moving the ' +
@@ -3655,7 +3677,7 @@ function checkCrowdinConfig() {
   // unrelated action with `command: ${{ inputs.command }}` cannot invoke Crowdin, and classifying
   // it as an unreadable translation upload failed the gate on a workflow that was correct.
   const uploads = workflowSteps(push)
-    .filter((step) => CROWDIN_ACTION.test(step.text))
+    .filter((step) => isCrowdinStep(step.text))
     .flatMap((step) => {
       const inputs = stepWithBlock(step.text);
       if (!inputs) return [];

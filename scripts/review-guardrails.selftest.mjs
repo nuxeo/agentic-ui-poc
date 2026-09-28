@@ -1511,6 +1511,35 @@ expectRed(
   /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
 
+// A `uses:` nested under `env:` belongs to that action's configuration, not to the step. Treating
+// such a step as Crowdin's made the fail-closed rules fire on inputs that never reach Crowdin —
+// here an expression-valued `command`, which is forbidden on a Crowdin step and fine on any other.
+expectGreen('an unrelated step mentioning the Crowdin action in a nested value', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml':
+    CROWDIN_WORKFLOW(PULL_OK) +
+    `      - name: Something else entirely\n` +
+    `        uses: some-org/some-action@v1\n` +
+    `        with:\n` +
+    `          command: \${{ inputs.command }}\n` +
+    `        env:\n` +
+    `          uses: crowdin/github-action@v2\n`,
+});
+
+// An INLINE comment is not configuration. `stripYamlComments` drops whole-line comments only, so a
+// raw token search read `# skip_untranslated_files stays off` as the option being set — the gate
+// reporting a defect in a correct file, and unfixable without deleting the note.
+expectGreen('crowdin-conf.yml mentioning skip_untranslated_files in an inline comment', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+  ]).replace(
+    `'preserve_hierarchy': true`,
+    `'preserve_hierarchy': true # skip_untranslated_files stays off, see D8h`,
+  ),
+});
+
 // The same rule one level down: a comment aligned with `with:` does not end the input mapping, and
 // treating it as a dedent dropped every input after it — so an upload below such a comment was
 // invisible to the ordering rule.
