@@ -123,10 +123,14 @@ jobs:
           # So the honest state of a half-translated locale is a short catalogue, not a full one
           # padded with English.
           #
-          # `checkCataloguesAreTranslated` fails a catalogue whose every value matches English, so
-          # flipping this back is caught. It was not, before: the only gate that failed that pull
-          # request did so over the seven new locales' missing Angular locale data, and with just
-          # `fr` and `de` the whole suite passed.
+          # Flipping this back is caught by `checkCrowdinConfig`, which asserts this exact line.
+          # Not by `checkCataloguesAreTranslated` — that one fails a catalogue whose every value
+          # matches English, which is what the flip produced only while Crowdin was empty. Once
+          # the seeded French and German strings come back genuinely translated, the same flip
+          # yields 1,897 English values out of 1,972, and 96% is a warning rather than a failure.
+          # Measured, not estimated. So the catalogue check would have gone quiet precisely as the
+          # catalogue became worth protecting, and the configuration assertion is the load-bearing
+          # one.
           skip_untranslated_strings: true
 
           create_pull_request: true
