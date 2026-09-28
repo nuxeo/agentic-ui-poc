@@ -765,13 +765,25 @@ the wrong half. It fails on:
 Each route was seen red on purpose against the real files, not only fixtures, and each has a
 negative control.
 
-The general lesson is the one this programme keeps paying for, and it repeated itself twice inside
-the fix. The original requirement was asserted against the _text_ of the workflow and never against
-the tool that consumes it or the standard that governs it, so the guardrail proved only that a
-broken configuration was present. Then the prohibition replacing it was written by enumerating the
-spellings of "true" — four review rounds, one spelling at a time — until it was clear that for a
-forbidden input **presence is the defect unless it is provably switched off**. Enumerating what is
-forbidden does not terminate; asserting what is required does.
+The general lesson is the one this programme keeps paying for, and it repeated itself inside the fix
+more than once. The original requirement was asserted against the _text_ of the workflow and never
+against the tool that consumes it or the standard that governs it, so the guardrail proved only
+that a broken configuration was present. Then the prohibition replacing it was written by
+enumerating the spellings of "true" — several review rounds, one spelling at a time — until it was
+clear that for a forbidden input **presence is the defect unless it is provably switched off**.
+Enumerating what is forbidden does not terminate; asserting what is required does.
+
+**The three rules that area now follows**, arrived at over ten review rounds in which nearly every
+finding was one of them being applied backwards somewhere:
+
+| Concern                              | Rule                                                                                                                          | Why that direction                                                                                                                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Step **selector** (`CROWDIN_ACTION`) | **Liberal.** Match the action however its `uses:` is quoted.                                                                  | An unrecognised step is an unchecked step. Recognising more steps means checking more steps, so breadth is the safe error.                                                         |
+| Input **values** (`YAML_UNREADABLE`) | **Fail closed.** Anything not provably `false` — or not readable at all, including `${{ … }}` and `*aliases` — counts as set. | Clearing an input means asserting something about text. If the text is not the text the CLI receives, nothing can be asserted.                                                     |
+| **Scope** (`crowdinActionSteps`)     | **The Crowdin steps.** Narrower than the file, wider than the step with `download_translations: true`.                        | Wider judges other people's actions and fails correct workflows — twice. Narrower misses a second step that downloads via `command: download`, which runs before the boolean path. |
+
+All three live in one place each rather than being re-derived per check, because every time one was
+re-derived it came back narrower or wider than the last.
 
 ### D8e — a language is advertised when it has translations, not when it is planned
 
