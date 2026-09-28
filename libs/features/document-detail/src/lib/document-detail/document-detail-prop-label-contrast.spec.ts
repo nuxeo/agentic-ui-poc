@@ -61,8 +61,25 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
 describe('DocumentDetailComponent — prop-label text contrast (NXENG-861)', () => {
   const scssPath = join(import.meta.dirname, 'document-detail.scss');
   const scss = readFileSync(scssPath, 'utf8');
-  const labelBlock = scssBlock(scss, 'prop-label');
-  const panelBlock = scssBlock(scss, 'properties-panel');
+  const labelBlock = stripScssComments(scssBlock(scss, 'prop-label'));
+  const panelBlock = stripScssComments(scssBlock(scss, 'properties-panel'));
+
+  it('selector rule assertions ignore commented-out declarations', () => {
+    const brokenLabel = `.prop-label {
+  /* color: var(--document-detail-properties-label-muted); */
+  color: #888;
+}`;
+    const brokenPanel = `.properties-panel {
+  /* background: var(--document-detail-properties-panel-surface); */
+  background: var(--mat-sys-surface);
+}`;
+    const label = stripScssComments(brokenLabel);
+    const panel = stripScssComments(brokenPanel);
+    expect(label).not.toMatch(/var\(--document-detail-properties-label-muted\)/);
+    expect(label).toMatch(/color:\s*#888/i);
+    expect(panel).not.toMatch(/var\(--document-detail-properties-panel-surface\)/);
+    expect(panel).toMatch(/var\(--mat-sys-surface/i);
+  });
 
   it('reads host custom properties from live declarations only (ignores commented-out lines)', () => {
     const fixture = `:host {
