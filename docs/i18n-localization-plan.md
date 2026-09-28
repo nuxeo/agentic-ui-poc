@@ -434,7 +434,7 @@ Per the technical usage guide. Project name must match the GitHub repository nam
 > `base_path: "."` it sweeps `node_modules`, which in this repo contains **48 upstream
 > `i18n/en.json` catalogues** — adf-core's 19 locales, both adf-hx bundles, and satori-ui's 15. Uploading those would push Alfresco's and Satori's strings into our Crowdin project and
 > bill the translation crew for work another team already paid for. Scope the globs to `apps/`
-> and `libs/`, and verify with a `crowdin upload sources --dry-run` before the first real push.
+> and `libs/`, and verify with a `crowdin upload sources --dryrun` before the first real push (one word — the CLI rejects `--dry-run`).
 
 ### D8b — the pull is a daily POLL, not a daily pull request
 

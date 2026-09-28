@@ -23,6 +23,11 @@ on:
       # manual run — and stale context is worse than none, because a translator believes it.
       - 'libs/**/i18n/en.context.json'
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Resolve and authenticate against Crowdin without uploading anything'
+        type: boolean
+        default: false
 
 concurrency:
   group: crowdin-push
@@ -57,7 +62,16 @@ jobs:
           # A key that no longer exists in English is dead weight the translation crew is still
           # paying to maintain, and it will be offered to a translator who has no way to know
           # it renders nowhere.
-          upload_sources_args: '--delete-obsolete'
+          # `--dryrun`, one word. The Crowdin CLI rejects `--dry-run` outright — "Unknown
+          # option: '--dry-run'. Possible solutions: --dryrun" — and it rejects it while parsing
+          # arguments, BEFORE authenticating, so the first attempt failed without telling us
+          # anything about the token it was meant to test.
+          #
+          # On a manual run, so the first contact with a real tenant can be made
+          # without writing to it. It exercises the parts most likely to be wrong — the token,
+          # the project id, the base_url and which files the globs resolve to — and reports
+          # them without creating a string.
+          upload_sources_args: ${{ inputs.dry_run && '--delete-obsolete --dryrun' || '--delete-obsolete' }}
           # No `auto_approve_imported` here, and the reason is worth recording rather than
           # rediscovering. It was set to `true` with a comment claiming it kept source strings off
           # the Crowdin review queue. It does nothing in this step: the pinned action feeds that
@@ -73,8 +87,12 @@ jobs:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
 
-      # Only after the sources exist: context attaches to strings Crowdin already holds.
+      # Only after the sources exist: context attaches to strings Crowdin already holds. Skipped
+      # on a dry run for the same reason — on a dry run the strings were never created, so every
+      # lookup would miss and the script would exit non-zero reporting a divergence that is an
+      # artefact of the dry run rather than a real one.
       - name: Push translator context
+        if: ${{ !inputs.dry_run }}
         env:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}

@@ -768,3 +768,14 @@ $ai-radius: 14px;
     transform: translateY(0);
   }
 }
+
+:host ::ng-deep sat-platform-nav-user-profile mat-icon.app-shell-user-profile-icon {
+  flex-shrink: 0;
+
+  &::before {
+    content: '\e853';
+    font-family: 'Material Icons';
+    font-size: 24px;
+    line-height: 1;
+  }
+}
