@@ -43,8 +43,8 @@ describe('DocumentDetailComponent — prop-label text contrast (NXENG-858)', () 
   it('themes property labels through the light-panel host token', () => {
     const host = scss.match(/:host\s*\{[^}]+\}/s)?.[0] ?? '';
     const label = scssBlock(scss, 'prop-label');
-    expect(host).toMatch(/--document-detail-prop-label-on-light-panel:\s*var\(--mat-sys-on-surface-variant,\s*#5c5f6b\)/);
-    expect(label).toMatch(/var\(--document-detail-prop-label-on-light-panel\)/);
+    expect(host).toMatch(/--document-detail-properties-label-muted:\s*#5c5f6b/);
+    expect(label).toMatch(/var\(--document-detail-properties-label-muted\)/);
     expect(label).not.toMatch(/color:\s*#888/i);
   });
 

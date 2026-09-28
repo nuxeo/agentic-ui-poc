@@ -1,15 +1,13 @@
 :host {
-  /* NXENG-858 — properties sidebar stays a fixed light panel in every theme (IBM 1792790291). */
-  --document-detail-prop-label-on-light-panel: var(--mat-sys-on-surface-variant, #5c5f6b);
+  /* NXENG-774 — properties sidebar stays a fixed light panel in every theme (IBM 280073873). */
+  /* NXENG-858 — .prop-label reuses label-muted on that panel (IBM 1792790291). */
+  --document-detail-properties-panel-surface: #ffffff;
+  --document-detail-properties-label-muted: #5c5f6b;
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
   background: var(--mat-sys-surface-container-lowest);
-}
-
-:host-context(html[data-app-theme='dark']) {
-  --document-detail-prop-label-on-light-panel: #5c5f6b;
 }
 
 // Loading / Error
@@ -255,7 +253,7 @@ sat-breadcrumbs {
   flex: 0 0 380px;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--document-detail-properties-panel-surface);
   border-left: 1px solid #e0e0e0;
   overflow: hidden;
 }
@@ -341,7 +339,8 @@ sat-breadcrumbs {
 
 .doc-info-label {
   font-size: 12px;
-  color: #888;
+  /* NXENG-774 — #888 was 3.54:1 on the panel; mat-sys-on-surface-variant fails on this light strip in dark theme. */
+  color: var(--document-detail-properties-label-muted);
   min-width: 100px;
   flex-shrink: 0;
   padding-top: 2px;
@@ -589,7 +588,7 @@ sat-breadcrumbs {
   display: block;
   font-size: 11px;
   font-weight: 500;
-  color: var(--document-detail-prop-label-on-light-panel);
+  color: var(--document-detail-properties-label-muted);
   margin-bottom: 2px;
   text-transform: capitalize;
 }
