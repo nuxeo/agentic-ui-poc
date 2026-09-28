@@ -89,13 +89,25 @@ Implemented comprehensive integration tests for write paths and destructive oper
 
 ### Data Root Isolation (1 test) ✅
 
-**Test:** `destructive operations are isolated to data root only`
+**Test:** `recursive cleanup removes the root it is given and nothing beside it`
 
-- Counts documents outside data root (before)
-- Performs destructive operation inside data root
-- Counts again (after)
-- Verifies count unchanged outside data root
+- Creates a **canary** outside the data root, a sibling of it, owned by this run
+- Creates a throwaway root **and a child inside it**, so the deletion's recursiveness is
+  observable — a delete that orphaned the contents would still leave the root 404
+- Calls `deleteDataRoot` itself, pointed at the throwaway root, rather than a hand-rolled
+  DELETE shaped like the one it issues
+- Reads every document back by **UID** — the repository answers, so there is no index lag to
+  wait out and no other suite's fixtures in the result
+- Asserts the root and its child are gone and the canary outside it is untouched, then
+  removes both fixtures in a `finally` and fails if either leaked
 - **Status:** ✅ PASSING
+
+> This section described a global before/after **count** of documents outside the data root,
+> which is the mechanism the test used before it was rewritten. Counting could not survive a
+> shared instance: another suite's `afterAll` moved the total between the two reads
+> (`expected 1097 to be 1099`), which is a real difference and nothing to do with isolation.
+> There is no counting in the test at all now. Reported on PR #226; the acceptance text below
+> is corrected for the same reason.
 
 ---
 
@@ -189,10 +201,15 @@ throws if it is still readable.
 > the precise outcome the test exists to detect. Reading "0 before, 0 after" as isolation
 > working was reading a broken query as a clean result.
 >
-> The spec now uses `NOT (ecm:path STARTSWITH …)`, asserts the HTTP status, requires
-> `resultsCount` to be a number, and requires the before-count to be greater than zero, so an
-> empty or rejected result fails instead of passing. The 970 above is what that assertion is
+> The spec then used `NOT (ecm:path STARTSWITH …)`, asserted the HTTP status, required
+> `resultsCount` to be a number, and required the before-count to be greater than zero, so an
+> empty or rejected result failed instead of passing. The 970 above is what that assertion was
 > worth: a real baseline that a wrongly-scoped delete would move.
+>
+> **Superseded.** That baseline is not stable on a shared instance — six other suites create
+> and delete throughout the run, so the total moves between the two reads for reasons that
+> have nothing to do with isolation (`expected 1097 to be 1099`, observed). The spec counts
+> nothing now; see the Data Root Isolation section above for the canary it uses instead.
 
 ---
 
@@ -217,7 +234,9 @@ All criteria met:
 ✅ **Destructive operations isolated in data root (cleanup verified)**
 
 - All tests run in `/default-domain/workspaces/it-<runid>`
-- Isolation test verifies no impact outside data root
+- The isolation test verifies no impact outside the data root **by UID, on one document this
+  run owns** — a canary it creates as a sibling of the root — not by counting the repository
+  either side of the delete
 - `deleteDataRoot` re-reads the data root after the `DELETE` and **throws** unless it is
   gone, so a leaked workspace fails the run
 
