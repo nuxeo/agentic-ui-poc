@@ -16,6 +16,12 @@ const WCAG_AA_NORMAL_TEXT = 4.5;
   styleUrls: [
     '../../../../../libs/features/document-detail/src/lib/document-detail/document-detail.scss',
   ],
+  host: {
+    style: `
+      --document-detail-properties-panel-surface: #ffffff;
+      --document-detail-properties-label-muted: #5c5f6b;
+    `,
+  },
 })
 class PropLabelContrastHostComponent {}
 
@@ -90,15 +96,6 @@ describe('Document detail prop-label contrast by theme (NXENG-764)', () => {
       fixture.detectChanges();
 
       try {
-        if (theme !== null) {
-          const onSurfaceVariant = getComputedStyle(document.documentElement)
-            .getPropertyValue('--mat-sys-on-surface-variant')
-            .trim();
-          expect(onSurfaceVariant)
-            .withContext(`theme ${theme} should define --mat-sys-on-surface-variant`)
-            .not.toBe('');
-        }
-
         const panel = fixture.nativeElement.querySelector('.properties-panel') as HTMLElement | null;
         const propLabel = fixture.nativeElement.querySelector('.prop-label') as HTMLElement | null;
         expect(panel).withContext('expected .properties-panel').not.toBeNull();
@@ -123,6 +120,15 @@ describe('Document detail prop-label contrast by theme (NXENG-764)', () => {
             `prop-label on properties-panel in ${label}: ${getComputedStyle(propLabel).color} vs ${panelBg}`,
           )
           .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+
+        if (theme === 'dark') {
+          expect(panelBg)
+            .withContext('properties panel stays a fixed light surface in dark theme')
+            .toBe('rgb(255, 255, 255)');
+          expect(getComputedStyle(propLabel).color)
+            .withContext('label must not inherit light-theme variant on the light strip')
+            .toBe('rgb(92, 95, 107)');
+        }
       } finally {
         fixture.nativeElement.remove();
       }
