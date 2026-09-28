@@ -62,7 +62,7 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
   return [255, 255, 255];
 }
 
-describe('Document detail doc-info-label contrast by theme (NXENG-774)', () => {
+describe('Document detail doc-info-label contrast by theme (NXENG-774, NXENG-852)', () => {
   let originalTheme: string | null;
 
   beforeEach(async () => {
