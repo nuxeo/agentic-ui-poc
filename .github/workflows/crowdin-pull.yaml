@@ -175,8 +175,12 @@ jobs:
           pull_request_body: |
             Opened by the Crowdin Pull workflow. Contains only catalogue files.
 
-            Only **approved** translations are exported, so anything here has been through
-            review on the Crowdin side.
+            This pull request **requests** approved-only export (`export_only_approved: 'true'`),
+            so the intent is that everything here has been through review on the Crowdin side.
+            Treat that as the intent rather than a guarantee until the project's own export
+            settings are confirmed: the Crowdin Guidelines say project-level export settings take
+            precedence over the settings a pipeline sends. Tracked as an owner action in
+            `D8-standard`.
 
             **A catalogue shorter than `en.json` is expected, not a fault.** Untranslated
             strings are omitted rather than exported with their English source, so a locale

@@ -1511,6 +1511,47 @@ expectRed(
   /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
 
+// A step whose FIRST key is not `name` or `uses`. `if:`, `id:` and `env:` are all valid there, and
+// a step-parser that recognises only the common spelling does not see the step at all — so every
+// check scoped to Crowdin steps skips it. Silent pass, same direction as the quoted `uses:` value.
+expectRed(
+  'an if-first Crowdin step setting skip_untranslated_files',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `      - if: \${{ always() }}\n` +
+        `        id: extra-download\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          download_translations: true\n` +
+        `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// The same shape on the ordering rule, where an unseen step means an unseen upload.
+expectRed(
+  'an if-first Crowdin step uploading translations before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - if: \${{ always() }}\n` +
+        `        name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
 // The bare-command DOWNLOAD path. At the pinned SHA a step with `command: download` runs
 // `crowdin $INPUT_COMMAND $INPUT_COMMAND_ARGS` and returns before the boolean-driven path — so a
 // second Crowdin step can download with the forbidden flag while the step found via

@@ -425,9 +425,25 @@ proves. Do not let a picker in through the side door of an extraction ticket.
 implementation on the public tenant and is not compliant with these Guidelines. It appears below
 and elsewhere in this plan only as a measurement.
 
-Three statuses, and the distinction matters: **CONFORMS**, **DEVIATES-JUSTIFIED** (we do something
-else on purpose, with the reason stated), and **OWNER-ACTION-PENDING** (nothing in this repository
-can close it; it needs a person with a credential or an account we do not have).
+**The statuses**, and the distinctions matter:
+
+| Status                   | Means                                                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| **CONFORMS**             | We do what the clause says.                                                                                            |
+| **EXCEEDS**              | We do more than the clause asks.                                                                                       |
+| **DEVIATES-JUSTIFIED**   | We do something else on purpose, with the reason stated in the row.                                                    |
+| **DEVIATES**             | We do not comply and have no justification — an open gap, not a decision.                                              |
+| **OWNER-ACTION-PENDING** | Nothing in this repository can close it. It needs a person with a credential, an account, or an answer we do not have. |
+
+**A row may carry two of these**, because compliance and ownership are different axes. `DEVIATES` +
+`OWNER-ACTION-PENDING` is a gap someone else has to close; `CONFORMS` + `DEVIATES-JUSTIFIED` is a
+clause we satisfy while deliberately declining an adjacent recommendation. Both combinations appear
+below and neither is a defect in the taxonomy — but the taxonomy said "three statuses" while the
+table used five and combined them, which was.
+
+**Five rows are owner actions**: seeding, revoking the setup token, the service-account commit
+identity, confirming the proof-reading workflow, and confirming the project-level export settings.
+They are listed rather than omitted so the pipeline is not read as finished.
 
 | Requirement (quoted)                                                                                                                                                                                                                                                                                                                                           | Our implementation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

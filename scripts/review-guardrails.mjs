@@ -2863,9 +2863,48 @@ function yamlInputIsTrue(key) {
  * @returns {{text: string, offset: number}[]} in document order
  */
 function workflowSteps(body) {
-  const starts = [...body.matchAll(/^[^\S\n]*-[^\S\n]+(?=name:|uses:)/gm)].map(
-    (match) => match.index,
-  );
+  const lines = body.split('\n');
+  const offsets = [];
+  let running = 0;
+  for (const line of lines) {
+    offsets.push(running);
+    running += line.length + 1;
+  }
+
+  // Every sequence item under a `steps:` key, whatever its first key happens to be.
+  //
+  // This used to match `- ` followed by `name:` or `uses:`, which is only the common spelling. A
+  // step may validly start with `if:`, `id:`, `env:` or `with:` and carry `uses:` on a later line —
+  // and such a Crowdin step was not recognised as a step at all, so every check scoped to Crowdin
+  // steps skipped it. Same silent-pass direction as the quoted `uses:` value, one level lower.
+  const starts = [];
+  let stepsIndent = null;
+  let itemIndent = null;
+  for (let at = 0; at < lines.length; at += 1) {
+    const line = lines[at];
+    if (line.trim() === '') continue;
+    const indent = /^[^\S\n]*/.exec(line)[0].length;
+
+    // Dedenting to or past the `steps:` key ends the block — the next job, or a sibling key.
+    if (stepsIndent !== null && indent <= stepsIndent) {
+      stepsIndent = null;
+      itemIndent = null;
+    }
+    if (/^[^\S\n]*steps:[^\S\n]*$/.test(line)) {
+      stepsIndent = indent;
+      itemIndent = null;
+      continue;
+    }
+    if (stepsIndent === null) continue;
+
+    // Only items at the block's own depth. Anything deeper is a list INSIDE a step.
+    const item = /^([^\S\n]*)-[^\S\n]+\S/.exec(line);
+    if (item && (itemIndent === null || item[1].length === itemIndent)) {
+      itemIndent = item[1].length;
+      starts.push(offsets[at]);
+    }
+  }
+
   return starts.map((offset, at) => ({
     offset,
     text: body.slice(offset, at + 1 < starts.length ? starts[at + 1] : body.length),

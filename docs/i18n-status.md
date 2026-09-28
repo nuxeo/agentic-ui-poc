@@ -664,11 +664,14 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
    way** — Enrico Stengert on INTERN-1346, 28 September: the sources are visible and "translations
    can begin on our end". Nothing has been translated yet, which is why the nine languages are at
    zero above; readiness and progress are different things and this page has conflated them before.
-   Only approved translations are exported (`export_only_approved: 'true'` — D8g), so the
-   application will show a language when a linguist has passed it and not before. Whether a
-   proof-reading step is configured on the project is **not yet confirmed**, and whether to use
-   Crowdin's machine-translation features is the Translation Team's decision, not ours. Both are
-   open rows in `D8-standard`.
+   The pipeline **requests** approved-only export (`export_only_approved: 'true'` — D8g), which is
+   the MUST the Guidelines set. It is not yet proof of the effect: the Guidelines also say
+   project-level export settings in Crowdin **take precedence over the settings used by
+   pipelines**, and project 160's settings have not been checked. So the intended behaviour is that
+   a language appears only once a linguist has passed it, and confirming that it is the actual
+   behaviour is an owner action. Whether a proof-reading step is configured is likewise **not yet
+   confirmed**, and whether to use Crowdin's machine-translation features is the Translation Team's
+   decision, not ours. All three are open rows in `D8-standard`.
 
 2. ~~**Project membership.**~~ Resolved on 28 September: Manager access granted on project 160.
    Worth keeping the lesson, because it cost a day of confusion — Okta access to the Crowdin
