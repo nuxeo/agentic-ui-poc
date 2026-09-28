@@ -49,13 +49,31 @@ describe('Upload and Download Integration Tests', () => {
   afterAll(async () => {
     const stuck: string[] = [];
     for (const batchId of batches) {
-      const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/upload/${batchId}`, {
+      const url = `${harness.nuxeoUrl}/nuxeo/api/v1/upload/${batchId}`;
+      const res = await fetch(url, {
         method: 'DELETE',
         headers: { Authorization: harness.auth },
       });
       // 404 means the batch is already gone — Nuxeo drops a batch once an `execute` has
       // consumed it, which is the normal path for the attach tests.
-      if (!res.ok && res.status !== 404) stuck.push(`${batchId} (HTTP ${res.status})`);
+      if (!res.ok && res.status !== 404) {
+        stuck.push(`${batchId} (DELETE answered HTTP ${res.status})`);
+        continue;
+      }
+
+      // The read-back, and the part that makes this a verification. A 2xx is Nuxeo accepting
+      // the call, not evidence the batch is gone: an endpoint that acknowledges without
+      // applying left the batch on a shared instance while this hook reported green, so the
+      // stated no-leak criterion was asserted by nothing. Reported on the pull request; the
+      // document and data-root cleanup paths already re-read for the same reason.
+      //
+      // 404 is the right thing to require, and the two states are distinguishable: measured on
+      // this deployment 2026-09-28, a live batch answers `GET` with **204** and a deleted one
+      // with **404**. A check that could not tell them apart would be the vacuity again.
+      const confirm = await fetch(url, { headers: { Authorization: harness.auth } });
+      if (confirm.status !== 404) {
+        stuck.push(`${batchId} (still readable after the DELETE, HTTP ${confirm.status})`);
+      }
     }
     if (stuck.length > 0) {
       throw new Error(

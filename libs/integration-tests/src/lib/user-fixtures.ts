@@ -155,6 +155,14 @@ export async function createNonAdminUser(
  *
  * 404 is not a failure: the user is gone, which is the outcome asked for.
  *
+ * The **read-back** is what makes this a verification rather than a request. Checking only the
+ * `DELETE` response leaves the promise in the first line unkept: an endpoint that acknowledges
+ * without applying leaves the account active and every RBAC teardown still reports green — the
+ * same shape of false reassurance the `console.warn` had, one layer in. Reported on the pull
+ * request. `deleteDataRoot` in the harness already re-reads for exactly this reason, and
+ * `rbac.integration.spec.ts`'s dedicated deletion test already demonstrated the invariant on
+ * one path; the shared cleanup helper every other path goes through did not enforce it.
+ *
  * @param harness Integration test harness (provides nuxeoUrl, auth)
  * @param username Username to delete (the scoped username, not the base name)
  */
@@ -162,7 +170,8 @@ export async function deleteUser(
   harness: { nuxeoUrl: string; auth: string },
   username: string,
 ): Promise<void> {
-  const deleteRes = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/user/${username}`, {
+  const url = `${harness.nuxeoUrl}/nuxeo/api/v1/user/${username}`;
+  const deleteRes = await fetch(url, {
     method: 'DELETE',
     headers: {
       Authorization: harness.auth,
@@ -177,7 +186,18 @@ export async function deleteUser(
     );
   }
 
-  console.log(`[user-fixtures] Deleted test user: ${username}`);
+  const confirmRes = await fetch(url, { headers: { Authorization: harness.auth } });
+  if (confirmRes.status !== 404) {
+    throw new Error(
+      `[user-fixtures] Test user '${username}' is still readable after the DELETE ` +
+        `(HTTP ${confirmRes.status}).\n` +
+        `  Nuxeo answered the DELETE with ${deleteRes.status}, so the call was accepted and\n` +
+        `  not applied. The account is still active on ${harness.nuxeoUrl}. Remove it before\n` +
+        `  the next run.`,
+    );
+  }
+
+  console.log(`[user-fixtures] Deleted test user: ${username} (confirmed absent)`);
 }
 
 /**
