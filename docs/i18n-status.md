@@ -631,10 +631,14 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
 
 **What is left, and none of it is plumbing.**
 
-1. **Nothing is translated.** Every one of the nine target languages is at zero. Until a translator
-   or machine pre-translation acts on project 160, every locale correctly renders English through
-   the fallback, and the catalogues stay short. This is the only thing standing between the
-   pipeline working and the application looking translated.
+1. **Crowdin holds no translations.** Every one of its nine target languages is at zero. This is
+   about **Crowdin's** state, not the application's: the repository ships 151 hand-written French
+   and German strings, written before Crowdin existed, and those render today. What Crowdin has
+   never had is any translation of its own — which is exactly why the first pull was destructive
+   and why `seed_translations` uploads the 151 before any further pull. Beyond them, every locale
+   correctly renders English through the fallback and the catalogues stay short. A translator or
+   machine pre-translation on project 160 is the only thing standing between the pipeline working
+   and the application looking translated.
 2. **Project membership.** The project is not visible to the team in the Crowdin portal; Okta
    access and project membership are separate grants. Chased on INTERN-1346.
 3. **Nine target languages, three advertised.** Deliberate — see D8e in

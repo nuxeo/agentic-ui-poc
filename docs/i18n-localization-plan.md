@@ -8,8 +8,11 @@ extraction and wire adf-hx translation assets" · Epic
 **Status:** slices S1–S5 delivered on `feature/nxsat-227a-i18n`. S6 (the Crowdin pipeline) is
 built and has run end to end against the live tenant: project 160 exists, 1,972 English strings
 and 1,972 translator-context entries are uploaded, and the pull opened a real pull request. What
-remains is Crowdin-side rather than a pipeline gap — no language has been translated yet, and
-project membership is still pending — plus the two gaps D8d and D8e record. The GA extraction is
+remains is Crowdin-side rather than a pipeline gap — **Crowdin itself holds no translations yet**,
+for any of its nine target languages, and project membership is still pending. That is separate
+from what the repository ships: `fr.json` and `de.json` carry 151 hand-written strings written
+before Crowdin existed, which is why D8d's data loss mattered and what `seed_translations` uploads.
+Plus the two gaps D8d and D8e record. The GA extraction is
 [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284).
 
 > **Looking for where we stand rather than what we decided?** Read

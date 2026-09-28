@@ -1228,6 +1228,36 @@ expectRed(
   /contains the local address `127\.0\.0\.1`/,
 );
 
+// `127.0.0.2` is as much the customer's own machine as `127.0.0.1`, and the first version of this
+// rule matched only the latter while its comment promised any loopback address.
+expectRed(
+  'a 127.0.0.0/8 address other than 127.0.0.1',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+        '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+        '  "integrations": { "arender": { "viewerOrigin": "http://127.0.0.2:8181" } }\n}\n',
+    ),
+  /contains the local address `127\.0\.0\.2`/,
+);
+
+expectRed(
+  'the IPv6 loopback in a URL',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+        '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+        '  "integrations": { "arender": { "viewerOrigin": "http://[::1]:8181" } }\n}\n',
+    ),
+  /contains the local address `\[::1\]`/,
+);
+
 expectGreen(
   'a real external integration host is not mistaken for a developer leak',
   'checkPackagedConfigIsNotADemo',
@@ -1278,6 +1308,9 @@ const CROWDIN_WORKFLOW = (extra) =>
  */
 const PULL_SIGNING = `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}\n`;
 const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
+/** What identifies the step both assertions must examine: the one that downloads. */
+const PULL_DOWNLOAD = `          download_translations: true\n`;
+const PULL_OK = PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED;
 
 const CROWDIN = {
   'crowdin-conf.yml': crowdinConf([
@@ -1293,9 +1326,7 @@ const CROWDIN = {
     `        run: node tools/i18n/crowdin-push-context.mjs\n`,
   // The pull workflow signs on the ACTION, because that is the only placement that signs
   // anything — see the control for it below.
-  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
-    PULL_SIGNING + PULL_SKIP_UNTRANSLATED,
-  ),
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(PULL_OK),
   'apps/nuxeo-ui/public/i18n/en.json': EN_JSON,
   // A file for the SECOND pattern, because every pattern must now match something. Without
   // it this fixture is not "a valid two-entry config" at all — it is the defect the control
@@ -1340,7 +1371,7 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(PULL_SKIP_UNTRANSLATED).replace(
+      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SKIP_UNTRANSLATED).replace(
         '      - uses: crowdin/github-action@v2\n',
         `      - uses: crazy-max/ghaction-import-gpg@v6\n` +
           `        with:\n` +
@@ -1361,7 +1392,7 @@ expectRed(
   'the pull workflow leaving skip_untranslated_strings at its default',
   'checkCrowdinConfig',
   CROWDIN,
-  (write) => write('.github/workflows/crowdin-pull.yaml', CROWDIN_WORKFLOW(PULL_SIGNING)),
+  (write) => write('.github/workflows/crowdin-pull.yaml', CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING)),
   /does not set `skip_untranslated_strings: true`/,
 );
 
@@ -1372,7 +1403,9 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(PULL_SIGNING + `          skip_untranslated_strings: false\n`),
+      CROWDIN_WORKFLOW(
+        PULL_DOWNLOAD + PULL_SIGNING + `          skip_untranslated_strings: false\n`,
+      ),
     ),
   /does not set `skip_untranslated_strings: true`/,
 );
@@ -1386,12 +1419,35 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(PULL_SIGNING + PULL_SKIP_UNTRANSLATED).replace(
+      CROWDIN_WORKFLOW(PULL_OK).replace(
         '      - uses: crowdin/github-action@v2\n',
         '      - uses: actions/checkout@v6\n',
       ),
     ),
   /contains no `uses: crowdin\/github-action` step/,
+);
+
+// Two Crowdin steps, with the option on the one that does NOT download. Matching the action name
+// alone found the first step and passed, while the step that actually downloads omitted it — and
+// this arrangement stopped being hypothetical in this very PR, which added a second Crowdin step
+// to the push workflow.
+expectRed(
+  'the option set on a preparation step while the downloading step omits it',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        `          upload_sources: false\n` + PULL_SKIP_UNTRANSLATED,
+      ) +
+        `      - uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          config: crowdin-conf.yml\n` +
+        PULL_DOWNLOAD +
+        PULL_SIGNING,
+    ),
+  /does not set `skip_untranslated_strings: true`/,
 );
 
 // The founding defect. Both options deleted from the SECOND entry only: the first still

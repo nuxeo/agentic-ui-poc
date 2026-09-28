@@ -3039,13 +3039,15 @@ function checkCrowdinConfig() {
           'that is not this one.',
       );
     }
-    // Merged without this, both workflows go live against secrets that do not exist and fail
-    // every day until S6 is unblocked. A job that is red for a reason nobody can fix is a job
-    // people stop reading, including on the day it is red for a real reason.
+    // The variable is set and both workflows have run, so this is no longer about waiting for a
+    // project — it is the off switch. Keep it: a fork or a clone of this repository has no
+    // Crowdin secrets, and without the gate every push there triggers a job that fails against
+    // credentials it was never going to have. A job that is red for a reason nobody can fix is a
+    // job people stop reading, including on the day it is red for a real reason.
     if (!text.includes("vars.CROWDIN_SYNC_ENABLED == 'true'")) {
       fail(
-        `${workflow} is not gated on \`vars.CROWDIN_SYNC_ENABLED\`. The Crowdin project is ` +
-          'created manually through the INTERN board and does not exist yet.',
+        `${workflow} is not gated on \`vars.CROWDIN_SYNC_ENABLED\`, so it runs wherever this ` +
+          'repository is forked or cloned — against Crowdin secrets that exist only here.',
       );
     }
   }
@@ -3069,7 +3071,18 @@ function checkCrowdinConfig() {
   // host step in the fixture on purpose.
   const pull = read(workflows[1]);
   const pullSteps = pull.split(/^\s*-\s(?=name:|uses:)/m);
-  const crowdinStep = pullSteps.find((step) => /uses:\s*crowdin\/github-action/.test(step));
+  // The step that DOWNLOADS, not merely the first Crowdin step.
+  //
+  // `find` on the action name alone was wrong in a way that was invisible while the pull workflow
+  // had exactly one Crowdin step — and this change added a second Crowdin step to the PUSH
+  // workflow, so the arrangement is no longer hypothetical. A preparation step carrying
+  // `skip_untranslated_strings: true` would satisfy both assertions below while the step that
+  // actually downloads omitted it, and signing matters on the downloading step too, because that
+  // is the one that commits.
+  const crowdinSteps = pullSteps.filter((step) => /uses:\s*crowdin\/github-action/.test(step));
+  const crowdinStep = crowdinSteps.find((step) =>
+    /^\s*download_translations:\s*true\s*$/m.test(step),
+  );
   if (crowdinStep !== undefined && !/^\s*gpg_private_key:/m.test(crowdinStep)) {
     fail(
       `${workflows[1]} runs crowdin/github-action without passing \`gpg_private_key\`, so its ` +
@@ -3094,9 +3107,12 @@ function checkCrowdinConfig() {
   // A gate that only sees the pathological extreme stops working the moment the product improves.
   if (crowdinStep === undefined) {
     fail(
-      `${workflows[1]} contains no \`uses: crowdin/github-action\` step, so neither the signing ` +
-        'nor the `skip_untranslated_strings` assertion above examined anything. It cannot ' +
-        'download translations in this state.',
+      `${workflows[1]} contains no \`uses: crowdin/github-action\` step with ` +
+        `\`download_translations: true\`${
+          crowdinSteps.length ? ` (it has ${crowdinSteps.length} Crowdin step(s), none of them ` +
+            'downloading)' : ''
+        }, so neither the signing nor the \`skip_untranslated_strings\` assertion examined ` +
+        'anything. It cannot download translations in this state.',
     );
   } else if (!/^\s*skip_untranslated_strings:\s*true\s*$/m.test(crowdinStep)) {
     fail(
@@ -3211,7 +3227,17 @@ function checkPackagedConfigIsNotADemo() {
   for (const file of layer0.filter((path) => fileExists(path))) {
     const body = read(file);
 
-    const loopback = /\b(?:localhost|127\.0\.0\.1|0\.0\.0\.0|host\.docker\.internal)\b/.exec(body);
+    // The whole of 127.0.0.0/8 and the IPv6 loopback, not just `127.0.0.1`.
+    //
+    // The first version of this matched `127.0.0.1` literally while the comment above promised
+    // "any loopback address". `127.0.0.2` and `http://[::1]:8181` reach the customer's own machine
+    // exactly as `127.0.0.1` does, so the narrow regex made the guarantee false rather than
+    // partial — and a guarantee that is wrong is worse than one that is absent, because it stops
+    // the next person looking.
+    const loopback =
+      /\b(?:localhost|host\.docker\.internal)\b|\b127\.\d{1,3}\.\d{1,3}\.\d{1,3}\b|\b0\.0\.0\.0\b|\[::1\]|(?<![\w:.])::1(?![\w:.])/.exec(
+        body,
+      );
     if (loopback) {
       fail(
         `${file} contains the local address \`${loopback[0]}\`.\n` +
