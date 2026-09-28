@@ -375,6 +375,32 @@ expectRed(
   /asserted nothing/,
 );
 
+expectGreen(
+  'a part-translated locale below the key floor is not accused of translating nothing',
+  'checkCataloguesAreTranslated',
+  {
+    ...SIX,
+    // Two real translations out of six keys. Legitimate, and the reason the floor exists.
+    'apps/nuxeo-ui/public/i18n/de.json':
+      '{\n  "browse": { "delete": "Löschen", "rename": "Umbenennen" }\n}\n',
+  },
+);
+
+expectRed(
+  'an emptied catalogue hiding behind a healthy sibling',
+  'checkCataloguesAreTranslated',
+  // `fr.json` is gutted to `{}` while `de.json` stays real. The key floor used to `continue`
+  // past the empty one, and the healthy sibling incremented `compared` so the
+  // "asserted nothing" guard could not notice either.
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': EN_SIX,
+    'apps/nuxeo-ui/public/i18n/fr.json': '{}\n',
+    'apps/nuxeo-ui/public/i18n/de.json': FR_SIX.replace('Supprimer', 'Löschen'),
+  },
+  null,
+  /fr\.json contains no translated strings at all, while .*en\.json has 6/,
+);
+
 /* ---------------- checkTranslationContext ---------------- */
 
 /** Context for every string in `EN_JSON`, keyed identically, plus one `$` metadata key. */
@@ -1179,6 +1205,13 @@ const CROWDIN_WORKFLOW = (extra) =>
   `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
   `        with:\n          config: crowdin-conf.yml\n${extra}`;
 
+/**
+ * The two inputs the pull workflow's action step must carry, separately so a control can remove
+ * exactly one and stay red for exactly one reason.
+ */
+const PULL_SIGNING = `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}\n`;
+const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
+
 const CROWDIN = {
   'crowdin-conf.yml': crowdinConf([
     CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
@@ -1194,7 +1227,7 @@ const CROWDIN = {
   // The pull workflow signs on the ACTION, because that is the only placement that signs
   // anything — see the control for it below.
   '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
-    `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}\n`,
+    PULL_SIGNING + PULL_SKIP_UNTRANSLATED,
   ),
   'apps/nuxeo-ui/public/i18n/en.json': EN_JSON,
   // A file for the SECOND pattern, because every pattern must now match something. Without
@@ -1240,7 +1273,7 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW('').replace(
+      CROWDIN_WORKFLOW(PULL_SKIP_UNTRANSLATED).replace(
         '      - uses: crowdin/github-action@v2\n',
         `      - uses: crazy-max/ghaction-import-gpg@v6\n` +
           `        with:\n` +
@@ -1250,6 +1283,48 @@ expectRed(
       ),
     ),
   /without passing `gpg_private_key`, so its commits are unsigned/,
+);
+
+// `skip_untranslated_strings: false` exports every untranslated string WITH ITS ENGLISH SOURCE,
+// which is how the first real pull overwrote 151 hand-written strings. Asserted on the
+// configuration rather than on a catalogue, because once most of a catalogue is genuinely
+// translated the resulting file is only ~96% English — a warning, not a failure. The gate that
+// only catches the pathological extreme stops working as the product improves.
+expectRed(
+  'the pull workflow leaving skip_untranslated_strings at its default',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) => write('.github/workflows/crowdin-pull.yaml', CROWDIN_WORKFLOW(PULL_SIGNING)),
+  /does not set `skip_untranslated_strings: true`/,
+);
+
+expectRed(
+  'setting skip_untranslated_strings to false explicitly',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_SIGNING + `          skip_untranslated_strings: false\n`),
+    ),
+  /does not set `skip_untranslated_strings: true`/,
+);
+
+// A pull workflow with no action step at all: both assertions above would examine nothing, and
+// before this the signing check simply skipped and carried the gate to green.
+expectRed(
+  'a pull workflow that never invokes crowdin/github-action',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_SIGNING + PULL_SKIP_UNTRANSLATED).replace(
+        '      - uses: crowdin/github-action@v2\n',
+        '      - uses: actions/checkout@v6\n',
+      ),
+    ),
+  /contains no `uses: crowdin\/github-action` step/,
 );
 
 // The founding defect. Both options deleted from the SECOND entry only: the first still

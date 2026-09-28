@@ -1908,6 +1908,34 @@ function checkCataloguesAreTranslated() {
     if (!english || !translated) continue;
 
     const shared = [...translated.keys()].filter((key) => english.has(key));
+
+    // An emptied catalogue, before the key floor gets a chance to skip it.
+    //
+    // The floor below exists so a legitimately part-translated locale — two approved strings out
+    // of two thousand — is not accused of translating nothing. But `continue` is also how a
+    // catalogue gutted to `{}` escaped: it contributes no shared keys, the parity half only WARNS
+    // about the keys it is missing, and `checkLocaleDataRegistered` and
+    // `checkAdvertisedLocalesShip` are both satisfied by the file merely existing. Worse, the
+    // `compared === 0` guard at the end could not catch it either, because one healthy sibling
+    // increments `compared` and covers for it.
+    //
+    // Zero is different from few. Per D8e a language is advertised only once it has translations,
+    // so a shipped catalogue with none of them is either a destructive sync or a language that
+    // should not be shipped yet. Both are worth stopping.
+    if (translated.size === 0 && english.size >= 5) {
+      fail(
+        `${catalogue} contains no translated strings at all, while ${reference} has ` +
+          `${english.size}.\n` +
+          '    A catalogue may legitimately be SHORT — `skip_untranslated_strings: true` omits ' +
+          'what is untranslated and English renders through the fallback — but empty means either ' +
+          'a sync replaced real translations with nothing, or a language is being shipped before ' +
+          'anything was translated for it. D8e: advertise a language when it has translations, ' +
+          'not when it is planned.',
+      );
+      compared += 1;
+      continue;
+    }
+
     if (shared.length < 5) continue;
 
     compared += 1;
@@ -3050,6 +3078,36 @@ function checkCrowdinConfig() {
         'Importing a key in a preceding host step configures the RUNNER, not the container — it ' +
         'succeeds and changes nothing. Pass `gpg_private_key` (and `gpg_passphrase`) to the ' +
         'action itself.',
+    );
+  }
+
+  // `skip_untranslated_strings: true` on that same step, asserted on the CONFIGURATION rather
+  // than on its symptom — because after seeding, the symptom is no longer a failure.
+  //
+  // `checkCataloguesAreTranslated` fails a catalogue whose every value equals English. That is
+  // exactly what reverting this input produced BEFORE the existing French and German strings were
+  // seeded into Crowdin. Afterwards it is not: those 151 strings come back genuinely translated
+  // and the remaining ~1,890 come back padded with English, which is 96% identical — past the
+  // 80% warning threshold, short of the all-identical failure. So the regression would warn and
+  // CI would pass, and it would pass more convincingly the more of the catalogue is real.
+  //
+  // A gate that only sees the pathological extreme stops working the moment the product improves.
+  if (crowdinStep === undefined) {
+    fail(
+      `${workflows[1]} contains no \`uses: crowdin/github-action\` step, so neither the signing ` +
+        'nor the `skip_untranslated_strings` assertion above examined anything. It cannot ' +
+        'download translations in this state.',
+    );
+  } else if (!/^\s*skip_untranslated_strings:\s*true\s*$/m.test(crowdinStep)) {
+    fail(
+      `${workflows[1]} does not set \`skip_untranslated_strings: true\` on its ` +
+        'crowdin/github-action step.\n' +
+        '    The action defaults it to `false`, and `false` does not mean "omit the string" — it ' +
+        'means export it with its ENGLISH SOURCE as the translation. The first real pull opened a ' +
+        'pull request with nine catalogues byte-identical to `en.json`, which overwrote 75 ' +
+        'hand-written French and 76 German strings because an export replaces the whole file.\n' +
+        "    `true` omits the key instead, so `setFallbackLang('en')` renders English and a short " +
+        'catalogue becomes the honest steady state. See D8d in docs/i18n-localization-plan.md.',
     );
   }
 
