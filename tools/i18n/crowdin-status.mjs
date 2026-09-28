@@ -31,16 +31,24 @@ async function crowdin(path, token) {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
   });
   if (!response.ok) {
-    // The status code is the diagnosis and is worth saying out loud, because the three likely
-    // failures look identical from the outside and have completely different fixes.
+    // The status code narrows the diagnosis and is worth saying out loud, because these failures
+    // look identical from the outside and have different fixes.
+    //
+    // It NARROWS rather than decides, which an earlier version of this got wrong: it reported a
+    // 404 as "a project-membership grant", and a 404 says nothing of the kind — a wrong
+    // `CROWDIN_PROJECT_ID`, or a project that has been deleted, produce exactly the same
+    // response. Naming one cause out of three sends the reader to the wrong fix with more
+    // confidence than no hint at all would have.
     const hint =
       response.status === 401
         ? ' — 401 means the token is not valid for this tenant. The Crowdin setup token and the ' +
           'CI token are different credentials; only the CI one works here.'
         : response.status === 403 || response.status === 404
-          ? ` — ${response.status} means the token authenticates but cannot see project ` +
-            `${process.env['CROWDIN_PROJECT_ID']}. That is a project-membership grant, separate ` +
-            'from tenant access.'
+          ? ` — ${response.status} means project ${process.env['CROWDIN_PROJECT_ID']} is not ` +
+            'available to this token, which has three possible causes and does not distinguish ' +
+            'them: the project id is wrong, the project no longer exists, or the token ' +
+            'authenticates against the tenant but has no membership of this project. Check the ' +
+            'id first, since it is the cheapest to rule out.'
           : '';
     throw new Error(`GET ${path} → ${response.status}${hint}\n${await response.text()}`);
   }
@@ -113,14 +121,17 @@ async function main() {
     appendFileSync(summaryFile, `## Crowdin status\n\n\`\`\`\n${report}\n\`\`\`\n`);
   }
 
-  // An empty project is not a healthy answer to "what is in Crowdin". Zero target languages or
-  // zero source files means the push never worked or the token points somewhere unexpected, and
-  // either way a green job here would be read as confirmation that it did.
+  // An empty project is not a healthy answer to "what is in Crowdin", so this exits non-zero
+  // rather than printing a tidy report of nothing. It says WHAT is empty and leaves the cause
+  // open: zero source files could be a push that never ran, a push that ran against a different
+  // project, or a file deleted in Crowdin, and the report cannot tell those apart. Naming one
+  // would be guessing in the voice of a diagnosis.
   if (rows.length === 0 || files.data.length === 0) {
     console.error(
       `\nProject ${projectId} has ${rows.length} target language(s) and ${files.data.length} ` +
-        'source file(s). One of those being zero means the sync has not worked, not that there ' +
-        'is nothing to report.',
+        'source file(s). Zero of either means there is nothing to report ON, which is a finding ' +
+        'rather than a clean bill of health — a green job here would be read as confirming the ' +
+        'sync works. Start from whether the push has ever succeeded against THIS project id.',
     );
     process.exit(1);
   }
