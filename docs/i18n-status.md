@@ -622,7 +622,7 @@ this changes no behaviour: nothing runs until that variable is set. `checkCrowdi
    [INTERN-1346](https://hyland.atlassian.net/browse/INTERN-1346). Created manually by global
    admins; the project name must match the repository, `agentic-ui-poc`.
 4. **Set the secrets and then the variable**, in that order —
-   `CROWDIN_PROJECT_ID`, `CROWDIN_PERSONAL_TOKEN`, `CROWDIN_BOT_GITHUB_TOKEN`, and the bot GPG
+   `CROWDIN_PROJECT_ID`, `CROWDIN_PERSONAL_TOKEN`, `BOT_GITHUB_TOKEN`, and the bot GPG
    pair. `crowdin-pull.yaml` refuses to run on a half-configured activation rather than quietly
    committing unsigned or opening a pull request with no CI, so a missing secret is a red job with
    a message naming it, not a silent downgrade.
