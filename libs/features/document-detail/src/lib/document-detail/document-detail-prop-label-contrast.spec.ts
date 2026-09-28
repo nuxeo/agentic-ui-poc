@@ -1,6 +1,6 @@
 /**
- * NXENG-861 — `.prop-label` on the fixed light properties panel must meet WCAG 2.1 SC 1.4.3 (IBM 1882757527).
- * The panel surface is intentionally white in every theme (NXENG-774); label colour uses the matching host token.
+ * NXENG-858 — `.prop-label` on the fixed light properties panel must meet WCAG 2.1 SC 1.4.3 (IBM 1792790291).
+ * Per-theme computed contrast is covered in `apps/nuxeo-ui/.../prop-label-contrast.spec.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -58,7 +58,7 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-describe('DocumentDetailComponent — prop-label text contrast (NXENG-861)', () => {
+describe('DocumentDetailComponent — prop-label text contrast (NXENG-858)', () => {
   const scssPath = join(import.meta.dirname, 'document-detail.scss');
   const scss = readFileSync(scssPath, 'utf8');
   const labelBlock = stripScssComments(scssBlock(scss, 'prop-label'));
