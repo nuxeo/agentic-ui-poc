@@ -1,6 +1,6 @@
 # i18n — where we actually are
 
-**Dated 22 September 2026.** Measured, not estimated: every number below comes from a command
+**Dated 28 September 2026.** Measured, not estimated: every number below comes from a command
 that is quoted next to it, so it can be re-run rather than believed.
 
 Re-measure before quoting anything here. The 16 September edition of this page claimed the gate was
@@ -457,12 +457,12 @@ failed fetch named that control with the raw key. Its catalogue value was also l
 
 ### Four gates, and the first controls any guardrail here has had
 
-| Guardrail                      | Enforces                                                                 | Scope    |
-| ------------------------------ | ------------------------------------------------------------------------ | -------- |
-| `checkNoHardcodedUiText`       | a newly added hard-coded user-facing string                              | **diff** |
-| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, key parity across locales | repo     |
-| `checkTranslationContext`      | translator context exists for every string and for no deleted one        | repo     |
-| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch          | repo     |
+| Guardrail                      | Enforces                                                                                        | Scope    |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
+| `checkNoHardcodedUiText`       | a newly added hard-coded user-facing string                                                     | **diff** |
+| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, no key `en.json` lacks (missing keys warn — D8d) | repo     |
+| `checkTranslationContext`      | translator context exists for every string and for no deleted one                               | repo     |
+| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch                                 | repo     |
 
 Plus `checkAngularDevAssets` extended to compare the `ignore` list, which it did not before — an
 entry excluding a file in the base array and not in `development` read as identical while the two
@@ -604,32 +604,55 @@ row twelve lines above:
   that an unowned one rots is contradicted by the measurement in D8b of
   `docs/i18n-localization-plan.md`.
 
-### Slice S6 — the Crowdin pipeline is BUILT and dormant; what is left is external
+### Slice S6 — the Crowdin pipeline is LIVE; what is left is translation, not plumbing
 
-This section used to tell the reader to write the pipeline. It is written, in this pull request,
-and the distinction that matters now is between what the repository contains and what only a Crowdin
-admin can do.
+This section said twice over that the pipeline was written but dormant and the project external.
+Both stopped being true on 28 September 2026. It is activated and both halves have run against the
+real tenant.
 
-**In the repository, gated off.** `crowdin-conf.yml`, `.github/workflows/crowdin-push.yaml` and
+**In the repository.** `crowdin-conf.yml`, `.github/workflows/crowdin-push.yaml` and
 `crowdin-pull.yaml`, and `tools/i18n/crowdin-push-context.mjs` for the translator context the JSON
-source format cannot carry. Both workflows are gated on `vars.CROWDIN_SYNC_ENABLED`, so merging
-this changes no behaviour: nothing runs until that variable is set. `checkCrowdinConfig` and
-`checkTranslatorContextPush` hold the shape.
+source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` and
+`checkCataloguesAreTranslated` hold the shape.
 
-**Not in the repository, and nobody here can do it.**
+**Activated.** Crowdin project **160** exists via
+[INTERN-1346](https://hyland.atlassian.net/browse/INTERN-1346). `CROWDIN_PROJECT_ID`,
+`CROWDIN_PERSONAL_TOKEN`, `BOT_GITHUB_TOKEN`, `GPG_PRIVATE_KEY` and `GPG_PASSPHRASE` are set, with
+`CROWDIN_SYNC_ENABLED` and `GPG_BOT_SIGNING_ENABLED` both `true`.
 
-3. **The Crowdin project itself**, requested as
-   [INTERN-1346](https://hyland.atlassian.net/browse/INTERN-1346). Created manually by global
-   admins; the project name must match the repository, `agentic-ui-poc`.
-4. **Set the secrets and then the variable**, in that order —
-   `CROWDIN_PROJECT_ID`, `CROWDIN_PERSONAL_TOKEN`, `BOT_GITHUB_TOKEN`, and the bot GPG
-   pair. `crowdin-pull.yaml` refuses to run on a half-configured activation rather than quietly
-   committing unsigned or opening a pull request with no CI, so a missing secret is a red job with
-   a message naming it, not a silent downgrade.
-5. **The first sync has never run.** `tools/i18n/crowdin-push-context.mjs` has never made a real
-   HTTP call, and its pure parts being covered is not the same as having worked. Treat the first
-   push as a thing to watch, and check what reached Crowdin against the repository before letting
-   the daily pull open anything.
+**Both halves have run.**
+
+- **Push.** 1,972 English strings and 1,972 translator-context entries are in Crowdin. The context
+  is genuinely there rather than merely reported as sent: a second run reported `0 updated`,
+  because the script compares against what Crowdin already holds.
+- **Pull.** Opened a real pull request, #282, which also **confirms `BOT_GITHUB_TOKEN` has the
+  scopes it needs** — CI started on the branch, which the default `GITHUB_TOKEN` would not have
+  caused.
+
+**What is left, and none of it is plumbing.**
+
+1. **Crowdin holds no translations.** Every one of its nine target languages is at zero. This is
+   about **Crowdin's** state, not the application's: the repository ships 151 hand-written French
+   and German strings, written before Crowdin existed, and those render today. What Crowdin has
+   never had is any translation of its own — which is exactly why the first pull was destructive
+   and why `seed_translations` uploads the 151 before any further pull. Beyond them, every locale
+   correctly renders English through the fallback and the catalogues stay short. A translator or
+   machine pre-translation on project 160 is the only thing standing between the pipeline working
+   and the application looking translated.
+2. **Project membership.** The project is not visible to the team in the Crowdin portal; Okta
+   access and project membership are separate grants. Chased on INTERN-1346.
+3. **Nine target languages, three advertised.** Deliberate — see D8e in
+   `docs/i18n-localization-plan.md`. A language is advertised when it has translations, not when it
+   is planned.
+4. **Bot commits are signed but not verified** — `verified: false`, `reason: unknown_key`. Not a
+   missing upload: the author identity is `github-actions[bot]@users.noreply.github.com`, GitHub's
+   own App, on which nobody can register a GPG key. Needs an account that can own the key.
+
+**What the first pull cost, because it is the lesson of the slice.** It opened a pull request with
+nine catalogues byte-identical to `en.json` and would have overwritten 75 hand-written French and
+76 German strings. `skip_untranslated_strings` defaulted to `false`, which exports an untranslated
+string **with its English source as the translation** rather than omitting it. Full key parity was
+the reassuring signal and the defect produced it. See D8d.
 
 One trap is already handled and must stay handled: the standard's `/**/**/i18n/en.json` glob, with
 `base_path: "."`, sweeps `node_modules` and its 48 upstream catalogues — which would push

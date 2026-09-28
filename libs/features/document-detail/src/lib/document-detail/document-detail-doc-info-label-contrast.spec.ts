@@ -1,38 +1,26 @@
 /**
- * NXENG-813 — `.doc-info-label` on the fixed white properties panel (IBM 787384272).
+ * NXENG-774 / NXENG-782 / NXENG-804 / NXENG-813 / NXENG-829 / NXENG-852 — `.doc-info-label` in the properties panel must meet WCAG 2.1 SC 1.4.3
+ * (IBM 280073873, IBM 1224611475, IBM 542201046, IBM 787384272, IBM 1741130194). Per-theme Karma coverage:
+ * `apps/nuxeo-ui/src/app/document-detail/doc-info-label-contrast.spec.ts`.
  */
-import { Component, provideZonelessChangeDetection } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 const WCAG_AA_NORMAL_TEXT = 4.5;
-
-@Component({
-  standalone: true,
-  selector: 'lib-document-detail-doc-info-label-contrast-host',
-  templateUrl: './document-detail-doc-info-label-contrast.host.html',
-  styleUrls: ['./document-detail.scss'],
-})
-class DocumentDetailDocInfoLabelContrastHost {}
 
 function scssBlock(source: string, className: string): string {
   const match = source.match(new RegExp(`\\.${className}\\s*\\{[^}]+\\}`, 's'));
   return match?.[0] ?? '';
 }
 
-function parseRgb(css: string): [number, number, number] | null {
-  const m = css.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!m) return null;
-  return [Number(m[1]), Number(m[2]), Number(m[3])];
-}
-
-function parseHex(hex: string): [number, number, number] | null {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return null;
-  const n = Number.parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+function parseHex(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [
+    Number.parseInt(h.slice(0, 2), 16),
+    Number.parseInt(h.slice(2, 4), 16),
+    Number.parseInt(h.slice(4, 6), 16),
+  ];
 }
 
 function luminance([r, g, b]: readonly number[]): number {
@@ -51,116 +39,33 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function opaqueBackground(element: HTMLElement): [number, number, number] {
-  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
-    const bg = parseRgb(getComputedStyle(node).backgroundColor);
-    if (bg && getComputedStyle(node).backgroundColor !== 'rgba(0, 0, 0, 0)') {
-      return bg;
-    }
-  }
-  return [255, 255, 255];
-}
-
-describe('DocumentDetailComponent — doc-info-label contrast (NXENG-813)', () => {
-  const scssPath = join(import.meta.dirname, 'document-detail.scss');
-  const scss = readFileSync(scssPath, 'utf8');
-
-  it('pairs doc-info-label with the light-panel host token, not legacy #888', () => {
-    const hostBlock = scss.match(/:host\s*\{[\s\S]*?\n\}/m)?.[0] ?? '';
+describe('DocumentDetailComponent — doc-info-label text contrast (NXENG-774 / NXENG-782 / NXENG-804 / NXENG-813 / NXENG-829 / NXENG-852)', () => {
+  it('pins doc-info-label to the light properties-panel host tokens', () => {
+    const scssPath = join(import.meta.dirname, 'document-detail.scss');
+    const scss = readFileSync(scssPath, 'utf8');
+    const hostBlock = scss.match(/:host\s*\{[^}]+\}/s)?.[0] ?? '';
     const label = scssBlock(scss, 'doc-info-label');
-    expect(hostBlock).toMatch(/--document-detail-muted-on-light-panel:\s*#5c5f6b/);
-    expect(label).toMatch(/var\(--document-detail-muted-on-light-panel\)/);
-    expect(label).not.toMatch(/#888/i);
+    const panel = scssBlock(scss, 'properties-panel');
+    expect(hostBlock).toMatch(/--document-detail-properties-panel-surface:\s*#fff/i);
+    expect(hostBlock).toMatch(/--document-detail-properties-label-muted:\s*#5c5f6b/i);
+    expect(label).toMatch(/var\(--document-detail-properties-label-muted\)/);
+    expect(label).not.toMatch(/color:\s*#888/i);
+    expect(label).not.toMatch(/var\(--mat-sys-on-surface-variant/i);
+    expect(panel).toMatch(/var\(--document-detail-properties-panel-surface\)/);
+    expect(panel).not.toMatch(/var\(--mat-sys-surface/i);
   });
 
-  describe('rendered properties panel', () => {
-    let fixture: ComponentFixture<DocumentDetailDocInfoLabelContrastHost>;
-    let originalTheme: string | null;
-    let originalSurfaceVariant: string;
-
-    beforeEach(async () => {
-      originalTheme = document.documentElement.getAttribute('data-app-theme');
-      originalSurfaceVariant = document.documentElement.style.getPropertyValue(
-        '--mat-sys-on-surface-variant',
-      );
-      await TestBed.configureTestingModule({
-        imports: [DocumentDetailDocInfoLabelContrastHost],
-        providers: [provideZonelessChangeDetection()],
-      }).compileComponents();
-      fixture = TestBed.createComponent(DocumentDetailDocInfoLabelContrastHost);
-      document.body.appendChild(fixture.nativeElement);
-      fixture.detectChanges();
-    });
-
-    afterEach(() => {
-      fixture.nativeElement.remove();
-      if (originalTheme === null) {
-        document.documentElement.removeAttribute('data-app-theme');
-      } else {
-        document.documentElement.setAttribute('data-app-theme', originalTheme);
-      }
-      if (originalSurfaceVariant) {
-        document.documentElement.style.setProperty(
-          '--mat-sys-on-surface-variant',
-          originalSurfaceVariant,
-        );
-      } else {
-        document.documentElement.style.removeProperty('--mat-sys-on-surface-variant');
-      }
-    });
-
-    it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the white panel (default and dark theme)`, () => {
-      for (const theme of ['dark', null] as const) {
-        if (theme === null) {
-          document.documentElement.removeAttribute('data-app-theme');
-        } else {
-          document.documentElement.setAttribute('data-app-theme', theme);
-        }
-        fixture.detectChanges();
-
-        const panel = fixture.nativeElement.querySelector('.properties-panel') as HTMLElement;
-        const label = fixture.nativeElement.querySelector('.doc-info-label') as HTMLElement;
-        expect(panel).not.toBeNull();
-        expect(label).not.toBeNull();
-        if (!panel || !label) return;
-
-        const fg = parseRgb(getComputedStyle(label).color);
-        const bg = opaqueBackground(label);
-        expect(fg).not.toBeNull();
-        if (!fg) return;
-
-        const ratio = contrastRatio(fg, bg);
-        expect(ratio)
-          .withContext(
-            `${getComputedStyle(label).color} on panel backdrop rgb(${bg.join(',')}) (${theme ?? 'default'})`,
-          )
-          .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
-      }
-    });
-
-    it('uses the host light-panel token, not a light Material surface-variant in dark theme', () => {
-      document.documentElement.setAttribute('data-app-theme', 'dark');
-      document.documentElement.style.setProperty('--mat-sys-on-surface-variant', 'rgb(200, 200, 200)');
-      fixture.detectChanges();
-
-      const label = fixture.nativeElement.querySelector('.doc-info-label') as HTMLElement;
-      expect(label).not.toBeNull();
-      if (!label) return;
-
-      const fg = parseRgb(getComputedStyle(label).color);
-      expect(fg).not.toBeNull();
-      if (!fg) return;
-      expect(fg[0]).toBeLessThan(128);
-    });
-  });
-
-  it(`fallback token meets ${WCAG_AA_NORMAL_TEXT}:1 on white`, () => {
-    const tokenMatch = scss.match(/--document-detail-muted-on-light-panel:\s*(#[0-9a-f]{6})/i);
-    const fg = parseHex(tokenMatch?.[1] ?? '#5c5f6b');
+  it(`fallback #5c5f6b on white meets ${WCAG_AA_NORMAL_TEXT}:1`, () => {
+    const fg = parseHex('#5c5f6b');
     const bg = parseHex('#ffffff');
-    expect(fg).not.toBeNull();
-    expect(bg).not.toBeNull();
-    if (!fg || !bg) return;
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+  });
+
+  it('legacy #888 on white fails WCAG AA (documents the reported defect)', () => {
+    const fg = parseHex('#888888');
+    const bg = parseHex('#ffffff');
+    const ratio = contrastRatio(fg, bg);
+    expect(ratio).toBeLessThan(WCAG_AA_NORMAL_TEXT);
+    expect(ratio).toBeCloseTo(3.54, 1);
   });
 });

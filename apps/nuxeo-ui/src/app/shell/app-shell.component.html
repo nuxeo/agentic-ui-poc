@@ -9,7 +9,11 @@
 }
 
 <sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
-  <sat-platform-nav satPlatformNavRailToggleVisibleLabel>
+  <!-- NXENG-927 (product): icon-only rail expand/collapse — Satori aria-label + matTooltip only.
+       Host visible-label workaround from PR 246 removed per product request. IBM input_label_visible
+       (4056183850) is expected to recur; track closure via documented a11y exception or upstream
+       Satori fix, not by re-adding persistent visible text here. -->
+  <sat-platform-nav>
     @for (item of navItems(); track item.id) {
       <sat-platform-nav-list-item
         [attr.data-nav-id]="item.id"
@@ -28,9 +32,10 @@
 
     <sat-platform-nav-user>
       <sat-platform-nav-user-profile (click)="toggleSettingsDrawer()">
-        <!-- NXENG-894: a projected icon skips auto-generated initials inside the vendor
-             profile button; those initials were visible text not contained in aria-label. -->
-        <mat-icon aria-hidden="true">account_circle</mat-icon>
+        <!-- NXENG-894: projected mat-icon/img skips vendor avatar initials. Empty mat-icon +
+             codepoint glyph (not ligature text) — IBM label_name_visible counted "account_circle"
+             as visible label text outside aria-label; fontIcon needs a class-based icon set. -->
+        <mat-icon aria-hidden="true" class="app-shell-user-profile-icon"></mat-icon>
         {{ displayName() }}
       </sat-platform-nav-user-profile>
     </sat-platform-nav-user>
