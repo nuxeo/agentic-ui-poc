@@ -115,6 +115,12 @@ describe('platform sidebar — user profile label in name (NXENG-894)', () => {
     return btn as HTMLButtonElement;
   }
 
+  /** DOM text of the projected profile icon (aria-hidden ligature text tripped IBM 2972081309). */
+  function profileProjectedIconText(button: Element): string {
+    const icon = button.querySelector('mat-icon.app-shell-user-profile-icon');
+    return icon?.textContent?.trim() ?? '';
+  }
+
   it('does not render vendor initials that diverge from the aria-label (IBM 2972081309)', () => {
     const fixture = TestBed.createComponent(AppShellComponent);
     // IBM scan and the ticket repro use the expanded sidebar label, not the collapsed rail.
@@ -142,8 +148,8 @@ describe('platform sidebar — user profile label in name (NXENG-894)', () => {
         `accessible name "${name}" must contain the full visible label "${visible}" (IBM label_name_visible)`,
       )
       .toContain(visible.toLowerCase());
-    expect(visible.toLowerCase())
-      .withContext('Material icon ligature text must not appear as visible label text')
+    expect(profileProjectedIconText(button))
+      .withContext('profile icon must not expose Material ligature name as DOM text')
       .not.toContain('account_circle');
   });
 
@@ -160,7 +166,9 @@ describe('platform sidebar — user profile label in name (NXENG-894)', () => {
     const button = profileButton(fixture.nativeElement as HTMLElement);
     const name = accessibleName(button);
     const visible = visibleLabelJoined(button);
-    expect(visible.toLowerCase()).not.toContain('account_circle');
+    expect(profileProjectedIconText(button))
+      .withContext('profile icon must not expose Material ligature name as DOM text')
+      .not.toContain('account_circle');
     if (visible) {
       expect(name.toLowerCase()).toContain(visible.toLowerCase());
     }

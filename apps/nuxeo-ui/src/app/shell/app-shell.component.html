@@ -9,7 +9,7 @@
 }
 
 <sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
-  <sat-platform-nav satPlatformNavRailToggleVisibleLabel>
+  <sat-platform-nav>
     @for (item of navItems(); track item.id) {
       <sat-platform-nav-list-item
         [attr.data-nav-id]="item.id"
@@ -28,10 +28,10 @@
 
     <sat-platform-nav-user>
       <sat-platform-nav-user-profile (click)="toggleSettingsDrawer()">
-        <!-- NXENG-894: projected mat-icon/img skips vendor avatar initials. Use fontIcon with
-             no text node — ligature text "account_circle" is visible to IBM label_name_visible
-             but is not part of aria-label. -->
-        <mat-icon aria-hidden="true" fontIcon="account_circle" />
+        <!-- NXENG-894: projected mat-icon/img skips vendor avatar initials. Empty mat-icon +
+             codepoint glyph (not ligature text) — IBM label_name_visible counted "account_circle"
+             as visible label text outside aria-label; fontIcon needs a class-based icon set. -->
+        <mat-icon aria-hidden="true" class="app-shell-user-profile-icon"></mat-icon>
         {{ displayName() }}
       </sat-platform-nav-user-profile>
     </sat-platform-nav-user>
