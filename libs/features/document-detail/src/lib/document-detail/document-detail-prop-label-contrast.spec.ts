@@ -17,10 +17,16 @@ function hostBlock(source: string): string {
   return source.match(/:host\s*\{[^}]+\}/s)?.[0] ?? '';
 }
 
+/** Drop SCSS comments so commented-out custom properties cannot satisfy lookups. */
+function stripScssComments(block: string): string {
+  return block.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
 function hostCustomProperty(source: string, name: string): string | null {
-  const block = hostBlock(source);
+  const block = stripScssComments(hostBlock(source));
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = block.match(
-    new RegExp(`--${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*([^;]+);`),
+    new RegExp(`(?:^|[\\s;{])--${escaped}\\s*:\\s*([^;]+);`, 'm'),
   );
   return match?.[1]?.trim() ?? null;
 }
@@ -57,6 +63,16 @@ describe('DocumentDetailComponent — prop-label text contrast (NXENG-861)', () 
   const scss = readFileSync(scssPath, 'utf8');
   const labelBlock = scssBlock(scss, 'prop-label');
   const panelBlock = scssBlock(scss, 'properties-panel');
+
+  it('reads host custom properties from live declarations only (ignores commented-out lines)', () => {
+    const fixture = `:host {
+  /* --document-detail-properties-label-muted: #888888; */
+  --document-detail-properties-label-muted: #5c5f6b;
+  --document-detail-properties-panel-surface: #ffffff;
+}`;
+    expect(hostCustomProperty(fixture, 'document-detail-properties-label-muted')).toBe('#5c5f6b');
+    expect(hostCustomProperty(fixture, 'document-detail-properties-panel-surface')).toBe('#ffffff');
+  });
 
   it('themes property labels through the light-panel host token, not global surface-variant', () => {
     expect(labelBlock).toMatch(/var\(--document-detail-properties-label-muted\)/);
