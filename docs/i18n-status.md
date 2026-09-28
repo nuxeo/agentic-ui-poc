@@ -1,6 +1,6 @@
 # i18n — where we actually are
 
-**Dated 22 September 2026.** Measured, not estimated: every number below comes from a command
+**Dated 28 September 2026.** Measured, not estimated: every number below comes from a command
 that is quoted next to it, so it can be re-run rather than believed.
 
 Re-measure before quoting anything here. The 16 September edition of this page claimed the gate was
@@ -457,12 +457,12 @@ failed fetch named that control with the raw key. Its catalogue value was also l
 
 ### Four gates, and the first controls any guardrail here has had
 
-| Guardrail                      | Enforces                                                                 | Scope    |
-| ------------------------------ | ------------------------------------------------------------------------ | -------- |
-| `checkNoHardcodedUiText`       | a newly added hard-coded user-facing string                              | **diff** |
-| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, key parity across locales | repo     |
-| `checkTranslationContext`      | translator context exists for every string and for no deleted one        | repo     |
-| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch          | repo     |
+| Guardrail                      | Enforces                                                                                        | Scope    |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
+| `checkNoHardcodedUiText`       | a newly added hard-coded user-facing string                                                     | **diff** |
+| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, no key `en.json` lacks (missing keys warn — D8d) | repo     |
+| `checkTranslationContext`      | translator context exists for every string and for no deleted one                               | repo     |
+| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch                                 | repo     |
 
 Plus `checkAngularDevAssets` extended to compare the `ignore` list, which it did not before — an
 entry excluding a file in the base array and not in `development` read as identical while the two

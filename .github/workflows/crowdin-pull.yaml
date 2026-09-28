@@ -26,7 +26,9 @@ concurrency:
 
 jobs:
   pull-translations:
-    # See the note in crowdin-push.yaml: off until the project exists.
+    # The off switch, not a "not yet" — see the note in crowdin-push.yaml. The project exists
+    # and both halves have run; what this still guards is a fork or clone, which has none of
+    # these secrets and would otherwise run this job on every push.
     if: vars.CROWDIN_SYNC_ENABLED == 'true'
     runs-on: ubuntu-latest
     permissions:
