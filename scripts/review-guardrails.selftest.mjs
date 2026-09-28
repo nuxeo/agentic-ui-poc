@@ -295,6 +295,86 @@ expectRed(
   /asserted nothing/,
 );
 
+/* ---------------- checkCataloguesAreTranslated ---------------- */
+
+/**
+ * Six keys, because the gate ignores any catalogue sharing fewer than five with English —
+ * `EN_JSON` above has three and cannot exercise this one at all.
+ */
+const EN_SIX = `{
+  "app": {
+    "title": "Hyland Nuxeo",
+    "nav": { "toggle": "Toggle navigation menu", "close": "Close" }
+  },
+  "browse": {
+    "delete": "Delete",
+    "rename": "Rename",
+    "details": "Show details"
+  }
+}
+`;
+
+/** A real translation — and `app.title` stays English, which a proper noun is entitled to do. */
+const FR_SIX = `{
+  "app": {
+    "title": "Hyland Nuxeo",
+    "nav": { "toggle": "Basculer le menu de navigation", "close": "Fermer" }
+  },
+  "browse": {
+    "delete": "Supprimer",
+    "rename": "Renommer",
+    "details": "Afficher les détails"
+  }
+}
+`;
+
+const SIX = {
+  'apps/nuxeo-ui/public/i18n/en.json': EN_SIX,
+  'apps/nuxeo-ui/public/i18n/fr.json': FR_SIX,
+};
+
+expectGreen('a real translation that leaves a proper noun in English', 'checkCataloguesAreTranslated', SIX);
+
+expectRed(
+  'a catalogue that is the English export under a French name — the Crowdin defect itself',
+  'checkCataloguesAreTranslated',
+  SIX,
+  (write) => write('apps/nuxeo-ui/public/i18n/fr.json', EN_SIX),
+  /fr\.json repeats the English string for all 6 of its keys/,
+);
+
+/** Thirty keys, to clear the 25-key floor the partial-export warning carries. */
+const manyKeys = (translate) => {
+  const bulk = {};
+  for (let index = 0; index < 30; index += 1) bulk[`k${index}`] = translate(index);
+  return `${JSON.stringify({ bulk }, null, 2)}\n`;
+};
+
+expectWarn(
+  'a mostly-untranslated export warns rather than fails, because a translator may have meant it',
+  'checkCataloguesAreTranslated',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': manyKeys((index) => `English string ${index}`),
+    // 27 of 30 left in English: past the 80% warning threshold, short of all-identical.
+    'apps/nuxeo-ui/public/i18n/fr.json': manyKeys((index) =>
+      index < 3 ? `Chaîne française ${index}` : `English string ${index}`,
+    ),
+  },
+  null,
+  /fr\.json repeats the English string for 27 of its 30 keys \(90%\)/,
+);
+
+expectRed(
+  'catalogues that are all below the key floor must not read as a pass',
+  'checkCataloguesAreTranslated',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "app": { "title": "Nuxeo", "close": "Close" }\n}\n',
+    'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "app": { "title": "Nuxeo", "close": "Fermer" }\n}\n',
+  },
+  null,
+  /asserted nothing/,
+);
+
 /* ---------------- checkTranslationContext ---------------- */
 
 /** Context for every string in `EN_JSON`, keyed identically, plus one `$` metadata key. */

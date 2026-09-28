@@ -493,6 +493,61 @@ about the unmatched pattern, so the CLI cannot be relied on to catch this before
 `checkCrowdinConfig` fails each unmatched pattern by name instead, which is why the limitation
 is survivable.
 
+### D8d — an untranslated string must be ABSENT from the export, never English-valued
+
+`skip_untranslated_strings: true` on the pull. The action defaults it to `false`, and `false`
+does not mean "omit the string" — it means **export the string with its English source as the
+translation**.
+
+The first real pull opened a pull request with nine catalogues, every one byte-identical to
+`en.json`: 1,972 keys, 1,972 values the same as English, none different. It was also
+destructive, because an export replaces the whole file and `fr.json` and `de.json` held 75 and
+76 hand-written strings. `Supprimer` came back as `Delete`, in a commit titled "update
+translations from Crowdin".
+
+`true` omits the key instead, and `setFallbackLang('en')` renders English for it. So **a
+non-English catalogue shorter than `en.json` is the correct steady state**, not a half-finished
+sync — which is why `checkTranslationCatalogues` warns on a missing key rather than failing.
+
+Three things this cost, each worth keeping:
+
+- **Full key parity is not evidence of translation.** It was the reassuring signal and it was
+  produced by the defect: the export covered every key, so parity was perfect.
+- **The gate that failed was the wrong gate.** `checkTranslationCatalogues` passed. What went
+  red was `checkLocaleDataRegistered`, because seven of the nine locales were new and had no
+  Angular locale data — unrelated, real, and the only reason anyone looked. Restricted to `fr`
+  and `de`, which are already registered, `review:guardrails` printed
+  `Review guardrails passed.` over the loss of 151 strings. `checkCataloguesAreTranslated` now
+  fails a catalogue whose every value matches English, and warns above 80%.
+- **Seeding is a prerequisite, not a nicety.** Crowdin was created after the repository, so it
+  started empty while those 151 strings already existed. Nothing had told Crowdin about them,
+  which made every pull destructive by construction — `skip_untranslated_strings` changes how
+  they are lost, not whether. `Crowdin Push` therefore takes a `seed_translations` input that
+  uploads the existing catalogues with `--auto-approve-imported`. Approval is required rather
+  than tidy: `export_only_approved: 'true'` means an unapproved translation is never exported,
+  so seeding without approving loses the same strings for a more confusing reason.
+
+### D8e — a language is advertised when it has translations, not when it is planned
+
+Crowdin project 160 carries nine target languages. `availableLanguages` holds three. That gap
+is deliberate and it is not a backlog item to close on its own.
+
+A locale needs three things that move together, and `checkLocaleDataRegistered` fails in **both**
+directions to enforce it: a catalogue in `apps/nuxeo-ui/public/i18n/`, an entry in
+`register-locale-data.ts`, and an entry in `availableLanguages`. Registering locale data for a
+language with no catalogue fails. Advertising one with no catalogue fails
+`checkAdvertisedLocalesShip`.
+
+The temptation is to satisfy all three with an empty or English-filled catalogue so the picker
+offers nine languages. Do not: that is the same fault `checkAdvertisedLocalesShip` was written
+for, whose own comment records the template app "shipped describing two languages it could not
+render". A user who selects Japanese and reads English has been lied to by the language picker.
+
+So the nine are the target and the mechanism is ready for them. Each becomes advertisable in one
+commit — catalogue, registration, `availableLanguages` — once Crowdin actually holds
+translations for it. Machine pre-translation on the Crowdin side is the fastest way to get
+there; real review follows.
+
 ### D8a — `%two_letters_code%`, not `%locale%`
 
 The D8 snippet above maps translations to `%locale%.%file_extension%`. Built as written, that

@@ -1829,6 +1829,129 @@ function checkTranslationCatalogues() {
 }
 
 /**
+ * A non-English catalogue actually translates something.
+ *
+ * ## The defect this exists for
+ *
+ * The first real Crowdin pull opened a pull request carrying nine catalogues, and every one of
+ * them was byte-identical to `en.json` — 1,972 keys, 1,972 values the same as English, none
+ * different. Nothing in the project was translated yet, and `skip_untranslated_strings: false`
+ * makes Crowdin export an untranslated string **as its English source** rather than omitting it.
+ *
+ * It was not merely empty, it was destructive: `fr.json` and `de.json` held 75 and 76
+ * hand-written translations, and the export overwrote them with English. `Supprimer` became
+ * `Delete` in a commit titled "update translations from Crowdin".
+ *
+ * ## Why `checkTranslationCatalogues` could not see it
+ *
+ * Read that gate's failure conditions and the reason is plain: malformed JSON, wrong shape, a
+ * non-string leaf, a blank value, a key absent from English. An English value satisfies every
+ * one of them. It is well-formed, it is a non-empty string, and because the export covers the
+ * whole file it is at *perfect* key parity — so even the parity half reported nothing.
+ *
+ * That gate ran on the pull request and passed. What failed it was
+ * `checkLocaleDataRegistered`, on the unrelated ground that seven of the nine locales were new
+ * and had no Angular locale data — a real defect and a lucky one, because it is the only reason
+ * anybody looked. Restricted to `fr` and `de`, which are already registered,
+ * `review:guardrails` printed `Review guardrails passed.` over the destruction of 151 strings.
+ *
+ * ## The rule
+ *
+ * Every shared value identical to English means the catalogue translates nothing, and no real
+ * translation of five or more strings does that. Individual matches are legitimate and common —
+ * `PDF`, `Nuxeo`, `OK` are the same word in French — so the failure needs *all* of them, and a
+ * floor of five keys keeps it off a tiny catalogue that could plausibly be all acronyms.
+ *
+ * The partial case warns instead. With `skip_untranslated_strings: true` an untranslated key is
+ * absent rather than English-valued, so a high ratio should not occur; if it does, either a
+ * translator kept a lot of English on purpose or that setting has regressed, and the two cannot
+ * be told apart from here.
+ */
+function checkCataloguesAreTranslated() {
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
+  const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
+
+  const flatten = (value, prefix, out) => {
+    for (const [key, entry] of Object.entries(value)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof entry === 'string') out.set(path, entry);
+      else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        flatten(entry, path, out);
+      }
+    }
+    return out;
+  };
+
+  /** Parses a catalogue, or returns null — malformed files are `checkTranslationCatalogues`'s. */
+  const load = (path) => {
+    try {
+      const json = JSON.parse(read(path));
+      if (json === null || typeof json !== 'object' || Array.isArray(json)) return null;
+      return flatten(json, '', new Map());
+    } catch {
+      return null;
+    }
+  };
+
+  let compared = 0;
+
+  for (const catalogue of catalogues) {
+    const locale = catalogue.slice(catalogue.lastIndexOf('/') + 1).replace(/\.json$/, '');
+    if (locale === 'en') continue;
+
+    const reference = `${catalogue.slice(0, catalogue.lastIndexOf('/'))}/en.json`;
+    if (!fileExists(reference)) continue;
+
+    const english = load(reference);
+    const translated = load(catalogue);
+    if (!english || !translated) continue;
+
+    const shared = [...translated.keys()].filter((key) => english.has(key));
+    if (shared.length < 5) continue;
+
+    compared += 1;
+    const identical = shared.filter((key) => translated.get(key) === english.get(key));
+    if (identical.length !== shared.length) {
+      const ratio = identical.length / shared.length;
+      if (shared.length >= 25 && ratio >= 0.8) {
+        warn(
+          `${catalogue} repeats the English string for ${identical.length} of its ` +
+            `${shared.length} keys (${Math.round(ratio * 100)}%).\n` +
+            '    Either a translator kept that much English deliberately, or ' +
+            '`skip_untranslated_strings` has regressed to `false` in .github/workflows/' +
+            'crowdin-pull.yaml and this is a partly untranslated export. An untranslated key ' +
+            'is supposed to be ABSENT, so that `setFallbackLang(\'en\')` renders English ' +
+            'without the catalogue claiming to have translated it.',
+        );
+      }
+      continue;
+    }
+
+    fail(
+      `${catalogue} repeats the English string for all ${shared.length} of its keys, so it ` +
+        'translates nothing.\n' +
+        '    This is what Crowdin exports for an untranslated language when ' +
+        '`skip_untranslated_strings` is `false`: the English source, under a non-English file ' +
+        'name. It is well-formed, non-blank and at perfect key parity with English, which is ' +
+        `why ${'`checkTranslationCatalogues`'} passes it.\n` +
+        '    Merging it replaces whatever real translations the file held — the first such pull ' +
+        'request would have overwritten 151 hand-written French and German strings. Set ' +
+        '`skip_untranslated_strings: true` so an untranslated key is absent and English renders ' +
+        'through the fallback instead.',
+    );
+  }
+
+  if (catalogues.length > 1 && compared === 0) {
+    fail(
+      `${catalogues.length} catalogues were found but none was compared against an en.json ` +
+        'sibling with at least 5 shared keys, so this gate asserted nothing. Check the ' +
+        '`i18n/<locale>.json` glob and the key floor in `checkCataloguesAreTranslated`.',
+    );
+  }
+}
+
+/**
  * Translator context exists for every string, and for no string that no longer exists.
  *
  * INFO-144 (*Internationalization Strategy for software*) is unambiguous about this: "All strings
@@ -3708,6 +3831,7 @@ const GUARDRAILS = [
   checkCatalogueValuesAreRenderable,
   checkNoStaleAgnosticClaim,
   checkTranslationCatalogues,
+  checkCataloguesAreTranslated,
   checkAdvertisedLocalesShip,
   checkCrowdinConfig,
   checkPackagedConfigIsNotADemo,

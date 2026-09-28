@@ -108,6 +108,27 @@ jobs:
           upload_sources: false
           download_translations: true
 
+          # Leave an untranslated string OUT of the exported catalogue.
+          #
+          # The action defaults this to `false`, which does not mean "omit" — it means export the
+          # string with its **English source as the translation**. The first real pull did exactly
+          # that: nine catalogues byte-identical to `en.json`, and because the export covers the
+          # whole file it overwrote the 75 French and 76 German strings that had been written by
+          # hand. `Supprimer` came back as `Delete`, in a commit titled "update translations from
+          # Crowdin".
+          #
+          # `true` omits the key instead, and `setFallbackLang('en')` renders English for it — the
+          # behaviour `checkTranslationCatalogues` already calls "the fallback working as
+          # designed", and it warns rather than fails on a missing key for precisely this reason.
+          # So the honest state of a half-translated locale is a short catalogue, not a full one
+          # padded with English.
+          #
+          # `checkCataloguesAreTranslated` fails a catalogue whose every value matches English, so
+          # flipping this back is caught. It was not, before: the only gate that failed that pull
+          # request did so over the seven new locales' missing Angular locale data, and with just
+          # `fr` and `de` the whole suite passed.
+          skip_untranslated_strings: true
+
           create_pull_request: true
           localization_branch_name: crowdin-translations-update
           pull_request_base_branch_name: main
@@ -116,9 +137,17 @@ jobs:
             Opened by the Crowdin Pull workflow. Contains only catalogue files.
 
             Only **approved** translations are exported, so anything here has been through
-            review on the Crowdin side. `checkTranslationCatalogues` runs on this pull request
-            and fails a catalogue that is malformed, blank-valued, or out of key parity with
-            English — which is what a half-finished sync produces.
+            review on the Crowdin side.
+
+            **A catalogue shorter than `en.json` is expected, not a fault.** Untranslated
+            strings are omitted rather than exported with their English source, so a locale
+            carries only what has actually been translated and `setFallbackLang('en')` covers
+            the rest. `checkTranslationCatalogues` warns about the missing keys and passes.
+
+            What it does not catch is the opposite: a catalogue at *full* parity whose values
+            are all English, which is what `skip_untranslated_strings: false` produces and
+            which overwrote 151 hand-written strings the first time this ran. That one belongs
+            to `checkCataloguesAreTranslated`. Both run on this pull request.
 
             Do not hand-edit a non-English catalogue to fix something here. Crowdin is the
             source of truth and overwrites it on the next pull; fix it in Crowdin.
@@ -129,6 +158,21 @@ jobs:
 
           # Signing, configured on the action rather than on the host, because this action runs in
           # its own Docker container and the commit is made there. See the note above the checkout.
+          #
+          # KNOWN GAP — the signature is produced but GitHub does not verify it. The first real
+          # run committed with `verification.verified: false`, `reason: unknown_key`, and that is
+          # not a missing upload that can be fixed by adding a key somewhere: GitHub verifies a
+          # signature by matching the key to an account holding that public key with a **verified
+          # email matching the signature identity**, and the identity above is
+          # `github-actions[bot]@users.noreply.github.com` — GitHub's own App, on which nobody can
+          # register a GPG key. The author and the key belong to different parties, so no upload
+          # makes this combination verify.
+          #
+          # Fixing it means choosing an identity that can own the key — a Nuxeo bot account with
+          # the public key added and that email verified — and setting both fields to it. That is
+          # account-level work and a decision about which account, so it is recorded rather than
+          # guessed at here. Until then `GPG_BOT_SIGNING_ENABLED` buys a signature nobody checks,
+          # and if `main` ever requires signed commits these pull requests will not merge.
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
         env:
