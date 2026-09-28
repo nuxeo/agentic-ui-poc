@@ -1,5 +1,6 @@
 /**
- * NXENG-763 — `.file-size` in the viewer footer must meet WCAG 2.1 SC 1.4.3 (IBM 56037090).
+ * NXENG-763 — viewer footer light strip + footer actions (IBM 56037090).
+ * NXENG-764 — `.file-size` on that strip must meet WCAG 2.1 SC 1.4.3 (IBM 67686130).
  * Per-theme contrast is covered in `apps/nuxeo-ui/.../document-viewer-file-size-contrast.spec.ts`.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -59,7 +60,7 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
   return [255, 255, 255];
 }
 
-describe('DocumentViewerComponent — file-size text contrast (NXENG-763)', () => {
+describe('DocumentViewerComponent — footer/file-size contrast (NXENG-763, NXENG-764)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
 
   beforeEach(async () => {
@@ -75,21 +76,30 @@ describe('DocumentViewerComponent — file-size text contrast (NXENG-763)', () =
     fixture = TestBed.createComponent(DocumentViewerComponent);
   });
 
-  it('themes .viewer-footer, .file-size, and footer actions as mat-sys pairs', () => {
+  it('themes the viewer footer light strip and actions per NXENG-763', () => {
     const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
     const scss = readFileSync(scssPath, 'utf8');
     const footer = scssBlock(scss, 'viewer-footer');
-    const label = scssBlock(scss, 'file-size');
+    const fileName = scssBlock(scss, 'file-name');
     const actions = scssNestedBlock(scss, 'viewer-footer-actions', 'button');
-    expect(footer).toMatch(/var\(--mat-sys-surface/);
-    expect(label).toMatch(/var\(--mat-sys-on-surface-variant,\s*#5c5f6b\)/);
-    expect(label).not.toMatch(/#888/i);
-    expect(actions).toMatch(/var\(--mat-sys-on-surface-variant/);
+    expect(footer).toMatch(/var\(--document-viewer-light-strip-surface\)/);
+    expect(fileName).toMatch(/var\(--document-viewer-on-light-strip\)/);
+    expect(actions).toMatch(/var\(--document-viewer-muted-on-light-surface\)/);
+    expect(actions).toMatch(/var\(--document-viewer-error-on-light-surface\)/);
     expect(actions).toMatch(/var\(--mat-sys-primary/);
     expect(actions).not.toMatch(/color:\s*#555/i);
+    expect(actions).not.toMatch(/var\(--mat-sys-error/);
   });
 
-  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the footer surface fallback`, () => {
+  it('pins .file-size to the light-strip muted token per NXENG-764', () => {
+    const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
+    const scss = readFileSync(scssPath, 'utf8');
+    const label = scssBlock(scss, 'file-size');
+    expect(label).toMatch(/var\(--document-viewer-muted-on-light-surface\)/);
+    expect(label).not.toMatch(/#888/i);
+  });
+
+  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the footer surface fallback (NXENG-764)`, () => {
     const raw = 'blob:http://localhost/sample';
     const trusted = (): SafeResourceUrl =>
       TestBed.inject(DomSanitizer).bypassSecurityTrustResourceUrl(raw);
