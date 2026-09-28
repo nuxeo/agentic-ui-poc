@@ -1526,6 +1526,25 @@ expectGreen('an unrelated step mentioning the Crowdin action in a nested value',
     `          uses: crowdin/github-action@v2\n`,
 });
 
+// A ONE-LINE flow entry is a shape the rest of this function understands — `crowdinFileEntries`
+// parses it and the per-entry D8 checks read it — but `yamlValues` cannot see inside it. So the
+// prohibition was bypassable by writing the entry on one line, which is valid and which the other
+// checks accept.
+expectRed(
+  'crowdin-conf.yml hiding skip_untranslated_files in a one-line flow entry',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        `    { 'source': '/libs/**/i18n/en.json', 'translation': '/%original_path%/%two_letters_code%.%file_extension%', 'export_only_approved': 'true', 'update_option': 'update_without_changes', 'skip_untranslated_files': true },\n`,
+      ]),
+    ),
+  /crowdin-conf\.yml sets `skip_untranslated_files`/,
+);
+
 // An INLINE comment is not configuration. `stripYamlComments` drops whole-line comments only, so a
 // raw token search read `# skip_untranslated_files stays off` as the option being set — the gate
 // reporting a defect in a correct file, and unfixable without deleting the note.

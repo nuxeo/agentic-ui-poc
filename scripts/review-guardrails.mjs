@@ -3625,7 +3625,19 @@ function checkCrowdinConfig() {
   // A KEY, not a substring. `stripYamlComments` drops whole-line comments only, so an inline
   // one — `'preserve_hierarchy': true # skip_untranslated_files stays off` — was read as the
   // option being set, and the gate reported a defect in a correct file.
-  if (yamlValues(stripYamlComments(read(config)), 'skip_untranslated_files').length > 0) {
+  //
+  // Both shapes, because this file uses both. `yamlValues` reads the block form, which is how the
+  // entries are written today — one key per line inside `{ … }`. It cannot see inside a ONE-LINE
+  // flow entry, and `crowdinFileEntries` accepts those and the per-entry D8 checks read them, so a
+  // single-line entry was a shape the rest of this function understood and this prohibition did
+  // not. Scanning the parsed entries closes it without teaching the matcher flow mappings.
+  const configBody = stripYamlComments(read(config));
+  const declaresSkipFiles =
+    yamlValues(configBody, 'skip_untranslated_files').length > 0 ||
+    (crowdinFileEntries(configBody) ?? []).some((entry) =>
+      /['"]?skip_untranslated_files['"]?\s*:/.test(entry),
+    );
+  if (declaresSkipFiles) {
     fail(
       `${config} sets \`skip_untranslated_files\`.\n` +
         '    The CLI validates the pair in the CONFIG FILE too, via `FileBean`, so moving the ' +
