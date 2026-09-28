@@ -1,6 +1,6 @@
 /**
  * NXENG-858 — `.prop-label` on the fixed light properties panel must meet WCAG 2.1 SC 1.4.3 (IBM 1792790291).
- * Per-theme computed contrast is covered in `apps/nuxeo-ui/.../document-detail-prop-label-contrast.spec.ts`.
+ * Per-theme computed contrast is covered in `apps/nuxeo-ui/.../prop-label-contrast.spec.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
