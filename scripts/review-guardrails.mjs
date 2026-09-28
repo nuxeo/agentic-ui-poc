@@ -1246,9 +1246,10 @@ function checkNoHardcodedUiText() {
    * and `resolveRef` popped on `..` without checking, so a path climbing above the repository
    * root was clamped back onto an in-repo file and proved that file instead. Both reported on
    * the pull request. A traversal that underflows now resolves to nothing at all, and a
-   * reference is the `templateUrl` of an `@Component(...)` object literal specifically — the
-   * first attempt matched any property called `templateUrl`, which a decoy object literal
-   * satisfies without hosting anything, and review caught that too.
+   * reference is the `templateUrl` of an `@Component(...)` **decorator's** object literal
+   * specifically. Review caught two weaker versions of that on the way: matching any property
+   * called `templateUrl`, which a decoy object literal satisfies without hosting anything, and
+   * then matching any call spelled `Component`, which a naked statement satisfies too.
    *
    * **What this still does not prove.** A `templateUrl` assembled by concatenation resolves to
    * nothing. On the spec side that is fail-closed and needs no fallback — no resolved
@@ -1316,10 +1317,12 @@ function checkNoHardcodedUiText() {
      * only a property name: a decoy `const proof = { templateUrl: './widget.host.html' }`
      * hosts nothing and still counted. Both reported on the pull request.
      *
-     * A reference is therefore the `templateUrl` of the object literal passed to
-     * `@Component(...)`, which is the only position where the property means "this file is my
-     * template" — and the same position the non-spec rule below is looking for in production
-     * code.
+     * A reference is therefore the `templateUrl` of the object literal passed to a
+     * `@Component(...)` **decorator**, which is the only position where the property means
+     * "this file is my template" — and the same position the non-spec rule below is looking
+     * for in production code. Matching the call by its callee name alone was not enough
+     * either, and review caught that in the same round: a naked `Component({ ... })` statement
+     * decorates nothing, so the match starts from the `Decorator` node.
      *
      * **Boundary.** A `templateUrl` assembled by concatenation is not a literal, and component
      * metadata spread in from a variable is not an object literal here; both resolve to
@@ -1332,16 +1335,25 @@ function checkNoHardcodedUiText() {
       const refs = new Set();
       const source = ts.createSourceFile(path, body, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
 
-      // `@Component({ ... })` is a decorator wrapping a call expression, so matching the call
-      // covers the decorator form and the rare direct one without special-casing either.
-      const componentMetadata = (node) =>
-        ts.isCallExpression(node) &&
-        ts.isIdentifier(node.expression) &&
-        node.expression.text === 'Component' &&
-        node.arguments.length > 0 &&
-        ts.isObjectLiteralExpression(node.arguments[0])
-          ? node.arguments[0]
+      // The metadata of `@Component({ ... })` used as a DECORATOR, or null.
+      //
+      // Matching the call expression by callee name alone was the first attempt and review
+      // caught it in the same round: a naked `Component({ templateUrl: './x.host.html' })`
+      // statement decorates nothing and exempted the fixture anyway. Starting from the
+      // `Decorator` node is what makes "this class's template" the thing being matched, rather
+      // than any call that happens to be spelled `Component`.
+      const componentMetadata = (node) => {
+        if (!ts.isDecorator(node)) return null;
+        const call = node.expression;
+
+        return ts.isCallExpression(call) &&
+          ts.isIdentifier(call.expression) &&
+          call.expression.text === 'Component' &&
+          call.arguments.length > 0 &&
+          ts.isObjectLiteralExpression(call.arguments[0])
+          ? call.arguments[0]
           : null;
+      };
 
       const visit = (node) => {
         const metadata = componentMetadata(node);

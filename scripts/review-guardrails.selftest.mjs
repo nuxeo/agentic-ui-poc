@@ -754,6 +754,25 @@ expectRed(
   /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
 );
 
+// ...and the same decoy one layer up, which is what "restrict it to `@Component`" missed on the
+// first attempt: matching the call by callee name alone accepts a naked `Component({ ... })`
+// invocation that decorates nothing. The call has to BE a decorator. Reported on the pull
+// request, immediately after the property-name narrowing above.
+expectRed(
+  'a naked Component() call that decorates nothing does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      "import { Component } from '@angular/core';\n\n" +
+      "Component({ standalone: true, templateUrl: './widget.host.html' });\n\n" +
+      "it('passes', () => expect(true).toBe(true));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
 // Round two's property, also never controlled: a shipped component compiling the file means its
 // text is not test data, so the fixture cannot hold the proof of its own exemption.
 expectRed(
