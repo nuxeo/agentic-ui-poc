@@ -1,5 +1,5 @@
 /**
- * NXENG-774 — `.doc-info-label` on `.properties-panel` under every compiled palette.
+ * NXENG-774 / NXENG-852 — `.doc-info-label` on `.properties-panel` under every compiled palette.
  * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
  */
 import { Component } from '@angular/core';

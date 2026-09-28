@@ -1,5 +1,5 @@
 :host {
-  /* NXENG-774 — properties sidebar stays a fixed light panel in every theme (IBM 280073873). */
+  /* NXENG-774 / NXENG-852 — properties sidebar stays a fixed light panel in every theme. */
   --document-detail-properties-panel-surface: #ffffff;
   --document-detail-properties-label-muted: #5c5f6b;
   display: flex;
@@ -338,7 +338,7 @@ sat-breadcrumbs {
 
 .doc-info-label {
   font-size: 12px;
-  /* NXENG-774 — #888 was 3.54:1 on the panel; mat-sys-on-surface-variant fails on this light strip in dark theme. */
+  /* NXENG-774 / NXENG-852 — #888 was 3.54:1 (IBM 1741130194); mat-sys-on-surface-variant fails on this light strip in dark theme. */
   color: var(--document-detail-properties-label-muted);
   min-width: 100px;
   flex-shrink: 0;
