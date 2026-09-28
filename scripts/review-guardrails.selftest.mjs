@@ -1511,6 +1511,66 @@ expectRed(
   /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
 
+// Masking by MIS-SPLITTING. When the step splitter recognised only `name:`/`uses:`-first items, an
+// `if:`-first downloader was merged into the step before it — so that step's `gpg_private_key`
+// satisfied the signing assertion while the real downloader had none. The wrong-step failure in its
+// original form, reached by a different route.
+expectRed(
+  'an if-first downloader masked by the signing input on the preceding step',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(`          upload_sources: false\n` + PULL_SIGNING) +
+        `      - if: \${{ always() }}\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        PULL_DOWNLOAD +
+        PULL_SKIP_UNTRANSLATED,
+    ),
+  /without passing `gpg_private_key`, so its commits are unsigned/,
+);
+
+// `- with: { … }` — the sequence marker can precede the first key, and `uses:` follows on a later
+// line. The opaque-input detector anchored `with:` to the line start and missed it, so the hidden
+// upload read as absent on exactly the step the check exists for.
+expectRed(
+  'a with-first Crowdin step hiding its inputs in a flow mapping',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - with: { command: upload translations }\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
+// Execution, not text. The uploader's name appearing inside a block scalar is PROSE — no step runs
+// it — so the "must attach translator context" guarantee must not be satisfied by a sentence
+// describing the step it is looking for.
+expectRed(
+  'the context uploader named only in prose, with no step running it',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Say what we would do\n` +
+        `        run: echo done\n` +
+        `        env:\n` +
+        `          NOTE: |\n` +
+        `            run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
+);
+
 // A step whose FIRST key is not `name` or `uses`. `if:`, `id:` and `env:` are all valid there, and
 // a step-parser that recognises only the common spelling does not see the step at all — so every
 // check scoped to Crowdin steps skips it. Silent pass, same direction as the quoted `uses:` value.
@@ -1977,10 +2037,12 @@ expectRed(
   /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
 
-// Scope. `--skip-untranslated-files` reaches `crowdin download` only through `command_args` or
-// `download_translations_args` on the DOWNLOADING step. A mention anywhere else — the pull request
-// body is the realistic one, since it explains these very options — reaches the CLI on no path, and
-// failing the gate on it would make the check unfixable without deleting the explanation.
+// Scope. `--skip-untranslated-files` reaches the CLI through `command`, `command_args` or
+// `download_translations_args` on any CROWDIN step — three channels, and every Crowdin step, not
+// only the one with `download_translations: true`, because `command: download` downloads too. A
+// mention anywhere else — the pull request body is the realistic one, since it explains these very
+// options — reaches the CLI on no path, and failing the gate on it would make the check unfixable
+// without deleting the explanation.
 expectGreen('the pull request body mentioning --skip-untranslated-files in prose', 'checkCrowdinConfig', {
   ...CROWDIN,
   '.github/workflows/crowdin-pull.yaml':

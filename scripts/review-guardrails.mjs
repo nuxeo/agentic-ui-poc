@@ -2233,11 +2233,9 @@ async function checkTranslatorContextPush() {
     // guardrail green while no translator context reached Crowdin at all — the gate verified the
     // doorbell and never checked whether anyone answered. The green fixture in the selftest had the
     // same gap, which is how it survived being written.
-    if (
-      !new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(
-        read(pushWorkflow),
-      )
-    ) {
+    // A STEP has to run it. Searching the document matches the command inside any block scalar,
+    // so this assertion could be satisfied by prose describing the step it is looking for.
+    if (runStepOffset(read(pushWorkflow), script) === -1) {
       fail(
         `${pushWorkflow} never runs \`node ${script}\`, so no translator context is uploaded.\n` +
           "    The catalogue goes up through the Crowdin action, but Crowdin's JSON source format " +
@@ -2944,7 +2942,13 @@ function workflowSteps(body) {
  */
 function yamlValues(body, keyPattern) {
   const lines = body.split('\n');
-  const wanted = new RegExp(`^([^\\S\\n]*)['"]?(?:${keyPattern})['"]?:[^\\S\\n]*(.*)$`);
+  // The optional `- ` matters: a sequence marker can precede the FIRST key of a step, so
+  // `- run: node x`, `- with: { … }` and `- uses: …` are all keys on a step. Without it every
+  // first-key form was invisible — found by this file's own green control for
+  // `checkTranslatorContextPush`, whose fixture writes the uploader as `- run:`.
+  const wanted = new RegExp(
+    `^([^\\S\\n]*)(?:-[^\\S\\n]+)?['"]?(?:${keyPattern})['"]?:[^\\S\\n]*(.*)$`,
+  );
   // Any key at all, so a block scalar belonging to a key we do NOT want can still be skipped.
   const anyKey = /^([^\S\n]*)(?:-[^\S\n]+)?['"]?[^\s:#'"][^:#]*['"]?:[^\S\n]*(.*)$/;
   const found = [];
@@ -3037,6 +3041,32 @@ const ARG_INPUTS = 'command|command_args|download_translations_args';
  */
 function crowdinActionSteps(body) {
   return workflowSteps(body).filter((step) => CROWDIN_ACTION.test(step.text));
+}
+
+/**
+ * The offset of the step that actually RUNS a script, or `-1` if no step does.
+ *
+ * Asserted on execution rather than on text. A document-wide search for the command is satisfied
+ * by the same characters appearing inside ANY block scalar — an action input, or the
+ * `pull_request_body` prose that explains the pipeline — so "the workflow must attach translator
+ * context" could pass on a sentence about attaching translator context. That is the
+ * comment-versus-code failure this guardrail file exists to catch, in the guardrail file.
+ *
+ * `yamlValues` folds `run: |` blocks, so a multi-line script still matches, and it ignores
+ * key-shaped text inside other keys' blocks, so prose no longer counts.
+ *
+ * @param {string} body workflow YAML
+ * @param {string} script path the step must invoke with `node`
+ * @returns {number} byte offset of the step, or -1
+ */
+function runStepOffset(body, script) {
+  const invocation = new RegExp(`\\bnode\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+  for (const step of workflowSteps(body)) {
+    if (yamlValues(step.text, 'run').some(({ value }) => invocation.test(value))) {
+      return step.offset;
+    }
+  }
+  return -1;
 }
 
 function checkCrowdinConfig() {
@@ -3316,7 +3346,11 @@ function checkCrowdinConfig() {
   // the arrangement it exists to reject. Caught by its own negative control, which kept the dead
   // host step in the fixture on purpose.
   const pull = read(workflows[1]);
-  const pullSteps = pull.split(/^\s*-\s(?=name:|uses:)/m);
+  // Split with the real step parser, not `name:`/`uses:`-first. An `if:`-first downloader was
+  // merged into the step BEFORE it, so that step's `gpg_private_key` or
+  // `skip_untranslated_strings` satisfied these checks while the actual downloader omitted
+  // them — masking by mis-splitting, which is the wrong-step failure in its original form.
+  const pullSteps = workflowSteps(pull).map((step) => step.text);
   // The step that DOWNLOADS, not merely the first Crowdin step.
   //
   // `find` on the action name alone was wrong in a way that was invisible while the pull workflow
@@ -3516,7 +3550,10 @@ function checkCrowdinConfig() {
   // So if a translation upload ever comes back, it goes last. It has no bearing on the sources or
   // their context, so there is never a reason for it to precede them.
   const push = read(workflows[0]);
-  const contextAt = push.search(/^\s*run:\s*node tools\/i18n\/crowdin-push-context\.mjs\s*$/m);
+  // The step that RUNS the uploader, not the first place its name appears. A document search
+  // matches the same text inside any block scalar, including the `pull_request_body` prose that
+  // explains this pipeline — so the context guarantee could be satisfied by a sentence.
+  const contextAt = runStepOffset(push, 'tools/i18n/crowdin-push-context.mjs');
   // Fail closed, exactly as the prohibition above does: any declared `upload_translations` counts
   // as an upload unless it is literally `false`. An expression is resolved by Actions long after
   // this runs, so a step whose upload is `${{ … }}` can still run, still fail, and still skip the
@@ -3572,7 +3609,10 @@ function checkCrowdinConfig() {
     for (const step of crowdinActionSteps(stripYamlComments(read(workflow)))) {
       const opaque = step.text
         .split('\n')
-        .find((line) => /^\s*with:\s*(?:\{|\*|\$\{\{)/.test(line));
+        // `- with: { … }` is valid: the sequence marker can precede the first key, and
+        // `uses:` then follows on a later line. Without the optional marker the hidden
+        // inputs read as absent on exactly the step this check exists for.
+        .find((line) => /^\s*(?:-\s+)?with:\s*(?:\{|\*|\$\{\{)/.test(line));
       if (opaque !== undefined) {
         fail(
           `${workflow} declares Crowdin step inputs in a form this guardrail cannot read: ` +
