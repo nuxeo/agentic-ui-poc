@@ -1,5 +1,6 @@
 /**
- * NXENG-861 — `.prop-label` in the properties sidebar must meet WCAG 2.1 SC 1.4.3 (IBM 1882757527).
+ * NXENG-861 — `.prop-label` on the fixed light properties panel must meet WCAG 2.1 SC 1.4.3 (IBM 1882757527).
+ * The panel surface is intentionally white in every theme (NXENG-774); label colour uses the matching host token.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,6 +11,13 @@ const WCAG_AA_NORMAL_TEXT = 4.5;
 function scssBlock(source: string, className: string): string {
   const match = source.match(new RegExp(`\\.${className}\\s*\\{[^}]+\\}`, 's'));
   return match?.[0] ?? '';
+}
+
+function hostCustomProperty(source: string, name: string): string | null {
+  const match = source.match(
+    new RegExp(`:host\\s*\\{[\\s\\S]*?--${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*([^;]+);`),
+  );
+  return match?.[1]?.trim() ?? null;
 }
 
 function parseHex(css: string): [number, number, number] | null {
@@ -44,18 +52,22 @@ describe('DocumentDetailComponent — prop-label text contrast (NXENG-861)', () 
   const scss = readFileSync(scssPath, 'utf8');
   const labelBlock = scssBlock(scss, 'prop-label');
 
-  it('themes property labels with on-surface-variant, not legacy #888', () => {
-    expect(labelBlock).toMatch(/var\(--mat-sys-on-surface-variant,\s*#5c5f6b\)/);
-    expect(labelBlock).not.toMatch(/color:\s*#888/i);
+  it('themes property labels through the light-panel host token, not global surface-variant', () => {
+    expect(labelBlock).toMatch(/var\(--document-detail-properties-label-muted\)/);
+    expect(labelBlock).not.toMatch(/#888/i);
+    expect(labelBlock).not.toMatch(/--mat-sys-on-surface-variant/);
+    expect(hostCustomProperty(scss, 'document-detail-properties-label-muted')).toBe('#5c5f6b');
+    expect(hostCustomProperty(scss, 'document-detail-properties-panel-surface')).toBe('#ffffff');
   });
 
-  it(`fallback token meets ${WCAG_AA_NORMAL_TEXT}:1 on the properties panel surface`, () => {
-    const fg = parseHex(labelBlock);
+  it(`host token pair meets ${WCAG_AA_NORMAL_TEXT}:1 on the properties panel`, () => {
+    const fgCss = hostCustomProperty(scss, 'document-detail-properties-label-muted');
+    const bgCss = hostCustomProperty(scss, 'document-detail-properties-panel-surface');
+    const fg = fgCss ? parseHex(fgCss) : null;
+    const bg = bgCss ? parseHex(bgCss) : null;
     expect(fg).not.toBeNull();
-    if (!fg) return;
-    const panelBlock = scssBlock(scss, 'properties-panel');
-    const bg = parseHex(panelBlock) ?? [255, 255, 255];
-    const ratio = contrastRatio(fg, bg);
-    expect(ratio).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+    expect(bg).not.toBeNull();
+    if (!fg || !bg) return;
+    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
   });
 });
