@@ -4,12 +4,20 @@
  * Stage 8 of the integration-test plan: Feature-level workflows.
  * Tests complete feature workflows against live Nuxeo.
  *
- * Tests:
- * - Collections membership (add/remove documents)
- * - Notes (create/read/update/delete)
- * - CSV export
- * - Document versions
- * - Basic workflow operations
+ * Tests, described by what the cases below actually do rather than by the surface they
+ * belong to. This list read "Collections membership (add/remove documents)" and "Notes
+ * (create/read/update/delete)" while no case removed a document from a collection and none
+ * updated or deleted a note — a coverage summary naming eight operations for four that run.
+ * Reported on PR #226, and the shape of overstatement this whole branch exists to remove.
+ *
+ * - Collections: create, and add a document. **No remove.**
+ * - Notes: create one on a document, and query the comments on a document. **No update, no
+ *   delete.**
+ * - CSV export: start only — see below.
+ * - Document versions: create a version, and read the history.
+ * - Workflow operations: query the available workflow models. Nothing is started or
+ *   completed.
+ * - Document properties: update `dc:` metadata and read it back.
  *
  * Acceptance criteria (from audit §11 Stage 8):
  * - Each workflow tested end-to-end with API verification
