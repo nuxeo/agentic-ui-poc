@@ -452,8 +452,11 @@ describe('Write Operations Integration Tests', () => {
       const unique = `iso-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
       const workspaces = '/default-domain/workspaces';
 
+      /** The two fields of the server's entity this test uses. */
+      type Created = { uid: string; path: string };
+
       /** Create a document by path, returning the server's entity. */
-      const createAt = async (parentPath: string, name: string, type: string) => {
+      const createAt = async (parentPath: string, name: string, type: string): Promise<Created> => {
         const res = await fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/path${parentPath}`, {
           method: 'POST',
           headers: {
@@ -468,7 +471,7 @@ describe('Write Operations Integration Tests', () => {
           }),
         });
         expect(res.status).toBe(201);
-        return (await res.json()) as any;
+        return (await res.json()) as Created;
       };
 
       /** The status of a direct repository read. 404 means gone, 200 means present. */
@@ -479,21 +482,22 @@ describe('Write Operations Integration Tests', () => {
         return res.status;
       };
 
-      // The canary: outside the data root, a sibling of it, owned by this run.
-      const canary = await createAt(workspaces, `${unique}-canary`, 'File');
-
-      // The throwaway root, and a child inside it. The child is what makes the deletion's
-      // recursiveness observable: a DELETE that removed only the workspace and orphaned its
-      // contents would still leave the root 404, and this test would not notice.
-      //
-      // `throwaway.path` comes from the server and is used verbatim below rather than rebuilt
-      // from `unique` — the lesson `assertUntruncated` in the harness was written for.
-      // Nuxeo's `PathSegmentServiceDefault` caps a segment at 24 characters, and it bit during
-      // this test's own development: a canary asked for as `…-canary` was created as `…-canar`.
-      // Reads here go by UID so truncation cannot mislead them, but the DELETE goes by path,
-      // and a reconstructed path would have 404'd on a workspace that existed.
-      const throwaway = await createAt(workspaces, `${unique}-root`, 'Workspace');
-      const inside = await createAt(throwaway.path, 'child', 'File');
+      /**
+       * The fixtures, declared here and created **inside** the protected region below.
+       *
+       * They used to be created above the `try`, and a creation failure then left whatever had
+       * already been created outside `harness.dataRoot` with nothing to remove it — the canary
+       * is a sibling of the data root, not a child, so the harness's own `afterAll` cannot
+       * reach it. A test whose subject is isolation, leaking a workspace onto a shared Nuxeo
+       * on its unhappy path, contradicts the thing it asserts. Reported on the pull request.
+       *
+       * `null` until the server has answered, so the `finally` removes exactly what exists:
+       * a fixture that was never created has nothing to delete, and reporting it as removed
+       * would be the same false reassurance in the other direction.
+       */
+      let canary: Created | null = null;
+      let throwaway: Created | null = null;
+      let inside: Created | null = null;
 
       /**
        * Best-effort removal of one fixture, RECORDED rather than asserted.
@@ -534,6 +538,22 @@ describe('Write Operations Integration Tests', () => {
       };
 
       try {
+        // The canary: outside the data root, a sibling of it, owned by this run.
+        canary = await createAt(workspaces, `${unique}-canary`, 'File');
+
+        // The throwaway root, and a child inside it. The child is what makes the deletion's
+        // recursiveness observable: a DELETE that removed only the workspace and orphaned its
+        // contents would still leave the root 404, and this test would not notice.
+        //
+        // `throwaway.path` comes from the server and is used verbatim below rather than rebuilt
+        // from `unique` — the lesson `assertUntruncated` in the harness was written for.
+        // Nuxeo's `PathSegmentServiceDefault` caps a segment at 24 characters, and it bit during
+        // this test's own development: a canary asked for as `…-canary` was created as `…-canar`.
+        // Reads here go by UID so truncation cannot mislead them, but the DELETE goes by path,
+        // and a reconstructed path would have 404'd on a workspace that existed.
+        throwaway = await createAt(workspaces, `${unique}-root`, 'Workspace');
+        inside = await createAt(throwaway.path, 'child', 'File');
+
         // Everything is really there before the destructive step, or the assertions afterwards
         // are satisfied by documents that never existed.
         expect(await readStatus(canary.uid)).toBe(200);
@@ -564,10 +584,18 @@ describe('Write Operations Integration Tests', () => {
         // it cannot be satisfied by index lag, because it is a repository read.
         expect(await readStatus(canary.uid)).toBe(200);
       } finally {
-        await removeQuietly('canary', canary.uid, `${workspaces}/${unique}-canary`);
+        // Conditional on creation, not on the happy path: a failure part-way through the
+        // three `createAt` calls above leaves some of these null, and only the ones the
+        // server actually made are this test's to remove.
+        if (canary) await removeQuietly('canary', canary.uid, `${workspaces}/${unique}-canary`);
         // Already removed by `deleteDataRoot` on the happy path, so this reads back 404 and
-        // reports "removed". It is here for the paths where the delete under test did not run.
-        await removeQuietly('throwaway root', throwaway.uid, throwaway.path);
+        // reports "removed". It is here for the paths where the delete under test did not run,
+        // and it covers `inside` too — it is a child of this root, so the recursive delete
+        // takes it, and a separate removal would only ever report a 404 it had caused itself.
+        if (throwaway) await removeQuietly('throwaway root', throwaway.uid, throwaway.path);
+        // Named rather than omitted, so an empty teardown line is never read as "nothing to
+        // clean up" when it was in fact "nothing got created".
+        if (removals.length === 0) removals.push('no fixture was created, so nothing to remove');
         console.log(`[write-ops] isolation teardown: ${removals.join('; ')}`);
       }
 

@@ -51,6 +51,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   SearchService,
   type GlobalSearchSuggestion,
+  type SearchCollectionOption,
   type SavedSearchOption,
   type SearchQueryParams,
   type SearchResponse,
@@ -363,13 +364,115 @@ describe('SearchService Integration Tests', () => {
   });
 
   describe('Collections', () => {
-    it('can get user collections', async () => {
-      const collections = await new Promise<unknown[]>((resolve, reject) => {
+    /**
+     * A collection this run owns, so the assertion below can name the row it expects.
+     *
+     * It used to assert `Array.isArray(collections)` and nothing else, which an
+     * implementation permanently returning `[]` satisfies without contacting Nuxeo at all —
+     * the vacuous shape this branch exists to remove. Reported on the pull request.
+     *
+     * Collections do not live under `harness.dataRoot`. `Collection.Create` puts them in the
+     * calling user's personal workspace, `/default-domain/UserWorkspaces/<user>/Collections`,
+     * so the harness's teardown cannot reach this one and `afterAll` below must — the same
+     * situation as the saved search above, and handled the same way.
+     */
+    const collectionName = `collection-${token}`;
+    let collectionUid = '';
+
+    /** A `${harness.nuxeoUrl}` automation call with this run's credentials. */
+    const automation = (operation: string, body: Record<string, unknown>): Promise<Response> =>
+      fetch(`${harness.nuxeoUrl}/nuxeo/api/v1/automation/${operation}`, {
+        method: 'POST',
+        headers: { Authorization: harness.auth, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: {}, ...body }),
+      });
+
+    beforeAll(async () => {
+      const created = await automation('Collection.Create', {
+        params: { name: collectionName, description: `search fixture ${token}` },
+      });
+      expect(created.status, 'Collection.Create must succeed or the test below is vacuous').toBe(
+        200,
+      );
+      collectionUid = ((await created.json()) as { uid: string }).uid;
+      expect(collectionUid).toBeTruthy();
+
+      // A member, so `itemCount` is derived from something rather than being zero for a
+      // collection and zero for a mapping that never reads `collection:documentIds`.
+      const added = await automation('Document.AddToCollection', {
+        input: fileUids.Alpha,
+        params: { collection: collectionUid },
+      });
+      expect(added.status, 'Document.AddToCollection must succeed').toBe(200);
+
+      console.log(
+        `[search-integration] Seeded collection ${collectionUid} (${collectionName}) ` +
+          `holding ${fileUids.Alpha}`,
+      );
+    }, 30000);
+
+    /**
+     * Remove the collection, and **throw** if it is still there.
+     *
+     * Same reasoning as the saved-search teardown above, and the same evidence for it: this
+     * user's collection list is shared state that a later run reads, and a leak reported as a
+     * log line is a leak that stays. The `Collections` folder that `Collection.Create` makes
+     * on first use is left alone — it is the user's workspace, not this run's fixture.
+     */
+    afterAll(async () => {
+      if (!collectionUid) return;
+
+      const url = `${harness.nuxeoUrl}/nuxeo/api/v1/id/${collectionUid}`;
+      const headers = { Authorization: harness.auth };
+      const leaked = (detail: string) =>
+        new Error(
+          `[search-integration] collection ${collectionUid} (${collectionName}) was not ` +
+            `removed: ${detail}\n` +
+            `  It lives in the user's personal workspace, outside the data root, so the\n` +
+            `  harness cannot reclaim it and a later run's collection list will hold it.\n` +
+            `  Delete it by hand before the next run.`,
+        );
+
+      let after: number;
+      try {
+        await fetch(url, { method: 'DELETE', headers });
+        // A DELETE answering 2xx is Nuxeo accepting the call, not evidence it is gone.
+        after = (await fetch(url, { headers })).status;
+      } catch (error) {
+        throw leaked(
+          `the cleanup request itself failed (${error instanceof Error ? error.message : String(error)})`,
+        );
+      }
+
+      if (after !== 404) {
+        throw leaked(`it is still readable after the DELETE (HTTP ${after})`);
+      }
+      console.log(`[search-integration] teardown removed collection ${collectionUid}`);
+    }, 30000);
+
+    it('returns this run\'s collection, with the member count read off "collection:documentIds"', async () => {
+      const collections = await new Promise<SearchCollectionOption[]>((resolve, reject) => {
         searchService.getUserCollections().subscribe({ next: resolve, error: reject });
       });
 
-      expect(Array.isArray(collections)).toBe(true);
-      console.log(`[search-integration] Found ${collections.length} collection(s)`);
+      // By id, not by count: this Nuxeo is shared, so the total is other runs' business.
+      // What this run can assert is that the collection it seeded came back, which no
+      // implementation returning a constant empty list can satisfy.
+      const seeded = collections.find((collection) => collection.id === collectionUid);
+      expect(
+        seeded,
+        `getUserCollections() did not return ${collectionUid}; got ${collections
+          .map((collection) => collection.id)
+          .join(', ')}`,
+      ).toBeDefined();
+      expect(seeded?.title).toBe(collectionName);
+      // The one document added in `beforeAll`. `itemCount` is `collection:documentIds.length`,
+      // so this is the only assertion here that reaches the mapping rather than the entity.
+      expect(seeded?.itemCount).toBe(1);
+      console.log(
+        `[search-integration] Found ${collections.length} collection(s), including ` +
+          `${collectionUid} with ${seeded?.itemCount} member(s)`,
+      );
     });
   });
 
