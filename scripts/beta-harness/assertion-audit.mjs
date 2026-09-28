@@ -35,8 +35,10 @@
  * Usage:
  *   node scripts/beta-harness/assertion-audit.mjs [--json] [paths...]
  *
- * Defaults to auditing `scripts/beta-harness/steps/` and
- * `scripts/collect-evidence/steps/` if they exist.
+ * Defaults to auditing `scripts/beta-harness/steps/` and the whole of
+ * `scripts/collect-evidence/`, if they exist. This said `scripts/collect-evidence/steps/`
+ * — a path that does not exist — after the default was widened, so the documented scope
+ * was both wrong and narrower than the 42 files the audit actually reads.
  *
  * Exit 1 if any assertion cannot fail. Warnings alone do not fail the audit.
  */

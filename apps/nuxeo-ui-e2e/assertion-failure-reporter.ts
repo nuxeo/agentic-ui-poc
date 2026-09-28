@@ -107,6 +107,20 @@ interface Report {
  *
  * `underHook` is inherited down the tree rather than tested per step, because the `expect`
  * itself is never the hook — it sits two levels under `Before Hooks -> beforeEach hook`.
+ *
+ * ## `category === 'fixture'` is deliberately **not** a second test
+ *
+ * Review asked for one, on the reasoning that a failing `expect` during `test.extend`
+ * fixture setup carries `category === 'fixture'` rather than `'hook'` and would therefore be
+ * counted as a body assertion. Measured instead of taken: Playwright runs fixture setup
+ * *inside* the `Before Hooks` step, so the `fixture` step already has a `hook` ancestor and
+ * `underHook` is true by the time the `expect` is reached. Adding the category changed no
+ * outcome — with `'fixture'` in and with it out, the fixture case in `cases.spec.ts` is
+ * excluded either way, and only emptying the exclusion entirely counts it.
+ *
+ * So the check that would have been added here is a check that cannot fail, which is the
+ * thing this reporter exists to stop the negative control from accepting. The fixture case
+ * stays in `cases.spec.ts` as a regression check on the hook exclusion covering it.
  */
 function failingAssertions(steps: readonly TestStep[], underHook = false): TestStep[] {
   return steps.flatMap((step) => {

@@ -154,19 +154,30 @@ if (appStatus !== null && auth) {
       // this preflight as its first step, so the control could not start against a real
       // repository.
       //
-      // The entries are the evidence in any case: `pageSize=1` is asked for, so one returned row
-      // IS proof the repository has something to assert against. The total is only the nicer
-      // number to print.
+      // The entries are the evidence, and the total is only the nicer number to print.
+      //
+      // That sentence stood here while the condition was `(total ?? entries) > 0`, which
+      // trusts the total whenever there is one — the opposite of what it says. This endpoint
+      // is index-backed and a stale index answers with a count for documents it can no longer
+      // resolve, measured on this deployment at `resultsCount` 1026 with zero entries. The
+      // preflight would then let the whole E2E suite start against a repository from which
+      // no spec can retrieve a row. Same defect, same fix, as the integration-preflight copy
+      // beside it; reported on the pull request against both.
+      //
+      // `pageSize=1` is asked for, so one returned row is all the evidence there is to want.
       const entries = Array.isArray(body.entries) ? body.entries.length : 0;
       const total = typeof body.resultsCount === 'number' && body.resultsCount >= 0 ? body.resultsCount : null;
-      const count = total ?? entries;
-      if (count > 0) {
-        ok.push(`Nuxeo has ${count} File document(s) the specs can assert against`);
+      if (entries > 0) {
+        ok.push(`Nuxeo has ${total ?? `at least ${entries}`} File document(s) the specs can assert against`);
       } else {
         problems.push(
-          'Nuxeo is reachable but holds no File documents.\n' +
-            '  Every critical-path spec asserts repository data, so an empty repository is not\n' +
-            '  a pass — it is a run that tested nothing. Import a document first.',
+          'Nuxeo is reachable but returned no File documents.\n' +
+            '  Every critical-path spec asserts repository data, so a repository that hands\n' +
+            '  back no rows is not a pass — it is a run that tested nothing.\n' +
+            (total !== null && total > 0
+              ? `  The query reported a total of ${total} and returned nothing, which is what a\n` +
+                '  stale search index looks like. Reindex, or import a document.'
+              : '  Import a document first.'),
         );
       }
     }

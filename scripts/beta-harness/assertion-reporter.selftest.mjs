@@ -8,7 +8,7 @@
  * ever print FAIL, and the version after that counted navigation timeouts as assertions.
  * Both were wrong for weeks because nothing exercised them.
  *
- * So the four shapes are kept executable. `cases.spec.ts` fails on purpose in each of them
+ * So the five shapes are kept executable. `cases.spec.ts` fails on purpose in each of them
  * and this asserts the reporter's verdict, including two silence assertions — a reporter
  * that counted everything would satisfy the positive check alone.
  *
@@ -16,6 +16,7 @@
  *   excluded  a throw from a helper in another file
  *   excluded  a rejection on a line the spec wrote, with no expect run   <- the review finding
  *   excluded  a failing expect() inside beforeEach, body never ran
+ *   excluded  a failing expect() inside a test fixture, body never ran
  *   absent    a spec that passed
  *
  * ## The mutation this file's authority rests on
@@ -54,7 +55,7 @@ const run = spawnSync('npx', ['playwright', 'test', '-c', configFile], {
   env: { ...process.env },
 });
 
-// A non-zero exit is expected — four of the five cases fail on purpose. What is NOT expected
+// A non-zero exit is expected — five of the six cases fail on purpose. What is NOT expected
 // is the reporter failing to load, which Playwright also reports as a non-zero exit with no
 // output file. Distinguishing the two is the point of checking the file rather than the code.
 if (!existsSync(outputFile)) {
@@ -82,13 +83,15 @@ const check = (label, ok, detail) => {
 const counted = (title) => byTitle.get(title)?.failedAtAssertion === true;
 const excluded = (title) => byTitle.has(title) && byTitle.get(title).failedAtAssertion === false;
 
-console.log('assertion-reporter selftest — five deliberate cases\n');
+console.log('assertion-reporter selftest — six deliberate cases\n');
 
 const bodyAssertion = 'counts: a failing expect in the test body';
 const helperThrow = 'excluded: throws from a helper in another file';
 const specLineThrow = 'excluded: rejects on a line the spec wrote, with no expect run';
 const hookAssertion =
   'hook failures > excluded: the assertion that failed was in a hook, so the body never ran';
+const fixtureAssertion =
+  'excluded: the assertion that failed was in a fixture, so the body never ran';
 const passing = 'passes, so it is not in the report at all';
 
 check(
@@ -111,12 +114,22 @@ check(
   excluded(hookAssertion),
   JSON.stringify(byTitle.get(hookAssertion) ?? null),
 );
+// Review asked for a separate `category === 'fixture'` exclusion, expecting this case to be
+// counted without one. It is not: Playwright nests fixture setup inside `Before Hooks`, so
+// the hook exclusion already reaches it. Kept as a check rather than as a comment, and it is
+// capable of failing — emptying the exclusion set entirely turns this one red along with the
+// beforeEach case, `atAssertion` going 1 -> 3.
+check(
+  'a failing expect() inside a test fixture is EXCLUDED',
+  excluded(fixtureAssertion),
+  JSON.stringify(byTitle.get(fixtureAssertion) ?? null),
+);
 // Silence assertions: a reporter that counted every failure, or listed passing specs, would
 // satisfy the first check above and still be useless.
 check('a passing spec is ABSENT from the report', !byTitle.has(passing), 'it was listed');
 check(
-  'exactly 1 of 4 failures is counted as an assertion',
-  report.atAssertion === 1 && report.beforeAssertion === 3 && report.failedSpecs === 4,
+  'exactly 1 of 5 failures is counted as an assertion',
+  report.atAssertion === 1 && report.beforeAssertion === 4 && report.failedSpecs === 5,
   `atAssertion=${report.atAssertion} beforeAssertion=${report.beforeAssertion} failedSpecs=${report.failedSpecs}`,
 );
 // Not a regex on the step title: Playwright uses `expect`'s custom message as the step
@@ -144,4 +157,4 @@ if (failures.length) {
   console.error(`\nassertion-reporter.selftest: FAIL — ${failures.length} expectation(s) unmet.`);
   process.exit(1);
 }
-console.log('\nassertion-reporter.selftest: pass — all 8 expectations met.');
+console.log('\nassertion-reporter.selftest: pass — all 9 expectations met.');

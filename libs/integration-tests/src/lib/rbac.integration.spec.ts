@@ -51,12 +51,34 @@ describe('RBAC and Permissions Integration Tests', () => {
   // Track created users for cleanup
   const createdUsers: string[] = [];
 
+  /**
+   * Delete every user this test created, then report what could not be deleted.
+   *
+   * Every one, not "until the first failure". `deleteUser` throws — deliberately, so a
+   * surviving account cannot report green — and an `await` inside a plain loop propagates
+   * immediately, so one stubborn user left every later one in the list untouched on a shared
+   * instance. Reported on the pull request.
+   *
+   * The list is cleared whatever happens, because a failure here is already going to fail the
+   * test; carrying the same names into the next `afterEach` would retry a deletion that has
+   * been reported and attribute it to a different test.
+   */
   afterEach(async () => {
-    // Clean up any users created during tests
+    const failures: string[] = [];
     for (const username of createdUsers) {
-      await deleteUser(harness, username);
+      try {
+        await deleteUser(harness, username);
+      } catch (error) {
+        failures.push(error instanceof Error ? error.message : String(error));
+      }
     }
     createdUsers.length = 0;
+
+    if (failures.length > 0) {
+      throw new Error(
+        `[rbac] ${failures.length} test user(s) could not be deleted:\n${failures.join('\n')}`,
+      );
+    }
   }, 30000);
 
   describe('Non-Admin User Creation', () => {
@@ -105,6 +127,11 @@ describe('RBAC and Permissions Integration Tests', () => {
       const user = await createNonAdminUser(harness, {
         username: 'charlie',
       });
+      // Tracked before the deletion under test, not after it. `deleteUser` failing is the
+      // exact behaviour this test exercises, and until now a failure left the account active
+      // on a shared instance with `afterEach` holding nothing to retry. The retry is harmless
+      // on the happy path: `deleteUser` treats 404 as the outcome asked for.
+      createdUsers.push(user.username);
 
       // Delete immediately (not via cleanup)
       await deleteUser(harness, user.username);

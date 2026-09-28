@@ -56,6 +56,36 @@ test.describe('hook failures', () => {
   });
 });
 
+/**
+ * The fifth shape: a failing `expect` during `test.extend` fixture setup.
+ *
+ * Review expected this to be counted as a body assertion, because such a step carries
+ * `category === 'fixture'` and the reporter only excludes `'hook'`. It is not — Playwright
+ * runs fixture setup inside the `Before Hooks` step, so the hook exclusion already reaches
+ * it, measured by adding `'fixture'` to the reporter and watching every count stay put.
+ * The case is here because that was an assumption until it was executable.
+ */
+const withBrokenFixture = test.extend<{ brokenFixture: void }>({
+  // Playwright reads a fixture's dependencies out of this parameter's destructuring pattern
+  // and rejects a named one at load time with "First argument must use the object
+  // destructuring pattern" — measured: `async (_deps, use)` makes the whole file unloadable
+  // and the self-test reports 0 specs. This fixture depends on nothing, so the pattern is
+  // empty, which is the only spelling the framework accepts.
+  // eslint-disable-next-line no-empty-pattern -- required by Playwright, see above
+  brokenFixture: async ({}, use) => {
+    expect(1, 'an assertion inside a fixture').toBe(2);
+    await use();
+  },
+});
+
+withBrokenFixture(
+  'excluded: the assertion that failed was in a fixture, so the body never ran',
+  async ({ brokenFixture }) => {
+    void brokenFixture;
+    expect(true).toBe(true);
+  },
+);
+
 test('passes, so it is not in the report at all', async () => {
   expect(true).toBe(true);
 });

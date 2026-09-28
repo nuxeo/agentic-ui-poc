@@ -79,10 +79,18 @@ function stubFetch(...answers: (StubResponse | Error | string)[]) {
   return fetchMock;
 }
 
-/** A 200 whose body is `resultsCount`, the shape check 3 reads. */
+/**
+ * A 200 shaped like the search endpoint's answer for a non-empty repository.
+ *
+ * Both halves, because the check reads both. This used to send `resultsCount` alone, which
+ * made the pass case a `resultsCount`-only assertion and left "a count with no rows" — the
+ * stale-index shape — covered by nothing. At most one entry, because the query asks for
+ * `pageSize=1` and the server cannot return more than it was asked for.
+ */
 const withDocuments = (resultsCount: number): StubResponse => ({
   status: 200,
-  json: () => Promise.resolve({ resultsCount }),
+  json: () =>
+    Promise.resolve({ resultsCount, entries: resultsCount > 0 ? [{ uid: 'fixture-row' }] : [] }),
 });
 
 /**
@@ -352,6 +360,28 @@ describe('runPreflightChecks — the empty-repository check', () => {
     expect(result.satisfied).toContain('Nuxeo has at least 2 File document(s) to test against');
   });
 
+  it('refuses a positive resultsCount that returned no rows, and says why', async () => {
+    // The load-bearing case for "the entries are the evidence". This endpoint is
+    // index-backed, and a stale index answers with a total for documents it can no longer
+    // resolve — measured on this deployment at `resultsCount` 1026 with zero entries, and
+    // recorded in `search-service.integration.spec.ts`. Trusting the total certified a
+    // repository the suite can retrieve nothing from.
+    useAllowedTarget();
+    stubFetch(
+      { status: 200 },
+      { status: 200, json: () => Promise.resolve({ resultsCount: 1026, entries: [] }) },
+    );
+
+    const result = await runPreflightChecks();
+
+    expect(result.ok).toBe(false);
+    expect(result.problems[0]).toMatch(/returned no File documents/);
+    // The count is reported, because "1026 and nothing came back" is the diagnosis and
+    // "no File documents" on its own would send the reader to import one.
+    expect(result.problems[0]).toMatch(/total of 1026 and returned nothing/);
+    expect(result.problems[0]).toMatch(/stale search index/);
+  });
+
   it('refuses a reachable but empty repository', async () => {
     // The whole reason this check exists: every presence assertion in the suite passes
     // vacuously against an empty Nuxeo, so the run reports green having tested nothing.
@@ -361,7 +391,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
     const result = await runPreflightChecks();
 
     expect(result.ok).toBe(false);
-    expect(result.problems[0]).toMatch(/reachable but holds no File documents/);
+    expect(result.problems[0]).toMatch(/reachable but returned no File documents/);
     expect(result.problems[0]).toMatch(/not a pass/);
     // Reachability is still recorded — the two checks are independent findings, and a reader
     // needs to know the server answered.
@@ -405,7 +435,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
       const result = await runPreflightChecks();
 
       expect(result.ok).toBe(false);
-      expect(result.problems[0]).toMatch(/holds no File documents/);
+      expect(result.problems[0]).toMatch(/returned no File documents/);
     });
   }
 
@@ -416,7 +446,7 @@ describe('runPreflightChecks — the empty-repository check', () => {
     const result = await runPreflightChecks();
 
     expect(result.ok).toBe(false);
-    expect(result.problems[0]).toMatch(/holds no File documents/);
+    expect(result.problems[0]).toMatch(/returned no File documents/);
   });
 
   it('reports a failed query separately from an unreachable server', async () => {

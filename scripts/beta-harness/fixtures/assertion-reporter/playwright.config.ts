@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 /**
  * Throwaway config for `assertion-reporter.selftest.mjs`. Registers the real reporter —
- * not a copy of it — against `cases.spec.ts`, which fails on purpose in four different ways.
+ * not a copy of it — against `cases.spec.ts`, which fails on purpose in five different ways.
  *
  * `testMatch` names that one file rather than matching an extension. The fixture has to be a
  * `*.spec.ts` for the self-test's mutation to mean anything — see the header of

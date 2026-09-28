@@ -405,23 +405,37 @@ export async function runPreflightChecks(
         // `count > 0`, and this gate reported "holds no File documents" and exited 2 —
         // inverting its answer on exactly the large repositories it is least able to doubt.
         //
-        // The entries are the evidence in any case: the query asks for `pageSize=1`, so one
-        // returned row IS the proof that the repository has something to test against. The
-        // total is only ever the nicer number to print.
+        // The entries are the evidence, and the total is only the nicer number to print.
+        //
+        // That sentence was already here while the condition below read `total > 0` whenever
+        // a total was available, which is the opposite: a positive count with no returned row
+        // passed. It is not a hypothetical shape — `search-service.integration.spec.ts`
+        // records it measured on this deployment, `resultsCount` 1026 with `entries` 0,
+        // because this endpoint is index-backed and the index still holds documents another
+        // worktree has deleted. The gate would then certify "1026 File document(s) to test
+        // against" for a repository the suite can retrieve none from, which is precisely the
+        // vacuous pass it exists to prevent. Reported on the pull request.
+        //
+        // `pageSize=1` is asked for, so one returned row is all the evidence there is to want.
         const entries = Array.isArray(body.entries) ? body.entries.length : 0;
         const total =
           typeof body.resultsCount === 'number' && body.resultsCount >= 0
             ? body.resultsCount
             : null;
-        if (total !== null ? total > 0 : entries > 0) {
+        if (entries > 0) {
           satisfied.push(
             `Nuxeo has ${total ?? `at least ${entries}`} File document(s) to test against`,
           );
         } else {
           problems.push(
-            'Nuxeo is reachable but holds no File documents.\n' +
-              '  Integration tests assert repository data. An empty repository is not a pass —\n' +
-              '  it is a run that tested nothing. Import a document first.',
+            'Nuxeo is reachable but returned no File documents.\n' +
+              '  Integration tests assert repository data. A run against a repository that\n' +
+              '  hands back no rows is not a pass — it is a run that tested nothing.\n' +
+              (total !== null && total > 0
+                ? `  The query reported a total of ${total} and returned nothing, which is what a\n` +
+                  '  stale search index looks like: a count for documents it can no longer\n' +
+                  '  resolve. Reindex, or import a document.\n'
+                : '  Import a document first.\n'),
           );
         }
       } else {

@@ -162,7 +162,11 @@ Added import: `import { nuxeoAce } from '@agentic-ui/shared/testing'`
   `nuxeo-acl-write.spec.ts`. The count was not a tally kept alongside the work; it was the
   claim that the work was finished, and it was wrong by one file for both.
 
-- **After:** 2 shared factories, 5 files importing them
+- **After:** 2 shared factories, **4** spec files importing them —
+  `nuxeo-document-api.spec.ts`, `nuxeo-copy-move-api.spec.ts`, `nuxeo-checkin-api.spec.ts`
+  and `nuxeo-acl-write.spec.ts`. It read "5 files", which no import in the tree supports;
+  the seven builders were spread across four files, not five, because `nuxeo-acl-write`
+  held three of them.
   - `nuxeoDocument()` in `@agentic-ui/shared/testing`
   - `nuxeoAce()` in `@agentic-ui/shared/testing`
 
