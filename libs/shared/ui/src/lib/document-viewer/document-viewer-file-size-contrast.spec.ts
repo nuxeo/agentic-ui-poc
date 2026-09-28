@@ -81,13 +81,14 @@ describe('DocumentViewerComponent — footer/file-size contrast (NXENG-763, NXEN
     const scss = readFileSync(scssPath, 'utf8');
     const footer = scssBlock(scss, 'viewer-footer');
     const fileName = scssBlock(scss, 'file-name');
-    const label = scssBlock(scss, 'file-size');
     const actions = scssNestedBlock(scss, 'viewer-footer-actions', 'button');
     expect(footer).toMatch(/var\(--document-viewer-light-strip-surface\)/);
     expect(fileName).toMatch(/var\(--document-viewer-on-light-strip\)/);
     expect(actions).toMatch(/var\(--document-viewer-muted-on-light-surface\)/);
+    expect(actions).toMatch(/var\(--document-viewer-error-on-light-surface\)/);
     expect(actions).toMatch(/var\(--mat-sys-primary/);
     expect(actions).not.toMatch(/color:\s*#555/i);
+    expect(actions).not.toMatch(/var\(--mat-sys-error/);
   });
 
   it('pins .file-size to the light-strip muted token per NXENG-764', () => {

@@ -133,9 +133,7 @@ describe('DocumentViewer footer/file-size contrast by theme (NXENG-763, NXENG-76
         .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
 
       const actionButtons = Array.from(
-        fixture.nativeElement.querySelectorAll(
-          '.viewer-footer-actions button:not(.footer-remove-btn)',
-        ),
+        fixture.nativeElement.querySelectorAll('.viewer-footer-actions button'),
       ) as HTMLElement[];
       expect(actionButtons.length)
         .withContext(`footer icon buttons in ${label}`)

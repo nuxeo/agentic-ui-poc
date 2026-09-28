@@ -3,6 +3,8 @@
   --document-viewer-light-strip-surface: #ffffff;
   --document-viewer-on-light-strip: #333333;
   --document-viewer-muted-on-light-surface: #5c5f6b;
+  /* Destructive actions on the fixed light strip — not --mat-sys-error (dark-theme token). */
+  --document-viewer-error-on-light-surface: #b00020;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -409,7 +411,7 @@
     }
 
     &.footer-remove-btn {
-      color: var(--mat-sys-error, #b00020);
+      color: var(--document-viewer-error-on-light-surface);
     }
   }
 }
