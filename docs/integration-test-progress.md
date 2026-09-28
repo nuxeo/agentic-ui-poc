@@ -10,7 +10,16 @@ Implemented Stages 2, 3, 4, and 5 of the 9-stage integration-test plan from the 
 Created the foundation for service-level integration testing with preconditions, fixtures,
 and harness. Fixed existing test defects that were hiding real problems.
 
-**Status:** 4 of 9 stages complete, ready for verification with live Nuxeo
+**Status:** superseded — this is the snapshot after Stages 2–5, kept for the record.
+
+> **Do not read the position from this document.** It said "4 of 9 stages complete, ready for
+> verification with live Nuxeo", and that was true when written. The same branch went on to
+> deliver Stages 6, 7 and 8, and the suite was measured at **63 of 63 passing** on 2026-09-28
+> at `eb5a739f2` — see the update in `docs/INTEGRATION-TEST-COMPLETE.md` for the one
+> precondition on that number. Sections below also still describe a credential opt-in flag, a
+> three-character run ID and an HXQL guard location that this branch has since removed or
+> moved. Reported on PR #226; the correction is here rather than a rewrite so the record of
+> what was claimed mid-stream survives.
 
 ---
 

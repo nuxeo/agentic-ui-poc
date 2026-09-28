@@ -23,6 +23,21 @@
 > | Stage 9                         | **not implemented.** Planned only, in `docs/integration-test-stage-9-plan.md`.                                                                                                                                           |
 > | Scheduled/nightly evidence runs | **not implemented.**                                                                                                                                                                                                     |
 >
+> **Update — 2026-09-28, at `eb5a739f2`.** Re-measured against the same stack: the
+> integration suite is **63 of 63 passing**. The three `feature-workflows` failures in the
+> row above were repaired later on this branch; the row stays as the record of what was true
+> on 2026-09-23 and is superseded here rather than edited in place.
+>
+> One precondition on that number, stated because the number is not reproducible without it.
+> `search-service.integration.spec.ts` opts into jsdom for Angular's `HttpClient`, and
+> vitest's jsdom environment replaces the global `AbortSignal` with one Node's `fetch`
+> refuses — so the preflight inside its `beforeAll` fails with
+> `RequestInit: Expected signal ("AbortSignal {}") to be an instance of AbortSignal`,
+> reported to the operator as `Cannot reach Nuxeo … Start Nuxeo with: docker compose up
+nuxeo` against a Nuxeo that is up. A bare `npm run beta:integration` therefore reports
+> **46 passed, 17 skipped**. The 63 was measured with the Node global restored for the run.
+> That defect is open, and no claim of a green integration suite should be read without it.
+>
 > A second review round found that ten SearchService tests and three RBAC tests passed without
 > asserting what they were named for — the same defect class this work exists to remove. Each was
 > confirmed by mutation (delete the parameter, invert the sort, neuter the delete; the test stayed

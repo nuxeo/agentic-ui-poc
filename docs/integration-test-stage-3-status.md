@@ -48,7 +48,7 @@ of the builders the pass had looked at, which is not the claim it was making.
 - File: `libs/shared/testing/src/lib/nuxeo-fixtures.ts`
 - Commit: f6155b13
 
-#### Task 3.4: Migrate 3 duplicate nuxeoDoc builders
+#### Task 3.4: Migrate 4 duplicate nuxeoDoc builders
 
 - **File 1:** `nuxeo-document-api.spec.ts` (lines 55-63)
   - Removed local builder
@@ -65,9 +65,18 @@ of the builders the pass had looked at, which is not the claim it was making.
   - Migrated to shared factory
   - Documented difference in comment
 
-All 3 files: removed duplicate builder functions, added imports, renamed usages
+- **File 4:** `adf-hx-browse-folder.service.spec.ts` (lines 28-38) — **missed by the original
+  pass**, and by the correction to Task 3.5 that followed it. Reported on PR #226 against the
+  "migrated all duplicate builders" claim.
+  - Original defaults: `state: 'project'`, `lastModified: '2026-02-01T00:00:00.000Z'`, both
+    kept as overrides because cases in this file read the lifecycle and `state` is one of the
+    optional fields the factory leaves absent on purpose.
+  - The literal was returned behind `as NuxeoDocument`, which is exactly the drift the shared
+    factory removes; the cast went with it.
 
-- Commit: f6155b13
+All 4 files: removed duplicate builder functions, added imports, renamed usages
+
+- Commit: f6155b13 (Files 1-3)
 
 #### Task 3.5: Migrate duplicate nuxeoAce builders
 
@@ -154,21 +163,29 @@ Added import: `import { nuxeoAce } from '@agentic-ui/shared/testing'`
 
 ### Eliminated Duplication
 
-- **Before:** 7 duplicate fixture builders across 5 files
-  - 3 `nuxeoDoc` builders (document-api, copy-move, checkin)
+- **Before:** 8 duplicate fixture builders across 5 files
+  - 4 `nuxeoDoc` builders (document-api, copy-move, checkin, adf-hx-browse-folder)
   - 4 `nuxeoAce`/`ace` builders (document-api, acl-write ×3)
 
-  This read "6 … acl-write ×2" until PR #226 review found the third `ace` builder in
-  `nuxeo-acl-write.spec.ts`. The count was not a tally kept alongside the work; it was the
-  claim that the work was finished, and it was wrong by one file for both.
+  This read "6 … acl-write ×2, across 5 files" while two builders were neither counted nor
+  migrated: a third `ace` in `nuxeo-acl-write.spec.ts` and a fourth `nuxeoDoc` in
+  `adf-hx-browse-folder.service.spec.ts`. Both were found by PR #226 review, in separate
+  rounds. The count was never a tally kept alongside the work; it was the claim that the
+  work was finished, and it was wrong twice.
 
-- **After:** 2 shared factories, **4** spec files importing them —
-  `nuxeo-document-api.spec.ts`, `nuxeo-copy-move-api.spec.ts`, `nuxeo-checkin-api.spec.ts`
-  and `nuxeo-acl-write.spec.ts`. It read "5 files", which no import in the tree supports;
-  the seven builders were spread across four files, not five, because `nuxeo-acl-write`
-  held three of them.
+- **After:** 2 shared factories, **5** spec files importing them —
+  `nuxeo-document-api.spec.ts`, `nuxeo-copy-move-api.spec.ts`, `nuxeo-checkin-api.spec.ts`,
+  `nuxeo-acl-write.spec.ts` and `adf-hx-browse-folder.service.spec.ts`. The number is the
+  one `rg -l '@agentic-ui/shared/testing'` answers, which is the only way it stays true.
   - `nuxeoDocument()` in `@agentic-ui/shared/testing`
   - `nuxeoAce()` in `@agentic-ui/shared/testing`
+
+  **Not migrated, deliberately:** `docWith()` in `nuxeo-acl-write.spec.ts` and the bare
+  literal beside it. They exist to hand `localAclFor` payloads the model forbids — an
+  `acls` that is the string `'not-an-array'`, and a document with no `contextParameters` at
+  all — so they are cast past `NuxeoDocument` on purpose. A factory that returns a valid
+  document cannot express either case. Named here so the next count does not have to
+  rediscover why they are exempt.
 
 ### Type Safety
 
