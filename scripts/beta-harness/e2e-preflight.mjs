@@ -8,7 +8,7 @@
  * with an **empty** Nuxeo passes every render assertion and proves nothing, which is the
  * vacuous-pass shape this repository has been caught by repeatedly.
  *
- * So three preconditions, each with the specific fix, and **exit 2** rather than 1 — the
+ * So four preconditions, each with the specific fix, and **exit 2** rather than 1 — the
  * `precondition-not-met` convention `phase-runner.mjs` established: fix the environment,
  * do not iterate on the code.
  *
@@ -17,12 +17,42 @@
  */
 
 const BASE = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
-const USER = process.env['NUXEO_USER'] ?? 'Administrator';
-const PASS = process.env['NUXEO_PASS'] ?? 'Administrator';
-const auth = `Basic ${Buffer.from(`${USER}:${PASS}`).toString('base64')}`;
 
 const problems = [];
 const ok = [];
+
+/**
+ * 0. The credentials, from the environment, with **no** fallback — the same rule
+ * `apps/nuxeo-ui-e2e/src/nuxeo-credentials.ts` enforces for the suite this gate runs ahead of.
+ *
+ * These two lines each carried `?? 'Administrator'`, which `.cursor/rules/security.mdc`
+ * forbids outright: a working Basic-auth pair compiled into the repository. It also put the
+ * two stages of `beta:e2e` into disagreement, which is how it was reported. With the variables
+ * unset this preflight invented the pair, sent it at check 3, and could report **pass**;
+ * `playwright.config.ts` then called `nuxeoCredentials()` at config-load time, which throws,
+ * and Playwright exited **1**. So the one missing precondition in the run arrived as the code
+ * that means "a product defect" — from the stage *after* the gate whose entire job is to say
+ * "fix the environment" with exit 2.
+ *
+ * Checked before anything else, and the checks that need the header are skipped without it:
+ * there is nothing to authenticate with, and guessing is the defect.
+ */
+const USER = process.env['NUXEO_USER'];
+const PASS = process.env['NUXEO_PASS'];
+const auth = USER && PASS ? `Basic ${Buffer.from(`${USER}:${PASS}`).toString('base64')}` : null;
+
+if (auth) {
+  ok.push('NUXEO_USER and NUXEO_PASS are both set');
+} else {
+  problems.push(
+    'NUXEO_USER and NUXEO_PASS must both be set to run the e2e suite.\n\n' +
+      '    export NUXEO_USER=<user> NUXEO_PASS=<password>\n\n' +
+      '  There is deliberately no default. A default that suits one instance is wrong on every\n' +
+      '  other, and it embeds a usable credential in the repository. `playwright.config.ts`\n' +
+      '  refuses the same way at config load — this reports it as a precondition (exit 2)\n' +
+      '  rather than letting the run reach Playwright and fail as exit 1.',
+  );
+}
 
 /** 1. Playwright, which is deliberately not a tracked dependency. */
 let playwright = null;
@@ -92,7 +122,7 @@ try {
  * The document count is the load-bearing part. Every critical-path spec asserts repository
  * data, so an empty repository is not a pass, it is an untested run.
  */
-if (appStatus !== null) {
+if (appStatus !== null && auth) {
   try {
     const url = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', BASE);
     url.searchParams.set(

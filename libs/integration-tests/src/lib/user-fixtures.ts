@@ -15,6 +15,8 @@
 
 import { randomBytes } from 'node:crypto';
 
+import type { NuxeoUser } from '@nuxeo-satori/platform/nuxeo-client';
+
 /**
  * A password for one test user, for one run.
  *
@@ -39,8 +41,16 @@ export interface TestUser {
   lastName: string;
   /** Basic auth header: `Basic ${base64(username:password)}` */
   auth: string;
-  /** Full user object from Nuxeo */
-  nuxeoUser: any;
+  /**
+   * The user entity Nuxeo answered `POST /api/v1/user` with.
+   *
+   * `any` until now, on an **exported** type, so every RBAC spec reading through this field
+   * read an unchecked shape — `user.nuxeoUser.properties.username` type-checked whatever the
+   * model said, and a rename in `NuxeoUser` would not have reached the specs that depend on
+   * it. The shared client already publishes the model; there was no reason for a second,
+   * untyped spelling of it.
+   */
+  nuxeoUser: NuxeoUser;
 }
 
 export interface CreateUserOptions {
@@ -115,7 +125,7 @@ export async function createNonAdminUser(
     );
   }
 
-  const nuxeoUser = await createRes.json();
+  const nuxeoUser = (await createRes.json()) as NuxeoUser;
 
   // Generate Basic auth header for this user
   const auth = `Basic ${Buffer.from(`${scopedUsername}:${password}`).toString('base64')}`;

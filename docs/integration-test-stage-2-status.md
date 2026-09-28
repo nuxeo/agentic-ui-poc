@@ -6,13 +6,16 @@
 
 ## Completion Status
 
-**Overall:** 6 of 7 tasks complete (2.1, 2.2, 2.3, 2.4, 2.5, 2.7), 1 blocked on a product
-decision (2.6).
+**Overall:** 5 of 7 tasks complete (2.1, 2.3, 2.4, 2.5, 2.7), 1 **partial** (2.2), 1 blocked on
+a product decision (2.6).
 
-The line above read "6/7 tasks complete, 2 blocked" — which does not add up against seven tasks,
-and counted Task 2.2 as whole when part of it (the `trash` `test` target) had been reverted. See
-Task 2.2 and Task 2.7 below. It then read "5 of 7, 2 blocked" for as long as Task 2.3 stayed
-listed as blocked after it had been delivered.
+Three earlier spellings of this line, each wrong in its own way. It read "6/7 complete, 2
+blocked", which does not add up against seven tasks. It then read "5 of 7, 2 blocked" for as
+long as Task 2.3 stayed listed as blocked after it had been delivered. Most recently it read
+"6 of 7 complete (2.1, 2.2, …)" while the paragraph below it, and Task 2.2 itself, both said an
+acceptance item inside 2.2 is not delivered — a count contradicted by its own prose two lines
+later, reported on PR #226. A task with a reverted acceptance item is partial; it is not one of
+the completed six.
 
 **Summary:** Stage 2's goal — stop hiding problems — is met for the coverage gate, the HTTP
 verification guard, the negative control and the HXQL injection guard. One task is blocked on a
@@ -31,7 +34,11 @@ acceptance item inside Task 2.2, the `trash` `test` target, is **not** delivered
 - **Verification:** Tests now require real repository data to pass
 - **Commit:** 88e473c7 (part of), earlier commits
 
-#### Task 2.2: Fixed coverage gate
+#### Task 2.2: Fixed coverage gate — ⚠️ **partial**
+
+Listed here because the coverage gate itself is fixed and that is most of the task. It is
+**not** counted among the completed tasks above: one acceptance item, the `trash` `test`
+target, was added and then reverted, and is recorded as unresolved in the Fixes list below.
 
 - **Issue:** Gate exit 1 on every run, hiding real coverage changes
 - **Root causes:**

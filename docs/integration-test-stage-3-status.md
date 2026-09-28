@@ -8,8 +8,14 @@
 
 **Overall:** 7/7 tasks complete ✅
 
-Stage 3 complete! Created `libs/shared/testing` with typed NuxeoDocument and NuxeoAce factories,
-migrated all duplicate builders, and verified with negative control.
+Stage 3 complete. Created `libs/shared/testing` with typed NuxeoDocument and NuxeoAce
+factories, migrated every duplicate ACE and document builder, and verified with a negative
+control.
+
+"Migrated all duplicate builders" was written here while a fourth nine-field ACE builder
+still stood at `nuxeo-acl-write.spec.ts:179-190` — in the very file two of the three recorded
+migrations came from. PR #226 review caught it; see Task 3.5, File 4. The sentence was true
+of the builders the pass had looked at, which is not the claim it was making.
 
 ### Completed Tasks ✅
 
@@ -26,7 +32,7 @@ migrated all duplicate builders, and verified with negative control.
 - Extracted from nuxeo-document-api.spec.ts:55-63
 - Function: `nuxeoDocument(over?: Partial<NuxeoDocument>): NuxeoDocument`
 - Every **required** field filled — `uid`, `title`, `type`, `path`, `lastModified`,
-  `properties` — so the return value type-checks as a whole `NuxeoDocument`. The thirteen
+  `properties` — so the return value type-checks as a whole `NuxeoDocument`. The twelve
   optional fields are deliberately absent rather than defaulted; pass any the spec reads
   through `over`
 - Default values: uid: 'doc-1', title: 'Invoice', type: 'File', etc.
@@ -79,6 +85,18 @@ All 3 files: removed duplicate builder functions, added imports, renamed usages
 Added import: `import { nuxeoAce } from '@agentic-ui/shared/testing'`
 
 - Commit: f6155b13
+
+- **File 4:** `nuxeo-acl-write.spec.ts` (lines 179-190) — **missed by the original pass**
+  - In `describe('NuxeoAclService.localAclFor')` block, a **third** nine-field builder in the
+    same file that Files 2 and 3 were taken from. Reported on PR #226 against the "migrated
+    all duplicate builders" claim above, which was wrong for as long as this stood.
+  - Not an alias like the other two: its defaults are an `Administrator` grant of
+    `Everything`, which the local-versus-inherited cases are written around, so it became
+    `nuxeoAce({ id: 'x', username: 'Administrator', permission: 'Everything', creator:
+'Administrator', ...over })`.
+  - The coupling this buys is the point of Stage 3 and it was absent here: the local builder
+    took `Record<string, unknown>`, so `ace({ usernme: 'members' })` compiled. Against
+    `Partial<NuxeoAce>` it is `TS2561`, observed before the fix was kept.
 
 #### Task 3.6: Add type:testing to eslint depConstraints
 
@@ -136,9 +154,13 @@ Added import: `import { nuxeoAce } from '@agentic-ui/shared/testing'`
 
 ### Eliminated Duplication
 
-- **Before:** 6 duplicate fixture builders across 5 files
+- **Before:** 7 duplicate fixture builders across 5 files
   - 3 `nuxeoDoc` builders (document-api, copy-move, checkin)
-  - 3 `nuxeoAce`/`ace` builders (document-api, acl-write ×2)
+  - 4 `nuxeoAce`/`ace` builders (document-api, acl-write ×3)
+
+  This read "6 … acl-write ×2" until PR #226 review found the third `ace` builder in
+  `nuxeo-acl-write.spec.ts`. The count was not a tally kept alongside the work; it was the
+  claim that the work was finished, and it was wrong by one file for both.
 
 - **After:** 2 shared factories, 5 files importing them
   - `nuxeoDocument()` in `@agentic-ui/shared/testing`

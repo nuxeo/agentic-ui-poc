@@ -8,7 +8,7 @@
  *    field is a compile error rather than a runtime surprise.
  *
  *    This principle read "every field required" and that was not true of any fixture here.
- *    `NuxeoDocument` declares thirteen genuinely optional fields — `parentRef`, `state`,
+ *    `NuxeoDocument` declares twelve genuinely optional fields — `parentRef`, `state`,
  *    `isTrashed`, `isVersion`, `facets`, `contextParameters` among them — and
  *    `nuxeoDocument()` sets none of them. A spec that reads `doc.facets` off an un-overridden
  *    fixture gets `undefined`, not a default, and the sentence above said otherwise. **Any
@@ -62,7 +62,7 @@ function withoutUndefined<T extends object>(over: Partial<T>): Partial<T> {
  * A Nuxeo document with every **required** field of `NuxeoDocument` filled: `uid`, `title`,
  * `type`, `path`, `lastModified` and `properties`, describing a typical File in a workspace.
  *
- * The thirteen optional fields are deliberately **absent**, not defaulted — `parentRef`,
+ * The twelve optional fields are deliberately **absent**, not defaulted — `parentRef`,
  * `lockOwner`, `lockCreated`, `state`, `isTrashed`, `isCheckedOut`, `isVersion`,
  * `versionableId`, `isLatestVersion`, `isLatestMajorVersion`, `facets` and
  * `contextParameters`. A live Nuxeo omits them too unless the enricher that supplies them was

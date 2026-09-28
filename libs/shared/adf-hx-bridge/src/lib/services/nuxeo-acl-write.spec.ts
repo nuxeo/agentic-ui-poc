@@ -3,7 +3,7 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { firstValueFrom } from 'rxjs';
 import type { ACE } from '@hylandsoftware/hxcs-js-client';
-import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { nuxeoAce } from '@agentic-ui/shared/testing';
 
 import {
@@ -176,18 +176,19 @@ describe('NuxeoAclService.localAclFor', () => {
 
   afterEach(() => httpMock.verify());
 
-  const ace = (over: Record<string, unknown> = {}) => ({
-    id: 'x',
-    username: 'Administrator',
-    externalUser: false,
-    permission: 'Everything',
-    granted: true,
-    creator: 'Administrator',
-    begin: null,
-    end: null,
-    status: 'effective',
-    ...over,
-  });
+  // Migrated to @agentic-ui/shared/testing — the last of the nine-field local ACE builders,
+  // and the one Stage 3.5 missed while the status document called the migration complete.
+  // The defaults differ from the fixture's (an Administrator grant of Everything, which is
+  // what the local-versus-inherited cases below are written around), so they are overrides
+  // rather than a straight alias like the two later blocks in this file.
+  const ace = (over: Partial<NuxeoAce> = {}): NuxeoAce =>
+    nuxeoAce({
+      id: 'x',
+      username: 'Administrator',
+      permission: 'Everything',
+      creator: 'Administrator',
+      ...over,
+    });
 
   const docWith = (acls: unknown) =>
     ({
