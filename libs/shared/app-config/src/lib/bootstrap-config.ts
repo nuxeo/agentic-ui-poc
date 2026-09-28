@@ -199,7 +199,13 @@ export const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig = {
   defaultLanguage: 'en',
   // The locales a catalogue actually ships for, in `apps/nuxeo-ui/public/i18n/`. Listing a
   // locale here that has no catalogue would advertise a language the application cannot
-  // render; `checkTranslationCatalogues` keeps each of these at full key parity with `en`.
+  // render, which `checkAdvertisedLocalesShip` fails.
+  //
+  // It does NOT mean each is at full key parity with `en`, which this comment used to claim.
+  // Crowdin omits untranslated strings rather than exporting them with their English source, so
+  // a short catalogue is the normal steady state and `setFallbackLang('en')` covers the rest —
+  // `fr` and `de` are at 81 of 1,972 keys today. `checkTranslationCatalogues` warns on a missing
+  // key and fails only on one `en.json` does not have. See D8d in docs/i18n-localization-plan.md.
   availableLanguages: ['en', 'fr', 'de'],
   integrations: {
     arender: null,

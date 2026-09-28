@@ -295,6 +295,112 @@ expectRed(
   /asserted nothing/,
 );
 
+/* ---------------- checkCataloguesAreTranslated ---------------- */
+
+/**
+ * Six keys, because the gate ignores any catalogue sharing fewer than five with English —
+ * `EN_JSON` above has three and cannot exercise this one at all.
+ */
+const EN_SIX = `{
+  "app": {
+    "title": "Hyland Nuxeo",
+    "nav": { "toggle": "Toggle navigation menu", "close": "Close" }
+  },
+  "browse": {
+    "delete": "Delete",
+    "rename": "Rename",
+    "details": "Show details"
+  }
+}
+`;
+
+/** A real translation — and `app.title` stays English, which a proper noun is entitled to do. */
+const FR_SIX = `{
+  "app": {
+    "title": "Hyland Nuxeo",
+    "nav": { "toggle": "Basculer le menu de navigation", "close": "Fermer" }
+  },
+  "browse": {
+    "delete": "Supprimer",
+    "rename": "Renommer",
+    "details": "Afficher les détails"
+  }
+}
+`;
+
+const SIX = {
+  'apps/nuxeo-ui/public/i18n/en.json': EN_SIX,
+  'apps/nuxeo-ui/public/i18n/fr.json': FR_SIX,
+};
+
+expectGreen('a real translation that leaves a proper noun in English', 'checkCataloguesAreTranslated', SIX);
+
+expectRed(
+  'a catalogue that is the English export under a French name — the Crowdin defect itself',
+  'checkCataloguesAreTranslated',
+  SIX,
+  (write) => write('apps/nuxeo-ui/public/i18n/fr.json', EN_SIX),
+  /fr\.json repeats the English string for all 6 of its keys/,
+);
+
+/** Thirty keys, to clear the 25-key floor the partial-export warning carries. */
+const manyKeys = (translate) => {
+  const bulk = {};
+  for (let index = 0; index < 30; index += 1) bulk[`k${index}`] = translate(index);
+  return `${JSON.stringify({ bulk }, null, 2)}\n`;
+};
+
+expectWarn(
+  'a mostly-untranslated export warns rather than fails, because a translator may have meant it',
+  'checkCataloguesAreTranslated',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': manyKeys((index) => `English string ${index}`),
+    // 27 of 30 left in English: past the 80% warning threshold, short of all-identical.
+    'apps/nuxeo-ui/public/i18n/fr.json': manyKeys((index) =>
+      index < 3 ? `Chaîne française ${index}` : `English string ${index}`,
+    ),
+  },
+  null,
+  /fr\.json repeats the English string for 27 of its 30 keys \(90%\)/,
+);
+
+expectRed(
+  'catalogues that are all below the key floor must not read as a pass',
+  'checkCataloguesAreTranslated',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "app": { "title": "Nuxeo", "close": "Close" }\n}\n',
+    'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "app": { "title": "Nuxeo", "close": "Fermer" }\n}\n',
+  },
+  null,
+  /asserted nothing/,
+);
+
+expectGreen(
+  'a part-translated locale below the key floor is not accused of translating nothing',
+  'checkCataloguesAreTranslated',
+  {
+    ...SIX,
+    // Two real translations out of six keys. Legitimate, and the reason the floor exists.
+    'apps/nuxeo-ui/public/i18n/de.json':
+      '{\n  "browse": { "delete": "Löschen", "rename": "Umbenennen" }\n}\n',
+  },
+);
+
+expectRed(
+  'an emptied catalogue hiding behind a healthy sibling',
+  'checkCataloguesAreTranslated',
+  // `fr.json` is gutted to `{}` while `de.json` stays real. The key floor used to `continue`
+  // past the empty one, and the healthy sibling incremented `compared` so the
+  // "asserted nothing" guard could not notice either.
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': EN_SIX,
+    'apps/nuxeo-ui/public/i18n/fr.json': '{}\n',
+    'apps/nuxeo-ui/public/i18n/de.json': FR_SIX.replace('Supprimer', 'Löschen'),
+  },
+  null,
+  /fr\.json contains no translated strings at all, while .*en\.json has 6/,
+);
+
 /* ---------------- checkTranslationContext ---------------- */
 
 /** Context for every string in `EN_JSON`, keyed identically, plus one `$` metadata key. */
@@ -509,10 +615,7 @@ expectRed(
   (write) =>
     write(
       'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
-      EN_FALLBACK_SHELL_SEARCH.replace(
-        "  'shell.search.placeholder': 'Search documents',\n",
-        '',
-      ),
+      EN_FALLBACK_SHELL_SEARCH.replace("  'shell.search.placeholder': 'Search documents',\n", ''),
     ),
   /visible label text.*`shell\.search\.placeholder`/s,
 );
@@ -1061,14 +1164,111 @@ expectRed(
   /not the compiled default/,
 );
 
-expectGreen('a packaged config matching the compiled defaults', 'checkPackagedConfigIsNotADemo', {
+const PACKAGED_OK = {
   'libs/shared/app-config/src/lib/bootstrap-config.ts':
     'export const DEFAULT_APP_BOOTSTRAP_CONFIG = {\n' +
     "  branding: { applicationTitle: 'Hyland Nuxeo' },\n  defaultThemeId: 'nuxeo',\n};\n",
   'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
     '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
     '  "defaultThemeId": "nuxeo",\n  "themes": []\n}\n',
-});
+};
+
+expectGreen(
+  'a packaged config matching the compiled defaults',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+);
+
+// The second leak of this kind, and the one the three checks above could not see: an NXSAT-279
+// ARender override pointing the annotation viewer at `http://localhost:8181`, swept into an
+// unrelated i18n change by `git add -A`. Branding and themes were all correct, so every named-key
+// check passed. The file is installed on a customer server, where a loopback address resolves to
+// THEIR machine.
+expectRed(
+  'a local development URL in the packaged marketplace config',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+        '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+        '  "integrations": { "arender": { "viewerOrigin": "http://localhost:8181" } }\n}\n',
+    ),
+  /contains the local address `localhost`/,
+);
+
+// The same leak carried its own instruction to revert it, which is worth failing on by itself:
+// the annotation survives even if the URL is later written as a hostname.
+expectRed(
+  'the packaged config declaring its own contents temporary',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+        '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+        '  "$integrations": "LOCAL DEV ONLY (NXSAT-279) - revert with git checkout.",\n' +
+        '  "integrations": { "arender": { "viewerOrigin": "https://arender.example.com" } }\n}\n',
+    ),
+  /says `LOCAL DEV ONLY` about its own contents/,
+);
+
+// The template is the example a customer copies, so it is held to the same rule.
+expectRed(
+  'a local development URL in the customer-facing template config',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json',
+      '{\n  "nuxeoApiOrigin": "http://127.0.0.1:8080"\n}\n',
+    ),
+  /contains the local address `127\.0\.0\.1`/,
+);
+
+// `127.0.0.2` is as much the customer's own machine as `127.0.0.1`, and the first version of this
+// rule matched only the latter while its comment promised any loopback address.
+expectRed(
+  'a 127.0.0.0/8 address other than 127.0.0.1',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+        '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+        '  "integrations": { "arender": { "viewerOrigin": "http://127.0.0.2:8181" } }\n}\n',
+    ),
+  /contains the local address `127\.0\.0\.2`/,
+);
+
+expectRed(
+  'the IPv6 loopback in a URL',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+        '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+        '  "integrations": { "arender": { "viewerOrigin": "http://[::1]:8181" } }\n}\n',
+    ),
+  /contains the local address `\[::1\]`/,
+);
+
+expectGreen(
+  'a real external integration host is not mistaken for a developer leak',
+  'checkPackagedConfigIsNotADemo',
+  {
+    ...PACKAGED_OK,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+      '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+      '  "integrations": { "arender": { "viewerOrigin": "https://arender.hyland.com" } }\n}\n',
+  },
+);
 
 // ── controls for round three of the Copilot review ───────────────────────────────────────
 
@@ -1102,6 +1302,16 @@ const CROWDIN_WORKFLOW = (extra) =>
   `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
   `        with:\n          config: crowdin-conf.yml\n${extra}`;
 
+/**
+ * The two inputs the pull workflow's action step must carry, separately so a control can remove
+ * exactly one and stay red for exactly one reason.
+ */
+const PULL_SIGNING = `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}\n`;
+const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
+/** What identifies the step both assertions must examine: the one that downloads. */
+const PULL_DOWNLOAD = `          download_translations: true\n`;
+const PULL_OK = PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED;
+
 const CROWDIN = {
   'crowdin-conf.yml': crowdinConf([
     CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
@@ -1116,13 +1326,35 @@ const CROWDIN = {
     `        run: node tools/i18n/crowdin-push-context.mjs\n`,
   // The pull workflow signs on the ACTION, because that is the only placement that signs
   // anything — see the control for it below.
-  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
-    `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}\n`,
-  ),
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(PULL_OK),
   'apps/nuxeo-ui/public/i18n/en.json': EN_JSON,
+  // A file for the SECOND pattern, because every pattern must now match something. Without
+  // it this fixture is not "a valid two-entry config" at all — it is the defect the control
+  // below describes, and it was silently being asserted as correct.
+  'libs/shared/ui/src/lib/i18n/en.json': EN_JSON,
 };
 
 expectGreen('a D8-compliant two-entry Crowdin config', 'checkCrowdinConfig', CROWDIN);
+
+// Crowdin fails the whole run on a pattern that matches nothing — and it fails AFTER uploading
+// the files that did match, so the catalogue lands, the job goes red, and the context step
+// that follows is skipped. `--dryrun` does not report it either, so this check is the only
+// place it can be caught before a real run.
+expectRed(
+  'a source pattern that matches no file',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+        CROWDIN_ENTRY('/apps/*/public/i18n/nothing-here.json'),
+      ]),
+    ),
+  /nothing-here\.json` and nothing matches it/,
+);
 
 // Signing has to be configured on the ACTION, because `crowdin/github-action` is a Docker action
 // and commits inside its own container. A host-level key import succeeds, changes nothing the
@@ -1139,7 +1371,7 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW('').replace(
+      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SKIP_UNTRANSLATED).replace(
         '      - uses: crowdin/github-action@v2\n',
         `      - uses: crazy-max/ghaction-import-gpg@v6\n` +
           `        with:\n` +
@@ -1149,6 +1381,73 @@ expectRed(
       ),
     ),
   /without passing `gpg_private_key`, so its commits are unsigned/,
+);
+
+// `skip_untranslated_strings: false` exports every untranslated string WITH ITS ENGLISH SOURCE,
+// which is how the first real pull overwrote 151 hand-written strings. Asserted on the
+// configuration rather than on a catalogue, because once most of a catalogue is genuinely
+// translated the resulting file is only ~96% English — a warning, not a failure. The gate that
+// only catches the pathological extreme stops working as the product improves.
+expectRed(
+  'the pull workflow leaving skip_untranslated_strings at its default',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) => write('.github/workflows/crowdin-pull.yaml', CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING)),
+  /does not set `skip_untranslated_strings: true`/,
+);
+
+expectRed(
+  'setting skip_untranslated_strings to false explicitly',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_DOWNLOAD + PULL_SIGNING + `          skip_untranslated_strings: false\n`,
+      ),
+    ),
+  /does not set `skip_untranslated_strings: true`/,
+);
+
+// A pull workflow with no action step at all: both assertions above would examine nothing, and
+// before this the signing check simply skipped and carried the gate to green.
+expectRed(
+  'a pull workflow that never invokes crowdin/github-action',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK).replace(
+        '      - uses: crowdin/github-action@v2\n',
+        '      - uses: actions/checkout@v6\n',
+      ),
+    ),
+  /contains no `uses: crowdin\/github-action` step/,
+);
+
+// Two Crowdin steps, with the option on the one that does NOT download. Matching the action name
+// alone found the first step and passed, while the step that actually downloads omitted it — and
+// this arrangement stopped being hypothetical in this very PR, which added a second Crowdin step
+// to the push workflow.
+expectRed(
+  'the option set on a preparation step while the downloading step omits it',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        `          upload_sources: false\n` + PULL_SKIP_UNTRANSLATED,
+      ) +
+        `      - uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          config: crowdin-conf.yml\n` +
+        PULL_DOWNLOAD +
+        PULL_SIGNING,
+    ),
+  /does not set `skip_untranslated_strings: true`/,
 );
 
 // The founding defect. Both options deleted from the SECOND entry only: the first still
@@ -1201,10 +1500,7 @@ expectRed(
       'crowdin-conf.yml',
       crowdinConf([
         CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
-        CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
-          /\s*'translation': '[^']*',/,
-          '',
-        ),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(/\s*'translation': '[^']*',/, ''),
       ]),
     ),
   /entry `\/libs\/\*\*\/i18n\/en\.json` declares no `translation`/,
@@ -1324,7 +1620,10 @@ expectRed(
   'checkNoHardcodedDialogText',
   APP,
   (write) =>
-    write('libs/features/x/src/lib/x.ts', "dialog.open(C, {\n  data: { message: 'Are you sure?' },\n});\n"),
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "dialog.open(C, {\n  data: { message: 'Are you sure?' },\n});\n",
+    ),
   /sets `message: 'Are you sure\?'` in a dialog's data/,
 );
 
@@ -1388,7 +1687,10 @@ expectRed(
   'checkNoHardcodedUiText',
   APP,
   (write) =>
-    write('libs/features/x/src/lib/x.html', '<p><strong>{{ name }}</strong> workflow on this document.</p>\n'),
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<p><strong>{{ name }}</strong> workflow on this document.</p>\n',
+    ),
   /the text `workflow on this document\.` beside an interpolated value/,
 );
 
@@ -1407,7 +1709,7 @@ expectRed(
 falsePositiveControls += 1;
 expectGreen('a partial tag left by Prettier is not prose', 'checkNoHardcodedUiText', {
   ...APP,
-  'libs/features/x/src/lib/x.html': "<span class=\"c\"\n  >{{ 'a.b' | translate }}</span\n>\n",
+  'libs/features/x/src/lib/x.html': '<span class="c"\n  >{{ \'a.b\' | translate }}</span\n>\n',
 });
 
 // Units beside a bound number are not translatable prose, and a shape heuristic cannot tell them
@@ -1450,7 +1752,10 @@ expectRed(
   'checkNoHardcodedImperativeUiText',
   APP,
   (write) =>
-    write('libs/features/x/src/lib/x.ts', "this.recentlyEditedError.set('Failed to load documents.');\n"),
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.recentlyEditedError.set('Failed to load documents.');\n",
+    ),
   /passes the hard-coded string `Failed to load documents\.`/,
 );
 
@@ -1500,7 +1805,10 @@ expectRed(
   'checkNoHardcodedUiText',
   APP,
   (write) =>
-    write('libs/features/x/src/lib/x.html', '<input placeholder="e.g. All PDFs created last month" />\n'),
+    write(
+      'libs/features/x/src/lib/x.html',
+      '<input placeholder="e.g. All PDFs created last month" />\n',
+    ),
   /placeholder="e\.g\. All PDFs created last month"/,
 );
 
@@ -1508,7 +1816,8 @@ expectRed(
 falsePositiveControls += 1;
 expectGreen('a path placeholder', 'checkNoHardcodedUiText', {
   ...APP,
-  'libs/features/x/src/lib/x.html': '<input placeholder="/default-domain/workspaces/MyWorkspace" />\n',
+  'libs/features/x/src/lib/x.html':
+    '<input placeholder="/default-domain/workspaces/MyWorkspace" />\n',
 });
 
 /* ---------------- this.translate must be injected, per class ---------------- */
@@ -1586,11 +1895,14 @@ expectRed(
 );
 
 expectRed(
-  "a hard-coded snackbar ACTION label, which is as visible as the message",
+  'a hard-coded snackbar ACTION label, which is as visible as the message',
   'checkNoHardcodedImperativeUiText',
   APP,
   (write) =>
-    write('libs/features/x/src/lib/x.ts', "this.snackBar.open(this.translate.instant('x.k'), 'Dismiss');\n"),
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.snackBar.open(this.translate.instant('x.k'), 'Dismiss');\n",
+    ),
   /passes the hard-coded string `Dismiss` to a user-facing sink/,
 );
 
@@ -1714,7 +2026,10 @@ expectRed(
   'checkNoHardcodedDialogText',
   APP,
   (write) =>
-    write('libs/features/x/src/lib/x.ts', 'const d = {\n  title: "Delete",\n} as ConfirmDialogData;\n'),
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'const d = {\n  title: "Delete",\n} as ConfirmDialogData;\n',
+    ),
   /sets `title: "Delete"` in a dialog's data/,
 );
 
@@ -1832,7 +2147,10 @@ expectRed(
   'checkNoHardcodedUiText',
   { 'libs/features/x/src/lib/x.html': '<div></div>\n' },
   (write) =>
-    write('libs/features/x/src/lib/x.html', `<span>{{ isOverdue(t) ? 'Overdue' : 'Due' }}</span>\n`),
+    write(
+      'libs/features/x/src/lib/x.html',
+      `<span>{{ isOverdue(t) ? 'Overdue' : 'Due' }}</span>\n`,
+    ),
   /the quoted literal `'Overdue'`/,
 );
 
@@ -1854,8 +2172,7 @@ expectRed(
   'hard-coded prose beside a translated interpolation on one line',
   'checkNoHardcodedUiText',
   { 'libs/features/x/src/lib/x.html': '<div></div>\n' },
-  (write) =>
-    write('libs/features/x/src/lib/x.html', `{{ 'x.label' | translate }} Show Details\n`),
+  (write) => write('libs/features/x/src/lib/x.html', `{{ 'x.label' | translate }} Show Details\n`),
   /Show Details/,
 );
 
@@ -1868,8 +2185,7 @@ expectGreen('a parameterised translate interpolation on its own', 'checkNoHardco
 
 falsePositiveControls += 1;
 expectGreen('a parameterised translate bound to an accessible name', 'checkNoHardcodedUiText', {
-  'libs/features/x/src/lib/x.html':
-    `<button [attr.aria-label]="'x.y' | translate: { name: nodeLabel(node) }"></button>\n`,
+  'libs/features/x/src/lib/x.html': `<button [attr.aria-label]="'x.y' | translate: { name: nodeLabel(node) }"></button>\n`,
 });
 
 /* ---------------- checkNoHardcodedUiText: comment and <pre> spans ---------------- */
@@ -1982,11 +2298,15 @@ expectGreen('a context file reachable through a declared source', 'checkTranslat
 // Without this control the reachability half could be satisfied by a glob translation that
 // treated `**` as `*`, and would then reject every real library catalogue.
 falsePositiveControls += 1;
-expectGreen('a deeply nested library context file the libs glob covers', 'checkTranslatorContextPush', {
-  ...CONTEXT_PUSH,
-  'libs/platform/nuxeo-client/src/i18n/en.json': EN_JSON,
-  'libs/platform/nuxeo-client/src/i18n/en.context.json': EN_CONTEXT,
-});
+expectGreen(
+  'a deeply nested library context file the libs glob covers',
+  'checkTranslatorContextPush',
+  {
+    ...CONTEXT_PUSH,
+    'libs/platform/nuxeo-client/src/i18n/en.json': EN_JSON,
+    'libs/platform/nuxeo-client/src/i18n/en.context.json': EN_CONTEXT,
+  },
+);
 
 // The founding defect, the other way round: a context file whose catalogue no source matches.
 // Its context reaches Crowdin through nothing, and the script still prints a success line.
@@ -2030,7 +2350,10 @@ expectRed(
   'checkTranslatorContextPush',
   { ...CONTEXT_PUSH },
   (write) =>
-    write('tools/i18n/crowdin-push-context.mjs', SCRIPT_FLATTENER.replace('export function', 'function')),
+    write(
+      'tools/i18n/crowdin-push-context.mjs',
+      SCRIPT_FLATTENER.replace('export function', 'function'),
+    ),
   /no longer exports `flattenKeys`/,
 );
 
@@ -2163,8 +2486,7 @@ expectGreen('a double-quoted, wrapped fallback entry', 'checkAccessibleNameFallb
     'export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {\n' +
     "  'search.search.ask':\n" +
     '    "Ask e.g. \'PDFs from last week\'",\n};\n',
-  'apps/nuxeo-ui/src/app/shell/app-shell.component.html':
-    `<input [placeholder]="'search.search.ask' | translate" />\n`,
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html': `<input [placeholder]="'search.search.ask' | translate" />\n`,
 });
 
 falsePositiveControls += 1;
@@ -2213,11 +2535,15 @@ expectGreen(
 // A catalogue of `null` is valid JSON, so the `try` around `JSON.parse` does not catch it and
 // `Object.entries(null)` threw — killing the process before any accumulated diagnostic printed and
 // discarding every other guardrail's output. A guardrail that can crash silences the others.
-expectGreen('a catalogue that parses to null does not crash this gate', 'checkAccessibleNameFallbacks', {
-  'apps/nuxeo-ui/public/i18n/en.json': 'null\n',
-  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
-  'apps/nuxeo-ui/src/app/shell/app-shell.component.html': GOOD_TEMPLATE,
-});
+expectGreen(
+  'a catalogue that parses to null does not crash this gate',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': 'null\n',
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
+    'apps/nuxeo-ui/src/app/shell/app-shell.component.html': GOOD_TEMPLATE,
+  },
+);
 
 // A key in OUR shape that no catalogue defines. ngx-translate renders an unresolved key as the key
 // itself, so this names the control `app.nav.togle` — and the gate used to wave it through as
@@ -2237,11 +2563,14 @@ expectRed(
 // Upstream's SCREAMING_CASE keys come from seeded catalogues this repository does not own, so
 // absence there is expected and must stay silent. D4 chose the case convention for exactly this.
 falsePositiveControls += 1;
-expectGreen('an upstream SCREAMING_CASE key absent from our catalogue', 'checkAccessibleNameFallbacks', {
-  ...APP,
-  'apps/nuxeo-ui/src/app/shell/app-shell.component.html':
-    `<button type="button" [attr.aria-label]="'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' | translate"></button>\n`,
-});
+expectGreen(
+  'an upstream SCREAMING_CASE key absent from our catalogue',
+  'checkAccessibleNameFallbacks',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/app-shell.component.html': `<button type="button" [attr.aria-label]="'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' | translate"></button>\n`,
+  },
+);
 
 /* ---------------- checkTranslatorContextPush: the push STEP ---------------- */
 
@@ -2279,15 +2608,19 @@ expectRed(
 );
 
 falsePositiveControls += 1;
-expectGreen('a push workflow watching every discovered context file', 'checkTranslatorContextPush', {
-  ...CONTEXT_PUSH,
-  // Carries the uploader step as well as the globs, or this positive control fails on the
-  // *invocation* half and stops saying anything about the trigger half it exists for.
-  '.github/workflows/crowdin-push.yaml':
-    "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
-    "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n" +
-    '    steps:\n      - run: node tools/i18n/crowdin-push-context.mjs\n',
-});
+expectGreen(
+  'a push workflow watching every discovered context file',
+  'checkTranslatorContextPush',
+  {
+    ...CONTEXT_PUSH,
+    // Carries the uploader step as well as the globs, or this positive control fails on the
+    // *invocation* half and stops saying anything about the trigger half it exists for.
+    '.github/workflows/crowdin-push.yaml':
+      "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
+      "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n" +
+      '    steps:\n      - run: node tools/i18n/crowdin-push-context.mjs\n',
+  },
+);
 
 /* ---------------- report ---------------- */
 

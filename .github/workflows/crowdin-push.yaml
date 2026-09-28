@@ -28,6 +28,10 @@ on:
         description: 'Resolve and authenticate against Crowdin without uploading anything'
         type: boolean
         default: false
+      seed_translations:
+        description: 'Also upload the existing non-English catalogues as approved translations'
+        type: boolean
+        default: false
 
 concurrency:
   group: crowdin-push
@@ -35,12 +39,14 @@ concurrency:
 
 jobs:
   push-sources:
-    # Off until the Crowdin project exists.
+    # The off switch. This said "off until the Crowdin project exists" and was accurate until
+    # project 160 was created and the variable set to `true`; both halves of the sync have since
+    # run against the live tenant, so it now guards a different thing.
     #
-    # Without this the schedule and the push trigger both go live on merge and fail every day
-    # against secrets that are not set — S6 is blocked on manual project creation through the
-    # INTERN board. A workflow that is red for a reason nobody can fix is a workflow people
-    # learn to ignore, and it will be ignored on the day it is red for a real reason.
+    # What it still guards: a fork or a clone has none of these secrets, and without the gate
+    # every push there starts a job that fails against credentials it was never going to have.
+    # A workflow that is red for a reason nobody can fix is a workflow people learn to ignore,
+    # and it will be ignored on the day it is red for a real reason.
     #
     # Same `*_ENABLED` variable convention as `GPG_BOT_SIGNING_ENABLED`, see
     # `docs/github-bot-commit-signing.md`.
@@ -81,6 +87,41 @@ jobs:
           # — and this step uploads sources, not translations. A setting that reads as a guarantee
           # and changes nothing is worse than its absence. If source-string approval turns out to
           # matter, it needs the Crowdin API and something asserting it worked.
+          download_translations: false
+          create_pull_request: false
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+
+      # Crowdin was created after the repository, so it started empty while `fr.json` and
+      # `de.json` already held 75 and 76 hand-written strings. Nothing had told Crowdin they
+      # existed, which made every pull destructive by construction: whatever the export contains
+      # replaces the file, and an export from an empty project cannot contain them.
+      # `skip_untranslated_strings` changes how they are lost, not whether — English values before
+      # it, absent keys after.
+      #
+      # `auto_approve_imported` is required rather than tidy. `export_only_approved: 'true'` in
+      # `crowdin-conf.yml` means an unapproved translation is not exported at all, so seeding
+      # without approving would leave these 151 strings visible in Crowdin and still missing from
+      # every pull — the same data loss with a more confusing cause. Note this input is only wired
+      # into the action's translation upload; on the source step above it does nothing, which is
+      # why it is set here and not there.
+      #
+      # It is a judgement call and reviewers should see it as one: it marks 151 strings approved
+      # that no translator has read. They ship today, so approving preserves the status quo rather
+      # than adding unreviewed content, and a translator can revise any of them in Crowdin
+      # afterwards. The alternative was discarding work that is already in front of users.
+      #
+      # One-off in practice, but safe to repeat — re-uploading identical approved translations
+      # changes nothing.
+      - name: Seed existing translations into Crowdin
+        if: ${{ inputs.seed_translations && !inputs.dry_run }}
+        uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
+        with:
+          config: crowdin-conf.yml
+          upload_sources: false
+          upload_translations: true
+          auto_approve_imported: true
           download_translations: false
           create_pull_request: false
         env:

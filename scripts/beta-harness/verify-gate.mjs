@@ -130,9 +130,12 @@ const ALL_GATES = [
   },
   {
     id: 'crowdin-selftest',
-    label: 'Crowdin context push controls',
-    cmd: 'node',
-    argv: ['tools/i18n/crowdin-push-context.selftest.mjs'],
+    label: 'Crowdin script controls',
+    // Both suites behind one gate, via the npm script, so adding the status report did not add a
+    // gate. The count in the verdict line is quoted in docs and in CLAUDE.md; a second entry here
+    // would have made all of those wrong for a diagnostic that cannot break the application.
+    cmd: 'npm',
+    argv: ['run', '--silent', 'review:crowdin-selftest'],
     // The negative/positive split is the evidence, so surface it on a pass too.
     echoOnPass: true,
   },

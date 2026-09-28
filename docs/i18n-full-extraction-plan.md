@@ -56,9 +56,11 @@ Six things. The rest I can just do.
 
 This is the big one, and it is a cost question, not a technical one.
 
-`checkTranslationCatalogues` currently requires **exact key parity** across locales. Extract 1900
-strings and that rule demands 1900 French and 1900 German values — **3800 translated strings that
-I would be inventing**. I have said repeatedly that Crowdin and the translation crew own
+`checkTranslationCatalogues` used to require **exact key parity** across locales, which would have
+meant 1900 French and 1900 German values for 1900 extracted strings — **3800 translated strings
+that I would be inventing**. That is no longer the rule and the cost is gone with it: a missing key
+warns, because `setFallbackLang('en')` renders English and Crowdin omits untranslated strings
+rather than padding them (D8d). The concern below still stands for who OWNS the content. I have said repeatedly that Crowdin and the translation crew own
 non-English content; generating 3800 machine translations and committing them contradicts that,
 and it would look like finished localisation when it is not.
 

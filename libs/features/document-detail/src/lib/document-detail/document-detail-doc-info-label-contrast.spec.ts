@@ -1,6 +1,7 @@
 /**
- * NXENG-774 / NXENG-829 — `.doc-info-label` in the properties panel must meet WCAG 2.1 SC 1.4.3
- * (IBM 280073873, 1224611475).
+ * NXENG-774 / NXENG-782 / NXENG-829 — `.doc-info-label` in the properties panel must meet WCAG 2.1 SC 1.4.3
+ * (IBM 280073873, IBM 1224611475). Per-theme Karma coverage:
+ * `apps/nuxeo-ui/src/app/document-detail/doc-info-label-contrast.spec.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -38,7 +39,7 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-describe('DocumentDetailComponent — doc-info-label text contrast (NXENG-774, NXENG-829)', () => {
+describe('DocumentDetailComponent — doc-info-label text contrast (NXENG-774 / NXENG-782 / NXENG-829)', () => {
   it('pins doc-info-label to the light properties-panel host tokens', () => {
     const scssPath = join(import.meta.dirname, 'document-detail.scss');
     const scss = readFileSync(scssPath, 'utf8');
