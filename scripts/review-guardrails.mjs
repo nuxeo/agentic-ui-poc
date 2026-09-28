@@ -1239,13 +1239,20 @@ function checkNoHardcodedUiText() {
    * proof. A quoted `.html` path is now resolved against the referring file's own directory and
    * compared to the walked path by equality, so a reference proves the file it points at.
    *
-   * **What this still does not prove.** A reference has to be a quoted literal **in code** to
-   * be resolved — references come from parsed string-literal tokens, so a quoted path in a
-   * comment is not one, which review caught the text-scanning version getting wrong. A
-   * `templateUrl` assembled by concatenation resolves to nothing. On the spec side that is
-   * fail-closed and needs no fallback — no resolved reference means no proof, so the fixture is
-   * scanned like any template. On the non-spec side it would be fail-OPEN, so the blunt
-   * basename mention is kept there deliberately. The consequence is asymmetric on purpose:
+   * ## Round four: a reference is a `templateUrl`, and `..` cannot leave the tree
+   *
+   * Round three left two ways to be exempted without being hosted. Any quoted `.html` literal
+   * in executable code counted, so an unused `const ref = './widget.host.html'` was proof;
+   * and `resolveRef` popped on `..` without checking, so a path climbing above the repository
+   * root was clamped back onto an in-repo file and proved that file instead. Both reported on
+   * the pull request. A reference is now the value of a `templateUrl` property specifically,
+   * and a traversal that underflows resolves to nothing at all.
+   *
+   * **What this still does not prove.** A `templateUrl` assembled by concatenation resolves to
+   * nothing. On the spec side that is fail-closed and needs no fallback — no resolved
+   * reference means no proof, so the fixture is scanned like any template. On the non-spec
+   * side it would be fail-OPEN, so the blunt basename mention is kept there deliberately. The
+   * consequence is asymmetric on purpose:
    * a production file mentioning `x.host.html` anywhere, even in a comment, blocks every
    * same-named fixture in the repository. That is a false rejection, whose cost is that a
    * fixture gets held to the shipped-template standard — the safe direction, and the direction
@@ -1260,12 +1267,18 @@ function checkNoHardcodedUiText() {
     if (fixtures.length === 0) return new Set();
 
     /**
-     * `./thing.host.html` in `a/b/c.spec.ts` -> `a/b/thing.host.html`.
+     * `./thing.host.html` in `a/b/c.spec.ts` -> `a/b/thing.host.html`, or `null`.
      *
      * Repo-relative and normalised, so a reference can be compared to a walked path by
-     * equality rather than by basename. A reference that resolves outside the tree, or is not
-     * relative at all, simply matches no fixture — the textual fallback below is what keeps
-     * that fail-closed.
+     * equality rather than by basename.
+     *
+     * `null` when the traversal climbs above the repository root, and that is the whole reason
+     * this returns a nullable rather than a string. The loop used to `pop()` unconditionally,
+     * and `pop()` on an empty array is a no-op — so a surplus `..` simply vanished and a path
+     * that really resolves outside the checkout was clamped back onto an in-repo file, whose
+     * exemption it then proved. The comment here claimed such a reference "simply matches no
+     * fixture", which is the fail-closed contract the code did not keep. Reported on the pull
+     * request; controlled in the selftest by a spec seven `..` deep.
      */
     const resolveRef = (fromFile, ref) => {
       const base = fromFile.slice(0, fromFile.lastIndexOf('/'));
@@ -1273,40 +1286,56 @@ function checkNoHardcodedUiText() {
       for (const segment of `${base}/${ref}`.split('/')) {
         if (segment === '' || segment === '.') continue;
         if (segment === '..') {
+          if (out.length === 0) return null;
           out.pop();
           continue;
         }
         out.push(segment);
       }
-      return out.join('/');
+      return out.length === 0 ? null : out.join('/');
     };
 
     /**
-     * Every `.html` path a source file quotes **in code**, resolved against its own directory.
+     * Every `.html` path a source file **hosts as a template**, resolved against its own
+     * directory.
      *
      * Parsed, not scanned. The first cut of this matched quoted paths in the raw text, which
      * review found exempts a fixture nobody hosts on the strength of a comment:
      * `// See './widget.host.html'` read as a reference, and the control written alongside it
      * used an UNQUOTED name so it did not catch the case. A comment is not part of the AST, so
-     * taking references from string-literal tokens rules that out structurally rather than by
-     * another pattern — which is the same reason the assertion audit stopped enumerating
-     * spellings of `true`.
+     * taking references from the tree rules that out structurally rather than by another
+     * pattern — which is the same reason the assertion audit stopped enumerating spellings of
+     * `true`.
      *
-     * **Boundary.** A quoted path in executable code counts as a reference whether or not the
-     * value is used; the check does not attempt to prove the literal reaches a `templateUrl`.
-     * A path assembled by concatenation is not a literal and so resolves to nothing — which is
-     * why the non-spec side keeps a textual basename fallback below, where missing a reference
-     * would be fail-open.
+     * Parsing alone was not enough either. Any quoted `.html` literal in executable code
+     * counted, used or not, so an unused `const ref = './widget.host.html'` exempted a
+     * template nobody serves — still fail-open, just one layer down. Reported on the pull
+     * request. A reference is now specifically the value of a `templateUrl` property, which is
+     * the only shape that makes the file a template under test and the same shape the non-spec
+     * rule below is looking for in production code.
+     *
+     * **Boundary.** A `templateUrl` assembled by concatenation is not a literal and resolves to
+     * nothing. On the spec side that is fail-closed and needs no fallback — no resolved
+     * reference means no proof, so the fixture is scanned like any template. On the non-spec
+     * side it would be fail-OPEN, which is why the blunt textual basename fallback is kept
+     * there deliberately.
      */
     const htmlRefs = (path, body) => {
       const refs = new Set();
       const source = ts.createSourceFile(path, body, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
       const visit = (node) => {
+        const isTemplateUrl =
+          ts.isPropertyAssignment(node) &&
+          (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+          node.name.text === 'templateUrl';
+        const value = isTemplateUrl ? node.initializer : null;
         if (
-          (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
-          node.text.endsWith('.html')
+          value &&
+          (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) &&
+          value.text.endsWith('.html')
         ) {
-          refs.add(resolveRef(path, node.text));
+          const resolved = resolveRef(path, value.text);
+          if (resolved !== null) refs.add(resolved);
         }
         node.forEachChild(visit);
       };

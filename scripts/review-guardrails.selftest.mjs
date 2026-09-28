@@ -694,6 +694,47 @@ expectGreen('a fixture referenced from a block-commented spec’s live code is s
     hostingSpec('widget.host.html'),
 });
 
+// Round four: `..` that climbs above the repository root. `resolveRef` walked segments and
+// popped on `..`, and `pop()` on an empty array is a no-op — so a path that really resolves
+// outside the checkout was silently clamped back onto an in-repo file and proved ITS exemption.
+// The function's own comment said such a reference "simply matches no fixture", which is the
+// fail-closed contract it did not keep. Reported on the pull request.
+expectRed(
+  'a reference that traverses above the repository root proves nothing',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    // From `.../shell/deep`, seven `..` exhaust the six real segments and then underflow. The
+    // surplus one used to vanish, leaving `apps/nuxeo-ui/src/app/shell/widget.host.html` —
+    // the fixture — proven by a spec that never pointed inside the tree at all.
+    'apps/nuxeo-ui/src/app/shell/deep/unrelated.spec.ts': hostingSpec(
+      '../../../../../../../apps/nuxeo-ui/src/app/shell/widget.host.html',
+    ),
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// Round four, second half: a quoted `.html` literal in executable code counted as a reference
+// whether or not anything hosted it, so an unused `const ref = './widget.host.html'` exempted a
+// template nobody serves. Parsing ruled out the comment case; it did not rule out this one. A
+// reference now has to be the value of a `templateUrl` property, which is the only shape that
+// makes the file a template under test.
+expectRed(
+  'an unused quoted path in a spec does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      "const ref = './widget.host.html';\n" +
+      "it('passes', () => expect(typeof ref).toBe('string'));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
 // Round two's property, also never controlled: a shipped component compiling the file means its
 // text is not test data, so the fixture cannot hold the proof of its own exemption.
 expectRed(
