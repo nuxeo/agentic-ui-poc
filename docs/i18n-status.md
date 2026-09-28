@@ -623,24 +623,44 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
 **Both halves have run.**
 
 - **Push.** 1,972 English strings and 1,972 translator-context entries are in Crowdin. The context
-  is genuinely there rather than merely reported as sent: a second run reported `0 updated`,
-  because the script compares against what Crowdin already holds.
+  is genuinely there rather than merely reported as sent, on two independent grounds: a second run
+  reported `0 updated`, because the script compares against what Crowdin already holds; and the
+  portal shows it, `action.bulk-actions-add-to-clipboard` carrying _"Action a user invokes from a
+  menu or an icon button, and the accessible name of…"_. The second matters because the first is
+  the script grading its own homework, and INFO-144's requirement is the kind of thing that gets
+  reported as done on exactly that evidence. The editor also paginates at 40 pages, which at 50 a
+  page corroborates 1,972 and rules out the duplicate upload the dashboard's "QA checks for 4,067
+  strings" badge suggested.
 - **Pull.** Opened a real pull request, #282, which also **confirms `BOT_GITHUB_TOKEN` has the
   scopes it needs** — CI started on the branch, which the default `GITHUB_TOKEN` would not have
   caused.
 
 **What is left, and none of it is plumbing.**
 
-1. **Crowdin holds no translations.** Every one of its nine target languages is at zero. This is
-   about **Crowdin's** state, not the application's: the repository ships 151 hand-written French
-   and German strings, written before Crowdin existed, and those render today. What Crowdin has
-   never had is any translation of its own — which is exactly why the first pull was destructive
-   and why `seed_translations` uploads the 151 before any further pull. Beyond them, every locale
-   correctly renders English through the fallback and the catalogues stay short. A translator or
-   machine pre-translation on project 160 is the only thing standing between the pipeline working
-   and the application looking translated.
-2. **Project membership.** The project is not visible to the team in the Crowdin portal; Okta
-   access and project membership are separate grants. Chased on INTERN-1346.
+1. **Crowdin holds no translations.** Every one of its nine target languages is at zero, verified
+   in the portal on 28 September. This is about **Crowdin's** state, not the application's: the
+   repository ships 151 hand-written French and German strings, written before Crowdin existed,
+   and those render today. What Crowdin has never had is any translation of its own, which is why
+   the first pull was destructive.
+
+   Those 151 will be **superseded rather than preserved** — see D8f. Uploading them needs a token
+   scope the CI token does not have, and `nuxeo-web-ui` has never uploaded a translation in four
+   years of running this pipeline: Crowdin owns non-English content. `skip_untranslated_files`
+   keeps them from being replaced by an empty catalogue while every language is at 0%, but once one
+   passes 0% its file is exported in full and Crowdin's content becomes the whole catalogue.
+
+   Beyond them, every locale correctly renders English through the fallback and the catalogues stay
+   short. A translator, or machine pre-translation on project 160, is the only thing standing
+   between the pipeline working and the application looking translated — and neither is something
+   this repository can do for itself.
+
+2. ~~**Project membership.**~~ Resolved on 28 September: Manager access granted on project 160.
+   Worth keeping the lesson, because it cost a day of confusion — Okta access to the Crowdin
+   tenant and membership of a project are **separate grants**, and holding the first shows you a
+   portal with no projects in it, which reads like a broken account rather than a missing
+   permission. There is a third level again: plain membership loads the dashboard but returns
+   `403` on the source strings view, so progress percentages were readable while the strings
+   behind them were not.
 3. **Nine target languages, three advertised.** Deliberate — see D8e in
    `docs/i18n-localization-plan.md`. A language is advertised when it has translations, not when it
    is planned.

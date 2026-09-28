@@ -3140,17 +3140,24 @@ function checkCrowdinConfig() {
     );
   }
 
-  // In the push workflow, the translator-context step must come BEFORE any step that uploads
-  // translations.
+  // The push workflow must attach translator context, and nothing that uploads translations may
+  // come before it.
   //
-  // Not style. A failed step skips the rest of the job, so anything placed ahead of the context
-  // push can prevent it running — and the first real `seed_translations` run did exactly that,
-  // failing on a token scope and skipping the context step behind it. That is the shape D8c
-  // records: the job goes red over one thing and the translator context INFO-144 requires is
-  // silently never attached. It cost nothing that time only because the context was already in
-  // Crowdin and the script is idempotent, which is luck rather than design.
+  // The first half is the live rule. The second guards against reintroducing something that has
+  // already been removed: a `seed_translations` step that uploaded the repository's existing
+  // non-English catalogues. It is gone because Crowdin owns non-English content — `nuxeo-web-ui`
+  // has never uploaded a translation in four years of running this pipeline — and per D8f it was
+  // removed rather than left in place unused.
   //
-  // Uploading translations has no bearing on sources or their context, so it can always go last.
+  // The rule outlives it because of HOW it failed. It sat between the source upload and the
+  // context push, failed on a token scope, and skipped the context step behind it: a failed step
+  // skips the rest of the job. That is the shape D8c records — the job goes red over one thing and
+  // the translator context INFO-144 requires is silently never attached. It cost nothing only
+  // because the context was already in Crowdin and the script is idempotent, which is luck rather
+  // than design.
+  //
+  // So if a translation upload ever comes back, it goes last. It has no bearing on the sources or
+  // their context, so there is never a reason for it to precede them.
   const push = read(workflows[0]);
   const contextAt = push.search(/^\s*run:\s*node tools\/i18n\/crowdin-push-context\.mjs\s*$/m);
   const translationUploadAt = push.search(/^\s*upload_translations:\s*true\s*$/m);

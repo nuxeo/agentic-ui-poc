@@ -533,10 +533,13 @@ Three things this cost, each worth keeping:
   than tidy: `export_only_approved: 'true'` means an unapproved translation is never exported,
   so seeding without approving loses the same strings for a more confusing reason.
 
-### D8f — the CI token can upload sources but not translations
+### D8f — we do not upload translations at all; Crowdin owns non-English content
 
-`seed_translations` is built, correct, and **cannot run with the token we have**. The first real
-attempt failed with:
+There is no seeding step, and the repository's 151 hand-written French and German strings will be
+superseded by whatever Crowdin produces. That is a decision, not an omission.
+
+A `seed_translations` input was built, to upload those 151 as approved translations. It failed on
+the first real run:
 
 ```
 UPLOAD TRANSLATIONS
@@ -544,32 +547,43 @@ UPLOAD TRANSLATIONS
 ❌ Permission error: "Endpoint isn't allowed for token scopes."
 ```
 
-The source upload in the same job succeeded, so this is not authentication and not the project id.
-The CI token is scoped for uploading sources and downloading translations — which is exactly what
-the daily sync needs — and uploading a translation is a different endpoint that the scope excludes.
+The source upload in the same job succeeded, so this was neither authentication nor the project id.
+The CI token is scoped to upload sources and download translations — exactly what the sync needs,
+and deliberately not more. Uploading a translation is a separate endpoint outside that scope.
 
-Two ways out, and the choice is a permissions question rather than an engineering one:
+**`nuxeo-web-ui` resolves this by not having the problem.** Its workflow has run since 2022 and
+contains no `upload_translations` at any point: every non-English catalogue in that repository
+exists only because Crowdin produced it. Our 151 strings are a pre-Crowdin artefact — written
+before the project existed — and the sanctioned model is that Crowdin is the source of truth for
+non-English. Following it needs no wider token, no manual step, and leaves nothing unused.
 
-1. **A token with translation-upload scope**, requested through the same channel as the CI token.
-   This makes `seed_translations` work as designed and is the only option that keeps the seed
-   reproducible in CI.
-2. **Upload `fr.json` and `de.json` through the Crowdin UI**, which a project Manager can do
-   directly, then approve them. One-off and immediate, but it is a manual step with no record in
-   the repository, so it must be noted on the ticket or the next person will not know the 151
-   strings arrived by hand.
+So the input was **removed** rather than left in place awaiting a token it may never get.
+Registering surface that cannot run is how this programme has previously overstated what shipped,
+and a dispatch input that always fails is exactly that.
 
-Until one of them happens, Crowdin holds no French or German translations, and **a pull will
-shorten `fr.json` and `de.json` to nothing**. `skip_untranslated_strings: true` means the strings
-are omitted rather than replaced with English, so the loss is now visible as missing keys and
-`checkCataloguesAreTranslated` fails an emptied catalogue outright — but the data is still lost.
-Do not run Crowdin Pull expecting those files to survive until the seed has actually succeeded.
+Two things survive the removal.
 
-**The step order is part of this entry.** `seed_translations` was originally placed between the
-source upload and the context push, so when it failed on the token scope it skipped the context
-step behind it — the same shape as D8c, because a failed step skips the rest of the job. It cost
-nothing only because the context was already in Crowdin and the script is idempotent. The seed step
-now runs last, and `checkCrowdinConfig` fails the workflow if a translation upload precedes the
-context push.
+**`skip_untranslated_files: true` on the pull.** While a language sits at 0%, Crowdin exports an
+_empty_ catalogue for it, and an export replaces the whole file — so `fr.json` and `de.json` would
+lose their 151 strings tonight rather than when translation actually begins.
+`checkCataloguesAreTranslated` would fail that pull request, so it could not reach `main`, but it
+would fail **every night** until something is translated, and a job that is red nightly for a
+reason nobody can action is a job people stop reading. With the option set, the nightly pull is
+green and a no-op. Note this buys time rather than a reprieve: once a language passes 0% its file
+is exported again and Crowdin's content becomes the whole catalogue.
+
+**The ordering rule in `checkCrowdinConfig`.** The seed step sat between the source upload and the
+context push, so when it failed it skipped the context step behind it — the shape D8c records,
+because a failed step skips the rest of the job. It cost nothing only because the context was
+already in Crowdin and the script is idempotent. The rule outlives the step: if a translation
+upload ever returns it must come last, since it has no bearing on the sources or their context.
+
+**Where we deliberately differ from `nuxeo-web-ui`.** It sets neither `skip_untranslated_strings`
+nor `export_only_approved`, and the cost is visible in its repository today: `messages-cs.json`
+holds 1,565 keys at full parity with English, of which **1,558 are English** — a Czech catalogue
+that is 99% English while presenting as Czech. `messages-id.json` is 39%. Full key parity is what
+makes it look healthy, which is the whole subject of D8d. We keep both options, so our catalogues
+are short and honest rather than long and padded.
 
 ### D8e — a language is advertised when it has translations, not when it is planned
 

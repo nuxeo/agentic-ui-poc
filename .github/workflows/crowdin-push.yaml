@@ -28,10 +28,6 @@ on:
         description: 'Resolve and authenticate against Crowdin without uploading anything'
         type: boolean
         default: false
-      seed_translations:
-        description: 'Also upload the existing non-English catalogues as approved translations'
-        type: boolean
-        default: false
 
 concurrency:
   group: crowdin-push
@@ -103,67 +99,3 @@ jobs:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
         run: node tools/i18n/crowdin-push-context.mjs
-
-      # Crowdin was created after the repository, so it started empty while `fr.json` and
-      # `de.json` already held 75 and 76 hand-written strings. Nothing had told Crowdin they
-      # existed, which made every pull destructive by construction: whatever the export contains
-      # replaces the file, and an export from an empty project cannot contain them.
-      # `skip_untranslated_strings` changes how they are lost, not whether — English values before
-      # it, absent keys after.
-      #
-      # `auto_approve_imported` is required rather than tidy. `export_only_approved: 'true'` in
-      # `crowdin-conf.yml` means an unapproved translation is not exported at all, so seeding
-      # without approving would leave these 151 strings visible in Crowdin and still missing from
-      # every pull — the same data loss with a more confusing cause. Note this input is only wired
-      # into the action's translation upload; on the source step above it does nothing, which is
-      # why it is set here and not there.
-      #
-      # It is a judgement call and reviewers should see it as one: it marks 151 strings approved
-      # that no translator has read. They ship today, so approving preserves the status quo rather
-      # than adding unreviewed content, and a translator can revise any of them in Crowdin
-      # afterwards. The alternative was discarding work that is already in front of users.
-      #
-      # One-off in practice, but safe to repeat — re-uploading identical approved translations
-      # changes nothing.
-      #
-      # LAST, and that ordering is load-bearing. This step sat between the source upload and the
-      # context push, and the first real run failed here on a token scope — which skipped the
-      # context step, because a failed step skips the rest of the job. That is exactly the shape
-      # D8c records: a step fails and the translator context that INFO-144 requires never gets
-      # attached. Nothing was lost that time only because the context was already in Crowdin and
-      # the script is idempotent.
-      #
-      # Seeding translations has no bearing on either the sources or their context, so it belongs
-      # after both. `checkCrowdinConfig` fails this workflow if a translation upload precedes the
-      # context push.
-      - name: Seed existing translations into Crowdin
-        if: ${{ inputs.seed_translations && !inputs.dry_run }}
-        uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
-        with:
-          config: crowdin-conf.yml
-          upload_sources: false
-          upload_translations: true
-          auto_approve_imported: true
-          download_translations: false
-          create_pull_request: false
-        env:
-          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
-          # A DIFFERENT token when one is available, and this is not the second-copy mistake that
-          # `CROWDIN_BOT_GITHUB_TOKEN` was. That one would have held the same value as an existing
-          # secret; this one exists because the values must differ in SCOPE.
-          #
-          # `CROWDIN_PERSONAL_TOKEN` is the CI token, scoped to upload sources and download
-          # translations — exactly what the daily sync needs and deliberately not more. Uploading a
-          # translation is a separate endpoint outside that scope, so the first seed attempt failed
-          # with `Endpoint isn't allowed for token scopes` while the source upload in the same job
-          # succeeded. See D8f.
-          #
-          # The seed therefore prefers `CROWDIN_SEED_TOKEN` and falls back to the CI token. The
-          # fallback is not optimism: it keeps this step's behaviour unchanged when the secret is
-          # absent, so adding it cannot break anything, and the resulting failure names the scope
-          # rather than looking like a broken credential.
-          #
-          # Keeping them separate also keeps the blast radius right. The token that can WRITE
-          # translations is used by one manually-dispatched step, not by the job that runs on every
-          # push to `main`.
-          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_SEED_TOKEN || secrets.CROWDIN_PERSONAL_TOKEN }}

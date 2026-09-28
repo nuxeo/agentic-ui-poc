@@ -1326,13 +1326,7 @@ const CROWDIN = {
   '.github/workflows/crowdin-push.yaml':
     CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
     `      - name: Push translator context\n` +
-    `        run: node tools/i18n/crowdin-push-context.mjs\n` +
-    // Seeding goes LAST. A step ahead of the context push can skip it by failing, which is what
-    // the first real seed run did.
-    `      - name: Seed existing translations\n` +
-    `        uses: crowdin/github-action@v2\n` +
-    `        with:\n` +
-    `          upload_translations: true\n`,
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
   // The pull workflow signs on the ACTION, because that is the only placement that signs
   // anything — see the control for it below.
   '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(PULL_OK),
