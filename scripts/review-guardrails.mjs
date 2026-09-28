@@ -2967,6 +2967,16 @@ const YAML_FALSE = /^(?:false|'false'|"false")$/;
  */
 const YAML_UNREADABLE = /^\*|\$\{\{/;
 
+/**
+ * A step that runs the Crowdin action, however its `uses:` value is quoted.
+ *
+ * `uses: 'crowdin/github-action@…'` is valid workflow YAML. Recognising only the bare form meant a
+ * quoted Crowdin step was not recognised as one at all — so every input prohibition scoped to
+ * "Crowdin steps" skipped it and passed by absence. Raised in review; the failure direction is the
+ * dangerous one, because an unrecognised step is an unchecked step.
+ */
+const CROWDIN_ACTION = /uses:\s*['"]?crowdin\/github-action/;
+
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
   // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
@@ -3253,7 +3263,7 @@ function checkCrowdinConfig() {
   // `skip_untranslated_strings: true` would satisfy both assertions below while the step that
   // actually downloads omitted it, and signing matters on the downloading step too, because that
   // is the one that commits.
-  const crowdinSteps = pullSteps.filter((step) => /uses:\s*crowdin\/github-action/.test(step));
+  const crowdinSteps = pullSteps.filter((step) => CROWDIN_ACTION.test(step));
   const crowdinStep = crowdinSteps.find((step) =>
     /^\s*download_translations:\s*true\s*$/m.test(step),
   );
@@ -3358,7 +3368,7 @@ function checkCrowdinConfig() {
   // on any other action, and reading the whole file made a mention in `pull_request_body` into a
   // configuration change.
   const offending = workflowSteps(pullCode)
-    .filter((step) => /uses:\s*crowdin\/github-action/.test(step.text))
+    .filter((step) => CROWDIN_ACTION.test(step.text))
     .flatMap((step) => yamlValues(step.text, 'skip_untranslated_files'))
     .find(({ value }) => !YAML_FALSE.test(value));
   if (offending !== undefined) {
@@ -3455,7 +3465,7 @@ function checkCrowdinConfig() {
   // unrelated action with `command: ${{ inputs.command }}` cannot invoke Crowdin, and classifying
   // it as an unreadable translation upload failed the gate on a workflow that was correct.
   const uploads = workflowSteps(push)
-    .filter((step) => /uses:\s*crowdin\/github-action/.test(step.text))
+    .filter((step) => CROWDIN_ACTION.test(step.text))
     .flatMap((step) => [
       ...yamlValues(step.text, 'upload_translations')
         .filter(({ value }) => !YAML_FALSE.test(value))
@@ -3469,24 +3479,30 @@ function checkCrowdinConfig() {
     ]);
   const translationUploadAt = uploads.length > 0 ? Math.min(...uploads) : -1;
 
-  // Flow mappings, in either workflow. `with: { command: upload translations }` is valid YAML and
-  // `yamlValues` cannot see inside it, so every check above would read the step as carrying no
-  // inputs at all — absence, when the truth is unknown.
+  // An input map this script cannot read, in either workflow.
+  //
+  // Three forms, all valid YAML, all invisible to `yamlValues`: a flow mapping
+  // `with: { command: upload translations }`, an alias `with: *upload_inputs` resolving to a map
+  // defined elsewhere, and `with: ${{ … }}`. In every case the checks above read the step as
+  // carrying NO inputs — absence, when the truth is unknown, which turns the prohibitions into
+  // no-ops.
   //
   // Rejected rather than parsed. These workflows are block-style throughout, nothing needs the
-  // flow form, and adding a YAML dependency to a script that has none to cover a style nobody
+  // other forms, and adding a YAML dependency to a script that has none to cover styles nobody
   // writes is the wrong trade. But the limit has to FAIL, not pass quietly, or the justification
-  // for using a matcher at all stops holding.
+  // for using a matcher at all stops holding — which is exactly how the alias form got in: the
+  // flow mapping was rejected and the alias, which hides just as much, was not.
   for (const workflow of workflows) {
-    const flow = stripYamlComments(read(workflow))
+    const opaque = stripYamlComments(read(workflow))
       .split('\n')
-      .find((line) => /^\s*with:\s*\{/.test(line));
-    if (flow !== undefined) {
+      .find((line) => /^\s*with:\s*(?:\{|\*|\$\{\{)/.test(line));
+    if (opaque !== undefined) {
       fail(
-        `${workflow} declares step inputs as a YAML flow mapping: \`${flow.trim()}\`.\n` +
-          '    The Crowdin guardrails read block mappings. They cannot see inside a flow ' +
-          'mapping, so `skip_untranslated_files`, `upload_translations` and `command` would all ' +
-          'read as ABSENT rather than unknown — which turns three prohibitions into no-ops.\n' +
+        `${workflow} declares step inputs in a form this guardrail cannot read: ` +
+          `\`${opaque.trim()}\`.\n` +
+          '    A flow mapping, a YAML alias and an expression all hide the keys inside them, so ' +
+          '`skip_untranslated_files`, `upload_translations` and `command` would read as ABSENT ' +
+          'rather than unknown — which turns three prohibitions into no-ops.\n' +
           '    Use the block form (`with:` then one `key: value` per line), which is what every ' +
           'other step in these workflows uses.',
       );

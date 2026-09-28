@@ -1470,6 +1470,47 @@ expectRed(
   /uploads translations before pushing translator context/,
 );
 
+// A quoted `uses:` value. `uses: 'crowdin/github-action@…'` is valid workflow YAML, and matching
+// only the bare form meant the step was not recognised as a Crowdin step at all — so every
+// prohibition scoped to Crowdin steps skipped it and passed by absence. An unrecognised step is an
+// unchecked step, which is the dangerous direction.
+expectRed(
+  'the push workflow quoting its uses value on an upload step before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: 'crowdin/github-action@v2'\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// An aliased input map hides exactly as much as a flow mapping does. The flow form was rejected and
+// this one was not, which is how a limit that "fails closed" stopped being true of every spelling.
+expectRed(
+  'the push workflow declaring step inputs through a YAML alias',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with: *upload_inputs\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares step inputs in a form this guardrail cannot read/,
+);
+
 // A `command:` nobody can read counts as an upload, for the same reason a `${{ }}` boolean counts
 // as true: it might be one, and failing closed is the only direction that cannot hide the
 // skipped-context failure this rule exists for.
@@ -1841,7 +1882,7 @@ expectRed(
         `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
         `        with: { config: crowdin-conf.yml, download_translations: true, skip_untranslated_files: true }\n`,
     ),
-  /declares step inputs as a YAML flow mapping/,
+  /declares step inputs in a form this guardrail cannot read/,
 );
 
 // Scope. `--skip-untranslated-files` reaches `crowdin download` only through `command_args` or
