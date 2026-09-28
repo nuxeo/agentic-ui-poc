@@ -56,6 +56,7 @@ describe('DocumentDetailComponent — prop-label text contrast (NXENG-861)', () 
   const scssPath = join(import.meta.dirname, 'document-detail.scss');
   const scss = readFileSync(scssPath, 'utf8');
   const labelBlock = scssBlock(scss, 'prop-label');
+  const panelBlock = scssBlock(scss, 'properties-panel');
 
   it('themes property labels through the light-panel host token, not global surface-variant', () => {
     expect(labelBlock).toMatch(/var\(--document-detail-properties-label-muted\)/);
@@ -63,6 +64,8 @@ describe('DocumentDetailComponent — prop-label text contrast (NXENG-861)', () 
     expect(labelBlock).not.toMatch(/--mat-sys-on-surface-variant/);
     expect(hostCustomProperty(scss, 'document-detail-properties-label-muted')).toBe('#5c5f6b');
     expect(hostCustomProperty(scss, 'document-detail-properties-panel-surface')).toBe('#ffffff');
+    expect(panelBlock).toMatch(/var\(--document-detail-properties-panel-surface\)/);
+    expect(panelBlock).not.toMatch(/var\(--mat-sys-surface/i);
   });
 
   it(`host token pair meets ${WCAG_AA_NORMAL_TEXT}:1 on the properties panel`, () => {
@@ -74,5 +77,16 @@ describe('DocumentDetailComponent — prop-label text contrast (NXENG-861)', () 
     expect(bg).not.toBeNull();
     if (!fg || !bg) return;
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+  });
+
+  it('legacy #888 on white fails WCAG AA (documents the reported defect)', () => {
+    const fg = parseHex('#888888');
+    const bg = parseHex('#ffffff');
+    expect(fg).not.toBeNull();
+    expect(bg).not.toBeNull();
+    if (!fg || !bg) return;
+    const ratio = contrastRatio(fg, bg);
+    expect(ratio).toBeLessThan(WCAG_AA_NORMAL_TEXT);
+    expect(ratio).toBeCloseTo(3.54, 1);
   });
 });

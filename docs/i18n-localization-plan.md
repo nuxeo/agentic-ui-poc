@@ -424,10 +424,6 @@ Per the technical usage guide. Project name must match the GitHub repository nam
     'translation': '/%original_path%/%locale%.%file_extension%'
     'export_only_approved': 'true'
     'update_option': 'update_without_changes'
-  - 'source': '/libs/**/i18n/en.json'
-    'translation': '/%original_path%/%locale%.%file_extension%'
-    'export_only_approved': 'true'
-    'update_option': 'update_without_changes'
 ```
 
 > **The trap: do not copy the standard's `/**/**/i18n/en.json` glob verbatim.** With
@@ -479,6 +475,23 @@ up", which belongs on the release checklist.
 The half that genuinely needs to be fast is the **push**, and it already is — on source change.
 A string added today that does not reach Crowdin until release week cannot be translated for
 that release.
+
+### D8c — a source pattern must ship WITH the files it matches, never ahead of them
+
+D8's snippet above deliberately omits a `/libs/**/i18n/en.json` source. Do not add it until a
+catalogue exists, and the reason is not tidiness.
+
+Crowdin treats a source pattern that matches nothing as an **error**, and it raises it _after_
+uploading the files that did match. On the first real push the English catalogue uploaded
+successfully and the job then failed on the empty `libs/**` pattern — so the run was red about
+work that had succeeded, and because the job failed the translator-context step that follows
+it never ran. A pattern added for a future slice is why Crowdin briefly held 1,972 strings with
+no context attached, which INFO-144 requires.
+
+`--dryrun` does not report it. The dry run listed the file it would upload and said nothing
+about the unmatched pattern, so the CLI cannot be relied on to catch this before a real push.
+`checkCrowdinConfig` fails each unmatched pattern by name instead, which is why the limitation
+is survivable.
 
 ### D8a — `%two_letters_code%`, not `%locale%`
 
