@@ -76,9 +76,13 @@ describe('DocumentDetailComponent — doc-info-label contrast (NXENG-813)', () =
   describe('rendered properties panel', () => {
     let fixture: ComponentFixture<DocumentDetailDocInfoLabelContrastHost>;
     let originalTheme: string | null;
+    let originalSurfaceVariant: string;
 
     beforeEach(async () => {
       originalTheme = document.documentElement.getAttribute('data-app-theme');
+      originalSurfaceVariant = document.documentElement.style.getPropertyValue(
+        '--mat-sys-on-surface-variant',
+      );
       await TestBed.configureTestingModule({
         imports: [DocumentDetailDocInfoLabelContrastHost],
         providers: [provideZonelessChangeDetection()],
@@ -94,6 +98,14 @@ describe('DocumentDetailComponent — doc-info-label contrast (NXENG-813)', () =
         document.documentElement.removeAttribute('data-app-theme');
       } else {
         document.documentElement.setAttribute('data-app-theme', originalTheme);
+      }
+      if (originalSurfaceVariant) {
+        document.documentElement.style.setProperty(
+          '--mat-sys-on-surface-variant',
+          originalSurfaceVariant,
+        );
+      } else {
+        document.documentElement.style.removeProperty('--mat-sys-on-surface-variant');
       }
     });
 
