@@ -369,7 +369,7 @@
   justify-content: space-between;
   padding: 8px 16px;
   border-top: 1px solid var(--mat-sys-outline-variant, #eee);
-  /* NXENG-764 — footer is part of the fixed light strip (IBM 67686130). */
+  /* NXENG-763 — footer is part of the fixed light strip (IBM 56037090). */
   background: var(--document-viewer-light-strip-surface);
   flex-shrink: 0;
 }
@@ -382,6 +382,7 @@
 
 .file-name {
   font-size: 13px;
+  /* NXENG-763 — pairs with the light-strip footer (IBM 56037090). */
   color: var(--document-viewer-on-light-strip);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -400,6 +401,7 @@
   flex-shrink: 0;
 
   button {
+    /* NXENG-763 — footer icon buttons on the light strip (IBM 56037090). */
     color: var(--document-viewer-muted-on-light-surface);
 
     &.active-toggle {
