@@ -1,6 +1,8 @@
 /**
- * NXENG-774 / NXENG-852 — `.doc-info-label` on `.properties-panel` under every compiled palette.
- * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
+ * NXENG-774 / NXENG-782 / NXENG-804 / NXENG-829 / NXENG-852 (IBM 280073873, IBM 1224611475,
+ * IBM 542201046, IBM 1741130194) — `.doc-info-label` on `.properties-panel` under every compiled
+ * palette. Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token
+ * pairs. Host tokens come from `:host` in `document-detail.scss` (no inline overrides on the test host).
  */
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -16,13 +18,6 @@ const WCAG_AA_NORMAL_TEXT = 4.5;
   styleUrls: [
     '../../../../../libs/features/document-detail/src/lib/document-detail/document-detail.scss',
   ],
-  host: {
-    /* Host tokens from document-detail :host — panel stays light in every theme. */
-    style: `
-      --document-detail-properties-panel-surface: #ffffff;
-      --document-detail-properties-label-muted: #5c5f6b;
-    `,
-  },
 })
 class DocInfoLabelContrastHostComponent {}
 
@@ -62,7 +57,7 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
   return [255, 255, 255];
 }
 
-describe('Document detail doc-info-label contrast by theme (NXENG-774, NXENG-852)', () => {
+describe('Document detail doc-info-label contrast by theme (NXENG-774 / NXENG-782 / NXENG-804 / NXENG-829 / NXENG-852)', () => {
   let originalTheme: string | null;
 
   beforeEach(async () => {

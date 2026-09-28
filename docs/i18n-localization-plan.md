@@ -6,7 +6,13 @@ extraction and wire adf-hx translation assets" · Epic
 [NXSAT-280](https://hyland.atlassian.net/browse/NXSAT-280) (identical summary — close one).
 
 **Status:** slices S1–S5 delivered on `feature/nxsat-227a-i18n`. S6 (the Crowdin pipeline) is
-blocked on manual project creation via the INTERN board. The GA extraction is
+built and has run end to end against the live tenant: project 160 exists, 1,972 English strings
+and 1,972 translator-context entries are uploaded, and the pull opened a real pull request. What
+remains is Crowdin-side rather than a pipeline gap — **Crowdin itself holds no translations yet**,
+for any of its nine target languages, and project membership is still pending. That is separate
+from what the repository ships: `fr.json` and `de.json` carry 151 hand-written strings written
+before Crowdin existed, which is why D8d's data loss mattered and what `seed_translations` uploads.
+Plus the two gaps D8d and D8e record. The GA extraction is
 [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284).
 
 > **Looking for where we stand rather than what we decided?** Read
@@ -165,14 +171,14 @@ Tagged `[ticket]` for verbatim, `[derived]` where the ticket implies but does no
 
 **227a (Beta):**
 
-| #   | Criterion                                                                                                                                                                             | Source                                                                                     |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| A1  | No control in the running application has an accessible name matching `/^[A-Z][A-Z0-9_]*\.[A-Z0-9_.-]+$/`, asserted over `aria-label`, `title` and rendered text on all eight routes. | `[ticket]` AC 2, made measurable                                                           |
-| A2  | `apps/nuxeo-ui/public/i18n/en.json` and `en-fallback.ts` blank no key that upstream uses as an accessible name.                                                                       | `[derived]` — extends the existing `phase-6-a11y.mjs` check from `sat.*` to all namespaces |
-| A3  | A new hard-coded user-facing string added to the core slice fails `npm run review:guardrails`, demonstrated by a deliberate red run.                                                  | `[ticket]` AC 3                                                                            |
-| A4  | Setting Layer 0 `defaultLanguage: 'fr'` and reloading renders French in the shell chrome, with a screenshot and a passing check.                                                      | `[ticket]` AC 4                                                                            |
-| A5  | `crowdin.yml` exists, a Crowdin project is created for this repository, and push/pull workflows run green with the source catalogue uploaded.                                         | `[derived]` — required by the HXP standard, which the ticket does not mention at all       |
-| A6  | Translation catalogues are validated by a unit test: parseable, UTF-8, no empty string values, key parity against `en.json`.                                                          | HXP standard, "Basic Unit Testing Setup" (SHOULD)                                          |
+| #   | Criterion                                                                                                                                                                                                                                                                  | Source                                                                                     |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| A1  | No control in the running application has an accessible name matching `/^[A-Z][A-Z0-9_]*\.[A-Z0-9_.-]+$/`, asserted over `aria-label`, `title` and rendered text on all eight routes.                                                                                      | `[ticket]` AC 2, made measurable                                                           |
+| A2  | `apps/nuxeo-ui/public/i18n/en.json` and `en-fallback.ts` blank no key that upstream uses as an accessible name.                                                                                                                                                            | `[derived]` — extends the existing `phase-6-a11y.mjs` check from `sat.*` to all namespaces |
+| A3  | A new hard-coded user-facing string added to the core slice fails `npm run review:guardrails`, demonstrated by a deliberate red run.                                                                                                                                       | `[ticket]` AC 3                                                                            |
+| A4  | Setting Layer 0 `defaultLanguage: 'fr'` and reloading renders French in the shell chrome, with a screenshot and a passing check.                                                                                                                                           | `[ticket]` AC 4                                                                            |
+| A5  | `crowdin.yml` exists, a Crowdin project is created for this repository, and push/pull workflows run green with the source catalogue uploaded.                                                                                                                              | `[derived]` — required by the HXP standard, which the ticket does not mention at all       |
+| A6  | Translation catalogues are validated by a unit test: parseable, UTF-8, no empty string values, and no key `en.json` lacks. A key en.json HAS and a locale lacks only warns — see D8d, because Crowdin omits untranslated strings and English renders through the fallback. | HXP standard, "Basic Unit Testing Setup" (SHOULD)                                          |
 
 **227b (GA):**
 
@@ -378,10 +384,10 @@ Two design points the existing guardrails have already litigated:
 
 Two guardrails are worth having, not one:
 
-| Guardrail                    | Checks                                                                                                                                                                 | Scope                                     |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `checkNoHardcodedUiText`     | Added lines in `.html` introducing element text, `placeholder=`, `matTooltip=`, `alt=`, `aria-label=` or `title=` with a literal display string and no `\| translate`. | diff (227a) → core slice repo-wide (227b) |
-| `checkTranslationCatalogues` | Every `i18n/*.json` parses, is UTF-8, has no empty-string values, and has key parity with its sibling `en.json`.                                                       | repo-wide, cheap                          |
+| Guardrail                    | Checks                                                                                                                                                                                                                                                      | Scope                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `checkNoHardcodedUiText`     | Added lines in `.html` introducing element text, `placeholder=`, `matTooltip=`, `alt=`, `aria-label=` or `title=` with a literal display string and no `\| translate`.                                                                                      | diff (227a) → core slice repo-wide (227b) |
+| `checkTranslationCatalogues` | Every `i18n/*.json` parses, is UTF-8, has no empty-string values, and carries no key its sibling `en.json` lacks. Missing keys warn only (D8d). `checkCataloguesAreTranslated` covers the inverse: a catalogue at full parity whose values are all English. | repo-wide, cheap                          |
 
 The second is what the HXP standard means by "Basic Unit Testing Setup", and it earns its
 keep independently: a JSON file with a trailing comma breaks the Crowdin sync, and an
@@ -421,10 +427,6 @@ Per the technical usage guide. Project name must match the GitHub repository nam
 
 'files':
   - 'source': '/apps/*/public/i18n/en.json'
-    'translation': '/%original_path%/%locale%.%file_extension%'
-    'export_only_approved': 'true'
-    'update_option': 'update_without_changes'
-  - 'source': '/libs/**/i18n/en.json'
     'translation': '/%original_path%/%locale%.%file_extension%'
     'export_only_approved': 'true'
     'update_option': 'update_without_changes'
@@ -479,6 +481,78 @@ up", which belongs on the release checklist.
 The half that genuinely needs to be fast is the **push**, and it already is — on source change.
 A string added today that does not reach Crowdin until release week cannot be translated for
 that release.
+
+### D8c — a source pattern must ship WITH the files it matches, never ahead of them
+
+D8's snippet above deliberately omits a `/libs/**/i18n/en.json` source. Do not add it until a
+catalogue exists, and the reason is not tidiness.
+
+Crowdin treats a source pattern that matches nothing as an **error**, and it raises it _after_
+uploading the files that did match. On the first real push the English catalogue uploaded
+successfully and the job then failed on the empty `libs/**` pattern — so the run was red about
+work that had succeeded, and because the job failed the translator-context step that follows
+it never ran. A pattern added for a future slice is why Crowdin briefly held 1,972 strings with
+no context attached, which INFO-144 requires.
+
+`--dryrun` does not report it. The dry run listed the file it would upload and said nothing
+about the unmatched pattern, so the CLI cannot be relied on to catch this before a real push.
+`checkCrowdinConfig` fails each unmatched pattern by name instead, which is why the limitation
+is survivable.
+
+### D8d — an untranslated string must be ABSENT from the export, never English-valued
+
+`skip_untranslated_strings: true` on the pull. The action defaults it to `false`, and `false`
+does not mean "omit the string" — it means **export the string with its English source as the
+translation**.
+
+The first real pull opened a pull request with nine catalogues, every one byte-identical to
+`en.json`: 1,972 keys, 1,972 values the same as English, none different. It was also
+destructive, because an export replaces the whole file and `fr.json` and `de.json` held 75 and
+76 hand-written strings. `Supprimer` came back as `Delete`, in a commit titled "update
+translations from Crowdin".
+
+`true` omits the key instead, and `setFallbackLang('en')` renders English for it. So **a
+non-English catalogue shorter than `en.json` is the correct steady state**, not a half-finished
+sync — which is why `checkTranslationCatalogues` warns on a missing key rather than failing.
+
+Three things this cost, each worth keeping:
+
+- **Full key parity is not evidence of translation.** It was the reassuring signal and it was
+  produced by the defect: the export covered every key, so parity was perfect.
+- **The gate that failed was the wrong gate.** `checkTranslationCatalogues` passed. What went
+  red was `checkLocaleDataRegistered`, because seven of the nine locales were new and had no
+  Angular locale data — unrelated, real, and the only reason anyone looked. Restricted to `fr`
+  and `de`, which are already registered, `review:guardrails` printed
+  `Review guardrails passed.` over the loss of 151 strings. `checkCataloguesAreTranslated` now
+  fails a catalogue whose every value matches English, and warns above 80%.
+- **Seeding is a prerequisite, not a nicety.** Crowdin was created after the repository, so it
+  started empty while those 151 strings already existed. Nothing had told Crowdin about them,
+  which made every pull destructive by construction — `skip_untranslated_strings` changes how
+  they are lost, not whether. `Crowdin Push` therefore takes a `seed_translations` input that
+  uploads the existing catalogues with `--auto-approve-imported`. Approval is required rather
+  than tidy: `export_only_approved: 'true'` means an unapproved translation is never exported,
+  so seeding without approving loses the same strings for a more confusing reason.
+
+### D8e — a language is advertised when it has translations, not when it is planned
+
+Crowdin project 160 carries nine target languages. `availableLanguages` holds three. That gap
+is deliberate and it is not a backlog item to close on its own.
+
+A locale needs three things that move together, and `checkLocaleDataRegistered` fails in **both**
+directions to enforce it: a catalogue in `apps/nuxeo-ui/public/i18n/`, an entry in
+`register-locale-data.ts`, and an entry in `availableLanguages`. Registering locale data for a
+language with no catalogue fails. Advertising one with no catalogue fails
+`checkAdvertisedLocalesShip`.
+
+The temptation is to satisfy all three with an empty or English-filled catalogue so the picker
+offers nine languages. Do not: that is the same fault `checkAdvertisedLocalesShip` was written
+for, whose own comment records the template app "shipped describing two languages it could not
+render". A user who selects Japanese and reads English has been lied to by the language picker.
+
+So the nine are the target and the mechanism is ready for them. Each becomes advertisable in one
+commit — catalogue, registration, `availableLanguages` — once Crowdin actually holds
+translations for it. Machine pre-translation on the Crowdin side is the fastest way to get
+there; real review follows.
 
 ### D8a — `%two_letters_code%`, not `%locale%`
 
@@ -610,13 +684,13 @@ strips types through esbuild — so a green `test` proves nothing about type saf
 
 ### Unit
 
-| Test               | Asserts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Catalogue validity | Every `i18n/*.json` parses, is UTF-8, has no empty-string values, sorted keys, newline at EOF. Required by the HXP standard.                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Key parity         | Every non-`en` catalogue's key set matches `en.json`. Catches a Crowdin pull that dropped a file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Loader precedence  | Seeded folders < app catalogue < manifest `labels`, asserted with all three supplying the same key. **Delivered** — `app-translate-loader.spec.ts`. This row said "currently untested" after the tests landed.                                                                                                                                                                                                                                                                                                                                                                                             |
-| Fallback parity    | Every key bound as an accessible name is present and non-empty in `en-fallback.ts`, enforced by `checkAccessibleNameFallbacks`. **Delivered, and the gaps it was written for are closed** — `settings.themes.search` was the one this row named; `shell.search.placeholder` and `shell.ai.input-placeholder` were two more, found later because the gate read only `aria-label` and `title` while those two inputs are named by their `placeholder` alone. `placeholder` is in scope now. A key in our own lowercase shape that no catalogue defines also fails, so a typo cannot pass as an upstream key. |
-| Guardrail selftest | Each new guardrail fires on a crafted violation and stays silent on a crafted near-miss. Negative controls counted separately from positive ones.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Test               | Asserts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Catalogue validity | Every `i18n/*.json` parses, is UTF-8, has no empty-string values, sorted keys, newline at EOF. Required by the HXP standard.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Key parity         | Asymmetric, deliberately — this row used to say a locale's key set must match `en.json` key-for-key, which D8d makes wrong. A key in `en.json` and absent from a locale **warns**: `setFallbackLang('en')` renders English, and since `skip_untranslated_strings: true` omits untranslated strings, a short catalogue is the normal steady state rather than a dropped file. A key a locale carries that `en.json` does not **fails** — nothing renders it and the translation crew is still paying to maintain it. Full parity is not evidence of translation: a catalogue whose every value equals English fails via `checkCataloguesAreTranslated`, because that is the English export under another name. |
+| Loader precedence  | Seeded folders < app catalogue < manifest `labels`, asserted with all three supplying the same key. **Delivered** — `app-translate-loader.spec.ts`. This row said "currently untested" after the tests landed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Fallback parity    | Every key bound as an accessible name is present and non-empty in `en-fallback.ts`, enforced by `checkAccessibleNameFallbacks`. **Delivered, and the gaps it was written for are closed** — `settings.themes.search` was the one this row named; `shell.search.placeholder` and `shell.ai.input-placeholder` were two more, found later because the gate read only `aria-label` and `title` while those two inputs are named by their `placeholder` alone. `placeholder` is in scope now. A key in our own lowercase shape that no catalogue defines also fails, so a typo cannot pass as an upstream key.                                                                                                    |
+| Guardrail selftest | Each new guardrail fires on a crafted violation and stays silent on a crafted near-miss. Negative controls counted separately from positive ones.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 Note for whoever touches `AppTranslateLoader`: `upstream-permissions-panel.spec.ts` defines a
 `StubAdfTranslateLoader` duck-typing all five adf-core methods. **Add a method to the loader

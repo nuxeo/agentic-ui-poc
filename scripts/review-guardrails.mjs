@@ -212,7 +212,6 @@ function inlineStyleBlockLines(source) {
   return covered;
 }
 
-
 /**
  * A colour literal must come from a **theme token with a fallback**, not be typed
  * in at the point of use.
@@ -1303,7 +1302,12 @@ function checkNoHardcodedUiText() {
       }
       index = stop;
     }
-    return new Map(chars.join('').split('\n').map((text, at) => [at + 1, text]));
+    return new Map(
+      chars
+        .join('')
+        .split('\n')
+        .map((text, at) => [at + 1, text]),
+    );
   }
 
   for (const [file, lines] of everyLine) {
@@ -1825,6 +1829,157 @@ function checkTranslationCatalogues() {
 }
 
 /**
+ * A non-English catalogue actually translates something.
+ *
+ * ## The defect this exists for
+ *
+ * The first real Crowdin pull opened a pull request carrying nine catalogues, and every one of
+ * them was byte-identical to `en.json` — 1,972 keys, 1,972 values the same as English, none
+ * different. Nothing in the project was translated yet, and `skip_untranslated_strings: false`
+ * makes Crowdin export an untranslated string **as its English source** rather than omitting it.
+ *
+ * It was not merely empty, it was destructive: `fr.json` and `de.json` held 75 and 76
+ * hand-written translations, and the export overwrote them with English. `Supprimer` became
+ * `Delete` in a commit titled "update translations from Crowdin".
+ *
+ * ## Why `checkTranslationCatalogues` could not see it
+ *
+ * Read that gate's failure conditions and the reason is plain: malformed JSON, wrong shape, a
+ * non-string leaf, a blank value, a key absent from English. An English value satisfies every
+ * one of them. It is well-formed, it is a non-empty string, and because the export covers the
+ * whole file it is at *perfect* key parity — so even the parity half reported nothing.
+ *
+ * That gate ran on the pull request and passed. What failed it was
+ * `checkLocaleDataRegistered`, on the unrelated ground that seven of the nine locales were new
+ * and had no Angular locale data — a real defect and a lucky one, because it is the only reason
+ * anybody looked. Restricted to `fr` and `de`, which are already registered,
+ * `review:guardrails` printed `Review guardrails passed.` over the destruction of 151 strings.
+ *
+ * ## The rule
+ *
+ * Every shared value identical to English means the catalogue translates nothing, and no real
+ * translation of five or more strings does that. Individual matches are legitimate and common —
+ * `PDF`, `Nuxeo`, `OK` are the same word in French — so the failure needs *all* of them, and a
+ * floor of five keys keeps it off a tiny catalogue that could plausibly be all acronyms.
+ *
+ * The partial case warns instead. With `skip_untranslated_strings: true` an untranslated key is
+ * absent rather than English-valued, so a high ratio should not occur; if it does, either a
+ * translator kept a lot of English on purpose or that setting has regressed, and the two cannot
+ * be told apart from here.
+ */
+function checkCataloguesAreTranslated() {
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
+  const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
+
+  const flatten = (value, prefix, out) => {
+    for (const [key, entry] of Object.entries(value)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof entry === 'string') out.set(path, entry);
+      else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        flatten(entry, path, out);
+      }
+    }
+    return out;
+  };
+
+  /** Parses a catalogue, or returns null — malformed files are `checkTranslationCatalogues`'s. */
+  const load = (path) => {
+    try {
+      const json = JSON.parse(read(path));
+      if (json === null || typeof json !== 'object' || Array.isArray(json)) return null;
+      return flatten(json, '', new Map());
+    } catch {
+      return null;
+    }
+  };
+
+  let compared = 0;
+
+  for (const catalogue of catalogues) {
+    const locale = catalogue.slice(catalogue.lastIndexOf('/') + 1).replace(/\.json$/, '');
+    if (locale === 'en') continue;
+
+    const reference = `${catalogue.slice(0, catalogue.lastIndexOf('/'))}/en.json`;
+    if (!fileExists(reference)) continue;
+
+    const english = load(reference);
+    const translated = load(catalogue);
+    if (!english || !translated) continue;
+
+    const shared = [...translated.keys()].filter((key) => english.has(key));
+
+    // An emptied catalogue, before the key floor gets a chance to skip it.
+    //
+    // The floor below exists so a legitimately part-translated locale — two approved strings out
+    // of two thousand — is not accused of translating nothing. But `continue` is also how a
+    // catalogue gutted to `{}` escaped: it contributes no shared keys, the parity half only WARNS
+    // about the keys it is missing, and `checkLocaleDataRegistered` and
+    // `checkAdvertisedLocalesShip` are both satisfied by the file merely existing. Worse, the
+    // `compared === 0` guard at the end could not catch it either, because one healthy sibling
+    // increments `compared` and covers for it.
+    //
+    // Zero is different from few. Per D8e a language is advertised only once it has translations,
+    // so a shipped catalogue with none of them is either a destructive sync or a language that
+    // should not be shipped yet. Both are worth stopping.
+    if (translated.size === 0 && english.size >= 5) {
+      fail(
+        `${catalogue} contains no translated strings at all, while ${reference} has ` +
+          `${english.size}.\n` +
+          '    A catalogue may legitimately be SHORT — `skip_untranslated_strings: true` omits ' +
+          'what is untranslated and English renders through the fallback — but empty means either ' +
+          'a sync replaced real translations with nothing, or a language is being shipped before ' +
+          'anything was translated for it. D8e: advertise a language when it has translations, ' +
+          'not when it is planned.',
+      );
+      compared += 1;
+      continue;
+    }
+
+    if (shared.length < 5) continue;
+
+    compared += 1;
+    const identical = shared.filter((key) => translated.get(key) === english.get(key));
+    if (identical.length !== shared.length) {
+      const ratio = identical.length / shared.length;
+      if (shared.length >= 25 && ratio >= 0.8) {
+        warn(
+          `${catalogue} repeats the English string for ${identical.length} of its ` +
+            `${shared.length} keys (${Math.round(ratio * 100)}%).\n` +
+            '    Either a translator kept that much English deliberately, or ' +
+            '`skip_untranslated_strings` has regressed to `false` in .github/workflows/' +
+            'crowdin-pull.yaml and this is a partly untranslated export. An untranslated key ' +
+            'is supposed to be ABSENT, so that `setFallbackLang(\'en\')` renders English ' +
+            'without the catalogue claiming to have translated it.',
+        );
+      }
+      continue;
+    }
+
+    fail(
+      `${catalogue} repeats the English string for all ${shared.length} of its keys, so it ` +
+        'translates nothing.\n' +
+        '    This is what Crowdin exports for an untranslated language when ' +
+        '`skip_untranslated_strings` is `false`: the English source, under a non-English file ' +
+        'name. It is well-formed, non-blank and at perfect key parity with English, which is ' +
+        `why ${'`checkTranslationCatalogues`'} passes it.\n` +
+        '    Merging it replaces whatever real translations the file held — the first such pull ' +
+        'request would have overwritten 151 hand-written French and German strings. Set ' +
+        '`skip_untranslated_strings: true` so an untranslated key is absent and English renders ' +
+        'through the fallback instead.',
+    );
+  }
+
+  if (catalogues.length > 1 && compared === 0) {
+    fail(
+      `${catalogues.length} catalogues were found but none was compared against an en.json ` +
+        'sibling with at least 5 shared keys, so this gate asserted nothing. Check the ' +
+        '`i18n/<locale>.json` glob and the key floor in `checkCataloguesAreTranslated`.',
+    );
+  }
+}
+
+/**
  * Translator context exists for every string, and for no string that no longer exists.
  *
  * INFO-144 (*Internationalization Strategy for software*) is unambiguous about this: "All strings
@@ -2078,7 +2233,11 @@ async function checkTranslatorContextPush() {
     // guardrail green while no translator context reached Crowdin at all — the gate verified the
     // doorbell and never checked whether anyone answered. The green fixture in the selftest had the
     // same gap, which is how it survived being written.
-    if (!new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(read(pushWorkflow))) {
+    if (
+      !new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(
+        read(pushWorkflow),
+      )
+    ) {
       fail(
         `${pushWorkflow} never runs \`node ${script}\`, so no translator context is uploaded.\n` +
           "    The catalogue goes up through the Crowdin action, but Crowdin's JSON source format " +
@@ -2392,8 +2551,7 @@ function checkAccessibleNameFallbacks() {
   // pre-existing catalogue keys that never passed through the attribute binding pattern.
   const HEADER_SEARCH_LABEL_BLOCK =
     /<label\b[^>]*\bfor="global-header-search-input"[^>]*>([\s\S]*?)<\/label>/g;
-  const TRANSLATE_INTERPOLATION =
-    /\{\{\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*\}\}/g;
+  const TRANSLATE_INTERPOLATION = /\{\{\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*\}\}/g;
 
   // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
   // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns
@@ -2688,9 +2846,11 @@ function checkCrowdinConfig() {
     return;
   }
 
-  // Wildcards are allowed — D8 uses them, and the `libs/**` entry is what makes per-library
-  // catalogues (NXSAT-284 AC4) an asset glob rather than a change to this contract. What is
-  // not allowed is a ROOT that could reach `node_modules`, which is where the 48 upstream
+  // Wildcards are allowed — D8 uses them, and a `libs/**` entry will be right once there is a
+  // library catalogue for it to match. It must arrive WITH that catalogue, though, not ahead
+  // of it: see the per-source check below for what an empty pattern costs.
+  //
+  // What is never allowed is a ROOT that could reach `node_modules`, where the 48 upstream
   // catalogues live. `apps/` and `libs/` sit beside it, so neither can.
   for (const source of sources) {
     if (!/^\/(apps|libs)\//.test(source)) {
@@ -2702,12 +2862,27 @@ function checkCrowdinConfig() {
       );
       continue;
     }
-    // A pattern matching nothing makes the sync a silent no-op: it uploads nothing, downloads
-    // nothing, opens no pull request and reports success. Nobody investigates a green job.
-    // The `libs/` entry legitimately matches nothing yet, so only a total miss across all
-    // sources is a failure.
   }
-  const anyMatch = sources.some((source) => {
+  /**
+   * EVERY source pattern must match at least one file, not merely one of them.
+   *
+   * This check accepted a pattern that matched nothing as long as a sibling matched something,
+   * on the reasoning that a forward-looking glob is harmless. It is not. Crowdin treats an
+   * unmatched source as an error and fails the run:
+   *
+   *     File 'apps/nuxeo-ui/public/i18n/en.json'
+   *     No sources found for '/libs/**' + '/i18n/en.json' pattern.
+   *     Current execution finished with errors
+   *
+   * The catalogue had already uploaded at that point, so the failure was not even honest about
+   * what happened — and because the job failed, the translator-context step that follows it was
+   * skipped. A pattern added for a future slice cost the context upload.
+   *
+   * `--dryrun` does not report it either: the dry run listed the file it would upload and said
+   * nothing about the unmatched pattern. So CI is the only place this can be caught before a
+   * real run, which is why it is caught here.
+   */
+  const matches = (source) => {
     const pattern = source.replace(/^\//, '');
     if (!/[*?]/.test(pattern)) return fileExists(pattern);
     const regex = new RegExp(
@@ -2721,12 +2896,14 @@ function checkCrowdinConfig() {
       [...walk('apps', (path) => regex.test(path)), ...walk('libs', (path) => regex.test(path))]
         .length > 0
     );
-  });
-  if (!anyMatch) {
+  };
+  for (const source of sources.filter((source) => !matches(source))) {
     fail(
-      `${config} declares ${sources.length} source pattern(s) and none matches a file.\n` +
-        '    The sync would upload nothing and report success — the one failure mode nobody ' +
-        'investigates.',
+      `${config} declares the source \`${source}\` and nothing matches it.\n` +
+        '    Crowdin fails the whole run on an unmatched pattern, AFTER uploading the files ' +
+        'that did match — so the catalogue lands, the job goes red, and the translator-context ' +
+        'step that runs afterwards is skipped. Add a pattern in the change that ships the ' +
+        'first file for it, not before.',
     );
   }
 
@@ -2862,13 +3039,15 @@ function checkCrowdinConfig() {
           'that is not this one.',
       );
     }
-    // Merged without this, both workflows go live against secrets that do not exist and fail
-    // every day until S6 is unblocked. A job that is red for a reason nobody can fix is a job
-    // people stop reading, including on the day it is red for a real reason.
+    // The variable is set and both workflows have run, so this is no longer about waiting for a
+    // project — it is the off switch. Keep it: a fork or a clone of this repository has no
+    // Crowdin secrets, and without the gate every push there triggers a job that fails against
+    // credentials it was never going to have. A job that is red for a reason nobody can fix is a
+    // job people stop reading, including on the day it is red for a real reason.
     if (!text.includes("vars.CROWDIN_SYNC_ENABLED == 'true'")) {
       fail(
-        `${workflow} is not gated on \`vars.CROWDIN_SYNC_ENABLED\`. The Crowdin project is ` +
-          'created manually through the INTERN board and does not exist yet.',
+        `${workflow} is not gated on \`vars.CROWDIN_SYNC_ENABLED\`, so it runs wherever this ` +
+          'repository is forked or cloned — against Crowdin secrets that exist only here.',
       );
     }
   }
@@ -2892,7 +3071,18 @@ function checkCrowdinConfig() {
   // host step in the fixture on purpose.
   const pull = read(workflows[1]);
   const pullSteps = pull.split(/^\s*-\s(?=name:|uses:)/m);
-  const crowdinStep = pullSteps.find((step) => /uses:\s*crowdin\/github-action/.test(step));
+  // The step that DOWNLOADS, not merely the first Crowdin step.
+  //
+  // `find` on the action name alone was wrong in a way that was invisible while the pull workflow
+  // had exactly one Crowdin step — and this change added a second Crowdin step to the PUSH
+  // workflow, so the arrangement is no longer hypothetical. A preparation step carrying
+  // `skip_untranslated_strings: true` would satisfy both assertions below while the step that
+  // actually downloads omitted it, and signing matters on the downloading step too, because that
+  // is the one that commits.
+  const crowdinSteps = pullSteps.filter((step) => /uses:\s*crowdin\/github-action/.test(step));
+  const crowdinStep = crowdinSteps.find((step) =>
+    /^\s*download_translations:\s*true\s*$/m.test(step),
+  );
   if (crowdinStep !== undefined && !/^\s*gpg_private_key:/m.test(crowdinStep)) {
     fail(
       `${workflows[1]} runs crowdin/github-action without passing \`gpg_private_key\`, so its ` +
@@ -2901,6 +3091,39 @@ function checkCrowdinConfig() {
         'Importing a key in a preceding host step configures the RUNNER, not the container — it ' +
         'succeeds and changes nothing. Pass `gpg_private_key` (and `gpg_passphrase`) to the ' +
         'action itself.',
+    );
+  }
+
+  // `skip_untranslated_strings: true` on that same step, asserted on the CONFIGURATION rather
+  // than on its symptom — because after seeding, the symptom is no longer a failure.
+  //
+  // `checkCataloguesAreTranslated` fails a catalogue whose every value equals English. That is
+  // exactly what reverting this input produced BEFORE the existing French and German strings were
+  // seeded into Crowdin. Afterwards it is not: those 151 strings come back genuinely translated
+  // and the remaining ~1,890 come back padded with English, which is 96% identical — past the
+  // 80% warning threshold, short of the all-identical failure. So the regression would warn and
+  // CI would pass, and it would pass more convincingly the more of the catalogue is real.
+  //
+  // A gate that only sees the pathological extreme stops working the moment the product improves.
+  if (crowdinStep === undefined) {
+    fail(
+      `${workflows[1]} contains no \`uses: crowdin/github-action\` step with ` +
+        `\`download_translations: true\`${
+          crowdinSteps.length ? ` (it has ${crowdinSteps.length} Crowdin step(s), none of them ` +
+            'downloading)' : ''
+        }, so neither the signing nor the \`skip_untranslated_strings\` assertion examined ` +
+        'anything. It cannot download translations in this state.',
+    );
+  } else if (!/^\s*skip_untranslated_strings:\s*true\s*$/m.test(crowdinStep)) {
+    fail(
+      `${workflows[1]} does not set \`skip_untranslated_strings: true\` on its ` +
+        'crowdin/github-action step.\n' +
+        '    The action defaults it to `false`, and `false` does not mean "omit the string" — it ' +
+        'means export it with its ENGLISH SOURCE as the translation. The first real pull opened a ' +
+        'pull request with nine catalogues byte-identical to `en.json`, which overwrote 75 ' +
+        'hand-written French and 76 German strings because an export replaces the whole file.\n' +
+        "    `true` omits the key instead, so `setFallbackLang('en')` renders English and a short " +
+        'catalogue becomes the honest steady state. See D8d in docs/i18n-localization-plan.md.',
     );
   }
 
@@ -2985,6 +3208,53 @@ function checkPackagedConfigIsNotADemo() {
         '    The packaged file layers over the compiled themes; shipping one here means every ' +
         'installation gets it. Demo themes belong in the demo, per the runbook.',
     );
+  }
+
+  // A loopback URL or a self-declared temporary edit, ANYWHERE in either Layer 0 file.
+  //
+  // The three checks above were written for the Acme demo leak and they are shaped like it —
+  // named keys, one per symptom. That leaves them blind to every other route a local edit takes
+  // into this file, and one took it: an NXSAT-279 ARender override pointing the annotation viewer
+  // at `http://localhost:8181`, swept in by a `git add -A` during an unrelated i18n change. Its
+  // own annotation read "LOCAL DEV ONLY (NXSAT-279) - revert with git checkout". A reviewer found
+  // it. This gate did not, which is the second leak of this exact kind it has missed.
+  //
+  // Hence a rule about the file rather than about particular keys. These are installed on a
+  // customer's server, where a loopback address cannot mean anything but a mistake — it resolves
+  // to THEIR machine, not ours — and a note saying to revert the edit is the edit admitting it
+  // does not belong. The template is included because it is the example a customer copies.
+  const layer0 = [packaged, 'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json'];
+  for (const file of layer0.filter((path) => fileExists(path))) {
+    const body = read(file);
+
+    // The whole of 127.0.0.0/8 and the IPv6 loopback, not just `127.0.0.1`.
+    //
+    // The first version of this matched `127.0.0.1` literally while the comment above promised
+    // "any loopback address". `127.0.0.2` and `http://[::1]:8181` reach the customer's own machine
+    // exactly as `127.0.0.1` does, so the narrow regex made the guarantee false rather than
+    // partial — and a guarantee that is wrong is worse than one that is absent, because it stops
+    // the next person looking.
+    const loopback =
+      /\b(?:localhost|host\.docker\.internal)\b|\b127\.\d{1,3}\.\d{1,3}\.\d{1,3}\b|\b0\.0\.0\.0\b|\[::1\]|(?<![\w:.])::1(?![\w:.])/.exec(
+        body,
+      );
+    if (loopback) {
+      fail(
+        `${file} contains the local address \`${loopback[0]}\`.\n` +
+          '    This file is installed on a customer server, where a loopback address resolves to ' +
+          'their machine — so it can only ever be a developer environment that escaped. Point ' +
+          'it at a real host, or revert the file.',
+      );
+    }
+
+    const temporary = /LOCAL DEV ONLY|revert with git checkout|DO NOT COMMIT|TEMPORARY/i.exec(body);
+    if (temporary) {
+      fail(
+        `${file} says \`${temporary[0]}\` about its own contents.\n` +
+          '    A note telling the reader to revert the change is the change admitting it should ' +
+          'not ship. Run the `git checkout --` it asks for.',
+      );
+    }
   }
 }
 
@@ -3314,9 +3584,7 @@ function checkNoHardcodedDialogText() {
   const sources = [
     ...walk('apps', (path) => /\.ts$/.test(path)),
     ...walk('libs', (path) => /\.ts$/.test(path)),
-  ].filter(
-    (path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)),
-  );
+  ].filter((path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)));
 
   if (sources.length === 0) {
     fail('No TypeScript sources were found under apps/ or libs/, so this gate asserted nothing.');
@@ -3343,7 +3611,7 @@ function checkNoHardcodedDialogText() {
               '    where English puts it in German or Japanese. INFO-144 forbids the shape, so the\n' +
               '    fix is one parameterised string rather than a lookup per fragment:\n' +
               `      ${match[1]}: this.translate.instant('confirm.delete-named', { name })\n` +
-              "      en.json: 'Delete \"{{ name }}\"?'\n"
+              '      en.json: \'Delete "{{ name }}"?\'\n'
             : "    Add a key to the owning project's `i18n/en.json` and resolve it at the call site:\n" +
               `      ${match[1]}: this.translate.instant('confirm.delete-document.${match[1]}')\n`) +
           '    A dialog is the one place `title` is unambiguously prose, which is why this gate ' +
@@ -3428,7 +3696,7 @@ function checkNoStaleAgnosticClaim() {
     fail(
       `${CONTRACT_FILE} injects TranslateService while carrying the \`${MARKER}\` marker. The ` +
         'descriptor contract is meant to take a resolver from its caller; a service here makes the ' +
-        'choice of translation library this library\'s rather than the host\'s.',
+        "choice of translation library this library's rather than the host's.",
     );
   }
 }
@@ -3538,7 +3806,7 @@ function checkNoHardcodedImperativeUiText() {
         fail(
           `${file}:${line} passes the hard-coded string \`${literal}\` to a user-facing sink — ` +
             'text a user reads, built in TypeScript where no template pipe can reach it.\n' +
-            "    Add a key to the app catalogue and resolve it here:\n" +
+            '    Add a key to the app catalogue and resolve it here:\n' +
             "      this.snackBar.open(this.translate.instant('x.saved'), this.translate.instant('common.ok'))\n" +
             '    A message assembled with `${…}` needs one parameterised key, not a lookup per ' +
             'fragment: a translator handed the pieces cannot reorder them.',
@@ -3684,6 +3952,7 @@ const GUARDRAILS = [
   checkCatalogueValuesAreRenderable,
   checkNoStaleAgnosticClaim,
   checkTranslationCatalogues,
+  checkCataloguesAreTranslated,
   checkAdvertisedLocalesShip,
   checkCrowdinConfig,
   checkPackagedConfigIsNotADemo,
