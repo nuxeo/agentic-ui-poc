@@ -38,12 +38,15 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
 }
 
 describe('DocumentDetailComponent — doc-info-label text contrast (NXENG-774)', () => {
-  it('themes doc-info-label with on-surface-variant, not legacy #888', () => {
+  it('themes doc-info-label and properties-panel as mat-sys pairs', () => {
     const scssPath = join(import.meta.dirname, 'document-detail.scss');
     const scss = readFileSync(scssPath, 'utf8');
     const label = scssBlock(scss, 'doc-info-label');
+    const panel = scssBlock(scss, 'properties-panel');
     expect(label).toMatch(/var\(--mat-sys-on-surface-variant,\s*#5c5f6b\)/);
     expect(label).not.toMatch(/color:\s*#888/i);
+    expect(panel).toMatch(/var\(--mat-sys-surface,\s*#fff\)/);
+    expect(panel).not.toMatch(/background:\s*#fff/i);
   });
 
   it(`fallback #5c5f6b on white meets ${WCAG_AA_NORMAL_TEXT}:1`, () => {

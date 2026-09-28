@@ -249,7 +249,7 @@ sat-breadcrumbs {
   flex: 0 0 380px;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--mat-sys-surface, #fff);
   border-left: 1px solid #e0e0e0;
   overflow: hidden;
 }
