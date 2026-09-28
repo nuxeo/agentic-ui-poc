@@ -1515,7 +1515,7 @@ expectRed(
 // `skip_untranslated_files: true` for one commit, which would have made every nightly pull red;
 // the control is here so the requirement cannot come back.
 expectRed(
-  'the pull workflow setting skip_untranslated_files alongside skip_untranslated_strings',
+  'the pull workflow setting skip_untranslated_files as an action input',
   'checkCrowdinConfig',
   CROWDIN,
   (write) =>
@@ -1523,7 +1523,43 @@ expectRed(
       '.github/workflows/crowdin-pull.yaml',
       CROWDIN_WORKFLOW(PULL_OK + PULL_SKIP_UNTRANSLATED_FILES),
     ),
-  /sets `skip_untranslated_files: true` alongside/,
+  /sets `skip_untranslated_files: true`/,
+);
+
+// The boolean input is one of THREE ways the flag reaches the CLI, and the first version of this
+// prohibition guarded only that one. `download_translations_args` and `command_args` are appended
+// to the command verbatim, so the option passes straight through while the check stays green and
+// the nightly download still fails. Raised in review on PR #285.
+expectRed(
+  'the pull workflow smuggling --skip-untranslated-files through download_translations_args',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_OK + `          download_translations_args: '--skip-untranslated-files'\n`,
+      ),
+    ),
+  /passes `--skip-untranslated-files` through an argument input/,
+);
+
+// The third channel. The CLI validates the pair in the config file too, via `FileBean`, so moving
+// the option out of the workflow does not avoid the conflict — D8h said so while nothing enforced
+// it.
+expectRed(
+  'crowdin-conf.yml setting skip_untranslated_files',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+      ]).replace(`'files': [`, `'skip_untranslated_files': true\n'files': [`),
+    ),
+  /crowdin-conf\.yml sets `skip_untranslated_files`/,
 );
 
 // The founding defect. Both options deleted from the SECOND entry only: the first still

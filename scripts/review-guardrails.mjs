@@ -2807,6 +2807,24 @@ function crowdinFileEntries(body) {
   return entries.length > 0 ? entries : null;
 }
 
+/**
+ * Drop whole-line YAML comments, so a token search reads configuration rather than prose.
+ *
+ * Needed by any check that forbids a token the file also EXPLAINS. Both `crowdin-conf.yml` and
+ * the pull workflow argue at length about `skip_untranslated_files` and `export_only_approved`,
+ * and a raw search would match the argument — which makes the check impossible to satisfy and,
+ * worse, green only while nobody documents the decision.
+ *
+ * @param {string} body YAML source
+ * @returns {string} the same text with `#` comment lines removed
+ */
+function stripYamlComments(body) {
+  return body
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+}
+
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
   // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
@@ -2936,10 +2954,11 @@ function checkCrowdinConfig() {
       [
         // A MUST in the Crowdin Guidelines, not a preference: "when proof-reading is setup,
         // export options MUST be configured so that only approved translations end up in the
-        // source code." Proof-reading is set up — the translation team confirmed on
-        // INTERN-1346 that translations can begin — and the Guidelines' security risk table
-        // marks reputation damage RESOLVED on the grounds that every translation is reviewed
-        // internally, which only holds while this is `true`.
+        // source code." Whether proof-reading is configured on the project is not established —
+        // the team confirming on INTERN-1346 that translations can begin is readiness, not
+        // workflow configuration — but `true` is correct either way, because the Guidelines'
+        // security risk table marks reputation damage RESOLVED on the grounds that every
+        // translation is reviewed internally, and that holds only while this is `true`.
         //
         // Asserted at `true` after a round trip through `false`. See D8g for why that was
         // wrong; the short version is that the mechanical finding behind it (machine
@@ -2949,7 +2968,8 @@ function checkCrowdinConfig() {
         'Unapproved work is a draft; exporting it puts half-finished translations in front of ' +
           "users and makes the reviewer's approval meaningless. The Guidelines make it a MUST " +
           'once proof-reading is set up, and rest the "no controversial or profane content" ' +
-          'risk rating on every translation being reviewed internally. See D8g.',
+          'risk rating on every translation being reviewed internally — which holds only while ' +
+          'this is `true`, whether or not proof-reading is configured yet. See D8g.',
       ],
       [
         'update_option',
@@ -3118,13 +3138,30 @@ function checkCrowdinConfig() {
   //
   // A gate that only sees the pathological extreme stops working the moment the product improves.
   //
-  // `skip_untranslated_files` is then FORBIDDEN alongside it, which is the reverse of what this
-  // check required for one commit. The Technical Usage Guide is explicit that "only one of these
-  // options can be activated", so setting both guarded neither loss reliably — one was silently
-  // ignored and nothing recorded which. The pinned CLI is blunter still: crowdin-cli 4.14.2
-  // rejects the pair in `PropertiesWithFilesBuilder.checkArgParams()` with
+  // `skip_untranslated_files` is then FORBIDDEN, which is the reverse of what this check required
+  // for one commit. The Technical Usage Guide is explicit that "only one of these options can be
+  // activated", so setting both guarded neither loss reliably — one was silently ignored and
+  // nothing recorded which. The pinned CLI is blunter still: crowdin-cli 4.14.2 rejects the pair
+  // in `PropertiesWithFilesBuilder.checkArgParams()` with
   // `error.skip_untranslated_both_strings_and_files`, "You cannot skip strings and files at the
   // same time", so the combination fails the nightly pull before it downloads anything.
+  //
+  // Forbidden UNCONDITIONALLY, and across every channel that reaches the CLI — not just the
+  // action's boolean input, which is all the first version of this check looked at. Three ways in,
+  // and the boolean was the only one guarded:
+  //
+  //   1. `skip_untranslated_files: true`            — the action input
+  //   2. `download_translations_args`, `command_args`, `upload_*_args` — appended VERBATIM to the
+  //      command (`entrypoint.sh` 82-83 and 408-409), so `--skip-untranslated-files` passes straight
+  //      through
+  //   3. `crowdin-conf.yml`                         — `FileBean` validates the same pair there
+  //
+  // Unconditional rather than "alongside `skip_untranslated_strings`" because that option is
+  // separately REQUIRED above, so any appearance of this one is always the conflict. Stating it as
+  // a flat prohibition means the check cannot be satisfied by removing the wrong half.
+  //
+  // Comments are stripped before matching, because the workflow explains at length why this option
+  // is absent — a raw text search would fire on the explanation and make the check unfixable.
   if (crowdinStep === undefined) {
     fail(
       `${workflows[1]} contains no \`uses: crowdin/github-action\` step with ` +
@@ -3145,19 +3182,41 @@ function checkCrowdinConfig() {
         "    `true` omits the key instead, so `setFallbackLang('en')` renders English and a short " +
         'catalogue becomes the honest steady state. See D8d in docs/i18n-localization-plan.md.',
     );
-  } else if (/^\s*skip_untranslated_files:\s*true\s*$/m.test(crowdinStep)) {
+  }
+
+  // Every channel, in the two files that can carry one. `stripYamlComments` is what makes a raw
+  // token search safe here: both files discuss this option at length in prose.
+  const WHY_NO_SKIP_FILES =
+    '    Only one of `skip_untranslated_strings` and `skip_untranslated_files` can be active — ' +
+    'Technical Usage Guide, "only one of these options can be activated" — so setting both ' +
+    'guards neither loss reliably: one is silently ignored and nothing says which.\n' +
+    '    The pinned CLI is blunter. crowdin-cli 4.14.2 rejects the pair in ' +
+    '`PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and files at ' +
+    'the same time", so the nightly pull fails before downloading anything.\n' +
+    '    `skip_untranslated_strings` is the one to keep: an English-padded catalogue at full key ' +
+    'parity passes as a finished translation, while an empty catalogue is loudly wrong and ' +
+    '`checkCataloguesAreTranslated` fails it. See D8h in docs/i18n-localization-plan.md.';
+
+  const pullCode = stripYamlComments(pull);
+  if (/^\s*skip_untranslated_files:\s*true\s*$/m.test(pullCode)) {
+    fail(`${workflows[1]} sets \`skip_untranslated_files: true\`.\n` + WHY_NO_SKIP_FILES);
+  } else if (/--skip-untranslated-files\b/.test(pullCode)) {
     fail(
-      `${workflows[1]} sets \`skip_untranslated_files: true\` alongside ` +
-        '`skip_untranslated_strings: true`. Only one of the two can be active, so this guards ' +
-        'neither loss reliably — one is silently ignored and nothing says which.\n' +
-        '    The Technical Usage Guide: "only one of these options can be activated". The ' +
-        'pinned CLI is blunter — the action passes both as flags and crowdin-cli 4.14.2 rejects ' +
-        'them in `PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and ' +
-        'files at the same time", so the nightly pull fails before downloading anything.\n' +
-        '    Keep `skip_untranslated_strings` and drop this one: an English-padded catalogue at ' +
-        'full key parity passes as a finished translation, while an empty catalogue is loudly ' +
-        'wrong and `checkCataloguesAreTranslated` fails it. See D8h in ' +
-        'docs/i18n-localization-plan.md.',
+      `${workflows[1]} passes \`--skip-untranslated-files\` through an argument input.\n` +
+        '    `download_translations_args` and `command_args` are appended to the command ' +
+        'VERBATIM (`entrypoint.sh` 82-83 and 408-409), so this reaches the CLI exactly as the ' +
+        'boolean input would. Checking only `skip_untranslated_files:` left this route open.\n' +
+        WHY_NO_SKIP_FILES,
+    );
+  }
+
+  if (/skip_untranslated_files/.test(stripYamlComments(read(config)))) {
+    fail(
+      `${config} sets \`skip_untranslated_files\`.\n` +
+        '    The CLI validates the pair in the CONFIG FILE too, via `FileBean`, so moving the ' +
+        'option out of the workflow does not avoid the conflict — D8h says as much and this ' +
+        'check did not enforce it.\n' +
+        WHY_NO_SKIP_FILES,
     );
   }
 

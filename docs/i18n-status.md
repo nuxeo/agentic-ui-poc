@@ -658,12 +658,15 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
    `skip_untranslated_strings` can be active (D8h).
 
    Beyond those 151, every locale correctly renders English through the fallback and the catalogues
-   stay short. **Translation is the next action and it is now under way on the Crowdin side** —
-   Enrico Stengert confirmed on INTERN-1346 on 28 September that the sources are visible and
-   "translations can begin on our end". Only approved translations are exported
-   (`export_only_approved: 'true'`, required by the Guidelines once proof-reading exists — D8g), so
-   the application will show a language when a linguist has passed it and not before. Whether to
-   use Crowdin's machine-translation features is the Translation Team's decision, not ours.
+   stay short. **Translation is the next action, and the team is ready to begin rather than under
+   way** — Enrico Stengert on INTERN-1346, 28 September: the sources are visible and "translations
+   can begin on our end". Nothing has been translated yet, which is why the nine languages are at
+   zero above; readiness and progress are different things and this page has conflated them before.
+   Only approved translations are exported (`export_only_approved: 'true'` — D8g), so the
+   application will show a language when a linguist has passed it and not before. Whether a
+   proof-reading step is configured on the project is **not yet confirmed**, and whether to use
+   Crowdin's machine-translation features is the Translation Team's decision, not ours. Both are
+   open rows in `D8-standard`.
 
 2. ~~**Project membership.**~~ Resolved on 28 September: Manager access granted on project 160.
    Worth keeping the lesson, because it cost a day of confusion — Okta access to the Crowdin

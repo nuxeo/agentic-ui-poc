@@ -82,14 +82,21 @@
       # only and our translation memory is empty — so with `true` a pre-translated project would
       # fill up and export NOTHING while every dashboard reported the work as done.
       #
-      # Two things make that the wrong conclusion. The MUST is conditional on "when proof-reading
-      # is setup", and it now is: Enrico Stengert confirmed on INTERN-1346, 28 September 2026, that
-      # the sources are visible in Crowdin and "translations can begin on our end". And the
-      # Guidelines' security risk table marks "Reputation Damage (insertion of controversial or
-      # profane content through translations)" RESOLVED, on the grounds that "nothing is
-      # crowdsourced by random people and every content is reviewed internally". Exporting
-      # unreviewed machine output ships content no linguist has seen, which removes the thing that
-      # row is resting on. That argument does not depend on when proof-reading arrives.
+      # Two things make that the wrong conclusion. Enrico Stengert confirmed on INTERN-1346,
+      # 28 September 2026, that the sources are visible in Crowdin and "translations can begin on
+      # our end" — which disposes of the premise that approval can never arrive. It is NOT evidence
+      # that a proof-reading step is configured on the project, and the MUST is conditional on
+      # proof-reading being "setup", so confirming that is an open owner action in `D8-standard`.
+      #
+      # The second reason does not depend on the condition at all. The Guidelines' security risk
+      # table marks "Reputation Damage (insertion of controversial or profane content through
+      # translations)" RESOLVED, on the grounds that "nothing is crowdsourced by random people and
+      # every content is reviewed internally". Exporting unreviewed machine output ships content no
+      # linguist has seen, which removes the thing that row is resting on.
+      #
+      # So `true` is right either way: if proof-reading is set up the MUST binds, and if it is not,
+      # the MUST is dormant while the risk argument still holds. Being wrong in this direction
+      # costs an empty export, which is visible; being wrong in the other ships unreviewed wording.
       #
       # So `true` stands, and machine pre-translation is the Translation Team's call rather than
       # ours — the Guidelines leave workflow choice to them. Recorded as D8g.
