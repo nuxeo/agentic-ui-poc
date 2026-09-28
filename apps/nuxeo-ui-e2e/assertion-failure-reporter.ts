@@ -24,8 +24,19 @@ import { dirname, relative, resolve } from 'node:path';
  * A `page.goto()` timeout or a rejected `waitForResponse()` is thrown from a line the spec
  * wrote, so its error location IS a `.spec.ts` file, and it counted toward the threshold with
  * no `expect` having run at all. A run where the wrong password broke navigation everywhere
- * could therefore satisfy a control whose entire purpose is to prove the specs read
- * repository data.
+ * could therefore satisfy a control whose whole purpose is that an assertion changed outcome.
+ *
+ * **What the control claims, and what this reporter therefore establishes.** The sentence here
+ * used to say the control proves the specs read repository data. It does not, and
+ * `scripts/e2e-negative-control.sh` was narrowed to say so: `NUXEO_PASS` gates the session, so
+ * an assertion about post-login chrome or routing fails under a wrong password having read no
+ * document, and a live run confirmed one such spec among the counted failures. The claim is
+ * **credential sensitivity** — the counted assertions are not server-independent constants.
+ * This header kept the stronger version after the script dropped it, which is the same
+ * overstatement one file over; reported on the pull request.
+ *
+ * That does not weaken what this reporter is for. Whichever claim the script makes, it has to
+ * count only specs where an `expect` actually ran, or it is not measuring assertions at all.
  *
  * Measured rather than argued, on Playwright 1.63 — three deliberate failures, one per shape:
  *
