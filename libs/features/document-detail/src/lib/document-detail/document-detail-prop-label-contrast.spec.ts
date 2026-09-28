@@ -13,9 +13,14 @@ function scssBlock(source: string, className: string): string {
   return match?.[0] ?? '';
 }
 
+function hostBlock(source: string): string {
+  return source.match(/:host\s*\{[^}]+\}/s)?.[0] ?? '';
+}
+
 function hostCustomProperty(source: string, name: string): string | null {
-  const match = source.match(
-    new RegExp(`:host\\s*\\{[\\s\\S]*?--${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*([^;]+);`),
+  const block = hostBlock(source);
+  const match = block.match(
+    new RegExp(`--${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*([^;]+);`),
   );
   return match?.[1]?.trim() ?? null;
 }
