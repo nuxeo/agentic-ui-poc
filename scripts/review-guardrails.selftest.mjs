@@ -1323,7 +1323,13 @@ const CROWDIN = {
   '.github/workflows/crowdin-push.yaml':
     CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
     `      - name: Push translator context\n` +
-    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    `        run: node tools/i18n/crowdin-push-context.mjs\n` +
+    // Seeding goes LAST. A step ahead of the context push can skip it by failing, which is what
+    // the first real seed run did.
+    `      - name: Seed existing translations\n` +
+    `        uses: crowdin/github-action@v2\n` +
+    `        with:\n` +
+    `          upload_translations: true\n`,
   // The pull workflow signs on the ACTION, because that is the only placement that signs
   // anything — see the control for it below.
   '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(PULL_OK),
@@ -1381,6 +1387,39 @@ expectRed(
       ),
     ),
   /without passing `gpg_private_key`, so its commits are unsigned/,
+);
+
+// A failed step skips the rest of the job, so a translation upload placed ahead of the context
+// push can stop the context ever being attached. The first real `seed_translations` run did
+// precisely that: it failed on a token scope and skipped the context step behind it.
+expectRed(
+  'the push workflow uploading translations before pushing translator context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+expectRed(
+  'a push workflow that never attaches translator context at all',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`),
+    ),
+  /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
 );
 
 // `skip_untranslated_strings: false` exports every untranslated string WITH ITS ENGLISH SOURCE,

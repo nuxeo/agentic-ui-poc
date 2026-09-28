@@ -93,6 +93,17 @@ jobs:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
 
+      # Only after the sources exist: context attaches to strings Crowdin already holds. Skipped
+      # on a dry run for the same reason — on a dry run the strings were never created, so every
+      # lookup would miss and the script would exit non-zero reporting a divergence that is an
+      # artefact of the dry run rather than a real one.
+      - name: Push translator context
+        if: ${{ !inputs.dry_run }}
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+        run: node tools/i18n/crowdin-push-context.mjs
+
       # Crowdin was created after the repository, so it started empty while `fr.json` and
       # `de.json` already held 75 and 76 hand-written strings. Nothing had told Crowdin they
       # existed, which made every pull destructive by construction: whatever the export contains
@@ -114,6 +125,17 @@ jobs:
       #
       # One-off in practice, but safe to repeat — re-uploading identical approved translations
       # changes nothing.
+      #
+      # LAST, and that ordering is load-bearing. This step sat between the source upload and the
+      # context push, and the first real run failed here on a token scope — which skipped the
+      # context step, because a failed step skips the rest of the job. That is exactly the shape
+      # D8c records: a step fails and the translator context that INFO-144 requires never gets
+      # attached. Nothing was lost that time only because the context was already in Crowdin and
+      # the script is idempotent.
+      #
+      # Seeding translations has no bearing on either the sources or their context, so it belongs
+      # after both. `checkCrowdinConfig` fails this workflow if a translation upload precedes the
+      # context push.
       - name: Seed existing translations into Crowdin
         if: ${{ inputs.seed_translations && !inputs.dry_run }}
         uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
@@ -127,14 +149,3 @@ jobs:
         env:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-
-      # Only after the sources exist: context attaches to strings Crowdin already holds. Skipped
-      # on a dry run for the same reason — on a dry run the strings were never created, so every
-      # lookup would miss and the script would exit non-zero reporting a divergence that is an
-      # artefact of the dry run rather than a real one.
-      - name: Push translator context
-        if: ${{ !inputs.dry_run }}
-        env:
-          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
-          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-        run: node tools/i18n/crowdin-push-context.mjs

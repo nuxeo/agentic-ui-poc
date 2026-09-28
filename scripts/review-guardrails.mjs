@@ -3127,6 +3127,36 @@ function checkCrowdinConfig() {
     );
   }
 
+  // In the push workflow, the translator-context step must come BEFORE any step that uploads
+  // translations.
+  //
+  // Not style. A failed step skips the rest of the job, so anything placed ahead of the context
+  // push can prevent it running — and the first real `seed_translations` run did exactly that,
+  // failing on a token scope and skipping the context step behind it. That is the shape D8c
+  // records: the job goes red over one thing and the translator context INFO-144 requires is
+  // silently never attached. It cost nothing that time only because the context was already in
+  // Crowdin and the script is idempotent, which is luck rather than design.
+  //
+  // Uploading translations has no bearing on sources or their context, so it can always go last.
+  const push = read(workflows[0]);
+  const contextAt = push.search(/^\s*run:\s*node tools\/i18n\/crowdin-push-context\.mjs\s*$/m);
+  const translationUploadAt = push.search(/^\s*upload_translations:\s*true\s*$/m);
+  if (contextAt === -1) {
+    fail(
+      `${workflows[0]} never runs \`tools/i18n/crowdin-push-context.mjs\`, so the sources upload ` +
+        'without the translator context INFO-144 requires on every string.',
+    );
+  } else if (translationUploadAt !== -1 && translationUploadAt < contextAt) {
+    fail(
+      `${workflows[0]} uploads translations before pushing translator context.\n` +
+        '    A failed step skips the rest of the job, so a step ahead of the context push can ' +
+        'stop it running — which is what happened the first time `seed_translations` ran: it ' +
+        'failed on a token scope and the context step behind it was skipped. Move the ' +
+        'translation upload after the context push; it has no bearing on either the sources or ' +
+        'their context. See D8c in docs/i18n-localization-plan.md.',
+    );
+  }
+
   if (!read(workflows[0]).includes('--delete-obsolete')) {
     fail(
       `${workflows[0]} does not pass \`--delete-obsolete\` when uploading sources, which D8 ` +
