@@ -1544,6 +1544,43 @@ expectRed(
   /passes `--skip-untranslated-files` through an argument input/,
 );
 
+// The same channel in a different YAML spelling. Inputs reach a Docker action as strings and
+// `entrypoint.sh` compares with `[ "$INPUT_X" = true ]`, so `'true'` and a trailing comment are
+// both honoured — while an anchored `:\s*true\s*$` matches neither. For a FORBIDDEN input that is
+// a silent pass: the option runs and the gate stays green. Raised in review on PR #285.
+expectRed(
+  'the pull workflow setting skip_untranslated_files as a quoted string with a trailing comment',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          skip_untranslated_files: 'true' # belt and braces\n`),
+    ),
+  /sets `skip_untranslated_files: true`/,
+);
+
+// The ordering rule had the identical blind spot, and the consequence is the one D8c records: a
+// quoted upload ahead of the context push runs, fails, and skips the context step behind it, while
+// nothing reports that the rule was violated.
+expectRed(
+  'the push workflow uploading translations before context with a quoted upload_translations',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: "true" # quoted, still honoured\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
 // The third channel. The CLI validates the pair in the config file too, via `FileBean`, so moving
 // the option out of the workflow does not avoid the conflict — D8h said so while nothing enforced
 // it.

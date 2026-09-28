@@ -2825,6 +2825,25 @@ function stripYamlComments(body) {
     .join('\n');
 }
 
+/**
+ * Match a workflow input set to a truthy YAML value, in any form the action actually honours.
+ *
+ * `uses:`-style inputs reach a Docker action as strings, and `entrypoint.sh` compares with
+ * `[ "$INPUT_X" = true ]`. So `x: true`, `x: 'true'` and `x: "true"` are all equivalent, and a
+ * trailing `# comment` is not part of the value.
+ *
+ * An anchored `:\s*true\s*$` misses every one of those but the first. Which direction that breaks
+ * depends on the check: for a REQUIRED input it is a false red, loud and harmless; for a FORBIDDEN
+ * one it is a silent pass, and the forbidden thing runs while the gate stays green. Raised in
+ * review on PR #285 against `skip_untranslated_files` and `upload_translations`, both forbidden.
+ *
+ * @param {string} key the input name
+ * @returns {RegExp} matches the key set to true, quoted or not, with or without a trailing comment
+ */
+function yamlInputIsTrue(key) {
+  return new RegExp(`^\\s*${key}:\\s*(?:'true'|"true"|true)\\s*(?:#.*)?$`, 'm');
+}
+
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
   // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
@@ -3171,7 +3190,7 @@ function checkCrowdinConfig() {
         }, so neither the signing nor the \`skip_untranslated_strings\` assertion examined ` +
         'anything. It cannot download translations in this state.',
     );
-  } else if (!/^\s*skip_untranslated_strings:\s*true\s*$/m.test(crowdinStep)) {
+  } else if (!yamlInputIsTrue('skip_untranslated_strings').test(crowdinStep)) {
     fail(
       `${workflows[1]} does not set \`skip_untranslated_strings: true\` on its ` +
         'crowdin/github-action step.\n' +
@@ -3198,7 +3217,7 @@ function checkCrowdinConfig() {
     '`checkCataloguesAreTranslated` fails it. See D8h in docs/i18n-localization-plan.md.';
 
   const pullCode = stripYamlComments(pull);
-  if (/^\s*skip_untranslated_files:\s*true\s*$/m.test(pullCode)) {
+  if (yamlInputIsTrue('skip_untranslated_files').test(pullCode)) {
     fail(`${workflows[1]} sets \`skip_untranslated_files: true\`.\n` + WHY_NO_SKIP_FILES);
   } else if (/--skip-untranslated-files\b/.test(pullCode)) {
     fail(
@@ -3241,7 +3260,7 @@ function checkCrowdinConfig() {
   // their context, so there is never a reason for it to precede them.
   const push = read(workflows[0]);
   const contextAt = push.search(/^\s*run:\s*node tools\/i18n\/crowdin-push-context\.mjs\s*$/m);
-  const translationUploadAt = push.search(/^\s*upload_translations:\s*true\s*$/m);
+  const translationUploadAt = push.search(yamlInputIsTrue('upload_translations'));
   if (contextAt === -1) {
     fail(
       `${workflows[0]} never runs \`tools/i18n/crowdin-push-context.mjs\`, so the sources upload ` +
