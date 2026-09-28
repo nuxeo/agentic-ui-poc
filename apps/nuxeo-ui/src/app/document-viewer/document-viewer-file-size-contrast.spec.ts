@@ -75,6 +75,7 @@ describe('DocumentViewer footer/file-size contrast by theme (NXENG-763, NXENG-76
     fixture.componentRef.setInput('blobUrl', trusted());
     fixture.componentRef.setInput('rawBlobUrl', raw);
     fixture.componentRef.setInput('loading', false);
+    fixture.componentRef.setInput('showMainFileControls', true);
     fixture.detectChanges();
   });
 
@@ -131,6 +132,13 @@ describe('DocumentViewer footer/file-size contrast by theme (NXENG-763, NXENG-76
           `file-size on viewer-footer in ${label}: ${getComputedStyle(fileSize).color} vs ${footerBg}`,
         )
         .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+
+      const removeBtn = fixture.nativeElement.querySelector(
+        '.viewer-footer-actions button.footer-remove-btn',
+      ) as HTMLElement | null;
+      expect(removeBtn)
+        .withContext(`footer remove action in ${label} (showMainFileControls=true)`)
+        .not.toBeNull();
 
       const actionButtons = Array.from(
         fixture.nativeElement.querySelectorAll('.viewer-footer-actions button'),
