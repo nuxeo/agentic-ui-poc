@@ -354,7 +354,6 @@ Each of these is a place to point a new script:
 
 - **Dialogs** — upload, share, permissions, collection edit, compare, note image picker
 - **The upload flow** and its progress states
-- **Dark mode**
 - **Error and empty states** — no results, no permission, backend 500
 - **Loading states** — spinners had 101 unnamed instances repo-wide, found only because knowledge
   discovery happened to be rendering one at scan time
@@ -362,6 +361,11 @@ Each of these is a place to point a new script:
 - **Password-manager and autofill states** on the sign-in form. The form itself is covered —
   `journey.a11y.spec.ts` reaches the real signed-out page — but only in its empty, untouched
   state. Validation errors, a populated field and the browser's own autofill styling are not
+
+**Dark mode** was on this list and should not have been: `display-modes.a11y.spec.ts` seeds the
+theme, asserts both the `data-app-theme` attribute and a measured background luminance, and
+scans all seven routes in it. Leaving it here would send a contributor to rebuild an owned
+surface — the duplication this guide's own opening paragraph calls a defect.
 
 The login surface used to be listed here as unreachable, on the grounds that `httpCredentials`
 makes the app authenticate before the form can render. That was true of the mechanism and wrong

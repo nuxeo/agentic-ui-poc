@@ -30,9 +30,9 @@
  *
  * Exit codes: 0 every route rendered, 1 at least one rendered nothing, 2 could not measure.
  */
-import { requireNuxeoCredentials } from '../env.mjs';
+import { requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
 
-const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
+const baseUrl = resolveBaseUrl();
 // Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
 const { username: user, password: pass } = requireNuxeoCredentials();
 
@@ -47,7 +47,12 @@ const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
  * shown to be capable of failing.
  */
 const ROUTES = [
-  ['landing', '/', 'app-shell'],
+  // `app-dashboard-page`, not `app-shell`. `/` redirects to `/#/dashboard`, but `app-shell` is
+  // the PARENT route component: it stays visible when the child redirect or the dashboard
+  // itself fails to render, so asserting it makes this diagnostic pass for a dead landing
+  // surface — the exact false-clean condition the file exists to detect. Flagged in review on
+  // PR #225.
+  ['landing', '/', 'app-dashboard-page'],
   ['browse', '/#/browse', 'lib-browse'],
   ['search', '/#/search', 'lib-search'],
   ['trash', '/#/trash', 'lib-trash'],

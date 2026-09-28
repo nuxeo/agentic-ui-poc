@@ -173,9 +173,23 @@ async function measureRouteChangeMotion(page: Page, toHash: string): Promise<Mot
         // separates a CSS-driven effect from an Angular/WAAPI one, and it is what tells us
         // whether a CSS media query could ever have reached it.
         const kind = a.constructor?.name ?? 'Animation';
-        const key = `${target}|${d}|${kind}`;
-        if (!probe.seen.some((s) => `${s.target}|${s.durationMs}|${s.kind}` === key)) {
-          probe.seen.push({ target, durationMs: Math.round(d), iterations, kind });
+
+        // Build the key from the SAME rounded value that gets stored, and include
+        // `iterations`.
+        //
+        // Two bugs in one line before this. The key used the raw `d` while `seen` stores
+        // `Math.round(d)`, so any fractional duration — which `getTiming()` readily returns —
+        // never matched and the same animation was appended on every frame, inflating the
+        // list to hundreds of identical rows. And omitting `iterations` merged a finite
+        // animation with a looping one of the same target and duration, which is precisely
+        // the distinction the reduced-motion verdict is computed from. Flagged in review on
+        // PR #225.
+        const durationMs = Math.round(d);
+        const key = `${target}|${durationMs}|${iterations}|${kind}`;
+        if (
+          !probe.seen.some((s) => `${s.target}|${s.durationMs}|${s.iterations}|${s.kind}` === key)
+        ) {
+          probe.seen.push({ target, durationMs, iterations, kind });
         }
       }
       probe.raf = requestAnimationFrame(sample);

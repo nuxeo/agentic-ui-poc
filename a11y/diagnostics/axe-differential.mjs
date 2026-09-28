@@ -50,7 +50,7 @@
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import { requireNuxeoCredentials } from '../env.mjs';
+import { requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
 import { surfaceUnusableReason } from '../surface.mjs';
 
 /**
@@ -70,7 +70,7 @@ const args = process.argv.slice(2);
 const jsonAt = args.includes('--json') ? args[args.indexOf('--json') + 1] : null;
 const only = args.reduce((acc, a, i) => (a === '--surface' ? [...acc, args[i + 1]] : acc), []);
 
-const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
+const baseUrl = resolveBaseUrl();
 // Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
 const { username: user, password: pass } = requireNuxeoCredentials();
 

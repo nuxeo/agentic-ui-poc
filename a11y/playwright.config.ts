@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { resolveBaseUrl } from './env.mjs';
 import { requireNuxeoCredentials } from './fixtures';
 import { JOURNEY_SCREENS, journeyProjectName, journeyTag } from './specs/journey.screens';
 
@@ -28,8 +29,16 @@ import { JOURNEY_SCREENS, journeyProjectName, journeyTag } from './specs/journey
  * which is also why the critical-path config needs no `testIgnore` for us.
  */
 
-/** Where the app is served. Overridable so the suite can point at a deployed environment. */
-const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
+/**
+ * Where the app is served — resolved by the same function the preflight and all three
+ * diagnostics use, so every `a11y:scan` subcommand points at the same place.
+ *
+ * This config and the preflight previously read `E2E_BASE_URL` while the diagnostics read
+ * `APP_URL`. Behind one entry point that meant either documented override sent some
+ * subcommands at the requested deployment and left the rest on localhost, so a `surfaces`
+ * run and a `reflow` run could describe two different applications and still be compared.
+ */
+const baseURL = resolveBaseUrl();
 
 /**
  * Browser and context settings shared by every project below.

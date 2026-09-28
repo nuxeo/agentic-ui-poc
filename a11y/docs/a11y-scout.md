@@ -101,11 +101,17 @@ are checks axe cannot perform**, which is the case for running this tool alongsi
 `phase-6-a11y.mjs` rather than instead of it. The 22 axe findings are the cross-check, and
 `docs/accessibility.md` explains why they are not a verdict.
 
-This run's 8 `color-contrast` and 2 `button-name` findings contradict `phase-6-a11y.mjs`,
-which records both rules as driven to zero. Both cannot be right, and neither number should be
-quoted until it is resolved. Tracked as **The open disagreement** in `docs/accessibility.md`,
-which is also where the candidate causes are listed. Do not baseline these until it is
-understood.
+This run's 8 `color-contrast` and 2 `button-name` findings contradicted `phase-6-a11y.mjs`,
+which records both rules as driven to zero. **Resolved 2026-09-11, against phase-6.**
+`a11y/diagnostics/axe-differential.mjs` ran the one shared axe engine under both harnesses'
+tag sets in the same page visit, reproduced four blocking nodes phase-6 claims do not exist,
+and established that its baseline is stale rather than that a11y-scout is wrong. The full
+account is **The disagreement — resolved 2026-09-11, against phase-6** in
+`docs/accessibility.md`, which is the source of truth for this.
+
+Six of the eight `color-contrast` findings did not reproduce in that differential, which is
+what prompted `interaction-states.a11y.spec.ts`: they are state-dependent, and a scan of a
+route's default state cannot see them.
 
 ## It is slow, and that is expected
 

@@ -60,10 +60,18 @@ a11y-scout stamps every finding with a `source` field. In the first full baselin
 | `keyboard` | 59       | `focus-offscreen` 45, `focus-obscured-min` 13, `focus-indicator-missing` 1 |
 | `axe`      | 22       | `color-contrast` 8, `label-content-name-mismatch` 4, and six others        |
 
-So the boundary is a filter, not a naming discipline someone has to remember:
+So the boundary is expressed as a filter rather than a naming discipline someone has to
+remember. **This is the contract, not yet the implementation:**
 
-> **a11y-scout's verdict considers findings where `source !== 'axe'`. Its axe findings are
-> recorded as an informational cross-check and never fail a run.**
+> **Intended:** a11y-scout's verdict considers findings where `source !== 'axe'`. Its axe
+> findings are recorded as an informational cross-check and never fail a run.
+>
+> **Today:** no such filter exists. a11y-scout reports all findings equally, and the split is
+> maintained by reading the `source` field when interpreting a report. Tracked as gap 2 below.
+
+That distinction matters because the whole point of this page is that a documented boundary is
+not an enforced one. Nothing currently fails a run either way — `failOnBlockers` is `false`
+everywhere — so the gap costs nothing yet; it will the moment anything here gates.
 
 A cross-check that disagrees with the owner is a **bug to investigate, not a number to
 publish**. Triage it against phase-6; if phase-6 is wrong, fix phase-6 — do not move the
@@ -457,16 +465,16 @@ hard requirement for the keyboard and focus checks.
 The standard is written; the code does not fully implement it yet. Gaps, in the order they
 should be closed:
 
-| #   | Gap                                                                                                       | Status                                                                                                   |
-| --- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| 1   | The axe disagreement                                                                                      | **Resolved** 2026-09-11 — a11y-scout was right, phase-6 was stale                                        |
-| 1a  | Four blocking nodes phase-6 claims do not exist: `button-name` ×2 on browse, `color-contrast` ×2 on tasks | **Open** — a real defect, and the published conformance number is wrong until it is fixed                |
-| 1b  | Six `color-contrast` findings that reproduce under neither harness; state-dependent                       | **Open** — reproduce the state before judging them                                                       |
-| 2   | a11y-scout's verdict does not filter `source !== 'axe'`; it reports all 81 findings equally               | **Open**                                                                                                 |
-| 3   | 81 findings are untriaged, so `failOnBlockers` is `false` everywhere                                      | **Open** — a gate red on its first run for untriaged reasons is one people learn to ignore               |
-| 4   | a11y-scout has no baseline file; phase-6 uses a rule-id array rather than the keyed-count shape           | **Open**                                                                                                 |
-| 5   | phase-6 scans `/#/collections`, which renders nothing, without a selector assertion                       | **Confirmed** — probe written and red; the fix to phase-6 is still open                                  |
-| 6   | Ownership is documented but not enforced by anything executable                                           | **Partly closed** — `a11y-route-render-check.mjs` enforces the "a scan must have something to scan" half |
+| #   | Gap                                                                                                       | Status                                                                                                               |
+| --- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 1   | The axe disagreement                                                                                      | **Resolved** 2026-09-11 — a11y-scout was right, phase-6 was stale                                                    |
+| 1a  | Four blocking nodes phase-6 claims do not exist: `button-name` ×2 on browse, `color-contrast` ×2 on tasks | **Open** — a real defect, and the published conformance number is wrong until it is fixed                            |
+| 1b  | Six `color-contrast` findings that reproduce under neither harness; state-dependent                       | **Open** — reproduce the state before judging them                                                                   |
+| 2   | a11y-scout's verdict does not filter `source !== 'axe'`; it reports all 81 findings equally               | **Open**                                                                                                             |
+| 3   | 81 findings are untriaged, so `failOnBlockers` is `false` everywhere                                      | **Open** — a gate red on its first run for untriaged reasons is one people learn to ignore                           |
+| 4   | a11y-scout has no baseline file; phase-6 uses a rule-id array rather than the keyed-count shape           | **Open**                                                                                                             |
+| 5   | phase-6 scans `/#/collections`, which renders nothing, without a selector assertion                       | **Confirmed** — probe written and red; the fix to phase-6 is still open                                              |
+| 6   | Ownership is documented but not enforced by anything executable                                           | **Partly closed** — `a11y/diagnostics/route-render-check.mjs` enforces the "a scan must have something to scan" half |
 
 Do not describe accessibility as standardised until rows 1a, 2 and 5 are closed. Rows 3 and 4
 depend on triage and are expected to take longer.

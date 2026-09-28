@@ -18,6 +18,24 @@
  */
 
 /**
+ * Where the application is served, for every command in this folder.
+ *
+ * One resolver because there used to be two, and they disagreed: the Playwright config and
+ * the preflight read `E2E_BASE_URL` while all three diagnostics read `APP_URL`. Since
+ * `a11y:scan` is a single entry point, setting either documented override sent some
+ * subcommands at the requested deployment and left the others silently on localhost — so a
+ * `surfaces` run and a `reflow` run could describe two different applications while being
+ * compared to each other. Flagged in review on PR #225.
+ *
+ * `E2E_BASE_URL` is the primary name, matching `apps/nuxeo-ui-e2e/playwright.config.ts` so
+ * both suites answer to one variable. `APP_URL` stays accepted because the diagnostics and
+ * the authoring guide have documented it.
+ */
+export function resolveBaseUrl() {
+  return process.env['E2E_BASE_URL'] ?? process.env['APP_URL'] ?? 'http://localhost:4200';
+}
+
+/**
  * @returns {{ username: string, password: string }}
  * @throws if either variable is unset or empty.
  */

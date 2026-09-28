@@ -35,7 +35,7 @@
  * Run:  node a11y/diagnostics/reflow-probe.mjs
  */
 
-import { nuxeoBasicAuthHeader, requireNuxeoCredentials } from '../env.mjs';
+import { nuxeoBasicAuthHeader, requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
 import { surfaceUnusableReason } from '../surface.mjs';
 
 const REFLOW_WIDTH = 320;
@@ -43,11 +43,10 @@ const REFLOW_HEIGHT = 256;
 const TOLERANCE = 4;
 const EXEMPT = ['table', 'pre', 'svg', '[role="img"]', '[role="application"]'];
 
-// `APP_URL`, matching `route-render-check.mjs`, `axe-differential.mjs` and the authoring
-// guide. This file alone read `A11Y_BASE_URL`, so the documented override silently did
-// nothing here and the probe kept scanning localhost while the others moved. Flagged in
-// review on PR #225.
-const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
+// One resolver for every command in this folder — see `resolveBaseUrl` for why there used to
+// be two and what that broke. This file read `A11Y_BASE_URL` at one point, a third name that
+// nothing else honoured, so the documented override silently did nothing here.
+const baseUrl = resolveBaseUrl();
 // Required, never defaulted — see `../env.mjs` for why a default is worse than an error here.
 const { username: user, password: pass } = requireNuxeoCredentials();
 
@@ -136,6 +135,69 @@ await context.addInitScript(
   },
 );
 
+/**
+ * Measure horizontal overflow at the narrow viewport and classify it.
+ *
+ * Extracted so the route loop and the negative control run **the same code**. They did not
+ * before: the control only checked that injecting a 900px div raised `scrollWidth`, which
+ * exercises none of the exempt/non-exempt attribution that actually decides `VIOLATION`. A
+ * broken classification path — the part most likely to break, and the part that had already
+ * been wrong once with the truncation bug — would still have printed `detection path: WORKS`.
+ * A control that cannot fail for the reason the tool fails is decoration. Flagged in review
+ * on PR #225.
+ *
+ * @param {import('@playwright/test').Page} p
+ */
+async function measureReflow(p) {
+  const m = await p.evaluate(
+    ({ width, exempt, tol }) => {
+      const root = document.documentElement;
+      const sw = root.scrollWidth;
+      const offenders = [];
+      const exemptSel = exempt.join(',');
+      for (const el of Array.from(root.querySelectorAll('*'))) {
+        const r = el.getBoundingClientRect();
+        if (r.right <= width + tol) continue;
+        const sel = el.id
+          ? `#${el.id}`
+          : `${el.tagName.toLowerCase()}${
+              (el.getAttribute('class') || '').split(/\s+/).filter(Boolean)[0]
+                ? '.' + (el.getAttribute('class') || '').split(/\s+/).filter(Boolean)[0]
+                : ''
+            }`;
+        offenders.push({ sel, exempt: !!el.closest(exemptSel), right: Math.round(r.right) });
+      }
+
+      // Classify BEFORE truncating, and count in the page rather than outside it.
+      //
+      // This previously returned `offenders.slice(0, 200)` and the caller filtered for
+      // non-exempt afterwards. On a page with more than 200 overflowing elements — which the
+      // exemption list exists precisely because this app has — a single non-exempt offender
+      // in DOM position 201 was discarded, `nonExempt.length` came out 0, and the verdict
+      // printed `exempt` instead of `VIOLATION`. A diagnostic that under-reports the thing it
+      // exists to find is worse than no diagnostic.
+      //
+      // The cap now applies only to the sample carried out for display.
+      const nonExempt = offenders.filter((o) => !o.exempt);
+      return {
+        scrollWidth: sw,
+        total: offenders.length,
+        nonExemptCount: nonExempt.length,
+        firstNonExempt: nonExempt[0]?.sel,
+        sample: nonExempt.slice(0, 20),
+      };
+    },
+    { width: REFLOW_WIDTH, exempt: EXEMPT, tol: TOLERANCE },
+  );
+
+  const overflows = m.scrollWidth > REFLOW_WIDTH + TOLERANCE;
+  return {
+    ...m,
+    overflows,
+    verdict: overflows && m.nonExemptCount > 0 ? 'VIOLATION' : overflows ? 'exempt' : 'fits',
+  };
+}
+
 const page = await context.newPage();
 const rows = [];
 let couldNotMeasure = 0;
@@ -162,57 +224,15 @@ for (const [label, route, host] of ROUTES) {
     });
     await page.waitForTimeout(400);
 
-    const m = await page.evaluate(
-      ({ width, exempt, tol }) => {
-        const root = document.documentElement;
-        const sw = root.scrollWidth;
-        const offenders = [];
-        const exemptSel = exempt.join(',');
-        for (const el of Array.from(root.querySelectorAll('*'))) {
-          const r = el.getBoundingClientRect();
-          if (r.right <= width + tol) continue;
-          const sel = el.id
-            ? `#${el.id}`
-            : `${el.tagName.toLowerCase()}${
-                (el.getAttribute('class') || '').split(/\s+/).filter(Boolean)[0]
-                  ? '.' + (el.getAttribute('class') || '').split(/\s+/).filter(Boolean)[0]
-                  : ''
-              }`;
-          offenders.push({ sel, exempt: !!el.closest(exemptSel), right: Math.round(r.right) });
-        }
-
-        // Classify BEFORE truncating, and count in the page rather than outside it.
-        //
-        // This previously returned `offenders.slice(0, 200)` and the caller filtered for
-        // non-exempt afterwards. On a page with more than 200 overflowing elements — which
-        // the exemption list below exists precisely because this app has — a single
-        // non-exempt offender in DOM position 201 was discarded, `nonExempt.length` came out
-        // 0, and the verdict printed `exempt` instead of `VIOLATION`. A diagnostic that
-        // under-reports the thing it exists to find is worse than no diagnostic. Flagged in
-        // review on PR #225.
-        //
-        // The cap now applies only to the sample carried out for display.
-        const nonExempt = offenders.filter((o) => !o.exempt);
-        return {
-          scrollWidth: sw,
-          total: offenders.length,
-          nonExemptCount: nonExempt.length,
-          firstNonExempt: nonExempt[0]?.sel,
-          sample: nonExempt.slice(0, 20),
-        };
-      },
-      { width: REFLOW_WIDTH, exempt: EXEMPT, tol: TOLERANCE },
-    );
-
-    const overflows = m.scrollWidth > REFLOW_WIDTH + TOLERANCE;
+    const m = await measureReflow(page);
     rows.push({
       label,
       scrollWidth: m.scrollWidth,
-      overflows,
+      overflows: m.overflows,
       total: m.total,
       nonExempt: m.nonExemptCount,
       firstNonExempt: m.firstNonExempt,
-      verdict: overflows && m.nonExemptCount > 0 ? 'VIOLATION' : overflows ? 'exempt' : 'fits',
+      verdict: m.verdict,
     });
   } catch (err) {
     couldNotMeasure += 1;
@@ -300,7 +320,9 @@ if (process.argv.includes('--negative-control')) {
     process.exit(2);
   }
 
-  const before = await p2.evaluate(() => document.documentElement.scrollWidth);
+  // Both measurements go through `measureReflow`, the function the route loop uses, so the
+  // control exercises the exempt/non-exempt attribution rather than only `scrollWidth`.
+  const before = await measureReflow(p2);
   await p2.evaluate(() => {
     const d = document.createElement('div');
     d.id = 'reflow-negative-control';
@@ -308,16 +330,20 @@ if (process.argv.includes('--negative-control')) {
     document.body.appendChild(d);
   });
   await p2.waitForTimeout(200);
-  const after = await p2.evaluate(() => document.documentElement.scrollWidth);
+  const after = await measureReflow(p2);
   await browser2.close();
 
-  const fired = after > REFLOW_WIDTH + TOLERANCE && before <= REFLOW_WIDTH + TOLERANCE;
+  // The claim is the VERDICT flipped to VIOLATION, not merely that a number grew. An injected
+  // 900px div is non-exempt by construction, so if classification is broken the verdict comes
+  // back `exempt` while `scrollWidth` still rises — which the old check would have called a
+  // working detection path.
+  const fired = after.verdict === 'VIOLATION' && before.verdict !== 'VIOLATION';
   console.log(
     [
       '  negative control — a 900px non-exempt div appended to /#/browse',
-      `    scrollWidth before : ${before}  (verdict: ${before > REFLOW_WIDTH + TOLERANCE ? 'VIOLATION' : 'pass'})`,
-      `    scrollWidth after  : ${after}  (verdict: ${after > REFLOW_WIDTH + TOLERANCE ? 'VIOLATION' : 'pass'})`,
-      `    detection path     : ${fired ? 'WORKS — pass flipped to violation' : 'DID NOT FIRE — the zero above is not trustworthy'}`,
+      `    before : scrollWidth ${before.scrollWidth}, non-exempt ${before.nonExemptCount}  ->  ${before.verdict}`,
+      `    after  : scrollWidth ${after.scrollWidth}, non-exempt ${after.nonExemptCount}  ->  ${after.verdict}`,
+      `    detection path     : ${fired ? 'WORKS — verdict flipped to VIOLATION through the real classification path' : 'DID NOT FIRE — the zero above is not trustworthy'}`,
       '',
     ].join('\n'),
   );

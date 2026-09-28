@@ -16,9 +16,9 @@
  * fix the environment, do not iterate on the code.
  */
 
-import { nuxeoBasicAuthHeader } from './env.mjs';
+import { nuxeoBasicAuthHeader, resolveBaseUrl } from './env.mjs';
 
-const BASE = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
+const BASE = resolveBaseUrl();
 
 const problems = [];
 const ok = [];
