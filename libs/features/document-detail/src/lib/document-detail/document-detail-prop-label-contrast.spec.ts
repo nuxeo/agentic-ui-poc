@@ -50,7 +50,7 @@ describe('DocumentDetailComponent — prop-label text contrast (NXENG-858)', () 
 
   it(`fallback token meets ${WCAG_AA_NORMAL_TEXT}:1 on the properties panel surface`, () => {
     const panel = scssBlock(scss, 'properties-panel');
-    expect(panel).toMatch(/background:\s*#fff/i);
+    expect(panel).toMatch(/background:\s*var\(--document-detail-properties-panel-surface\)/);
     const fg = parseHex('#5c5f6b');
     const bg = parseHex('#ffffff');
     expect(fg).not.toBeNull();
