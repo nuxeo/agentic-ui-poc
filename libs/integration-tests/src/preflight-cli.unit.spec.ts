@@ -43,6 +43,16 @@ type Events = string[];
 interface CliRun {
   events: Events;
   exits: number[];
+  /**
+   * How many times `runPreflightChecks` had been called **at the moment of each exit**.
+   *
+   * Recorded there rather than read afterwards, because a stubbed `process.exit` returns
+   * where the real one does not: the module carries on past the exit and calls the checks
+   * with an unassigned URL, so `expect(runPreflightChecks).not.toHaveBeenCalled()` would be
+   * asserting against lines no real process reaches. `[0]` here means the live checks had
+   * not run when the CLI decided to leave — which is the claim.
+   */
+  checksAtExit: number[];
   stdout: string;
   stderr: string;
 }
@@ -58,6 +68,7 @@ interface CliRun {
 async function runCli(argv: string[] = []): Promise<CliRun> {
   const events: Events = [];
   const exits: number[] = [];
+  const checksAtExit: number[] = [];
   const stdout: string[] = [];
   const stderr: string[] = [];
 
@@ -65,6 +76,7 @@ async function runCli(argv: string[] = []): Promise<CliRun> {
 
   vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
     exits.push(code ?? 0);
+    checksAtExit.push(mocks.runPreflightChecks.mock.calls.length);
     events.push(`exit: ${code ?? 0}`);
     return undefined as never;
   }) as typeof process.exit);
@@ -83,7 +95,7 @@ async function runCli(argv: string[] = []): Promise<CliRun> {
   await import('./preflight-cli');
   await new Promise((resolve) => setImmediate(resolve));
 
-  return { events, exits, stdout: stdout.join('\n'), stderr: stderr.join('\n') };
+  return { events, exits, checksAtExit, stdout: stdout.join('\n'), stderr: stderr.join('\n') };
 }
 
 // Composed rather than quoted: a literal assigned to a `password` field beside a `user`
@@ -134,6 +146,47 @@ describe('preflight-cli exit codes', () => {
     const firstLog = run.events.findIndex((e) => e.startsWith('log:'));
     expect(exitAt).toBeGreaterThanOrEqual(0);
     expect(firstLog).toBeGreaterThan(exitAt);
+  });
+
+  it('exits 2, not 1, when the connection cannot be resolved, before any live check runs', async () => {
+    // The one mapping in this file that nothing else covers, and the one most easily lost:
+    // every other case here stubs `resolveConnection` to succeed, so deleting the `try/catch`
+    // around it in `main()` would leave the whole suite green while restoring exactly the
+    // exit-1 behaviour that catch was added to fix. Unset credentials are the clearest
+    // environment precondition there is, and reporting them as a crash sends the reader into
+    // the code with a message that says the preflight is broken.
+    //
+    // Reported on the pull request as untested; the exit code had been established by hand.
+    const missingCredentials =
+      'NUXEO_USER and NUXEO_PASS must both be set to run the integration suite.';
+    mocks.resolveConnection.mockImplementation(() => {
+      throw new Error(missingCredentials);
+    });
+    // Resolved, so an exit 2 cannot be borrowed from the checks failing instead.
+    mocks.runPreflightChecks.mockResolvedValue({ ok: true, problems: [], satisfied: [] });
+
+    const run = await runCli();
+
+    expect(run.exits).toEqual([2]);
+    expect(run.exits).not.toContain(1);
+    expect(run.stderr).toMatch(/PRECONDITION NOT MET — 1 problem\(s\)/);
+    expect(run.stderr).toContain(missingCredentials);
+    expect(run.stderr).not.toMatch(/crashed\. This is a defect in the preflight/);
+    // No network was touched before leaving. See `checksAtExit` for why this is recorded at
+    // the exit rather than asserted on the mock afterwards.
+    expect(run.checksAtExit).toEqual([0]);
+  });
+
+  it('stringifies a connection failure that is not an Error', async () => {
+    mocks.resolveConnection.mockImplementation(() => {
+      throw 'the environment threw a string';
+    });
+    mocks.runPreflightChecks.mockResolvedValue({ ok: true, problems: [], satisfied: [] });
+
+    const run = await runCli();
+
+    expect(run.exits).toEqual([2]);
+    expect(run.stderr).toMatch(/the environment threw a string/);
   });
 
   it('exits 1, not 2, when the preflight itself throws', async () => {

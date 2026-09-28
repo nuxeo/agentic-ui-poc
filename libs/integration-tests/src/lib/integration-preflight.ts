@@ -131,12 +131,40 @@ function parseTarget(nuxeoUrl: string): { host: string; hostname: string } {
 }
 
 /**
+ * Whether an allowlist entry carries a port, and so must match host **and** port.
+ *
+ * A bare `entry.includes(':')` was the test, and it is wrong for every IPv6 literal, because
+ * the colons inside the address are indistinguishable from a port separator to it. `[::1]`
+ * was therefore classified as host-with-port and compared against `host` — `[::1]:8080` for
+ * `http://[::1]:8080` — so the documented "no port means any port" form rejected the only
+ * thing it was written to accept. Reported on the pull request.
+ *
+ * The bracket is what disambiguates, which is why the URL syntax has it: inside `[...]` the
+ * colons belong to the address, and a port can only appear after the closing `]`. So the
+ * search starts there for a bracketed entry, and covers the whole string otherwise.
+ *
+ * An unterminated `[` is not a port-bearing entry. It is not a usable host either, and it
+ * fails the `===` below against a `host` or `hostname` the URL parser produced — the refusal
+ * belongs to the comparison rather than to this predicate guessing at intent.
+ */
+function entryCarriesPort(entry: string): boolean {
+  if (entry.startsWith('[')) {
+    const closingBracket = entry.indexOf(']');
+    return closingBracket !== -1 && entry.includes(':', closingBracket);
+  }
+
+  return entry.includes(':');
+}
+
+/**
  * Whether `nuxeoUrl`'s host is named in `allowed`.
  *
  * Two shapes of entry, because both questions are legitimate:
  *
- * - `localhost:8080` contains a colon and must match **host and port** exactly.
- * - `localhost` has no colon and matches **any port** on that hostname.
+ * - `localhost:8080` carries a port and must match **host and port** exactly.
+ * - `localhost` carries none and matches **any port** on that hostname.
+ * - `[::1]` is the second form for an IPv6 literal, and `[::1]:8080` the first — see
+ *   `entryCarriesPort` for why the bracket and not the colon decides.
  *
  * The port-bearing form exists so a run can be pinned when the port is what distinguishes a
  * disposable stack from something that matters — a forwarded tunnel on `localhost:9000` is not
@@ -145,6 +173,9 @@ function parseTarget(nuxeoUrl: string): { host: string; hostname: string } {
  *
  * Matching is `===` against a whole host, never a substring: `endsWith('localhost')` admits
  * `evil-localhost`, and a registrable domain passing a safety allowlist is the entire risk.
+ * For an IPv6 entry that comparison is against the parser's **normalised** spelling — `host`
+ * and `hostname` come from `new URL`, which compresses `[0:0:0:0:0:0:0:1]` to `[::1]` — so an
+ * entry written out in full does not match. Write the entry the way the parser would.
  *
  * Throws, via `parseTarget`, on a target with no usable host. The caller reports that as its
  * own problem rather than swallowing it: answering `false` would file an unparseable
@@ -153,7 +184,7 @@ function parseTarget(nuxeoUrl: string): { host: string; hostname: string } {
 export function isHostAllowed(nuxeoUrl: string, allowed: string[]): boolean {
   const { host, hostname } = parseTarget(nuxeoUrl);
 
-  return allowed.some((entry) => (entry.includes(':') ? entry === host : entry === hostname));
+  return allowed.some((entry) => (entryCarriesPort(entry) ? entry === host : entry === hostname));
 }
 
 export interface PreflightResult {

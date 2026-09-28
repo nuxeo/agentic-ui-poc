@@ -523,6 +523,43 @@ describe('isHostAllowed', () => {
     expect(isHostAllowed('http://NUXEO.TEST:8080', ['nuxeo.test'])).toBe(true);
   });
 
+  it('permits a bracketed IPv6 entry on any port, like any other portless entry', () => {
+    // The colon test that decided this used to be `entry.includes(':')`, and every IPv6
+    // literal contains colons — so `[::1]` was read as host-with-port, compared against
+    // `[::1]:8080`, and the portless form rejected the only address it exists to accept.
+    // Reported on the pull request.
+    expect(isHostAllowed('http://[::1]:8080', ['[::1]'])).toBe(true);
+    expect(isHostAllowed('http://[::1]:4210', ['[::1]'])).toBe(true);
+    expect(isHostAllowed('http://[::1]', ['[::1]'])).toBe(true);
+    expect(isHostAllowed('http://[fe80::1]:8080', ['[fe80::1]'])).toBe(true);
+  });
+
+  it('requires an exact host:port match when a bracketed IPv6 entry carries a port', () => {
+    // The port is what appears after the closing bracket, so the stricter form still exists
+    // for IPv6 and still discriminates. Without both halves of this the fix above would be
+    // indistinguishable from "IPv6 entries ignore the port".
+    expect(isHostAllowed('http://[::1]:8080', ['[::1]:8080'])).toBe(true);
+    expect(isHostAllowed('http://[::1]:9000', ['[::1]:8080'])).toBe(false);
+    expect(isHostAllowed('http://[::1]', ['[::1]:8080'])).toBe(false);
+  });
+
+  it('does not let one IPv6 address stand for another', () => {
+    // `===` against a whole host here too: a loopback entry does not admit a link-local
+    // address, and the bracket handling must not turn the comparison into a prefix test.
+    expect(isHostAllowed('http://[fe80::1]:8080', ['[::1]'])).toBe(false);
+    expect(isHostAllowed('http://[::2]:8080', ['[::1]'])).toBe(false);
+    expect(isHostAllowed('http://[::1]:8080', [])).toBe(false);
+  });
+
+  it('compares IPv6 against the parser-normalised spelling, not the one that was typed', () => {
+    // `new URL` compresses the address, so `[0:0:0:0:0:0:0:1]` reaches the comparison as
+    // `[::1]`. Recorded because it decides how an entry must be written: the expanded form
+    // in the allowlist does NOT match, and a reader who assumes otherwise gets a refusal
+    // naming a host they believe they allowed.
+    expect(isHostAllowed('http://[0:0:0:0:0:0:0:1]:8080', ['[::1]'])).toBe(true);
+    expect(isHostAllowed('http://[::1]:8080', ['[0:0:0:0:0:0:0:1]'])).toBe(false);
+  });
+
   it('throws on a target with no usable host rather than answering false', () => {
     // Answering false would report an unusable NUXEO_URL as an allowlist miss and send the
     // reader to edit the wrong variable.
