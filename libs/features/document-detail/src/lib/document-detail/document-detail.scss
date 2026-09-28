@@ -1,9 +1,15 @@
 :host {
+  /* NXENG-858 — properties sidebar stays a fixed light panel in every theme (IBM 1792790291). */
+  --document-detail-prop-label-on-light-panel: var(--mat-sys-on-surface-variant, #5c5f6b);
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
   background: var(--mat-sys-surface-container-lowest);
+}
+
+:host-context(html[data-app-theme='dark']) {
+  --document-detail-prop-label-on-light-panel: #5c5f6b;
 }
 
 // Loading / Error
@@ -583,7 +589,7 @@ sat-breadcrumbs {
   display: block;
   font-size: 11px;
   font-weight: 500;
-  color: #888;
+  color: var(--document-detail-prop-label-on-light-panel);
   margin-bottom: 2px;
   text-transform: capitalize;
 }
