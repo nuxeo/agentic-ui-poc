@@ -56,7 +56,7 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-          CROWDIN_BOT_GITHUB_TOKEN: ${{ secrets.CROWDIN_BOT_GITHUB_TOKEN }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: |
           missing=()
           [ "$SIGNING_ENABLED" = "true" ] || missing+=("vars.GPG_BOT_SIGNING_ENABLED must be 'true' — this job commits to main and every bot commit here is signed")
@@ -64,7 +64,7 @@ jobs:
           [ -n "$GPG_PASSPHRASE" ] || missing+=("secrets.GPG_PASSPHRASE")
           [ -n "$CROWDIN_PROJECT_ID" ] || missing+=("secrets.CROWDIN_PROJECT_ID")
           [ -n "$CROWDIN_PERSONAL_TOKEN" ] || missing+=("secrets.CROWDIN_PERSONAL_TOKEN")
-          [ -n "$CROWDIN_BOT_GITHUB_TOKEN" ] || missing+=("secrets.CROWDIN_BOT_GITHUB_TOKEN — the default GITHUB_TOKEN pushes a branch without starting a workflow, so the translation PR would have no CI")
+          [ -n "$BOT_GITHUB_TOKEN" ] || missing+=("secrets.BOT_GITHUB_TOKEN — the default GITHUB_TOKEN pushes a branch without starting a workflow, so the translation PR would arrive with no CI while its own body promises the catalogue gate has run on it")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::CROWDIN_SYNC_ENABLED is on but the activation is incomplete."
             for item in "${missing[@]}"; do echo "  - $item"; done
@@ -141,4 +141,16 @@ jobs:
           # No `|| secrets.GITHUB_TOKEN` fallback. That fallback is what made the weaker outcome
           # the silent default: the job stayed green and delivered a pull request with no checks.
           # The preflight step requires this secret, so reaching here means it is set.
-          GITHUB_TOKEN: ${{ secrets.CROWDIN_BOT_GITHUB_TOKEN }}
+          #
+          # `BOT_GITHUB_TOKEN` rather than a Crowdin-specific secret, because this repository
+          # already had that one and a second copy of the same credential is a second thing to
+          # rotate — and the one that goes stale is always the one nothing reads often.
+          #
+          # It has NEVER BEEN EXERCISED, though. Until this, `BOT_GITHUB_TOKEN` appeared only in
+          # comments in `changelog.yml` and `release.yml`, offered as an option nobody took;
+          # both use the default token. Its ability to push a branch and create a pull request is
+          # therefore unverified; missing either permission makes the action fail. Separately, a
+          # successful push made with the repository `GITHUB_TOKEN` would suppress follow-on
+          # workflows and leave the pull request with no checks. Confirm on the first real run that
+          # this token completes both operations and that checks start on the resulting pull request.
+          GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
