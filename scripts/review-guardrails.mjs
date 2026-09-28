@@ -2863,8 +2863,16 @@ function yamlInputIsTrue(key) {
  * - **First line only.** `download_translations_args: >-` puts the value on the CONTINUATION
  *   lines. Reading the line the key is on captures `>-` and nothing else, while the action
  *   receives the folded text and passes it to the CLI.
+ * - **Bare keys only.** `'upload_translations': true` is valid YAML and reaches the action
+ *   identically. `crowdin-conf.yml` quotes every key in this repository, so the form is not
+ *   hypothetical here, and a workflow may use it too.
  *
  * So callers get all of them and decide, rather than each check re-deriving a parser badly.
+ *
+ * This is still a matcher and not a YAML parser. It reads block mappings, which is what these
+ * workflows are; it does not handle flow mappings (`{ key: value }`) or anchors. That is a
+ * deliberate limit rather than an unnoticed one — the checks using it fail closed, so a form it
+ * cannot read is a form it cannot clear.
  *
  * @param {string} body YAML source, comments already stripped if the caller needs that
  * @param {string} keyPattern a regex alternation of key names, e.g. `'a|b'`
@@ -2872,7 +2880,7 @@ function yamlInputIsTrue(key) {
  */
 function yamlValues(body, keyPattern) {
   const lines = body.split('\n');
-  const key = new RegExp(`^([^\\S\\n]*)(?:${keyPattern}):[^\\S\\n]*(.*)$`);
+  const key = new RegExp(`^([^\\S\\n]*)['"]?(?:${keyPattern})['"]?:[^\\S\\n]*(.*)$`);
   const found = [];
   let offset = 0;
   for (let at = 0; at < lines.length; at += 1) {

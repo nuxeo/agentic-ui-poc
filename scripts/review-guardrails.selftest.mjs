@@ -1451,6 +1451,25 @@ expectRed(
   /uploads translations before pushing translator context/,
 );
 
+// The same quoted-key form on the ordering side.
+expectRed(
+  'the push workflow uploading translations before context with a quoted key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          'upload_translations': true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
 // Masking, on the ordering side. An explicit `false` on an earlier step must not excuse an enabled
 // upload on a later one that still sits ahead of the context push.
 expectRed(
@@ -1681,6 +1700,20 @@ expectRed(
         `          config: crowdin-conf.yml\n` +
         PULL_OK +
         `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// Quoted keys. `'skip_untranslated_files': true` is valid YAML and reaches the action identically.
+// Not hypothetical: `crowdin-conf.yml` quotes every key in this repository.
+expectRed(
+  'the pull workflow declaring skip_untranslated_files with a quoted key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          'skip_untranslated_files': true\n`),
     ),
   /declares `skip_untranslated_files: true`/,
 );
