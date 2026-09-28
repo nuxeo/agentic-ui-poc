@@ -478,7 +478,7 @@ that release.
 
 ### D8c — a source pattern must ship WITH the files it matches, never ahead of them
 
-D8's snippet above declares a `/libs/**/i18n/en.json` source. Do not add it until a library
+D8's snippet above deliberately omits a `/libs/**/i18n/en.json` source. Do not add it until a
 catalogue exists, and the reason is not tidiness.
 
 Crowdin treats a source pattern that matches nothing as an **error**, and it raises it _after_
