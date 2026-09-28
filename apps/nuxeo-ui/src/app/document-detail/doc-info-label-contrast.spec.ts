@@ -1,8 +1,8 @@
 /**
- * NXENG-774 / NXENG-782 / NXENG-804 / NXENG-829 (IBM 280073873, IBM 1224611475, IBM 542201046) —
- * `.doc-info-label` on `.properties-panel` under every compiled palette. Karma loads
- * `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
- * Host tokens come from `:host` in `document-detail.scss` (no inline overrides on the test host).
+ * NXENG-774 / NXENG-782 / NXENG-804 / NXENG-829 / NXENG-852 (IBM 280073873, IBM 1224611475,
+ * IBM 542201046, IBM 1741130194) — `.doc-info-label` on `.properties-panel` under every compiled
+ * palette. Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token
+ * pairs. Host tokens come from `:host` in `document-detail.scss` (no inline overrides on the test host).
  */
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -57,7 +57,7 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
   return [255, 255, 255];
 }
 
-describe('Document detail doc-info-label contrast by theme (NXENG-774 / NXENG-782 / NXENG-804 / NXENG-829)', () => {
+describe('Document detail doc-info-label contrast by theme (NXENG-774 / NXENG-782 / NXENG-804 / NXENG-829 / NXENG-852)', () => {
   let originalTheme: string | null;
 
   beforeEach(async () => {
