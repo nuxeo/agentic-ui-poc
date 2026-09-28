@@ -1508,8 +1508,59 @@ expectRed(
         `      - name: Push translator context\n` +
         `        run: node tools/i18n/crowdin-push-context.mjs\n`,
     ),
-  /declares step inputs in a form this guardrail cannot read/,
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
+
+// The bare-command DOWNLOAD path. At the pinned SHA a step with `command: download` runs
+// `crowdin $INPUT_COMMAND $INPUT_COMMAND_ARGS` and returns before the boolean-driven path — so a
+// second Crowdin step can download with the forbidden flag while the step found via
+// `download_translations: true` carries none of it.
+expectRed(
+  'a second Crowdin step downloading via command: with the forbidden flag',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `      - name: Download again\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: download --skip-untranslated-files\n`,
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// Same path, flag in `command_args` instead of the command scalar.
+expectRed(
+  'a second Crowdin step downloading via command: with the flag in command_args',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `      - name: Download again\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: download\n` +
+        `          command_args: '--skip-untranslated-files'\n`,
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// An opaque `with:` on an action that is NOT Crowdin cannot hide any of the three values these
+// checks read, so it must not fail the gate. The first version of the opaque-input check scanned
+// both whole files and failed exactly this — recreating the cross-action false positive the
+// `command` scan had just been scoped to avoid.
+expectGreen('an unrelated action using a flow mapping for its inputs', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml':
+    CROWDIN_WORKFLOW(PULL_OK) +
+    `      - name: Something else entirely\n` +
+    `        uses: some-org/some-action@v1\n` +
+    `        with: { command: value }\n`,
+});
 
 // A `command:` nobody can read counts as an upload, for the same reason a `${{ }}` boolean counts
 // as true: it might be one, and failing closed is the only direction that cannot hide the
@@ -1714,7 +1765,7 @@ expectRed(
         PULL_OK + `          download_translations_args: '--skip-untranslated-files'\n`,
       ),
     ),
-  /passes `--skip-untranslated-files` through an argument input/,
+  /passes `--skip-untranslated-files` to a Crowdin step/,
 );
 
 // The same channel in a different YAML spelling. Inputs reach a Docker action as strings and
@@ -1835,7 +1886,7 @@ expectRed(
           `            --skip-untranslated-files\n`,
       ),
     ),
-  /passes `--skip-untranslated-files` through an argument input/,
+  /passes `--skip-untranslated-files` to a Crowdin step/,
 );
 
 // An argument list that cannot be READ cannot be cleared, so it fails closed too. Two ways a value
@@ -1853,7 +1904,7 @@ expectRed(
         PULL_OK + `          download_translations_args: \${{ inputs.extra_args }}\n`,
       ),
     ),
-  /builds a download argument this script cannot read/,
+  /gives a Crowdin step a command or argument this script cannot read/,
 );
 
 expectRed(
@@ -1865,7 +1916,7 @@ expectRed(
       '.github/workflows/crowdin-pull.yaml',
       CROWDIN_WORKFLOW(PULL_OK + `          download_translations_args: *download_args\n`),
     ),
-  /builds a download argument this script cannot read/,
+  /gives a Crowdin step a command or argument this script cannot read/,
 );
 
 // A flow-mapping `with:` hides every input from these checks, so three prohibitions would read as
@@ -1882,7 +1933,7 @@ expectRed(
         `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
         `        with: { config: crowdin-conf.yml, download_translations: true, skip_untranslated_files: true }\n`,
     ),
-  /declares step inputs in a form this guardrail cannot read/,
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
 
 // Scope. `--skip-untranslated-files` reaches `crowdin download` only through `command_args` or

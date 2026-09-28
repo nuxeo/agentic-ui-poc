@@ -2977,6 +2977,29 @@ const YAML_UNREADABLE = /^\*|\$\{\{/;
  */
 const CROWDIN_ACTION = /uses:\s*['"]?crowdin\/github-action/;
 
+/**
+ * The inputs that hand text straight to the Crowdin CLI.
+ *
+ * `command:` is one of them, not just a selector: at the pinned SHA the action runs
+ * `crowdin $INPUT_COMMAND $INPUT_COMMAND_ARGS` and returns, so `command: download` downloads
+ * without `download_translations: true` appearing anywhere.
+ */
+const ARG_INPUTS = 'command|command_args|download_translations_args';
+
+/**
+ * The Crowdin steps of a workflow, each with its byte offset.
+ *
+ * Every check about a Crowdin input belongs here: narrower than the file, because an unrelated
+ * action's inputs are not ours to judge, and wider than "the step with
+ * `download_translations: true`", because that is not the only step that can download.
+ *
+ * @param {string} body workflow YAML
+ * @returns {{text: string, offset: number}[]}
+ */
+function crowdinActionSteps(body) {
+  return workflowSteps(body).filter((step) => CROWDIN_ACTION.test(step.text));
+}
+
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
   // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
@@ -3382,34 +3405,42 @@ function checkCrowdinConfig() {
     );
   }
 
-  // The argument channels, scoped to the inputs that actually reach `crowdin download`.
+  // The argument channels, on EVERY Crowdin step rather than only the boolean downloader.
   //
   // `download_translations_args` is appended to the download command and `command_args` to the
-  // command the step runs (`entrypoint.sh` 82-83 and 408-409). Both are read off `crowdinStep`
-  // rather than the whole file: a mention in `pull_request_body`, or an `upload_translations_args`
-  // on some other step, reaches `crowdin download` on no path and must not fail this gate.
+  // command the step runs (`entrypoint.sh` 82-83 and 408-409). `command:` itself is a third
+  // route: at the pinned SHA a step with `command: download` runs `crowdin $INPUT_COMMAND
+  // $INPUT_COMMAND_ARGS` and returns before the boolean-driven path, so a SECOND Crowdin step can
+  // download with the forbidden flag while `crowdinStep` — found by `download_translations: true`
+  // — carries none of it. Reading only that step was the same wrong-step blindness again, a level
+  // out: the right step for the boolean is not the only step that downloads.
+  //
+  // Still Crowdin steps only, never the whole file: a mention in `pull_request_body` reaches the
+  // CLI on no path, and an unrelated action's inputs are not ours to judge.
   //
   // Read through block scalars, because `download_translations_args: >-` puts the flag on the
   // following lines and the action folds them before passing them on.
-  if (crowdinStep !== undefined) {
-    for (const { value } of yamlValues(crowdinStep, 'download_translations_args|command_args')) {
+  for (const step of crowdinActionSteps(pullCode)) {
+    for (const { value } of yamlValues(step.text, ARG_INPUTS)) {
       if (/--skip-untranslated-files\b/.test(value)) {
         fail(
-          `${workflows[1]} passes \`--skip-untranslated-files\` through an argument input: ` +
+          `${workflows[1]} passes \`--skip-untranslated-files\` to a Crowdin step: ` +
             `\`${value}\`.\n` +
-            '    `download_translations_args` and `command_args` are appended to the command ' +
-            'VERBATIM, so this reaches the CLI exactly as the boolean input would. Checking only ' +
-            '`skip_untranslated_files:` left this route open.\n' +
+            '    `command`, `command_args` and `download_translations_args` all reach the CLI ' +
+            'VERBATIM, so this arrives exactly as the boolean input would. Checking only ' +
+            '`skip_untranslated_files:`, and only on the step with `download_translations: ' +
+            "true`, left this route open — `command: download` downloads too.\n" +
             WHY_NO_SKIP_FILES,
         );
       } else if (YAML_UNREADABLE.test(value)) {
         fail(
-          `${workflows[1]} builds a download argument this script cannot read: \`${value}\`.\n` +
+          `${workflows[1]} gives a Crowdin step a command or argument this script cannot read: ` +
+            `\`${value}\`.\n` +
             '    An Actions expression is resolved after this gate runs, and a YAML alias is ' +
             'resolved from an anchor elsewhere in the document — either way the text the CLI ' +
             'receives is not the text here, so nothing can tell whether it contains ' +
-            '`--skip-untranslated-files`. An argument list that cannot be read cannot be cleared, ' +
-            'so it fails closed. Pass the flags literally.\n' +
+            '`--skip-untranslated-files`. What cannot be read cannot be cleared, so it fails ' +
+            'closed. Pass the command and its flags literally.\n' +
             WHY_NO_SKIP_FILES,
         );
       }
@@ -3492,20 +3523,28 @@ function checkCrowdinConfig() {
   // writes is the wrong trade. But the limit has to FAIL, not pass quietly, or the justification
   // for using a matcher at all stops holding — which is exactly how the alias form got in: the
   // flow mapping was rejected and the alias, which hides just as much, was not.
+  //
+  // CROWDIN steps only. Only a Crowdin step's inputs can hide the three values these checks read,
+  // so an unrelated `uses: some-org/action` with `with: { command: value }` is valid and none of
+  // our business. The first version of this scanned both whole files and failed it — the same
+  // cross-action false positive the `command` scan above had just been scoped to avoid, recreated
+  // one check further down within the hour.
   for (const workflow of workflows) {
-    const opaque = stripYamlComments(read(workflow))
-      .split('\n')
-      .find((line) => /^\s*with:\s*(?:\{|\*|\$\{\{)/.test(line));
-    if (opaque !== undefined) {
-      fail(
-        `${workflow} declares step inputs in a form this guardrail cannot read: ` +
-          `\`${opaque.trim()}\`.\n` +
-          '    A flow mapping, a YAML alias and an expression all hide the keys inside them, so ' +
-          '`skip_untranslated_files`, `upload_translations` and `command` would read as ABSENT ' +
-          'rather than unknown — which turns three prohibitions into no-ops.\n' +
-          '    Use the block form (`with:` then one `key: value` per line), which is what every ' +
-          'other step in these workflows uses.',
-      );
+    for (const step of crowdinActionSteps(stripYamlComments(read(workflow)))) {
+      const opaque = step.text
+        .split('\n')
+        .find((line) => /^\s*with:\s*(?:\{|\*|\$\{\{)/.test(line));
+      if (opaque !== undefined) {
+        fail(
+          `${workflow} declares Crowdin step inputs in a form this guardrail cannot read: ` +
+            `\`${opaque.trim()}\`.\n` +
+            '    A flow mapping, a YAML alias and an expression all hide the keys inside them, ' +
+            'so `skip_untranslated_files`, `upload_translations` and `command` would read as ' +
+            'ABSENT rather than unknown — which turns three prohibitions into no-ops.\n' +
+            '    Use the block form (`with:` then one `key: value` per line), which is what ' +
+            'every other step in these workflows uses.',
+        );
+      }
     }
   }
   if (contextAt === -1) {
