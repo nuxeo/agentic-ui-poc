@@ -625,12 +625,25 @@ export async function waitForIndexed(
  * `uid` — and a test that reads `uid` off `any` cannot be told by the typechecker that the
  * creation returned an error body instead. Narrow, not exhaustive: add a field when a test
  * needs it.
+ *
+ * Declaring the type was only half of it, and for a while it was the half that did nothing.
+ * All 27 call sites kept their `const doc: any =`, which erases the annotation on the way out
+ * of the function, so a misspelled field still compiled and the protection this interface
+ * claimed to provide did not exist anywhere. Reported on the pull request. The annotations are
+ * gone and the type flows; `scripts/beta-harness/spec-typecheck.mjs` is what enforces it,
+ * because `nx test` strips types through esbuild and cannot.
+ *
+ * So when a spec needs a field this does not carry, widen **this type** with the field's real
+ * type — never the variable back to `any`. `isTrashed` arrived that way: it is the one field
+ * removing the annotations exposed, and it is optional because the entity does not promise it
+ * on every document type.
  */
 export interface CreatedTestDocument {
   uid: string;
   path: string;
   type: string;
   title?: string;
+  isTrashed?: boolean;
   properties?: Record<string, unknown>;
 }
 

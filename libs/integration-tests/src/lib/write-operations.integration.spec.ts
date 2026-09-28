@@ -31,7 +31,7 @@ describe('Write Operations Integration Tests', () => {
   describe('Trash Operations', () => {
     it('can trash a document', async () => {
       // Create a document to trash
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-to-trash',
         title: 'Document to Trash',
@@ -72,7 +72,7 @@ describe('Write Operations Integration Tests', () => {
 
     it('trashed documents do not appear in regular queries', async () => {
       // Create and trash a document
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'excluded-when-trashed',
         title: 'Should Not Appear',
@@ -146,7 +146,7 @@ describe('Write Operations Integration Tests', () => {
 
     it('can restore a trashed document', async () => {
       // Create and trash a document
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-to-restore',
         title: 'Document to Restore',
@@ -203,7 +203,7 @@ describe('Write Operations Integration Tests', () => {
   describe('Permanent Delete', () => {
     it('can permanently delete a document', async () => {
       // Create a document to delete
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-to-delete',
         title: 'Document to Delete Permanently',
@@ -232,7 +232,7 @@ describe('Write Operations Integration Tests', () => {
 
     it('delete is truly permanent - document cannot be restored', async () => {
       // Create and delete
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'gone-forever',
         title: 'Cannot Be Restored',
@@ -265,7 +265,7 @@ describe('Write Operations Integration Tests', () => {
   describe('Update Operations', () => {
     it('can update document properties', async () => {
       // Create a document
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-to-update',
         title: 'Original Title',
@@ -306,13 +306,13 @@ describe('Write Operations Integration Tests', () => {
 
     it('can move a document to a different location', async () => {
       // Create source and target folders
-      const sourceFolder: any = await createTestDocument(harness, {
+      const sourceFolder = await createTestDocument(harness, {
         type: 'Folder',
         name: 'source-folder',
         title: 'Source Folder',
       });
 
-      const targetFolder: any = await createTestDocument(harness, {
+      const targetFolder = await createTestDocument(harness, {
         type: 'Folder',
         name: 'target-folder',
         title: 'Target Folder',

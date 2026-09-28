@@ -33,7 +33,7 @@ describe('Integration Test Example', () => {
   });
 
   it('can create a document in the data root', async () => {
-    const doc: any = await createTestDocument(harness, {
+    const doc = await createTestDocument(harness, {
       type: 'File',
       name: 'test-invoice',
       title: 'Test Invoice',
@@ -51,7 +51,7 @@ describe('Integration Test Example', () => {
 
   it('can query the created document via Nuxeo API', async () => {
     // Create a document first
-    const created: any = await createTestDocument(harness, {
+    const created = await createTestDocument(harness, {
       type: 'File',
       name: 'queryable-doc',
       title: 'Queryable Document',

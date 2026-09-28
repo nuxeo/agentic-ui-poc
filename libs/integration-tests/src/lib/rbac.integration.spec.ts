@@ -344,7 +344,7 @@ describe('RBAC and Permissions Integration Tests', () => {
 
     it('can add local ACL entry on child that overrides inherited', async () => {
       // Create parent with Read permission
-      const parentFolder: any = await createTestDocument(harness, {
+      const parentFolder = await createTestDocument(harness, {
         type: 'Folder',
         name: 'override-parent',
         title: 'Override Parent',
@@ -395,7 +395,7 @@ describe('RBAC and Permissions Integration Tests', () => {
     });
 
     it('admin can access all documents in data root', async () => {
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'admin-doc',
         title: 'Admin Document',
@@ -432,7 +432,7 @@ describe('RBAC and Permissions Integration Tests', () => {
     it('non-admin cannot write to documents without explicit permission (DENIED)', async () => {
       // This is the acceptance criterion: at least one test runs as non-admin and is denied
       // Note: Nuxeo workspaces may grant default READ access, but WRITE should be denied
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'no-write-doc',
         title: 'No Write Document',
@@ -446,13 +446,13 @@ describe('RBAC and Permissions Integration Tests', () => {
     });
 
     it('explicit permissions change access level for non-admin user', async () => {
-      const doc1: any = await createTestDocument(harness, {
+      const doc1 = await createTestDocument(harness, {
         type: 'File',
         name: 'write-granted-doc',
         title: 'Write Granted Document',
       });
 
-      const doc2: any = await createTestDocument(harness, {
+      const doc2 = await createTestDocument(harness, {
         type: 'File',
         name: 'write-denied-doc',
         title: 'Write Denied Document',
@@ -475,7 +475,7 @@ describe('RBAC and Permissions Integration Tests', () => {
     });
 
     it('non-admin cannot delete documents without permissions', async () => {
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'delete-test-doc',
         title: 'Delete Test Document',

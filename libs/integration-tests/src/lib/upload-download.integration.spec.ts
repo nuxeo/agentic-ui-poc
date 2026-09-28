@@ -126,7 +126,7 @@ describe('Upload and Download Integration Tests', () => {
       expect(uploadRes.status).toBe(201);
 
       // Create a document
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-with-file',
         title: 'Document with File',
@@ -192,7 +192,7 @@ describe('Upload and Download Integration Tests', () => {
       });
       expect(uploadRes.status).toBe(201);
 
-      const doc: any = await createTestDocument(harness, { type: 'File', name, title: name });
+      const doc = await createTestDocument(harness, { type: 'File', name, title: name });
 
       const attachRes = await fetch(
         `${harness.nuxeoUrl}/nuxeo/api/v1/upload/${batchId}/0/execute/Blob.AttachOnDocument`,
@@ -239,7 +239,7 @@ describe('Upload and Download Integration Tests', () => {
       // adapter 404s. Worth asserting — an empty 200 would make every download assertion
       // above vacuous — but it is a *different* claim from "can download", and naming it
       // separately is what stops one standing in for the other.
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'no-blob-doc',
         title: 'Document With No Blob',
@@ -297,7 +297,7 @@ describe('Upload and Download Integration Tests', () => {
       expect(uploadRes.status).toBe(201);
 
       // 3. Create document
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'round-trip-doc',
         title: 'Round Trip Test Document',

@@ -114,7 +114,7 @@ describe('Feature Workflows Integration Tests', () => {
       expect(((await collectionReadBack.json()) as any).type).toBe('Collection');
 
       // Create a document
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-for-collection',
         title: 'Document for Collection',
@@ -173,7 +173,7 @@ describe('Feature Workflows Integration Tests', () => {
   // asserts the status unconditionally.
   describe('Notes and Annotations', () => {
     it('can create a note on a document', async () => {
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-with-note',
         title: 'Document with Note',
@@ -211,7 +211,7 @@ describe('Feature Workflows Integration Tests', () => {
     });
 
     it('can query comments on a document', async () => {
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-with-comments',
         title: 'Document with Comments',
@@ -235,7 +235,7 @@ describe('Feature Workflows Integration Tests', () => {
 
   describe('Document Versions', () => {
     it('can create a new version of a document', async () => {
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'versioned-doc',
         title: 'Versioned Document',
@@ -285,7 +285,7 @@ describe('Feature Workflows Integration Tests', () => {
     });
 
     it('can retrieve version history', async () => {
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'doc-with-history',
         title: 'Document with History',
@@ -399,7 +399,7 @@ describe('Feature Workflows Integration Tests', () => {
 
   describe('Workflow Operations', () => {
     it('can query available workflows', async () => {
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'workflow-doc',
         title: 'Workflow Document',
@@ -425,7 +425,7 @@ describe('Feature Workflows Integration Tests', () => {
 
   describe('Document Properties', () => {
     it('can update document metadata', async () => {
-      const doc: any = await createTestDocument(harness, {
+      const doc = await createTestDocument(harness, {
         type: 'File',
         name: 'metadata-doc',
         title: 'Metadata Document',
