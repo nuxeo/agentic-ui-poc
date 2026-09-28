@@ -115,6 +115,20 @@ describe('platform sidebar — user profile label in name (NXENG-894)', () => {
     return btn as HTMLButtonElement;
   }
 
+  /** Projected avatar mat-icon (any markup — class is not part of the regression contract). */
+  function profileProjectedMatIcon(button: Element): Element {
+    const icon = button.querySelector('.sat-platform-nav-icon mat-icon');
+    expect(icon)
+      .withContext('profile button must project a mat-icon in the avatar slot')
+      .toBeTruthy();
+    return icon as Element;
+  }
+
+  /** DOM text of the projected profile icon (aria-hidden ligature text tripped IBM 2972081309). */
+  function profileProjectedIconText(button: Element): string {
+    return profileProjectedMatIcon(button).textContent?.trim() ?? '';
+  }
+
   it('does not render vendor initials that diverge from the aria-label (IBM 2972081309)', () => {
     const fixture = TestBed.createComponent(AppShellComponent);
     // IBM scan and the ticket repro use the expanded sidebar label, not the collapsed rail.
@@ -142,6 +156,49 @@ describe('platform sidebar — user profile label in name (NXENG-894)', () => {
         `accessible name "${name}" must contain the full visible label "${visible}" (IBM label_name_visible)`,
       )
       .toContain(visible.toLowerCase());
+    expect(profileProjectedIconText(button))
+      .withContext('profile icon must not expose Material ligature name as DOM text')
+      .not.toContain('account_circle');
+  });
+
+  it('renders the profile avatar glyph via CSS codepoint (NXENG-894)', () => {
+    const fixture = TestBed.createComponent(AppShellComponent);
+    TestBed.inject(SatPlatformNavStateService).toggleCollapsed();
+    fixture.detectChanges();
+
+    const icon = profileProjectedMatIcon(profileButton(fixture.nativeElement as HTMLElement));
+    const glyph = getComputedStyle(icon, '::before');
+    const content = glyph.content.replace(/"/g, '');
+    expect(content)
+      .withContext('profile mat-icon must expose account_circle via ::before content')
+      .not.toBe('none');
+    expect(content.length).toBeGreaterThan(0);
+    expect(content.codePointAt(0))
+      .withContext('::before must use Material Icons account_circle codepoint U+E853')
+      .toBe(0xe853);
+    expect(glyph.fontFamily.toLowerCase()).toContain('material icons');
+    expect(Number.parseFloat(glyph.fontSize)).toBeGreaterThanOrEqual(24);
+  });
+
+  it('keeps label in name when the sidebar rail is collapsed (IBM 2972081309)', () => {
+    const navState = TestBed.inject(SatPlatformNavStateService);
+    const fixture = TestBed.createComponent(AppShellComponent);
+    fixture.detectChanges();
+
+    if (!navState.collapsed()) {
+      navState.toggleCollapsed();
+      fixture.detectChanges();
+    }
+
+    const button = profileButton(fixture.nativeElement as HTMLElement);
+    const name = accessibleName(button);
+    const visible = visibleLabelJoined(button);
+    expect(profileProjectedIconText(button))
+      .withContext('profile icon must not expose Material ligature name as DOM text')
+      .not.toContain('account_circle');
+    if (visible) {
+      expect(name.toLowerCase()).toContain(visible.toLowerCase());
+    }
   });
 
   it('opens the settings drawer when the profile control is activated', () => {

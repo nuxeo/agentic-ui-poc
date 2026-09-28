@@ -32,9 +32,10 @@
 
     <sat-platform-nav-user>
       <sat-platform-nav-user-profile (click)="toggleSettingsDrawer()">
-        <!-- NXENG-894: a projected icon skips auto-generated initials inside the vendor
-             profile button; those initials were visible text not contained in aria-label. -->
-        <mat-icon aria-hidden="true">account_circle</mat-icon>
+        <!-- NXENG-894: projected mat-icon/img skips vendor avatar initials. Empty mat-icon +
+             codepoint glyph (not ligature text) — IBM label_name_visible counted "account_circle"
+             as visible label text outside aria-label; fontIcon needs a class-based icon set. -->
+        <mat-icon aria-hidden="true" class="app-shell-user-profile-icon"></mat-icon>
         {{ displayName() }}
       </sat-platform-nav-user-profile>
     </sat-platform-nav-user>
