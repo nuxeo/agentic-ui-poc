@@ -326,4 +326,19 @@ if (process.argv.includes('--negative-control')) {
 
 // 0 measured, 2 could not measure. Findings do not fail the run — this is a diagnostic, and a
 // diagnostic that turns the build red is one people stop running.
-process.exit(couldNotMeasure === rows.length ? 2 : 0);
+// ANY unmeasured route is exit 2, not just all of them.
+//
+// This used to be `couldNotMeasure === rows.length`, so six measured routes and one that
+// never rendered exited 0 and read as a clean seven-route pass. The authoring guide states
+// the contract this file is meant to follow — "it must ALWAYS return 2 rather than 0 when it
+// could not measure, because a scan that silently did not happen must never read as clean" —
+// and a partial run is exactly that. The surface checks added in 4c288808d made partial runs
+// more likely, which is how this surfaced. Flagged in review on PR #225.
+if (couldNotMeasure > 0) {
+  console.error(
+    `\nreflow-probe: ${couldNotMeasure} of ${rows.length} route(s) could not be measured, so this\n` +
+      '  is an incomplete result rather than a clean one. See the rows marked with an error above.\n',
+  );
+  process.exit(2);
+}
+process.exit(0);

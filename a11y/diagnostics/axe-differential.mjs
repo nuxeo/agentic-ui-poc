@@ -27,10 +27,14 @@
  *     from 2026-09-11 against a tree with substantial uncommitted change. A rule that reproduces
  *     here under phase-6's own tags means phase-6's claim has gone stale, not that it was wrong.
  *
- * This is a **diagnostic, not a gate**. It exits 0 whenever it managed to measure, including when
- * it finds violations — the whole point is to report a number, and a diagnostic that fails the
- * build is one people stop running. It exits non-zero only when it could not measure at all,
- * because a scan that silently did not happen must never read as clean.
+ * This is a **diagnostic, not a gate**. It exits 0 when it measured every requested surface,
+ * including when it finds violations — the whole point is to report a number, and a diagnostic
+ * that fails the build is one people stop running.
+ *
+ * It exits 2 when **any** requested surface could not be measured, not only when all of them
+ * failed. A comparison drawn from a partial population is not a smaller result, it is a
+ * misleading one: the phase-6 verdicts printed at the end would be computed over whichever
+ * surfaces happened to render. A scan that silently did not happen must never read as clean.
  *
  * Prerequisites:
  *   npm install --no-save @playwright/test @axe-core/playwright
@@ -74,7 +78,7 @@ const SESSION_KEY = 'agentic_ui_nuxeo_session';
 const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
 
 /** The surfaces a11y-scout scanned, with the host each one must render before it is scanned. */
-const SURFACES = [
+const ALL_SURFACES = [
   ['browse', '/#/browse', 'lib-browse'],
   ['search', '/#/search', 'lib-search'],
   ['trash', '/#/trash', 'lib-trash'],
@@ -82,7 +86,22 @@ const SURFACES = [
   ['administration', '/#/administration', 'lib-administration-shell'],
   ['knowledge-discovery', '/#/knowledge-discovery', 'lib-knowledge-discovery'],
   ['browse-adf-hx', '/#/browse-adf-hx', 'lib-browse-adf-hx-poc'],
-].filter(([label]) => only.length === 0 || only.includes(label));
+];
+
+/** Narrowed by `--surface`. Its length is the requested count the exit code is checked against. */
+const SURFACES = ALL_SURFACES.filter(([label]) => only.length === 0 || only.includes(label));
+
+// Fail before launching anything. A `--surface` value that matches no known label would
+// otherwise start a browser, measure nothing, print two empty tables and only then report —
+// and the completeness check at the end cannot catch it, because `measured < SURFACES.length`
+// reads as `0 < 0`.
+if (SURFACES.length === 0) {
+  console.error(
+    `\naxe-differential: --surface matched no known surface, so there is nothing to measure.\n` +
+      `  Known surfaces: ${ALL_SURFACES.map(([label]) => label).join(', ')}\n`,
+  );
+  process.exit(2);
+}
 
 /** The two tag sets, verbatim from each harness. */
 const VARIANTS = {
@@ -305,7 +324,23 @@ if (jsonAt) {
   console.log(`\nWrote ${jsonAt}`);
 }
 
-if (measured === 0) {
-  console.error('\naxe-differential: cannot measure — no surface rendered.');
+// Every requested surface must have been measured, not merely one of them.
+//
+// This used to be `measured === 0`, so a run where six of seven surfaces were skipped still
+// exited 0 and then printed phase-6 verdicts drawn from that one surface — a comparison
+// presented as complete while most of its population was missing. The skipped surfaces are
+// recorded as "NOT a pass" three lines away, which made the exit code the only part of the
+// output disagreeing with the rest of it. Flagged in review on PR #225; the surface checks
+// added in 4c288808d made partial runs more likely, which is how it surfaced.
+//
+// `SURFACES` is already narrowed by `--surface` where it is declared, so its length is the
+// requested count. The case it cannot catch — a filter that matched nothing, where this reads
+// as `0 < 0` — is guarded at the point of declaration instead, before a browser is launched.
+if (measured < SURFACES.length) {
+  console.error(
+    `\naxe-differential: measured ${measured} of ${SURFACES.length} requested surface(s), so the\n` +
+      '  comparison above is drawn from an incomplete population and the phase-6 verdicts in it\n' +
+      '  cannot be trusted. See the SKIPPED lines for why each one was not measurable.\n',
+  );
   process.exit(2);
 }
