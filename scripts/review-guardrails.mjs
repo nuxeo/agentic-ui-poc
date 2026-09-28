@@ -3114,6 +3114,19 @@ function checkCrowdinConfig() {
         }, so neither the signing nor the \`skip_untranslated_strings\` assertion examined ` +
         'anything. It cannot download translations in this state.',
     );
+  } else if (!/^\s*skip_untranslated_files:\s*true\s*$/m.test(crowdinStep)) {
+    fail(
+      `${workflows[1]} does not set \`skip_untranslated_files: true\` on its ` +
+        'crowdin/github-action step.\n' +
+        '    `skip_untranslated_strings` governs individual strings; this governs the whole file. ' +
+        'Without it a language at 0% still exports a catalogue — an empty one — which REPLACES ' +
+        'what the repository holds. For `fr.json` and `de.json` that is 151 hand-written strings ' +
+        'that predate Crowdin and are not in it yet, because the CI token cannot upload ' +
+        'translations.\n' +
+        '    `checkCataloguesAreTranslated` would fail that pull request, so the loss cannot ' +
+        'reach `main` — but it would fail every night until seeding works, and a job that is red ' +
+        'nightly for a reason nobody can action is a job people stop reading. See D8f.',
+    );
   } else if (!/^\s*skip_untranslated_strings:\s*true\s*$/m.test(crowdinStep)) {
     fail(
       `${workflows[1]} does not set \`skip_untranslated_strings: true\` on its ` +

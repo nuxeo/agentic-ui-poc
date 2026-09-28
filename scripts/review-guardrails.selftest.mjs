@@ -1310,7 +1310,10 @@ const PULL_SIGNING = `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}
 const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
 /** What identifies the step both assertions must examine: the one that downloads. */
 const PULL_DOWNLOAD = `          download_translations: true\n`;
-const PULL_OK = PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED;
+/** Governs whole files, not strings — a separate loss, see D8f. */
+const PULL_SKIP_UNTRANSLATED_FILES = `          skip_untranslated_files: true\n`;
+const PULL_OK =
+  PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED + PULL_SKIP_UNTRANSLATED_FILES;
 
 const CROWDIN = {
   'crowdin-conf.yml': crowdinConf([
@@ -1377,7 +1380,9 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SKIP_UNTRANSLATED).replace(
+      CROWDIN_WORKFLOW(
+        PULL_DOWNLOAD + PULL_SKIP_UNTRANSLATED + PULL_SKIP_UNTRANSLATED_FILES,
+      ).replace(
         '      - uses: crowdin/github-action@v2\n',
         `      - uses: crazy-max/ghaction-import-gpg@v6\n` +
           `        with:\n` +
@@ -1431,7 +1436,10 @@ expectRed(
   'the pull workflow leaving skip_untranslated_strings at its default',
   'checkCrowdinConfig',
   CROWDIN,
-  (write) => write('.github/workflows/crowdin-pull.yaml', CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING)),
+  (write) => write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED_FILES),
+    ),
   /does not set `skip_untranslated_strings: true`/,
 );
 
@@ -1443,7 +1451,10 @@ expectRed(
     write(
       '.github/workflows/crowdin-pull.yaml',
       CROWDIN_WORKFLOW(
-        PULL_DOWNLOAD + PULL_SIGNING + `          skip_untranslated_strings: false\n`,
+        PULL_DOWNLOAD +
+          PULL_SIGNING +
+          PULL_SKIP_UNTRANSLATED_FILES +
+          `          skip_untranslated_strings: false\n`,
       ),
     ),
   /does not set `skip_untranslated_strings: true`/,
@@ -1484,9 +1495,24 @@ expectRed(
         `        with:\n` +
         `          config: crowdin-conf.yml\n` +
         PULL_DOWNLOAD +
-        PULL_SIGNING,
+        PULL_SIGNING +
+        PULL_SKIP_UNTRANSLATED_FILES,
     ),
   /does not set `skip_untranslated_strings: true`/,
+);
+
+// The whole-file half of the same loss. A language at 0% exports an EMPTY catalogue, which
+// replaces the 151 hand-written French and German strings that Crowdin does not hold yet.
+expectRed(
+  'the pull workflow leaving skip_untranslated_files at its default',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED),
+    ),
+  /does not set `skip_untranslated_files: true`/,
 );
 
 // The founding defect. Both options deleted from the SECOND entry only: the first still

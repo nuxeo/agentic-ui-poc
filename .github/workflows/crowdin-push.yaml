@@ -148,4 +148,22 @@ jobs:
           create_pull_request: false
         env:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
-          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+          # A DIFFERENT token when one is available, and this is not the second-copy mistake that
+          # `CROWDIN_BOT_GITHUB_TOKEN` was. That one would have held the same value as an existing
+          # secret; this one exists because the values must differ in SCOPE.
+          #
+          # `CROWDIN_PERSONAL_TOKEN` is the CI token, scoped to upload sources and download
+          # translations — exactly what the daily sync needs and deliberately not more. Uploading a
+          # translation is a separate endpoint outside that scope, so the first seed attempt failed
+          # with `Endpoint isn't allowed for token scopes` while the source upload in the same job
+          # succeeded. See D8f.
+          #
+          # The seed therefore prefers `CROWDIN_SEED_TOKEN` and falls back to the CI token. The
+          # fallback is not optimism: it keeps this step's behaviour unchanged when the secret is
+          # absent, so adding it cannot break anything, and the resulting failure names the scope
+          # rather than looking like a broken credential.
+          #
+          # Keeping them separate also keeps the blast radius right. The token that can WRITE
+          # translations is used by one manually-dispatched step, not by the job that runs on every
+          # push to `main`.
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_SEED_TOKEN || secrets.CROWDIN_PERSONAL_TOKEN }}
