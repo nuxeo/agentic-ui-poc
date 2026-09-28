@@ -1,10 +1,6 @@
 :host {
-<<<<<<< HEAD
-  /* NXENG-774 / NXENG-852 — properties sidebar stays a fixed light panel in every theme. */
-=======
   /* NXENG-774 — properties sidebar stays a fixed light panel in every theme (IBM 280073873). */
   /* NXENG-858 — .prop-label reuses label-muted on that panel (IBM 1792790291). */
->>>>>>> origin/main
   --document-detail-properties-panel-surface: #ffffff;
   --document-detail-properties-label-muted: #5c5f6b;
   display: flex;
