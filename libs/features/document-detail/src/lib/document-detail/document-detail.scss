@@ -1,5 +1,5 @@
 :host {
-  /* Properties sidebar stays a fixed light panel in every theme (NXENG-764 IBM 67686130, NXENG-774 IBM 280073873). */
+  /* NXENG-774 — properties sidebar stays a fixed light panel in every theme (IBM 280073873). */
   --document-detail-properties-panel-surface: #ffffff;
   --document-detail-properties-label-muted: #5c5f6b;
   display: flex;
@@ -587,8 +587,7 @@ sat-breadcrumbs {
   display: block;
   font-size: 11px;
   font-weight: 500;
-  /* NXENG-764 — #888 was 3.54:1 on the panel; mat-sys-on-surface-variant fails on this light strip in dark theme. */
-  color: var(--document-detail-properties-label-muted);
+  color: #888;
   margin-bottom: 2px;
   text-transform: capitalize;
 }
