@@ -1,7 +1,7 @@
 /**
  * NXENG-774 / NXENG-782 — `.doc-info-label` in the properties panel must meet WCAG 2.1 SC 1.4.3
  * (IBM 280073873). Per-theme Karma coverage:
- * `apps/nuxeo-ui/.../document-detail-doc-info-label-contrast.spec.ts`.
+ * `apps/nuxeo-ui/src/app/document-detail/doc-info-label-contrast.spec.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
