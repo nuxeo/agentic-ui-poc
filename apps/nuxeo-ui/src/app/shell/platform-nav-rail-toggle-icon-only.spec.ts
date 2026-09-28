@@ -13,6 +13,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 /**
  * NXENG-927 (icon-only product revert) — Satori rail expand/collapse is conveyed through
  * translated `aria-label` and `matTooltip` only (no host visible-label span).
+ * Production wiring is covered in `platform-nav-rail-toggle-icon-only-app-shell.spec.ts`.
  */
 const RAIL_TOGGLE_SELECTOR = '#sat-platform-nav-title-icon';
 /** Class from the removed PR 246 host workaround; must stay absent on icon-only UI. */
