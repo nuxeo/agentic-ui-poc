@@ -2880,7 +2880,10 @@ function workflowSteps(body) {
   let itemIndent = null;
   for (let at = 0; at < lines.length; at += 1) {
     const line = lines[at];
-    if (line.trim() === '') continue;
+    // Blank and comment-only lines carry no structure. A comment aligned with `steps:` was being
+    // read as a dedent, which ENDED enumeration — so a translation upload after such a comment was
+    // never examined while the context step before it was.
+    if (line.trim() === '' || /^[^\S\n]*#/.test(line)) continue;
     const indent = /^[^\S\n]*/.exec(line)[0].length;
 
     // Dedenting to or past the `steps:` key ends the block — the next job, or a sibling key.
@@ -3023,7 +3026,7 @@ const YAML_UNREADABLE = /^\*|\$\{\{/;
  * "Crowdin steps" skipped it and passed by absence. Raised in review; the failure direction is the
  * dangerous one, because an unrecognised step is an unchecked step.
  */
-const CROWDIN_ACTION = /uses:\s*['"]?crowdin\/github-action/;
+const CROWDIN_ACTION = /['"]?uses['"]?:\s*['"]?crowdin\/github-action/;
 
 /**
  * The inputs that hand text straight to the Crowdin CLI.
@@ -3426,11 +3429,19 @@ function checkCrowdinConfig() {
   // `skip_untranslated_strings: true` would satisfy both assertions below while the step that
   // actually downloads omitted it, and signing matters on the downloading step too, because that
   // is the one that commits.
-  const crowdinSteps = pullSteps.filter((step) => CROWDIN_ACTION.test(step));
-  const crowdinStep = crowdinSteps.find((step) =>
-    /^\s*download_translations:\s*true\s*$/m.test(step),
+  //
+  // And all three of these are INPUTS, so all three are read from the step's `with:` block rather
+  // than from the step. `download_translations: true`, `gpg_private_key` and
+  // `skip_untranslated_strings: true` placed under `env:` are passed to the action by nobody —
+  // the step does not download, does not sign and does not skip anything — yet every assertion
+  // here was satisfied by their presence anywhere in the step.
+  const crowdinSteps = pullSteps
+    .filter((step) => CROWDIN_ACTION.test(step))
+    .map((step) => stepWithBlock(step)?.text ?? '');
+  const crowdinStep = crowdinSteps.find((inputs) =>
+    /^\s*['"]?download_translations['"]?:\s*true\s*$/m.test(inputs),
   );
-  if (crowdinStep !== undefined && !/^\s*gpg_private_key:/m.test(crowdinStep)) {
+  if (crowdinStep !== undefined && !/^\s*['"]?gpg_private_key['"]?:/m.test(crowdinStep)) {
     fail(
       `${workflows[1]} runs crowdin/github-action without passing \`gpg_private_key\`, so its ` +
         'commits are unsigned.\n' +
@@ -3687,7 +3698,7 @@ function checkCrowdinConfig() {
         // `- with: { … }` is valid: the sequence marker can precede the first key, and
         // `uses:` then follows on a later line. Without the optional marker the hidden
         // inputs read as absent on exactly the step this check exists for.
-        .find((line) => /^\s*(?:-\s+)?with:\s*(?:\{|\*|\$\{\{)/.test(line));
+        .find((line) => /^\s*(?:-\s+)?['"]?with['"]?:\s*(?:\{|\*|\$\{\{)/.test(line));
       if (opaque !== undefined) {
         fail(
           `${workflow} declares Crowdin step inputs in a form this guardrail cannot read: ` +

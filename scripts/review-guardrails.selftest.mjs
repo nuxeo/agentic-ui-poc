@@ -1511,6 +1511,86 @@ expectRed(
   /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
 
+// A comment is not structure. One aligned with `steps:` was read as a dedent and ENDED step
+// enumeration, so an upload after it was never examined while the context step before it was.
+expectRed(
+  'an upload hidden behind a comment aligned with the steps key, before context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `    # everything below is the seeding half\n` +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// A quoted `'uses':` KEY, not just a quoted value. The step is then not recognised as a Crowdin
+// step, so every Crowdin-scoped prohibition skips it and passes by absence.
+expectRed(
+  'a Crowdin step whose uses KEY is quoted, uploading before context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        'uses': crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// Inputs under `env:` are passed to the action by nobody. The step does not download, does not
+// sign and does not skip anything, so the downloader must not be found there.
+expectRed(
+  'the download inputs placed under env: instead of with:',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      `name: crowdin\non: push\njobs:\n  sync:\n    if: \${{ vars.CROWDIN_SYNC_ENABLED == 'true' }}\n` +
+        `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
+        `        with:\n          config: crowdin-conf.yml\n` +
+        `        env:\n` +
+        PULL_DOWNLOAD +
+        PULL_SIGNING +
+        PULL_SKIP_UNTRANSLATED,
+    ),
+  /contains no `uses: crowdin\/github-action` step with `download_translations: true`/,
+);
+
+// A quoted `'with':` key hides the inputs just as a bare one does, so the opaque-input check has
+// to see it too.
+expectRed(
+  'a Crowdin step hiding inputs behind a quoted with key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        'with': { command: upload translations }\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
 // A nested `run:` is not a command the runner executes. Under `with:` it is an action input, under
 // `env:` a variable — and accepting one let a Crowdin step that uploads no context satisfy both
 // context assertions. Step-level keys only.
