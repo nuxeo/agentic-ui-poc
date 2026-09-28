@@ -1,10 +1,14 @@
 # Opens a pull request with whatever has been translated and approved.
 #
-# The second of D8's two workflows. Daily, because a translation finished on Tuesday should
-# not wait for someone to remember.
+# The download half of the two-workflow model in the Hyland Crowdin standard, whose shape this
+# follows: a daily scheduled pull opening a pull request is RECOMMENDED, and an on-demand
+# `workflow_dispatch` is a SHOULD. Conformance is tracked in `D8-standard` of
+# `docs/i18n-localization-plan.md`. Daily, because a translation finished on Tuesday should not
+# wait for someone to remember.
 #
 # Daily is a POLL, not a publish. On a day with nothing approved this opens nothing. Measured on
-# nuxeo/nuxeo-web-ui, which has run the same schedule since 2022: 99 pull requests, 39 of them
+# nuxeo/nuxeo-web-ui — a comparison, not an authority; it predates the standard and is not
+# compliant with it — which has run the same schedule since 2022: 99 pull requests, 39 of them
 # merged at a median lag of one day, none currently open. Thirty-nine merges across fifty-one
 # months is roughly one a month — the release cadence, reached by the mechanism rather than by
 # scheduling it. The numbers and the query behind them are in D8b; do not restate them from here.
@@ -76,7 +80,7 @@ jobs:
           echo "Activation complete: signing on, Crowdin credentials and bot token present."
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: main
 
@@ -125,15 +129,44 @@ jobs:
           # So the honest state of a half-translated locale is a short catalogue, not a full one
           # padded with English.
           #
+          # This is a DELIBERATE DEVIATION from a documented expectation. The Technical Usage
+          # Guide states that "by default, missing translations will be filled with the reference
+          # translation held by the source file", and considers `skip_untranslated_strings` "not
+          # specifically useful". We set it anyway, because an English-padded catalogue at full
+          # key parity is indistinguishable from a finished translation to every check we have —
+          # `nuxeo-web-ui` ships `messages-cs.json` at 1,565 keys of which 1,558 ARE English, and
+          # nothing there reports a problem. An omitted key is at least honest: the fallback
+          # renders English and `checkTranslationCatalogues` reports the gap.
+          #
+          # A deviation from an expectation, not from a rule — the guide does not say MUST NOT.
+          # Recorded in `D8-standard`.
+          #
           # Flipping this back is caught by `checkCrowdinConfig`, which asserts this exact line.
           # Not by `checkCataloguesAreTranslated` — that one fails a catalogue whose every value
           # matches English, which is what the flip produced only while Crowdin was empty. Once
-          # the seeded French and German strings come back genuinely translated, the same flip
-          # yields 1,897 English values out of 1,972, and 96% is a warning rather than a failure.
-          # Measured, not estimated. So the catalogue check would have gone quiet precisely as the
-          # catalogue became worth protecting, and the configuration assertion is the load-bearing
-          # one.
+          # Crowdin holds translations of its own, the same flip yields 1,897 English values out
+          # of 1,972, and 96% is a warning rather than a failure. Measured, not estimated. So the
+          # catalogue check would go quiet precisely as the catalogue became worth protecting, and
+          # the configuration assertion is the load-bearing one.
           skip_untranslated_strings: true
+
+          # `skip_untranslated_files` is deliberately NOT set, and `checkCrowdinConfig` fails the
+          # workflow if anyone sets it. It was set here briefly, alongside the option above, and
+          # a guardrail was written REQUIRING it. Only one of the two can be active:
+          #
+          #   Technical Usage Guide: "export options `skip_untranslated_strings` and
+          #   `skip_untranslated_files` are not specifically useful, and the former can lead to
+          #   empty translations being exported (and only one of these options can be activated)."
+          #
+          # So setting both did not guard two losses. On the pinned toolchain it guarded NEITHER,
+          # and not because one option quietly won — crowdin-cli 4.14.2 rejects the pair outright
+          # in `PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and
+          # files at the same time", before the download runs. The pull would have failed without
+          # downloading a byte, while a guardrail asserted the configuration was correct.
+          #
+          # `skip_untranslated_strings` is the one worth keeping, for the reason above: an
+          # English-padded catalogue passes as finished, an empty one is loudly wrong and
+          # `checkCataloguesAreTranslated` fails it. See D8h.
 
           create_pull_request: true
           localization_branch_name: crowdin-translations-update
@@ -142,8 +175,12 @@ jobs:
           pull_request_body: |
             Opened by the Crowdin Pull workflow. Contains only catalogue files.
 
-            Only **approved** translations are exported, so anything here has been through
-            review on the Crowdin side.
+            This pull request **requests** approved-only export (`export_only_approved: 'true'`),
+            so the intent is that everything here has been through review on the Crowdin side.
+            Treat that as the intent rather than a guarantee until the project's own export
+            settings are confirmed: the Crowdin Guidelines say project-level export settings take
+            precedence over the settings a pipeline sends. Tracked as an owner action in
+            `D8-standard`.
 
             **A catalogue shorter than `en.json` is expected, not a fault.** Untranslated
             strings are omitted rather than exported with their English source, so a locale

@@ -1310,6 +1310,12 @@ const PULL_SIGNING = `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}
 const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
 /** What identifies the step both assertions must examine: the one that downloads. */
 const PULL_DOWNLOAD = `          download_translations: true\n`;
+/**
+ * NOT part of the green fixture. The pinned Crowdin CLI rejects this alongside
+ * `skip_untranslated_strings`, so it appears only in the control that proves the pair is
+ * caught — see D8h.
+ */
+const PULL_SKIP_UNTRANSLATED_FILES = `          skip_untranslated_files: true\n`;
 const PULL_OK = PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED;
 
 const CROWDIN = {
@@ -1383,6 +1389,531 @@ expectRed(
   /without passing `gpg_private_key`, so its commits are unsigned/,
 );
 
+// A failed step skips the rest of the job, so a translation upload placed ahead of the context
+// push can stop the context ever being attached. The first real `seed_translations` run did
+// precisely that: it failed on a token scope and skipped the context step behind it.
+expectRed(
+  'the push workflow uploading translations before pushing translator context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The same fail-closed rule on the ordering side. An expression-driven upload still RUNS, so it can
+// still fail and still skip the context step behind it.
+expectRed(
+  'the push workflow hiding an upload_translations behind an Actions expression, before context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: \${{ inputs.seed }}\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The OTHER upload interface. The action runs a bare `command:`, so `command: upload translations`
+// uploads without the boolean input ever appearing — and the ordering rule is about uploads, not
+// about one spelling of one input.
+expectRed(
+  'the push workflow uploading translations via `command:` before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: upload translations\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The same quoted-key form on the ordering side.
+expectRed(
+  'the push workflow uploading translations before context with a quoted key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          'upload_translations': true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// A quoted `uses:` value. `uses: 'crowdin/github-action@…'` is valid workflow YAML, and matching
+// only the bare form meant the step was not recognised as a Crowdin step at all — so every
+// prohibition scoped to Crowdin steps skipped it and passed by absence. An unrecognised step is an
+// unchecked step, which is the dangerous direction.
+expectRed(
+  'the push workflow quoting its uses value on an upload step before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: 'crowdin/github-action@v2'\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// An aliased input map hides exactly as much as a flow mapping does. The flow form was rejected and
+// this one was not, which is how a limit that "fails closed" stopped being true of every spelling.
+expectRed(
+  'the push workflow declaring step inputs through a YAML alias',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with: *upload_inputs\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
+// The same rule one level down: a comment aligned with `with:` does not end the input mapping, and
+// treating it as a dedent dropped every input after it — so an upload below such a comment was
+// invisible to the ordering rule.
+expectRed(
+  'an upload_translations input after a comment aligned with the with key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `        # seeding inputs below\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// `download_translations: 'true'` is honoured by the action, so the downloader must be FOUND. The
+// selector wrote its own regex instead of reusing `yamlInputIsTrue`, and reported that the workflow
+// had no downloader at all — a false red that reads like a real defect.
+expectGreen('a pull workflow quoting the download_translations value', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    `          download_translations: 'true'\n` + PULL_SIGNING + PULL_SKIP_UNTRANSLATED,
+  ),
+});
+
+// A comment is not structure. One aligned with `steps:` was read as a dedent and ENDED step
+// enumeration, so an upload after it was never examined while the context step before it was.
+expectRed(
+  'an upload hidden behind a comment aligned with the steps key, before context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `    # everything below is the seeding half\n` +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// A quoted `'uses':` KEY, not just a quoted value. The step is then not recognised as a Crowdin
+// step, so every Crowdin-scoped prohibition skips it and passes by absence.
+expectRed(
+  'a Crowdin step whose uses KEY is quoted, uploading before context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        'uses': crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// Inputs under `env:` are passed to the action by nobody. The step does not download, does not
+// sign and does not skip anything, so the downloader must not be found there.
+expectRed(
+  'the download inputs placed under env: instead of with:',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      `name: crowdin\non: push\njobs:\n  sync:\n    if: \${{ vars.CROWDIN_SYNC_ENABLED == 'true' }}\n` +
+        `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
+        `        with:\n          config: crowdin-conf.yml\n` +
+        `        env:\n` +
+        PULL_DOWNLOAD +
+        PULL_SIGNING +
+        PULL_SKIP_UNTRANSLATED,
+    ),
+  /contains no `uses: crowdin\/github-action` step with `download_translations: true`/,
+);
+
+// A quoted `'with':` key hides the inputs just as a bare one does, so the opaque-input check has
+// to see it too.
+expectRed(
+  'a Crowdin step hiding inputs behind a quoted with key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        'with': { command: upload translations }\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
+// A nested `run:` is not a command the runner executes. Under `with:` it is an action input, under
+// `env:` a variable — and accepting one let a Crowdin step that uploads no context satisfy both
+// context assertions. Step-level keys only.
+expectRed(
+  'a nested run: key standing in for the context step',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(
+        `          command_args: '--delete-obsolete'\n` +
+          `          run: node tools/i18n/crowdin-push-context.mjs\n`,
+      ),
+    ),
+  /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
+);
+
+// A quoted or commented `steps:` key is still a steps block. A second job spelled either way was
+// not enumerated at all, so a forbidden Crowdin step inside it was never checked while the normal
+// job kept the mandatory assertions green.
+expectRed(
+  'a forbidden input inside a job whose steps key is quoted',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `  second:\n    runs-on: ubuntu-latest\n    'steps': # sync\n` +
+        `      - uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          download_translations: true\n` +
+        `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// Masking by MIS-SPLITTING. When the step splitter recognised only `name:`/`uses:`-first items, an
+// `if:`-first downloader was merged into the step before it — so that step's `gpg_private_key`
+// satisfied the signing assertion while the real downloader had none. The wrong-step failure in its
+// original form, reached by a different route.
+expectRed(
+  'an if-first downloader masked by the signing input on the preceding step',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(`          upload_sources: false\n` + PULL_SIGNING) +
+        `      - if: \${{ always() }}\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        PULL_DOWNLOAD +
+        PULL_SKIP_UNTRANSLATED,
+    ),
+  /without passing `gpg_private_key`, so its commits are unsigned/,
+);
+
+// `- with: { … }` — the sequence marker can precede the first key, and `uses:` follows on a later
+// line. The opaque-input detector anchored `with:` to the line start and missed it, so the hidden
+// upload read as absent on exactly the step the check exists for.
+expectRed(
+  'a with-first Crowdin step hiding its inputs in a flow mapping',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - with: { command: upload translations }\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
+// Execution, not text. The uploader's name appearing inside a block scalar is PROSE — no step runs
+// it — so the "must attach translator context" guarantee must not be satisfied by a sentence
+// describing the step it is looking for.
+expectRed(
+  'the context uploader named only in prose, with no step running it',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Say what we would do\n` +
+        `        run: echo done\n` +
+        `        env:\n` +
+        `          NOTE: |\n` +
+        `            run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
+);
+
+// A step whose FIRST key is not `name` or `uses`. `if:`, `id:` and `env:` are all valid there, and
+// a step-parser that recognises only the common spelling does not see the step at all — so every
+// check scoped to Crowdin steps skips it. Silent pass, same direction as the quoted `uses:` value.
+expectRed(
+  'an if-first Crowdin step setting skip_untranslated_files',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `      - if: \${{ always() }}\n` +
+        `        id: extra-download\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          download_translations: true\n` +
+        `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// The same shape on the ordering rule, where an unseen step means an unseen upload.
+expectRed(
+  'an if-first Crowdin step uploading translations before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - if: \${{ always() }}\n` +
+        `        name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The bare-command DOWNLOAD path. At the pinned SHA a step with `command: download` runs
+// `crowdin $INPUT_COMMAND $INPUT_COMMAND_ARGS` and returns before the boolean-driven path — so a
+// second Crowdin step can download with the forbidden flag while the step found via
+// `download_translations: true` carries none of it.
+expectRed(
+  'a second Crowdin step downloading via command: with the forbidden flag',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `      - name: Download again\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: download --skip-untranslated-files\n`,
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// Same path, flag in `command_args` instead of the command scalar.
+expectRed(
+  'a second Crowdin step downloading via command: with the flag in command_args',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `      - name: Download again\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: download\n` +
+        `          command_args: '--skip-untranslated-files'\n`,
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// An opaque `with:` on an action that is NOT Crowdin cannot hide any of the three values these
+// checks read, so it must not fail the gate. The first version of the opaque-input check scanned
+// both whole files and failed exactly this — recreating the cross-action false positive the
+// `command` scan had just been scoped to avoid.
+expectGreen('an unrelated action using a flow mapping for its inputs', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml':
+    CROWDIN_WORKFLOW(PULL_OK) +
+    `      - name: Something else entirely\n` +
+    `        uses: some-org/some-action@v1\n` +
+    `        with: { command: value }\n`,
+});
+
+// A `command:` nobody can read counts as an upload, for the same reason a `${{ }}` boolean counts
+// as true: it might be one, and failing closed is the only direction that cannot hide the
+// skipped-context failure this rule exists for.
+expectRed(
+  'the push workflow running an unreadable command before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Do something\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: \${{ inputs.crowdin_command }}\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// `command:` is a generic input name. On an action that is not Crowdin it cannot upload anything,
+// so an unreadable one ahead of the context push is not an ordering violation — classifying it as
+// one failed the gate on a correct workflow.
+expectGreen('an unrelated action with an unreadable command before the context push', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - name: Something else entirely\n` +
+    `        uses: some-org/some-action@v1\n` +
+    `        with:\n` +
+    `          command: \${{ inputs.command }}\n` +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+});
+
+// Masking, on the ordering side. An explicit `false` on an earlier step must not excuse an enabled
+// upload on a later one that still sits ahead of the context push.
+expectRed(
+  'an earlier disabled upload masking a later enabled one ahead of the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(
+        `          command_args: '--delete-obsolete'\n          upload_translations: false\n`,
+      ) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// And an upload explicitly switched off is not an upload, so it must not trip the ordering rule
+// wherever it sits.
+expectGreen('a disabled upload_translations step ahead of the context push', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - name: Seed existing translations\n` +
+    `        uses: crowdin/github-action@v2\n` +
+    `        with:\n` +
+    `          upload_translations: false\n` +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+});
+
+expectRed(
+  'a push workflow that never attaches translator context at all',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`),
+    ),
+  /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
+);
+
+// The permitted half of the ordering rule, which the two controls above cannot reach between them:
+// they cover "before" and "absent", so an implementation that rejected EVERY translation upload
+// would satisfy both while contradicting the rule it claims to enforce. The rule is about order,
+// not about uploading being forbidden — no real workflow uploads translations today, so without
+// this control the allowed path is asserted nowhere.
+expectGreen('a push workflow uploading translations AFTER the context push', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n` +
+    `      - name: Upload existing translations\n` +
+    `        uses: crowdin/github-action@v2\n` +
+    `        with:\n` +
+    `          upload_translations: true\n`,
+});
+
 // `skip_untranslated_strings: false` exports every untranslated string WITH ITS ENGLISH SOURCE,
 // which is how the first real pull overwrote 151 hand-written strings. Asserted on the
 // configuration rather than on a catalogue, because once most of a catalogue is genuinely
@@ -1392,7 +1923,10 @@ expectRed(
   'the pull workflow leaving skip_untranslated_strings at its default',
   'checkCrowdinConfig',
   CROWDIN,
-  (write) => write('.github/workflows/crowdin-pull.yaml', CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING)),
+  (write) => write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING),
+    ),
   /does not set `skip_untranslated_strings: true`/,
 );
 
@@ -1450,6 +1984,262 @@ expectRed(
   /does not set `skip_untranslated_strings: true`/,
 );
 
+// Only one of the two options can be active — Technical Usage Guide — so setting both guards
+// neither loss reliably. crowdin-cli 4.14.2 is blunter and refuses the pair outright in
+// `PropertiesWithFilesBuilder.checkArgParams()` before anything downloads. This check REQUIRED
+// `skip_untranslated_files: true` for one commit, which would have made every nightly pull red;
+// the control is here so the requirement cannot come back.
+expectRed(
+  'the pull workflow setting skip_untranslated_files as an action input',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + PULL_SKIP_UNTRANSLATED_FILES),
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// The boolean input is one of THREE ways the flag reaches the CLI, and the first version of this
+// prohibition guarded only that one. `download_translations_args` and `command_args` are appended
+// to the command verbatim, so the option passes straight through while the check stays green and
+// the nightly download still fails. Raised in review on PR #285.
+expectRed(
+  'the pull workflow smuggling --skip-untranslated-files through download_translations_args',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_OK + `          download_translations_args: '--skip-untranslated-files'\n`,
+      ),
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// The same channel in a different YAML spelling. Inputs reach a Docker action as strings and
+// `entrypoint.sh` compares with `[ "$INPUT_X" = true ]`, so `'true'` and a trailing comment are
+// both honoured — while an anchored `:\s*true\s*$` matches neither. For a FORBIDDEN input that is
+// a silent pass: the option runs and the gate stays green. Raised in review on PR #285.
+expectRed(
+  'the pull workflow setting skip_untranslated_files as a quoted string with a trailing comment',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          skip_untranslated_files: 'true' # belt and braces\n`),
+    ),
+  /declares `skip_untranslated_files: 'true'`/,
+);
+
+// The spelling that ended the enumeration. `${{ true }}` is resolved by Actions long after the
+// guardrail runs, so no regex over the YAML can read it — which is why both forbidden inputs now
+// fail CLOSED on any value that is not literally `false`, rather than matching truthy spellings one
+// at a time. Three review rounds were spent adding spellings before that became obvious.
+expectRed(
+  'the pull workflow hiding skip_untranslated_files behind an Actions expression',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          skip_untranslated_files: \${{ true }}\n`),
+    ),
+  /declares `skip_untranslated_files: \$\{\{ true \}\}`/,
+);
+
+// An explicit `false` is the one value that is NOT the defect, so the fail-closed rule has to let
+// it through — otherwise "remove the option" and "disable the option" would be indistinguishable
+// and the message would be unactionable.
+expectGreen('a pull workflow that explicitly disables skip_untranslated_files', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    PULL_OK + `          skip_untranslated_files: false\n`,
+  ),
+});
+
+// Masking. Reading only the FIRST declaration let a harmless `false` on a preparation step excuse
+// a `true` on the step that actually downloads — the same wrong-step blindness the `crowdinSteps`
+// lookup exists to avoid, reintroduced one layer down. Every declaration is read now.
+expectRed(
+  'a preparation step disabling skip_untranslated_files while the downloader enables it',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        `          upload_sources: false\n          skip_untranslated_files: false\n`,
+      ) +
+        `      - uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          config: crowdin-conf.yml\n` +
+        PULL_OK +
+        `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// The quoted key on the REQUIRED input, which must be ACCEPTED rather than rejected.
+// `'skip_untranslated_strings': true` reaches the action identically, so failing it would be a
+// false red on a correct workflow — the mirror image of the forbidden-input controls below, and a
+// spelling the first version of `yamlInputIsTrue` did not read.
+expectGreen('a pull workflow quoting the skip_untranslated_strings key', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    PULL_DOWNLOAD + PULL_SIGNING + `          'skip_untranslated_strings': true\n`,
+  ),
+});
+
+// Key-shaped text inside a block scalar is PROSE, not configuration. `pull_request_body: |` is
+// where these options get explained to whoever reads the generated pull request, so reading its
+// lines as inputs made the check fire on its own documentation — and unfixable without deleting
+// the explanation. The existing prose control covers the CLI spelling; this covers the input one.
+expectGreen('the pull request body explaining skip_untranslated_files in prose', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml':
+    CROWDIN_WORKFLOW(PULL_OK) +
+    `          pull_request_body: |\n` +
+    `            We do not set skip_untranslated_files: true — only one of the two\n` +
+    `            options can be active. See D8h.\n`,
+});
+
+// Quoted keys. `'skip_untranslated_files': true` is valid YAML and reaches the action identically.
+// Not hypothetical: `crowdin-conf.yml` quotes every key in this repository.
+expectRed(
+  'the pull workflow declaring skip_untranslated_files with a quoted key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          'skip_untranslated_files': true\n`),
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// Block scalars. `download_translations_args: >-` puts the value on the CONTINUATION lines, so a
+// check that reads the key's own line captures `>-` and nothing else while the action folds the
+// block and hands the flag to the CLI.
+expectRed(
+  'the downloading step smuggling --skip-untranslated-files through a folded block scalar',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_OK +
+          `          download_translations_args: >-\n` +
+          `            --skip-untranslated-files\n`,
+      ),
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// An argument list that cannot be READ cannot be cleared, so it fails closed too. Two ways a value
+// can be unreadable, and only the first was covered when this was written: an Actions expression is
+// resolved after the gate runs, and a YAML alias is resolved from an anchor elsewhere in the
+// document. Both mean the text the CLI gets is not the text here.
+expectRed(
+  'the downloading step building its download arguments from an expression',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_OK + `          download_translations_args: \${{ inputs.extra_args }}\n`,
+      ),
+    ),
+  /gives a Crowdin step a command or argument this script cannot read/,
+);
+
+expectRed(
+  'the downloading step taking its download arguments from a YAML alias',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          download_translations_args: *download_args\n`),
+    ),
+  /gives a Crowdin step a command or argument this script cannot read/,
+);
+
+// A flow-mapping `with:` hides every input from these checks, so three prohibitions would read as
+// satisfied by absence. Rejected rather than parsed — but rejected LOUDLY, because a limit that
+// passes quietly is what made the matcher indefensible in the first place.
+expectRed(
+  'the pull workflow declaring step inputs as a flow mapping',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      `name: crowdin\non: push\njobs:\n  sync:\n    if: \${{ vars.CROWDIN_SYNC_ENABLED == 'true' }}\n` +
+        `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
+        `        with: { config: crowdin-conf.yml, download_translations: true, skip_untranslated_files: true }\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
+// Scope. `--skip-untranslated-files` reaches the CLI through `command`, `command_args` or
+// `download_translations_args` on any CROWDIN step — three channels, and every Crowdin step, not
+// only the one with `download_translations: true`, because `command: download` downloads too. A
+// mention anywhere else — the pull request body is the realistic one, since it explains these very
+// options — reaches the CLI on no path, and failing the gate on it would make the check unfixable
+// without deleting the explanation.
+expectGreen('the pull request body mentioning --skip-untranslated-files in prose', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml':
+    CROWDIN_WORKFLOW(PULL_OK) +
+    `          pull_request_body: |\n` +
+    `            We do not pass --skip-untranslated-files; see D8h.\n`,
+});
+
+// The ordering rule had the identical blind spot, and the consequence is the one D8c records: a
+// quoted upload ahead of the context push runs, fails, and skips the context step behind it, while
+// nothing reports that the rule was violated.
+expectRed(
+  'the push workflow uploading translations before context with a quoted upload_translations',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: "true" # quoted, still honoured\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The third channel. The CLI validates the pair in the config file too, via `FileBean`, so moving
+// the option out of the workflow does not avoid the conflict — D8h said so while nothing enforced
+// it.
+expectRed(
+  'crowdin-conf.yml setting skip_untranslated_files',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+      ]).replace(`'files': [`, `'skip_untranslated_files': true\n'files': [`),
+    ),
+  /crowdin-conf\.yml sets `skip_untranslated_files`/,
+);
+
 // The founding defect. Both options deleted from the SECOND entry only: the first still
 // contains both tokens, so the body-wide check this replaced stayed green here.
 expectRed(
@@ -1468,8 +2258,10 @@ expectRed(
   /entry `\/libs\/\*\*\/i18n\/en\.json` omits `export_only_approved`/,
 );
 
-// Presence is not the policy. `export_only_approved: 'false'` does the opposite of what D8 asks
-// and satisfied every token-counting form of this check.
+// Presence is not the policy — the VALUE is. `export_only_approved: 'false'` does the opposite of
+// what the Guidelines require and satisfied every token-counting form of this check. It was
+// briefly the required value here, which is exactly why the control asserts the value and not the
+// key: see D8g.
 expectRed(
   'a Crowdin entry that declares export_only_approved and disables it',
   'checkCrowdinConfig',

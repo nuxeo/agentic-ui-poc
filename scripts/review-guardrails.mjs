@@ -2233,11 +2233,9 @@ async function checkTranslatorContextPush() {
     // guardrail green while no translator context reached Crowdin at all — the gate verified the
     // doorbell and never checked whether anyone answered. The green fixture in the selftest had the
     // same gap, which is how it survived being written.
-    if (
-      !new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(
-        read(pushWorkflow),
-      )
-    ) {
+    // A STEP has to run it. Searching the document matches the command inside any block scalar,
+    // so this assertion could be satisfied by prose describing the step it is looking for.
+    if (runStepOffset(read(pushWorkflow), script) === -1) {
       fail(
         `${pushWorkflow} never runs \`node ${script}\`, so no translator context is uploaded.\n` +
           "    The catalogue goes up through the Crowdin action, but Crowdin's JSON source format " +
@@ -2807,6 +2805,339 @@ function crowdinFileEntries(body) {
   return entries.length > 0 ? entries : null;
 }
 
+/**
+ * Drop whole-line YAML comments, so a token search reads configuration rather than prose.
+ *
+ * Needed by any check that forbids a token the file also EXPLAINS. Both `crowdin-conf.yml` and
+ * the pull workflow argue at length about `skip_untranslated_files` and `export_only_approved`,
+ * and a raw search would match the argument — which makes the check impossible to satisfy and,
+ * worse, green only while nobody documents the decision.
+ *
+ * @param {string} body YAML source
+ * @returns {string} the same text with `#` comment lines removed
+ */
+function stripYamlComments(body) {
+  return body
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+}
+
+/**
+ * Match a workflow input set to a truthy YAML value, in any form the action actually honours.
+ *
+ * `uses:`-style inputs reach a Docker action as strings, and `entrypoint.sh` compares with
+ * `[ "$INPUT_X" = true ]`. So `x: true`, `x: 'true'` and `x: "true"` are all equivalent, and a
+ * trailing `# comment` is not part of the value.
+ *
+ * An anchored `:\s*true\s*$` misses every one of those but the first, and which direction that
+ * breaks depends on the check. For a REQUIRED input it is a false red: loud, and the safe way to
+ * be wrong. For a FORBIDDEN one it is a silent pass, and the forbidden thing runs while the gate
+ * stays green.
+ *
+ * **So this is for REQUIRED inputs only.** The forbidden ones do not enumerate truthy spellings at
+ * all — three rounds of review were lost doing that, one spelling at a time (`true`, then `'true'`
+ * and a trailing comment, then `${{ true }}`) — and instead fail closed on any value that is not
+ * literally `false`. An expression is resolved by Actions long after this runs, so it can never be
+ * cleared here; for a required input that means red, which is correct.
+ *
+ * @param {string} key the input name
+ * @returns {RegExp} matches the key set to true, quoted or not, with or without a trailing comment
+ */
+function yamlInputIsTrue(key) {
+  return new RegExp(`^\\s*['"]?${key}['"]?:\\s*(?:'true'|"true"|true)\\s*(?:#.*)?$`, 'm');
+}
+
+/**
+ * The steps of a workflow job, each with its byte offset in the document.
+ *
+ * Checks about a step's inputs must read that step, not the file. `checkCrowdinConfig` already
+ * learned this once at the top level — matching `uses: crowdin/github-action` anywhere found a
+ * preparation step rather than the one that downloads — and the prohibitions added later scanned
+ * the whole workflow again, so an unrelated action carrying `command: ${{ … }}` was classified as
+ * an unreadable Crowdin upload. Offsets are kept because the ordering rule compares positions.
+ *
+ * @param {string} body workflow YAML
+ * @returns {{text: string, offset: number}[]} in document order
+ */
+function workflowSteps(body) {
+  const lines = body.split('\n');
+  const offsets = [];
+  let running = 0;
+  for (const line of lines) {
+    offsets.push(running);
+    running += line.length + 1;
+  }
+
+  // Every sequence item under a `steps:` key, whatever its first key happens to be.
+  //
+  // This used to match `- ` followed by `name:` or `uses:`, which is only the common spelling. A
+  // step may validly start with `if:`, `id:`, `env:` or `with:` and carry `uses:` on a later line —
+  // and such a Crowdin step was not recognised as a step at all, so every check scoped to Crowdin
+  // steps skipped it. Same silent-pass direction as the quoted `uses:` value, one level lower.
+  const starts = [];
+  let stepsIndent = null;
+  let itemIndent = null;
+  for (let at = 0; at < lines.length; at += 1) {
+    const line = lines[at];
+    // Blank and comment-only lines carry no structure. A comment aligned with `steps:` was being
+    // read as a dedent, which ENDED enumeration — so a translation upload after such a comment was
+    // never examined while the context step before it was.
+    if (line.trim() === '' || /^[^\S\n]*#/.test(line)) continue;
+    const indent = /^[^\S\n]*/.exec(line)[0].length;
+
+    // Dedenting to or past the `steps:` key ends the block — the next job, or a sibling key.
+    if (stepsIndent !== null && indent <= stepsIndent) {
+      stepsIndent = null;
+      itemIndent = null;
+    }
+    // `'steps':` and `steps: # comment` are both valid. A second job spelled either way was
+    // not a steps block at all, so a forbidden Crowdin step inside it was never enumerated.
+    if (/^[^\S\n]*['"]?steps['"]?:[^\S\n]*(?:#.*)?$/.test(line)) {
+      stepsIndent = indent;
+      itemIndent = null;
+      continue;
+    }
+    if (stepsIndent === null) continue;
+
+    // Only items at the block's own depth. Anything deeper is a list INSIDE a step.
+    const item = /^([^\S\n]*)-[^\S\n]+\S/.exec(line);
+    if (item && (itemIndent === null || item[1].length === itemIndent)) {
+      itemIndent = item[1].length;
+      starts.push(offsets[at]);
+    }
+  }
+
+  return starts.map((offset, at) => ({
+    offset,
+    text: body.slice(offset, at + 1 < starts.length ? starts[at + 1] : body.length),
+  }));
+}
+
+/**
+ * EVERY value a key is given in a YAML document, with block scalars folded in, and the byte
+ * offset of each.
+ *
+ * Three review rounds were spent on checks that read one declaration in one form, and each round
+ * found another way past them. The holes were all the same two mistakes:
+ *
+ * - **First match only.** `regex.exec` stops at the first declaration, so a harmless
+ *   `skip_untranslated_files: false` on a preparation step masked a `true` on the step that
+ *   actually downloads. Same for `upload_translations` and the ordering rule.
+ * - **First line only.** `download_translations_args: >-` puts the value on the CONTINUATION
+ *   lines. Reading the line the key is on captures `>-` and nothing else, while the action
+ *   receives the folded text and passes it to the CLI.
+ * - **Bare keys only.** `'upload_translations': true` is valid YAML and reaches the action
+ *   identically. `crowdin-conf.yml` quotes every key in this repository, so the form is not
+ *   hypothetical here, and a workflow may use it too.
+ *
+ * So callers get all of them and decide, rather than each check re-deriving a parser badly.
+ *
+ * This is still a matcher and not a YAML parser. It reads block mappings, which is what these
+ * workflows are; it does not resolve aliases, and it cannot see inside a flow mapping
+ * (`{ key: value }`). Those limits are enforced rather than assumed, which is the only thing that
+ * makes a matcher defensible here: `YAML_UNREADABLE` fails any value whose content is unknown, and
+ * the callers reject a flow-mapping `with:` outright. An earlier version of this comment claimed
+ * the same protection while an alias in `download_translations_args` was read as a harmless
+ * literal — the claim was true of the design and false of one branch.
+ *
+ * @param {string} body YAML source, comments already stripped if the caller needs that
+ * @param {string} keyPattern a regex alternation of key names, e.g. `'a|b'`
+ * @returns {{value: string, index: number}[]} in document order
+ */
+function yamlValues(body, keyPattern) {
+  const lines = body.split('\n');
+  // The optional `- ` matters: a sequence marker can precede the FIRST key of a step, so
+  // `- run: node x`, `- with: { … }` and `- uses: …` are all keys on a step. Without it every
+  // first-key form was invisible — found by this file's own green control for
+  // `checkTranslatorContextPush`, whose fixture writes the uploader as `- run:`.
+  const wanted = new RegExp(
+    `^([^\\S\\n]*)((?:-[^\\S\\n]+)?)['"]?(?:${keyPattern})['"]?:[^\\S\\n]*(.*)$`,
+  );
+  // Any key at all, so a block scalar belonging to a key we do NOT want can still be skipped.
+  const anyKey = /^([^\S\n]*)(?:-[^\S\n]+)?['"]?[^\s:#'"][^:#]*['"]?:[^\S\n]*(.*)$/;
+  const found = [];
+  let offset = 0;
+  let at = 0;
+  while (at < lines.length) {
+    const line = lines[at];
+    const match = wanted.exec(line);
+    const generic = anyKey.exec(line);
+    const indent = (match ?? generic)?.[1].length ?? 0;
+    const isBlock = generic !== null && /^[|>]/.test(generic[2].trim());
+
+    // The extent of a block scalar: the more-indented lines that follow, blanks included.
+    let end = at + 1;
+    if (isBlock) {
+      while (end < lines.length) {
+        if (lines[end].trim() !== '' && /^[^\S\n]*/.exec(lines[end])[0].length <= indent) break;
+        end += 1;
+      }
+    }
+
+    if (match) {
+      const first = match[3].replace(/\s+#.*$/, '').trim();
+      found.push({
+        value: isBlock
+          ? lines
+              .slice(at + 1, end)
+              .map((text) => text.trim())
+              .filter((text) => text !== '')
+              .join(' ')
+          : first,
+        index: offset,
+        // The column the key itself starts at, sequence marker included, so a caller can tell a
+        // STEP-level key from one nested under `with:` or `env:`.
+        indent: match[1].length + match[2].length,
+      });
+    }
+
+    // Skip the block's body either way. Its lines are TEXT, not configuration — a
+    // `pull_request_body: |` that explains `skip_untranslated_files: true` in prose is
+    // documentation, and reading it as an input made the check fire on its own explanation.
+    for (; at < end; at += 1) offset += lines[at].length + 1;
+  }
+  return found;
+}
+
+/** A YAML scalar that explicitly switches an input off. Anything else is treated as on. */
+const YAML_FALSE = /^(?:false|'false'|"false")$/;
+
+/**
+ * A value whose content this script cannot know.
+ *
+ * `${{ … }}` is resolved by Actions after the gate runs; `*anchor` is resolved by the YAML parser
+ * from a definition elsewhere in the document. Either way the text the CLI receives is not the
+ * text here, so nothing can be concluded about it.
+ *
+ * Callers must treat this as a FAILURE for anything forbidden, never as absence. That is the whole
+ * basis on which `yamlValues` is allowed to be a matcher rather than a parser, and it was stated
+ * as the justification before it was true of every branch — an alias in `download_translations_args`
+ * was being read as a harmless literal. Raised in review; the guarantee now holds where it is
+ * claimed.
+ */
+const YAML_UNREADABLE = /^\*|\$\{\{/;
+
+/**
+ * A step that runs the Crowdin action, however its `uses:` value is quoted.
+ *
+ * `uses: 'crowdin/github-action@…'` is valid workflow YAML. Recognising only the bare form meant a
+ * quoted Crowdin step was not recognised as one at all — so every input prohibition scoped to
+ * "Crowdin steps" skipped it and passed by absence. Raised in review; the failure direction is the
+ * dangerous one, because an unrecognised step is an unchecked step.
+ */
+const CROWDIN_ACTION = /['"]?uses['"]?:\s*['"]?crowdin\/github-action/;
+
+/**
+ * The inputs that hand text straight to the Crowdin CLI.
+ *
+ * `command:` is one of them, not just a selector: at the pinned SHA the action runs
+ * `crowdin $INPUT_COMMAND $INPUT_COMMAND_ARGS` and returns, so `command: download` downloads
+ * without `download_translations: true` appearing anywhere.
+ */
+const ARG_INPUTS = 'command|command_args|download_translations_args';
+
+/**
+ * The Crowdin steps of a workflow, each with its byte offset.
+ *
+ * Every check about a Crowdin input belongs here: narrower than the file, because an unrelated
+ * action's inputs are not ours to judge, and wider than "the step with
+ * `download_translations: true`", because that is not the only step that can download.
+ *
+ * @param {string} body workflow YAML
+ * @returns {{text: string, offset: number}[]}
+ */
+function crowdinActionSteps(body) {
+  return workflowSteps(body).filter((step) => CROWDIN_ACTION.test(step.text));
+}
+
+/**
+ * The offset of the step that actually RUNS a script, or `-1` if no step does.
+ *
+ * Asserted on execution rather than on text. A document-wide search for the command is satisfied
+ * by the same characters appearing inside ANY block scalar — an action input, or the
+ * `pull_request_body` prose that explains the pipeline — so "the workflow must attach translator
+ * context" could pass on a sentence about attaching translator context. That is the
+ * comment-versus-code failure this guardrail file exists to catch, in the guardrail file.
+ *
+ * `yamlValues` folds `run: |` blocks, so a multi-line script still matches, and it ignores
+ * key-shaped text inside other keys' blocks, so prose no longer counts.
+ *
+ * @param {string} body workflow YAML
+ * @param {string} script path the step must invoke with `node`
+ * @returns {number} byte offset of the step, or -1
+ */
+function runStepOffset(body, script) {
+  const invocation = new RegExp(`\\bnode\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+  for (const step of workflowSteps(body)) {
+    // STEP-LEVEL `run` only. A `run:` nested under `with:` or `env:` is an input or a variable,
+    // not a command the runner executes — and accepting one let a Crowdin action that uploads no
+    // context satisfy both context assertions.
+    if (
+      yamlValues(step.text, 'run').some(
+        ({ value, indent }) => indent === stepKeyIndent(step.text) && invocation.test(value),
+      )
+    ) {
+      return step.offset;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The column a step's own keys start at, sequence marker included.
+ *
+ * `- name: X` puts `name` at the marker's width; the sibling `run:`/`uses:`/`with:` on following
+ * lines line up with it. Anything deeper belongs to one of those keys.
+ *
+ * @param {string} stepText one step, as returned by `workflowSteps`
+ * @returns {number}
+ */
+function stepKeyIndent(stepText) {
+  const marker = /^[^\S\n]*-[^\S\n]+/.exec(stepText);
+  return marker ? marker[0].length : 0;
+}
+
+/**
+ * A step's `with:` block — its action INPUTS — with the offset it starts at inside the step.
+ *
+ * Inputs are children of `with:`, so that is where to look for them. Reading the whole step
+ * instead means a `command:` under `env:`, or any nested mapping that happens to reuse an input
+ * name, is read as configuration. For a forbidden input that direction is a false positive rather
+ * than a silent pass, so it was the less dangerous half of the same mistake `run` made — but it is
+ * still a gate failing a workflow that is correct.
+ *
+ * Returns nothing when the block is absent or in a form `yamlValues` cannot read; the opaque-`with`
+ * check fails those separately, so absence here never means "cleared".
+ *
+ * @param {string} stepText one step, as returned by `workflowSteps`
+ * @returns {{text: string, offset: number}|null}
+ */
+function stepWithBlock(stepText) {
+  const keyIndent = stepKeyIndent(stepText);
+  const lines = stepText.split('\n');
+  let offset = 0;
+  for (let at = 0; at < lines.length; at += 1) {
+    const isWith = new RegExp(`^[^\\S\\n]{${keyIndent}}['"]?with['"]?:[^\\S\\n]*(?:#.*)?$`).test(
+      lines[at].replace(/^([^\S\n]*)-([^\S\n]+)/, (_, lead, gap) => lead + ' '.repeat(gap.length + 1)),
+    );
+    if (isWith) {
+      // Blank AND comment-only lines carry no structure, exactly as in `workflowSteps`. A comment
+      // aligned with `with:` does not end the mapping, and treating it as a dedent dropped every
+      // input after it — so an `upload_translations: true` below such a comment was invisible.
+      let end = at + 1;
+      while (end < lines.length) {
+        const structural = lines[end].trim() !== '' && !/^[^\S\n]*#/.test(lines[end]);
+        if (structural && /^[^\S\n]*/.exec(lines[end])[0].length <= keyIndent) break;
+        end += 1;
+      }
+      return { text: lines.slice(at + 1, end).join('\n'), offset: offset + lines[at].length + 1 };
+    }
+    offset += lines[at].length + 1;
+  }
+  return null;
+}
+
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
   // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
@@ -2934,10 +3265,24 @@ function checkCrowdinConfig() {
     // while doing the opposite of what D8 asks for.
     const D8_OPTIONS = [
       [
+        // A MUST in the Crowdin Guidelines, not a preference: "when proof-reading is setup,
+        // export options MUST be configured so that only approved translations end up in the
+        // source code." Whether proof-reading is configured on the project is not established —
+        // the team confirming on INTERN-1346 that translations can begin is readiness, not
+        // workflow configuration — but `true` is correct either way, because the Guidelines'
+        // security risk table marks reputation damage RESOLVED on the grounds that every
+        // translation is reviewed internally, and that holds only while this is `true`.
+        //
+        // Asserted at `true` after a round trip through `false`. See D8g for why that was
+        // wrong; the short version is that the mechanical finding behind it (machine
+        // pre-translation cannot auto-approve) was true and the conclusion was not.
         'export_only_approved',
         'true',
         'Unapproved work is a draft; exporting it puts half-finished translations in front of ' +
-          "users and makes the reviewer's approval meaningless.",
+          "users and makes the reviewer's approval meaningless. The Guidelines make it a MUST " +
+          'once proof-reading is set up, and rest the "no controversial or profane content" ' +
+          'risk rating on every translation being reviewed internally — which holds only while ' +
+          'this is `true`, whether or not proof-reading is configured yet. See D8g.',
       ],
       [
         'update_option',
@@ -3070,7 +3415,11 @@ function checkCrowdinConfig() {
   // the arrangement it exists to reject. Caught by its own negative control, which kept the dead
   // host step in the fixture on purpose.
   const pull = read(workflows[1]);
-  const pullSteps = pull.split(/^\s*-\s(?=name:|uses:)/m);
+  // Split with the real step parser, not `name:`/`uses:`-first. An `if:`-first downloader was
+  // merged into the step BEFORE it, so that step's `gpg_private_key` or
+  // `skip_untranslated_strings` satisfied these checks while the actual downloader omitted
+  // them — masking by mis-splitting, which is the wrong-step failure in its original form.
+  const pullSteps = workflowSteps(pull).map((step) => step.text);
   // The step that DOWNLOADS, not merely the first Crowdin step.
   //
   // `find` on the action name alone was wrong in a way that was invisible while the pull workflow
@@ -3079,11 +3428,22 @@ function checkCrowdinConfig() {
   // `skip_untranslated_strings: true` would satisfy both assertions below while the step that
   // actually downloads omitted it, and signing matters on the downloading step too, because that
   // is the one that commits.
-  const crowdinSteps = pullSteps.filter((step) => /uses:\s*crowdin\/github-action/.test(step));
-  const crowdinStep = crowdinSteps.find((step) =>
-    /^\s*download_translations:\s*true\s*$/m.test(step),
+  //
+  // And all three of these are INPUTS, so all three are read from the step's `with:` block rather
+  // than from the step. `download_translations: true`, `gpg_private_key` and
+  // `skip_untranslated_strings: true` placed under `env:` are passed to the action by nobody —
+  // the step does not download, does not sign and does not skip anything — yet every assertion
+  // here was satisfied by their presence anywhere in the step.
+  const crowdinSteps = pullSteps
+    .filter((step) => CROWDIN_ACTION.test(step))
+    .map((step) => stepWithBlock(step)?.text ?? '');
+  // Through `yamlInputIsTrue`, so a REQUIRED input follows the same YAML semantics as every other
+  // one. `download_translations: 'true'` is honoured by the action, and rejecting it reported that
+  // the workflow had no downloader at all — a false red that would have been read as a real defect.
+  const crowdinStep = crowdinSteps.find((inputs) =>
+    yamlInputIsTrue('download_translations').test(inputs),
   );
-  if (crowdinStep !== undefined && !/^\s*gpg_private_key:/m.test(crowdinStep)) {
+  if (crowdinStep !== undefined && !/^\s*['"]?gpg_private_key['"]?:/m.test(crowdinStep)) {
     fail(
       `${workflows[1]} runs crowdin/github-action without passing \`gpg_private_key\`, so its ` +
         'commits are unsigned.\n' +
@@ -3095,16 +3455,42 @@ function checkCrowdinConfig() {
   }
 
   // `skip_untranslated_strings: true` on that same step, asserted on the CONFIGURATION rather
-  // than on its symptom — because after seeding, the symptom is no longer a failure.
+  // than on its symptom — because as the catalogues fill, the symptom stops being a failure.
   //
   // `checkCataloguesAreTranslated` fails a catalogue whose every value equals English. That is
-  // exactly what reverting this input produced BEFORE the existing French and German strings were
-  // seeded into Crowdin. Afterwards it is not: those 151 strings come back genuinely translated
-  // and the remaining ~1,890 come back padded with English, which is 96% identical — past the
-  // 80% warning threshold, short of the all-identical failure. So the regression would warn and
-  // CI would pass, and it would pass more convincingly the more of the catalogue is real.
+  // exactly what reverting this input produced while Crowdin was empty. It is not what reverting
+  // it produces once Crowdin holds translations of its own: those come back genuinely translated
+  // and the rest come back padded with English, which at 1,897 of 1,972 is 96% identical — past
+  // the 80% warning threshold, short of the all-identical failure. So the regression would warn
+  // and CI would pass, and it would pass more convincingly the more of the catalogue is real.
   //
   // A gate that only sees the pathological extreme stops working the moment the product improves.
+  //
+  // `skip_untranslated_files` is then FORBIDDEN, which is the reverse of what this check required
+  // for one commit. The Technical Usage Guide is explicit that "only one of these options can be
+  // activated", and on the pinned toolchain the pair does not degrade to one of them winning — it
+  // fails. crowdin-cli 4.14.2 rejects it in `PropertiesWithFilesBuilder.checkArgParams()` with
+  // `error.skip_untranslated_both_strings_and_files`, "You cannot skip strings and files at the
+  // same time", before the download runs, so NEITHER option takes effect and nothing is
+  // downloaded. The guardrail that required the pair was therefore green over a pull that could
+  // not have worked at all.
+  //
+  // Forbidden UNCONDITIONALLY, and across every channel that reaches the CLI — not just the
+  // action's boolean input, which is all the first version of this check looked at. Three ways in,
+  // and the boolean was the only one guarded:
+  //
+  //   1. `skip_untranslated_files: true`            — the action input
+  //   2. `download_translations_args`, `command_args`, `upload_*_args` — appended VERBATIM to the
+  //      command (`entrypoint.sh` 82-83 and 408-409), so `--skip-untranslated-files` passes straight
+  //      through
+  //   3. `crowdin-conf.yml`                         — `FileBean` validates the same pair there
+  //
+  // Unconditional rather than "alongside `skip_untranslated_strings`" because that option is
+  // separately REQUIRED above, so any appearance of this one is always the conflict. Stating it as
+  // a flat prohibition means the check cannot be satisfied by removing the wrong half.
+  //
+  // Comments are stripped before matching, because the workflow explains at length why this option
+  // is absent — a raw text search would fire on the explanation and make the check unfixable.
   if (crowdinStep === undefined) {
     fail(
       `${workflows[1]} contains no \`uses: crowdin/github-action\` step with ` +
@@ -3114,7 +3500,7 @@ function checkCrowdinConfig() {
         }, so neither the signing nor the \`skip_untranslated_strings\` assertion examined ` +
         'anything. It cannot download translations in this state.',
     );
-  } else if (!/^\s*skip_untranslated_strings:\s*true\s*$/m.test(crowdinStep)) {
+  } else if (!yamlInputIsTrue('skip_untranslated_strings').test(crowdinStep)) {
     fail(
       `${workflows[1]} does not set \`skip_untranslated_strings: true\` on its ` +
         'crowdin/github-action step.\n' +
@@ -3124,6 +3510,223 @@ function checkCrowdinConfig() {
         'hand-written French and 76 German strings because an export replaces the whole file.\n' +
         "    `true` omits the key instead, so `setFallbackLang('en')` renders English and a short " +
         'catalogue becomes the honest steady state. See D8d in docs/i18n-localization-plan.md.',
+    );
+  }
+
+  // Every channel, in the two files that can carry one. `stripYamlComments` is what makes a token
+  // search safe here: both files discuss this option at length in prose.
+  const WHY_NO_SKIP_FILES =
+    '    Only one of `skip_untranslated_strings` and `skip_untranslated_files` can be active — ' +
+    'Technical Usage Guide, "only one of these options can be activated".\n' +
+    '    On the pinned toolchain the pair does not degrade, it fails: crowdin-cli 4.14.2 rejects ' +
+    'it in `PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and files ' +
+    'at the same time", before the download runs. So NEITHER option takes effect and no ' +
+    'catalogue is downloaded at all.\n' +
+    '    `skip_untranslated_strings` is the one to keep: an English-padded catalogue at full key ' +
+    'parity passes as a finished translation, while an empty catalogue is loudly wrong and ' +
+    '`checkCataloguesAreTranslated` fails the pull request carrying it. See D8h in ' +
+    'docs/i18n-localization-plan.md.';
+
+  const pullCode = stripYamlComments(pull);
+
+  // Fail CLOSED, on EVERY declaration whose value is not literally false.
+  //
+  // Enumerating truthy spellings was the wrong shape and lost three rounds of review to it:
+  // `true`, then `'true'` and a trailing comment, then `${{ true }}`. An expression cannot be
+  // evaluated here at all, so for a FORBIDDEN input the only sound rule is that its presence is
+  // the defect unless it is provably switched off.
+  //
+  // Every declaration on a CROWDIN step, not the first, and not the whole file.
+  //
+  // Every declaration, because a preparation step carrying `skip_untranslated_files: false` ahead
+  // of the downloading step masked a `true` on the downloader — the same wrong-step blindness the
+  // `crowdinSteps.find` above exists to avoid. Crowdin steps only, because the input means nothing
+  // on any other action, and reading the whole file made a mention in `pull_request_body` into a
+  // configuration change.
+  const offending = crowdinActionSteps(pullCode)
+    .flatMap((step) => {
+      const inputs = stepWithBlock(step.text);
+      return inputs ? yamlValues(inputs.text, 'skip_untranslated_files') : [];
+    })
+    .find(({ value }) => !YAML_FALSE.test(value));
+  if (offending !== undefined) {
+    fail(
+      `${workflows[1]} declares \`skip_untranslated_files: ${offending.value}\`.\n` +
+        '    Anything but a literal `false` fails here, including `${{ … }}`, because an ' +
+        'expression is resolved by Actions long after this runs — so a forbidden input cannot be ' +
+        'cleared by making its value unreadable. Every declaration in the file is read, so a ' +
+        '`false` on another step does not excuse this one.\n' +
+        WHY_NO_SKIP_FILES,
+    );
+  }
+
+  // The argument channels, on EVERY Crowdin step rather than only the boolean downloader.
+  //
+  // `download_translations_args` is appended to the download command and `command_args` to the
+  // command the step runs (`entrypoint.sh` 82-83 and 408-409). `command:` itself is a third
+  // route: at the pinned SHA a step with `command: download` runs `crowdin $INPUT_COMMAND
+  // $INPUT_COMMAND_ARGS` and returns before the boolean-driven path, so a SECOND Crowdin step can
+  // download with the forbidden flag while `crowdinStep` — found by `download_translations: true`
+  // — carries none of it. Reading only that step was the same wrong-step blindness again, a level
+  // out: the right step for the boolean is not the only step that downloads.
+  //
+  // Still Crowdin steps only, never the whole file: a mention in `pull_request_body` reaches the
+  // CLI on no path, and an unrelated action's inputs are not ours to judge.
+  //
+  // Read through block scalars, because `download_translations_args: >-` puts the flag on the
+  // following lines and the action folds them before passing them on.
+  for (const step of crowdinActionSteps(pullCode)) {
+    const inputs = stepWithBlock(step.text);
+    for (const { value } of inputs ? yamlValues(inputs.text, ARG_INPUTS) : []) {
+      if (/--skip-untranslated-files\b/.test(value)) {
+        fail(
+          `${workflows[1]} passes \`--skip-untranslated-files\` to a Crowdin step: ` +
+            `\`${value}\`.\n` +
+            '    `command`, `command_args` and `download_translations_args` all reach the CLI ' +
+            'VERBATIM, so this arrives exactly as the boolean input would. Checking only ' +
+            '`skip_untranslated_files:`, and only on the step with `download_translations: ' +
+            "true`, left this route open — `command: download` downloads too.\n" +
+            WHY_NO_SKIP_FILES,
+        );
+      } else if (YAML_UNREADABLE.test(value)) {
+        fail(
+          `${workflows[1]} gives a Crowdin step a command or argument this script cannot read: ` +
+            `\`${value}\`.\n` +
+            '    An Actions expression is resolved after this gate runs, and a YAML alias is ' +
+            'resolved from an anchor elsewhere in the document — either way the text the CLI ' +
+            'receives is not the text here, so nothing can tell whether it contains ' +
+            '`--skip-untranslated-files`. What cannot be read cannot be cleared, so it fails ' +
+            'closed. Pass the command and its flags literally.\n' +
+            WHY_NO_SKIP_FILES,
+        );
+      }
+    }
+  }
+
+  if (/skip_untranslated_files/.test(stripYamlComments(read(config)))) {
+    fail(
+      `${config} sets \`skip_untranslated_files\`.\n` +
+        '    The CLI validates the pair in the CONFIG FILE too, via `FileBean`, so moving the ' +
+        'option out of the workflow does not avoid the conflict — D8h says as much and this ' +
+        'check did not enforce it.\n' +
+        WHY_NO_SKIP_FILES,
+    );
+  }
+
+  // The push workflow must attach translator context, and nothing that uploads translations may
+  // come before it.
+  //
+  // The first half is the live rule. The second guards against reintroducing something that has
+  // already been removed: a `seed_translations` step that uploaded the repository's existing
+  // non-English catalogues. Seeding itself is a documented SHOULD and still has to happen, but
+  // NOT from CI — the standard's mechanism is a one-time `crowdin upload translations
+  // --auto-approve-imported` from the command line with the setup token, which is why the CI
+  // token refused it. So the step is gone because CI was never the mechanism. See D8f.
+  //
+  // The rule outlives it because of HOW it failed. It sat between the source upload and the
+  // context push, failed on a token scope, and skipped the context step behind it: a failed step
+  // skips the rest of the job. That is the shape D8c records — the job goes red over one thing and
+  // the translator context INFO-144 requires is silently never attached. It cost nothing only
+  // because the context was already in Crowdin and the script is idempotent, which is luck rather
+  // than design.
+  //
+  // So if a translation upload ever comes back, it goes last. It has no bearing on the sources or
+  // their context, so there is never a reason for it to precede them.
+  const push = read(workflows[0]);
+  // The step that RUNS the uploader, not the first place its name appears. A document search
+  // matches the same text inside any block scalar, including the `pull_request_body` prose that
+  // explains this pipeline — so the context guarantee could be satisfied by a sentence.
+  const contextAt = runStepOffset(push, 'tools/i18n/crowdin-push-context.mjs');
+  // Fail closed, exactly as the prohibition above does: any declared `upload_translations` counts
+  // as an upload unless it is literally `false`. An expression is resolved by Actions long after
+  // this runs, so a step whose upload is `${{ … }}` can still run, still fail, and still skip the
+  // context step behind it — which is the whole failure this rule exists for.
+  //
+  // TWO interfaces and EVERY declaration, both learned in review. The action also runs a bare
+  // `command:`, so `command: upload translations` uploads without the boolean ever appearing; and
+  // reading only the first `upload_translations` let an explicit `false` on an earlier step mask an
+  // enabled upload on a later one. The rule is "nothing that uploads may come before context", so
+  // what matters is the EARLIEST upload of any kind.
+  // A `command:` that cannot be read counts as an upload for the same reason a `${{ }}` boolean
+  // counts as `true`: it might be one, and nothing here can rule it out. Failing closed on the
+  // forbidden side is the only direction that cannot hide the failure this rule exists for.
+  //
+  // Both interfaces are read off CROWDIN steps only. `command:` is a generic input name — an
+  // unrelated action with `command: ${{ inputs.command }}` cannot invoke Crowdin, and classifying
+  // it as an unreadable translation upload failed the gate on a workflow that was correct.
+  const uploads = workflowSteps(push)
+    .filter((step) => CROWDIN_ACTION.test(step.text))
+    .flatMap((step) => {
+      const inputs = stepWithBlock(step.text);
+      if (!inputs) return [];
+      const at = ({ index }) => step.offset + inputs.offset + index;
+      return [
+        ...yamlValues(inputs.text, 'upload_translations')
+          .filter(({ value }) => !YAML_FALSE.test(value))
+          .map(at),
+        ...yamlValues(inputs.text, 'command')
+          .filter(
+            ({ value }) =>
+              /^['"]?upload\s+translations\b/.test(value) || YAML_UNREADABLE.test(value),
+          )
+          .map(at),
+      ];
+    });
+  const translationUploadAt = uploads.length > 0 ? Math.min(...uploads) : -1;
+
+  // An input map this script cannot read, in either workflow.
+  //
+  // Three forms, all valid YAML, all invisible to `yamlValues`: a flow mapping
+  // `with: { command: upload translations }`, an alias `with: *upload_inputs` resolving to a map
+  // defined elsewhere, and `with: ${{ … }}`. In every case the checks above read the step as
+  // carrying NO inputs — absence, when the truth is unknown, which turns the prohibitions into
+  // no-ops.
+  //
+  // Rejected rather than parsed. These workflows are block-style throughout, nothing needs the
+  // other forms, and adding a YAML dependency to a script that has none to cover styles nobody
+  // writes is the wrong trade. But the limit has to FAIL, not pass quietly, or the justification
+  // for using a matcher at all stops holding — which is exactly how the alias form got in: the
+  // flow mapping was rejected and the alias, which hides just as much, was not.
+  //
+  // CROWDIN steps only. Only a Crowdin step's inputs can hide the three values these checks read,
+  // so an unrelated `uses: some-org/action` with `with: { command: value }` is valid and none of
+  // our business. The first version of this scanned both whole files and failed it — the same
+  // cross-action false positive the `command` scan above had just been scoped to avoid, recreated
+  // one check further down within the hour.
+  for (const workflow of workflows) {
+    for (const step of crowdinActionSteps(stripYamlComments(read(workflow)))) {
+      const opaque = step.text
+        .split('\n')
+        // `- with: { … }` is valid: the sequence marker can precede the first key, and
+        // `uses:` then follows on a later line. Without the optional marker the hidden
+        // inputs read as absent on exactly the step this check exists for.
+        .find((line) => /^\s*(?:-\s+)?['"]?with['"]?:\s*(?:\{|\*|\$\{\{)/.test(line));
+      if (opaque !== undefined) {
+        fail(
+          `${workflow} declares Crowdin step inputs in a form this guardrail cannot read: ` +
+            `\`${opaque.trim()}\`.\n` +
+            '    A flow mapping, a YAML alias and an expression all hide the keys inside them, ' +
+            'so `skip_untranslated_files`, `upload_translations` and `command` would read as ' +
+            'ABSENT rather than unknown — which turns three prohibitions into no-ops.\n' +
+            '    Use the block form (`with:` then one `key: value` per line), which is what ' +
+            'every other step in these workflows uses.',
+        );
+      }
+    }
+  }
+  if (contextAt === -1) {
+    fail(
+      `${workflows[0]} never runs \`tools/i18n/crowdin-push-context.mjs\`, so the sources upload ` +
+        'without the translator context INFO-144 requires on every string.',
+    );
+  } else if (translationUploadAt !== -1 && translationUploadAt < contextAt) {
+    fail(
+      `${workflows[0]} uploads translations before pushing translator context.\n` +
+        '    A failed step skips the rest of the job, so a step ahead of the context push can ' +
+        'stop it running — which is what happened the first time `seed_translations` ran: it ' +
+        'failed on a token scope and the context step behind it was skipped. Move the ' +
+        'translation upload after the context push; it has no bearing on either the sources or ' +
+        'their context. See D8c in docs/i18n-localization-plan.md.',
     );
   }
 
