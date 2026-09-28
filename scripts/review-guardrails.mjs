@@ -2888,7 +2888,9 @@ function workflowSteps(body) {
       stepsIndent = null;
       itemIndent = null;
     }
-    if (/^[^\S\n]*steps:[^\S\n]*$/.test(line)) {
+    // `'steps':` and `steps: # comment` are both valid. A second job spelled either way was
+    // not a steps block at all, so a forbidden Crowdin step inside it was never enumerated.
+    if (/^[^\S\n]*['"]?steps['"]?:[^\S\n]*(?:#.*)?$/.test(line)) {
       stepsIndent = indent;
       itemIndent = null;
       continue;
@@ -2947,7 +2949,7 @@ function yamlValues(body, keyPattern) {
   // first-key form was invisible — found by this file's own green control for
   // `checkTranslatorContextPush`, whose fixture writes the uploader as `- run:`.
   const wanted = new RegExp(
-    `^([^\\S\\n]*)(?:-[^\\S\\n]+)?['"]?(?:${keyPattern})['"]?:[^\\S\\n]*(.*)$`,
+    `^([^\\S\\n]*)((?:-[^\\S\\n]+)?)['"]?(?:${keyPattern})['"]?:[^\\S\\n]*(.*)$`,
   );
   // Any key at all, so a block scalar belonging to a key we do NOT want can still be skipped.
   const anyKey = /^([^\S\n]*)(?:-[^\S\n]+)?['"]?[^\s:#'"][^:#]*['"]?:[^\S\n]*(.*)$/;
@@ -2971,7 +2973,7 @@ function yamlValues(body, keyPattern) {
     }
 
     if (match) {
-      const first = match[2].replace(/\s+#.*$/, '').trim();
+      const first = match[3].replace(/\s+#.*$/, '').trim();
       found.push({
         value: isBlock
           ? lines
@@ -2981,6 +2983,9 @@ function yamlValues(body, keyPattern) {
               .join(' ')
           : first,
         index: offset,
+        // The column the key itself starts at, sequence marker included, so a caller can tell a
+        // STEP-level key from one nested under `with:` or `env:`.
+        indent: match[1].length + match[2].length,
       });
     }
 
@@ -3062,11 +3067,73 @@ function crowdinActionSteps(body) {
 function runStepOffset(body, script) {
   const invocation = new RegExp(`\\bnode\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
   for (const step of workflowSteps(body)) {
-    if (yamlValues(step.text, 'run').some(({ value }) => invocation.test(value))) {
+    // STEP-LEVEL `run` only. A `run:` nested under `with:` or `env:` is an input or a variable,
+    // not a command the runner executes — and accepting one let a Crowdin action that uploads no
+    // context satisfy both context assertions.
+    if (
+      yamlValues(step.text, 'run').some(
+        ({ value, indent }) => indent === stepKeyIndent(step.text) && invocation.test(value),
+      )
+    ) {
       return step.offset;
     }
   }
   return -1;
+}
+
+/**
+ * The column a step's own keys start at, sequence marker included.
+ *
+ * `- name: X` puts `name` at the marker's width; the sibling `run:`/`uses:`/`with:` on following
+ * lines line up with it. Anything deeper belongs to one of those keys.
+ *
+ * @param {string} stepText one step, as returned by `workflowSteps`
+ * @returns {number}
+ */
+function stepKeyIndent(stepText) {
+  const marker = /^[^\S\n]*-[^\S\n]+/.exec(stepText);
+  return marker ? marker[0].length : 0;
+}
+
+/**
+ * A step's `with:` block — its action INPUTS — with the offset it starts at inside the step.
+ *
+ * Inputs are children of `with:`, so that is where to look for them. Reading the whole step
+ * instead means a `command:` under `env:`, or any nested mapping that happens to reuse an input
+ * name, is read as configuration. For a forbidden input that direction is a false positive rather
+ * than a silent pass, so it was the less dangerous half of the same mistake `run` made — but it is
+ * still a gate failing a workflow that is correct.
+ *
+ * Returns nothing when the block is absent or in a form `yamlValues` cannot read; the opaque-`with`
+ * check fails those separately, so absence here never means "cleared".
+ *
+ * @param {string} stepText one step, as returned by `workflowSteps`
+ * @returns {{text: string, offset: number}|null}
+ */
+function stepWithBlock(stepText) {
+  const keyIndent = stepKeyIndent(stepText);
+  const lines = stepText.split('\n');
+  let offset = 0;
+  for (let at = 0; at < lines.length; at += 1) {
+    const isWith = new RegExp(`^[^\\S\\n]{${keyIndent}}['"]?with['"]?:[^\\S\\n]*(?:#.*)?$`).test(
+      lines[at].replace(/^([^\S\n]*)-([^\S\n]+)/, (_, lead, gap) => lead + ' '.repeat(gap.length + 1)),
+    );
+    if (isWith) {
+      let end = at + 1;
+      while (end < lines.length) {
+        if (
+          lines[end].trim() !== '' &&
+          /^[^\S\n]*/.exec(lines[end])[0].length <= keyIndent
+        ) {
+          break;
+        }
+        end += 1;
+      }
+      return { text: lines.slice(at + 1, end).join('\n'), offset: offset + lines[at].length + 1 };
+    }
+    offset += lines[at].length + 1;
+  }
+  return null;
 }
 
 function checkCrowdinConfig() {
@@ -3463,9 +3530,11 @@ function checkCrowdinConfig() {
   // `crowdinSteps.find` above exists to avoid. Crowdin steps only, because the input means nothing
   // on any other action, and reading the whole file made a mention in `pull_request_body` into a
   // configuration change.
-  const offending = workflowSteps(pullCode)
-    .filter((step) => CROWDIN_ACTION.test(step.text))
-    .flatMap((step) => yamlValues(step.text, 'skip_untranslated_files'))
+  const offending = crowdinActionSteps(pullCode)
+    .flatMap((step) => {
+      const inputs = stepWithBlock(step.text);
+      return inputs ? yamlValues(inputs.text, 'skip_untranslated_files') : [];
+    })
     .find(({ value }) => !YAML_FALSE.test(value));
   if (offending !== undefined) {
     fail(
@@ -3494,7 +3563,8 @@ function checkCrowdinConfig() {
   // Read through block scalars, because `download_translations_args: >-` puts the flag on the
   // following lines and the action folds them before passing them on.
   for (const step of crowdinActionSteps(pullCode)) {
-    for (const { value } of yamlValues(step.text, ARG_INPUTS)) {
+    const inputs = stepWithBlock(step.text);
+    for (const { value } of inputs ? yamlValues(inputs.text, ARG_INPUTS) : []) {
       if (/--skip-untranslated-files\b/.test(value)) {
         fail(
           `${workflows[1]} passes \`--skip-untranslated-files\` to a Crowdin step: ` +
@@ -3573,17 +3643,22 @@ function checkCrowdinConfig() {
   // it as an unreadable translation upload failed the gate on a workflow that was correct.
   const uploads = workflowSteps(push)
     .filter((step) => CROWDIN_ACTION.test(step.text))
-    .flatMap((step) => [
-      ...yamlValues(step.text, 'upload_translations')
-        .filter(({ value }) => !YAML_FALSE.test(value))
-        .map(({ index }) => step.offset + index),
-      ...yamlValues(step.text, 'command')
-        .filter(
-          ({ value }) =>
-            /^['"]?upload\s+translations\b/.test(value) || YAML_UNREADABLE.test(value),
-        )
-        .map(({ index }) => step.offset + index),
-    ]);
+    .flatMap((step) => {
+      const inputs = stepWithBlock(step.text);
+      if (!inputs) return [];
+      const at = ({ index }) => step.offset + inputs.offset + index;
+      return [
+        ...yamlValues(inputs.text, 'upload_translations')
+          .filter(({ value }) => !YAML_FALSE.test(value))
+          .map(at),
+        ...yamlValues(inputs.text, 'command')
+          .filter(
+            ({ value }) =>
+              /^['"]?upload\s+translations\b/.test(value) || YAML_UNREADABLE.test(value),
+          )
+          .map(at),
+      ];
+    });
   const translationUploadAt = uploads.length > 0 ? Math.min(...uploads) : -1;
 
   // An input map this script cannot read, in either workflow.

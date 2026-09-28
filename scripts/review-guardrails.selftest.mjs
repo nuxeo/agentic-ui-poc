@@ -1511,6 +1511,44 @@ expectRed(
   /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
 
+// A nested `run:` is not a command the runner executes. Under `with:` it is an action input, under
+// `env:` a variable — and accepting one let a Crowdin step that uploads no context satisfy both
+// context assertions. Step-level keys only.
+expectRed(
+  'a nested run: key standing in for the context step',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(
+        `          command_args: '--delete-obsolete'\n` +
+          `          run: node tools/i18n/crowdin-push-context.mjs\n`,
+      ),
+    ),
+  /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
+);
+
+// A quoted or commented `steps:` key is still a steps block. A second job spelled either way was
+// not enumerated at all, so a forbidden Crowdin step inside it was never checked while the normal
+// job kept the mandatory assertions green.
+expectRed(
+  'a forbidden input inside a job whose steps key is quoted',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `  second:\n    runs-on: ubuntu-latest\n    'steps': # sync\n` +
+        `      - uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          download_translations: true\n` +
+        `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
 // Masking by MIS-SPLITTING. When the step splitter recognised only `name:`/`uses:`-first items, an
 // `if:`-first downloader was merged into the step before it — so that step's `gpg_private_key`
 // satisfied the signing assertion while the real downloader had none. The wrong-step failure in its
