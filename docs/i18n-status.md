@@ -652,10 +652,12 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
    project owner holds.
 
    Until it is done, a language at 0% exports an empty catalogue over `fr.json` and `de.json`.
-   `checkCataloguesAreTranslated` fails such a pull request, so nothing reaches `main`, but the
-   nightly job stays red until seeding happens or real translations exist. `skip_untranslated_files`
-   was briefly added to suppress that and has been removed: only one of it and
-   `skip_untranslated_strings` can be active (D8h).
+   **Watch the pull request, not the scheduled run.** `Crowdin Pull` opens the pull request and
+   returns successfully — it runs no checks of its own — so the nightly job shows **green** while
+   `checkCataloguesAreTranslated` fails the `chore(i18n): new Crowdin translations` pull request it
+   opened. Nothing reaches `main` either way, but an operator watching only the Actions list sees
+   nothing wrong. `skip_untranslated_files` was briefly added to suppress this and has been
+   removed: only one of it and `skip_untranslated_strings` can be active (D8h).
 
    Beyond those 151, every locale correctly renders English through the fallback and the catalogues
    stay short. **Translation is the next action, and the team is ready to begin rather than under

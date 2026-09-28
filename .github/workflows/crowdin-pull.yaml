@@ -158,11 +158,11 @@ jobs:
           #   `skip_untranslated_files` are not specifically useful, and the former can lead to
           #   empty translations being exported (and only one of these options can be activated)."
           #
-          # So setting both did not guard two losses. One was silently ignored, and nothing said
-          # which — a configuration Crowdin cannot honour, asserted green by a gate. The pinned
-          # CLI is blunter than the guide: crowdin-cli 4.14.2 rejects the pair outright in
-          # `PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and files
-          # at the same time", so the nightly pull would have failed before downloading a byte.
+          # So setting both did not guard two losses. On the pinned toolchain it guarded NEITHER,
+          # and not because one option quietly won — crowdin-cli 4.14.2 rejects the pair outright
+          # in `PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and
+          # files at the same time", before the download runs. The pull would have failed without
+          # downloading a byte, while a guardrail asserted the configuration was correct.
           #
           # `skip_untranslated_strings` is the one worth keeping, for the reason above: an
           # English-padded catalogue passes as finished, an empty one is loudly wrong and

@@ -1410,6 +1410,40 @@ expectRed(
   /uploads translations before pushing translator context/,
 );
 
+// The same fail-closed rule on the ordering side. An expression-driven upload still RUNS, so it can
+// still fail and still skip the context step behind it.
+expectRed(
+  'the push workflow hiding an upload_translations behind an Actions expression, before context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: \${{ inputs.seed }}\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// And an upload explicitly switched off is not an upload, so it must not trip the ordering rule
+// wherever it sits.
+expectGreen('a disabled upload_translations step ahead of the context push', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - name: Seed existing translations\n` +
+    `        uses: crowdin/github-action@v2\n` +
+    `        with:\n` +
+    `          upload_translations: false\n` +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+});
+
 expectRed(
   'a push workflow that never attaches translator context at all',
   'checkCrowdinConfig',
@@ -1523,7 +1557,7 @@ expectRed(
       '.github/workflows/crowdin-pull.yaml',
       CROWDIN_WORKFLOW(PULL_OK + PULL_SKIP_UNTRANSLATED_FILES),
     ),
-  /sets `skip_untranslated_files: true`/,
+  /declares `skip_untranslated_files: true`/,
 );
 
 // The boolean input is one of THREE ways the flag reaches the CLI, and the first version of this
@@ -1557,8 +1591,46 @@ expectRed(
       '.github/workflows/crowdin-pull.yaml',
       CROWDIN_WORKFLOW(PULL_OK + `          skip_untranslated_files: 'true' # belt and braces\n`),
     ),
-  /sets `skip_untranslated_files: true`/,
+  /declares `skip_untranslated_files: 'true'`/,
 );
+
+// The spelling that ended the enumeration. `${{ true }}` is resolved by Actions long after the
+// guardrail runs, so no regex over the YAML can read it — which is why both forbidden inputs now
+// fail CLOSED on any value that is not literally `false`, rather than matching truthy spellings one
+// at a time. Three review rounds were spent adding spellings before that became obvious.
+expectRed(
+  'the pull workflow hiding skip_untranslated_files behind an Actions expression',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          skip_untranslated_files: \${{ true }}\n`),
+    ),
+  /declares `skip_untranslated_files: \$\{\{ true \}\}`/,
+);
+
+// An explicit `false` is the one value that is NOT the defect, so the fail-closed rule has to let
+// it through — otherwise "remove the option" and "disable the option" would be indistinguishable
+// and the message would be unactionable.
+expectGreen('a pull workflow that explicitly disables skip_untranslated_files', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    PULL_OK + `          skip_untranslated_files: false\n`,
+  ),
+});
+
+// Scope. `--skip-untranslated-files` reaches `crowdin download` only through `command_args` or
+// `download_translations_args` on the DOWNLOADING step. A mention anywhere else — the pull request
+// body is the realistic one, since it explains these very options — reaches the CLI on no path, and
+// failing the gate on it would make the check unfixable without deleting the explanation.
+expectGreen('the pull request body mentioning --skip-untranslated-files in prose', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml':
+    CROWDIN_WORKFLOW(PULL_OK) +
+    `          pull_request_body: |\n` +
+    `            We do not pass --skip-untranslated-files; see D8h.\n`,
+});
 
 // The ordering rule had the identical blind spot, and the consequence is the one D8c records: a
 // quoted upload ahead of the context push runs, fails, and skips the context step behind it, while

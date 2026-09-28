@@ -2832,10 +2832,16 @@ function stripYamlComments(body) {
  * `[ "$INPUT_X" = true ]`. So `x: true`, `x: 'true'` and `x: "true"` are all equivalent, and a
  * trailing `# comment` is not part of the value.
  *
- * An anchored `:\s*true\s*$` misses every one of those but the first. Which direction that breaks
- * depends on the check: for a REQUIRED input it is a false red, loud and harmless; for a FORBIDDEN
- * one it is a silent pass, and the forbidden thing runs while the gate stays green. Raised in
- * review on PR #285 against `skip_untranslated_files` and `upload_translations`, both forbidden.
+ * An anchored `:\s*true\s*$` misses every one of those but the first, and which direction that
+ * breaks depends on the check. For a REQUIRED input it is a false red: loud, and the safe way to
+ * be wrong. For a FORBIDDEN one it is a silent pass, and the forbidden thing runs while the gate
+ * stays green.
+ *
+ * **So this is for REQUIRED inputs only.** The forbidden ones do not enumerate truthy spellings at
+ * all — three rounds of review were lost doing that, one spelling at a time (`true`, then `'true'`
+ * and a trailing comment, then `${{ true }}`) — and instead fail closed on any value that is not
+ * literally `false`. An expression is resolved by Actions long after this runs, so it can never be
+ * cleared here; for a required input that means red, which is correct.
  *
  * @param {string} key the input name
  * @returns {RegExp} matches the key set to true, quoted or not, with or without a trailing comment
@@ -3159,11 +3165,12 @@ function checkCrowdinConfig() {
   //
   // `skip_untranslated_files` is then FORBIDDEN, which is the reverse of what this check required
   // for one commit. The Technical Usage Guide is explicit that "only one of these options can be
-  // activated", so setting both guarded neither loss reliably — one was silently ignored and
-  // nothing recorded which. The pinned CLI is blunter still: crowdin-cli 4.14.2 rejects the pair
-  // in `PropertiesWithFilesBuilder.checkArgParams()` with
+  // activated", and on the pinned toolchain the pair does not degrade to one of them winning — it
+  // fails. crowdin-cli 4.14.2 rejects it in `PropertiesWithFilesBuilder.checkArgParams()` with
   // `error.skip_untranslated_both_strings_and_files`, "You cannot skip strings and files at the
-  // same time", so the combination fails the nightly pull before it downloads anything.
+  // same time", before the download runs, so NEITHER option takes effect and nothing is
+  // downloaded. The guardrail that required the pair was therefore green over a pull that could
+  // not have worked at all.
   //
   // Forbidden UNCONDITIONALLY, and across every channel that reaches the CLI — not just the
   // action's boolean input, which is all the first version of this check looked at. Three ways in,
@@ -3203,30 +3210,61 @@ function checkCrowdinConfig() {
     );
   }
 
-  // Every channel, in the two files that can carry one. `stripYamlComments` is what makes a raw
-  // token search safe here: both files discuss this option at length in prose.
+  // Every channel, in the two files that can carry one. `stripYamlComments` is what makes a token
+  // search safe here: both files discuss this option at length in prose.
   const WHY_NO_SKIP_FILES =
     '    Only one of `skip_untranslated_strings` and `skip_untranslated_files` can be active — ' +
-    'Technical Usage Guide, "only one of these options can be activated" — so setting both ' +
-    'guards neither loss reliably: one is silently ignored and nothing says which.\n' +
-    '    The pinned CLI is blunter. crowdin-cli 4.14.2 rejects the pair in ' +
-    '`PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and files at ' +
-    'the same time", so the nightly pull fails before downloading anything.\n' +
+    'Technical Usage Guide, "only one of these options can be activated".\n' +
+    '    On the pinned toolchain the pair does not degrade, it fails: crowdin-cli 4.14.2 rejects ' +
+    'it in `PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and files ' +
+    'at the same time", before the download runs. So NEITHER option takes effect and no ' +
+    'catalogue is downloaded at all.\n' +
     '    `skip_untranslated_strings` is the one to keep: an English-padded catalogue at full key ' +
     'parity passes as a finished translation, while an empty catalogue is loudly wrong and ' +
-    '`checkCataloguesAreTranslated` fails it. See D8h in docs/i18n-localization-plan.md.';
+    '`checkCataloguesAreTranslated` fails the pull request carrying it. See D8h in ' +
+    'docs/i18n-localization-plan.md.';
 
   const pullCode = stripYamlComments(pull);
-  if (yamlInputIsTrue('skip_untranslated_files').test(pullCode)) {
-    fail(`${workflows[1]} sets \`skip_untranslated_files: true\`.\n` + WHY_NO_SKIP_FILES);
-  } else if (/--skip-untranslated-files\b/.test(pullCode)) {
+
+  // Fail CLOSED, on any value that is not literally false.
+  //
+  // Enumerating truthy spellings was the wrong shape and lost three rounds of review to it:
+  // `true`, then `'true'` and a trailing comment, then `${{ true }}`. An expression cannot be
+  // evaluated here at all, so for a FORBIDDEN input the only sound rule is that its presence is
+  // the defect unless it is provably switched off.
+  const declared = /^\s*skip_untranslated_files:\s*(.*)$/m.exec(pullCode);
+  const value = declared ? declared[1].replace(/\s+#.*$/, '').trim() : null;
+  if (value !== null && !/^(?:false|'false'|"false")$/.test(value)) {
     fail(
-      `${workflows[1]} passes \`--skip-untranslated-files\` through an argument input.\n` +
-        '    `download_translations_args` and `command_args` are appended to the command ' +
-        'VERBATIM (`entrypoint.sh` 82-83 and 408-409), so this reaches the CLI exactly as the ' +
-        'boolean input would. Checking only `skip_untranslated_files:` left this route open.\n' +
+      `${workflows[1]} declares \`skip_untranslated_files: ${value}\`.\n` +
+        '    Anything but a literal `false` fails here, including `${{ … }}`, because an ' +
+        'expression is resolved by Actions long after this runs — so a forbidden input cannot be ' +
+        'cleared by making its value unreadable.\n' +
         WHY_NO_SKIP_FILES,
     );
+  }
+
+  // The argument channels, scoped to the inputs that actually reach `crowdin download`.
+  //
+  // `download_translations_args` is appended to the download command and `command_args` to the
+  // command the step runs (`entrypoint.sh` 82-83 and 408-409). Both are read off `crowdinStep`
+  // rather than the whole file: a mention in `pull_request_body`, or an `upload_translations_args`
+  // on some other step, reaches `crowdin download` on no path and must not fail this gate.
+  if (crowdinStep !== undefined) {
+    const argInputs = [
+      ...crowdinStep.matchAll(/^\s*(?:download_translations_args|command_args):\s*(.*)$/gm),
+    ].map(([, raw]) => raw);
+    const smuggled = argInputs.find((raw) => /--skip-untranslated-files\b/.test(raw));
+    if (smuggled !== undefined) {
+      fail(
+        `${workflows[1]} passes \`--skip-untranslated-files\` through an argument input: ` +
+          `\`${smuggled.trim()}\`.\n` +
+          '    `download_translations_args` and `command_args` are appended to the command ' +
+          'VERBATIM, so this reaches the CLI exactly as the boolean input would. Checking only ' +
+          '`skip_untranslated_files:` left this route open.\n' +
+          WHY_NO_SKIP_FILES,
+      );
+    }
   }
 
   if (/skip_untranslated_files/.test(stripYamlComments(read(config)))) {
@@ -3260,7 +3298,16 @@ function checkCrowdinConfig() {
   // their context, so there is never a reason for it to precede them.
   const push = read(workflows[0]);
   const contextAt = push.search(/^\s*run:\s*node tools\/i18n\/crowdin-push-context\.mjs\s*$/m);
-  const translationUploadAt = push.search(yamlInputIsTrue('upload_translations'));
+  // Fail closed, exactly as the prohibition above does: any declared `upload_translations` counts
+  // as an upload unless it is literally `false`. An expression is resolved by Actions long after
+  // this runs, so a step whose upload is `${{ … }}` can still run, still fail, and still skip the
+  // context step behind it — which is the whole failure this rule exists for.
+  const declaredUpload = /^[^\S\n]*upload_translations:[^\S\n]*(.*)$/m.exec(push);
+  const uploadValue = declaredUpload ? declaredUpload[1].replace(/\s+#.*$/, '').trim() : null;
+  const translationUploadAt =
+    uploadValue !== null && !/^(?:false|'false'|"false")$/.test(uploadValue)
+      ? declaredUpload.index
+      : -1;
   if (contextAt === -1) {
     fail(
       `${workflows[0]} never runs \`tools/i18n/crowdin-push-context.mjs\`, so the sources upload ` +
