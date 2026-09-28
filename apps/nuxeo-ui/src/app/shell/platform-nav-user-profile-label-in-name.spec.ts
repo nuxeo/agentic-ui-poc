@@ -142,6 +142,28 @@ describe('platform sidebar — user profile label in name (NXENG-894)', () => {
         `accessible name "${name}" must contain the full visible label "${visible}" (IBM label_name_visible)`,
       )
       .toContain(visible.toLowerCase());
+    expect(visible.toLowerCase())
+      .withContext('Material icon ligature text must not appear as visible label text')
+      .not.toContain('account_circle');
+  });
+
+  it('keeps label in name when the sidebar rail is collapsed (IBM 2972081309)', () => {
+    const navState = TestBed.inject(SatPlatformNavStateService);
+    const fixture = TestBed.createComponent(AppShellComponent);
+    fixture.detectChanges();
+
+    if (!navState.collapsed()) {
+      navState.toggleCollapsed();
+      fixture.detectChanges();
+    }
+
+    const button = profileButton(fixture.nativeElement as HTMLElement);
+    const name = accessibleName(button);
+    const visible = visibleLabelJoined(button);
+    expect(visible.toLowerCase()).not.toContain('account_circle');
+    if (visible) {
+      expect(name.toLowerCase()).toContain(visible.toLowerCase());
+    }
   });
 
   it('opens the settings drawer when the profile control is activated', () => {
