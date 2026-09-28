@@ -339,7 +339,7 @@ sat-breadcrumbs {
 
 .doc-info-label {
   font-size: 12px;
-  /* NXENG-774 / NXENG-782 / NXENG-804 / NXENG-829 / NXENG-852 — #888 was 3.54:1 on the panel; mat-sys-on-surface-variant fails on this light strip in dark theme (IBM 1741130194). */
+  /* NXENG-774 / NXENG-782 / NXENG-804 / NXENG-813 / NXENG-829 / NXENG-852 — #888 was 3.54:1 on the panel; mat-sys-on-surface-variant fails on this light strip in dark theme (IBM 1741130194, IBM 787384272). */
   color: var(--document-detail-properties-label-muted);
   min-width: 100px;
   flex-shrink: 0;
