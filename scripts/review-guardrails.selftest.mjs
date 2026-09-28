@@ -1491,6 +1491,21 @@ expectRed(
   /uploads translations before pushing translator context/,
 );
 
+// `command:` is a generic input name. On an action that is not Crowdin it cannot upload anything,
+// so an unreadable one ahead of the context push is not an ordering violation — classifying it as
+// one failed the gate on a correct workflow.
+expectGreen('an unrelated action with an unreadable command before the context push', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - name: Something else entirely\n` +
+    `        uses: some-org/some-action@v1\n` +
+    `        with:\n` +
+    `          command: \${{ inputs.command }}\n` +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+});
+
 // Masking, on the ordering side. An explicit `false` on an earlier step must not excuse an enabled
 // upload on a later one that still sits ahead of the context push.
 expectRed(
@@ -1724,6 +1739,30 @@ expectRed(
     ),
   /declares `skip_untranslated_files: true`/,
 );
+
+// The quoted key on the REQUIRED input, which must be ACCEPTED rather than rejected.
+// `'skip_untranslated_strings': true` reaches the action identically, so failing it would be a
+// false red on a correct workflow — the mirror image of the forbidden-input controls below, and a
+// spelling the first version of `yamlInputIsTrue` did not read.
+expectGreen('a pull workflow quoting the skip_untranslated_strings key', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    PULL_DOWNLOAD + PULL_SIGNING + `          'skip_untranslated_strings': true\n`,
+  ),
+});
+
+// Key-shaped text inside a block scalar is PROSE, not configuration. `pull_request_body: |` is
+// where these options get explained to whoever reads the generated pull request, so reading its
+// lines as inputs made the check fire on its own documentation — and unfixable without deleting
+// the explanation. The existing prose control covers the CLI spelling; this covers the input one.
+expectGreen('the pull request body explaining skip_untranslated_files in prose', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml':
+    CROWDIN_WORKFLOW(PULL_OK) +
+    `          pull_request_body: |\n` +
+    `            We do not set skip_untranslated_files: true — only one of the two\n` +
+    `            options can be active. See D8h.\n`,
+});
 
 // Quoted keys. `'skip_untranslated_files': true` is valid YAML and reaches the action identically.
 // Not hypothetical: `crowdin-conf.yml` quotes every key in this repository.

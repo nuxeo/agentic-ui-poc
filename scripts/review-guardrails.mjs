@@ -2847,7 +2847,29 @@ function stripYamlComments(body) {
  * @returns {RegExp} matches the key set to true, quoted or not, with or without a trailing comment
  */
 function yamlInputIsTrue(key) {
-  return new RegExp(`^\\s*${key}:\\s*(?:'true'|"true"|true)\\s*(?:#.*)?$`, 'm');
+  return new RegExp(`^\\s*['"]?${key}['"]?:\\s*(?:'true'|"true"|true)\\s*(?:#.*)?$`, 'm');
+}
+
+/**
+ * The steps of a workflow job, each with its byte offset in the document.
+ *
+ * Checks about a step's inputs must read that step, not the file. `checkCrowdinConfig` already
+ * learned this once at the top level — matching `uses: crowdin/github-action` anywhere found a
+ * preparation step rather than the one that downloads — and the prohibitions added later scanned
+ * the whole workflow again, so an unrelated action carrying `command: ${{ … }}` was classified as
+ * an unreadable Crowdin upload. Offsets are kept because the ordering rule compares positions.
+ *
+ * @param {string} body workflow YAML
+ * @returns {{text: string, offset: number}[]} in document order
+ */
+function workflowSteps(body) {
+  const starts = [...body.matchAll(/^[^\S\n]*-[^\S\n]+(?=name:|uses:)/gm)].map(
+    (match) => match.index,
+  );
+  return starts.map((offset, at) => ({
+    offset,
+    text: body.slice(offset, at + 1 < starts.length ? starts[at + 1] : body.length),
+  }));
 }
 
 /**
@@ -2883,28 +2905,46 @@ function yamlInputIsTrue(key) {
  */
 function yamlValues(body, keyPattern) {
   const lines = body.split('\n');
-  const key = new RegExp(`^([^\\S\\n]*)['"]?(?:${keyPattern})['"]?:[^\\S\\n]*(.*)$`);
+  const wanted = new RegExp(`^([^\\S\\n]*)['"]?(?:${keyPattern})['"]?:[^\\S\\n]*(.*)$`);
+  // Any key at all, so a block scalar belonging to a key we do NOT want can still be skipped.
+  const anyKey = /^([^\S\n]*)(?:-[^\S\n]+)?['"]?[^\s:#'"][^:#]*['"]?:[^\S\n]*(.*)$/;
   const found = [];
   let offset = 0;
-  for (let at = 0; at < lines.length; at += 1) {
+  let at = 0;
+  while (at < lines.length) {
     const line = lines[at];
-    const match = key.exec(line);
-    if (match) {
-      const [, indent, first] = match;
-      let value = first.replace(/\s+#.*$/, '').trim();
-      // `|` and `>` mean the value is the more-indented block that follows, not this line.
-      if (/^[|>]/.test(value)) {
-        const parts = [];
-        for (let next = at + 1; next < lines.length; next += 1) {
-          if (lines[next].trim() === '') continue;
-          if (/^[^\S\n]*/.exec(lines[next])[0].length <= indent.length) break;
-          parts.push(lines[next].trim());
-        }
-        value = parts.join(' ');
+    const match = wanted.exec(line);
+    const generic = anyKey.exec(line);
+    const indent = (match ?? generic)?.[1].length ?? 0;
+    const isBlock = generic !== null && /^[|>]/.test(generic[2].trim());
+
+    // The extent of a block scalar: the more-indented lines that follow, blanks included.
+    let end = at + 1;
+    if (isBlock) {
+      while (end < lines.length) {
+        if (lines[end].trim() !== '' && /^[^\S\n]*/.exec(lines[end])[0].length <= indent) break;
+        end += 1;
       }
-      found.push({ value, index: offset });
     }
-    offset += line.length + 1;
+
+    if (match) {
+      const first = match[2].replace(/\s+#.*$/, '').trim();
+      found.push({
+        value: isBlock
+          ? lines
+              .slice(at + 1, end)
+              .map((text) => text.trim())
+              .filter((text) => text !== '')
+              .join(' ')
+          : first,
+        index: offset,
+      });
+    }
+
+    // Skip the block's body either way. Its lines are TEXT, not configuration — a
+    // `pull_request_body: |` that explains `skip_untranslated_files: true` in prose is
+    // documentation, and reading it as an input made the check fire on its own explanation.
+    for (; at < end; at += 1) offset += lines[at].length + 1;
   }
   return found;
 }
@@ -3310,12 +3350,17 @@ function checkCrowdinConfig() {
   // evaluated here at all, so for a FORBIDDEN input the only sound rule is that its presence is
   // the defect unless it is provably switched off.
   //
-  // Every declaration, not the first: a preparation step carrying `skip_untranslated_files: false`
-  // ahead of the downloading step masked a `true` on the downloader, which is the same
-  // wrong-step blindness the `crowdinSteps.find` above exists to avoid.
-  const offending = yamlValues(pullCode, 'skip_untranslated_files').find(
-    ({ value }) => !YAML_FALSE.test(value),
-  );
+  // Every declaration on a CROWDIN step, not the first, and not the whole file.
+  //
+  // Every declaration, because a preparation step carrying `skip_untranslated_files: false` ahead
+  // of the downloading step masked a `true` on the downloader — the same wrong-step blindness the
+  // `crowdinSteps.find` above exists to avoid. Crowdin steps only, because the input means nothing
+  // on any other action, and reading the whole file made a mention in `pull_request_body` into a
+  // configuration change.
+  const offending = workflowSteps(pullCode)
+    .filter((step) => /uses:\s*crowdin\/github-action/.test(step.text))
+    .flatMap((step) => yamlValues(step.text, 'skip_untranslated_files'))
+    .find(({ value }) => !YAML_FALSE.test(value));
   if (offending !== undefined) {
     fail(
       `${workflows[1]} declares \`skip_untranslated_files: ${offending.value}\`.\n` +
@@ -3405,13 +3450,23 @@ function checkCrowdinConfig() {
   // A `command:` that cannot be read counts as an upload for the same reason a `${{ }}` boolean
   // counts as `true`: it might be one, and nothing here can rule it out. Failing closed on the
   // forbidden side is the only direction that cannot hide the failure this rule exists for.
-  const uploads = [
-    ...yamlValues(push, 'upload_translations').filter(({ value }) => !YAML_FALSE.test(value)),
-    ...yamlValues(push, 'command').filter(
-      ({ value }) =>
-        /^['"]?upload\s+translations\b/.test(value) || YAML_UNREADABLE.test(value),
-    ),
-  ].map(({ index }) => index);
+  //
+  // Both interfaces are read off CROWDIN steps only. `command:` is a generic input name — an
+  // unrelated action with `command: ${{ inputs.command }}` cannot invoke Crowdin, and classifying
+  // it as an unreadable translation upload failed the gate on a workflow that was correct.
+  const uploads = workflowSteps(push)
+    .filter((step) => /uses:\s*crowdin\/github-action/.test(step.text))
+    .flatMap((step) => [
+      ...yamlValues(step.text, 'upload_translations')
+        .filter(({ value }) => !YAML_FALSE.test(value))
+        .map(({ index }) => step.offset + index),
+      ...yamlValues(step.text, 'command')
+        .filter(
+          ({ value }) =>
+            /^['"]?upload\s+translations\b/.test(value) || YAML_UNREADABLE.test(value),
+        )
+        .map(({ index }) => step.offset + index),
+    ]);
   const translationUploadAt = uploads.length > 0 ? Math.min(...uploads) : -1;
 
   // Flow mappings, in either workflow. `with: { command: upload translations }` is valid YAML and
