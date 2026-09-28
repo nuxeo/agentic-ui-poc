@@ -9,6 +9,10 @@
 }
 
 <sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
+  <!-- NXENG-927 (product): icon-only rail expand/collapse — Satori aria-label + matTooltip only.
+       Host visible-label workaround from PR 246 removed per product request. IBM input_label_visible
+       (4056183850) is expected to recur; track closure via documented a11y exception or upstream
+       Satori fix, not by re-adding persistent visible text here. -->
   <sat-platform-nav>
     @for (item of navItems(); track item.id) {
       <sat-platform-nav-list-item
