@@ -773,6 +773,47 @@ expectRed(
   /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
 );
 
+// ...and the last of them: the decorator's SPELLING is not its identity. A spec that declares
+// its own decorator called `Component` and applies it hosts nothing Angular will ever compile,
+// and exempted the fixture anyway. The name now has to be bound to `Component` from
+// `@angular/core`, by import, so the check asks what the identifier resolves to rather than
+// what it is called. Reported on the pull request.
+expectRed(
+  'a locally declared decorator named Component does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      'function Component(_meta: { templateUrl: string }) {\n' +
+      '  return (target: unknown) => target;\n' +
+      '}\n\n' +
+      "@Component({ templateUrl: './widget.host.html' })\n" +
+      'class NotAComponent {}\n\n' +
+      "it('passes', () => expect(NotAComponent).toBeTruthy());\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// The other side of it, or the resolution would just have disabled the exemption for anyone
+// who renames the import. An alias is still the same binding.
+expectGreen('a fixture hosted through an aliased @angular/core Component import is exempt', 'checkNoHardcodedUiText', {
+  ...APP,
+  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/shell/widget.spec.ts': `import { Component as NgComponent } from '@angular/core';
+
+@NgComponent({
+  standalone: true,
+  selector: 'test-host',
+  templateUrl: './widget.host.html',
+})
+class TestHost {}
+
+it('renders', () => expect(TestHost).toBeTruthy());
+`,
+});
+
 // Round two's property, also never controlled: a shipped component compiling the file means its
 // text is not test data, so the fixture cannot hold the proof of its own exemption.
 expectRed(

@@ -1246,10 +1246,11 @@ function checkNoHardcodedUiText() {
    * and `resolveRef` popped on `..` without checking, so a path climbing above the repository
    * root was clamped back onto an in-repo file and proved that file instead. Both reported on
    * the pull request. A traversal that underflows now resolves to nothing at all, and a
-   * reference is the `templateUrl` of an `@Component(...)` **decorator's** object literal
-   * specifically. Review caught two weaker versions of that on the way: matching any property
-   * called `templateUrl`, which a decoy object literal satisfies without hosting anything, and
-   * then matching any call spelled `Component`, which a naked statement satisfies too.
+   * reference is the `templateUrl` of an object literal decorating a class with `Component`
+   * **imported from `@angular/core`**. Review caught three weaker versions of that on the way,
+   * each an accepted proof that hosts nothing: any property called `templateUrl`, which a
+   * decoy object literal satisfies; then any call spelled `Component`, which a naked statement
+   * satisfies; then any decorator of that name, which a locally declared one satisfies.
    *
    * **What this still does not prove.** A `templateUrl` assembled by concatenation resolves to
    * nothing. On the spec side that is fail-closed and needs no fallback — no resolved
@@ -1318,11 +1319,12 @@ function checkNoHardcodedUiText() {
      * hosts nothing and still counted. Both reported on the pull request.
      *
      * A reference is therefore the `templateUrl` of the object literal passed to a
-     * `@Component(...)` **decorator**, which is the only position where the property means
-     * "this file is my template" — and the same position the non-spec rule below is looking
-     * for in production code. Matching the call by its callee name alone was not enough
-     * either, and review caught that in the same round: a naked `Component({ ... })` statement
-     * decorates nothing, so the match starts from the `Decorator` node.
+     * `@Component(...)` **decorator whose name is bound to `@angular/core`**, which is the
+     * only position where the property means "this file is my template" — and the same
+     * position the non-spec rule below is looking for in production code. Each weaker version
+     * of that was reported in turn: the call matched by callee name accepts a naked
+     * `Component({ ... })` statement that decorates nothing, and the decorator matched by
+     * spelling accepts one a file declared for itself.
      *
      * **Boundary.** A `templateUrl` assembled by concatenation is not a literal, and component
      * metadata spread in from a variable is not an object literal here; both resolve to
@@ -1335,7 +1337,35 @@ function checkNoHardcodedUiText() {
       const refs = new Set();
       const source = ts.createSourceFile(path, body, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
 
-      // The metadata of `@Component({ ... })` used as a DECORATOR, or null.
+      /**
+       * The local names this file binds to `Component` from `@angular/core`.
+       *
+       * Usually the set `{'Component'}`, empty in a file that imports no such thing, and the
+       * alias in `import { Component as NgComponent }`. Resolving the binding rather than
+       * trusting the spelling is what stops a file declaring its own decorator called
+       * `Component` — which Angular never compiles — from exempting a fixture. Review caught
+       * that; it is the same defect as the decoy object literal, one level up again.
+       *
+       * The alias direction matters as much as the spoof: without it, renaming the import
+       * would silently disable the exemption for a legitimately hosted fixture, so the
+       * tightening would have introduced a false rejection while closing a false acceptance.
+       * Both are controlled.
+       */
+      const componentBindings = new Set();
+      for (const statement of source.statements) {
+        if (!ts.isImportDeclaration(statement)) continue;
+        if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
+        if (statement.moduleSpecifier.text !== '@angular/core') continue;
+
+        const bindings = statement.importClause?.namedBindings;
+        if (!bindings || !ts.isNamedImports(bindings)) continue;
+        for (const element of bindings.elements) {
+          const imported = element.propertyName?.text ?? element.name.text;
+          if (imported === 'Component') componentBindings.add(element.name.text);
+        }
+      }
+
+      // The metadata of an `@angular/core` `@Component({ ... })` used as a DECORATOR, or null.
       //
       // Matching the call expression by callee name alone was the first attempt and review
       // caught it in the same round: a naked `Component({ templateUrl: './x.host.html' })`
@@ -1343,12 +1373,13 @@ function checkNoHardcodedUiText() {
       // `Decorator` node is what makes "this class's template" the thing being matched, rather
       // than any call that happens to be spelled `Component`.
       const componentMetadata = (node) => {
+        if (componentBindings.size === 0) return null;
         if (!ts.isDecorator(node)) return null;
         const call = node.expression;
 
         return ts.isCallExpression(call) &&
           ts.isIdentifier(call.expression) &&
-          call.expression.text === 'Component' &&
+          componentBindings.has(call.expression.text) &&
           call.arguments.length > 0 &&
           ts.isObjectLiteralExpression(call.arguments[0])
           ? call.arguments[0]
