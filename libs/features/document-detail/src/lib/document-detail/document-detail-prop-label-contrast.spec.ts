@@ -1,5 +1,5 @@
 /**
- * NXENG-769 — metadata sidebar `.prop-label` must meet WCAG 2.1 SC 1.4.3 (IBM 67686130).
+ * NXENG-769 — `.prop-label` in the properties panel must meet WCAG 2.1 SC 1.4.3 (IBM 67686130).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -12,10 +12,13 @@ function scssBlock(source: string, className: string): string {
   return match?.[0] ?? '';
 }
 
-function parseRgb(css: string): [number, number, number] | null {
-  const m = css.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-  if (!m) return null;
-  return [Number(m[1]), Number(m[2]), Number(m[3])];
+function parseHex(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [
+    Number.parseInt(h.slice(0, 2), 16),
+    Number.parseInt(h.slice(2, 4), 16),
+    Number.parseInt(h.slice(4, 6), 16),
+  ];
 }
 
 function luminance([r, g, b]: readonly number[]): number {
@@ -35,37 +38,32 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
 }
 
 describe('DocumentDetailComponent — prop-label text contrast (NXENG-769)', () => {
-  const scssPath = join(import.meta.dirname, 'document-detail.scss');
-  const scss = readFileSync(scssPath, 'utf8');
-  const labelBlock = scssBlock(scss, 'prop-label');
-  const panelBlock = scssBlock(scss, 'properties-panel');
-
-  it('themes property labels with mat-sys on-surface-variant, not legacy grey', () => {
-    expect(labelBlock).toMatch(/var\(--mat-sys-on-surface-variant\)/);
-    expect(labelBlock).not.toMatch(/#888/i);
+  it('pins prop-label to the light properties-panel host tokens', () => {
+    const scssPath = join(import.meta.dirname, 'document-detail.scss');
+    const scss = readFileSync(scssPath, 'utf8');
+    const hostBlock = scss.match(/:host\s*\{[^}]+\}/s)?.[0] ?? '';
+    const label = scssBlock(scss, 'prop-label');
+    const panel = scssBlock(scss, 'properties-panel');
+    expect(hostBlock).toMatch(/--document-detail-properties-panel-surface:\s*#fff/i);
+    expect(hostBlock).toMatch(/--document-detail-properties-label-muted:\s*#5c5f6b/i);
+    expect(label).toMatch(/var\(--document-detail-properties-label-muted\)/);
+    expect(label).not.toMatch(/color:\s*#888/i);
+    expect(label).not.toMatch(/var\(--mat-sys-on-surface-variant/i);
+    expect(panel).toMatch(/var\(--document-detail-properties-panel-surface\)/);
+    expect(panel).not.toMatch(/var\(--mat-sys-surface/i);
   });
 
-  it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the properties panel fallback surface`, () => {
-    const panelBgMatch = panelBlock.match(/background:\s*(#[0-9a-f]{3,6}|rgb\([^)]+\))/i);
-    const panelBg = panelBgMatch?.[1] ?? '#fff';
-    const bg =
-      panelBg.startsWith('#') && panelBg.length === 4
-        ? [
-            parseInt(panelBg[1] + panelBg[1], 16),
-            parseInt(panelBg[2] + panelBg[2], 16),
-            parseInt(panelBg[3] + panelBg[3], 16),
-          ]
-        : panelBg.startsWith('#')
-          ? [
-              parseInt(panelBg.slice(1, 3), 16),
-              parseInt(panelBg.slice(3, 5), 16),
-              parseInt(panelBg.slice(5, 7), 16),
-            ]
-          : (parseRgb(panelBg) ?? [255, 255, 255]);
+  it(`fallback #5c5f6b on white meets ${WCAG_AA_NORMAL_TEXT}:1`, () => {
+    const fg = parseHex('#5c5f6b');
+    const bg = parseHex('#ffffff');
+    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+  });
 
-    // Material default on-surface-variant on light themes (~#49454f).
-    const fg: [number, number, number] = [73, 69, 79];
+  it('legacy #888 on white fails WCAG AA (documents the reported defect)', () => {
+    const fg = parseHex('#888888');
+    const bg = parseHex('#ffffff');
     const ratio = contrastRatio(fg, bg);
-    expect(ratio).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+    expect(ratio).toBeLessThan(WCAG_AA_NORMAL_TEXT);
+    expect(ratio).toBeCloseTo(3.54, 1);
   });
 });
