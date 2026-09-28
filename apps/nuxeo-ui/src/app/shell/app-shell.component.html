@@ -9,7 +9,7 @@
 }
 
 <sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
-  <sat-platform-nav>
+  <sat-platform-nav satPlatformNavRailToggleVisibleLabel>
     @for (item of navItems(); track item.id) {
       <sat-platform-nav-list-item
         [attr.data-nav-id]="item.id"
