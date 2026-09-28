@@ -67,6 +67,11 @@ export type {
   SearchQueryParams,
   GlobalSearchSuggestion,
   SavedSearchOption,
+  // The return element of the public `getUserCollections()`. It was the only one of the four
+  // option types this service publishes that was not exported, so the method's own return
+  // type was unnameable by a caller — `docs/api/platform.api.md` referenced it from the class
+  // while declaring nothing. Found by the spec-typecheck gate when a test tried to name it.
+  SearchCollectionOption,
 } from './lib/services/search.service';
 export type {
   SearchAggregations,
