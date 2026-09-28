@@ -1,5 +1,6 @@
 /**
- * NXENG-774 — `.doc-info-label` in the properties panel must meet WCAG 2.1 SC 1.4.3 (IBM 280073873).
+ * NXENG-774 / NXENG-804 — `.doc-info-label` in the properties panel must meet WCAG 2.1 SC 1.4.3
+ * (IBM 280073873, IBM 542201046).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -37,7 +38,7 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-describe('DocumentDetailComponent — doc-info-label text contrast (NXENG-774)', () => {
+describe('DocumentDetailComponent — doc-info-label text contrast (NXENG-774 / NXENG-804)', () => {
   it('pins doc-info-label to the light properties-panel host tokens', () => {
     const scssPath = join(import.meta.dirname, 'document-detail.scss');
     const scss = readFileSync(scssPath, 'utf8');
