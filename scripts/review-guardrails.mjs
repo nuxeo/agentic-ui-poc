@@ -212,7 +212,6 @@ function inlineStyleBlockLines(source) {
   return covered;
 }
 
-
 /**
  * A colour literal must come from a **theme token with a fallback**, not be typed
  * in at the point of use.
@@ -1303,7 +1302,12 @@ function checkNoHardcodedUiText() {
       }
       index = stop;
     }
-    return new Map(chars.join('').split('\n').map((text, at) => [at + 1, text]));
+    return new Map(
+      chars
+        .join('')
+        .split('\n')
+        .map((text, at) => [at + 1, text]),
+    );
   }
 
   for (const [file, lines] of everyLine) {
@@ -2078,7 +2082,11 @@ async function checkTranslatorContextPush() {
     // guardrail green while no translator context reached Crowdin at all — the gate verified the
     // doorbell and never checked whether anyone answered. The green fixture in the selftest had the
     // same gap, which is how it survived being written.
-    if (!new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(read(pushWorkflow))) {
+    if (
+      !new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(
+        read(pushWorkflow),
+      )
+    ) {
       fail(
         `${pushWorkflow} never runs \`node ${script}\`, so no translator context is uploaded.\n` +
           "    The catalogue goes up through the Crowdin action, but Crowdin's JSON source format " +
@@ -2392,8 +2400,7 @@ function checkAccessibleNameFallbacks() {
   // pre-existing catalogue keys that never passed through the attribute binding pattern.
   const HEADER_SEARCH_LABEL_BLOCK =
     /<label\b[^>]*\bfor="global-header-search-input"[^>]*>([\s\S]*?)<\/label>/g;
-  const TRANSLATE_INTERPOLATION =
-    /\{\{\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*\}\}/g;
+  const TRANSLATE_INTERPOLATION = /\{\{\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*\}\}/g;
 
   // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
   // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns
@@ -2707,7 +2714,26 @@ function checkCrowdinConfig() {
     // The `libs/` entry legitimately matches nothing yet, so only a total miss across all
     // sources is a failure.
   }
-  const anyMatch = sources.some((source) => {
+  /**
+   * EVERY source pattern must match at least one file, not merely one of them.
+   *
+   * This check accepted a pattern that matched nothing as long as a sibling matched something,
+   * on the reasoning that a forward-looking glob is harmless. It is not. Crowdin treats an
+   * unmatched source as an error and fails the run:
+   *
+   *     File 'apps/nuxeo-ui/public/i18n/en.json'
+   *     No sources found for '/libs/**' + '/i18n/en.json' pattern.
+   *     Current execution finished with errors
+   *
+   * The catalogue had already uploaded at that point, so the failure was not even honest about
+   * what happened — and because the job failed, the translator-context step that follows it was
+   * skipped. A pattern added for a future slice cost the context upload.
+   *
+   * `--dryrun` does not report it either: the dry run listed the file it would upload and said
+   * nothing about the unmatched pattern. So CI is the only place this can be caught before a
+   * real run, which is why it is caught here.
+   */
+  const matches = (source) => {
     const pattern = source.replace(/^\//, '');
     if (!/[*?]/.test(pattern)) return fileExists(pattern);
     const regex = new RegExp(
@@ -2721,12 +2747,14 @@ function checkCrowdinConfig() {
       [...walk('apps', (path) => regex.test(path)), ...walk('libs', (path) => regex.test(path))]
         .length > 0
     );
-  });
-  if (!anyMatch) {
+  };
+  for (const source of sources.filter((source) => !matches(source))) {
     fail(
-      `${config} declares ${sources.length} source pattern(s) and none matches a file.\n` +
-        '    The sync would upload nothing and report success — the one failure mode nobody ' +
-        'investigates.',
+      `${config} declares the source \`${source}\` and nothing matches it.\n` +
+        '    Crowdin fails the whole run on an unmatched pattern, AFTER uploading the files ' +
+        'that did match — so the catalogue lands, the job goes red, and the translator-context ' +
+        'step that runs afterwards is skipped. Add a pattern in the change that ships the ' +
+        'first file for it, not before.',
     );
   }
 
@@ -3314,9 +3342,7 @@ function checkNoHardcodedDialogText() {
   const sources = [
     ...walk('apps', (path) => /\.ts$/.test(path)),
     ...walk('libs', (path) => /\.ts$/.test(path)),
-  ].filter(
-    (path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)),
-  );
+  ].filter((path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)));
 
   if (sources.length === 0) {
     fail('No TypeScript sources were found under apps/ or libs/, so this gate asserted nothing.');
@@ -3343,7 +3369,7 @@ function checkNoHardcodedDialogText() {
               '    where English puts it in German or Japanese. INFO-144 forbids the shape, so the\n' +
               '    fix is one parameterised string rather than a lookup per fragment:\n' +
               `      ${match[1]}: this.translate.instant('confirm.delete-named', { name })\n` +
-              "      en.json: 'Delete \"{{ name }}\"?'\n"
+              '      en.json: \'Delete "{{ name }}"?\'\n'
             : "    Add a key to the owning project's `i18n/en.json` and resolve it at the call site:\n" +
               `      ${match[1]}: this.translate.instant('confirm.delete-document.${match[1]}')\n`) +
           '    A dialog is the one place `title` is unambiguously prose, which is why this gate ' +
@@ -3428,7 +3454,7 @@ function checkNoStaleAgnosticClaim() {
     fail(
       `${CONTRACT_FILE} injects TranslateService while carrying the \`${MARKER}\` marker. The ` +
         'descriptor contract is meant to take a resolver from its caller; a service here makes the ' +
-        'choice of translation library this library\'s rather than the host\'s.',
+        "choice of translation library this library's rather than the host's.",
     );
   }
 }
@@ -3538,7 +3564,7 @@ function checkNoHardcodedImperativeUiText() {
         fail(
           `${file}:${line} passes the hard-coded string \`${literal}\` to a user-facing sink — ` +
             'text a user reads, built in TypeScript where no template pipe can reach it.\n' +
-            "    Add a key to the app catalogue and resolve it here:\n" +
+            '    Add a key to the app catalogue and resolve it here:\n' +
             "      this.snackBar.open(this.translate.instant('x.saved'), this.translate.instant('common.ok'))\n" +
             '    A message assembled with `${…}` needs one parameterised key, not a lookup per ' +
             'fragment: a translator handed the pieces cannot reorder them.',

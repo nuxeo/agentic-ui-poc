@@ -32,8 +32,25 @@
 # pattern can reach it. `checkCrowdinConfig` in `scripts/review-guardrails.mjs` fails any
 # source path that does not begin with one of those two roots.
 #
-# The `libs/` entry matches nothing today. It is here for NXSAT-284 AC4, per-library
-# catalogues, so that shipping one is an asset glob rather than a change to this contract.
+# There is NO `libs/**` entry, and that is the correction to an earlier mistake rather than an
+# oversight.
+#
+# One was added ahead of NXSAT-284 AC4 (per-library catalogues) on the reasoning that shipping
+# one later should be an asset glob rather than a change to this contract. That reasoning was
+# wrong, because Crowdin treats a source pattern matching NOTHING as an error:
+#
+#     File 'apps/nuxeo-ui/public/i18n/en.json'
+#     No sources found for '/libs/**/i18n/en.json' pattern.
+#     Current execution finished with errors
+#
+# The English catalogue had already uploaded by then. The job still failed, and because it
+# failed the translator-context step was skipped — so a forward-looking glob cost us the
+# context upload, which INFO-144 requires.
+#
+# Worse, `--dryrun` does not report it: the dry run printed only the file it would upload and
+# said nothing about the unmatched pattern. So this could not be caught before a real run.
+#
+# Add the entry in the same change that ships the first library catalogue, not before.
 'files': [
     {
       'source': '/apps/*/public/i18n/en.json',
@@ -48,12 +65,6 @@
       # The standard's choice, and it carries an assumption we inherit: a developer must NEVER
       # change the meaning of an existing key — change the key instead. Nothing enforces that,
       # which is why it is in the maintenance checklist and recorded as deviation D0a.
-      'update_option': 'update_without_changes',
-    },
-    {
-      'source': '/libs/**/i18n/en.json',
-      'translation': '/%original_path%/%two_letters_code%.%file_extension%',
-      'export_only_approved': 'true',
       'update_option': 'update_without_changes',
     },
   ]
