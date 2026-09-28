@@ -1310,10 +1310,13 @@ const PULL_SIGNING = `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}
 const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
 /** What identifies the step both assertions must examine: the one that downloads. */
 const PULL_DOWNLOAD = `          download_translations: true\n`;
-/** Governs whole files, not strings — a separate loss, see D8f. */
+/**
+ * NOT part of the green fixture. The pinned Crowdin CLI rejects this alongside
+ * `skip_untranslated_strings`, so it appears only in the control that proves the pair is
+ * caught — see D8h.
+ */
 const PULL_SKIP_UNTRANSLATED_FILES = `          skip_untranslated_files: true\n`;
-const PULL_OK =
-  PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED + PULL_SKIP_UNTRANSLATED_FILES;
+const PULL_OK = PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED;
 
 const CROWDIN = {
   'crowdin-conf.yml': crowdinConf([
@@ -1374,9 +1377,7 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(
-        PULL_DOWNLOAD + PULL_SKIP_UNTRANSLATED + PULL_SKIP_UNTRANSLATED_FILES,
-      ).replace(
+      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SKIP_UNTRANSLATED).replace(
         '      - uses: crowdin/github-action@v2\n',
         `      - uses: crazy-max/ghaction-import-gpg@v6\n` +
           `        with:\n` +
@@ -1421,6 +1422,23 @@ expectRed(
   /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
 );
 
+// The permitted half of the ordering rule, which the two controls above cannot reach between them:
+// they cover "before" and "absent", so an implementation that rejected EVERY translation upload
+// would satisfy both while contradicting the rule it claims to enforce. The rule is about order,
+// not about uploading being forbidden — no real workflow uploads translations today, so without
+// this control the allowed path is asserted nowhere.
+expectGreen('a push workflow uploading translations AFTER the context push', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n` +
+    `      - name: Upload existing translations\n` +
+    `        uses: crowdin/github-action@v2\n` +
+    `        with:\n` +
+    `          upload_translations: true\n`,
+});
+
 // `skip_untranslated_strings: false` exports every untranslated string WITH ITS ENGLISH SOURCE,
 // which is how the first real pull overwrote 151 hand-written strings. Asserted on the
 // configuration rather than on a catalogue, because once most of a catalogue is genuinely
@@ -1432,7 +1450,7 @@ expectRed(
   CROWDIN,
   (write) => write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED_FILES),
+      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING),
     ),
   /does not set `skip_untranslated_strings: true`/,
 );
@@ -1445,10 +1463,7 @@ expectRed(
     write(
       '.github/workflows/crowdin-pull.yaml',
       CROWDIN_WORKFLOW(
-        PULL_DOWNLOAD +
-          PULL_SIGNING +
-          PULL_SKIP_UNTRANSLATED_FILES +
-          `          skip_untranslated_strings: false\n`,
+        PULL_DOWNLOAD + PULL_SIGNING + `          skip_untranslated_strings: false\n`,
       ),
     ),
   /does not set `skip_untranslated_strings: true`/,
@@ -1489,24 +1504,26 @@ expectRed(
         `        with:\n` +
         `          config: crowdin-conf.yml\n` +
         PULL_DOWNLOAD +
-        PULL_SIGNING +
-        PULL_SKIP_UNTRANSLATED_FILES,
+        PULL_SIGNING,
     ),
   /does not set `skip_untranslated_strings: true`/,
 );
 
-// The whole-file half of the same loss. A language at 0% exports an EMPTY catalogue, which
-// replaces the 151 hand-written French and German strings that Crowdin does not hold yet.
+// Only one of the two options can be active — Technical Usage Guide — so setting both guards
+// neither loss reliably. crowdin-cli 4.14.2 is blunter and refuses the pair outright in
+// `PropertiesWithFilesBuilder.checkArgParams()` before anything downloads. This check REQUIRED
+// `skip_untranslated_files: true` for one commit, which would have made every nightly pull red;
+// the control is here so the requirement cannot come back.
 expectRed(
-  'the pull workflow leaving skip_untranslated_files at its default',
+  'the pull workflow setting skip_untranslated_files alongside skip_untranslated_strings',
   'checkCrowdinConfig',
   CROWDIN,
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED),
+      CROWDIN_WORKFLOW(PULL_OK + PULL_SKIP_UNTRANSLATED_FILES),
     ),
-  /does not set `skip_untranslated_files: true`/,
+  /sets `skip_untranslated_files: true` alongside/,
 );
 
 // The founding defect. Both options deleted from the SECOND entry only: the first still
@@ -1527,8 +1544,10 @@ expectRed(
   /entry `\/libs\/\*\*\/i18n\/en\.json` omits `export_only_approved`/,
 );
 
-// Presence is not the policy. `export_only_approved: 'false'` does the opposite of what D8 asks
-// and satisfied every token-counting form of this check.
+// Presence is not the policy — the VALUE is. `export_only_approved: 'false'` does the opposite of
+// what the Guidelines require and satisfied every token-counting form of this check. It was
+// briefly the required value here, which is exactly why the control asserts the value and not the
+// key: see D8g.
 expectRed(
   'a Crowdin entry that declares export_only_approved and disables it',
   'checkCrowdinConfig',

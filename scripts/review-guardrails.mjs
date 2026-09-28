@@ -2934,10 +2934,22 @@ function checkCrowdinConfig() {
     // while doing the opposite of what D8 asks for.
     const D8_OPTIONS = [
       [
+        // A MUST in the Crowdin Guidelines, not a preference: "when proof-reading is setup,
+        // export options MUST be configured so that only approved translations end up in the
+        // source code." Proof-reading is set up — the translation team confirmed on
+        // INTERN-1346 that translations can begin — and the Guidelines' security risk table
+        // marks reputation damage RESOLVED on the grounds that every translation is reviewed
+        // internally, which only holds while this is `true`.
+        //
+        // Asserted at `true` after a round trip through `false`. See D8g for why that was
+        // wrong; the short version is that the mechanical finding behind it (machine
+        // pre-translation cannot auto-approve) was true and the conclusion was not.
         'export_only_approved',
         'true',
         'Unapproved work is a draft; exporting it puts half-finished translations in front of ' +
-          "users and makes the reviewer's approval meaningless.",
+          "users and makes the reviewer's approval meaningless. The Guidelines make it a MUST " +
+          'once proof-reading is set up, and rest the "no controversial or profane content" ' +
+          'risk rating on every translation being reviewed internally. See D8g.',
       ],
       [
         'update_option',
@@ -3095,16 +3107,24 @@ function checkCrowdinConfig() {
   }
 
   // `skip_untranslated_strings: true` on that same step, asserted on the CONFIGURATION rather
-  // than on its symptom — because after seeding, the symptom is no longer a failure.
+  // than on its symptom — because as the catalogues fill, the symptom stops being a failure.
   //
   // `checkCataloguesAreTranslated` fails a catalogue whose every value equals English. That is
-  // exactly what reverting this input produced BEFORE the existing French and German strings were
-  // seeded into Crowdin. Afterwards it is not: those 151 strings come back genuinely translated
-  // and the remaining ~1,890 come back padded with English, which is 96% identical — past the
-  // 80% warning threshold, short of the all-identical failure. So the regression would warn and
-  // CI would pass, and it would pass more convincingly the more of the catalogue is real.
+  // exactly what reverting this input produced while Crowdin was empty. It is not what reverting
+  // it produces once Crowdin holds translations of its own: those come back genuinely translated
+  // and the rest come back padded with English, which at 1,897 of 1,972 is 96% identical — past
+  // the 80% warning threshold, short of the all-identical failure. So the regression would warn
+  // and CI would pass, and it would pass more convincingly the more of the catalogue is real.
   //
   // A gate that only sees the pathological extreme stops working the moment the product improves.
+  //
+  // `skip_untranslated_files` is then FORBIDDEN alongside it, which is the reverse of what this
+  // check required for one commit. The Technical Usage Guide is explicit that "only one of these
+  // options can be activated", so setting both guarded neither loss reliably — one was silently
+  // ignored and nothing recorded which. The pinned CLI is blunter still: crowdin-cli 4.14.2
+  // rejects the pair in `PropertiesWithFilesBuilder.checkArgParams()` with
+  // `error.skip_untranslated_both_strings_and_files`, "You cannot skip strings and files at the
+  // same time", so the combination fails the nightly pull before it downloads anything.
   if (crowdinStep === undefined) {
     fail(
       `${workflows[1]} contains no \`uses: crowdin/github-action\` step with ` +
@@ -3113,19 +3133,6 @@ function checkCrowdinConfig() {
             'downloading)' : ''
         }, so neither the signing nor the \`skip_untranslated_strings\` assertion examined ` +
         'anything. It cannot download translations in this state.',
-    );
-  } else if (!/^\s*skip_untranslated_files:\s*true\s*$/m.test(crowdinStep)) {
-    fail(
-      `${workflows[1]} does not set \`skip_untranslated_files: true\` on its ` +
-        'crowdin/github-action step.\n' +
-        '    `skip_untranslated_strings` governs individual strings; this governs the whole file. ' +
-        'Without it a language at 0% still exports a catalogue — an empty one — which REPLACES ' +
-        'what the repository holds. For `fr.json` and `de.json` that is 151 hand-written strings ' +
-        'that predate Crowdin and are not in it yet, because the CI token cannot upload ' +
-        'translations.\n' +
-        '    `checkCataloguesAreTranslated` would fail that pull request, so the loss cannot ' +
-        'reach `main` — but it would fail every night until seeding works, and a job that is red ' +
-        'nightly for a reason nobody can action is a job people stop reading. See D8f.',
     );
   } else if (!/^\s*skip_untranslated_strings:\s*true\s*$/m.test(crowdinStep)) {
     fail(
@@ -3138,6 +3145,20 @@ function checkCrowdinConfig() {
         "    `true` omits the key instead, so `setFallbackLang('en')` renders English and a short " +
         'catalogue becomes the honest steady state. See D8d in docs/i18n-localization-plan.md.',
     );
+  } else if (/^\s*skip_untranslated_files:\s*true\s*$/m.test(crowdinStep)) {
+    fail(
+      `${workflows[1]} sets \`skip_untranslated_files: true\` alongside ` +
+        '`skip_untranslated_strings: true`. Only one of the two can be active, so this guards ' +
+        'neither loss reliably — one is silently ignored and nothing says which.\n' +
+        '    The Technical Usage Guide: "only one of these options can be activated". The ' +
+        'pinned CLI is blunter — the action passes both as flags and crowdin-cli 4.14.2 rejects ' +
+        'them in `PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and ' +
+        'files at the same time", so the nightly pull fails before downloading anything.\n' +
+        '    Keep `skip_untranslated_strings` and drop this one: an English-padded catalogue at ' +
+        'full key parity passes as a finished translation, while an empty catalogue is loudly ' +
+        'wrong and `checkCataloguesAreTranslated` fails it. See D8h in ' +
+        'docs/i18n-localization-plan.md.',
+    );
   }
 
   // The push workflow must attach translator context, and nothing that uploads translations may
@@ -3145,9 +3166,10 @@ function checkCrowdinConfig() {
   //
   // The first half is the live rule. The second guards against reintroducing something that has
   // already been removed: a `seed_translations` step that uploaded the repository's existing
-  // non-English catalogues. It is gone because Crowdin owns non-English content — `nuxeo-web-ui`
-  // has never uploaded a translation in four years of running this pipeline — and per D8f it was
-  // removed rather than left in place unused.
+  // non-English catalogues. Seeding itself is a documented SHOULD and still has to happen, but
+  // NOT from CI — the standard's mechanism is a one-time `crowdin upload translations
+  // --auto-approve-imported` from the command line with the setup token, which is why the CI
+  // token refused it. So the step is gone because CI was never the mechanism. See D8f.
   //
   // The rule outlives it because of HOW it failed. It sat between the source upload and the
   // context push, failed on a token scope, and skipped the context step behind it: a failed step

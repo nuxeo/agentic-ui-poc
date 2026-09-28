@@ -1,12 +1,17 @@
 # Uploads English to Crowdin when a source catalogue changes.
 #
-# One of the two workflows D8 in `docs/i18n-localization-plan.md` calls for. Push and pull are
-# separate because they fail for different reasons and on different schedules: an upload
-# failure means the source is wrong and blocks a developer, a download failure means the
-# translation pull request did not open and blocks nobody until tomorrow. Merging them into
-# one job makes the second look like the first.
+# The upload half of the two-workflow model the Hyland Crowdin standard describes, and a MUST:
+# "Source strings MUST be uploaded to Crowdin on every change merged to the main branch."
+# Conformance is tracked clause by clause in `D8-standard` of `docs/i18n-localization-plan.md`.
 #
-# `nuxeo-web-ui` runs a single combined workflow. The divergence is deliberate and is D8's.
+# Push and pull are separate files, which is our own choice on top of that — the standard's samples
+# show two workflows but do not require separate files. They fail for different reasons and on
+# different schedules: an upload failure means the source is wrong and blocks a developer, a
+# download failure means the translation pull request did not open and blocks nobody until
+# tomorrow. Merging them into one job makes the second look like the first.
+#
+# `nuxeo-web-ui` runs a single combined workflow. That is a measurement, not a licence — it
+# predates this standard and is not compliant with it.
 name: Crowdin Push
 
 on:
@@ -54,7 +59,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Upload sources to Crowdin
         uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2

@@ -643,16 +643,27 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
    and those render today. What Crowdin has never had is any translation of its own, which is why
    the first pull was destructive.
 
-   Those 151 will be **superseded rather than preserved** — see D8f. Uploading them needs a token
-   scope the CI token does not have, and `nuxeo-web-ui` has never uploaded a translation in four
-   years of running this pipeline: Crowdin owns non-English content. `skip_untranslated_files`
-   keeps them from being replaced by an empty catalogue while every language is at 0%, but once one
-   passes 0% its file is exported in full and Crowdin's content becomes the whole catalogue.
+   Those 151 must be **preserved, and that is an open action** — see D8f. The standard says a
+   repository's existing translations SHOULD be uploaded to initialize the project, and the
+   documented mechanism is a one-time `crowdin upload translations --auto-approve-imported` run
+   **from the command line with the setup token**, not from CI. The `seed_translations` CI input is
+   removed because CI was never the mechanism; the CI token refused it for scope, correctly. **The
+   seeding itself has not been done and this repository cannot do it** — it needs a token only the
+   project owner holds.
 
-   Beyond them, every locale correctly renders English through the fallback and the catalogues stay
-   short. A translator, or machine pre-translation on project 160, is the only thing standing
-   between the pipeline working and the application looking translated — and neither is something
-   this repository can do for itself.
+   Until it is done, a language at 0% exports an empty catalogue over `fr.json` and `de.json`.
+   `checkCataloguesAreTranslated` fails such a pull request, so nothing reaches `main`, but the
+   nightly job stays red until seeding happens or real translations exist. `skip_untranslated_files`
+   was briefly added to suppress that and has been removed: only one of it and
+   `skip_untranslated_strings` can be active (D8h).
+
+   Beyond those 151, every locale correctly renders English through the fallback and the catalogues
+   stay short. **Translation is the next action and it is now under way on the Crowdin side** —
+   Enrico Stengert confirmed on INTERN-1346 on 28 September that the sources are visible and
+   "translations can begin on our end". Only approved translations are exported
+   (`export_only_approved: 'true'`, required by the Guidelines once proof-reading exists — D8g), so
+   the application will show a language when a linguist has passed it and not before. Whether to
+   use Crowdin's machine-translation features is the Translation Team's decision, not ours.
 
 2. ~~**Project membership.**~~ Resolved on 28 September: Manager access granted on project 160.
    Worth keeping the lesson, because it cost a day of confusion — Okta access to the Crowdin

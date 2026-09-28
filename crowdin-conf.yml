@@ -1,14 +1,21 @@
 # Crowdin source and translation mapping.
 #
 # Implements D8 in `docs/i18n-localization-plan.md`, which is the plan of record for this
-# ticket. The first version of this file was built from `nuxeo/nuxeo-web-ui` alone and missed
-# four things D8 already specified — the enterprise endpoint, approval gating, the source-change
-# policy and obsolete-key deletion. The reference repositories are the procedure; this file is
-# the contract.
+# ticket. **The authority is the Hyland Crowdin standard** — "Guidelines for Localization
+# Management with Crowdin Translations Tool" (HXP, ACCEPTED, RFC 2119) and its Technical Usage
+# Guide. `D8-standard` in the plan is the conformance record, clause by clause.
 #
-# Named `crowdin-conf.yml` rather than `crowdin.yml` to match `nuxeo-web-ui` and
-# `nuxeo-elements`. The action picks a root `crowdin.yml` up implicitly; naming it otherwise
-# forces the workflows to pass `config:` explicitly, which keeps the file in use visible.
+# `nuxeo/nuxeo-web-ui` is NOT the reference. It is an older implementation on the public tenant
+# and is not compliant with the Guidelines; where the two differ, the standard wins. The first
+# version of this file was built from web-ui alone and missed four things the standard specifies —
+# the enterprise endpoint, approval gating, the source-change policy and obsolete-key deletion.
+# Web-ui is still worth measuring, and this file cites it that way where the numbers are
+# instructive, but never as justification.
+#
+# At the repository root, which the standard requires. Named `crowdin-conf.yml` rather than
+# `crowdin.yml`, which the standard does not mandate either way — our own choice, because the
+# action picks a root `crowdin.yml` up implicitly, and naming it otherwise forces the workflows
+# to pass `config:` explicitly and keeps the file in use visible.
 
 # Hyland Crowdin Enterprise, NOT public crowdin.com. The project lives on the Hyland tenant,
 # and a token issued there does not authenticate against the public API — the failure is a
@@ -63,8 +70,29 @@
       # ngx-translate was given — so `%locale%` downloads files the application never reads
       # while the sync still reports success. Deviation recorded as D8a in the plan.
       'translation': '/%original_path%/%two_letters_code%.%file_extension%',
-      # Unapproved work is someone's draft. Exporting it puts half-finished translations in
-      # front of users and makes the reviewer's approval meaningless.
+      # Required by the standard, in MUST language: "When pulling translations from Crowdin, and
+      # when proof-reading is setup, export options MUST be configured so that only approved
+      # translations end up in the source code." — "Guidelines for Localization Management with
+      # Crowdin Translations Tool" (HXP, ACCEPTED).
+      #
+      # Stated explicitly rather than left to the tool default, because this value was briefly
+      # `false` and the record of that round trip is worth more than a clean-looking line. The
+      # argument for `false` was mechanical and correct as far as it went: machine pre-translation
+      # cannot approve what it adds — the CLI's `--auto-approve-option` covers TM pre-translation
+      # only and our translation memory is empty — so with `true` a pre-translated project would
+      # fill up and export NOTHING while every dashboard reported the work as done.
+      #
+      # Two things make that the wrong conclusion. The MUST is conditional on "when proof-reading
+      # is setup", and it now is: Enrico Stengert confirmed on INTERN-1346, 28 September 2026, that
+      # the sources are visible in Crowdin and "translations can begin on our end". And the
+      # Guidelines' security risk table marks "Reputation Damage (insertion of controversial or
+      # profane content through translations)" RESOLVED, on the grounds that "nothing is
+      # crowdsourced by random people and every content is reviewed internally". Exporting
+      # unreviewed machine output ships content no linguist has seen, which removes the thing that
+      # row is resting on. That argument does not depend on when proof-reading arrives.
+      #
+      # So `true` stands, and machine pre-translation is the Translation Team's call rather than
+      # ours — the Guidelines leave workflow choice to them. Recorded as D8g.
       'export_only_approved': 'true',
       # The standard's choice, and it carries an assumption we inherit: a developer must NEVER
       # change the meaning of an existing key — change the key instead. Nothing enforces that,
