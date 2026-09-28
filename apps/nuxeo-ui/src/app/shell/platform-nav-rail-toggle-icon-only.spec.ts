@@ -36,7 +36,7 @@ describe('Platform nav rail toggle icon-only labels (NXENG-927)', () => {
     return button as HTMLButtonElement;
   }
 
-  function tooltipText(button: HTMLButtonElement): string {
+  function tooltipText(): string {
     const debug = fixture.debugElement.query(By.css(RAIL_TOGGLE_SELECTOR));
     const tooltip = debug.injector.get(MatTooltip, null);
     expect(tooltip).withContext('rail toggle must register MatTooltip').toBeTruthy();
@@ -44,14 +44,15 @@ describe('Platform nav rail toggle icon-only labels (NXENG-927)', () => {
     return typeof message === 'string' ? message.trim() : String(message ?? '').trim();
   }
 
-  function expectIconOnlyContract(button: HTMLButtonElement, expectedLabel: string): void {
+  function expectIconOnlyContract(expectedLabel: string): void {
+    const button = railToggle();
     expect(button.querySelector(`.${HOST_VISIBLE_LABEL_CLASS}`))
       .withContext('host visible-label span must not be injected')
       .toBeNull();
     expect(button.getAttribute('aria-label')?.trim())
       .withContext('aria-label must carry the translated control name')
       .toBe(expectedLabel);
-    expect(tooltipText(button))
+    expect(tooltipText())
       .withContext('matTooltip must mirror the translated control name')
       .toBe(expectedLabel);
   }
@@ -78,7 +79,7 @@ describe('Platform nav rail toggle icon-only labels (NXENG-927)', () => {
       navState.toggleCollapsed();
       fixture.detectChanges();
     }
-    expectIconOnlyContract(railToggle(), '⟦Expand navigation⟧');
+    expectIconOnlyContract('⟦Expand navigation⟧');
     expect(railToggle().getAttribute('data-automation-id')).toBe('platform-nav-expand-button');
   });
 
@@ -88,26 +89,26 @@ describe('Platform nav rail toggle icon-only labels (NXENG-927)', () => {
       navState.toggleCollapsed();
       fixture.detectChanges();
     }
-    expectIconOnlyContract(railToggle(), '⟦Collapse navigation⟧');
+    expectIconOnlyContract('⟦Collapse navigation⟧');
     expect(railToggle().getAttribute('data-automation-id')).toBe('platform-nav-collapse-button');
   });
 
   it('updates aria-label and tooltip after toggling expand and collapse', () => {
     const button = railToggle();
-    expectIconOnlyContract(button, '⟦Expand navigation⟧');
+    expectIconOnlyContract('⟦Expand navigation⟧');
 
     button.click();
     fixture.detectChanges();
-    expectIconOnlyContract(railToggle(), '⟦Collapse navigation⟧');
+    expectIconOnlyContract('⟦Collapse navigation⟧');
 
     railToggle().click();
     fixture.detectChanges();
-    expectIconOnlyContract(railToggle(), '⟦Expand navigation⟧');
+    expectIconOnlyContract('⟦Expand navigation⟧');
   });
 
   it('refreshes aria-label and tooltip when the active language changes', () => {
     const translate = TestBed.inject(TranslateService);
-    expectIconOnlyContract(railToggle(), '⟦Expand navigation⟧');
+    expectIconOnlyContract('⟦Expand navigation⟧');
 
     translate.setTranslation('de', {
       'sat.platform-nav.expand': '⟦Navigation einblenden⟧',
@@ -116,6 +117,6 @@ describe('Platform nav rail toggle icon-only labels (NXENG-927)', () => {
     translate.use('de');
     fixture.detectChanges();
 
-    expectIconOnlyContract(railToggle(), '⟦Navigation einblenden⟧');
+    expectIconOnlyContract('⟦Navigation einblenden⟧');
   });
 });
