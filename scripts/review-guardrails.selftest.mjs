@@ -1511,6 +1511,38 @@ expectRed(
   /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
 
+// The same rule one level down: a comment aligned with `with:` does not end the input mapping, and
+// treating it as a dedent dropped every input after it — so an upload below such a comment was
+// invisible to the ordering rule.
+expectRed(
+  'an upload_translations input after a comment aligned with the with key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `        # seeding inputs below\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// `download_translations: 'true'` is honoured by the action, so the downloader must be FOUND. The
+// selector wrote its own regex instead of reusing `yamlInputIsTrue`, and reported that the workflow
+// had no downloader at all — a false red that reads like a real defect.
+expectGreen('a pull workflow quoting the download_translations value', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    `          download_translations: 'true'\n` + PULL_SIGNING + PULL_SKIP_UNTRANSLATED,
+  ),
+});
+
 // A comment is not structure. One aligned with `steps:` was read as a dedent and ENDED step
 // enumeration, so an upload after it was never examined while the context step before it was.
 expectRed(

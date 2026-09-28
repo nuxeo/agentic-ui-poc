@@ -3122,14 +3122,13 @@ function stepWithBlock(stepText) {
       lines[at].replace(/^([^\S\n]*)-([^\S\n]+)/, (_, lead, gap) => lead + ' '.repeat(gap.length + 1)),
     );
     if (isWith) {
+      // Blank AND comment-only lines carry no structure, exactly as in `workflowSteps`. A comment
+      // aligned with `with:` does not end the mapping, and treating it as a dedent dropped every
+      // input after it — so an `upload_translations: true` below such a comment was invisible.
       let end = at + 1;
       while (end < lines.length) {
-        if (
-          lines[end].trim() !== '' &&
-          /^[^\S\n]*/.exec(lines[end])[0].length <= keyIndent
-        ) {
-          break;
-        }
+        const structural = lines[end].trim() !== '' && !/^[^\S\n]*#/.test(lines[end]);
+        if (structural && /^[^\S\n]*/.exec(lines[end])[0].length <= keyIndent) break;
         end += 1;
       }
       return { text: lines.slice(at + 1, end).join('\n'), offset: offset + lines[at].length + 1 };
@@ -3438,8 +3437,11 @@ function checkCrowdinConfig() {
   const crowdinSteps = pullSteps
     .filter((step) => CROWDIN_ACTION.test(step))
     .map((step) => stepWithBlock(step)?.text ?? '');
+  // Through `yamlInputIsTrue`, so a REQUIRED input follows the same YAML semantics as every other
+  // one. `download_translations: 'true'` is honoured by the action, and rejecting it reported that
+  // the workflow had no downloader at all — a false red that would have been read as a real defect.
   const crowdinStep = crowdinSteps.find((inputs) =>
-    /^\s*['"]?download_translations['"]?:\s*true\s*$/m.test(inputs),
+    yamlInputIsTrue('download_translations').test(inputs),
   );
   if (crowdinStep !== undefined && !/^\s*['"]?gpg_private_key['"]?:/m.test(crowdinStep)) {
     fail(
