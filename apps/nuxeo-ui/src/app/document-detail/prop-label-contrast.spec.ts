@@ -51,17 +51,47 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function opaqueBackground(element: HTMLElement): number[] {
-  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
-    const { rgb, alpha } = parseColor(getComputedStyle(node).backgroundColor);
-    if (alpha === 1) {
-      return rgb;
+function compositeBackgroundLayers(
+  layers: readonly { rgb: number[]; alpha: number }[],
+): number[] {
+  let canvas: number[] = [255, 255, 255];
+  for (const layer of layers) {
+    if (layer.alpha === 0) {
+      continue;
+    }
+    canvas = compositeOver(layer, canvas);
+    if (layer.alpha === 1) {
+      break;
     }
   }
-  return [255, 255, 255];
+  return canvas;
+}
+
+/** Composite non-transparent backgrounds from the element up to the first opaque ancestor. */
+function paintedBackground(element: HTMLElement): number[] {
+  const layers: { rgb: number[]; alpha: number }[] = [];
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    const parsed = parseColor(getComputedStyle(node).backgroundColor);
+    if (parsed.alpha === 0) {
+      continue;
+    }
+    layers.unshift(parsed);
+    if (parsed.alpha === 1) {
+      break;
+    }
+  }
+  return compositeBackgroundLayers(layers);
 }
 
 describe('Document detail prop-label contrast by theme (NXENG-858)', () => {
+  it('compositeBackgroundLayers treats translucent panel backgrounds as painted, not white', () => {
+    const mutedLabel = parseColor('rgb(92, 95, 107)');
+    const translucentPanel = compositeBackgroundLayers([{ rgb: [0, 0, 0], alpha: 0.5 }]);
+    expect(translucentPanel).toEqual([128, 128, 128]);
+    const paintedFg = compositeOver(mutedLabel, translucentPanel);
+    expect(contrastRatio(paintedFg, translucentPanel)).toBeLessThan(WCAG_AA_NORMAL_TEXT);
+  });
+
   let originalTheme: string | null;
 
   beforeEach(async () => {
@@ -115,7 +145,7 @@ describe('Document detail prop-label contrast by theme (NXENG-858)', () => {
           .withContext(`properties-panel background in ${label}`)
           .not.toBe('rgba(0, 0, 0, 0)');
 
-        const backdrop = opaqueBackground(panel);
+        const backdrop = paintedBackground(panel);
         const painted = compositeOver(parseColor(getComputedStyle(propLabel).color), backdrop);
         const ratio = contrastRatio(painted, backdrop);
         expect(ratio)
