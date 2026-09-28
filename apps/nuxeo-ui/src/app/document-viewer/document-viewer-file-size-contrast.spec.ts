@@ -1,5 +1,5 @@
 /**
- * NXENG-763 — measure `.file-size` contrast on `.viewer-footer` under every compiled palette.
+ * NXENG-764 — measure `.file-size` contrast on `.viewer-footer` under every compiled palette.
  * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
@@ -49,7 +49,7 @@ function opaqueBackground(element: HTMLElement): [number, number, number] {
   return [255, 255, 255];
 }
 
-describe('DocumentViewer file-size contrast by theme (NXENG-763)', () => {
+describe('DocumentViewer file-size contrast by theme (NXENG-764)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 

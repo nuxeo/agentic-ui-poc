@@ -369,7 +369,8 @@
   justify-content: space-between;
   padding: 8px 16px;
   border-top: 1px solid var(--mat-sys-outline-variant, #eee);
-  background: var(--mat-sys-surface, #fff);
+  /* NXENG-764 — footer is part of the fixed light strip (IBM 67686130). */
+  background: var(--document-viewer-light-strip-surface);
   flex-shrink: 0;
 }
 
@@ -381,7 +382,7 @@
 
 .file-name {
   font-size: 13px;
-  color: var(--mat-sys-on-surface, #333);
+  color: var(--document-viewer-on-light-strip);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -389,7 +390,8 @@
 
 .file-size {
   font-size: 11px;
-  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+  /* NXENG-764 — footer stays on the light strip; mat-sys-on-surface-variant fails AA in dark theme (IBM 67686130). */
+  color: var(--document-viewer-muted-on-light-surface);
 }
 
 .viewer-footer-actions {
@@ -398,7 +400,7 @@
   flex-shrink: 0;
 
   button {
-    color: var(--mat-sys-on-surface-variant, #555);
+    color: var(--document-viewer-muted-on-light-surface);
 
     &.active-toggle {
       color: var(--mat-sys-primary, #0073e6);
