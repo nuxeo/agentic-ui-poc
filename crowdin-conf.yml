@@ -47,8 +47,12 @@
 # failed the translator-context step was skipped — so a forward-looking glob cost us the
 # context upload, which INFO-144 requires.
 #
-# Worse, `--dryrun` does not report it: the dry run printed only the file it would upload and
-# said nothing about the unmatched pattern. So this could not be caught before a real run.
+# `--dryrun` does not report it either: the dry run printed only the file it would upload and
+# said nothing about the unmatched pattern. That is a CLI limitation and it still stands.
+#
+# What no longer stands is the conclusion. `checkCrowdinConfig` now fails each unmatched
+# pattern by name, so this is caught in CI before any push — which is the only reason the
+# limitation is survivable.
 #
 # Add the entry in the same change that ships the first library catalogue, not before.
 'files': [

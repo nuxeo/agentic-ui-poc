@@ -2695,9 +2695,11 @@ function checkCrowdinConfig() {
     return;
   }
 
-  // Wildcards are allowed — D8 uses them, and the `libs/**` entry is what makes per-library
-  // catalogues (NXSAT-284 AC4) an asset glob rather than a change to this contract. What is
-  // not allowed is a ROOT that could reach `node_modules`, which is where the 48 upstream
+  // Wildcards are allowed — D8 uses them, and a `libs/**` entry will be right once there is a
+  // library catalogue for it to match. It must arrive WITH that catalogue, though, not ahead
+  // of it: see the per-source check below for what an empty pattern costs.
+  //
+  // What is never allowed is a ROOT that could reach `node_modules`, where the 48 upstream
   // catalogues live. `apps/` and `libs/` sit beside it, so neither can.
   for (const source of sources) {
     if (!/^\/(apps|libs)\//.test(source)) {
@@ -2709,10 +2711,6 @@ function checkCrowdinConfig() {
       );
       continue;
     }
-    // A pattern matching nothing makes the sync a silent no-op: it uploads nothing, downloads
-    // nothing, opens no pull request and reports success. Nobody investigates a green job.
-    // The `libs/` entry legitimately matches nothing yet, so only a total miss across all
-    // sources is a failure.
   }
   /**
    * EVERY source pattern must match at least one file, not merely one of them.
