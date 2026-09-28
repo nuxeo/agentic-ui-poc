@@ -339,7 +339,7 @@ sat-breadcrumbs {
 
 .doc-info-label {
   font-size: 12px;
-  /* NXENG-774 / NXENG-782 — #888 was 3.54:1 on the panel; mat-sys-on-surface-variant fails on this light strip in dark theme. */
+  /* NXENG-774 / NXENG-782 / NXENG-804 — #888 was 3.54:1 on the panel; mat-sys-on-surface-variant fails on this light strip in dark theme. */
   color: var(--document-detail-properties-label-muted);
   min-width: 100px;
   flex-shrink: 0;
