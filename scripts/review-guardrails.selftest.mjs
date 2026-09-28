@@ -1164,14 +1164,81 @@ expectRed(
   /not the compiled default/,
 );
 
-expectGreen('a packaged config matching the compiled defaults', 'checkPackagedConfigIsNotADemo', {
+const PACKAGED_OK = {
   'libs/shared/app-config/src/lib/bootstrap-config.ts':
     'export const DEFAULT_APP_BOOTSTRAP_CONFIG = {\n' +
     "  branding: { applicationTitle: 'Hyland Nuxeo' },\n  defaultThemeId: 'nuxeo',\n};\n",
   'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
     '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
     '  "defaultThemeId": "nuxeo",\n  "themes": []\n}\n',
-});
+};
+
+expectGreen(
+  'a packaged config matching the compiled defaults',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+);
+
+// The second leak of this kind, and the one the three checks above could not see: an NXSAT-279
+// ARender override pointing the annotation viewer at `http://localhost:8181`, swept into an
+// unrelated i18n change by `git add -A`. Branding and themes were all correct, so every named-key
+// check passed. The file is installed on a customer server, where a loopback address resolves to
+// THEIR machine.
+expectRed(
+  'a local development URL in the packaged marketplace config',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+        '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+        '  "integrations": { "arender": { "viewerOrigin": "http://localhost:8181" } }\n}\n',
+    ),
+  /contains the local address `localhost`/,
+);
+
+// The same leak carried its own instruction to revert it, which is worth failing on by itself:
+// the annotation survives even if the URL is later written as a hostname.
+expectRed(
+  'the packaged config declaring its own contents temporary',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+        '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+        '  "$integrations": "LOCAL DEV ONLY (NXSAT-279) - revert with git checkout.",\n' +
+        '  "integrations": { "arender": { "viewerOrigin": "https://arender.example.com" } }\n}\n',
+    ),
+  /says `LOCAL DEV ONLY` about its own contents/,
+);
+
+// The template is the example a customer copies, so it is held to the same rule.
+expectRed(
+  'a local development URL in the customer-facing template config',
+  'checkPackagedConfigIsNotADemo',
+  PACKAGED_OK,
+  (write) =>
+    write(
+      'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json',
+      '{\n  "nuxeoApiOrigin": "http://127.0.0.1:8080"\n}\n',
+    ),
+  /contains the local address `127\.0\.0\.1`/,
+);
+
+expectGreen(
+  'a real external integration host is not mistaken for a developer leak',
+  'checkPackagedConfigIsNotADemo',
+  {
+    ...PACKAGED_OK,
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+      '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
+      '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
+      '  "integrations": { "arender": { "viewerOrigin": "https://arender.hyland.com" } }\n}\n',
+  },
+);
 
 // ── controls for round three of the Copilot review ───────────────────────────────────────
 

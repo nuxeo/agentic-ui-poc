@@ -3193,6 +3193,43 @@ function checkPackagedConfigIsNotADemo() {
         'installation gets it. Demo themes belong in the demo, per the runbook.',
     );
   }
+
+  // A loopback URL or a self-declared temporary edit, ANYWHERE in either Layer 0 file.
+  //
+  // The three checks above were written for the Acme demo leak and they are shaped like it —
+  // named keys, one per symptom. That leaves them blind to every other route a local edit takes
+  // into this file, and one took it: an NXSAT-279 ARender override pointing the annotation viewer
+  // at `http://localhost:8181`, swept in by a `git add -A` during an unrelated i18n change. Its
+  // own annotation read "LOCAL DEV ONLY (NXSAT-279) - revert with git checkout". A reviewer found
+  // it. This gate did not, which is the second leak of this exact kind it has missed.
+  //
+  // Hence a rule about the file rather than about particular keys. These are installed on a
+  // customer's server, where a loopback address cannot mean anything but a mistake — it resolves
+  // to THEIR machine, not ours — and a note saying to revert the edit is the edit admitting it
+  // does not belong. The template is included because it is the example a customer copies.
+  const layer0 = [packaged, 'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json'];
+  for (const file of layer0.filter((path) => fileExists(path))) {
+    const body = read(file);
+
+    const loopback = /\b(?:localhost|127\.0\.0\.1|0\.0\.0\.0|host\.docker\.internal)\b/.exec(body);
+    if (loopback) {
+      fail(
+        `${file} contains the local address \`${loopback[0]}\`.\n` +
+          '    This file is installed on a customer server, where a loopback address resolves to ' +
+          'their machine — so it can only ever be a developer environment that escaped. Point ' +
+          'it at a real host, or revert the file.',
+      );
+    }
+
+    const temporary = /LOCAL DEV ONLY|revert with git checkout|DO NOT COMMIT|TEMPORARY/i.exec(body);
+    if (temporary) {
+      fail(
+        `${file} says \`${temporary[0]}\` about its own contents.\n` +
+          '    A note telling the reader to revert the change is the change admitting it should ' +
+          'not ship. Run the `git checkout --` it asks for.',
+      );
+    }
+  }
 }
 
 /**
