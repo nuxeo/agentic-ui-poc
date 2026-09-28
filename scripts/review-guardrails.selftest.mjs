@@ -1470,6 +1470,27 @@ expectRed(
   /uploads translations before pushing translator context/,
 );
 
+// A `command:` nobody can read counts as an upload, for the same reason a `${{ }}` boolean counts
+// as true: it might be one, and failing closed is the only direction that cannot hide the
+// skipped-context failure this rule exists for.
+expectRed(
+  'the push workflow running an unreadable command before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Do something\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: \${{ inputs.crowdin_command }}\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
 // Masking, on the ordering side. An explicit `false` on an earlier step must not excuse an enabled
 // upload on a later one that still sits ahead of the context push.
 expectRed(
@@ -1737,7 +1758,10 @@ expectRed(
   /passes `--skip-untranslated-files` through an argument input/,
 );
 
-// An argument list that cannot be READ cannot be cleared, so it fails closed too.
+// An argument list that cannot be READ cannot be cleared, so it fails closed too. Two ways a value
+// can be unreadable, and only the first was covered when this was written: an Actions expression is
+// resolved after the gate runs, and a YAML alias is resolved from an anchor elsewhere in the
+// document. Both mean the text the CLI gets is not the text here.
 expectRed(
   'the downloading step building its download arguments from an expression',
   'checkCrowdinConfig',
@@ -1749,7 +1773,36 @@ expectRed(
         PULL_OK + `          download_translations_args: \${{ inputs.extra_args }}\n`,
       ),
     ),
-  /builds a download argument from an expression/,
+  /builds a download argument this script cannot read/,
+);
+
+expectRed(
+  'the downloading step taking its download arguments from a YAML alias',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          download_translations_args: *download_args\n`),
+    ),
+  /builds a download argument this script cannot read/,
+);
+
+// A flow-mapping `with:` hides every input from these checks, so three prohibitions would read as
+// satisfied by absence. Rejected rather than parsed — but rejected LOUDLY, because a limit that
+// passes quietly is what made the matcher indefensible in the first place.
+expectRed(
+  'the pull workflow declaring step inputs as a flow mapping',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      `name: crowdin\non: push\njobs:\n  sync:\n    if: \${{ vars.CROWDIN_SYNC_ENABLED == 'true' }}\n` +
+        `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
+        `        with: { config: crowdin-conf.yml, download_translations: true, skip_untranslated_files: true }\n`,
+    ),
+  /declares step inputs as a YAML flow mapping/,
 );
 
 // Scope. `--skip-untranslated-files` reaches `crowdin download` only through `command_args` or

@@ -2870,9 +2870,12 @@ function yamlInputIsTrue(key) {
  * So callers get all of them and decide, rather than each check re-deriving a parser badly.
  *
  * This is still a matcher and not a YAML parser. It reads block mappings, which is what these
- * workflows are; it does not handle flow mappings (`{ key: value }`) or anchors. That is a
- * deliberate limit rather than an unnoticed one — the checks using it fail closed, so a form it
- * cannot read is a form it cannot clear.
+ * workflows are; it does not resolve aliases, and it cannot see inside a flow mapping
+ * (`{ key: value }`). Those limits are enforced rather than assumed, which is the only thing that
+ * makes a matcher defensible here: `YAML_UNREADABLE` fails any value whose content is unknown, and
+ * the callers reject a flow-mapping `with:` outright. An earlier version of this comment claimed
+ * the same protection while an alias in `download_translations_args` was read as a harmless
+ * literal — the claim was true of the design and false of one branch.
  *
  * @param {string} body YAML source, comments already stripped if the caller needs that
  * @param {string} keyPattern a regex alternation of key names, e.g. `'a|b'`
@@ -2908,6 +2911,21 @@ function yamlValues(body, keyPattern) {
 
 /** A YAML scalar that explicitly switches an input off. Anything else is treated as on. */
 const YAML_FALSE = /^(?:false|'false'|"false")$/;
+
+/**
+ * A value whose content this script cannot know.
+ *
+ * `${{ … }}` is resolved by Actions after the gate runs; `*anchor` is resolved by the YAML parser
+ * from a definition elsewhere in the document. Either way the text the CLI receives is not the
+ * text here, so nothing can be concluded about it.
+ *
+ * Callers must treat this as a FAILURE for anything forbidden, never as absence. That is the whole
+ * basis on which `yamlValues` is allowed to be a matcher rather than a parser, and it was stated
+ * as the justification before it was true of every branch — an alias in `download_translations_args`
+ * was being read as a harmless literal. Raised in review; the guarantee now holds where it is
+ * claimed.
+ */
+const YAML_UNREADABLE = /^\*|\$\{\{/;
 
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
@@ -3329,12 +3347,14 @@ function checkCrowdinConfig() {
             '`skip_untranslated_files:` left this route open.\n' +
             WHY_NO_SKIP_FILES,
         );
-      } else if (value.includes('${{')) {
+      } else if (YAML_UNREADABLE.test(value)) {
         fail(
-          `${workflows[1]} builds a download argument from an expression: \`${value}\`.\n` +
-            '    Actions resolves that long after this runs, so nothing here can tell whether it ' +
-            'contains `--skip-untranslated-files`. An argument list that cannot be read cannot be ' +
-            'cleared, so it fails closed. Pass the flags literally.\n' +
+          `${workflows[1]} builds a download argument this script cannot read: \`${value}\`.\n` +
+            '    An Actions expression is resolved after this gate runs, and a YAML alias is ' +
+            'resolved from an anchor elsewhere in the document — either way the text the CLI ' +
+            'receives is not the text here, so nothing can tell whether it contains ' +
+            '`--skip-untranslated-files`. An argument list that cannot be read cannot be cleared, ' +
+            'so it fails closed. Pass the flags literally.\n' +
             WHY_NO_SKIP_FILES,
         );
       }
@@ -3382,13 +3402,41 @@ function checkCrowdinConfig() {
   // reading only the first `upload_translations` let an explicit `false` on an earlier step mask an
   // enabled upload on a later one. The rule is "nothing that uploads may come before context", so
   // what matters is the EARLIEST upload of any kind.
+  // A `command:` that cannot be read counts as an upload for the same reason a `${{ }}` boolean
+  // counts as `true`: it might be one, and nothing here can rule it out. Failing closed on the
+  // forbidden side is the only direction that cannot hide the failure this rule exists for.
   const uploads = [
     ...yamlValues(push, 'upload_translations').filter(({ value }) => !YAML_FALSE.test(value)),
-    ...yamlValues(push, 'command').filter(({ value }) =>
-      /^['"]?upload\s+translations\b/.test(value),
+    ...yamlValues(push, 'command').filter(
+      ({ value }) =>
+        /^['"]?upload\s+translations\b/.test(value) || YAML_UNREADABLE.test(value),
     ),
   ].map(({ index }) => index);
   const translationUploadAt = uploads.length > 0 ? Math.min(...uploads) : -1;
+
+  // Flow mappings, in either workflow. `with: { command: upload translations }` is valid YAML and
+  // `yamlValues` cannot see inside it, so every check above would read the step as carrying no
+  // inputs at all — absence, when the truth is unknown.
+  //
+  // Rejected rather than parsed. These workflows are block-style throughout, nothing needs the
+  // flow form, and adding a YAML dependency to a script that has none to cover a style nobody
+  // writes is the wrong trade. But the limit has to FAIL, not pass quietly, or the justification
+  // for using a matcher at all stops holding.
+  for (const workflow of workflows) {
+    const flow = stripYamlComments(read(workflow))
+      .split('\n')
+      .find((line) => /^\s*with:\s*\{/.test(line));
+    if (flow !== undefined) {
+      fail(
+        `${workflow} declares step inputs as a YAML flow mapping: \`${flow.trim()}\`.\n` +
+          '    The Crowdin guardrails read block mappings. They cannot see inside a flow ' +
+          'mapping, so `skip_untranslated_files`, `upload_translations` and `command` would all ' +
+          'read as ABSENT rather than unknown — which turns three prohibitions into no-ops.\n' +
+          '    Use the block form (`with:` then one `key: value` per line), which is what every ' +
+          'other step in these workflows uses.',
+      );
+    }
+  }
   if (contextAt === -1) {
     fail(
       `${workflows[0]} never runs \`tools/i18n/crowdin-push-context.mjs\`, so the sources upload ` +
