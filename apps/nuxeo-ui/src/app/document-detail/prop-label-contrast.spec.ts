@@ -16,12 +16,6 @@ const WCAG_AA_NORMAL_TEXT = 4.5;
   styleUrls: [
     '../../../../../libs/features/document-detail/src/lib/document-detail/document-detail.scss',
   ],
-  host: {
-    style: `
-      --document-detail-properties-panel-surface: #ffffff;
-      --document-detail-properties-label-muted: #5c5f6b;
-    `,
-  },
 })
 class PropLabelContrastHostComponent {}
 
