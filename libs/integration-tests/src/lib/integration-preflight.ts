@@ -111,8 +111,14 @@ export function parseAllowedHosts(raw: string | undefined): string[] {
  * So both facts are checked. An http(s) scheme, because that is what a Nuxeo server speaks and
  * it is also what rules out the missing-scheme shape; and a non-empty host, because a host is
  * the thing being compared.
+ *
+ * `port` is the **effective** port, never the spelling. `new URL` deletes a scheme's default
+ * port from both `host` and `port`, so `http://nuxeo.test:80` and `http://nuxeo.test` are
+ * indistinguishable by the time they reach here — and they should be, because they name the
+ * same socket. Substituting the default puts every target on one scale, which is what makes a
+ * port-pinned allowlist entry comparable at all. See `isHostAllowed`.
  */
-function parseTarget(nuxeoUrl: string): { host: string; hostname: string } {
+function parseTarget(nuxeoUrl: string): { host: string; hostname: string; port: string } {
   let url: URL;
   try {
     url = new URL(nuxeoUrl);
@@ -127,13 +133,19 @@ function parseTarget(nuxeoUrl: string): { host: string; hostname: string } {
     throw new Error(`names no host: ${nuxeoUrl}`);
   }
 
-  return { host: url.host.toLowerCase(), hostname: url.hostname.toLowerCase() };
+  return {
+    host: url.host.toLowerCase(),
+    hostname: url.hostname.toLowerCase(),
+    // The scheme is http: or https: by the guard above, so this is total rather than a
+    // lookup that might miss.
+    port: url.port === '' ? (url.protocol === 'https:' ? '443' : '80') : url.port,
+  };
 }
 
 /**
- * Whether an allowlist entry carries a port, and so must match host **and** port.
+ * An allowlist entry split into the hostname it names and the port it pins, if any.
  *
- * A bare `entry.includes(':')` was the test, and it is wrong for every IPv6 literal, because
+ * A bare `entry.includes(':')` decided this, and it is wrong for every IPv6 literal, because
  * the colons inside the address are indistinguishable from a port separator to it. `[::1]`
  * was therefore classified as host-with-port and compared against `host` — `[::1]:8080` for
  * `http://[::1]:8080` — so the documented "no port means any port" form rejected the only
@@ -143,17 +155,18 @@ function parseTarget(nuxeoUrl: string): { host: string; hostname: string } {
  * colons belong to the address, and a port can only appear after the closing `]`. So the
  * search starts there for a bracketed entry, and covers the whole string otherwise.
  *
- * An unterminated `[` is not a port-bearing entry. It is not a usable host either, and it
- * fails the `===` below against a `host` or `hostname` the URL parser produced — the refusal
- * belongs to the comparison rather than to this predicate guessing at intent.
+ * An unterminated `[` pins no port. It is not a usable host either, and it fails the `===` in
+ * `isHostAllowed` against a hostname the URL parser produced — the refusal belongs to the
+ * comparison rather than to this function guessing at intent. A trailing `:` with nothing
+ * after it pins the empty string, which no effective port is, so that is refused too.
  */
-function entryCarriesPort(entry: string): boolean {
-  if (entry.startsWith('[')) {
-    const closingBracket = entry.indexOf(']');
-    return closingBracket !== -1 && entry.includes(':', closingBracket);
-  }
+function splitEntry(entry: string): { hostname: string; port: string | null } {
+  const searchFrom = entry.startsWith('[') ? entry.indexOf(']') : 0;
+  const separator = searchFrom === -1 ? -1 : entry.indexOf(':', searchFrom);
 
-  return entry.includes(':');
+  return separator === -1
+    ? { hostname: entry, port: null }
+    : { hostname: entry.slice(0, separator), port: entry.slice(separator + 1) };
 }
 
 /**
@@ -161,20 +174,37 @@ function entryCarriesPort(entry: string): boolean {
  *
  * Two shapes of entry, because both questions are legitimate:
  *
- * - `localhost:8080` carries a port and must match **host and port** exactly.
+ * - `localhost:8080` carries a port and must match **hostname and port** exactly.
  * - `localhost` carries none and matches **any port** on that hostname.
  * - `[::1]` is the second form for an IPv6 literal, and `[::1]:8080` the first — see
- *   `entryCarriesPort` for why the bracket and not the colon decides.
+ *   `splitEntry` for why the bracket and not the colon decides.
  *
  * The port-bearing form exists so a run can be pinned when the port is what distinguishes a
  * disposable stack from something that matters — a forwarded tunnel on `localhost:9000` is not
  * the Docker container on `localhost:8080`, and nothing else in this file could tell them
  * apart.
  *
- * Matching is `===` against a whole host, never a substring: `endsWith('localhost')` admits
+ * ## Why the comparison is against the effective port and not against `host`
+ *
+ * It used to be `entry === host` for a port-bearing entry, and that refused the default port
+ * of either scheme. `new URL` strips it: `http://nuxeo.test:80` arrives with
+ * `host === 'nuxeo.test'`, so `nuxeo.test:80` was classified as port-bearing and then compared
+ * against a string that had no port in it — a match that could never happen. For a safety
+ * control the effect ran backwards. The person writing the **tighter** pinned entry was the
+ * one refused, and the refusal named the portless form as the fix, which permits *any* port on
+ * that host. `https://nuxeo.test:80` behaved correctly throughout, because 80 is not HTTPS's
+ * default, and that asymmetry is why half the matrix was green and the defect survived review.
+ * Reported on the pull request.
+ *
+ * So both sides are put on one scale before comparing: the target contributes its effective
+ * port from `parseTarget`, and the entry contributes the port it pins literally. An entry
+ * carries no scheme, so it is the port and only the port that has to agree — `nuxeo.test:80`
+ * names port 80 whether that is a default or not.
+ *
+ * Matching is `===` against a whole hostname, never a substring: `endsWith('localhost')` admits
  * `evil-localhost`, and a registrable domain passing a safety allowlist is the entire risk.
- * For an IPv6 entry that comparison is against the parser's **normalised** spelling — `host`
- * and `hostname` come from `new URL`, which compresses `[0:0:0:0:0:0:0:1]` to `[::1]` — so an
+ * For an IPv6 entry that comparison is against the parser's **normalised** spelling —
+ * `hostname` comes from `new URL`, which compresses `[0:0:0:0:0:0:0:1]` to `[::1]` — so an
  * entry written out in full does not match. Write the entry the way the parser would.
  *
  * Throws, via `parseTarget`, on a target with no usable host. The caller reports that as its
@@ -182,9 +212,14 @@ function entryCarriesPort(entry: string): boolean {
  * `NUXEO_URL` as an allowlist miss and send the reader to edit the wrong variable.
  */
 export function isHostAllowed(nuxeoUrl: string, allowed: string[]): boolean {
-  const { host, hostname } = parseTarget(nuxeoUrl);
+  const target = parseTarget(nuxeoUrl);
 
-  return allowed.some((entry) => (entryCarriesPort(entry) ? entry === host : entry === hostname));
+  return allowed.some((raw) => {
+    const entry = splitEntry(raw);
+    if (entry.hostname !== target.hostname) return false;
+
+    return entry.port === null || entry.port === target.port;
+  });
 }
 
 export interface PreflightResult {
@@ -297,9 +332,19 @@ export async function runPreflightChecks(
   // real host. The alternative — reaching for `new URL(nuxeoUrl).host` again at the message —
   // is what printed `export INTEGRATION_ALLOWED_HOSTS=` with an empty value.
   let targetHost: string | null = null;
+  // What the message tells the reader to export, and deliberately not `targetHost`. The two
+  // differ exactly when the target sits on its scheme's default port, where `host` has had the
+  // port removed — so suggesting it would hand out the portless entry, which permits any port
+  // on that hostname. The pinned form is the narrower grant and the one the reader asked for,
+  // and it only became suggestible when `isHostAllowed` started normalising defaults; before
+  // that it was an entry that matched nothing. A safety control should not have to recommend
+  // the looser of two spellings.
+  let targetPinned: string | null = null;
   let hostAllowed = false;
   try {
-    targetHost = parseTarget(nuxeoUrl).host;
+    const target = parseTarget(nuxeoUrl);
+    targetHost = target.host;
+    targetPinned = `${target.hostname}:${target.port}`;
     hostAllowed = isHostAllowed(nuxeoUrl, allowedHosts);
   } catch (error) {
     // A target with no usable host has nothing to compare. Reported as its own problem rather
@@ -319,9 +364,11 @@ export async function runPreflightChecks(
         `  names. There is no default allowlist and no host is implicitly safe, localhost\n` +
         `  included: the target is named explicitly or the run is refused.\n\n` +
         `  To allow this run:\n` +
-        `    export ${ALLOWED_HOSTS_ENV}=${targetHost}\n\n` +
-        `  Comma-separated for several hosts. An entry carrying a port must match host and\n` +
-        `  port exactly; an entry without one matches any port on that hostname.\n\n` +
+        `    export ${ALLOWED_HOSTS_ENV}=${targetPinned}\n\n` +
+        `  Comma-separated for several hosts. An entry carrying a port must match hostname\n` +
+        `  and port exactly, the scheme's default port included; an entry without one\n` +
+        `  matches any port on that hostname, so drop the ":" and what follows it only if\n` +
+        `  that is what you mean.\n\n` +
         `  ${ALLOWED_HOSTS_ENV} is currently ` +
         (rawAllowedHosts === undefined
           ? 'unset'

@@ -22,17 +22,30 @@ than refusing. `NUXEO_URL` selects the server and defaults to `http://localhost:
 and users, so the question that decides whether a run is safe is _which server_, and this is
 where you answer it.
 
-| Property                        | Behaviour                                                                            |
-| ------------------------------- | ------------------------------------------------------------------------------------ |
-| Unset or blank                  | **Nothing is permitted.** There is no implicit allowlist and no fallback.            |
-| `localhost`                     | Not special-cased. Named like any other host or refused like any other host.         |
-| `localhost,ci.internal`         | Comma-separated; spaces around the commas are trimmed; matching is case-insensitive. |
-| `localhost`                     | No port, so any port on that hostname.                                               |
-| `localhost:8080`                | Carries a port, so that host **and** port exactly.                                   |
-| `evil-localhost` vs `localhost` | Whole-host equality, never a substring. A suffix match would admit both.             |
+| Property                        | Behaviour                                                                                                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unset or blank                  | **Nothing is permitted.** There is no implicit allowlist and no fallback.                                                                                                   |
+| `localhost`                     | Not special-cased. Named like any other host or refused like any other host.                                                                                                |
+| `localhost,ci.internal`         | Comma-separated; spaces around the commas are trimmed; matching is case-insensitive.                                                                                        |
+| `localhost`                     | No port, so any port on that hostname.                                                                                                                                      |
+| `localhost:8080`                | Carries a port, so that hostname **and** port exactly.                                                                                                                      |
+| `nuxeo.test:80`                 | A scheme's default port counts like any other. Both sides are compared as effective ports, so this matches `http://nuxeo.test` and `http://nuxeo.test:80` and nothing else. |
+| `[::1]` / `[::1]:8080`          | Same two forms for an IPv6 literal, written the way `new URL` normalises it.                                                                                                |
+| `evil-localhost` vs `localhost` | Whole-hostname equality, never a substring. A suffix match would admit both.                                                                                                |
 
 Refusal is a **precondition failure, exit 2** — the environment is wrong, not the code — and the
-message names the host it refused and the exact `export` that would permit it.
+message names the host it refused and the exact `export` that would permit it. That `export` is
+always the **port-pinned** form, because it is the narrower of the two grants: a remedy that
+hands out more access than was refused is not a remedy. Drop the `:port` yourself if you do
+want any port on the host.
+
+The default-port row is there because it was once the opposite. `new URL` deletes a scheme's
+default port, so `http://nuxeo.test:80` reached the comparison as the bare host `nuxeo.test`,
+and the entry `nuxeo.test:80` — read as port-bearing — could never equal it. The person writing
+the tighter entry was the one refused, and the message then recommended the looser form.
+`https://nuxeo.test:80` worked throughout, because 80 is not HTTPS's default, and that
+asymmetry is why it survived review. Reported on the pull request; the whole matrix is pinned
+in `integration-preflight.unit.spec.ts` now.
 
 This replaced a guard that compared the credentials against `Administrator`/`Administrator` and
 refused that pair without an `ALLOW_DEFAULT_CREDENTIALS` opt-in. That control could not do what

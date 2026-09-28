@@ -527,6 +527,49 @@ describe('isHostAllowed', () => {
     expect(isHostAllowed('http://localhost:9000', ['localhost:8080'])).toBe(false);
   });
 
+  it('accepts a port-pinned entry naming the scheme default, which the URL parser hides', () => {
+    // The defect this closes, and it ran backwards for a safety control. `new URL` removes a
+    // scheme's default port from `host`, so `http://nuxeo.test:80` arrives as `host` ===
+    // `"nuxeo.test"` with `port` === `""`. The entry `nuxeo.test:80` was classified as
+    // port-bearing and compared against that `host`, which it could never equal — so the
+    // person writing the *tighter* pinned entry was refused, and the refusal's own message
+    // steered them to the portless form, which permits ANY port. Reported on the pull request.
+    expect(isHostAllowed('http://nuxeo.test:80', ['nuxeo.test:80'])).toBe(true);
+    expect(isHostAllowed('https://nuxeo.test:443', ['nuxeo.test:443'])).toBe(true);
+    // And with the port left off the URL entirely, where the effective port is the only port
+    // there has ever been.
+    expect(isHostAllowed('http://nuxeo.test', ['nuxeo.test:80'])).toBe(true);
+    expect(isHostAllowed('https://nuxeo.test', ['nuxeo.test:443'])).toBe(true);
+  });
+
+  it('keeps the cross cases working, where the port is not that scheme default', () => {
+    // `https://…:80` and `http://…:443` were the two that already behaved, because 80 is not
+    // HTTPS's default and 443 is not HTTP's, so the parser left them in `host`. That asymmetry
+    // is why the defect above was easy to miss: half the matrix was green. Pinned here so a
+    // future normalisation cannot fix one half by breaking the other.
+    expect(isHostAllowed('https://nuxeo.test:80', ['nuxeo.test:80'])).toBe(true);
+    expect(isHostAllowed('http://nuxeo.test:443', ['nuxeo.test:443'])).toBe(true);
+  });
+
+  it('still discriminates on the port once defaults are normalised', () => {
+    // Normalising both sides must not degrade the pinned form into "any port". The default
+    // port is a port like any other and has to lose against a different one, in both
+    // directions — an entry naming the default against a non-default target, and the reverse.
+    expect(isHostAllowed('http://nuxeo.test:8080', ['nuxeo.test:80'])).toBe(false);
+    expect(isHostAllowed('http://nuxeo.test', ['nuxeo.test:8080'])).toBe(false);
+    expect(isHostAllowed('http://nuxeo.test', ['nuxeo.test:443'])).toBe(false);
+    expect(isHostAllowed('https://nuxeo.test', ['nuxeo.test:80'])).toBe(false);
+  });
+
+  it('normalises the default port for a bracketed IPv6 target too', () => {
+    // The bracket handling and the default-port handling are separate pieces of the same
+    // decision, and each has already been wrong on its own. This is the case that needs both.
+    expect(isHostAllowed('http://[::1]:80', ['[::1]:80'])).toBe(true);
+    expect(isHostAllowed('http://[::1]', ['[::1]:80'])).toBe(true);
+    expect(isHostAllowed('https://[::1]', ['[::1]:443'])).toBe(true);
+    expect(isHostAllowed('http://[::1]:8080', ['[::1]:80'])).toBe(false);
+  });
+
   it('refuses a host that is merely a suffix or prefix of an allowed one', () => {
     // `===`, not `endsWith`. `evil-localhost` and `localhost.evil.com` both pass a substring
     // test, and an attacker-registrable domain passing a safety allowlist is the whole risk.
@@ -642,6 +685,23 @@ describe('runPreflightChecks — the host allowlist', () => {
     // says only "not allowed" makes the reader guess at the spelling of both.
     expect(result.problems[0]).toMatch(/export INTEGRATION_ALLOWED_HOSTS=nuxeo\.test/);
     expect(result.problems[0]).toMatch(/INTEGRATION_ALLOWED_HOSTS is currently unset/);
+  });
+
+  it('suggests the port-pinned entry, not the portless one that permits any port', async () => {
+    // `useUnlistedTarget` points at `http://nuxeo.test`, whose `host` has no port in it
+    // because 80 is HTTP's default. The suggestion has to be `nuxeo.test:80` regardless: the
+    // reader is being told the minimum that permits *this* run, and `nuxeo.test` permits every
+    // port on the host. A refusal whose remedy grants more than was refused is not a control.
+    useUnlistedTarget();
+    stubFetch({ status: 200 }, withDocuments(1));
+
+    const result = await runPreflightChecks();
+
+    expect(result.ok).toBe(false);
+    expect(result.problems[0]).toMatch(/export INTEGRATION_ALLOWED_HOSTS=nuxeo\.test:80\n/);
+    // And the suggestion has to be one the allowlist actually accepts, or the message sends
+    // the reader in a circle. This is the assertion that would have caught the defect.
+    expect(isHostAllowed('http://nuxeo.test', ['nuxeo.test:80'])).toBe(true);
   });
 
   it('refuses localhost as readily as anything else', async () => {
