@@ -2850,6 +2850,57 @@ function yamlInputIsTrue(key) {
   return new RegExp(`^\\s*${key}:\\s*(?:'true'|"true"|true)\\s*(?:#.*)?$`, 'm');
 }
 
+/**
+ * EVERY value a key is given in a YAML document, with block scalars folded in, and the byte
+ * offset of each.
+ *
+ * Three review rounds were spent on checks that read one declaration in one form, and each round
+ * found another way past them. The holes were all the same two mistakes:
+ *
+ * - **First match only.** `regex.exec` stops at the first declaration, so a harmless
+ *   `skip_untranslated_files: false` on a preparation step masked a `true` on the step that
+ *   actually downloads. Same for `upload_translations` and the ordering rule.
+ * - **First line only.** `download_translations_args: >-` puts the value on the CONTINUATION
+ *   lines. Reading the line the key is on captures `>-` and nothing else, while the action
+ *   receives the folded text and passes it to the CLI.
+ *
+ * So callers get all of them and decide, rather than each check re-deriving a parser badly.
+ *
+ * @param {string} body YAML source, comments already stripped if the caller needs that
+ * @param {string} keyPattern a regex alternation of key names, e.g. `'a|b'`
+ * @returns {{value: string, index: number}[]} in document order
+ */
+function yamlValues(body, keyPattern) {
+  const lines = body.split('\n');
+  const key = new RegExp(`^([^\\S\\n]*)(?:${keyPattern}):[^\\S\\n]*(.*)$`);
+  const found = [];
+  let offset = 0;
+  for (let at = 0; at < lines.length; at += 1) {
+    const line = lines[at];
+    const match = key.exec(line);
+    if (match) {
+      const [, indent, first] = match;
+      let value = first.replace(/\s+#.*$/, '').trim();
+      // `|` and `>` mean the value is the more-indented block that follows, not this line.
+      if (/^[|>]/.test(value)) {
+        const parts = [];
+        for (let next = at + 1; next < lines.length; next += 1) {
+          if (lines[next].trim() === '') continue;
+          if (/^[^\S\n]*/.exec(lines[next])[0].length <= indent.length) break;
+          parts.push(lines[next].trim());
+        }
+        value = parts.join(' ');
+      }
+      found.push({ value, index: offset });
+    }
+    offset += line.length + 1;
+  }
+  return found;
+}
+
+/** A YAML scalar that explicitly switches an input off. Anything else is treated as on. */
+const YAML_FALSE = /^(?:false|'false'|"false")$/;
+
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
   // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
@@ -3226,20 +3277,26 @@ function checkCrowdinConfig() {
 
   const pullCode = stripYamlComments(pull);
 
-  // Fail CLOSED, on any value that is not literally false.
+  // Fail CLOSED, on EVERY declaration whose value is not literally false.
   //
   // Enumerating truthy spellings was the wrong shape and lost three rounds of review to it:
   // `true`, then `'true'` and a trailing comment, then `${{ true }}`. An expression cannot be
   // evaluated here at all, so for a FORBIDDEN input the only sound rule is that its presence is
   // the defect unless it is provably switched off.
-  const declared = /^\s*skip_untranslated_files:\s*(.*)$/m.exec(pullCode);
-  const value = declared ? declared[1].replace(/\s+#.*$/, '').trim() : null;
-  if (value !== null && !/^(?:false|'false'|"false")$/.test(value)) {
+  //
+  // Every declaration, not the first: a preparation step carrying `skip_untranslated_files: false`
+  // ahead of the downloading step masked a `true` on the downloader, which is the same
+  // wrong-step blindness the `crowdinSteps.find` above exists to avoid.
+  const offending = yamlValues(pullCode, 'skip_untranslated_files').find(
+    ({ value }) => !YAML_FALSE.test(value),
+  );
+  if (offending !== undefined) {
     fail(
-      `${workflows[1]} declares \`skip_untranslated_files: ${value}\`.\n` +
+      `${workflows[1]} declares \`skip_untranslated_files: ${offending.value}\`.\n` +
         '    Anything but a literal `false` fails here, including `${{ … }}`, because an ' +
         'expression is resolved by Actions long after this runs — so a forbidden input cannot be ' +
-        'cleared by making its value unreadable.\n' +
+        'cleared by making its value unreadable. Every declaration in the file is read, so a ' +
+        '`false` on another step does not excuse this one.\n' +
         WHY_NO_SKIP_FILES,
     );
   }
@@ -3250,20 +3307,29 @@ function checkCrowdinConfig() {
   // command the step runs (`entrypoint.sh` 82-83 and 408-409). Both are read off `crowdinStep`
   // rather than the whole file: a mention in `pull_request_body`, or an `upload_translations_args`
   // on some other step, reaches `crowdin download` on no path and must not fail this gate.
+  //
+  // Read through block scalars, because `download_translations_args: >-` puts the flag on the
+  // following lines and the action folds them before passing them on.
   if (crowdinStep !== undefined) {
-    const argInputs = [
-      ...crowdinStep.matchAll(/^\s*(?:download_translations_args|command_args):\s*(.*)$/gm),
-    ].map(([, raw]) => raw);
-    const smuggled = argInputs.find((raw) => /--skip-untranslated-files\b/.test(raw));
-    if (smuggled !== undefined) {
-      fail(
-        `${workflows[1]} passes \`--skip-untranslated-files\` through an argument input: ` +
-          `\`${smuggled.trim()}\`.\n` +
-          '    `download_translations_args` and `command_args` are appended to the command ' +
-          'VERBATIM, so this reaches the CLI exactly as the boolean input would. Checking only ' +
-          '`skip_untranslated_files:` left this route open.\n' +
-          WHY_NO_SKIP_FILES,
-      );
+    for (const { value } of yamlValues(crowdinStep, 'download_translations_args|command_args')) {
+      if (/--skip-untranslated-files\b/.test(value)) {
+        fail(
+          `${workflows[1]} passes \`--skip-untranslated-files\` through an argument input: ` +
+            `\`${value}\`.\n` +
+            '    `download_translations_args` and `command_args` are appended to the command ' +
+            'VERBATIM, so this reaches the CLI exactly as the boolean input would. Checking only ' +
+            '`skip_untranslated_files:` left this route open.\n' +
+            WHY_NO_SKIP_FILES,
+        );
+      } else if (value.includes('${{')) {
+        fail(
+          `${workflows[1]} builds a download argument from an expression: \`${value}\`.\n` +
+            '    Actions resolves that long after this runs, so nothing here can tell whether it ' +
+            'contains `--skip-untranslated-files`. An argument list that cannot be read cannot be ' +
+            'cleared, so it fails closed. Pass the flags literally.\n' +
+            WHY_NO_SKIP_FILES,
+        );
+      }
     }
   }
 
@@ -3302,12 +3368,19 @@ function checkCrowdinConfig() {
   // as an upload unless it is literally `false`. An expression is resolved by Actions long after
   // this runs, so a step whose upload is `${{ … }}` can still run, still fail, and still skip the
   // context step behind it — which is the whole failure this rule exists for.
-  const declaredUpload = /^[^\S\n]*upload_translations:[^\S\n]*(.*)$/m.exec(push);
-  const uploadValue = declaredUpload ? declaredUpload[1].replace(/\s+#.*$/, '').trim() : null;
-  const translationUploadAt =
-    uploadValue !== null && !/^(?:false|'false'|"false")$/.test(uploadValue)
-      ? declaredUpload.index
-      : -1;
+  //
+  // TWO interfaces and EVERY declaration, both learned in review. The action also runs a bare
+  // `command:`, so `command: upload translations` uploads without the boolean ever appearing; and
+  // reading only the first `upload_translations` let an explicit `false` on an earlier step mask an
+  // enabled upload on a later one. The rule is "nothing that uploads may come before context", so
+  // what matters is the EARLIEST upload of any kind.
+  const uploads = [
+    ...yamlValues(push, 'upload_translations').filter(({ value }) => !YAML_FALSE.test(value)),
+    ...yamlValues(push, 'command').filter(({ value }) =>
+      /^['"]?upload\s+translations\b/.test(value),
+    ),
+  ].map(({ index }) => index);
+  const translationUploadAt = uploads.length > 0 ? Math.min(...uploads) : -1;
   if (contextAt === -1) {
     fail(
       `${workflows[0]} never runs \`tools/i18n/crowdin-push-context.mjs\`, so the sources upload ` +

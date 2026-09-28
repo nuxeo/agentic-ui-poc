@@ -1430,6 +1430,49 @@ expectRed(
   /uploads translations before pushing translator context/,
 );
 
+// The OTHER upload interface. The action runs a bare `command:`, so `command: upload translations`
+// uploads without the boolean input ever appearing — and the ordering rule is about uploads, not
+// about one spelling of one input.
+expectRed(
+  'the push workflow uploading translations via `command:` before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: upload translations\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// Masking, on the ordering side. An explicit `false` on an earlier step must not excuse an enabled
+// upload on a later one that still sits ahead of the context push.
+expectRed(
+  'an earlier disabled upload masking a later enabled one ahead of the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(
+        `          command_args: '--delete-obsolete'\n          upload_translations: false\n`,
+      ) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
 // And an upload explicitly switched off is not an upload, so it must not trip the ordering rule
 // wherever it sits.
 expectGreen('a disabled upload_translations step ahead of the context push', 'checkCrowdinConfig', {
@@ -1619,6 +1662,62 @@ expectGreen('a pull workflow that explicitly disables skip_untranslated_files', 
     PULL_OK + `          skip_untranslated_files: false\n`,
   ),
 });
+
+// Masking. Reading only the FIRST declaration let a harmless `false` on a preparation step excuse
+// a `true` on the step that actually downloads — the same wrong-step blindness the `crowdinSteps`
+// lookup exists to avoid, reintroduced one layer down. Every declaration is read now.
+expectRed(
+  'a preparation step disabling skip_untranslated_files while the downloader enables it',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        `          upload_sources: false\n          skip_untranslated_files: false\n`,
+      ) +
+        `      - uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          config: crowdin-conf.yml\n` +
+        PULL_OK +
+        `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// Block scalars. `download_translations_args: >-` puts the value on the CONTINUATION lines, so a
+// check that reads the key's own line captures `>-` and nothing else while the action folds the
+// block and hands the flag to the CLI.
+expectRed(
+  'the downloading step smuggling --skip-untranslated-files through a folded block scalar',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_OK +
+          `          download_translations_args: >-\n` +
+          `            --skip-untranslated-files\n`,
+      ),
+    ),
+  /passes `--skip-untranslated-files` through an argument input/,
+);
+
+// An argument list that cannot be READ cannot be cleared, so it fails closed too.
+expectRed(
+  'the downloading step building its download arguments from an expression',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_OK + `          download_translations_args: \${{ inputs.extra_args }}\n`,
+      ),
+    ),
+  /builds a download argument from an expression/,
+);
 
 // Scope. `--skip-untranslated-files` reaches `crowdin download` only through `command_args` or
 // `download_translations_args` on the DOWNLOADING step. A mention anywhere else — the pull request

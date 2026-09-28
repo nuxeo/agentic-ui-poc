@@ -749,12 +749,29 @@ reference translation held by the source file"_ — and calls the option "not sp
 It does not say MUST NOT. We take the short catalogue and the fallback instead, for the reason
 above.
 
-**The guardrail is now the reverse of what it was**: `checkCrowdinConfig` fails the pull workflow
-if `skip_untranslated_files: true` appears alongside `skip_untranslated_strings: true`. Seen red on
-purpose against the real workflow, not only the fixture. The general lesson is the one this
-programme keeps paying for — the requirement was asserted against the _text_ of the workflow and
-never against the tool that consumes it or the standard that governs it, so the guardrail proved
-only that a broken configuration was present.
+**The guardrail is now the reverse of what it was, and unconditional.** `checkCrowdinConfig` does
+not look for the pair — `skip_untranslated_strings: true` is separately required, so any appearance
+of the other option is always the conflict, and a conditional rule could be satisfied by removing
+the wrong half. It fails on:
+
+- **any** `skip_untranslated_files` declaration in the pull workflow whose value is not literally
+  `false` — including `'true'`, a trailing comment, and `${{ … }}`, which Actions resolves long
+  after the gate runs;
+- `--skip-untranslated-files` in `command_args` or `download_translations_args` on the downloading
+  step, read through block scalars, since those are appended to the command verbatim; and an
+  argument list built from an expression, which cannot be read and so cannot be cleared;
+- the key anywhere in `crowdin-conf.yml`, since `FileBean` validates the same pair there.
+
+Each route was seen red on purpose against the real files, not only fixtures, and each has a
+negative control.
+
+The general lesson is the one this programme keeps paying for, and it repeated itself twice inside
+the fix. The original requirement was asserted against the _text_ of the workflow and never against
+the tool that consumes it or the standard that governs it, so the guardrail proved only that a
+broken configuration was present. Then the prohibition replacing it was written by enumerating the
+spellings of "true" — four review rounds, one spelling at a time — until it was clear that for a
+forbidden input **presence is the defect unless it is provably switched off**. Enumerating what is
+forbidden does not terminate; asserting what is required does.
 
 ### D8e — a language is advertised when it has translations, not when it is planned
 
