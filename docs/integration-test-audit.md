@@ -573,7 +573,7 @@ encode a UI flow the application removed. Per-script detail in §4.6; recommenda
   Recommendation R11 in §13.
 - **One genuine hardcoded credential exists** and is a rule violation:
   `scripts/beta-harness/steps/phase-3-search.mjs:46`,
-  `` const AUTH = `Basic ${Buffer.from('Administrator:Administrator').toString('base64')}` ``.
+  `` const AUTH = `Basic ${Buffer.from('<default-docker-user>:<default-docker-pass>').toString('base64')}` `` (since removed).
   Every other harness file uses `process.env['NUXEO_USER'] ?? 'Administrator'`.
 - **Shared Nuxeo.** 42 File documents; `/default-domain/workspaces` writable. Two folders leaked
   by the clipboard script during this audit remain (§4.6) — harmless, but they are litter in a

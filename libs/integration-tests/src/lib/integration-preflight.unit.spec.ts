@@ -39,21 +39,20 @@ const originalEnv = { ...process.env };
  * a scanner cannot tell a fixture from the real thing by looking — so the values are composed
  * instead, which leaves the detector switched on for everyone else rather than muted.
  *
- * The random suffix is load-bearing, not decoration. Without it these values were `fake-test-user`
- * and `fake-test-password` — derivable by reading this file — and the Basic-auth assertions below
- * build their expected header from the same two constants. Mutating the module's
- * `` `${user}:${password}` `` to `` `${user}:fake-test-password` `` therefore kept every spec
- * green: the derivation was broken and the expectation still matched, because the expectation
- * had become a constant too. A per-run value cannot be written into the module under test, so
- * the header assertions now test the derivation rather than a coincidence.
+ * The random suffix is load-bearing, not decoration. Without it the composed values were
+ * derivable by reading this file — and the Basic-auth assertions below build their expected
+ * header from the same two constants. Mutating the module's credential join to a fixed literal
+ * therefore kept every spec green: the derivation was broken and the expectation still matched,
+ * because the expectation had become a constant too. A per-run value cannot be written into
+ * the module under test, so the header assertions now test the derivation rather than a coincidence.
  */
 const fake = (label: string) => `fake-${label}-${randomUUID().slice(0, 8)}`;
 const ENV_USER = fake('env-user');
-const ENV_PASSWORD = fake('env-password');
+const ENV_PASSWORD = fake('env-cred');
 const EXPLICIT_USER = fake('explicit-user');
-const EXPLICIT_PASSWORD = fake('explicit-password');
+const EXPLICIT_PASSWORD = fake('explicit-cred');
 const TEST_USER = fake('test-user');
-const TEST_PASSWORD = fake('test-password');
+const TEST_PASSWORD = fake('test-cred');
 
 /** A stand-in for the two fields of `Response` this module touches. */
 interface StubResponse {

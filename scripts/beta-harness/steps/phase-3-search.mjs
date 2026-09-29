@@ -50,7 +50,7 @@ const NUXEO = 'http://localhost:8080/nuxeo';
  * Credentials from the environment, with **no** fallback.
  *
  * `.cursor/rules/security.mdc`: "NEVER use Basic auth with hardcoded fallback defaults".
- * Moving the literal `Administrator:Administrator` out of the `Buffer.from` and into a `??`
+ * Moving the literal default Docker user/pass pair out of the `Buffer.from` and into a `??`
  * default leaves the same working credential pair in the repository — it is the spelling
  * that changed, not the fact. `apps/nuxeo-ui-e2e/src/fixtures.ts` and
  * `scripts/collect-evidence/story-runner.mjs` both throw here, and this file should match

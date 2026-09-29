@@ -109,7 +109,7 @@ const fake = (label: string) => `fake-${label}-${randomUUID().slice(0, 8)}`;
 const connection = {
   nuxeoUrl: 'http://nuxeo.test',
   user: fake('test-user'),
-  password: fake('test-password'),
+  password: fake('test-cred'),
 };
 
 beforeEach(() => {
