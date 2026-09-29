@@ -160,7 +160,9 @@ jobs:
 
             **Check the diff for real translations turning back into English.** The export
             replaces the whole file, so a translation that exists in this repository but has not
-            been approved in Crowdin comes back as its English source.
+            been approved in Crowdin comes back as its English source, and no check fails on it.
+            Do not merge a pull that does this; get the translation approved in Crowdin first
+            (D8f in `docs/i18n-localization-plan.md`).
 
             Do not hand-edit a non-English catalogue to fix something here. Crowdin is the
             source of truth and overwrites it on the next pull; fix it in Crowdin.

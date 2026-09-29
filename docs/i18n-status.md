@@ -702,6 +702,13 @@ values `""`, apart from 8 approved strings each in `fr.json` and `de.json`, and
 The pull now follows the standard: approved-only export, neither skip option, and only `fr` and
 `de` downloaded (D8d, D8h).
 
+Dispatched from that fix, the pull refreshed #293 to `fr.json` and `de.json` only, each 1,972 keys
+with no blank value, 1,964 English and 8 approved translations. That is 99% English, so
+`checkCataloguesAreTranslated` **warns and the guardrails pass**. It is not the all-English
+failure. Merging it would turn all 75 hand-written French and 75 German strings on `main` back into
+English, because none of them is approved in Crowdin. **Do not merge a Crowdin pull until the D8f
+seeding is done**, or until the diff shows no hand-written string reverting.
+
 One trap is already handled and must stay handled: the standard's `/**/**/i18n/en.json` glob, with
 `base_path: "."`, sweeps `node_modules` and its 48 upstream catalogues — which would push
 Alfresco's and Satori's strings into our project and bill the translation crew for work another team

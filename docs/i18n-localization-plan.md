@@ -584,7 +584,10 @@ What a reviewer should expect from a pull now:
   exist.
 - A catalogue that is **mostly English** (80% or more) warns and passes. That is the case to read
   carefully. A translation held in the repository but not approved in Crowdin comes back as its
-  English source, and no check fails on it.
+  English source, and no check fails on it. Measured on 29 September: with 8 strings approved per
+  language, the pull was 99% English and passed, and it would have reverted all 150 hand-written
+  French and German strings on `main`. Until D8f seeding is done, do not merge a pull whose diff
+  turns a hand-written string back into English.
 - `checkTranslationCatalogues` still warns rather than fails on a key a locale lacks, because a key
   added since the last pull is legitimately missing until the next one.
 

@@ -1948,7 +1948,8 @@ function checkCataloguesAreTranslated() {
       if (shared.length >= 25 && ratio >= 0.8) {
         warn(
           `${catalogue} repeats the English string for ${identical.length} of its ` +
-            `${shared.length} keys (${Math.round(ratio * 100)}%).\n` +
+            // Floored: 1,964 of 1,972 rounds to "100%", which reads as the all-English failure.
+            `${shared.length} keys (${Math.floor(ratio * 100)}%).\n` +
             '    Approved-only export fills every string not yet approved in Crowdin with its ' +
             'English source, so this is the normal state of a language with few approvals. ' +
             'If this is a Crowdin pull, check its diff for real translations turning back into ' +
