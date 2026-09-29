@@ -679,7 +679,12 @@ export class AdminUsersGroupsPageComponent implements OnInit {
 
   membersMoreAriaLabel(group: NuxeoGroup): string {
     const count = this.membersOverflowCount(group);
-    return `Show ${count} more member${count === 1 ? '' : 's'}`;
+    return this.translate.instant(
+      count === 1
+        ? 'admin.admin-users-groups-page.show-more-members-one'
+        : 'admin.admin-users-groups-page.show-more-members-many',
+      { count },
+    );
   }
 
   membersPreview(group: NuxeoGroup): string {

@@ -198,6 +198,8 @@
       "refresh-recent": "Refresh recent",
       "run-search": "Run search",
       "search-for-users-and-groups": "Search for users and groups",
+      "show-more-members-many": "Show {{ count }} more members",
+      "show-more-members-one": "Show {{ count }} more member",
       "username": "Username",
       "users-amp-groups": "Users & Groups",
       "users-tab": "Users ({{ count }})"
@@ -1674,6 +1676,7 @@
       "helpful": "Helpful",
       "history": "History",
       "hyland-insight": "Hyland Insight",
+      "insufficient-answer": "I couldn't find enough relevant information in this agent's knowledge base to answer that yet.",
       "knowledge-discovery": "Knowledge Discovery",
       "loading": "Loading",
       "models": "Models",
