@@ -20,6 +20,8 @@
  * broken environment from a failing check, and flattening everything to 1 erases that.
  */
 
+import { requireNuxeoCredentials } from '../env.mjs';
+
 /**
  * @param {string} tool   the diagnostic's name, so the message says who could not measure
  * @param {string} reason
@@ -30,6 +32,25 @@ export function cannotMeasure(tool, reason, fix) {
   console.error(`${tool}: cannot measure — ${reason}`);
   if (fix) console.error(`  ${fix}`);
   process.exit(2);
+}
+
+/**
+ * `NUXEO_USER` and `NUXEO_PASS`, or exit 2.
+ *
+ * `requireNuxeoCredentials()` throws, which is right for the Playwright config (a thrown config
+ * error stops the run with its message) and wrong at the top of a diagnostic, where the throw
+ * became an uncaught exception and exit 1 — the first precondition every diagnostic checks,
+ * reported as a finding. Flagged in review on PR #225, once per diagnostic.
+ *
+ * @param {string} tool
+ * @returns {{username: string, password: string}}
+ */
+export function credentialsOrExit(tool) {
+  try {
+    return requireNuxeoCredentials();
+  } catch (err) {
+    return cannotMeasure(tool, err instanceof Error ? err.message : String(err));
+  }
 }
 
 /**

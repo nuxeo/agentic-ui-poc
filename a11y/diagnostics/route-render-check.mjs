@@ -28,14 +28,15 @@
  * Usage:
  *   node a11y/diagnostics/route-render-check.mjs
  *
- * Exit codes: 0 every route rendered, 1 at least one rendered nothing, 2 could not measure.
+ * Exit codes: 0 every route rendered, 1 at least one rendered nothing, 2 could not measure
+ * (a precondition failed, or any route could not be loaded and none rendered nothing).
  */
-import { requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
-import { gotoOrExit, launchChromium, requireBackend } from './preconditions.mjs';
+import { resolveBaseUrl } from '../env.mjs';
+import { credentialsOrExit, gotoOrExit, launchChromium, requireBackend } from './preconditions.mjs';
 
 const baseUrl = resolveBaseUrl();
 // Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
-const { username: user, password: pass } = requireNuxeoCredentials();
+const { username: user, password: pass } = credentialsOrExit('route-render-check');
 
 const SESSION_KEY = 'agentic_ui_nuxeo_session';
 const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
@@ -82,7 +83,7 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 
-/** @type {{label:string, route:string, host:string, hostPresent:boolean, textLen:number}[]} */
+/** @type {{label:string, route:string, host:string, hostPresent:boolean, textLen:number, error?:string}[]} */
 const results = [];
 
 try {
@@ -110,7 +111,15 @@ try {
   await page.waitForTimeout(1200);
 
   for (const [label, route, host] of ROUTES) {
-    await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
+    // A navigation failure is "could not measure" for this route, not a crash that discards
+    // every route already checked and exits 1 as though a route had rendered nothing.
+    try {
+      await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
+    } catch (err) {
+      const error = `navigation failed: ${(err instanceof Error ? err.message : String(err)).split('\n')[0]}`;
+      results.push({ label, route, host, hostPresent: false, textLen: 0, error });
+      continue;
+    }
     await page.waitForTimeout(1200);
 
     const hostPresent = await page
@@ -119,12 +128,21 @@ try {
       .isVisible()
       .catch(() => false);
 
-    // Text length of whatever the router actually rendered, as a second, host-independent signal.
-    // A route that matches nothing leaves the outlet empty, so this collapses to roughly the
-    // chrome's own text while a real surface is an order of magnitude larger.
-    const textLen = await page
-      .evaluate(() => (document.querySelector('main, [role="main"]') ?? document.body).innerText.trim().length)
-      .catch(() => 0);
+    // Text inside the feature host itself, not inside `main`.
+    //
+    // This measured `main, [role="main"]` and fell back to `document.body`. The signed-in shell
+    // has no `main` — only the login page does — so on every route here it measured the body,
+    // nav drawer and toolbar included. That text is never empty, so `textLen === 0` could not
+    // fire and a host mounted around nothing still passed: `/#/collections` read 111 characters
+    // with no host at all. Flagged in review on PR #225.
+    const textLen = hostPresent
+      ? await page
+          .locator(host)
+          .first()
+          .innerText()
+          .then((t) => t.trim().length)
+          .catch(() => 0)
+      : 0;
 
     results.push({ label, route, host, hostPresent, textLen });
   }
@@ -134,31 +152,44 @@ try {
 }
 
 console.log(`App: ${baseUrl}\n`);
-console.log(`${'route'.padEnd(24)}${'expected host'.padEnd(28)}${'rendered'.padEnd(10)}${'main text'.padStart(10)}`);
+console.log(`${'route'.padEnd(24)}${'expected host'.padEnd(28)}${'rendered'.padEnd(10)}${'host text'.padStart(10)}`);
 for (const r of results) {
+  const rendered = r.error ? '?' : r.hostPresent ? 'yes' : 'NO';
   console.log(
-    `${r.route.padEnd(24)}${r.host.padEnd(28)}${(r.hostPresent ? 'yes' : 'NO').padEnd(10)}${String(r.textLen).padStart(10)}`,
+    `${r.route.padEnd(24)}${r.host.padEnd(28)}${rendered.padEnd(10)}${String(r.textLen).padStart(10)}` +
+      (r.error ? `  could not measure: ${r.error}` : ''),
   );
 }
 
-// An absent host OR an empty main region. `textLen` was measured, printed as evidence and
-// then left out of the verdict, so a route whose host mounted around nothing still passed —
-// which is the same clean-result-that-means-nothing this file opens by describing. The
-// host-independent signal only earns its place if it can change the answer.
-const dead = results.filter((r) => !r.hostPresent || r.textLen === 0);
+const unmeasured = results.filter((r) => r.error);
+
+// An absent host OR a host with no text in it. `textLen` was measured, printed as evidence
+// and then left out of the verdict, so a route whose host mounted around nothing still
+// passed — which is the same clean-result-that-means-nothing this file opens by describing.
+const dead = results.filter((r) => !r.error && (!r.hostPresent || r.textLen === 0));
 if (dead.length > 0) {
   console.log(
     `\n--- ${dead.length} route(s) rendered nothing an accessibility scan could meaningfully check ---`,
   );
   for (const r of dead) {
-    const why = !r.hostPresent ? `${r.host} absent` : `${r.host} rendered but the main region is empty`;
-    console.log(`  ${r.route} — ${why}, main region holds ${r.textLen} characters`);
+    const why = !r.hostPresent ? `${r.host} absent` : `${r.host} rendered with no text inside it`;
+    console.log(`  ${r.route} — ${why}`);
   }
   console.log(
     '\nA scan of these routes returns clean because there is nothing on them, not because they are\n' +
       'accessible. Either fix the route, or remove it from the scan — do not leave it counting as a pass.',
   );
+  // A confirmed empty route outranks an unmeasured one: the defect is real either way, and
+  // the unmeasured routes are still listed above so they are not lost behind it.
   process.exit(1);
+}
+
+if (unmeasured.length > 0) {
+  console.error(
+    `\nroute-render-check: ${unmeasured.length} of ${results.length} route(s) could not be measured, ` +
+      'so this is an incomplete result rather than a pass.',
+  );
+  process.exit(2);
 }
 
 console.log('\nroute-render-check: PASS — every scanned route rendered its feature host.');

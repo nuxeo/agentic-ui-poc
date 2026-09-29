@@ -50,9 +50,9 @@
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import { requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
+import { resolveBaseUrl } from '../env.mjs';
 import { surfaceUnusableReason } from '../surface.mjs';
-import { gotoOrExit, launchChromium, requireBackend } from './preconditions.mjs';
+import { credentialsOrExit, gotoOrExit, launchChromium, requireBackend } from './preconditions.mjs';
 
 /**
  * This file lives at `a11y/diagnostics/`, so the repository root is two levels up.
@@ -73,7 +73,7 @@ const only = args.reduce((acc, a, i) => (a === '--surface' ? [...acc, args[i + 1
 
 const baseUrl = resolveBaseUrl();
 // Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
-const { username: user, password: pass } = requireNuxeoCredentials();
+const { username: user, password: pass } = credentialsOrExit('axe-differential');
 
 const SESSION_KEY = 'agentic_ui_nuxeo_session';
 const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
@@ -92,14 +92,20 @@ const ALL_SURFACES = [
 /** Narrowed by `--surface`. Its length is the requested count the exit code is checked against. */
 const SURFACES = ALL_SURFACES.filter(([label]) => only.length === 0 || only.includes(label));
 
-// Fail before launching anything. A `--surface` value that matches no known label would
-// otherwise start a browser, measure nothing, print two empty tables and only then report —
-// and the completeness check at the end cannot catch it, because `measured < SURFACES.length`
-// reads as `0 < 0`.
-if (SURFACES.length === 0) {
+// Fail before launching anything if ANY `--surface` value is unknown, not only when all are.
+//
+// Checking just `SURFACES.length === 0` caught `--surface typo` but not
+// `--surface browse --surface typo`: the typo was dropped, `SURFACES` held one entry, and the
+// completeness check compared against that one — so a request for two surfaces measured one
+// and exited 0 as complete. The requested population is what the caller typed, not what
+// happened to match. Flagged in review on PR #225.
+const known = new Set(ALL_SURFACES.map(([label]) => label));
+const unknown = only.filter((label) => !known.has(label));
+if (unknown.length > 0 || (only.length > 0 && SURFACES.length === 0)) {
   console.error(
-    `\naxe-differential: --surface matched no known surface, so there is nothing to measure.\n` +
-      `  Known surfaces: ${ALL_SURFACES.map(([label]) => label).join(', ')}\n`,
+    `\naxe-differential: --surface ${unknown.map((u) => `"${u}"`).join(', ') || '(empty)'} ` +
+      'is not a known surface, so the requested comparison cannot be complete.\n' +
+      `  Known surfaces: ${[...known].join(', ')}\n`,
   );
   process.exit(2);
 }
@@ -220,7 +226,18 @@ try {
 
   for (const [surface, route, host] of SURFACES) {
     process.stdout.write(`scanning ${surface} `);
-    await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
+    // A navigation failure here is one unmeasured surface, not a crash. Uncaught, it escaped
+    // the loop and exited 1 — reporting "the comparison failed" for a surface nothing measured,
+    // and discarding every surface already compared. Recorded as a skip instead, so the
+    // completeness check below returns 2. Flagged in review on PR #225.
+    try {
+      await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle' });
+    } catch (err) {
+      const why = `navigation failed: ${(err instanceof Error ? err.message : String(err)).split('\n')[0]}`;
+      console.log(`- SKIPPED, ${why} (nothing to compare, NOT a pass)`);
+      rows.push({ surface, rule: '(not measurable)', impact: '-', variant: '-', nodes: 0, targets: [why] });
+      continue;
+    }
     await page.waitForTimeout(1200);
 
     // The surface assertion is the difference between a scan and a clean-looking blank. phase-6

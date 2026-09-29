@@ -35,9 +35,9 @@
  * Run:  node a11y/diagnostics/reflow-probe.mjs
  */
 
-import { nuxeoBasicAuthHeader, requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
+import { nuxeoBasicAuthHeader, resolveBaseUrl } from '../env.mjs';
 import { surfaceUnusableReason } from '../surface.mjs';
-import { gotoOrExit, launchChromium } from './preconditions.mjs';
+import { credentialsOrExit, gotoOrExit, launchChromium } from './preconditions.mjs';
 
 const REFLOW_WIDTH = 320;
 const REFLOW_HEIGHT = 256;
@@ -49,7 +49,7 @@ const EXEMPT = ['table', 'pre', 'svg', '[role="img"]', '[role="application"]'];
 // nothing else honoured, so the documented override silently did nothing here.
 const baseUrl = resolveBaseUrl();
 // Required, never defaulted — see `../env.mjs` for why a default is worse than an error here.
-const { username: user, password: pass } = requireNuxeoCredentials();
+const { username: user, password: pass } = credentialsOrExit('reflow-probe');
 
 /**
  * Refuse to measure a backend that is not answering.
@@ -401,13 +401,20 @@ if (process.argv.includes('--negative-control')) {
   // `marker` answers the question directly: the element went in, and classification put it in
   // the non-exempt bucket. That holds whether or not the page was already violating, and it
   // still fails if the exemption logic is broken.
-  const fired = before.marker === 'not-seen' && after.marker === 'non-exempt';
+  //
+  // It is not the whole path, though. The marker proves attribution; the verdict is a separate
+  // step, and a control that stopped at the marker reported WORKS even if the verdict still
+  // read `fits` with a 900px element sticking out. So the post-injection verdict must also be
+  // VIOLATION — an absolute state, not a transition, which still passes on a page that was
+  // already violating. Flagged in review on PR #225.
+  const fired =
+    before.marker === 'not-seen' && after.marker === 'non-exempt' && after.verdict === 'VIOLATION';
   console.log(
     [
       `  negative control — a 900px div (#${MARKER}) appended to /#/browse`,
       `    before : scrollWidth ${before.scrollWidth}, non-exempt ${before.nonExemptCount}, marker ${before.marker}  ->  ${before.verdict}`,
       `    after  : scrollWidth ${after.scrollWidth}, non-exempt ${after.nonExemptCount}, marker ${after.marker}  ->  ${after.verdict}`,
-      `    detection path     : ${fired ? 'WORKS — the injected element was classified non-exempt by the real attribution path' : `DID NOT FIRE (marker went ${before.marker} -> ${after.marker}) — the zero above is not trustworthy`}`,
+      `    detection path     : ${fired ? 'WORKS — the injected element was classified non-exempt by the real attribution path' : `DID NOT FIRE (marker ${before.marker} -> ${after.marker}, verdict after ${after.verdict}) — the zero above is not trustworthy`}`,
       '',
     ].join('\n'),
   );

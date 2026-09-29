@@ -7,9 +7,10 @@ import { aiFindingsNote, expect, expectSurfaceUsable, REPORT_DIR, test } from '.
  *
  * ## Why these three, and why now
  *
- * All three are one line of Playwright configuration, none had ever been set in this repository
- * (`colorScheme`, `forcedColors` and `reducedMotion` appear in no config or spec), and each
- * covers a criterion nothing else reaches:
+ * None had ever been set in this repository, and each covers a criterion nothing else reaches.
+ * Two are one line of Playwright configuration (`forcedColors` and `reducedMotion` appeared in
+ * no config or spec). The dark theme is deliberately **not** — it is seeded through the app's
+ * own `data-app-theme`, not Playwright's `colorScheme`, for the reason given below.
  *
  *   - **Dark theme** changes every colour pair on the page, so `color-contrast` has to be
  *     re-measured. The light-theme result says nothing about it.

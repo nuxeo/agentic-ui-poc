@@ -155,12 +155,13 @@ Stated explicitly, because "WCAG 2.1 AA met" is a claim whose scope is what make
   marker reaches the real form against a live backend. 12 findings, 2 blockers. This is not the
   same page `phase-0-no-backend` captured: that one is the form in its backend-unreachable
   error state.
-- **The thirteen `MatDialog`s, the upload flow, and dark mode.** Narrowed on 2026-09-12 but not
+- **The thirteen `MatDialog`s and the upload flow.** Narrowed on 2026-09-12 but not
   closed: `a11y/specs/interaction-states.a11y.spec.ts` now covers seven interaction
   states on `/#/browse` — the column-picker dialog, the `mat-select` and date-range CDK overlays,
   card view, and the Permissions, History and Trash tabs. What remains uncovered is every state
-  opened through `MatDialog` (browse alone has thirteen `dialog.open` sites), the upload flow,
-  and dark mode.
+  opened through `MatDialog` (browse alone has thirteen `dialog.open` sites) and the upload
+  flow. Dark mode used to be listed here too; it is covered by the display-modes suite below,
+  which scans every route in the application's dark theme.
 - **24 components with inline `template:` strings**, in violation of CLAUDE.md's "templateUrl
   always". Static rules reach `.html` files only.
 - **`attr.`-prefixed literal attributes.** `attr.aria-label="…"` without binding brackets
@@ -257,8 +258,10 @@ findings again are reachable behind a single click as the entire route-level sca
 ## Display modes — first scan 2026-09-12
 
 `a11y/specs/display-modes.a11y.spec.ts` (`npm run a11y:scan -- modes`) renders the seven
-routes in three modes no layer had ever set — `colorScheme`, `forcedColors` and `reducedMotion`
-appeared in no config or spec before this. **17 checks, 1.5 minutes, 81 findings.**
+routes in two modes no layer had ever set — the application's dark theme (seeded through
+`data-app-theme`, not Playwright's `colorScheme`; see below) and `forcedColors` — and measures
+one route change under `reducedMotion`. Neither `forcedColors` nor `reducedMotion` appeared in
+any config or spec before this. **17 checks, 1.5 minutes, 81 findings.**
 
 | Mode                                  | Findings | Blockers | Notes                                              |
 | ------------------------------------- | -------- | -------- | -------------------------------------------------- |
@@ -505,9 +508,14 @@ makes it report every interaction-state finding as "did not reproduce" and every
 missing — a diff that looks alarming and means nothing. Override with `A11Y_SCOUT_REPORT` if you
 need a specific run.
 
-Neither fails the build on findings, deliberately: a diagnostic that turns the build red is one
-people stop running. They exit non-zero only when they could not measure, because a scan that
-silently did not happen must never read as clean.
+Neither is a build gate: a diagnostic that turns the build red is one people stop running. Their
+exit codes still differ, and the table above is the reference. The axe differential treats its
+findings as non-fatal and exits non-zero only when it could not measure. The route render check
+exits **1** when a route renders nothing, because that is its finding. Both reserve **2** for
+an incomplete measurement, because a scan that silently did not happen must never read as clean.
+
+`a11y/README.md` covers the other two diagnostics in that folder — the reflow probe with its
+negative control, and the error-class drift check that runs before every scan.
 
 Both need `npm install --no-save @playwright/test @axe-core/playwright` — **in one command**, as
 `--no-save` prunes anything previously installed the same way — plus a live backend and dev

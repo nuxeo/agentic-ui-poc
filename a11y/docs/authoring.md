@@ -190,9 +190,9 @@ export const test = a11yBase.extend<{ signedIn: Page }>({
 ```
 
 Credentials come from `NUXEO_USER` / `NUXEO_PASS` and are **required, not defaulted**.
-`requireNuxeoCredentials()` in `../fixtures.ts` throws when either is unset, and `../env.mjs`
-does the same for the Node-side tooling, so a run fails at load rather than scanning as a
-guessed identity. Do not reintroduce a `?? 'Administrator'` fallback: besides the security
+`requireNuxeoCredentials()` in `../env.mjs` throws when either is unset, and both the config
+and `../fixtures.ts` call it, so a run fails at load rather than scanning as a guessed
+identity. The diagnostics wrap it in `credentialsOrExit()` so the same failure exits 2. Do not reintroduce a `?? 'Administrator'` fallback: besides the security
 rule, a default silently authenticates as the wrong user against any server that accepts it,
 and nothing in the report says so.
 
@@ -300,25 +300,41 @@ For targeted questions. Copy this skeleton into `a11y/diagnostics/<question>.mjs
 ```js
 #!/usr/bin/env node
 /** One paragraph: the question this answers, and why it needed its own script. */
-import { requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
+import { resolveBaseUrl } from '../env.mjs';
+import {
+  cannotMeasure,
+  credentialsOrExit,
+  gotoOrExit,
+  launchChromium,
+  requireBackend,
+} from './preconditions.mjs';
+
+const TOOL = '<question>';
 
 // `resolveBaseUrl()`, never `process.env['APP_URL']` directly. It is the one resolver the
-// config, the preflight and all three diagnostics share; reading the variable yourself
+// config, the preflight and every diagnostic share; reading the variable yourself
 // re-creates the split where `E2E_BASE_URL` moved the suites and left your script on
 // localhost, which is the bug `env.mjs` exists to have fixed.
 const baseUrl = resolveBaseUrl();
 // Required, never defaulted — a fallback scans as the wrong identity and says nothing.
-const { username: user, password: pass } = requireNuxeoCredentials();
+// `credentialsOrExit`, not `requireNuxeoCredentials()`: the latter throws, and an uncaught
+// throw here exits 1, reporting a missing environment variable as a finding.
+const { username: user, password: pass } = credentialsOrExit(TOOL);
 
 let chromium;
 try {
   ({ chromium } = await import('@playwright/test'));
-} catch (err) {
-  console.error('cannot measure — npm install --no-save @playwright/test');
-  process.exit(2);
+} catch {
+  cannotMeasure(
+    TOOL,
+    '@playwright/test is not installed',
+    'npm install --no-save @playwright/test',
+  );
 }
 
-const browser = await chromium.launch({ headless: process.env['A11Y_HEADED'] !== '1' });
+// Every precondition below exits 2 through `preconditions.mjs`. Written inline, each of these
+// was once left uncaught somewhere in this folder and exited 1 with a stack trace.
+const browser = await launchChromium(chromium, TOOL);
 const context = await browser.newContext({
   viewport: { width: 1440, height: 900 },
   httpCredentials: { username: user, password: pass, origin: baseUrl },
@@ -327,12 +343,10 @@ const page = await context.newPage();
 
 try {
   // Backend precondition FIRST — an empty screen scans clean and proves nothing.
-  const probe = await page.request.get(`${baseUrl}/nuxeo/api/v1/me`, { failOnStatusCode: false });
-  if (probe.status() !== 200) {
-    console.error(`cannot measure — /nuxeo/api/v1/me returned ${probe.status()}`);
-    process.exit(2);
-  }
-  // ... sign in (§2a), navigate, assert the host (§2b), measure ...
+  await requireBackend(page, baseUrl, TOOL);
+  await gotoOrExit(page, baseUrl, TOOL);
+  // ... sign in (§2a), then for each route: navigate inside try/catch and record a failure
+  // as unmeasured (not a crash), assert the host (§2b), measure ...
 } finally {
   await context.close();
   await browser.close();
