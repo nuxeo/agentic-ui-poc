@@ -1,6 +1,7 @@
 # i18n — where we actually are
 
-**Dated 28 September 2026.** Measured, not estimated: every number below comes from a command
+**Dated 29 September 2026** (the Crowdin state and the #293 note; other sections carry their own
+measurement dates). Measured, not estimated: every number below comes from a command
 that is quoted next to it, so it can be re-run rather than believed.
 
 Re-measure before quoting anything here. The 16 September edition of this page claimed the gate was
@@ -637,11 +638,12 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
 
 **What is left, and none of it is plumbing.**
 
-1. **Crowdin holds no translations.** Every one of its nine target languages is at zero, verified
-   in the portal on 28 September. This is about **Crowdin's** state, not the application's: the
-   repository ships 151 hand-written French and German strings, written before Crowdin existed,
-   and those render today. What Crowdin has never had is any translation of its own, which is why
-   the first pull was destructive.
+1. **Crowdin holds almost no approved translations.** Every one of its nine target languages was
+   at zero in the portal on 28 September. By the pull of 29 September, French and German had 8
+   approved strings each, and the other seven languages still had none. This is about
+   **Crowdin's** state, not the application's: the repository ships 151 hand-written French and
+   German strings, written before Crowdin existed, and those render today. None of the 151 is
+   approved in Crowdin, which is why every pull so far has been destructive.
 
    Those 151 must be **preserved, and that is an open action** — see D8f. The standard says a
    repository's existing translations SHOULD be uploaded to initialize the project, and the
@@ -660,10 +662,13 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
    Neither skip option is set; both are forbidden (D8h).
 
    Beyond those 151, every locale renders English: an unapproved string is exported with its
-   English source, so the catalogues arrive at full key parity. **Translation is the next action, and the team is ready to begin rather than under
-   way** — Enrico Stengert on INTERN-1346, 28 September: the sources are visible and "translations
-   can begin on our end". Nothing has been translated yet, which is why the nine languages are at
-   zero above; readiness and progress are different things and this page has conflated them before.
+   English source, so the catalogues arrive at full key parity. **Translation has started, and
+   approval has barely started.** Enrico Stengert on INTERN-1346, 28 September: the sources are
+   visible and "translations can begin on our end". On 29 September the Crowdin portal showed
+   fr/de/es/pl/pt 13% translated and ja/nl/th/zh 4%, with approval at 8 strings each in French and
+   German and none elsewhere. Only approved strings are exported, so translated-but-unapproved work
+   does not reach the repository. Translated, approved and shipped are three different things, and
+   this page has conflated them before.
    The pipeline **requests** approved-only export (`export_only_approved: 'true'` — D8g), which is
    the MUST the Guidelines set. It is not yet proof of the effect: the Guidelines also say
    project-level export settings in Crowdin **take precedence over the settings used by

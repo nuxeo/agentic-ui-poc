@@ -8,8 +8,9 @@ extraction and wire adf-hx translation assets" · Epic
 **Status:** slices S1–S5 delivered on `feature/nxsat-227a-i18n`. S6 (the Crowdin pipeline) is
 built and has run end to end against the live tenant: project 160 exists, 1,972 English strings
 and 1,972 translator-context entries are uploaded, and the pull opened a real pull request. What
-remains is Crowdin-side rather than a pipeline gap — **Crowdin itself holds no translations yet**,
-for any of its nine target languages. Project membership is resolved (Manager access on
+remains is Crowdin-side rather than a pipeline gap — **Crowdin holds almost no approved
+translations**: 8 strings each in French and German as of 29 September 2026, none in the other
+seven target languages. Project membership is resolved (Manager access on
 28 September) and the translation team has confirmed it can begin (INTERN-1346, 28 September).
 That is separate from what the repository ships: `fr.json` and `de.json` carry 151 hand-written
 strings written before Crowdin existed, which is why D8d's data loss mattered. Those 151 are to be
@@ -839,7 +840,9 @@ A locale needs three things that move together, and `checkLocaleDataRegistered` 
 directions to enforce it: a catalogue in `apps/nuxeo-ui/public/i18n/`, an entry in
 `register-locale-data.ts`, and an entry in `availableLanguages`. Registering locale data for a
 language with no catalogue fails. Advertising one with no catalogue fails
-`checkAdvertisedLocalesShip`.
+`checkAdvertisedLocalesShip`. A fourth moves with them and is not checked: a `--language` in
+`download_translations_args` in `crowdin-pull.yaml`, since the pull downloads only the languages
+listed there.
 
 The temptation is to satisfy all three with an empty or English-filled catalogue so the picker
 offers nine languages. Do not: that is the same fault `checkAdvertisedLocalesShip` was written
@@ -847,7 +850,7 @@ for, whose own comment records the template app "shipped describing two language
 render". A user who selects Japanese and reads English has been lied to by the language picker.
 
 So the nine are the target and the mechanism is ready for them. Each becomes advertisable in one
-commit — catalogue, registration, `availableLanguages` — once Crowdin actually holds approved
+commit — catalogue, registration, `availableLanguages`, pull language — once Crowdin actually holds approved
 translations for it. How that content is produced is the Translation Team's decision, not ours:
 the Guidelines leave the Crowdin workflow to them and recommend in-house translation with a
 proof-reading step. Machine pre-translation is theirs to choose, and with `export_only_approved`
@@ -1075,11 +1078,15 @@ say so in the report rather than leaving it unstated.
    Translating strings and formatting dates are separate mechanisms, which is the whole reason this
    is a step of its own rather than a consequence of step 2. Only `en-US` is built into Angular.
 
-4. Confirm the upstream catalogues cover it. Coverage is **uneven**: adf-core ships 19
+4. **Add `--language=<Crowdin language id>` to `download_translations_args`** in
+   `.github/workflows/crowdin-pull.yaml`, in the same pull request as steps 2 and 3. The pull
+   downloads only the languages listed there, so without it the nightly pull never updates the new
+   locale. Nothing checks this yet.
+5. Confirm the upstream catalogues cover it. Coverage is **uneven**: adf-core ships 19
    locales, both adf-hx bundles ship 7 (`de es fr it pl pt` + `en`), satori-ui ships 15. A
    locale outside adf-hx's seven gets English adf-hx strings inside a translated
    application — which reads as a bug, not as a gap.
-5. Add it to the evidence capture's locale matrix.
+6. Add it to the evidence capture's locale matrix.
 
 ### Known debt this plan deliberately leaves open
 
