@@ -3869,6 +3869,54 @@ expectGreen(
   },
 );
 
+/* ---------------- NXSAT-284 review round 1: shapes the first version missed ---------------- */
+
+// The balanced-argument pass replaced the old `toast\('…'` regex and only looked after `?`/`:`, so
+// the plainest shape of all went green.
+expectRed(
+  'a toast whose whole first argument is a literal',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) => write('libs/features/x/src/lib/x.ts', "this.toast('Document restored');\n"),
+  /passes the hard-coded string `Document restored`/,
+);
+
+expectRed(
+  'a toast passed a prose constant written as a template literal',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'const WARNING = `This cannot be undone.`;\nthis.toast(WARNING);\n',
+    ),
+  /through the constant `WARNING`/,
+);
+
+// Prettier breaks a long ternary across lines; a line-bounded match could not see it.
+expectRed(
+  'a dialog title ternary broken across lines',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+        "    title: isReply\n      ? 'Delete Reply'\n      : 'Delete Comment',\n  },\n});\n",
+    ),
+  /sets `title` in a dialog's data from a ternary with the hard-coded branch `Delete Reply`/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a multi-line dialog ternary that selects between keys', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+    "    title: this.translate.instant(\n      isReply ? 'confirm.delete-reply' : 'confirm.delete-comment',\n    ),\n" +
+    "    message: this.translate.instant('confirm.delete-question', { name: 'x' }),\n" +
+    '  },\n});\n',
+});
+
 /* ---------------- report ---------------- */
 
 const total = negative + positive;

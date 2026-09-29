@@ -4396,11 +4396,17 @@ function checkNoHardcodedDialogText() {
     // The same fields set through a ternary or a named constant, which `FIELD` cannot see because
     // it needs the literal straight after the colon: `title: isFolder ? 'Delete folder' : 'Delete
     // document'` and `message: DOMAIN_CONTAINER_GUIDANCE` are both hard-coded English.
+    //
+    // The value is read to its own top-level `,` or closing brace rather than to the end of the
+    // line: Prettier breaks a long ternary across lines, and a line-bounded match let
+    // `title: cond\n  ? 'Delete Reply'\n  : 'Delete Comment'` through on formatting alone.
     for (const match of text.matchAll(
-      /\b(title|message|confirmLabel|cancelLabel|confirmText|cancelText)\s*:\s*([^,\n{}]*?\?[^,\n{}]*)/g,
+      /\b(title|message|confirmLabel|cancelLabel|confirmText|cancelText)\s*:/g,
     )) {
       if (!inDialog(match.index)) continue;
-      const branch = /(?:\?|:)\s*(['"`])([A-Z][^'"`]*)\1/.exec(match[2]);
+      const value = topLevelText(text, match.index + match[0].length);
+      if (!/\?/.test(value.replace(/(['"`])(?:\\.|(?!\1).)*\1/gs, ''))) continue;
+      const branch = /(?:\?|:)\s*(['"`])([A-Z][^'"`]*)\1/.exec(value);
       if (!branch) continue;
       const line = text.slice(0, match.index).split('\n').length;
       fail(
@@ -4636,6 +4642,9 @@ function checkNoHardcodedImperativeUiText() {
       const open = call.index + call[0].length - 1;
       const argument = balancedArgument(text, open);
       const line = text.slice(0, call.index).split('\n').length;
+      // The literal as the whole first argument — `toast('Document restored.')`.
+      const direct = /^\s*(['"`])([A-Z][^'"`]{2,})\1/.exec(argument);
+      if (direct) report(file, line, direct[2], '');
       // Each branch of a ternary, and a `??` / `||` fallback: a literal that follows `?`, `:`,
       // `??` or `||`. A literal handed to a nested call — `instant('x.k')`, `captureError('Op')` —
       // or compared against — `startsWith('Cannot sort by')` — follows `(` or `,`, so it is not.
@@ -4708,6 +4717,31 @@ function balancedArgument(text, open) {
 }
 
 /**
+ * The text of a property value starting at `from`, up to its own top-level `,` or the brace or
+ * parenthesis that closes the enclosing object. Nested brackets and quoted strings are skipped
+ * whole, so a comma inside `instant('k', { a, b })` does not end the value early.
+ */
+function topLevelText(text, from) {
+  let depth = 0;
+  let quote = null;
+  for (let at = from; at < text.length; at += 1) {
+    const ch = text[at];
+    if (quote) {
+      if (ch === '\\') at += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '(' || ch === '[' || ch === '{') depth += 1;
+    else if (ch === ')' || ch === ']' || ch === '}') {
+      if (depth === 0) return text.slice(from, at);
+      depth -= 1;
+    } else if (ch === ',' && depth === 0) return text.slice(from, at);
+  }
+  return text.slice(from);
+}
+
+/**
  * `const NAME = 'Some prose.'` declarations across the given sources, as `[name, value]` pairs.
  *
  * Prose means capitalised and at least two words — `'Open Sections, Templates, or Workspaces,
@@ -4717,14 +4751,15 @@ function balancedArgument(text, open) {
  * gate that looked for a literal at the call site read all five as clean.
  *
  * SCREAMING_CASE names only. The lookup is repo-wide, and a local `const message = 'Saved.'` in
- * one file would otherwise match every `message` identifier in every other file.
+ * one file would otherwise match every `message` identifier in every other file. Backtick
+ * literals count as well as quoted ones; an interpolated one is still prose.
  */
 function proseStringConstants(sources) {
   const found = new Map();
   for (const file of sources) {
     const text = read(file);
     for (const m of text.matchAll(
-      /\bconst\s+([A-Z][A-Z0-9_]*)\s*(?::\s*string\s*)?=\s*(['"])([A-Z][^'"\n]*\s[^'"\n]*)\2\s*;/g,
+      /\bconst\s+([A-Z][A-Z0-9_]*)\s*(?::\s*string\s*)?=\s*(['"`])([A-Z][^'"`\n]*\s[^'"`\n]*)\2\s*;/g,
     )) {
       found.set(m[1], m[3]);
     }

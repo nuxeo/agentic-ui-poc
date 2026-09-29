@@ -1,5 +1,5 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -71,6 +71,11 @@ export interface RecentUserGroupRow {
 export class AdminUsersGroupsPageComponent implements OnInit {
   private readonly userService = inject(UserService);
   private readonly translate = inject(TranslateService);
+  /** The active language as a signal, so a `computed` that calls `instant()` recomputes on a switch. */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.getCurrentLang() },
+  );
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
@@ -111,14 +116,18 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   });
 
   readonly selectedTabIndex = signal(0);
-  readonly usersTabLabel = computed(() =>
-    this.translate.instant('admin.admin-users-groups-page.users-tab', { count: this.usersTotal() }),
-  );
-  readonly groupsTabLabel = computed(() =>
-    this.translate.instant('admin.admin-users-groups-page.groups-tab', {
+  readonly usersTabLabel = computed(() => {
+    this.currentLang();
+    return this.translate.instant('admin.admin-users-groups-page.users-tab', {
+      count: this.usersTotal(),
+    });
+  });
+  readonly groupsTabLabel = computed(() => {
+    this.currentLang();
+    return this.translate.instant('admin.admin-users-groups-page.groups-tab', {
       count: this.groupsTotal(),
-    }),
-  );
+    });
+  });
   private readonly tabGroup = viewChild<MatTabGroup>('ugTabGroup');
 
   ngOnInit(): void {
