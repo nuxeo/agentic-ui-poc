@@ -1526,6 +1526,37 @@ expectGreen('an unrelated step mentioning the Crowdin action in a nested value',
     `          uses: crowdin/github-action@v2\n`,
 });
 
+// The two forms COMBINE: a flow-style step whose action reference is escaped names Crowdin in a
+// spelling the substring test cannot see, inside a shape `yamlValues` cannot read — so neither
+// fail-closed rule reached it. An unreadable action reference is reason enough on its own now.
+expectRed(
+  'a flow-style step whose escaped uses value names the Crowdin action',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - { uses: "crowdin\\u002fgithub-action@v2", with: { upload_translations: true } }\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares a step as a YAML flow mapping/,
+);
+
+// A colon inside a PLAIN scalar is not a key separator. Every depth-one colon was read as one, so
+// `{ 'note': skip_untranslated_files:never }` invented a key the config does not declare.
+expectGreen('a Crowdin entry whose plain scalar value contains a colon', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+      `'update_option': 'update_without_changes',`,
+      `'update_option': 'update_without_changes',\n      'note': skip_untranslated_files:never,`,
+    ),
+  ]),
+});
+
 // YAML resolves an escaped double-quoted scalar, so an escaped spelling is a WORKING spelling that
 // every raw-text matcher here reads as something else. Rejected rather than decoded — that closes
 // the encoding rather than one more member of it.

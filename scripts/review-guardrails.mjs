@@ -3033,6 +3033,10 @@ function flowMappingKeys(entry) {
   let depth = 0;
   let quote = null;
   let token = '';
+  // Whether the scanner is past a `:` and inside that key's VALUE. Without it every depth-one
+  // colon read as a key separator, so the second colon of a plain scalar — `{ 'note':
+  // skip_untranslated_files:never }` — invented a key that is not declared anywhere.
+  let inValue = false;
   for (let at = 0; at < entry.length; at += 1) {
     const ch = entry[at];
     if (quote !== null) {
@@ -3054,11 +3058,17 @@ function flowMappingKeys(entry) {
     } else if (ch === '}' || ch === ']') {
       depth -= 1;
       token = '';
-    } else if (ch === ',' || ch === '\n') {
+      // Closing a nested collection returns to the middle of the PARENT key's value.
+      if (depth === 1) inValue = true;
+    } else if (ch === ',') {
       token = '';
-    } else if (ch === ':') {
-      if (depth === 1) keys.push(token.trim());
+      if (depth === 1) inValue = false;
+    } else if (ch === '\n') {
       token = '';
+    } else if (ch === ':' && depth === 1 && !inValue) {
+      keys.push(token.trim());
+      token = '';
+      inValue = true;
     } else {
       token += ch;
     }
@@ -3851,9 +3861,14 @@ function checkCrowdinConfig() {
     // Crowdin's own flow steps only. An unrelated `- { uses: actions/checkout@… }` hides nothing
     // this guardrail reads, and failing it would be the cross-action false positive these scopes
     // exist to avoid — the third time that trap has been walked into in this sequence.
+    // Crowdin's own flow steps, and any flow step whose action reference is ESCAPED — those two
+    // forms combine: `- { uses: "crowdin\\u002fgithub-action@v2", … }` names Crowdin in a
+    // spelling the substring test cannot see, inside a shape `yamlValues` cannot read, so neither
+    // fail-closed rule reached it. An unreadable action reference is reason enough on its own.
     const flowStep = workflowSteps(stripYamlComments(read(workflow))).find(
       (step) =>
-        /^[^\S\n]*-[^\S\n]*\{/.test(step.text) && /crowdin\/github-action/.test(step.text),
+        /^[^\S\n]*-[^\S\n]*\{/.test(step.text) &&
+        (/crowdin\/github-action/.test(step.text) || YAML_ESCAPED_SCALAR.test(step.text)),
     );
     const escapedUses = workflowSteps(stripYamlComments(read(workflow))).find((step) =>
       yamlValues(step.text, 'uses').some(
