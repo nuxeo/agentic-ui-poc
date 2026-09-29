@@ -218,6 +218,20 @@ jobs:
             mv /tmp/body-trimmed.md /tmp/body.md
           fi
 
+          if [ "$(wc -c < /tmp/body.md)" -gt 65000 ]; then
+            echo "summary body still oversized — posting thread paths only" >&2
+            jq -r '.[] | "- `\(.path)` line \(.line // "n/a") (@\(.comments.nodes[0].author.login // "unknown"))"' \
+              /tmp/open-threads.json > /tmp/thread-lines.txt
+            {
+              echo "$MARKER"
+              echo "## PR Review Summary"
+              echo ""
+              echo "### Unresolved review threads (bodies omitted — comment size limit)"
+              echo ""
+              cat /tmp/thread-lines.txt
+            } > /tmp/body.md
+          fi
+
           # Deliberately not `head -n1` on the `gh` pipeline: under `pipefail`, `head` closing the
           # pipe early makes `gh` exit non-zero and fails the step.
           IDS=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \

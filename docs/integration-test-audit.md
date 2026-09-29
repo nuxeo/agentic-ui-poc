@@ -1140,7 +1140,7 @@ image. Four defects nonetheless:
   renders `Username (required)`. `expectText` does `actual.includes(expected)`, so **this check
   fails today** — invisible because the step only runs when no Nuxeo is reachable, and nothing
   runs it.
-- **`phase-3-search.mjs:46`** hardcodes `Administrator:Administrator` (§5.4).
+- **`phase-3-search.mjs:46`** hardcoded the default Docker credential pair (§5.4, since removed).
 - **`assertion-audit.mjs:59`** — `PAGE_ASSERTIONS` omits `expectNoA11yViolations`, so
   `phase-6-a11y.mjs`'s 9 a11y assertions are not counted and a step whose only assertion is an
   a11y scan would be falsely flagged `screenshot-without-assertion`.
