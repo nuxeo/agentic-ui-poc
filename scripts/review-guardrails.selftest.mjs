@@ -1526,6 +1526,43 @@ expectGreen('an unrelated step mentioning the Crowdin action in a nested value',
     `          uses: crowdin/github-action@v2\n`,
 });
 
+// A longer key CONTAINING the token is not the token. The entry fallback searched for a substring,
+// so `'legacy_skip_untranslated_files'` — a key this repository does not use and Crowdin does not
+// define, but valid YAML — rejected a config that declares nothing forbidden.
+expectGreen('a Crowdin entry with a longer key containing the forbidden token', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+      `'update_option': 'update_without_changes',`,
+      `'update_option': 'update_without_changes',\n      'legacy_skip_untranslated_files': true,`,
+    ),
+  ]),
+});
+
+// The token inside a quoted VALUE is not a key either.
+expectGreen('a Crowdin entry mentioning the forbidden token inside a quoted value', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+      `'update_option': 'update_without_changes',`,
+      `'update_option': 'update_without_changes',\n      'note': 'skip_untranslated_files: never',`,
+    ),
+  ]),
+});
+
+// An unrelated flow-style step hides nothing this guardrail reads, so rejecting it would be the
+// cross-action false positive these scopes exist to avoid.
+expectGreen('an unrelated flow-style step in a Crowdin workflow', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - { uses: actions/checkout@v6, with: { ref: main } }\n` +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+});
+
 // An inline comment INSIDE an entry is a note, not configuration. The entry scan added for the
 // one-line shape reads raw text, so a comment explaining why the option is absent was read as the
 // option being present — the same mistake as the whole-file substring search, one scope smaller.

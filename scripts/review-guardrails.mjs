@@ -3001,6 +3001,54 @@ function yamlValues(body, keyPattern) {
 }
 
 /**
+ * The keys of a YAML flow mapping, at its own depth, ignoring quoted scalars.
+ *
+ * A regex cannot do this safely: searching a flow entry for `skip_untranslated_files\s*:` also
+ * matches the token inside a LONGER key, inside a quoted value, or inside a nested mapping — so a
+ * config that does not declare the option was rejected. Keys only, depth one only.
+ *
+ * @param {string} entry one flow mapping, e.g. `{ 'source': '…', 'update_option': '…' }`
+ * @returns {string[]}
+ */
+function flowMappingKeys(entry) {
+  const keys = [];
+  let depth = 0;
+  let quote = null;
+  let token = '';
+  for (let at = 0; at < entry.length; at += 1) {
+    const ch = entry[at];
+    if (quote !== null) {
+      if (quote === '"' && ch === '\\') {
+        at += 1;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      else token += ch;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '{' || ch === '[') {
+      depth += 1;
+      token = '';
+    } else if (ch === '}' || ch === ']') {
+      depth -= 1;
+      token = '';
+    } else if (ch === ',' || ch === '\n') {
+      token = '';
+    } else if (ch === ':') {
+      if (depth === 1) keys.push(token.trim());
+      token = '';
+    } else {
+      token += ch;
+    }
+  }
+  return keys.filter((key) => key !== '');
+}
+
+/**
  * Drop an INLINE YAML comment, leaving a quoted `#` alone.
  *
  * `stripYamlComments` removes whole-line comments; this removes the tail of a line. Needed
@@ -3019,6 +3067,14 @@ function stripInlineComment(line) {
   for (let at = 0; at < line.length; at += 1) {
     const ch = line[at];
     if (quote !== null) {
+      // Only a double-quoted YAML scalar has backslash escapes; a single-quoted one escapes its
+      // delimiter by doubling it, which this loop handles naturally by closing and reopening.
+      // Without the skip, `"… \\" # literal"` closed at the escaped quote and the `#` after it
+      // was read as a comment — truncating the line before anything that followed.
+      if (quote === '"' && ch === '\\') {
+        at += 1;
+        continue;
+      }
       if (ch === quote) quote = null;
       continue;
     }
@@ -3666,10 +3722,9 @@ function checkCrowdinConfig() {
   const declaresSkipFiles =
     yamlValues(configBody, 'skip_untranslated_files').length > 0 ||
     (crowdinFileEntries(configBody) ?? []).some((entry) =>
-      entry
-        .split('\n')
-        .map(stripInlineComment)
-        .some((line) => /['"]?skip_untranslated_files['"]?\s*:/.test(line)),
+      flowMappingKeys(entry.split('\n').map(stripInlineComment).join('\n')).includes(
+        'skip_untranslated_files',
+      ),
     );
   if (declaresSkipFiles) {
     fail(
@@ -3766,8 +3821,12 @@ function checkCrowdinConfig() {
   // rather than failing it. Unreadable a level above the inputs, so it is rejected before anything
   // is scoped.
   for (const workflow of workflows) {
-    const flowStep = workflowSteps(stripYamlComments(read(workflow))).find((step) =>
-      /^[^\S\n]*-[^\S\n]*\{/.test(step.text),
+    // Crowdin's own flow steps only. An unrelated `- { uses: actions/checkout@… }` hides nothing
+    // this guardrail reads, and failing it would be the cross-action false positive these scopes
+    // exist to avoid — the third time that trap has been walked into in this sequence.
+    const flowStep = workflowSteps(stripYamlComments(read(workflow))).find(
+      (step) =>
+        /^[^\S\n]*-[^\S\n]*\{/.test(step.text) && /crowdin\/github-action/.test(step.text),
     );
     if (flowStep !== undefined) {
       fail(
