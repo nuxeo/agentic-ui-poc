@@ -111,29 +111,49 @@ try {
   process.exit(2);
 }
 
+/**
+ * A browser context that is actually signed in.
+ *
+ * Both mechanisms are required and this is the second time that has cost something:
+ * `httpCredentials` satisfies the XHRs, and the sessionStorage session satisfies the route
+ * guard. See `apps/nuxeo-ui-e2e/src/fixtures.ts`.
+ *
+ * Extracted because the negative control built its own context and applied only the first
+ * half, so it had **never been signed in**. The route guard bounced it to `/#/login` and it
+ * measured the sign-in page while reporting `/#/browse`. That went unnoticed because the old
+ * control only checked that injecting a 900px div raised `scrollWidth` — which is true on any
+ * page, including the wrong one. It surfaced the moment the surface assertion was added, with
+ * "lib-browse never became visible".
+ *
+ * @param {number} width
+ * @param {number} height
+ */
+async function newSignedInContext(width, height) {
+  const ctx = await browser.newContext({
+    viewport: { width, height },
+    httpCredentials: { username: user, password: pass, origin: baseUrl },
+  });
+  await ctx.addInitScript(
+    ({ key, value }) => {
+      sessionStorage.setItem(key, value);
+      sessionStorage.removeItem('agentic_ui_signed_out');
+    },
+    {
+      key: 'agentic_ui_nuxeo_session',
+      value: JSON.stringify({
+        kind: 'basic',
+        username: user,
+        basic: Buffer.from(`${user}:${pass}`).toString('base64'),
+        isAdministrator: user.toLowerCase() === 'administrator',
+        groups: [],
+      }),
+    },
+  );
+  return ctx;
+}
+
 const browser = await chromium.launch({ headless: process.env['A11Y_HEADED'] !== '1' });
-const context = await browser.newContext({
-  viewport: { width: 1440, height: 900 },
-  httpCredentials: { username: user, password: pass, origin: baseUrl },
-});
-// The route guard reads sessionStorage, and `httpCredentials` alone only satisfies the XHRs.
-// Both mechanisms are required — see `apps/nuxeo-ui-e2e/src/fixtures.ts`.
-await context.addInitScript(
-  ({ key, value }) => {
-    sessionStorage.setItem(key, value);
-    sessionStorage.removeItem('agentic_ui_signed_out');
-  },
-  {
-    key: 'agentic_ui_nuxeo_session',
-    value: JSON.stringify({
-      kind: 'basic',
-      username: user,
-      basic: Buffer.from(`${user}:${pass}`).toString('base64'),
-      isAdministrator: user.toLowerCase() === 'administrator',
-      groups: [],
-    }),
-  },
-);
+const context = await newSignedInContext(1440, 900);
 
 /**
  * Measure horizontal overflow at the narrow viewport and classify it.
@@ -147,10 +167,12 @@ await context.addInitScript(
  * on PR #225.
  *
  * @param {import('@playwright/test').Page} p
+ * @param {string} [markerId] element id to report the classification of, for the negative
+ *   control. Returned as `marker`: `non-exempt`, `exempt` or `not-seen`.
  */
-async function measureReflow(p) {
+async function measureReflow(p, markerId) {
   const m = await p.evaluate(
-    ({ width, exempt, tol }) => {
+    ({ width, exempt, tol, marker }) => {
       const root = document.documentElement;
       const sw = root.scrollWidth;
       const offenders = [];
@@ -179,15 +201,27 @@ async function measureReflow(p) {
       //
       // The cap now applies only to the sample carried out for display.
       const nonExempt = offenders.filter((o) => !o.exempt);
+
+      // How the marker element, if one was asked about, came out of classification. This is
+      // what lets the negative control assert that the element it injected went through the
+      // exempt/non-exempt attribution, rather than inferring it from a count or a verdict.
+      let markerState = 'not-seen';
+      if (marker) {
+        const el = document.getElementById(marker);
+        const hit = el ? offenders.find((o) => o.sel === `#${marker}`) : undefined;
+        if (hit) markerState = hit.exempt ? 'exempt' : 'non-exempt';
+      }
+
       return {
         scrollWidth: sw,
         total: offenders.length,
         nonExemptCount: nonExempt.length,
         firstNonExempt: nonExempt[0]?.sel,
         sample: nonExempt.slice(0, 20),
+        marker: markerState,
       };
     },
-    { width: REFLOW_WIDTH, exempt: EXEMPT, tol: TOLERANCE },
+    { width: REFLOW_WIDTH, exempt: EXEMPT, tol: TOLERANCE, marker: markerId ?? null },
   );
 
   const overflows = m.scrollWidth > REFLOW_WIDTH + TOLERANCE;
@@ -243,7 +277,10 @@ for (const [label, route, host] of ROUTES) {
   }
 }
 
-await browser.close();
+// Only the measurement context. The browser stays open because the negative control below
+// needs it for its own signed-in context — it used to launch a second browser, which is what
+// let it quietly skip the session init script the first one had.
+await context.close();
 
 console.log(`\nreflow probe @ ${REFLOW_WIDTH}x${REFLOW_HEIGHT} — ${baseUrl}\n`);
 console.log(
@@ -302,11 +339,9 @@ console.log(
  * the honest limit of a control written outside the tool.
  */
 if (process.argv.includes('--negative-control')) {
-  const browser2 = await chromium.launch({ headless: process.env['A11Y_HEADED'] !== '1' });
-  const ctx2 = await browser2.newContext({
-    viewport: { width: REFLOW_WIDTH, height: REFLOW_HEIGHT },
-    httpCredentials: { username: user, password: pass, origin: baseUrl },
-  });
+  // The SAME signed-in context helper the measurement loop uses. Previously this built its
+  // own context with `httpCredentials` only, so it was never past the route guard.
+  const ctx2 = await newSignedInContext(REFLOW_WIDTH, REFLOW_HEIGHT);
   const p2 = await ctx2.newPage();
   await p2.goto(`${baseUrl}/#/browse`, { waitUntil: 'networkidle', timeout: 45_000 });
 
@@ -316,39 +351,54 @@ if (process.argv.includes('--negative-control')) {
   if (controlUnusable) {
     console.error(`\nreflow-probe: cannot run the negative control — ${controlUnusable}\n`);
     await ctx2.close();
-    await browser2.close();
+    await browser.close();
     process.exit(2);
   }
 
+  const MARKER = 'reflow-negative-control';
+
   // Both measurements go through `measureReflow`, the function the route loop uses, so the
   // control exercises the exempt/non-exempt attribution rather than only `scrollWidth`.
-  const before = await measureReflow(p2);
-  await p2.evaluate(() => {
+  const before = await measureReflow(p2, MARKER);
+  await p2.evaluate((id) => {
     const d = document.createElement('div');
-    d.id = 'reflow-negative-control';
+    d.id = id;
     d.style.cssText = 'width:900px;height:8px;background:red';
     document.body.appendChild(d);
-  });
+  }, MARKER);
   await p2.waitForTimeout(200);
-  const after = await measureReflow(p2);
-  await browser2.close();
+  const after = await measureReflow(p2, MARKER);
+  await ctx2.close();
 
-  // The claim is the VERDICT flipped to VIOLATION, not merely that a number grew. An injected
-  // 900px div is non-exempt by construction, so if classification is broken the verdict comes
-  // back `exempt` while `scrollWidth` still rises — which the old check would have called a
-  // working detection path.
-  const fired = after.verdict === 'VIOLATION' && before.verdict !== 'VIOLATION';
+  // The claim is that the INJECTED ELEMENT was classified non-exempt by the real attribution
+  // path — not that a verdict changed.
+  //
+  // Asserting a transition to VIOLATION was wrong, and wrong in a way that punishes a true
+  // positive: on a browse page that already has a genuine reflow violation, `before.verdict`
+  // is already VIOLATION, the transition never happens, and the control reports failure and
+  // exits 1 — turning a real finding into a broken run, which is exactly the "findings do not
+  // fail the run" promise this file makes three lines further down. Flagged in review on #225.
+  //
+  // `marker` answers the question directly: the element went in, and classification put it in
+  // the non-exempt bucket. That holds whether or not the page was already violating, and it
+  // still fails if the exemption logic is broken.
+  const fired = before.marker === 'not-seen' && after.marker === 'non-exempt';
   console.log(
     [
-      '  negative control — a 900px non-exempt div appended to /#/browse',
-      `    before : scrollWidth ${before.scrollWidth}, non-exempt ${before.nonExemptCount}  ->  ${before.verdict}`,
-      `    after  : scrollWidth ${after.scrollWidth}, non-exempt ${after.nonExemptCount}  ->  ${after.verdict}`,
-      `    detection path     : ${fired ? 'WORKS — verdict flipped to VIOLATION through the real classification path' : 'DID NOT FIRE — the zero above is not trustworthy'}`,
+      `  negative control — a 900px div (#${MARKER}) appended to /#/browse`,
+      `    before : scrollWidth ${before.scrollWidth}, non-exempt ${before.nonExemptCount}, marker ${before.marker}  ->  ${before.verdict}`,
+      `    after  : scrollWidth ${after.scrollWidth}, non-exempt ${after.nonExemptCount}, marker ${after.marker}  ->  ${after.verdict}`,
+      `    detection path     : ${fired ? 'WORKS — the injected element was classified non-exempt by the real attribution path' : `DID NOT FIRE (marker went ${before.marker} -> ${after.marker}) — the zero above is not trustworthy`}`,
       '',
     ].join('\n'),
   );
-  if (!fired) process.exit(1);
+  if (!fired) {
+    await browser.close();
+    process.exit(1);
+  }
 }
+
+await browser.close();
 
 // 0 measured, 2 could not measure. Findings do not fail the run — this is a diagnostic, and a
 // diagnostic that turns the build red is one people stop running.

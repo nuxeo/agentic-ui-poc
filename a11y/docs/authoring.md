@@ -275,9 +275,13 @@ For targeted questions. Copy this skeleton into `a11y/diagnostics/<question>.mjs
 ```js
 #!/usr/bin/env node
 /** One paragraph: the question this answers, and why it needed its own script. */
-import { requireNuxeoCredentials } from '../env.mjs';
+import { requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
 
-const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
+// `resolveBaseUrl()`, never `process.env['APP_URL']` directly. It is the one resolver the
+// config, the preflight and all three diagnostics share; reading the variable yourself
+// re-creates the split where `E2E_BASE_URL` moved the suites and left your script on
+// localhost, which is the bug `env.mjs` exists to have fixed.
+const baseUrl = resolveBaseUrl();
 // Required, never defaulted — a fallback scans as the wrong identity and says nothing.
 const { username: user, password: pass } = requireNuxeoCredentials();
 
