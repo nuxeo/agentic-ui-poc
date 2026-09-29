@@ -1526,6 +1526,38 @@ expectGreen('an unrelated step mentioning the Crowdin action in a nested value',
     `          uses: crowdin/github-action@v2\n`,
 });
 
+// An inline comment INSIDE an entry is a note, not configuration. The entry scan added for the
+// one-line shape reads raw text, so a comment explaining why the option is absent was read as the
+// option being present — the same mistake as the whole-file substring search, one scope smaller.
+expectGreen('a Crowdin entry whose inline comment mentions skip_untranslated_files', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+      `'update_option': 'update_without_changes',`,
+      `'update_option': 'update_without_changes', # skip_untranslated_files: stays forbidden`,
+    ),
+  ]),
+});
+
+// A flow-style STEP hides its own `uses:`, so nothing can tell whether it runs the Crowdin action
+// — and every Crowdin-scoped rule skipped it rather than failing it. Rejected outright, before any
+// scoping, because the unreadability is a level above the inputs.
+expectRed(
+  'a Crowdin step written as a one-line flow mapping',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - { uses: crowdin/github-action@v2, with: { upload_translations: true } }\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares a step as a YAML flow mapping/,
+);
+
 // A ONE-LINE flow entry is a shape the rest of this function understands — `crowdinFileEntries`
 // parses it and the per-entry D8 checks read it — but `yamlValues` cannot see inside it. So the
 // prohibition was bypassable by writing the entry on one line, which is valid and which the other

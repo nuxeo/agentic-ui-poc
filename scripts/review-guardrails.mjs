@@ -3000,6 +3000,37 @@ function yamlValues(body, keyPattern) {
   return found;
 }
 
+/**
+ * Drop an INLINE YAML comment, leaving a quoted `#` alone.
+ *
+ * `stripYamlComments` removes whole-line comments; this removes the tail of a line. Needed
+ * wherever a token search runs over text that may carry a comment explaining the very token being
+ * searched for — `'update_option': 'update_without_changes', # skip_untranslated_files stays
+ * forbidden` is a note, not configuration, and reading it as configuration fails a correct file.
+ *
+ * A `#` only opens a comment at the start of a line or after whitespace, and never inside a quoted
+ * scalar — which matters here because every value in `crowdin-conf.yml` is quoted.
+ *
+ * @param {string} line one line of YAML
+ * @returns {string}
+ */
+function stripInlineComment(line) {
+  let quote = null;
+  for (let at = 0; at < line.length; at += 1) {
+    const ch = line[at];
+    if (quote !== null) {
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '#' && (at === 0 || /\s/.test(line[at - 1]))) return line.slice(0, at);
+  }
+  return line;
+}
+
 /** A YAML scalar that explicitly switches an input off. Anything else is treated as on. */
 const YAML_FALSE = /^(?:false|'false'|"false")$/;
 
@@ -3635,7 +3666,10 @@ function checkCrowdinConfig() {
   const declaresSkipFiles =
     yamlValues(configBody, 'skip_untranslated_files').length > 0 ||
     (crowdinFileEntries(configBody) ?? []).some((entry) =>
-      /['"]?skip_untranslated_files['"]?\s*:/.test(entry),
+      entry
+        .split('\n')
+        .map(stripInlineComment)
+        .some((line) => /['"]?skip_untranslated_files['"]?\s*:/.test(line)),
     );
   if (declaresSkipFiles) {
     fail(
@@ -3727,6 +3761,27 @@ function checkCrowdinConfig() {
   // our business. The first version of this scanned both whole files and failed it — the same
   // cross-action false positive the `command` scan above had just been scoped to avoid, recreated
   // one check further down within the hour.
+  // A flow-style STEP hides even its `uses:`, so `isCrowdinStep` cannot tell whether it is a
+  // Crowdin step — and every Crowdin-scoped rule, the opaque-input check below included, skips it
+  // rather than failing it. Unreadable a level above the inputs, so it is rejected before anything
+  // is scoped.
+  for (const workflow of workflows) {
+    const flowStep = workflowSteps(stripYamlComments(read(workflow))).find((step) =>
+      /^[^\S\n]*-[^\S\n]*\{/.test(step.text),
+    );
+    if (flowStep !== undefined) {
+      fail(
+        `${workflow} declares a step as a YAML flow mapping: ` +
+          `\`${flowStep.text.split('\n')[0].trim()}\`.\n` +
+          '    The Crowdin guardrails read block-style steps. A flow-style one hides its own ' +
+          '`uses:`, so nothing here can tell whether it runs the Crowdin action, and every ' +
+          'Crowdin-scoped rule skips it rather than failing it.\n' +
+          '    Use the block form (`- uses:` then one `key: value` per line), which is what every ' +
+          'other step in these workflows uses.',
+      );
+    }
+  }
+
   for (const workflow of workflows) {
     for (const step of crowdinActionSteps(stripYamlComments(read(workflow)))) {
       const opaque = step.text
