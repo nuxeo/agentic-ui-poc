@@ -31,6 +31,7 @@
  * Exit codes: 0 every route rendered, 1 at least one rendered nothing, 2 could not measure.
  */
 import { requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
+import { gotoOrExit, launchChromium, requireBackend } from './preconditions.mjs';
 
 const baseUrl = resolveBaseUrl();
 // Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
@@ -74,7 +75,7 @@ try {
   process.exit(2);
 }
 
-const browser = await chromium.launch({ headless: process.env['A11Y_HEADED'] !== '1' });
+const browser = await launchChromium(chromium, 'route-render-check');
 const context = await browser.newContext({
   viewport: { width: 1440, height: 900 },
   httpCredentials: { username: user, password: pass, origin: baseUrl },
@@ -85,15 +86,8 @@ const page = await context.newPage();
 const results = [];
 
 try {
-  const probe = await page.request.get(`${baseUrl}/nuxeo/api/v1/me`, { failOnStatusCode: false });
-  if (probe.status() !== 200) {
-    console.error(
-      `route-render-check: cannot measure — ${baseUrl}/nuxeo/api/v1/me returned ${probe.status()}.`,
-    );
-    process.exit(2);
-  }
-
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  await requireBackend(page, baseUrl, 'route-render-check');
+  await gotoOrExit(page, baseUrl, 'route-render-check');
   await page.waitForTimeout(800);
   await page.evaluate(
     ({ key, value, signedOutKey }) => {

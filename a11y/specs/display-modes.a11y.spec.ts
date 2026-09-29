@@ -120,17 +120,56 @@ declare global {
   }
 }
 
-/** Relative luminance of the page background, so "the dark theme applied" is measurable. */
-async function backgroundLuminance(page: Page): Promise<number> {
+/** What was painted behind the page, and whether anything was painted at all. */
+interface BackgroundMeasurement {
+  /** `null` when no opaque surface was found, so darkness was not measured. */
+  readonly luminance: number | null;
+  /** Which element supplied the colour, or every colour tried when none was opaque. */
+  readonly from: string;
+}
+
+/**
+ * Relative luminance of the painted page background, so "the dark theme applied" is
+ * measurable rather than assumed.
+ *
+ * **Alpha is the whole difficulty.** This read `document.body` and ignored the alpha channel.
+ * A transparent body computes as `rgba(0, 0, 0, 0)`; the digit match took the first three
+ * zeros, luminance came out `0`, and the assertion passed as "dark" having measured nothing
+ * at all — on a page that may have been rendering the default light palette. Flagged in
+ * review on PR #225.
+ *
+ * So the search is for an **opaque** surface, body first and then the root, and finding none
+ * is reported rather than substituted for. If neither is opaque the canvas shows through to
+ * the UA default, which is not dark and is not ours to measure either way.
+ */
+async function backgroundLuminance(page: Page): Promise<BackgroundMeasurement> {
   return page.evaluate(() => {
-    const rgb = getComputedStyle(document.body).backgroundColor;
-    const m = rgb.match(/\d+(\.\d+)?/g);
-    if (!m) return 1;
-    const [r, g, b] = m.slice(0, 3).map((v) => {
-      const c = Number(v) / 255;
+    const channel = (v: number) => {
+      const c = v / 255;
       return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
+    };
+
+    // `[\d.]+` rather than `\d+(\.\d+)?` so a fractional alpha is captured as one number:
+    // the old pattern split `0.5` into `0` and `5` and shifted every channel along.
+    const parse = (css: string) => {
+      const n = css.match(/[\d.]+/g)?.map(Number);
+      if (!n || n.length < 3) return null;
+      return { r: n[0] ?? 0, g: n[1] ?? 0, b: n[2] ?? 0, alpha: n.length > 3 ? (n[3] ?? 1) : 1 };
+    };
+
+    const tried: string[] = [];
+    for (const el of [document.body, document.documentElement]) {
+      const css = getComputedStyle(el).backgroundColor;
+      tried.push(`${el.tagName.toLowerCase()}=${css}`);
+      const c = parse(css);
+      if (c && c.alpha === 1) {
+        return {
+          luminance: 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b),
+          from: `${el.tagName.toLowerCase()} ${css}`,
+        };
+      }
+    }
+    return { luminance: null, from: tried.join(', ') };
   });
 }
 
@@ -243,8 +282,17 @@ test.describe('accessibility: dark theme', () => {
         page.locator('html'),
         'the dark palette must be selected, or this scan is a light-theme scan with a dark label',
       ).toHaveAttribute('data-app-theme', 'dark');
-      const lum = await backgroundLuminance(page);
-      expect(lum, `body background luminance ${lum.toFixed(3)} is not dark`).toBeLessThan(0.2);
+      const bg = await backgroundLuminance(page);
+      expect(
+        bg.luminance,
+        `nothing opaque was painted behind the page (${bg.from}), so "dark" was not measured. ` +
+          'A transparent background computes as rgba(0, 0, 0, 0), whose luminance is 0 — this ' +
+          'assertion used to pass on exactly that, having measured no palette at all.',
+      ).not.toBeNull();
+      // `?? 1` cannot mask a failure: the assertion above has already failed if it is null,
+      // and 1 is white, so this line would fail too rather than wave it through.
+      const lum = bg.luminance ?? 1;
+      expect(lum, `${bg.from} luminance ${lum.toFixed(3)} is not dark`).toBeLessThan(0.2);
 
       const { findings } = await a11y.scanPage({
         level: 'AA',
@@ -388,8 +436,14 @@ test.describe('accessibility: display modes report', () => {
     // Looping animations are ambient furniture — indeterminate spinners, skeleton shimmer — and
     // they run whether or not a route changed. Counting them as evidence of a route transition
     // is how a probe ends up reporting a confident verdict about something it never measured.
-    const isAmbient = (a: ObservedAnimation) =>
-      a.iterations === 'Infinity' || Number(a.iterations) > 1;
+    //
+    // **Only an infinite count is looping.** This also excluded anything with `iterations > 1`,
+    // but a route transition may legitimately run two or three times and is still finite and
+    // still caused by the navigation. Discarding those dropped them from both the control and
+    // the reduced sample, so the verdict below read INCONCLUSIVE — "no transitions to compare"
+    // — in the one case it most needs to catch, reduced motion being ignored by an animation
+    // that repeats. Flagged in review on PR #225.
+    const isAmbient = (a: ObservedAnimation) => a.iterations === 'Infinity';
     for (const m of motion) {
       const transitions = m.sample.animations.filter((a) => !isAmbient(a));
       const ambient = m.sample.animations.filter(isAmbient);

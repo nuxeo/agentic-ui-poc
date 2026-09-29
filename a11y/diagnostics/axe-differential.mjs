@@ -52,6 +52,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
 import { surfaceUnusableReason } from '../surface.mjs';
+import { gotoOrExit, launchChromium, requireBackend } from './preconditions.mjs';
 
 /**
  * This file lives at `a11y/diagnostics/`, so the repository root is two levels up.
@@ -179,7 +180,7 @@ if (reportPath && existsSync(reportPath)) {
   process.exit(2);
 }
 
-const browser = await chromium.launch({ headless: process.env['A11Y_HEADED'] !== '1' });
+const browser = await launchChromium(chromium, 'axe-differential');
 // Mirrors `phase-runner.mjs` exactly: same viewport, and Basic auth on the app origin. Both auth
 // mechanisms are required — httpCredentials for XHRs, the sessionStorage session for the route
 // guard — and helpers.mjs documents what breaks when only one is present.
@@ -194,16 +195,8 @@ const rows = [];
 let measured = 0;
 
 try {
-  const probe = await page.request.get(`${baseUrl}/nuxeo/api/v1/me`, { failOnStatusCode: false });
-  if (probe.status() !== 200) {
-    console.error(
-      `axe-differential: cannot measure — ${baseUrl}/nuxeo/api/v1/me returned ${probe.status()}. ` +
-        'An empty screen scans clean and proves nothing. Start the backend and the dev server.',
-    );
-    process.exit(2);
-  }
-
-  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+  await requireBackend(page, baseUrl, 'axe-differential');
+  await gotoOrExit(page, baseUrl, 'axe-differential');
   await page.waitForTimeout(800);
   await page.evaluate(
     ({ key, value, signedOutKey }) => {

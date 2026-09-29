@@ -23,8 +23,8 @@ import { aiFindingsNote, expect, REPORT_DIR, test } from '../fixtures';
  *
  * ## Why each state is scanned at the same URL, and how findings stay attributable
  *
- * The app uses hash routing and these states do not change the hash, so all seven scans below
- * report `pageUrl` as `.../#/browse`. The consolidated HTML report therefore cannot tell you
+ * The app uses hash routing and these states do not change the hash, so every scan below
+ * reports `pageUrl` as `.../#/browse`. The consolidated HTML report therefore cannot tell you
  * which click produced which finding. `scanPage()` returns the slice for that call alone, so
  * this file keeps its own per-state tally and prints it at the end. Read that table, not the
  * report's page grouping, when deciding what to fix.
@@ -43,9 +43,40 @@ import { aiFindingsNote, expect, REPORT_DIR, test } from '../fixtures';
 
 const BROWSE = '/#/browse';
 
+/** The three browse tabs that are reached by a click rather than a route. */
+const BROWSE_TABS = ['Permissions', 'History', 'Trash'] as const;
+
+/**
+ * Every interaction state this file covers, declared once.
+ *
+ * The summary used to assert `results.length === 7`. Two things were wrong with that. A
+ * literal count contradicts the extension contract in `docs/authoring.md` — an eighth state
+ * would scan perfectly well and then fail the report for existing — and a count cannot say
+ * *which* state failed to record, which is the only thing worth knowing when one silently
+ * skips. Flagged in review on PR #225.
+ *
+ * Declaring the ids instead buys both: the assertion names the missing state, and because
+ * `scanState` takes this union rather than `string`, a mistyped id is a compile error instead
+ * of a row that never matches.
+ */
+type InteractionState =
+  | 'browse › column picker dialog'
+  | 'browse › type filter select panel'
+  | 'browse › date-range calendar'
+  | 'browse › card view'
+  | `browse › ${(typeof BROWSE_TABS)[number]} tab`;
+
+const INTERACTION_STATES: readonly InteractionState[] = [
+  'browse › column picker dialog',
+  'browse › type filter select panel',
+  'browse › date-range calendar',
+  'browse › card view',
+  ...BROWSE_TABS.map((tab): InteractionState => `browse › ${tab} tab`),
+];
+
 /** What one state's scan produced. Printed as a table by the last test. */
 interface StateResult {
-  readonly state: string;
+  readonly state: InteractionState;
   readonly findings: number;
   readonly blockers: number;
   readonly rules: readonly string[];
@@ -101,7 +132,7 @@ async function scanState(
   a11y: {
     scanPage: (o: Record<string, unknown>) => Promise<{ findings: Array<Record<string, unknown>> }>;
   },
-  name: string,
+  name: InteractionState,
   opts: { keyboard: boolean },
 ): Promise<void> {
   const { findings } = await a11y.scanPage({
@@ -221,7 +252,7 @@ test.describe('accessibility: interaction states', () => {
    * View mode persists in a service across navigation, so each test re-enters through
    * `openBrowse` and the tab click is the only state change.
    */
-  for (const tab of ['Permissions', 'History', 'Trash'] as const) {
+  for (const tab of BROWSE_TABS) {
     test(`${tab.toLowerCase()} tab`, async ({ signedIn: page, a11y }) => {
       await openBrowse(page);
       // Evidence is the requested tab reporting `aria-selected="true"`, NOT the presence of
@@ -253,7 +284,7 @@ test.describe('accessibility: interaction states', () => {
 
   /**
    * One consolidated report for every state above, plus the per-state table the report itself
-   * cannot give (all seven scans share a URL — see the header).
+   * cannot give (every state shares one URL — see the header).
    *
    * A test rather than `afterAll` so a11y-scout can attach the HTML to the Playwright report.
    */
@@ -291,6 +322,18 @@ test.describe('accessibility: interaction states', () => {
     // Assert the deliverable, not the pulse. "A report exists" is a pulse; "every state this
     // file claims to cover actually recorded a scan" is the thing that would catch a test
     // silently skipping, which is exactly how an unscanned state becomes a reported pass.
-    expect(results.length, 'every interaction state must have recorded a scan slice').toBe(7);
+    //
+    // Compared as sets rather than counted, so the failure names the state. A count told you
+    // a number was wrong and left you to work out which state had produced nothing.
+    const scanned = new Set<string>(results.map((r) => r.state));
+    expect(
+      INTERACTION_STATES.filter((s) => !scanned.has(s)),
+      'these declared interaction states recorded no scan slice, so the report covers less ' +
+        'than it claims',
+    ).toEqual([]);
+    expect(
+      [...scanned].filter((s) => !INTERACTION_STATES.includes(s as InteractionState)),
+      'these states recorded a scan but are not declared in INTERACTION_STATES',
+    ).toEqual([]);
   });
 });

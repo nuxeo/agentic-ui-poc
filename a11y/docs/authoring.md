@@ -61,15 +61,24 @@ Three rules, and each is enforced by something rather than by goodwill:
 
 ### The four extension points, and what each costs
 
-| To add                           | Edit                                                         | Guard if you get it wrong                                             |
-| -------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------------- |
-| A **route** to the surfaces scan | one row in `SURFACES`                                        | the spec asserts `pagesScanned.length === SURFACES.length`            |
-| An **interaction state**         | one `test()` using `enterState()`                            | `enterState()` throws if the trigger or the resulting state is absent |
-| A **journey screen**             | one entry in `journey.screens.ts` + one `journeyTest()` call | compile error on a bad id; collection error on a missing test         |
-| A whole **new suite**            | a spec file + one entry in the config's suite list           | — (see below)                                                         |
+| To add                           | Edit                                                                    | Guard if you get it wrong                                                             |
+| -------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| A **route** to the surfaces scan | one row in `SURFACES`                                                   | the spec asserts `pagesScanned.length === SURFACES.length`                            |
+| An **interaction state**         | one entry in `INTERACTION_STATES` + one `test()` using `enterState()`   | compile error on a bad id; the summary names any declared state that recorded no scan |
+| A **journey screen**             | one entry in `journey.screens.ts` + one `journeyTest()` call            | compile error on a bad id; collection error on a missing test                         |
+| A whole **new suite**            | a spec file + a project in the config + a `COMMANDS` entry in `run.mjs` | — (see below)                                                                         |
 
-Nothing else needs touching. In particular **`package.json` does not**: `a11y:scan -- journey` selects
-projects with a `journey-*` wildcard, so a fifth screen is picked up without a script change.
+**`package.json` does not need touching**, and that is the guarantee worth having: `a11y:scan
+-- journey` selects projects with a `journey-*` wildcard, so a fifth screen is picked up
+without a script change, and the folder stays a one-line removal at the root.
+
+This table used to end "nothing else needs touching", which was wrong twice. A new suite also
+needs its `COMMANDS` entry or the documented sole entry point has no subcommand for it and
+`--help` never mentions it. And an interaction state used to be described as one `test()`
+while the summary asserted a hardcoded total of seven, so the eighth state would scan
+correctly and then fail the report for existing. Both flagged in review on PR #225; the
+second is now a declared list, which is a second edit but one the compiler and the summary
+both enforce.
 
 ### Why a journey screen is defined in one place
 
@@ -101,13 +110,15 @@ was filtered out — which is the point, since the filtered-out one is exactly w
 
 ### Adding a new suite
 
-A new suite is a spec file plus one entry in the config's suite list. One project per
-consolidated report, because the a11y-scout accumulator is worker-scoped — two spec files
-sharing a worker share a report. The `use` block is applied once for all projects, so a new
-suite cannot pick up the wrong browser config by copy-paste.
+A new suite is a spec file, one entry in the config's suite list, and one `COMMANDS` entry in
+`run.mjs`. One project per consolidated report, because the a11y-scout accumulator is
+worker-scoped — two spec files sharing a worker share a report. The `use` block is applied
+once for all projects, so a new suite cannot pick up the wrong browser config by copy-paste.
 
-This is the one extension point with no automatic guard: a spec file added without a project
-is simply never run. Keep suites few and named after what they scan, and the gap stays visible.
+This is the one extension point with no automatic guard, and it is missing two: a spec file
+added without a project is simply never run, and a project added without a `COMMANDS` entry
+can only be reached by typing a raw Playwright command, which defeats the point of a single
+entry point. Keep suites few and named after what they scan, and the gap stays visible.
 
 ---
 

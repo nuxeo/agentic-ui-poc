@@ -30,9 +30,10 @@ import { aiFindingsNote, expect, expectSurfaceUsable, REPORT_DIR, test } from '.
  *
  * ## Why nothing here fails the run yet
  *
- * `failOnBlockers` is `false` on every call. These checks have never run against this
- * application, so the true count is unknown, and a gate that goes red on its first run for
- * reasons nobody has triaged is one people learn to ignore — `coverage-gate.mjs` and
+ * `failOnBlockers` is `false` on every call. Not because these checks have never run — this
+ * suite has a recorded seven-surface baseline in `docs/accessibility.md` — but because the
+ * findings in it are **untriaged and unowned**. A gate that goes red for reasons nobody has
+ * triaged is one people learn to ignore — `coverage-gate.mjs` and
  * `scripts/a11y-scan.mjs` both carry the same warning, and this repository has a recorded
  * case of CI being red for 16 consecutive runs over an unowned ceiling. Read the report,
  * triage, fix or baseline, and only then turn this red.

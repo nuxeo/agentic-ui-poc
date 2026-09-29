@@ -12,9 +12,11 @@
  * happens to accept `Administrator`, the fallback silently scans as the wrong identity, and
  * the report says nothing about it.
  *
- * The TypeScript side has its own copy in `fixtures.ts` — one per language rather than a
- * cross-language import, because a `.ts` file cannot import a `.mjs` one without loosening
- * the compiler settings for the whole folder. Both are eight lines and both throw.
+ * `fixtures.ts` imports these directly; the folder sets `allowJs` and `checkJs` so a `.ts`
+ * module can consume a `.mjs` one and still be type-checked. This comment used to describe a
+ * per-language copy in `fixtures.ts` and argue for keeping it, which was true before that
+ * compiler change and has been wrong since — it was directing maintainers to preserve a
+ * duplication that no longer exists. Flagged in review on PR #225.
  */
 
 /**

@@ -71,6 +71,25 @@ const COMMANDS = {
     preflight: false,
     argv: ['node', 'a11y/diagnostics/error-class-drift.mjs'],
   },
+  /**
+   * Type-check this folder.
+   *
+   * A subcommand because **no repository gate can run it**, and that is not an oversight to
+   * be fixed here: this TypeScript imports `@playwright/test` and the two a11y-scout
+   * packages, all installed `--no-save` and absent in CI, so `tsc` there would fail on
+   * missing modules rather than on our types. `spec-typecheck.mjs` also only discovers
+   * configs under `apps/` and `libs/`, and Playwright's own runner transpiles specs through
+   * esbuild without checking them.
+   *
+   * So the compile-time guarantees this folder claims — a mistyped screen id or interaction
+   * state being a build error — hold only when somebody runs this. Flagged in review on
+   * PR #225; documented in README.md rather than quietly left implied.
+   */
+  typecheck: {
+    describe: 'Type-check the specs and fixtures (CI cannot — see README)',
+    preflight: false,
+    argv: ['tsc', '-p', 'a11y/tsconfig.json', '--noEmit'],
+  },
   preflight: {
     describe: 'Check the stack and the untracked installs, change nothing',
     preflight: false,
@@ -85,7 +104,7 @@ const COMMANDS = {
  * and the alternative is a diagnostic that only runs when somebody remembers it — which is
  * how the list it guards came to be missing twenty classes in the first place.
  */
-const SKIP_DRIFT = new Set(['drift', 'preflight']);
+const SKIP_DRIFT = new Set(['drift', 'preflight', 'typecheck']);
 
 function usage() {
   const width = Math.max(...Object.keys(COMMANDS).map((k) => k.length));

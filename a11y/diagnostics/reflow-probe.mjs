@@ -37,6 +37,7 @@
 
 import { nuxeoBasicAuthHeader, requireNuxeoCredentials, resolveBaseUrl } from '../env.mjs';
 import { surfaceUnusableReason } from '../surface.mjs';
+import { gotoOrExit, launchChromium } from './preconditions.mjs';
 
 const REFLOW_WIDTH = 320;
 const REFLOW_HEIGHT = 256;
@@ -152,7 +153,7 @@ async function newSignedInContext(width, height) {
   return ctx;
 }
 
-const browser = await chromium.launch({ headless: process.env['A11Y_HEADED'] !== '1' });
+const browser = await launchChromium(chromium, 'reflow-probe');
 const context = await newSignedInContext(1440, 900);
 
 /**
@@ -349,7 +350,13 @@ if (process.argv.includes('--negative-control')) {
   // this reason; the control has to do the same or it is not reproducing the loop.
   const ctx2 = await newSignedInContext(1440, 900);
   const p2 = await ctx2.newPage();
-  await p2.goto(`${baseUrl}/#/browse`, { waitUntil: 'networkidle', timeout: 45_000 });
+  // `gotoOrExit`, not a bare `goto`: the control cannot treat a navigation failure as a
+  // result. If browse will not load, the detection path was not exercised either way, and
+  // reporting that as a failed control would say the probe is broken when the app is absent.
+  await gotoOrExit(p2, `${baseUrl}/#/browse`, 'reflow-probe (negative control)', {
+    waitUntil: 'networkidle',
+    timeout: 45_000,
+  });
 
   // Same check as the measurement loop. A control run against an error panel would still
   // "prove" the detection path works, but it would prove it on a page nobody is measuring.

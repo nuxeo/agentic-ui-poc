@@ -301,7 +301,7 @@ reduce`.
 `a11y/specs/journey.a11y.spec.ts` (`npm run a11y:scan -- journey`) walks the four screens in
 the order a user meets them and emits **one self-contained report per screen** rather than a
 consolidated one. The other suites answer "which rules does the app fail"; this answers "how bad
-is the screen I am about to hand to its owner". **15.1 minutes, 51 findings, 32 blockers** as
+is the screen I am about to hand to its owner". **15.1 minutes, 50 findings, 32 blockers** as
 first measured on 2026-09-16. Document detail has since been re-measured at 17 and 15 after an
 upstream fix (below); the other three rows are still the 16 September figures, so the totals
 here are a snapshot rather than a current count.
@@ -359,8 +359,16 @@ Worth recording as a closed loop rather than a footnote: this suite found a defe
 rule or axe run had reported, the defect was fixed, and the same suite confirmed the fix. That
 is the argument for the layer, made once with evidence.
 
-**Browse's two `button-name` findings are the same two tree toggles and are very likely fixed
-too, but that has not been re-measured.** Its row above still shows the 16 September figures.
+**Browse's two `button-name` findings were the same two tree toggles.** Browse _was_
+re-measured — the 22 September table above covers the whole journey and shows it at 11 → 8
+findings and 7 → 5 blockers, and a two-blocker drop is what fixing those toggles would
+produce. This paragraph previously said Browse had not been re-measured and that its row
+still held the 16 September figures; that was written after the 21 September document-detail
+re-scan and was left behind by the 22 September run. Flagged in review on PR #225.
+
+The attribution is still weaker than document detail's. That screen has a rule-by-rule
+before-and-after above; Browse has only the totals, so "those two toggles" is inference from
+the size of the drop rather than a measured per-rule comparison.
 
 ### The run-to-run difference was a loading spinner masking a real defect
 

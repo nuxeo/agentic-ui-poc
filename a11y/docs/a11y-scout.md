@@ -12,7 +12,11 @@ HTML/Markdown/JSON report to `a11y/reports/`.
 Under that standard a11y-scout owns **keyboard traps, focus order and visibility, reflow, and
 AI content semantics**. It does not own the axe verdict — `phase-6-a11y.mjs` does. a11y-scout
 runs axe too, and its axe findings are an informational cross-check that never fails a run.
-Every finding carries a `source` field, so the boundary is a filter rather than a convention.
+Every finding carries a `source` field, so the boundary **can** be a filter rather than a
+convention — but nothing filters on it yet. a11y-scout's verdict counts all findings equally,
+axe ones included, and the reports here do the same. `docs/accessibility.md` records that as
+open gap 2. Until it is closed the `source` field supports reading a report correctly by
+hand; it does not enforce the boundary described above.
 
 ## What a11y-scout adds that axe cannot
 
@@ -156,9 +160,11 @@ which surface failed and why.
 
 ## Nothing fails the run yet
 
-`failOnBlockers` is `false` everywhere. These checks have never run against this application,
-so the true count is unknown, and a gate that goes red on its first run for reasons nobody has
-triaged is one people learn to ignore — `coverage-gate.mjs` and `scripts/a11y-scan.mjs` both
+`failOnBlockers` is `false` everywhere. Not because the checks have never run — this document
+records baselines for seven surfaces and four screens — but because **the findings they
+produced are untriaged and unowned**. Nobody has yet decided which are real, which are
+accepted, and who fixes the rest, and a gate that goes red for reasons nobody has triaged is
+one people learn to ignore — `coverage-gate.mjs` and `scripts/a11y-scan.mjs` both
 carry that warning, and this repository has a recorded case of CI red for 16 consecutive runs
 over an unowned ceiling.
 

@@ -119,7 +119,23 @@ npm run a11y:scan -- reflow       # diagnostics, seconds to a minute
 npm run a11y:scan -- routes
 npm run a11y:scan -- diff
 npm run a11y:scan -- drift       # runs automatically before every scan above
+npm run a11y:scan -- typecheck   # local only — see below
 ```
+
+### No CI job type-checks this folder
+
+`typecheck` is a subcommand you have to remember, and that is a real limitation rather than
+an oversight, so it is stated here rather than left implied.
+
+The TypeScript in here imports `@playwright/test` and the two a11y-scout packages. All three
+are installed `--no-save` and are absent in CI, so `tsc` there would fail on missing modules
+instead of on our types. `scripts/beta-harness/spec-typecheck.mjs` also only discovers
+configs under `apps/` and `libs/`, and Playwright's own runner strips types through esbuild
+without checking them — a green suite run is not type safety.
+
+The consequence: the compile-time guarantees this folder relies on — a mistyped journey
+screen id or interaction state being a build error — hold **only when someone runs this
+command**. Run it before pushing. Flagged in review on PR #225.
 
 Extra arguments pass through, so a single screen with a visible browser is:
 
