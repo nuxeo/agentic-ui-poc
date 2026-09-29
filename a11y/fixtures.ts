@@ -141,9 +141,19 @@ export async function expectSurfaceUsable(page: Page, host: string, label: strin
  * `provider: haip` is not evidence that they ran, and this was measured rather than imagined:
  * on 2026-09-22 the provider reported READY, the cost meter billed 15 calls, and every
  * content-quality call returned 403 — `aiGenerated` stayed 0 while the header read like a
- * successful AI run. Zero means eleven WCAG criteria (1.1.1, 1.3.3, 2.4.2, 2.4.4, 2.5.3,
- * 3.3.1, 3.3.2 at A; 1.3.5, 2.4.6, 3.1.2, 3.3.3 at AA) were **not measured**, which is not
- * the same as clean.
+ * successful AI run. The criteria at stake are eleven (1.1.1, 1.3.3, 2.4.2, 2.4.4, 2.5.3,
+ * 3.3.1, 3.3.2 at A; 1.3.5, 2.4.6, 3.1.2, 3.3.3 at AA).
+ *
+ * **What a zero can and cannot tell you.** In mock mode the checks are skipped, so zero is
+ * definitely *unmeasured*. With a live provider, zero is **ambiguous**: `aiGenerated` counts
+ * findings, not executions, and a working provider that finds nothing also produces zero.
+ * This used to label every live zero UNMEASURED, which would misreport a genuinely clean run.
+ * Flagged in review on PR #225.
+ *
+ * Nor can the cost meter settle it. `cost.entries` records each completed LLM call but not
+ * which scanner made it, and `aiFix` calls the same model — the 2026-09-29 journey billed
+ * sixteen completed calls while stderr reported content-quality 403s. The only direct signal
+ * of failure is a `content-quality: LLM call failed` line on stderr, so the note points there.
  *
  * Shared rather than written per suite, because it was written for `journey` alone and the
  * other three kept printing a provider name with no way to tell whether it produced anything.
@@ -151,13 +161,20 @@ export async function expectSurfaceUsable(page: Page, host: string, label: strin
 export function aiFindingsNote(state: {
   findings: ReadonlyArray<{ aiGenerated?: boolean }>;
   meta: { llmProvider: string; llmMockMode: boolean };
+  cost?: { entries?: ReadonlyArray<unknown> };
 }): string {
   const count = state.findings.filter((f) => f.aiGenerated).length;
   if (count > 0) return `${count} (provider ${state.meta.llmProvider})`;
-  const why = state.meta.llmMockMode
-    ? 'mock mode — no key'
-    : `provider ${state.meta.llmProvider} selected but produced nothing; check stderr for LLM errors`;
-  return `0 — the 11 AI-judged criteria are UNMEASURED, not clean (${why})`;
+  if (state.meta.llmMockMode) {
+    return '0 — the 11 AI-judged criteria are UNMEASURED, not clean (mock mode — no key)';
+  }
+  const calls = state.cost?.entries?.length ?? 0;
+  return (
+    `0 — AMBIGUOUS: either the 11 AI-judged criteria ran and found nothing, or their calls ` +
+    `failed. ${calls} LLM call(s) completed on provider ${state.meta.llmProvider}, not ` +
+    `attributable to a scanner. A "content-quality: LLM call failed" line on stderr means ` +
+    `they were not measured.`
+  );
 }
 
 /** A page that is already past the route guard. */

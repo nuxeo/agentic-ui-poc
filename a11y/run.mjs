@@ -2,10 +2,11 @@
 /**
  * The single entry point for everything in this folder.
  *
- * `package.json` at the repository root carries exactly one line for accessibility —
+ * `package.json` at the repository root carries exactly one line for this folder —
  * `"a11y:scan": "node a11y/run.mjs"` — and every suite and diagnostic is a subcommand here
- * rather than a script of its own. That is the whole reason this file exists: removing this
- * folder should be `rm -rf a11y/` plus deleting one line, not hunting seven npm entries.
+ * rather than a script of its own. That is the whole reason this file exists: the
+ * `package.json` part of removing this folder is one line, not hunting seven npm entries.
+ * (Removal also edits `docs/accessibility.md`; `README.md` has the full list.)
  *
  * The pre-existing `a11y`, `a11y:all` and `a11y:baseline` scripts are NOT ours. They drive
  * `scripts/a11y-scan.mjs`, the static template scan, which is CI-gated and permanent.

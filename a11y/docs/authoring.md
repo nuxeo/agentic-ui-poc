@@ -12,8 +12,13 @@ not a contribution.
 
 ## 0. Where the file goes
 
-Everything lives under `a11y/`, and nothing outside it is modified. That is not tidiness — it
-is what makes the folder removable in one command. See `../README.md`.
+The implementation lives entirely under `a11y/`, and nothing under `apps/` or `libs/` is
+modified. That is not tidiness — it is what keeps the folder removable. Its **integration**
+with the repository root is three small edits, and they are the whole list: the `a11y:scan`
+line in `package.json`, a Definition-of-Done line in `AGENTS.md`, and the a11y-scout layer in
+`docs/accessibility.md`. See `../README.md` for which of those to undo on removal. (This
+section used to say nothing outside the folder was modified, which the PR's own diff
+contradicted.)
 
 ```
 a11y/
@@ -56,8 +61,8 @@ Three rules, and each is enforced by something rather than by goodwill:
    already answer.
 3. **A standalone diagnostic goes in `a11y/diagnostics/` and gets a subcommand in `run.mjs`.**
    The repo-wide convention is that a script has an entry point; here the entry point is the
-   dispatcher rather than its own `package.json` line, so that removing the folder is still a
-   one-line change at the root.
+   dispatcher rather than its own `package.json` line, so that the `package.json` part of
+   removing the folder stays a single line.
 
 ### The four extension points, and what each costs
 
@@ -70,7 +75,7 @@ Three rules, and each is enforced by something rather than by goodwill:
 
 **`package.json` does not need touching**, and that is the guarantee worth having: `a11y:scan
 -- journey` selects projects with a `journey-*` wildcard, so a fifth screen is picked up
-without a script change, and the folder stays a one-line removal at the root.
+without a script change, and `package.json` keeps a single line for this folder.
 
 This table used to end "nothing else needs touching", which was wrong twice. A new suite also
 needs its `COMMANDS` entry or the documented sole entry point has no subcommand for it and
@@ -369,8 +374,8 @@ Then add it as a **subcommand in `../run.mjs`**, not as a script in the root `pa
   },
 ```
 
-The root `package.json` carries exactly one accessibility line, `a11y:scan`, so that removing
-this folder is one deletion rather than seven. A diagnostic added to `package.json` instead
+The root `package.json` carries exactly one line for this folder, `a11y:scan`, so that its
+part of removing the folder is one deletion rather than seven. A diagnostic added to `package.json` instead
 becomes an orphaned root script the moment `a11y/` is deleted. See `../README.md`.
 
 `preflight: false` is the default for diagnostics, on the grounds that a twenty-second answer

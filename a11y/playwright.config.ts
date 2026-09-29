@@ -11,7 +11,8 @@ import { JOURNEY_SCREENS, journeyProjectName, journeyTag } from './specs/journey
  * Everything this suite needs — specs, fixtures, config, diagnostics, tool docs and report
  * output — lives under `a11y/`, and nothing under `apps/` or `libs/` is modified to support
  * it. That is deliberate: this is development tooling with an expected end date, and the
- * removal procedure in `README.md` is `rm -rf a11y/` plus one line of `package.json`.
+ * removal procedure in `README.md` is `rm -rf a11y/`, one line of `package.json`, and an
+ * edit to `docs/accessibility.md` — nothing in application code.
  *
  * It costs one thing, recorded here rather than discovered later: `installSession()` in
  * `../fixtures.ts` is a copy of the same function in `apps/nuxeo-ui-e2e/src/fixtures.ts`. A

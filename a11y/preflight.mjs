@@ -216,8 +216,9 @@ ok.push(
   process.env['HAIP_API_KEY']
     ? 'HAIP_API_KEY is set — AI content-quality checks will be ATTEMPTED. A key is not proof ' +
         'they ran: on 2026-09-22 the provider reported READY, billed 15 calls, and every ' +
-        'content-quality call still returned 403. Check `aiGenerated` in the report; 0 means ' +
-        'unmeasured, not clean.'
+        'content-quality call still returned 403. `aiGenerated: 0` alone cannot tell a clean ' +
+        'result from a failed one; a "content-quality: LLM call failed" line on stderr means ' +
+        'the criteria were not measured.'
     : 'HAIP_API_KEY is NOT set — scan runs in mock mode, AI content-quality checks skipped ' +
         '(11 WCAG criteria unmeasured, not clean)',
 );

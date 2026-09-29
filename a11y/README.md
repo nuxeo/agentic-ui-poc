@@ -109,8 +109,14 @@ entitled to that model, point it at one it can reach:
 export HAIP_MODEL_REASONER=<a model the key is allowed>
 ```
 
-Until findings actually appear, read `aiGenerated: 0` as _not measured_, exactly as in mock
-mode. Cost is not the constraint: a full four-screen journey billed **$0.0059**.
+**How to read `aiGenerated: 0` with a live key.** It is _ambiguous_, not proof either way.
+`aiGenerated` counts findings, not executions, so a provider that ran and found nothing also
+reports zero. The cost meter cannot settle it either: `cost.entries` records completed calls
+without saying which scanner made them, and the fix agents use the same model. The deciding
+signal is stderr. A `content-quality: LLM call failed` line means the eleven criteria were
+**not measured**; its absence, with calls completed, is the only case where zero may mean
+clean. (In mock mode zero is simply unmeasured.) Cost is not the constraint: a full
+four-screen journey billed **$0.0059**.
 
 ## Running it
 
@@ -183,10 +189,16 @@ rm -rf a11y/
 then:
 
 1. delete the `"a11y:scan"` line from the root `package.json`;
-2. delete the accessibility line from the Definition of Done in `AGENTS.md`;
-3. in `docs/accessibility.md`, remove the a11y-scout layer from the ownership table and the
+2. in `docs/accessibility.md`, remove the a11y-scout layer from the ownership table and the
    sections describing its findings — **edit, do not delete**: that file also documents the
    two layers that remain.
+
+**Keep** the Definition-of-Done line this PR added to `AGENTS.md` ("`docs/accessibility.md`
+consulted if an accessibility check was added, moved or suppressed"). It arrived with this
+folder but is not about it: the static template scan and the phase-6 axe run stay, and the
+one-owner-per-concern rule matters just as much for those two. This list used to say to
+delete it, which would have dropped that reminder for the layers that remain. Flagged in
+review on PR #225.
 
 Leave the `a11y`, `a11y:all` and `a11y:baseline` scripts alone. They drive
 `scripts/a11y-scan.mjs`, the static template scan, which predates this folder and is gated in
