@@ -2097,8 +2097,8 @@ expectGreen('a push workflow uploading translations AFTER the context push', 'ch
 });
 
 // `skip_untranslated_strings: true` does not omit an unapproved key for our nested JSON — it
-// exports the key with a BLANK value. The nightly pull of 29 September 2026 (#293) blanked all
-// 1,972 values in nine catalogues. This check REQUIRED the option until then; these controls are
+// exports the key with a BLANK value. The nightly pull of 29 September 2026 (#293) blanked every
+// unapproved value in nine catalogues. This check REQUIRED the option until then; these controls are
 // the inversion, so the requirement cannot come back.
 expectRed(
   'the pull workflow setting skip_untranslated_strings',

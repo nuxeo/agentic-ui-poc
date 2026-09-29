@@ -696,8 +696,9 @@ See D8d.
 **29 September 2026 — the nightly pull exported blank values.** `skip_untranslated_strings: true`
 had been added to stop the English overwrite, on the untested belief that it would leave an
 untranslated key out. For our nested JSON it keeps the key and blanks the value. The nightly pull
-([#293](https://github.com/nuxeo/agentic-ui-poc/pull/293)) carried nine catalogues with all 1,972
-values `""`, apart from 8 approved strings each in `fr.json` and `de.json`, and
+([#293](https://github.com/nuxeo/agentic-ui-poc/pull/293)) carried nine catalogues with every
+unapproved value `""` — all 1,972 in seven of them, all but 8 approved strings in `fr.json` and
+`de.json` — and
 `checkTranslationCatalogues` failed it, correctly. The Technical Usage Guide warns of exactly this.
 The pull now follows the standard: approved-only export, neither skip option, and only `fr` and
 `de` downloaded (D8d, D8h).

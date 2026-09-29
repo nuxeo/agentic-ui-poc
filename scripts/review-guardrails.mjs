@@ -3597,7 +3597,7 @@ function checkCrowdinConfig() {
   // `skip_untranslated_strings` was REQUIRED here until the nightly pull of 29 September 2026
   // (#293). The reasoning was that an untranslated key would be omitted and English would render
   // through the fallback. That was never tested, and it is false for our nested JSON: Crowdin keeps
-  // the key and BLANKS the value, so nine catalogues arrived with all 1,972 values empty. The
+  // the key and BLANKS the value, so nine catalogues arrived with every unapproved value empty. The
   // Technical Usage Guide had warned of exactly that. `skip_untranslated_files` withholds a
   // language until it is 100% approved, and crowdin-cli 4.14.2 rejects the pair outright.
   //
@@ -3630,7 +3630,7 @@ function checkCrowdinConfig() {
     '`skip_untranslated_strings` and `skip_untranslated_files` are not specifically useful, and ' +
     'the former can lead to empty translations being exported".\n' +
     '    That is what happened here: with `skip_untranslated_strings` set, the nightly pull of ' +
-    '29 September 2026 (#293) exported nine catalogues with every one of 1,972 values blank. ' +
+    '29 September 2026 (#293) exported nine catalogues with every unapproved value blank. ' +
     '`skip_untranslated_files` instead withholds a language until it is 100% approved. See D8d ' +
     'and D8h in docs/i18n-localization-plan.md.';
 
