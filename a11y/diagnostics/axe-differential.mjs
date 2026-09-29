@@ -165,17 +165,44 @@ const claimed = new Map();
 const reportPath = resolveScoutReport();
 if (reportPath && existsSync(reportPath)) {
   console.log(`axe-differential: comparing against ${relative(repoRoot, reportPath)}\n`);
+  /** @type {any} */
+  let report;
   try {
-    for (const f of JSON.parse(readFileSync(reportPath, 'utf8')).findings ?? []) {
-      if (f.source !== 'axe') continue;
-      const surface = SURFACES.find(([, route]) => (f.pageUrl ?? '').endsWith(route))?.[0];
-      if (!surface) continue;
-      const key = `${surface}::${f.ruleId}`;
-      claimed.set(key, (claimed.get(key) ?? 0) + 1);
-    }
+    report = JSON.parse(readFileSync(reportPath, 'utf8'));
   } catch {
     console.error(`axe-differential: ${reportPath} unreadable, so there is nothing to compare.`);
     process.exit(2);
+  }
+
+  // The baseline must have scanned every surface being compared, or its silence about a
+  // surface is absence, not a claim of zero.
+  //
+  // A surfaces run that fails or times out still writes this report, and a timeout restarts
+  // the worker and discards everything it had accumulated — the run that hit the old 600s
+  // limit wrote a "surfaces" report covering ONE of seven routes. Accepted as-is, every
+  // missing surface read as "a11y-scout claimed 0", and a comparison against nothing exited 0.
+  // That happened here: the only baseline on disk covered /#/browse-adf-hx alone, and a
+  // `--surface browse` run reported a clean comparison. Flagged in review on PR #225.
+  const scanned = Array.isArray(report?.meta?.pagesScanned) ? report.meta.pagesScanned : [];
+  const uncovered = SURFACES.filter(([, route]) => !scanned.some((u) => String(u).endsWith(route)));
+  if (uncovered.length > 0) {
+    console.error(
+      `axe-differential: the baseline did not scan ${uncovered.length} of the ${SURFACES.length} ` +
+        `requested surface(s): ${uncovered.map(([label]) => label).join(', ')}.\n` +
+        '  Its silence about those is absence, not a claim of zero, so there is nothing to\n' +
+        `  compare them against. It scanned ${scanned.length} page(s).\n\n` +
+        '    npm run a11y:scan -- surfaces      # a complete baseline\n' +
+        '    --surface <label>                  # or compare only what it covers\n',
+    );
+    process.exit(2);
+  }
+
+  for (const f of report.findings ?? []) {
+    if (f.source !== 'axe') continue;
+    const surface = SURFACES.find(([, route]) => (f.pageUrl ?? '').endsWith(route))?.[0];
+    if (!surface) continue;
+    const key = `${surface}::${f.ruleId}`;
+    claimed.set(key, (claimed.get(key) ?? 0) + 1);
   }
 } else {
   // Exit 2 — "precondition not met" — rather than warning and continuing. The whole output of
@@ -267,24 +294,40 @@ try {
       continue;
     }
 
-    for (const [variant, tags] of Object.entries(VARIANTS)) {
-      const results = await new AxeBuilder({ page }).withTags(tags).analyze();
-      for (const v of results.violations) {
-        rows.push({
-          surface,
-          rule: v.id,
-          // axe types `impact` as nullable. The printing paths below happen to survive a null
-          // today (`?? '?'` in the table; the blocking list only ever holds serious/critical),
-          // but the row type says `string` and the next reader will trust it. Normalised here,
-          // once, rather than guarded wherever it is read.
-          impact: v.impact ?? 'unknown',
-          variant,
-          nodes: v.nodes.length,
-          targets: v.nodes.slice(0, 4).map((n) => n.target.join(' ')),
-        });
+    // Both variants go into a buffer and are committed together. An `analyze()` rejection used
+    // to escape the loop and exit 1 — "the comparison failed" for a surface nothing had
+    // measured — and had it been caught per variant instead, the rows from the variant that
+    // did finish would have been kept, leaving a one-sided surface that reads as "only one tag
+    // set sees this". A surface is compared under both tag sets or not at all. Flagged in
+    // review on PR #225.
+    /** @type {typeof rows} */
+    const surfaceRows = [];
+    try {
+      for (const [variant, tags] of Object.entries(VARIANTS)) {
+        const results = await new AxeBuilder({ page }).withTags(tags).analyze();
+        for (const v of results.violations) {
+          surfaceRows.push({
+            surface,
+            rule: v.id,
+            // axe types `impact` as nullable. The printing paths below happen to survive a
+            // null today (`?? '?'` in the table; the blocking list only ever holds
+            // serious/critical), but the row type says `string` and the next reader will
+            // trust it. Normalised here, once, rather than guarded wherever it is read.
+            impact: v.impact ?? 'unknown',
+            variant,
+            nodes: v.nodes.length,
+            targets: v.nodes.slice(0, 4).map((n) => n.target.join(' ')),
+          });
+        }
+        process.stdout.write(`[${variant}: ${results.violations.length}] `);
       }
-      process.stdout.write(`[${variant}: ${results.violations.length}] `);
+    } catch (err) {
+      const why = `axe analysis failed: ${(err instanceof Error ? err.message : String(err)).split('\n')[0]}`;
+      console.log(`- SKIPPED, ${why} (partial results discarded, NOT a pass)`);
+      rows.push({ surface, rule: '(not measurable)', impact: '-', variant: '-', nodes: 0, targets: [why] });
+      continue;
     }
+    rows.push(...surfaceRows);
     measured += 1;
     console.log('');
   }

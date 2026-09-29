@@ -154,6 +154,10 @@ Extra arguments pass through, so a single screen with a visible browser is:
 npm run a11y:scan -- journey --project=journey-1-login --headed
 ```
 
+`--project` can only narrow a command, never switch it: `journey --project=surfaces` is
+refused, because each command picks its own preflight checks and borrowing another suite's
+project would skip them.
+
 Reports land in `reports/<name>-<timestamp>/` as `report.html`, `.md` and `.json`. The HTML is
 self-contained — screenshots inlined — so it can be sent to whoever owns the screen.
 

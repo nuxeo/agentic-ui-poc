@@ -138,6 +138,39 @@ function mergeArgs(own, extra) {
   return [...withoutOurProject, ...extra];
 }
 
+/** Every `--project` value in an argv, in both `--project=x` and `--project x` forms. */
+function projectsIn(argv) {
+  return argv.flatMap((a, i) =>
+    a.startsWith('--project=') ? [a.slice('--project='.length)] : a === '--project' ? [argv[i + 1] ?? ''] : [],
+  );
+}
+
+/**
+ * The caller's `--project` values that fall outside this command's own scope.
+ *
+ * `mergeArgs` REPLACES the command's project with the caller's, on the assumption that a
+ * caller is narrowing. Nothing enforced that. `states --project=journey-1-login` ran the login
+ * suite under the `states` command, and `journey --project=surfaces` ran the surfaces suite
+ * past a preflight that had not checked administration access, because that check is chosen
+ * per command. Flagged in review on PR #225.
+ *
+ * A caller value is in scope when the command's own project pattern (`surfaces`, or a wildcard
+ * such as `journey-*`) matches it as text — so `journey --project=journey-1-login` and
+ * `journey --project=journey-*` are accepted, and anything else is refused.
+ *
+ * @param {string[]} own    the command's argv
+ * @param {string[]} extra  what the caller appended
+ * @returns {string[]}
+ */
+function projectsOutOfScope(own, extra) {
+  const ownPatterns = projectsIn(own);
+  if (ownPatterns.length === 0) return [];
+  const matchers = ownPatterns.map(
+    (p) => new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`),
+  );
+  return projectsIn(extra).filter((value) => !matchers.some((m) => m.test(value)));
+}
+
 const [command, ...passthrough] = process.argv.slice(2);
 
 if (!command || command === '--help' || command === '-h') {
@@ -149,6 +182,19 @@ const entry = COMMANDS[command];
 if (!entry) {
   console.error(`\nUnknown command: ${command}`);
   usage();
+  process.exit(1);
+}
+
+// Before the drift check and preflight, so a mistaken invocation is refused in a second
+// rather than after a Nuxeo query. Exit 1: this is a usage error, not an environment one.
+const outOfScope = projectsOutOfScope(entry.argv, passthrough);
+if (outOfScope.length > 0) {
+  console.error(
+    `\n--project ${outOfScope.map((p) => `"${p}"`).join(', ')} is outside the "${command}" command, ` +
+      `which runs ${projectsIn(entry.argv).join(', ')}.\n` +
+      'Each command has its own preflight, so running another suite under it would skip the\n' +
+      'checks chosen for that suite. Use that suite\'s own command instead.\n',
+  );
   process.exit(1);
 }
 
