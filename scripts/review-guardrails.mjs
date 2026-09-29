@@ -1360,7 +1360,7 @@ function checkNoHardcodedUiText() {
 
       const isModuleLevelShadow = (identifier) => {
         const name = identifier.text;
-        const useStart = identifier.getStart();
+        const useStart = identifier.getStart(source);
         for (const stmt of source.statements) {
           if (stmt.getStart() >= useStart) break;
           if (ts.isFunctionDeclaration(stmt) && stmt.name?.text === name) return true;
