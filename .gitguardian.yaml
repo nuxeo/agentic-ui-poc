@@ -1,8 +1,8 @@
 version: 2
 
-# Integration preflight unit specs compose fake credentials at runtime (see the file header).
-# GitGuardian's generic-password detector also flags historical `/etc/passwd` URL fixtures
-# that were removed in later commits but remain in this PR's commit range.
-paths-ignore:
-  - "libs/integration-tests/src/lib/integration-preflight.unit.spec.ts"
-  - "libs/integration-tests/src/preflight-cli.unit.spec.ts"
+# False positive from an early PR commit: a `file:` URL fixture used a well-known system path
+# as a neutral non-http scheme example. Later commits renamed it; the occurrence remains in
+# this branch's history until the PR is squash-merged.
+matches-ignore:
+  - name: Generic Password
+    match: file:///etc/passwd

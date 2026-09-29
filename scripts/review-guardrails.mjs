@@ -1353,9 +1353,16 @@ function checkNoHardcodedUiText() {
         getCompilationSettings: () => ({
           target: ts.ScriptTarget.Latest,
           module: ts.ModuleKind.ESNext,
+          noLib: true,
+          skipLibCheck: true,
         }),
-        fileExists: (fileName) => fileName === path,
-        readFile: (fileName) => (fileName === path ? body : undefined),
+        getDefaultLibFileName: () => 'lib.d.ts',
+        fileExists: (fileName) => fileName === path || fileName === 'lib.d.ts',
+        readFile: (fileName) => {
+          if (fileName === path) return body;
+          if (fileName === 'lib.d.ts') return '';
+          return undefined;
+        },
         getCanonicalFileName: (fileName) => fileName,
       });
 
