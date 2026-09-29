@@ -201,11 +201,13 @@ export const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig = {
   // locale here that has no catalogue would advertise a language the application cannot
   // render, which `checkAdvertisedLocalesShip` fails.
   //
-  // It does NOT mean each is at full key parity with `en`, which this comment used to claim.
-  // Crowdin omits untranslated strings rather than exporting them with their English source, so
-  // a short catalogue is the normal steady state and `setFallbackLang('en')` covers the rest —
-  // `fr` and `de` are at 81 of 1,972 keys today. `checkTranslationCatalogues` warns on a missing
-  // key and fails only on one `en.json` does not have. See D8d in docs/i18n-localization-plan.md.
+  // It does NOT mean each is translated. `fr` and `de` hold 81 of 1,972 keys today, and
+  // `setFallbackLang('en')` covers the rest; a Crowdin pull fills every unapproved string with its
+  // English source. `checkTranslationCatalogues` warns on a missing key and fails only on one
+  // `en.json` does not have. See D8d in docs/i18n-localization-plan.md.
+  //
+  // Adding a language here also means adding it to `download_translations_args` in
+  // .github/workflows/crowdin-pull.yaml, which downloads only the languages the app ships.
   availableLanguages: ['en', 'fr', 'de'],
   integrations: {
     arender: null,

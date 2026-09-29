@@ -6,7 +6,9 @@
 # `docs/i18n-localization-plan.md`. Daily, because a translation finished on Tuesday should not
 # wait for someone to remember.
 #
-# Daily is a POLL, not a publish. On a day with nothing approved this opens nothing. Measured on
+# Daily is a POLL, not a publish. It opens or refreshes a pull request only when the download
+# differs from `main`; unapproved strings export as English, so that includes any translation held
+# in `main` that is not yet approved in Crowdin. Measured on
 # nuxeo/nuxeo-web-ui — a comparison, not an authority; it predates the standard and is not
 # compliant with it — which has run the same schedule since 2022: 99 pull requests, 39 of them
 # merged at a median lag of one day, none currently open. Thirty-nine merges across fifty-one
@@ -114,64 +116,33 @@ jobs:
           upload_sources: false
           download_translations: true
 
-          # Leave an untranslated string OUT of the exported catalogue.
+          # The standard's only pull setting is approved-only export (`export_only_approved`, in
+          # crowdin-conf.yml). A string not yet approved is filled with its English source, so
+          # every catalogue arrives at full key parity. Neither skip option is set, and
+          # `checkCrowdinConfig` fails the workflow if either appears:
           #
-          # The action defaults this to `false`, which does not mean "omit" — it means export the
-          # string with its **English source as the translation**. The first real pull did exactly
-          # that: nine catalogues byte-identical to `en.json`, and because the export covers the
-          # whole file it overwrote the 75 French and 76 German strings that had been written by
-          # hand. `Supprimer` came back as `Delete`, in a commit titled "update translations from
-          # Crowdin".
+          #   - `skip_untranslated_strings` was set here and removed. For our nested JSON it does
+          #     not omit an unapproved key, it exports the key with a BLANK value — the nightly
+          #     pull of 29 September 2026 (#293) blanked every unapproved value in nine
+          #     catalogues. The Technical Usage Guide warns of exactly this: "the former can lead
+          #     to empty translations being exported".
+          #   - `skip_untranslated_files` withholds a language entirely until it is 100% approved.
           #
-          # `true` omits the key instead, and `setFallbackLang('en')` renders English for it — the
-          # behaviour `checkTranslationCatalogues` already calls "the fallback working as
-          # designed", and it warns rather than fails on a missing key for precisely this reason.
-          # So the honest state of a half-translated locale is a short catalogue, not a full one
-          # padded with English.
-          #
-          # This is a DELIBERATE DEVIATION from a documented expectation. The Technical Usage
-          # Guide states that "by default, missing translations will be filled with the reference
-          # translation held by the source file", and considers `skip_untranslated_strings` "not
-          # specifically useful". We set it anyway, because an English-padded catalogue at full
-          # key parity is indistinguishable from a finished translation to every check we have —
-          # `nuxeo-web-ui` ships `messages-cs.json` at 1,565 keys of which 1,558 ARE English, and
-          # nothing there reports a problem. An omitted key is at least honest: the fallback
-          # renders English and `checkTranslationCatalogues` reports the gap.
-          #
-          # A deviation from an expectation, not from a rule — the guide does not say MUST NOT.
-          # Recorded in `D8-standard`.
-          #
-          # Flipping this back is caught by `checkCrowdinConfig`, which asserts this exact line.
-          # Not by `checkCataloguesAreTranslated` — that one fails a catalogue whose every value
-          # matches English, which is what the flip produced only while Crowdin was empty. Once
-          # Crowdin holds translations of its own, the same flip yields 1,897 English values out
-          # of 1,972, and 96% is a warning rather than a failure. Measured, not estimated. So the
-          # catalogue check would go quiet precisely as the catalogue became worth protecting, and
-          # the configuration assertion is the load-bearing one.
-          skip_untranslated_strings: true
+          # See D8d and D8h in docs/i18n-localization-plan.md.
 
-          # `skip_untranslated_files` is deliberately NOT set, and `checkCrowdinConfig` fails the
-          # workflow if anyone sets it. It was set here briefly, alongside the option above, and
-          # a guardrail was written REQUIRING it. Only one of the two can be active:
-          #
-          #   Technical Usage Guide: "export options `skip_untranslated_strings` and
-          #   `skip_untranslated_files` are not specifically useful, and the former can lead to
-          #   empty translations being exported (and only one of these options can be activated)."
-          #
-          # So setting both did not guard two losses. On the pinned toolchain it guarded NEITHER,
-          # and not because one option quietly won — crowdin-cli 4.14.2 rejects the pair outright
-          # in `PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and
-          # files at the same time", before the download runs. The pull would have failed without
-          # downloading a byte, while a guardrail asserted the configuration was correct.
-          #
-          # `skip_untranslated_strings` is the one worth keeping, for the reason above: an
-          # English-padded catalogue passes as finished, an empty one is loudly wrong and
-          # `checkCataloguesAreTranslated` fails it. See D8h.
+          # Only the languages the app ships. A catalogue for a locale with no Angular locale data
+          # fails `checkLocaleDataRegistered`, and Crowdin has nine target languages while the app
+          # registers two. Adding a language to the app means adding it here, in the same pull
+          # request as its `register-locale-data.ts` entry and its `availableLanguages` entry.
+          # These are Crowdin language IDs, which for French and German are `fr` and `de`.
+          download_translations_args: '--language=fr --language=de'
 
           create_pull_request: true
           localization_branch_name: crowdin-translations-update
           pull_request_base_branch_name: main
           pull_request_title: 'chore(i18n): new Crowdin translations'
+          # Used only when the action CREATES the pull request. If one is already open on the
+          # localization branch, the action pushes to it and leaves its body as it was.
           pull_request_body: |
             Opened by the Crowdin Pull workflow. Contains only catalogue files.
 
@@ -182,15 +153,18 @@ jobs:
             precedence over the settings a pipeline sends. Tracked as an owner action in
             `D8-standard`.
 
-            **A catalogue shorter than `en.json` is expected, not a fault.** Untranslated
-            strings are omitted rather than exported with their English source, so a locale
-            carries only what has actually been translated and `setFallbackLang('en')` covers
-            the rest. `checkTranslationCatalogues` warns about the missing keys and passes.
+            **Every catalogue arrives at full key parity with `en.json`.** A string not yet
+            approved in Crowdin appears in English. A catalogue that is still ENTIRELY English
+            means nothing has been approved for that language yet, and
+            `checkCataloguesAreTranslated` fails it on purpose, so this pull request stays red
+            until approvals exist. That is expected, not a fault. A catalogue that is mostly
+            English gets a warning from the same check and does not fail.
 
-            What it does not catch is the opposite: a catalogue at *full* parity whose values
-            are all English, which is what `skip_untranslated_strings: false` produces and
-            which overwrote 151 hand-written strings the first time this ran. That one belongs
-            to `checkCataloguesAreTranslated`. Both run on this pull request.
+            **Check the diff for real translations turning back into English.** The export
+            replaces the whole file, so a translation that exists in this repository but has not
+            been approved in Crowdin comes back as its English source, and no check fails on it.
+            Do not merge a pull that does this; get the translation approved in Crowdin first
+            (D8f in `docs/i18n-localization-plan.md`).
 
             Do not hand-edit a non-English catalogue to fix something here. Crowdin is the
             source of truth and overwrites it on the next pull; fix it in Crowdin.

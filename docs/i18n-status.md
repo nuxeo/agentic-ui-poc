@@ -1,6 +1,7 @@
 # i18n — where we actually are
 
-**Dated 28 September 2026.** Measured, not estimated: every number below comes from a command
+**Dated 29 September 2026** (the Crowdin state and the #293 note; other sections carry their own
+measurement dates). Measured, not estimated: every number below comes from a command
 that is quoted next to it, so it can be re-run rather than believed.
 
 Re-measure before quoting anything here. The 16 September edition of this page claimed the gate was
@@ -637,11 +638,12 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
 
 **What is left, and none of it is plumbing.**
 
-1. **Crowdin holds no translations.** Every one of its nine target languages is at zero, verified
-   in the portal on 28 September. This is about **Crowdin's** state, not the application's: the
-   repository ships 151 hand-written French and German strings, written before Crowdin existed,
-   and those render today. What Crowdin has never had is any translation of its own, which is why
-   the first pull was destructive.
+1. **Crowdin holds almost no approved translations.** Every one of its nine target languages was
+   at zero in the portal on 28 September. By the pull of 29 September, French and German had 8
+   approved strings each, and the other seven languages still had none. This is about
+   **Crowdin's** state, not the application's: the repository ships 151 hand-written French and
+   German strings, written before Crowdin existed, and those render today. None of the 151 is
+   approved in Crowdin, which is why every pull so far has been destructive.
 
    Those 151 must be **preserved, and that is an open action** — see D8f. The standard says a
    repository's existing translations SHOULD be uploaded to initialize the project, and the
@@ -651,19 +653,22 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
    seeding itself has not been done and this repository cannot do it** — it needs a token only the
    project owner holds.
 
-   Until it is done, a language at 0% exports an empty catalogue over `fr.json` and `de.json`.
+   Until it is done, every one of the 151 that is not approved in Crowdin is exported as English
+   over `fr.json` and `de.json`.
    **Watch the pull request, not the scheduled run.** `Crowdin Pull` opens the pull request and
    returns successfully — it runs no checks of its own — so the nightly job shows **green** while
-   `checkCataloguesAreTranslated` fails the `chore(i18n): new Crowdin translations` pull request it
-   opened. Nothing reaches `main` either way, but an operator watching only the Actions list sees
-   nothing wrong. `skip_untranslated_files` was briefly added to suppress this and has been
-   removed: only one of it and `skip_untranslated_strings` can be active (D8h).
+   the checks on the `chore(i18n): new Crowdin translations` pull request it opened fail. Nothing
+   reaches `main` either way, but an operator watching only the Actions list sees nothing wrong.
+   Neither skip option is set; both are forbidden (D8h).
 
-   Beyond those 151, every locale correctly renders English through the fallback and the catalogues
-   stay short. **Translation is the next action, and the team is ready to begin rather than under
-   way** — Enrico Stengert on INTERN-1346, 28 September: the sources are visible and "translations
-   can begin on our end". Nothing has been translated yet, which is why the nine languages are at
-   zero above; readiness and progress are different things and this page has conflated them before.
+   Beyond those 151, every locale renders English: an unapproved string is exported with its
+   English source, so the catalogues arrive at full key parity. **Translation has started, and
+   approval has barely started.** Enrico Stengert on INTERN-1346, 28 September: the sources are
+   visible and "translations can begin on our end". On 29 September the Crowdin portal showed
+   fr/de/es/pl/pt 13% translated and ja/nl/th/zh 4%, with approval at 8 strings each in French and
+   German and none elsewhere. Only approved strings are exported, so translated-but-unapproved work
+   does not reach the repository. Translated, approved and shipped are three different things, and
+   this page has conflated them before.
    The pipeline **requests** approved-only export (`export_only_approved: 'true'` — D8g), which is
    the MUST the Guidelines set. It is not yet proof of the effect: the Guidelines also say
    project-level export settings in Crowdin **take precedence over the settings used by
@@ -689,9 +694,26 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
 
 **What the first pull cost, because it is the lesson of the slice.** It opened a pull request with
 nine catalogues byte-identical to `en.json` and would have overwritten 75 hand-written French and
-76 German strings. `skip_untranslated_strings` defaulted to `false`, which exports an untranslated
-string **with its English source as the translation** rather than omitting it. Full key parity was
-the reassuring signal and the defect produced it. See D8d.
+76 German strings. With no skip option set, an untranslated string is exported **with its English
+source as the translation**. Full key parity was the reassuring signal and the defect produced it.
+See D8d.
+
+**29 September 2026 — the nightly pull exported blank values.** `skip_untranslated_strings: true`
+had been added to stop the English overwrite, on the untested belief that it would leave an
+untranslated key out. For our nested JSON it keeps the key and blanks the value. The nightly pull
+([#293](https://github.com/nuxeo/agentic-ui-poc/pull/293)) carried nine catalogues with every
+unapproved value `""` — all 1,972 in seven of them, all but 8 approved strings in `fr.json` and
+`de.json` — and
+`checkTranslationCatalogues` failed it, correctly. The Technical Usage Guide warns of exactly this.
+The pull now follows the standard: approved-only export, neither skip option, and only `fr` and
+`de` downloaded (D8d, D8h).
+
+Dispatched from that fix, the pull refreshed #293 to `fr.json` and `de.json` only, each 1,972 keys
+with no blank value, 1,964 English and 8 approved translations. That is 99% English, so
+`checkCataloguesAreTranslated` **warns and the guardrails pass**. It is not the all-English
+failure. Merging it would turn all 75 hand-written French and 75 German strings on `main` back into
+English, because none of them is approved in Crowdin. **Do not merge a Crowdin pull until the D8f
+seeding is done**, or until the diff shows no hand-written string reverting.
 
 One trap is already handled and must stay handled: the standard's `/**/**/i18n/en.json` glob, with
 `base_path: "."`, sweeps `node_modules` and its 48 upstream catalogues — which would push

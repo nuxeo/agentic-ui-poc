@@ -1835,8 +1835,8 @@ function checkTranslationCatalogues() {
  *
  * The first real Crowdin pull opened a pull request carrying nine catalogues, and every one of
  * them was byte-identical to `en.json` — 1,972 keys, 1,972 values the same as English, none
- * different. Nothing in the project was translated yet, and `skip_untranslated_strings: false`
- * makes Crowdin export an untranslated string **as its English source** rather than omitting it.
+ * different. Nothing in the project was translated yet, and without a skip option Crowdin exports
+ * an untranslated string **as its English source**.
  *
  * It was not merely empty, it was destructive: `fr.json` and `de.json` held 75 and 76
  * hand-written translations, and the export overwrote them with English. `Supprimer` became
@@ -1862,10 +1862,13 @@ function checkTranslationCatalogues() {
  * `PDF`, `Nuxeo`, `OK` are the same word in French — so the failure needs *all* of them, and a
  * floor of five keys keeps it off a tiny catalogue that could plausibly be all acronyms.
  *
- * The partial case warns instead. With `skip_untranslated_strings: true` an untranslated key is
- * absent rather than English-valued, so a high ratio should not occur; if it does, either a
- * translator kept a lot of English on purpose or that setting has regressed, and the two cannot
- * be told apart from here.
+ * The partial case warns instead. Approved-only export fills every unapproved string with its
+ * English source, so a high ratio is the normal state of a language with few approvals — and it is
+ * also what a pull that overwrites unapproved hand-written translations looks like, which is why it
+ * is reported rather than ignored.
+ *
+ * A skip option is NOT the way out. `skip_untranslated_strings` does not omit the key for our
+ * nested JSON, it blanks the value (#293), and `checkCrowdinConfig` forbids both skip options.
  */
 function checkCataloguesAreTranslated() {
   const isCatalogue = (path) =>
@@ -1926,8 +1929,8 @@ function checkCataloguesAreTranslated() {
       fail(
         `${catalogue} contains no translated strings at all, while ${reference} has ` +
           `${english.size}.\n` +
-          '    A catalogue may legitimately be SHORT — `skip_untranslated_strings: true` omits ' +
-          'what is untranslated and English renders through the fallback — but empty means either ' +
+          '    A catalogue may legitimately be SHORT — a key added since the last pull, which ' +
+          'English renders through the fallback — but empty means either ' +
           'a sync replaced real translations with nothing, or a language is being shipped before ' +
           'anything was translated for it. D8e: advertise a language when it has translations, ' +
           'not when it is planned.',
@@ -1945,12 +1948,13 @@ function checkCataloguesAreTranslated() {
       if (shared.length >= 25 && ratio >= 0.8) {
         warn(
           `${catalogue} repeats the English string for ${identical.length} of its ` +
-            `${shared.length} keys (${Math.round(ratio * 100)}%).\n` +
-            '    Either a translator kept that much English deliberately, or ' +
-            '`skip_untranslated_strings` has regressed to `false` in .github/workflows/' +
-            'crowdin-pull.yaml and this is a partly untranslated export. An untranslated key ' +
-            'is supposed to be ABSENT, so that `setFallbackLang(\'en\')` renders English ' +
-            'without the catalogue claiming to have translated it.',
+            // Floored: 1,964 of 1,972 rounds to "100%", which reads as the all-English failure.
+            `${shared.length} keys (${Math.floor(ratio * 100)}%).\n` +
+            '    Approved-only export fills every string not yet approved in Crowdin with its ' +
+            'English source, so this is the normal state of a language with few approvals. ' +
+            'If this is a Crowdin pull, check its diff for real translations turning back into ' +
+            'English: the export replaces the whole file, so a translation held here but not ' +
+            'approved in Crowdin is overwritten.',
         );
       }
       continue;
@@ -1959,14 +1963,14 @@ function checkCataloguesAreTranslated() {
     fail(
       `${catalogue} repeats the English string for all ${shared.length} of its keys, so it ` +
         'translates nothing.\n' +
-        '    This is what Crowdin exports for an untranslated language when ' +
-        '`skip_untranslated_strings` is `false`: the English source, under a non-English file ' +
+        '    This is what Crowdin exports for a language with nothing approved: approved-only ' +
+        'export fills every unapproved string with its English source, under a non-English file ' +
         'name. It is well-formed, non-blank and at perfect key parity with English, which is ' +
         `why ${'`checkTranslationCatalogues`'} passes it.\n` +
         '    Merging it replaces whatever real translations the file held — the first such pull ' +
-        'request would have overwritten 151 hand-written French and German strings. Set ' +
-        '`skip_untranslated_strings: true` so an untranslated key is absent and English renders ' +
-        'through the fallback instead.',
+        'request would have overwritten 151 hand-written French and German strings. It stays ' +
+        'red on purpose until translations for this language are approved in Crowdin. Do not ' +
+        'reach for a skip option: `checkCrowdinConfig` forbids both (see #293).',
     );
   }
 
@@ -3550,23 +3554,21 @@ function checkCrowdinConfig() {
   // host step in the fixture on purpose.
   const pull = read(workflows[1]);
   // Split with the real step parser, not `name:`/`uses:`-first. An `if:`-first downloader was
-  // merged into the step BEFORE it, so that step's `gpg_private_key` or
-  // `skip_untranslated_strings` satisfied these checks while the actual downloader omitted
-  // them — masking by mis-splitting, which is the wrong-step failure in its original form.
+  // merged into the step BEFORE it, so that step's `gpg_private_key` satisfied these checks while
+  // the actual downloader omitted it — masking by mis-splitting, which is the wrong-step failure
+  // in its original form.
   const pullSteps = workflowSteps(pull).map((step) => step.text);
   // The step that DOWNLOADS, not merely the first Crowdin step.
   //
   // `find` on the action name alone was wrong in a way that was invisible while the pull workflow
   // had exactly one Crowdin step — and this change added a second Crowdin step to the PUSH
   // workflow, so the arrangement is no longer hypothetical. A preparation step carrying
-  // `skip_untranslated_strings: true` would satisfy both assertions below while the step that
-  // actually downloads omitted it, and signing matters on the downloading step too, because that
-  // is the one that commits.
+  // `gpg_private_key` would satisfy the signing assertion below while the step that actually
+  // downloads — and therefore commits — omitted it.
   //
-  // And all three of these are INPUTS, so all three are read from the step's `with:` block rather
-  // than from the step. `download_translations: true`, `gpg_private_key` and
-  // `skip_untranslated_strings: true` placed under `env:` are passed to the action by nobody —
-  // the step does not download, does not sign and does not skip anything — yet every assertion
+  // And both of these are INPUTS, so both are read from the step's `with:` block rather than from
+  // the step. `download_translations: true` and `gpg_private_key` placed under `env:` are passed
+  // to the action by nobody — the step does not download and does not sign — yet every assertion
   // here was satisfied by their presence anywhere in the step.
   const crowdinSteps = pullSteps
     .filter((step) => isCrowdinStep(step))
@@ -3588,78 +3590,49 @@ function checkCrowdinConfig() {
     );
   }
 
-  // `skip_untranslated_strings: true` on that same step, asserted on the CONFIGURATION rather
-  // than on its symptom — because as the catalogues fill, the symptom stops being a failure.
+  // Both skip options are FORBIDDEN, on every channel that reaches the CLI. The Hyland standard's
+  // only pull setting is approved-only export; an unapproved string is then filled with its English
+  // source, so every catalogue arrives at full key parity.
   //
-  // `checkCataloguesAreTranslated` fails a catalogue whose every value equals English. That is
-  // exactly what reverting this input produced while Crowdin was empty. It is not what reverting
-  // it produces once Crowdin holds translations of its own: those come back genuinely translated
-  // and the rest come back padded with English, which at 1,897 of 1,972 is 96% identical — past
-  // the 80% warning threshold, short of the all-identical failure. So the regression would warn
-  // and CI would pass, and it would pass more convincingly the more of the catalogue is real.
+  // `skip_untranslated_strings` was REQUIRED here until the nightly pull of 29 September 2026
+  // (#293). The reasoning was that an untranslated key would be omitted and English would render
+  // through the fallback. That was never tested, and it is false for our nested JSON: Crowdin keeps
+  // the key and BLANKS the value, so nine catalogues arrived with every unapproved value empty. The
+  // Technical Usage Guide had warned of exactly that. `skip_untranslated_files` withholds a
+  // language until it is 100% approved, and crowdin-cli 4.14.2 rejects the pair outright.
   //
-  // A gate that only sees the pathological extreme stops working the moment the product improves.
+  // Three ways in, all read below:
   //
-  // `skip_untranslated_files` is then FORBIDDEN, which is the reverse of what this check required
-  // for one commit. The Technical Usage Guide is explicit that "only one of these options can be
-  // activated", and on the pinned toolchain the pair does not degrade to one of them winning — it
-  // fails. crowdin-cli 4.14.2 rejects it in `PropertiesWithFilesBuilder.checkArgParams()` with
-  // `error.skip_untranslated_both_strings_and_files`, "You cannot skip strings and files at the
-  // same time", before the download runs, so NEITHER option takes effect and nothing is
-  // downloaded. The guardrail that required the pair was therefore green over a pull that could
-  // not have worked at all.
-  //
-  // Forbidden UNCONDITIONALLY, and across every channel that reaches the CLI — not just the
-  // action's boolean input, which is all the first version of this check looked at. Three ways in,
-  // and the boolean was the only one guarded:
-  //
-  //   1. `skip_untranslated_files: true`            — the action input
+  //   1. the action inputs `skip_untranslated_strings` / `skip_untranslated_files`
   //   2. `command`, `command_args`, `download_translations_args` — appended VERBATIM to the
-  //      command (`entrypoint.sh` 82-83 and 408-409), so `--skip-untranslated-files` passes straight
-  //      through
-  //   3. `crowdin-conf.yml`                         — `FileBean` validates the same pair there
+  //      command (`entrypoint.sh` 82-83 and 408-409), so a `--skip-untranslated-*` flag passes
+  //      straight through
+  //   3. `crowdin-conf.yml`, which the CLI reads the same options from
   //
-  // Unconditional rather than "alongside `skip_untranslated_strings`" because that option is
-  // separately REQUIRED above, so any appearance of this one is always the conflict. Stating it as
-  // a flat prohibition means the check cannot be satisfied by removing the wrong half.
-  //
-  // Comments are stripped before matching, because the workflow explains at length why this option
-  // is absent — a raw text search would fire on the explanation and make the check unfixable.
+  // Comments are stripped before matching, because both files explain why these options are
+  // absent — a raw text search would fire on the explanation and make the check unfixable.
   if (crowdinStep === undefined) {
     fail(
       `${workflows[1]} contains no \`uses: crowdin/github-action\` step with ` +
         `\`download_translations: true\`${
           crowdinSteps.length ? ` (it has ${crowdinSteps.length} Crowdin step(s), none of them ` +
             'downloading)' : ''
-        }, so neither the signing nor the \`skip_untranslated_strings\` assertion examined ` +
-        'anything. It cannot download translations in this state.',
-    );
-  } else if (!yamlInputIsTrue('skip_untranslated_strings').test(crowdinStep)) {
-    fail(
-      `${workflows[1]} does not set \`skip_untranslated_strings: true\` on its ` +
-        'crowdin/github-action step.\n' +
-        '    The action defaults it to `false`, and `false` does not mean "omit the string" — it ' +
-        'means export it with its ENGLISH SOURCE as the translation. The first real pull opened a ' +
-        'pull request with nine catalogues byte-identical to `en.json`, which overwrote 75 ' +
-        'hand-written French and 76 German strings because an export replaces the whole file.\n' +
-        "    `true` omits the key instead, so `setFallbackLang('en')` renders English and a short " +
-        'catalogue becomes the honest steady state. See D8d in docs/i18n-localization-plan.md.',
+        }, so the signing assertion examined nothing. It cannot download translations in this ` +
+        'state.',
     );
   }
 
-  // Every channel, in the two files that can carry one. `stripYamlComments` is what makes a token
-  // search safe here: both files discuss this option at length in prose.
-  const WHY_NO_SKIP_FILES =
-    '    Only one of `skip_untranslated_strings` and `skip_untranslated_files` can be active — ' +
-    'Technical Usage Guide, "only one of these options can be activated".\n' +
-    '    On the pinned toolchain the pair does not degrade, it fails: crowdin-cli 4.14.2 rejects ' +
-    'it in `PropertiesWithFilesBuilder.checkArgParams()` with "You cannot skip strings and files ' +
-    'at the same time", before the download runs. So NEITHER option takes effect and no ' +
-    'catalogue is downloaded at all.\n' +
-    '    `skip_untranslated_strings` is the one to keep: an English-padded catalogue at full key ' +
-    'parity passes as a finished translation, while an empty catalogue is loudly wrong and ' +
-    '`checkCataloguesAreTranslated` fails the pull request carrying it. See D8h in ' +
-    'docs/i18n-localization-plan.md.';
+  const SKIP_OPTIONS = ['skip_untranslated_strings', 'skip_untranslated_files'];
+  const SKIP_FLAG = /--skip-untranslated-(?:strings|files)\b/;
+  const WHY_NO_SKIP =
+    "    The standard's only pull setting is `export_only_approved`; a string without approval is " +
+    'then filled with its English source. Technical Usage Guide: "export options ' +
+    '`skip_untranslated_strings` and `skip_untranslated_files` are not specifically useful, and ' +
+    'the former can lead to empty translations being exported".\n' +
+    '    That is what happened here: with `skip_untranslated_strings` set, the nightly pull of ' +
+    '29 September 2026 (#293) exported nine catalogues with every unapproved value blank. ' +
+    '`skip_untranslated_files` instead withholds a language until it is 100% approved. See D8d ' +
+    'and D8h in docs/i18n-localization-plan.md.';
 
   const pullCode = stripYamlComments(pull);
 
@@ -3670,57 +3643,48 @@ function checkCrowdinConfig() {
   // evaluated here at all, so for a FORBIDDEN input the only sound rule is that its presence is
   // the defect unless it is provably switched off.
   //
-  // Every declaration on a CROWDIN step, not the first, and not the whole file.
-  //
-  // Every declaration, because a preparation step carrying `skip_untranslated_files: false` ahead
-  // of the downloading step masked a `true` on the downloader — the same wrong-step blindness the
-  // `crowdinSteps.find` above exists to avoid. Crowdin steps only, because the input means nothing
-  // on any other action, and reading the whole file made a mention in `pull_request_body` into a
-  // configuration change.
-  const offending = crowdinActionSteps(pullCode)
-    .flatMap((step) => {
-      const inputs = stepWithBlock(step.text);
-      return inputs ? yamlValues(inputs.text, 'skip_untranslated_files') : [];
-    })
-    .find(({ value }) => !YAML_FALSE.test(value));
-  if (offending !== undefined) {
-    fail(
-      `${workflows[1]} declares \`skip_untranslated_files: ${offending.value}\`.\n` +
-        '    Anything but a literal `false` fails here, including `${{ … }}`, because an ' +
-        'expression is resolved by Actions long after this runs — so a forbidden input cannot be ' +
-        'cleared by making its value unreadable. Every declaration in the file is read, so a ' +
-        '`false` on another step does not excuse this one.\n' +
-        WHY_NO_SKIP_FILES,
-    );
+  // Every declaration on a CROWDIN step, not the first, and not the whole file. Every
+  // declaration, because a `false` on a preparation step must not mask a `true` on the downloader.
+  // Crowdin steps only, because the input means nothing on any other action, and reading the whole
+  // file made a mention in `pull_request_body` into a configuration change.
+  for (const option of SKIP_OPTIONS) {
+    const offending = crowdinActionSteps(pullCode)
+      .flatMap((step) => {
+        const inputs = stepWithBlock(step.text);
+        return inputs ? yamlValues(inputs.text, option) : [];
+      })
+      .find(({ value }) => !YAML_FALSE.test(value));
+    if (offending !== undefined) {
+      fail(
+        `${workflows[1]} declares \`${option}: ${offending.value}\`.\n` +
+          '    Anything but a literal `false` fails here, including `${{ … }}`, because an ' +
+          'expression is resolved by Actions long after this runs — so a forbidden input cannot ' +
+          'be cleared by making its value unreadable. Every declaration in the file is read, so a ' +
+          '`false` on another step does not excuse this one.\n' +
+          WHY_NO_SKIP,
+      );
+    }
   }
 
   // The argument channels, on EVERY Crowdin step rather than only the boolean downloader.
   //
-  // `download_translations_args` is appended to the download command and `command_args` to the
-  // command the step runs (`entrypoint.sh` 82-83 and 408-409). `command:` itself is a third
-  // route: at the pinned SHA a step with `command: download` runs `crowdin $INPUT_COMMAND
-  // $INPUT_COMMAND_ARGS` and returns before the boolean-driven path, so a SECOND Crowdin step can
-  // download with the forbidden flag while `crowdinStep` — found by `download_translations: true`
-  // — carries none of it. Reading only that step was the same wrong-step blindness again, a level
-  // out: the right step for the boolean is not the only step that downloads.
-  //
-  // Still Crowdin steps only, never the whole file: a mention in `pull_request_body` reaches the
-  // CLI on no path, and an unrelated action's inputs are not ours to judge.
+  // `command:` is a route of its own: at the pinned SHA a step with `command: download` runs
+  // `crowdin $INPUT_COMMAND $INPUT_COMMAND_ARGS` and returns before the boolean-driven path, so a
+  // SECOND Crowdin step can download with a forbidden flag while `crowdinStep` carries none.
   //
   // Read through block scalars, because `download_translations_args: >-` puts the flag on the
-  // following lines and the action folds them before passing them on.
+  // following lines and the action folds them before passing them on. Any OTHER literal argument
+  // — `--language=fr` is the one this workflow uses — is not this check's business.
   for (const step of crowdinActionSteps(pullCode)) {
     const inputs = stepWithBlock(step.text);
     for (const { value } of inputs ? yamlValues(inputs.text, ARG_INPUTS) : []) {
-      if (/--skip-untranslated-files\b/.test(value)) {
+      const flag = SKIP_FLAG.exec(value)?.[0];
+      if (flag !== undefined) {
         fail(
-          `${workflows[1]} passes \`--skip-untranslated-files\` to a Crowdin step: ` +
-            `\`${value}\`.\n` +
+          `${workflows[1]} passes \`${flag}\` to a Crowdin step: \`${value}\`.\n` +
             '    `command`, `command_args` and `download_translations_args` all reach the CLI ' +
-            'VERBATIM, so this arrives exactly as the boolean input would. Checking only ' +
-            '`skip_untranslated_files:`, and only on the step with `download_translations: ' +
-            "true`, left this route open — `command: download` downloads too.\n" +
-            WHY_NO_SKIP_FILES,
+            'VERBATIM, so this arrives exactly as the boolean input would.\n' +
+            WHY_NO_SKIP,
         );
       } else if (YAML_UNREADABLE.test(value)) {
         fail(
@@ -3728,10 +3692,10 @@ function checkCrowdinConfig() {
             `\`${value}\`.\n` +
             '    An Actions expression is resolved after this gate runs, and a YAML alias is ' +
             'resolved from an anchor elsewhere in the document — either way the text the CLI ' +
-            'receives is not the text here, so nothing can tell whether it contains ' +
-            '`--skip-untranslated-files`. What cannot be read cannot be cleared, so it fails ' +
+            'receives is not the text here, so nothing can tell whether it contains a ' +
+            '`--skip-untranslated-*` flag. What cannot be read cannot be cleared, so it fails ' +
             'closed. Pass the command and its flags literally.\n' +
-            WHY_NO_SKIP_FILES,
+            WHY_NO_SKIP,
         );
       }
     }
@@ -3756,21 +3720,20 @@ function checkCrowdinConfig() {
         '    Every value in this file is single-quoted; keep it that way.',
     );
   }
-  const declaresSkipFiles =
-    yamlValues(configBody, 'skip_untranslated_files').length > 0 ||
-    (crowdinFileEntries(configBody) ?? []).some((entry) =>
-      flowMappingKeys(entry.split('\n').map(stripInlineComment).join('\n')).includes(
-        'skip_untranslated_files',
-      ),
-    );
-  if (declaresSkipFiles) {
-    fail(
-      `${config} sets \`skip_untranslated_files\`.\n` +
-        '    The CLI validates the pair in the CONFIG FILE too, via `FileBean`, so moving the ' +
-        'option out of the workflow does not avoid the conflict — D8h says as much and this ' +
-        'check did not enforce it.\n' +
-        WHY_NO_SKIP_FILES,
-    );
+  for (const option of SKIP_OPTIONS) {
+    const declared =
+      yamlValues(configBody, option).length > 0 ||
+      (crowdinFileEntries(configBody) ?? []).some((entry) =>
+        flowMappingKeys(entry.split('\n').map(stripInlineComment).join('\n')).includes(option),
+      );
+    if (declared) {
+      fail(
+        `${config} sets \`${option}\`.\n` +
+          '    The CLI reads the export options from the CONFIG FILE too, so moving the option ' +
+          'out of the workflow does not remove it.\n' +
+          WHY_NO_SKIP,
+      );
+    }
   }
 
   // The push workflow must attach translator context, and nothing that uploads translations may
