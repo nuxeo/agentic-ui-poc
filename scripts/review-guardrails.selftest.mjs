@@ -3917,6 +3917,45 @@ expectGreen('a multi-line dialog ternary that selects between keys', 'checkNoHar
     '  },\n});\n',
 });
 
+/* ---------------- NXSAT-284 review round 2: a local alias ---------------- */
+
+// `const msg = err?.error?.message || 'Failed to delegate task.'; this.snackBar.open(msg, …)` —
+// four task handlers did this, and neither the literal patterns nor the SCREAMING_CASE constant
+// lookup could see it.
+expectRed(
+  'a hard-coded fallback held in a local const and passed to a snackbar',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'function onError(err) {\n' +
+        "  const msg = err?.error?.message || 'Failed to delegate task.';\n" +
+        "  this.snackBar.open(msg, this.translate.instant('common.close'));\n" +
+        '}\n',
+    ),
+  /passes the hard-coded string `Failed to delegate task\.` \(through the local `msg`\)/,
+);
+
+// Scoped to the declaring block: a same-named `msg` in another method is not blamed for it.
+falsePositiveControls += 1;
+expectGreen(
+  'a same-named local in another block is not borrowed',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/features/x/src/lib/x.ts':
+      'function a() {\n' +
+      "  const msg = 'Only logged, never shown.';\n" +
+      '  console.warn(msg);\n' +
+      '}\n' +
+      'function b() {\n' +
+      "  const msg = this.translate.instant('x.message.saved');\n" +
+      "  this.snackBar.open(msg, this.translate.instant('common.close'));\n" +
+      '}\n',
+  },
+);
+
 /* ---------------- report ---------------- */
 
 const total = negative + positive;

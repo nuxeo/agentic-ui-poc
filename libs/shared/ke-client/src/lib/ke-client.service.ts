@@ -133,7 +133,12 @@ export class KeClientService {
     try {
       return JSON.parse(trimmed);
     } catch {
-      throw new KeEnrichmentError('Knowledge Enrichment returned a non-JSON response.');
+      throw new KeEnrichmentError(
+        'Knowledge Enrichment returned a non-JSON response.',
+        undefined,
+        undefined,
+        'ke-client.message.non-json-response',
+      );
     }
   }
 

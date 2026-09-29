@@ -8,20 +8,16 @@
 | D2 catalogue layout          | **A** — single app catalogue, per-feature namespaces; `libs/platform` gets its own when it needs one.                                  |
 | D3 translator context        | **A** — codemod generates what it can derive; ambiguous strings hand-written; the split is reported, not averaged.                     |
 | D4 inline templates          | **Yes** — extracted to `.html` first, as slice 0.                                                                                      |
-| D5 imperative `.ts` strings  | **Done 29 Sep 2026 (slice 10, NXSAT-284).** 146 new keys; plurals as `-one`/`-many` pairs, no ICU compiler. See `docs/i18n-status.md`. |
+| D5 imperative `.ts` strings  | **Done 29 Sep 2026 (slice 10, NXSAT-284).** 160 new keys; plurals as `-one`/`-many` pairs, no ICU compiler. See `docs/i18n-status.md`. |
 | D6 delivery                  | One PR per project.                                                                                                                    |
 | `apps/nuxeo-satori-template` | **Deferred.** 105 strings. Slice 11, unstarted.                                                                                        |
 
-**Known incompleteness, stated plainly:** with D5 and the template app deferred, roughly **297
-user-facing strings remain hard-coded** after slice 12. The repo-wide guardrail flip in slice 12
-must therefore exempt those two areas explicitly, or it cannot go green — and an exemption is a
-debt marker, not a pass.
-
-**Update, 29 Sep 2026:** D5 is no longer deferred — slice 10 shipped, and slice 12 is complete:
-`checkNoHardcodedUiText` and `checkNoHardcodedDescriptorText` are both repo-wide. The only
-exemption left is `apps/nuxeo-satori-template` (slice 11, still deferred), plus the sample
-extension and `libs/core`, which ship nothing. What stays hard-coded on purpose is listed in
-`docs/i18n-status.md`.
+**Known incompleteness, as of 29 Sep 2026:** slices 10 and 12 are done — the imperative strings
+are in the catalogue, and `checkNoHardcodedUiText` and `checkNoHardcodedDescriptorText` are both
+repo-wide. The one deferred area left is `apps/nuxeo-satori-template` (slice 11, roughly 105
+strings), which the guardrails exempt explicitly — an exemption is a debt marker, not a pass —
+along with the sample extension and `libs/core`, which ship nothing. What stays hard-coded on
+purpose elsewhere is listed, with reasons, in `docs/i18n-status.md`.
 
 Goal, stated the way it was asked for: **every user-facing string in the application resolves
 through the translation service.** Tables, titles, columns, dialogs, menus, toasts, error

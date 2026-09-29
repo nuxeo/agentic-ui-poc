@@ -244,7 +244,8 @@ export class TaskDetailComponent implements OnInit {
         },
         error: (err) => {
           this.submitting.set(false);
-          const msg = err?.error?.message || 'Failed to complete the task.';
+          const msg =
+            err?.error?.message || this.translate.instant('tasks.message.failed-to-complete-task');
           this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });

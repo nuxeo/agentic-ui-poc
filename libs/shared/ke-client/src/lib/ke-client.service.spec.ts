@@ -568,6 +568,7 @@ describe('KeClientService', () => {
 
       const error = await expectKeError(result);
       expect(error.message).toBe('Knowledge Enrichment returned a non-JSON response.');
+      expect(error.messageKey).toBe('ke-client.message.non-json-response');
       // Thrown from `normalize`, so there is no HTTP status to report.
       expect(error.status).toBeUndefined();
       expect(error.details).toBeUndefined();

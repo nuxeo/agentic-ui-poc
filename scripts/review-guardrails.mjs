@@ -4659,6 +4659,30 @@ function checkNoHardcodedImperativeUiText() {
       }
     }
 
+    // A local `const` holding prose, passed to a sink later in the same block:
+    //
+    //   const msg = err?.error?.message || 'Failed to delegate task.';
+    //   this.snackBar.open(msg, …);
+    //
+    // Scoped to the declaring block, so a same-named `msg` in another method is not blamed for it.
+    for (const decl of text.matchAll(/\bconst\s+([a-z_$][\w$]*)\s*(?::\s*string\s*)?=/g)) {
+      const valueStart = decl.index + decl[0].length;
+      const value = statementText(text, valueStart);
+      const literal =
+        /^\s*(['"`])([A-Z][^'"`]{2,})\1\s*$/.exec(value) ??
+        /(?:\?\??|:|\|\|)\s*(['"`])([A-Z][^'"`]{2,})\1/.exec(value);
+      if (!literal || !/\s/.test(literal[2])) continue;
+      const blockEnd = enclosingBlockEnd(text, valueStart);
+      const uses = new RegExp(`(?<![\\w.'"])${decl[1].replace(/\$/g, '\\$')}(?![\\w(])`);
+      for (const call of text.slice(valueStart, blockEnd).matchAll(CALL_SINKS)) {
+        const at = valueStart + call.index;
+        const argument = balancedArgument(text, at + call[0].length - 1);
+        if (!uses.test(argument)) continue;
+        const line = text.slice(0, at).split('\n').length;
+        report(file, line, literal[2], ` (through the local \`${decl[1]}\`)`);
+      }
+    }
+
     for (const sink of SINKS) {
       for (const match of text.matchAll(sink)) {
         // The signal pattern captures the NAME first, so the literal is the last group either way.
@@ -4739,6 +4763,48 @@ function topLevelText(text, from) {
     } else if (ch === ',' && depth === 0) return text.slice(from, at);
   }
   return text.slice(from);
+}
+
+/** The text of a statement starting at `from`, up to its own top-level `;` or line-ending brace. */
+function statementText(text, from) {
+  let depth = 0;
+  let quote = null;
+  for (let at = from; at < text.length; at += 1) {
+    const ch = text[at];
+    if (quote) {
+      if (ch === '\\') at += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '(' || ch === '[' || ch === '{') depth += 1;
+    else if (ch === ')' || ch === ']' || ch === '}') {
+      if (depth === 0) return text.slice(from, at);
+      depth -= 1;
+    } else if (ch === ';' && depth === 0) return text.slice(from, at);
+  }
+  return text.slice(from);
+}
+
+/** The index of the `}` closing the block that contains `from`, or the end of the text. */
+function enclosingBlockEnd(text, from) {
+  let depth = 0;
+  let quote = null;
+  for (let at = from; at < text.length; at += 1) {
+    const ch = text[at];
+    if (quote) {
+      if (ch === '\\') at += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '{') depth += 1;
+    else if (ch === '}') {
+      if (depth === 0) return at;
+      depth -= 1;
+    }
+  }
+  return text.length;
 }
 
 /**

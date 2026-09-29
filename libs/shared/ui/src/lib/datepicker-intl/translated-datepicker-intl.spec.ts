@@ -14,9 +14,7 @@ import {
   standalone: true,
   imports: [MatDatepickerModule],
   providers: [provideNativeDateAdapter(), provideTranslatedDatepickerIntl()],
-  template: `<input [matDatepicker]="picker" /><mat-datepicker-toggle
-      [for]="picker"
-    /><mat-datepicker #picker />`,
+  templateUrl: './translated-datepicker-intl.host.html',
 })
 class PickerHostComponent {}
 

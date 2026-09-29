@@ -56,6 +56,7 @@ import {
   type ClipboardDoc,
   formatRelativeTime,
   DocTypeLabelPipe,
+  taskDueDistance,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { toAdfHxBrowseRouterUrl } from '@agentic-ui/shared/adf-hx-bridge';
 import { HxpBrowseNavDrawerComponent } from '@agentic-ui/shared/adf-hx-bridge/providers';
@@ -77,6 +78,7 @@ import {
   POWERUSER_ADMINISTRATION_DRAWER_ITEMS,
 } from '../../platform-nav-items';
 import { ThemingFeatureFlagService } from '../../theme/theming-feature-flag.service';
+import { drawerDueKey } from './nav-drawer-due';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -1127,32 +1129,8 @@ export class NavDrawerComponent {
   /** Relative due fragment only (pairs with the "Due"/"Overdue" prefix in the template). */
   dueRelativeOnly(task: NuxeoTask): string {
     if (!task.dueDate) return '';
-    const diff = new Date(task.dueDate).getTime() - Date.now();
-    const absDiff = Math.abs(diff);
-    const days = Math.floor(absDiff / 86_400_000);
-    const hours = Math.floor(absDiff / 3_600_000);
-    const due = diff > 0;
-    if (days >= 1) {
-      if (days === 1) {
-        return this.translate.instant(
-          due ? 'shell.task-due.in-days-one' : 'shell.task-due.by-days-one',
-          { count: days },
-        );
-      }
-      return this.translate.instant(
-        due ? 'shell.task-due.in-days-many' : 'shell.task-due.by-days-many',
-        { count: days },
-      );
-    }
-    if (hours <= 1) {
-      return this.translate.instant(
-        due ? 'shell.task-due.in-less-than-an-hour' : 'shell.task-due.by-less-than-an-hour',
-      );
-    }
-    return this.translate.instant(
-      due ? 'shell.task-due.in-hours-many' : 'shell.task-due.by-hours-many',
-      { count: hours },
-    );
+    const distance = taskDueDistance(task.dueDate);
+    return this.translate.instant(drawerDueKey(distance), { count: distance.count });
   }
 
   /** Workflow as a single sentence-style line (e.g. "Parallel document review"). */

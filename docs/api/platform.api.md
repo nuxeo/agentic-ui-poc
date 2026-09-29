@@ -420,7 +420,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-310 exported symbol(s).
+312 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1597,6 +1597,12 @@ class TagService {
     static ɵprov: i0.ɵɵInjectableDeclaration<TagService>;
     }
 }
+interface TaskDueDistance {
+    readonly due: boolean;
+    readonly unit: 'days' | 'hours' | 'under-two-hours';
+    readonly count: number;
+    }
+}
 class TaskService {
     readonly tasksChanged$: Subject<void>;
     notifyTasksChanged(): void;
@@ -1886,6 +1892,7 @@ function shouldShowUserWorkspaceBreadcrumbs(nuxeoPath: string, currentUsername: 
 function sortDocumentSubtypes(types: string[]): string[];
 function summarizeCsvImportReport(report: string): string;
 function supportsContentLakeIngest(doc: NuxeoDocument | null | undefined): boolean;
+function taskDueDistance(dueDate: string, now?: number): TaskDueDistance;
 function titleFromFileName(fileName: string): string;
 function toAdfHxBrowseRouterUrl(nuxeoPath: string): string;
 function toBrowseRouterUrl(nuxeoPath: string): string;
@@ -1903,7 +1910,7 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void;
 
 ## @nuxeo-satori/platform/ui
 
-35 exported symbol(s).
+37 exported symbol(s).
 
 ```ts
 class ConfirmDialogComponent {
@@ -2199,6 +2206,14 @@ interface StoryboardItem {
     }
 }
 type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
+class TranslatedDatepickerIntl extends MatDatepickerIntl {
+    constructor();
+    formatYearRange(start: string, end: string): string;
+    formatYearRangeLabel(start: string, end: string): string;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<TranslatedDatepickerIntl, never>;
+    static ɵprov: _angular_core.ɵɵInjectableDeclaration<TranslatedDatepickerIntl>;
+    }
+}
 class UiComponent {
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<UiComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<UiComponent, "lib-ui", never, {}, {}, never, never, true, never>;
@@ -2237,6 +2252,7 @@ class WidgetGridComponent {
 }
 function observeStripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): MutationObserver | null;
 function openDocumentCompareDialog(dialog: MatDialog, items: DocumentCompareDialogData['items']): void;
+function provideTranslatedDatepickerIntl(): Provider;
 function stripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): void;
 function trashDocumentConfirmData(title: string, translate: TranslateFn): ConfirmDialogData;
 function trashSelectedDocumentsConfirmData(count: number, translate: TranslateFn): ConfirmDialogData;

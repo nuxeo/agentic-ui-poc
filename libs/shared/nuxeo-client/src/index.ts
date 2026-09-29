@@ -235,6 +235,7 @@ export {
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 export { DOC_TYPE_LABEL_KEYS, docTypeLabel } from './lib/constants/doc-type-labels';
 export { DocTypeLabelPipe } from './lib/constants/doc-type-label.pipe';
+export { taskDueDistance, type TaskDueDistance } from './lib/utils/task-due-distance';
 export { avatarColor } from './lib/constants/avatar-colors';
 export type { AvatarColor } from './lib/constants/avatar-colors';
 export { FOLDERISH_TYPES } from './lib/constants/folderish-types';

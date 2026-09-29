@@ -29,6 +29,7 @@ import {
   NuxeoApiBase,
   CURRENT_USERNAME,
   trustObjectUrl,
+  taskDueDistance,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import {
@@ -37,6 +38,21 @@ import {
 } from '@nuxeo-satori/platform/ui';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+
+const DUE_LABEL_KEYS = {
+  due: {
+    one: 'tasks.due-label.due-in-days-one',
+    many: 'tasks.due-label.due-in-days-many',
+    hours: 'tasks.due-label.due-in-hours-many',
+    underTwoHours: 'tasks.due-label.due-in-less-than-an-hour',
+  },
+  overdue: {
+    one: 'tasks.due-label.overdue-days-one',
+    many: 'tasks.due-label.overdue-days-many',
+    hours: 'tasks.due-label.overdue-hours-many',
+    underTwoHours: 'tasks.due-label.overdue-less-than-an-hour',
+  },
+} as const;
 
 @Component({
   selector: 'lib-tasks-page',
@@ -477,7 +493,8 @@ export class TasksPageComponent implements OnInit {
         },
         error: (err) => {
           this.submitting.set(false);
-          const msg = err?.error?.message || 'Failed to complete the task.';
+          const msg =
+            err?.error?.message || this.translate.instant('tasks.message.failed-to-complete-task');
           this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
@@ -590,7 +607,8 @@ export class TasksPageComponent implements OnInit {
         },
         error: (err) => {
           this.submitting.set(false);
-          const msg = err?.error?.message || 'Failed to delegate task.';
+          const msg =
+            err?.error?.message || this.translate.instant('tasks.message.failed-to-delegate-task');
           this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
@@ -670,7 +688,8 @@ export class TasksPageComponent implements OnInit {
         },
         error: (err) => {
           this.submitting.set(false);
-          const msg = err?.error?.message || 'Failed to reassign task.';
+          const msg =
+            err?.error?.message || this.translate.instant('tasks.message.failed-to-reassign-task');
           this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
@@ -933,34 +952,17 @@ export class TasksPageComponent implements OnInit {
 
   dueLabel(task: NuxeoTask): string {
     if (!task.dueDate) return '';
-    const diff = new Date(task.dueDate).getTime() - Date.now();
-    const absDiff = Math.abs(diff);
-    const days = Math.floor(absDiff / 86_400_000);
-    const hours = Math.floor(absDiff / 3_600_000);
-    const due = diff > 0;
-    if (days >= 1) {
-      if (days === 1) {
-        return this.translate.instant(
-          due ? 'tasks.due-label.due-in-days-one' : 'tasks.due-label.overdue-days-one',
-          { count: days },
-        );
-      }
-      return this.translate.instant(
-        due ? 'tasks.due-label.due-in-days-many' : 'tasks.due-label.overdue-days-many',
-        { count: days },
-      );
-    }
-    if (hours <= 1) {
-      return this.translate.instant(
-        due
-          ? 'tasks.due-label.due-in-less-than-an-hour'
-          : 'tasks.due-label.overdue-less-than-an-hour',
-      );
-    }
-    return this.translate.instant(
-      due ? 'tasks.due-label.due-in-hours-many' : 'tasks.due-label.overdue-hours-many',
-      { count: hours },
-    );
+    const { due, unit, count } = taskDueDistance(task.dueDate);
+    const keys = due ? DUE_LABEL_KEYS.due : DUE_LABEL_KEYS.overdue;
+    const key =
+      unit === 'days'
+        ? count === 1
+          ? keys.one
+          : keys.many
+        : unit === 'hours'
+          ? keys.hours
+          : keys.underTwoHours;
+    return this.translate.instant(key, { count });
   }
 
   docProp(key: string): unknown {

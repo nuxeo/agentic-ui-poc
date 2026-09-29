@@ -64,7 +64,7 @@ That instrument has been wrong twice, both times under-reporting:
 Plan slices 10 and 12 of [`docs/i18n-full-extraction-plan.md`](i18n-full-extraction-plan.md), in
 one pull request for NXSAT-284.
 
-**Messages built in TypeScript are in the catalogue.** 146 new keys, each with translator context:
+**Messages built in TypeScript are in the catalogue.** 160 new keys, each with translator context:
 toasts, error and status messages, dialog titles, Knowledge Enrichment and Knowledge Discovery
 progress and error text, Content Lake messages, sign-in errors. The English is byte-identical
 to the literal it replaced, with one deliberate exception below. Messages thrown by a service and
@@ -73,8 +73,9 @@ fields, `KeEnrichmentError.messageKey`, `PermissionWithNotificationResult.notifi
 except `ContentLakeIngestService`, whose stalled-ingest message is composed from status fields only
 it holds, so it resolves the text itself.
 
-**Plurals stay two keys, no ICU compiler.** The tasks due-date label (`tasks.due-label.*`) is the
-one new plural pair set chosen by `count === 1`. Several count-bearing messages use one form in
+**Plurals stay two keys, no ICU compiler.** The task due-date labels (`tasks.due-label.*` on the
+Tasks page, `shell.task-due.*` in the navigation drawer) are the new plural pairs, chosen by
+`count === 1` from one shared calculation, `taskDueDistance`. Several count-bearing messages use one form in
 English (`… ({{ count }} failed)`, `Users ({{ count }})`); their context says so, because
 languages that inflect those words will need plural rules. The French zero defect described under
 _Pluralisation_ below applies to the new pair too.
@@ -234,16 +235,15 @@ the file before acting on it.
 
 ### What the remaining findings are
 
-| Count | What                                                                    | Action                                                    |
-| ----: | ----------------------------------------------------------------------- | --------------------------------------------------------- |
-|     9 | `Skip to main content`, hard-coded inside satori-ui's compiled template | Upstream finding 1.4 — no host-side fix exists            |
-|     4 | Theme names — Nuxeo, Dark, Kawaii, Light                                | **Keyed 29 Sep 2026** — `labelKey` on the packaged themes |
-|     1 | `Open calendar`                                                         | **Fixed 29 Sep 2026** — `TranslatedDatepickerIntl`        |
-|   4–6 | Repository content — document titles, type names, AI severities         | Instance data; translating it would corrupt user content  |
-|   3–6 | Generated AI insight sentences                                          | Written by the server                                     |
+| Count | What                                                                    | Action                                                   |
+| ----: | ----------------------------------------------------------------------- | -------------------------------------------------------- |
+|     9 | `Skip to main content`, hard-coded inside satori-ui's compiled template | Upstream finding 1.4 — no host-side fix exists           |
+|   4–6 | Repository content — document titles, custom type names, AI severities  | Instance data; translating it would corrupt user content |
+|   3–6 | Generated AI insight sentences                                          | Written by the server                                    |
 
 **Nothing here is actionable from this repository.** Every one is upstream, written by the server,
-or customer data.
+or customer data. Two rows this table used to carry are fixed and gone: the four packaged theme
+names and `Open calendar` (29 Sep 2026, see _Slice 10 and slice 12_ above).
 
 **The total is not a stable number, and quoting one is a mistake I made twice on this page.** It
 first said 41, from a run that could not prove the pseudo-locale was active. Corrected to 24, then

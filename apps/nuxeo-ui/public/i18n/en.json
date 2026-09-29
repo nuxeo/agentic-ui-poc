@@ -1350,6 +1350,7 @@
       "failed-to-add-reply": "Failed to add reply",
       "failed-to-add-to-collection": "Failed to add to collection",
       "failed-to-apply-tag": "Failed to apply tag",
+      "failed-to-create-version": "Failed to create version",
       "failed-to-delete-comment": "Failed to delete comment",
       "failed-to-delete-document": "Failed to delete document.",
       "failed-to-delete-reply": "Failed to delete reply",
@@ -2345,8 +2346,11 @@
     "due-on": "Due {{ date }}",
     "message": {
       "failed-to-abandon-workflow": "Failed to abandon workflow.",
+      "failed-to-complete-task": "Failed to complete the task.",
+      "failed-to-delegate-task": "Failed to delegate task.",
       "failed-to-load-task-details": "Failed to load task details.",
       "failed-to-load-tasks": "Failed to load tasks.",
+      "failed-to-reassign-task": "Failed to reassign task.",
       "no-task-id-provided": "No task ID provided.",
       "task-completed-successfully": "Task completed successfully.",
       "task-delegated-successfully": "Task delegated successfully.",
@@ -2533,6 +2537,7 @@
       "failed": "Knowledge Enrichment request failed.",
       "failed-unexpectedly": "Knowledge Enrichment request failed unexpectedly.",
       "http-status": "Knowledge Enrichment returned HTTP {{ code }}.",
+      "non-json-response": "Knowledge Enrichment returned a non-JSON response.",
       "not-authorized": "Knowledge Enrichment credentials are not authorized for the Context API."
     }
   }
