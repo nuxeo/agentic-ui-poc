@@ -67,12 +67,17 @@ export const isMetadataKey = (key) => key.startsWith('$');
 /**
  * Every `i18n/en.context.json` in the repository, as repo-relative POSIX paths.
  *
- * Discovered rather than named. The first version hard-coded
- * `apps/nuxeo-ui/public/i18n/en.context.json` as the only source while `crowdin-conf.yml`
- * already declared a second mapping, `/libs/**​/i18n/en.json`, for the per-library catalogues
- * NXSAT-284 AC4 will add — and `checkTranslationContext` requires each of those to carry a
- * sibling context file. The day the first library catalogue landed, its context would have been
- * uploaded by nothing, silently, while this script reported success for the app's.
+ * Discovered rather than named, so this keeps working the day per-library catalogues
+ * (NXSAT-284 AC4) arrive. The first version hard-coded
+ * `apps/nuxeo-ui/public/i18n/en.context.json` as the only source, and
+ * `checkTranslationContext` requires every catalogue to carry a sibling context file — so the
+ * day the first library catalogue landed, its context would have been uploaded by nothing,
+ * silently, while this script reported success for the app's.
+ *
+ * `crowdin-conf.yml` does NOT declare a `libs/**` source today. It briefly did, ahead of any
+ * file existing, and Crowdin failed the whole run on the empty pattern — see D8c in
+ * `docs/i18n-localization-plan.md`. The mapping returns with the first library catalogue.
+ * Discovery here is deliberately independent of that, so neither has to wait for the other.
  *
  * Scoped to `apps/` and `libs/` for the same reason the Crowdin globs are: a wider walk reaches
  * `node_modules`, where 48 upstream catalogues sit at the same relative shape.

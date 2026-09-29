@@ -23,12 +23,19 @@ test.describe('search', () => {
   }) => {
     // The negative half. A search surface that renders results for everything is not
     // searching, and this is the assertion that would catch a query being dropped or a
-    // filter being ignored.
-    await page.goto('/#/search?q=zzz-no-such-document-zzz', { waitUntil: 'networkidle' });
+    // filter being ignored. The term goes through the drawer filter input — not `?q=` in
+    // the URL, which `search.ts` deliberately does not read for the query text.
+    await page.goto('/#/search', { waitUntil: 'networkidle' });
+
+    const input = page.locator('lib-search input.filter-input').first();
+    await expect(input, 'the search drawer has no full-text input').toBeVisible();
+    await input.fill('zzz-no-such-document-zzz');
+    await input.press('Enter');
+    await page.waitForLoadState('networkidle');
 
     const host = page.locator('lib-search');
-    await expect(host).toBeVisible();
     await expect(host).not.toContainText(/error|failed/i);
+    await expect(host.locator('.results-empty')).toBeVisible();
   });
 
 });
@@ -39,12 +46,13 @@ test.describe('search', () => {
  * ## Why it drives `/#/search-adf-hx` and not `/#/search`
  *
  * It used to navigate to `/#/search?q=O'Brien` and assert that `lib-search` was visible and
- * did not contain the word "error". That could not fail. `search.ts:294` reads `q` from the
+ * did not contain the word "error". That could not fail. `search.ts` reads `q` from the
  * drawer service signal — its own comment says "All drawer filters come from the shared
  * service signal (not URL)" — so the apostrophe never reached a query builder, and the spec
  * would have passed with `escapeHxqlLiteral` reverted, with the search page rendering nothing
  * forever, or with the query parameter ignored entirely. It was the audit's one named security
- * finding, and a test that looked like it had been addressed.
+ * finding, and a test that looked like it had been addressed. The smoke test above that checks
+ * for zero results on an impossible term now drives the drawer input for the same reason.
  *
  * The one production call site of `escapeHxqlLiteral` is
  * `libs/features/browse/src/lib/search-adf-hx/search-adf-hx.ts:110`, which interpolates the

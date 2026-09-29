@@ -133,7 +133,7 @@ export {
   BLOB_HOLDING_DOC_TYPES,
   BLOB_NOT_ATTACHED_ERROR,
   DEFAULT_IMPORT_PARENT_PATH,
-  RESTRICTED_IMPORT_LOCATION_MESSAGE,
+  RESTRICTED_IMPORT_LOCATION_MESSAGE_KEY,
   documentHasMainBlob,
   documentHasPersistedMainBlob,
   inferBlobDocTypeFromFile,
@@ -238,6 +238,9 @@ export {
 
 // Constants
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
+export { DOC_TYPE_LABEL_KEYS, docTypeLabel } from './lib/constants/doc-type-labels';
+export { DocTypeLabelPipe } from './lib/constants/doc-type-label.pipe';
+export { taskDueDistance, type TaskDueDistance } from './lib/utils/task-due-distance';
 export { avatarColor } from './lib/constants/avatar-colors';
 export type { AvatarColor } from './lib/constants/avatar-colors';
 export { FOLDERISH_TYPES } from './lib/constants/folderish-types';
@@ -277,7 +280,7 @@ export {
   type CompareSection,
 } from './lib/utils/document-compare.utils';
 export {
-  DOMAIN_CONTAINER_GUIDANCE,
+  DOMAIN_CONTAINER_GUIDANCE_KEY,
   DOMAIN_STRUCTURAL_ROOT_TYPES,
   filterCreatableSubtypesForParent,
   isDomainParentType,
@@ -325,13 +328,16 @@ export {
 } from './lib/utils/note-format';
 export { isMarkdownNoteFormat, isSafeHttpUrl, renderNoteMarkdown } from './lib/utils/note-markdown';
 export {
-  PERMISSION_NOTIFICATION_MAIL_HINT,
+  PERMISSION_NOTIFICATION_MAIL_HINT_KEY,
   findLocalAceForPrincipal,
   isMailSendError,
+  mailSendFailureKey,
   mailSendFailureMessage,
   permissionCreateMailFailureMessage,
+  permissionNotificationAceNotFoundKey,
   permissionNotificationAceNotFoundMessage,
   permissionUpdateMailFailureMessage,
+  type PermissionMessageTranslate,
   type PermissionWithNotificationResult,
 } from './lib/utils/permission-notification';
 export {

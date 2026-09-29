@@ -285,7 +285,9 @@
                 >
                   {{ row.name }}
                 </button>
-                <span class="result-type-pill" [title]="row.type">{{ row.type }}</span>
+                <span class="result-type-pill" [title]="row.type | docTypeLabel">{{
+                  row.type | docTypeLabel
+                }}</span>
               </div>
               <div class="grid-card-actions col-hover-actions">
                 <button
@@ -426,6 +428,8 @@
                     {{ row.name }}
                   </button>
                 </span>
+              } @else if (col.key === 'type') {
+                <span>{{ row.type | docTypeLabel }}</span>
               } @else {
                 <span>{{ getCellValue(row, col.key) }}</span>
               }
@@ -502,7 +506,9 @@
               >
                 {{ row.name }}
               </button>
-              <span class="simple-list-type-badge" [title]="row.type">{{ row.type }}</span>
+              <span class="simple-list-type-badge" [title]="row.type | docTypeLabel">{{
+                row.type | docTypeLabel
+              }}</span>
             </div>
             <div class="simple-list-actions col-hover-actions">
               <button

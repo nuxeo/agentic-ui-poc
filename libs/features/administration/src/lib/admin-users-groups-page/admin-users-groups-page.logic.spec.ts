@@ -1,3 +1,4 @@
+import { TranslateService } from '@ngx-translate/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, LOCALE_ID } from '@angular/core';
 import { Router, provideRouter } from '@angular/router';
@@ -325,6 +326,19 @@ describe('AdminUsersGroupsPageComponent', () => {
 
       expect(component.usersTabLabel()).toBe('Users (1)');
       expect(component.groupsTabLabel()).toBe('Groups (1)');
+    });
+
+    it('relabels the tabs when the language changes, without a new search', () => {
+      component.runSearch();
+      expect(component.usersTabLabel()).toBe('Users (1)');
+
+      const translate = TestBed.inject(TranslateService);
+      translate.setTranslation('fr', {
+        admin: { 'admin-users-groups-page': { 'users-tab': 'Utilisateurs ({{ count }})' } },
+      });
+      translate.use('fr');
+
+      expect(component.usersTabLabel()).toBe('Utilisateurs (1)');
     });
   });
 

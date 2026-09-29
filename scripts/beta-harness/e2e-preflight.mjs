@@ -172,8 +172,9 @@ if (appStatus !== null && auth) {
       } else {
         problems.push(
           'Nuxeo is reachable but returned no File documents.\n' +
-            '  Every critical-path spec asserts repository data, so a repository that hands\n' +
-            '  back no rows is not a pass — it is a run that tested nothing.\n' +
+            '  Specs that assert repository rows need at least one File to exercise; chrome,\n' +
+            '  routing, and accessibility specs may still run, but data-dependent assertions\n' +
+            '  would vacuously pass against an empty index.\n' +
             (total !== null && total > 0
               ? `  The query reported a total of ${total} and returned nothing, which is what a\n` +
                 '  stale search index looks like. Reindex, or import a document.'

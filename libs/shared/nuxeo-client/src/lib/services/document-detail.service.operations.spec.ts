@@ -674,7 +674,7 @@ describe('DocumentDetailService', () => {
       httpMock.expectNone('/nuxeo/api/v1/automation/Document.SendNotificationEmailForPermission');
       const result = await pending;
       expect(result.notificationSent).toBe(false);
-      expect(result.notificationError).toBeUndefined();
+      expect(result.notificationErrorKey).toBeUndefined();
     });
 
     it('always asks Nuxeo not to notify, so the mail is a separate observable failure', async () => {
@@ -739,7 +739,7 @@ describe('DocumentDetailService', () => {
       const result = await pending;
       expect(result.document.uid).toBe('doc-1');
       expect(result.notificationSent).toBe(false);
-      expect(result.notificationError).toContain('could not be located');
+      expect(result.notificationErrorKey).toBe('permissions.notification.ace-not-found-add');
     });
 
     it('keeps the granted permission when the refetch itself fails', async () => {
@@ -757,7 +757,7 @@ describe('DocumentDetailService', () => {
 
       const result = await pending;
       expect(result.notificationSent).toBe(false);
-      expect(result.notificationError).toContain('could not be located');
+      expect(result.notificationErrorKey).toBe('permissions.notification.ace-not-found-add');
     });
 
     it('reports an SMTP failure without losing the permission', async () => {
@@ -780,8 +780,7 @@ describe('DocumentDetailService', () => {
 
       const result = await pending;
       expect(result.notificationSent).toBe(false);
-      expect(result.notificationError).toContain('Permission was added');
-      expect(result.notificationError).toContain('SMTP');
+      expect(result.notificationErrorKey).toBe('permissions.notification.mail-send-failed-add');
     });
 
     it('rethrows a notification failure that is not an SMTP failure', async () => {
@@ -876,7 +875,7 @@ describe('DocumentDetailService', () => {
 
       const result = await pending;
       // "updated", not "added": the wording tells the user which action did land.
-      expect(result.notificationError).toContain('Permission was updated');
+      expect(result.notificationErrorKey).toBe('permissions.notification.mail-send-failed-update');
     });
   });
 

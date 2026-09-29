@@ -19,6 +19,7 @@ import {
   type UserGroupSuggestion,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '../datepicker-intl/translated-datepicker-intl';
 
 export interface ShareSavedSearchAddPermissionDialogData {
   title?: string;
@@ -62,7 +63,7 @@ const RIGHT_OPTIONS = [
     MatAutocompleteModule,
     MatIconModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideTranslatedDatepickerIntl(), provideNativeDateAdapter()],
   templateUrl: './share-saved-search-add-permission-dialog.component.html',
   styleUrl: './share-saved-search-add-permission-dialog.component.scss',
 })

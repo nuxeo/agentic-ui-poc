@@ -6,7 +6,17 @@ extraction and wire adf-hx translation assets" · Epic
 [NXSAT-280](https://hyland.atlassian.net/browse/NXSAT-280) (identical summary — close one).
 
 **Status:** slices S1–S5 delivered on `feature/nxsat-227a-i18n`. S6 (the Crowdin pipeline) is
-blocked on manual project creation via the INTERN board. The GA extraction is
+built and has run end to end against the live tenant: project 160 exists, 1,972 English strings
+and 1,972 translator-context entries are uploaded, and the pull opened a real pull request. What
+remains is Crowdin-side rather than a pipeline gap — **Crowdin holds almost no approved
+translations**: 8 strings each in French and German as of 29 September 2026, none in the other
+seven target languages. Project membership is resolved (Manager access on
+28 September) and the translation team has confirmed it can begin (INTERN-1346, 28 September).
+That is separate from what the repository ships: `fr.json` and `de.json` carry 151 hand-written
+strings written before Crowdin existed, which is why D8d's data loss mattered. Those 151 are to be
+**preserved**, by a one-time seeding step that has not been run — see D8f. Plus the two gaps D8d
+and D8e record. Conformance against the enterprise standard, clause by clause including what is
+still owed, is **`D8-standard`**. The GA extraction is
 [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284).
 
 > **Looking for where we stand rather than what we decided?** Read
@@ -56,7 +66,7 @@ against the Hyland localization standard rather than a locally invented one.
 | [Guidelines for Localization Management with Crowdin Translations Tool](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891566724) | The enterprise standard. Status **Accepted**, approved 12 Sep 2024, RFC 2119 language. This is normative, not advisory.                                                                                                                                                                                                 |
 | **INFO-144 — Internationalization Strategy for software** (RFC, RFC 2119)                                                              | The string-level requirements: translator context REQUIRED on every string, acronyms expanded, no strings built by concatenation, a typo fix must not discard translations, and strings not shared across different concepts. Its _Weblate_ mandate is scoped to BitBucket and does not reach this repository — see D0. |
 | [Localization with Crowdin Translations Tool: Technical Usage Guide](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891600892)    | `crowdin.yml` shape, CLI bootstrap, the two GitHub Actions, signed-commit setup, token scopes.                                                                                                                                                                                                                          |
-| [Translations for Web UI and Elements](https://hyland.atlassian.net/wiki/spaces/NuxEng/pages/2232484224)                               | How Nuxeo Web UI does it today — the reference implementation the ticket alludes to.                                                                                                                                                                                                                                    |
+| [Translations for Web UI and Elements](https://hyland.atlassian.net/wiki/spaces/NuxEng/pages/2232484224)                               | How Nuxeo Web UI does it today. **Not authority** — it is an older implementation on the public tenant and is not compliant with the Guidelines above. Useful only as a measured comparison; where it differs from the standard, the standard wins. See `D8-standard`.                                                  |
 | [Crowdin Integration (i18n)](https://hyland.atlassian.net/wiki/spaces/NuxEng/pages/3148546309)                                         | The Nuxeo platform (Java) side. **Contains a live Crowdin API token in plaintext — see the security note below.**                                                                                                                                                                                                       |
 | [The State of Localization in Satori / CIC](https://hyland.atlassian.net/wiki/spaces/HDF/pages/4194568689)                             | The RTL maturity spectrum and the honest position: Satori is a foundation, not a switch. Tracked as [DS-2277](https://hyland.atlassian.net/browse/DS-2277).                                                                                                                                                             |
 | [Satori Components Consumers](https://hyland.atlassian.net/wiki/spaces/HDF/pages/3803285020)                                           | `ngx-translate` 16/17 is the de-facto provider across the CIC portfolio. We are already aligned.                                                                                                                                                                                                                        |
@@ -165,14 +175,14 @@ Tagged `[ticket]` for verbatim, `[derived]` where the ticket implies but does no
 
 **227a (Beta):**
 
-| #   | Criterion                                                                                                                                                                             | Source                                                                                     |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| A1  | No control in the running application has an accessible name matching `/^[A-Z][A-Z0-9_]*\.[A-Z0-9_.-]+$/`, asserted over `aria-label`, `title` and rendered text on all eight routes. | `[ticket]` AC 2, made measurable                                                           |
-| A2  | `apps/nuxeo-ui/public/i18n/en.json` and `en-fallback.ts` blank no key that upstream uses as an accessible name.                                                                       | `[derived]` — extends the existing `phase-6-a11y.mjs` check from `sat.*` to all namespaces |
-| A3  | A new hard-coded user-facing string added to the core slice fails `npm run review:guardrails`, demonstrated by a deliberate red run.                                                  | `[ticket]` AC 3                                                                            |
-| A4  | Setting Layer 0 `defaultLanguage: 'fr'` and reloading renders French in the shell chrome, with a screenshot and a passing check.                                                      | `[ticket]` AC 4                                                                            |
-| A5  | `crowdin.yml` exists, a Crowdin project is created for this repository, and push/pull workflows run green with the source catalogue uploaded.                                         | `[derived]` — required by the HXP standard, which the ticket does not mention at all       |
-| A6  | Translation catalogues are validated by a unit test: parseable, UTF-8, no empty string values, key parity against `en.json`.                                                          | HXP standard, "Basic Unit Testing Setup" (SHOULD)                                          |
+| #   | Criterion                                                                                                                                                                                                                                                           | Source                                                                                     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| A1  | No control in the running application has an accessible name matching `/^[A-Z][A-Z0-9_]*\.[A-Z0-9_.-]+$/`, asserted over `aria-label`, `title` and rendered text on all eight routes.                                                                               | `[ticket]` AC 2, made measurable                                                           |
+| A2  | `apps/nuxeo-ui/public/i18n/en.json` and `en-fallback.ts` blank no key that upstream uses as an accessible name.                                                                                                                                                     | `[derived]` — extends the existing `phase-6-a11y.mjs` check from `sat.*` to all namespaces |
+| A3  | A new hard-coded user-facing string added to the core slice fails `npm run review:guardrails`, demonstrated by a deliberate red run.                                                                                                                                | `[ticket]` AC 3                                                                            |
+| A4  | Setting Layer 0 `defaultLanguage: 'fr'` and reloading renders French in the shell chrome, with a screenshot and a passing check.                                                                                                                                    | `[ticket]` AC 4                                                                            |
+| A5  | `crowdin.yml` exists, a Crowdin project is created for this repository, and push/pull workflows run green with the source catalogue uploaded.                                                                                                                       | `[derived]` — required by the HXP standard, which the ticket does not mention at all       |
+| A6  | Translation catalogues are validated by a unit test: parseable, UTF-8, no empty string values, and no key `en.json` lacks. A key en.json HAS and a locale lacks only warns, because a key added since the last pull renders English through the fallback — see D8d. | HXP standard, "Basic Unit Testing Setup" (SHOULD)                                          |
 
 **227b (GA):**
 
@@ -378,10 +388,10 @@ Two design points the existing guardrails have already litigated:
 
 Two guardrails are worth having, not one:
 
-| Guardrail                    | Checks                                                                                                                                                                 | Scope                                     |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `checkNoHardcodedUiText`     | Added lines in `.html` introducing element text, `placeholder=`, `matTooltip=`, `alt=`, `aria-label=` or `title=` with a literal display string and no `\| translate`. | diff (227a) → core slice repo-wide (227b) |
-| `checkTranslationCatalogues` | Every `i18n/*.json` parses, is UTF-8, has no empty-string values, and has key parity with its sibling `en.json`.                                                       | repo-wide, cheap                          |
+| Guardrail                    | Checks                                                                                                                                                                                                                                                      | Scope                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `checkNoHardcodedUiText`     | Added lines in `.html` introducing element text, `placeholder=`, `matTooltip=`, `alt=`, `aria-label=` or `title=` with a literal display string and no `\| translate`.                                                                                      | diff (227a) → core slice repo-wide (227b) |
+| `checkTranslationCatalogues` | Every `i18n/*.json` parses, is UTF-8, has no empty-string values, and carries no key its sibling `en.json` lacks. Missing keys warn only (D8d). `checkCataloguesAreTranslated` covers the inverse: a catalogue at full parity whose values are all English. | repo-wide, cheap                          |
 
 The second is what the HXP standard means by "Basic Unit Testing Setup", and it earns its
 keep independently: a JSON file with a trailing comma breaks the Crowdin sync, and an
@@ -406,6 +416,57 @@ and it makes AC 4 ambiguous. Two ways to satisfy it:
 AC 4 says "the Layer 0 `defaultLanguage` key does something visible", which the override
 proves. Do not let a picker in through the side door of an extraction ticket.
 
+### D8-standard — conformance with the Hyland Crowdin standard
+
+**Start here if two documents disagree.** The authority is
+[Guidelines for Localization Management with Crowdin Translations Tool](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891566724/Guidelines+for+Localization+Management+with+Crowdin+Translations+Tool)
+— HXP space, status **ACCEPTED**, RFC 2119 language, four named approvers — and its companion
+[Technical Usage Guide](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891600892/Localization+with+Crowdin+Translations+Tool+Technical+Usage+Guide).
+**Where `nuxeo-web-ui` differs from this table, the standard wins**: it is an older
+implementation on the public tenant and is not compliant with these Guidelines. It appears below
+and elsewhere in this plan only as a measurement.
+
+**The statuses**, and the distinctions matter:
+
+| Status                   | Means                                                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| **CONFORMS**             | We do what the clause says.                                                                                            |
+| **EXCEEDS**              | We do more than the clause asks.                                                                                       |
+| **DEVIATES-JUSTIFIED**   | We do something else on purpose, with the reason stated in the row.                                                    |
+| **DEVIATES**             | We do not comply and have no justification — an open gap, not a decision.                                              |
+| **OWNER-ACTION-PENDING** | Nothing in this repository can close it. It needs a person with a credential, an account, or an answer we do not have. |
+
+**A row may carry two of these**, because compliance and ownership are different axes. `DEVIATES` +
+`OWNER-ACTION-PENDING` is a gap someone else has to close; `CONFORMS` + `DEVIATES-JUSTIFIED` is a
+clause we satisfy while deliberately declining an adjacent recommendation. Both combinations appear
+below and neither is a defect in the taxonomy — but the taxonomy said "three statuses" while the
+table used five and combined them, which was.
+
+**Five rows are owner actions**: seeding, revoking the setup token, the service-account commit
+identity, confirming the proof-reading workflow, and confirming the project-level export settings.
+They are listed rather than omitted so the pipeline is not read as finished.
+
+| Requirement (quoted)                                                                                                                                                                                                                                                                                                                                           | Our implementation                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Status                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One project per repository, named after the repository, requested on INTERN.                                                                                                                                                                                                                                                                                   | Project **160**, `agentic-ui-poc`, requested via [INTERN-1346](https://hyland.atlassian.net/browse/INTERN-1346).                                                                                                                                                                                                                                                                                                                                                                                                                                                        | **CONFORMS**                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Configuration file at the repository root.                                                                                                                                                                                                                                                                                                                     | `crowdin-conf.yml` at the root. The name is ours — the standard does not mandate one — and the workflows pass `config:` explicitly so the file in use is visible.                                                                                                                                                                                                                                                                                                                                                                                                       | **CONFORMS**                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Source strings **MUST** be uploaded on every change merged to main.                                                                                                                                                                                                                                                                                            | `crowdin-push.yaml`, `on: push: branches: [main]`, filtered to the source catalogue and context globs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | **CONFORMS**                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| A daily scheduled pull opening a pull request is **RECOMMENDED**; on-demand **SHOULD** be possible.                                                                                                                                                                                                                                                            | `crowdin-pull.yaml`, `cron: '0 0 * * *'` plus `workflow_dispatch`, `create_pull_request: true`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | **CONFORMS**                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `--delete-obsolete` when uploading sources.                                                                                                                                                                                                                                                                                                                    | `upload_sources_args: --delete-obsolete` in `crowdin-push.yaml` — the upload-specific channel, not `command_args`; a dry run appends `--dryrun` (one word, which the CLI requires).                                                                                                                                                                                                                                                                                                                                                                                     | **CONFORMS**                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `update_option: update_without_changes`.                                                                                                                                                                                                                                                                                                                       | Set on every entry in `crowdin-conf.yml`; `checkCrowdinConfig` asserts the value per entry.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | **CONFORMS**                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| _"When pulling translations from Crowdin, and when proof-reading is setup, export options **MUST** be configured so that only approved translations end up in the source code."_                                                                                                                                                                               | `'export_only_approved': 'true'`, asserted by value. Briefly `'false'` during this PR; reverted — D8g. **Whether a proof-reading step is configured on project 160 is NOT established** — the evidence we have (INTERN-1346, 28 Sep 2026) is that the team is ready to begin, which is readiness, not workflow configuration. `'true'` is correct either way: if proof-reading is set up the MUST applies, and if it is not, the MUST is dormant while the risk-table argument in D8g still holds and `'true'` is the conservative setting.                             | **CONFORMS** (after this PR) — the setting conforms unconditionally; the **condition** is unverified, see the proof-reading row below                                                                                                                                                                                                                                                                                                                             |
+| _"export options `skip_untranslated_strings` and `skip_untranslated_files` are not specifically useful, and the former can lead to empty translations being exported (and only one of these options can be activated)"_, the default being that _"missing translations will be filled with the reference translation held by the source file"_.                | Neither option is set, and `checkCrowdinConfig` forbids both — as action inputs, as CLI flags in `command`/`command_args`/`download_translations_args`, and in `crowdin-conf.yml`. `skip_untranslated_strings` was set until 29 September 2026, and it did what the guide warns: the nightly pull (#293) exported every unapproved value blank (D8d, D8h).                                                                                                                                                                                                              | **CONFORMS** — neither option set, per the Technical Usage Guide. Unapproved strings arrive in English.                                                                                                                                                                                                                                                                                                                                                           |
+| _"If the code repository already holds translations for the target languages, they **SHOULD** be uploaded to initialize the project. These translations **MAY** be auto-approved."_ Technical Usage Guide: a **Project Content Initialization** step running `crowdin upload translations --auto-approve-imported` from the command line with the setup token. | **Not done.** The 151 hand-written French and German strings are still only in the repository. The CI input built for this is removed, because CI was never the documented mechanism and the CI token was refused for scope — D8f.                                                                                                                                                                                                                                                                                                                                      | **OWNER-ACTION-PENDING** — one local CLI run by the holder of the setup token.                                                                                                                                                                                                                                                                                                                                                                                    |
+| The setup token **MUST** be revoked once setup is complete.                                                                                                                                                                                                                                                                                                    | Not held by this repository; CI uses a separate, narrower token that cannot upload translations.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | **OWNER-ACTION-PENDING**                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| _"Defining the Crowdin Workflow **SHOULD** be up to the Translation Team. The default 'In-house translation' workflow, including a proof-reading step, is **RECOMMENDED**, although Crowdin offers Memory and Machine translation features that **MAY** be useful."_                                                                                           | No machine-translation workflow ships. One was written during this PR and removed before it landed: choosing MT is the Translation Team's call, not engineering's.                                                                                                                                                                                                                                                                                                                                                                                                      | **CONFORMS** (after removing it)                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| The commit author **must** be a non-human service account whose email matches the GPG key.                                                                                                                                                                                                                                                                     | Commits are signed, but the author is `github-actions[bot]@users.noreply.github.com` — GitHub's own App, on which no GPG key can be registered, so signatures show `verified: false`, `reason: unknown_key`.                                                                                                                                                                                                                                                                                                                                                            | **DEVIATES**, **OWNER-ACTION-PENDING** — needs a service account via GIAMI, which does not exist yet.                                                                                                                                                                                                                                                                                                                                                             |
+| Third-party actions **MUST** be referenced by commit SHA (Third Party GitHub Action Version Conventions).                                                                                                                                                                                                                                                      | All three Crowdin workflows pin every third-party action by SHA with the tag as a trailing comment: `crowdin/github-action`, `actions/checkout`, `actions/setup-node`.                                                                                                                                                                                                                                                                                                                                                                                                  | **CONFORMS** (after this PR)                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Sample source glob `/**/**/i18n/en.json`.                                                                                                                                                                                                                                                                                                                      | `/apps/*/public/i18n/en.json` — **one entry, apps only**. There is deliberately no `/libs/**` entry: Crowdin treats a pattern matching nothing as an error, and a forward-looking glob for NXSAT-284 once failed the push _after_ the catalogue had uploaded, which skipped the translator-context step behind it. It is added in the same change that ships the first library catalogue. `checkCrowdinConfig` rejects any source whose root is outside `apps/` or `libs/`, and separately fails each pattern that matches no file; it does **not** require both roots. | **DEVIATES-JUSTIFIED** — with `base_path: '.'` the sample sweeps `node_modules` and its 48 upstream catalogues, pushing another team's strings into our project.                                                                                                                                                                                                                                                                                                  |
+| Sample translation pattern `%locale%`.                                                                                                                                                                                                                                                                                                                         | `%two_letters_code%`, asserted by `checkCrowdinConfig`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | **DEVIATES-JUSTIFIED** — `AppTranslateLoader` fetches `i18n/<lang>.json` for two-letter codes, so `%locale%` would download `fr-FR.json` and render English while reporting success (D8a). **No `languages_mapping` is needed**: the real pull in [#282](https://github.com/nuxeo/agentic-ui-poc/pull/282) produced `fr de es ja nl pl pt th zh`.json — bare two-letter names for all nine, including the region-qualified `zh-CN`, `pt-PT`, `nl-NL` and `th-TH`. |
+| Translator-context helpers **SHOULD** be leveraged in future; the Guidelines record them as not yet explored.                                                                                                                                                                                                                                                  | Already built: `tools/i18n/crowdin-push-context.mjs` uploads 1,972 context entries from sibling `en.context.json` files, and `checkTranslatorContextPush` plus an ordering rule in `checkCrowdinConfig` keep the push from shipping sources without them.                                                                                                                                                                                                                                                                                                               | **EXCEEDS**                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| A proof-reading step in the Crowdin workflow is **RECOMMENDED**, and the export MUST above is conditional on proof-reading being _"setup"_.                                                                                                                                                                                                                    | **Unverified.** Nothing we hold shows that workflow stage exists on project 160; the evidence on INTERN-1346 is that the team is ready to begin, which is readiness rather than workflow configuration. Confirming it is what turns the export MUST from dormant to binding, and what makes approval a gate rather than a formality nobody performs.                                                                                                                                                                                                                    | **OWNER-ACTION-PENDING** — confirm the configured workflow with the Translation Team or the Crowdin admin.                                                                                                                                                                                                                                                                                                                                                        |
+| _"project-level export settings in Crowdin take precedence over the settings used by pipelines."_                                                                                                                                                                                                                                                              | Unverified. Everything above configures the **pipeline**; if project 160 carries conflicting export settings, they win and this table describes intent rather than effect.                                                                                                                                                                                                                                                                                                                                                                                              | **OWNER-ACTION-PENDING** — confirm the project's export settings with the Crowdin admin.                                                                                                                                                                                                                                                                                                                                                                          |
+
 ### D8 — Crowdin configuration, and the one trap in it
 
 Per the technical usage guide. Project name must match the GitHub repository name, so
@@ -424,17 +485,13 @@ Per the technical usage guide. Project name must match the GitHub repository nam
     'translation': '/%original_path%/%locale%.%file_extension%'
     'export_only_approved': 'true'
     'update_option': 'update_without_changes'
-  - 'source': '/libs/**/i18n/en.json'
-    'translation': '/%original_path%/%locale%.%file_extension%'
-    'export_only_approved': 'true'
-    'update_option': 'update_without_changes'
 ```
 
 > **The trap: do not copy the standard's `/**/**/i18n/en.json` glob verbatim.** With
 > `base_path: "."` it sweeps `node_modules`, which in this repo contains **48 upstream
 > `i18n/en.json` catalogues** — adf-core's 19 locales, both adf-hx bundles, and satori-ui's 15. Uploading those would push Alfresco's and Satori's strings into our Crowdin project and
 > bill the translation crew for work another team already paid for. Scope the globs to `apps/`
-> and `libs/`, and verify with a `crowdin upload sources --dry-run` before the first real push.
+> and `libs/`, and verify with a `crowdin upload sources --dryrun` before the first real push (one word — the CLI rejects `--dry-run`).
 
 ### D8b — the pull is a daily POLL, not a daily pull request
 
@@ -480,6 +537,325 @@ The half that genuinely needs to be fast is the **push**, and it already is — 
 A string added today that does not reach Crowdin until release week cannot be translated for
 that release.
 
+### D8c — a source pattern must ship WITH the files it matches, never ahead of them
+
+D8's snippet above deliberately omits a `/libs/**/i18n/en.json` source. Do not add it until a
+catalogue exists, and the reason is not tidiness.
+
+Crowdin treats a source pattern that matches nothing as an **error**, and it raises it _after_
+uploading the files that did match. On the first real push the English catalogue uploaded
+successfully and the job then failed on the empty `libs/**` pattern — so the run was red about
+work that had succeeded, and because the job failed the translator-context step that follows
+it never ran. A pattern added for a future slice is why Crowdin briefly held 1,972 strings with
+no context attached, which INFO-144 requires.
+
+`--dryrun` does not report it. The dry run listed the file it would upload and said nothing
+about the unmatched pattern, so the CLI cannot be relied on to catch this before a real push.
+`checkCrowdinConfig` fails each unmatched pattern by name instead, which is why the limitation
+is survivable.
+
+### D8d — an unapproved string is exported in English; neither skip option is set
+
+**Corrected 29 September 2026.** This section used to say an untranslated string must be ABSENT
+from the export, and that `skip_untranslated_strings: true` would leave the key out. That was
+never tested, and for our nested JSON it is false: Crowdin keeps the key and exports a **blank
+value**. The nightly pull of 29 September ([#293](https://github.com/nuxeo/agentic-ui-poc/pull/293))
+carried nine catalogues in which every one of the 1,972 values was `""`, apart from 8 approved
+strings each in `fr.json` and `de.json`. `checkTranslationCatalogues` failed it with a line per
+blank value. That was the correct outcome, because merging it would have blanked every French and
+German label. The Technical Usage Guide had warned of exactly this: _"the former can lead to empty
+translations being exported"_.
+
+**The configuration now follows the standard.** `export_only_approved: 'true'` and neither skip
+option. A string not yet approved is exported with its English source, so **every catalogue
+arrives at full key parity with `en.json`**. `checkCrowdinConfig` forbids both skip options on
+every channel that reaches the CLI (D8h).
+
+How the option came to be set in the first place. The first real pull opened a pull request with
+nine catalogues, every one byte-identical to `en.json`: 1,972 keys, 1,972 values the same as
+English, none different. It was also destructive, because an export replaces the whole file and
+`fr.json` and `de.json` held 75 and 76 hand-written strings. `Supprimer` came back as `Delete`,
+in a commit titled "update translations from Crowdin". `skip_untranslated_strings: true` was
+added to prevent that, on the untested belief that it would omit the key.
+
+What a reviewer should expect from a pull now:
+
+- A catalogue that is **entirely English** means nothing has been approved for that language yet.
+  `checkCataloguesAreTranslated` fails it on purpose, and the pull request stays red until approvals
+  exist.
+- A catalogue that is **mostly English** (80% or more) warns and passes. That is the case to read
+  carefully. A translation held in the repository but not approved in Crowdin comes back as its
+  English source, and no check fails on it. Measured on 29 September: with 8 strings approved per
+  language, the pull was 99% English and passed, and it would have reverted all 150 hand-written
+  French and German strings on `main`. Until D8f seeding is done, do not merge a pull whose diff
+  turns a hand-written string back into English.
+- `checkTranslationCatalogues` still warns rather than fails on a key a locale lacks, because a key
+  added since the last pull is legitimately missing until the next one.
+
+Three things the first pull cost, each worth keeping:
+
+- **Full key parity is not evidence of translation.** It was the reassuring signal and it was
+  produced by the defect: the export covered every key, so parity was perfect.
+- **The gate that failed was the wrong gate.** `checkTranslationCatalogues` passed. What went
+  red was `checkLocaleDataRegistered`, because seven of the nine locales were new and had no
+  Angular locale data — unrelated, real, and the only reason anyone looked. Restricted to `fr`
+  and `de`, which are already registered, `review:guardrails` printed
+  `Review guardrails passed.` over the loss of 151 strings. `checkCataloguesAreTranslated` now
+  fails a catalogue whose every value matches English, and warns above 80%.
+- **Crowdin started empty while 151 translations already existed**, so every pull was destructive
+  by construction — no export option changes that, it only changes how they are lost. Seeding
+  them into Crowdin is the fix, and the standard agrees: existing repository translations SHOULD be
+  uploaded to initialize the project. A `seed_translations` CI input was built to do it and **has
+  since been removed** — the documented mechanism is a one-time local CLI run with the setup
+  token, not a CI step, and the CI token was refused for scope. **D8f is the current record; this
+  bullet describes how it was found, not what we do.**
+
+### D8g — `export_only_approved` stays `'true'`; the case for `'false'` was wrong
+
+It was `'false'` for the length of one working tree, and this records the round trip rather than
+the destination, because the reasoning is the useful part.
+
+**The standard is a MUST, and we had not read it.** [Guidelines for Localization Management with
+Crowdin Translations Tool](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891566724/Guidelines+for+Localization+Management+with+Crowdin+Translations+Tool)
+— HXP space, status **ACCEPTED**, RFC 2119 language, four named approvers — says: _"When pulling
+translations from Crowdin, **and when proof-reading is setup**, export options MUST be configured
+so that only approved translations end up in the source code."_ The whole argument below was
+conducted without knowing this document existed.
+
+**The mechanical finding was correct and is worth keeping.** Machine pre-translation cannot
+approve what it adds. `--auto-approve-option` "defines which translations added by **TM**
+pre-translation should be auto-approved", our translation memory is empty, so `--method=mt` is the
+only usable method and its output is unapproved by construction. A pre-translated project with
+`export_only_approved: 'true'` fills Crowdin and **exports nothing** — the application renders
+English while every progress figure says the work is done.
+
+**The conclusion drawn from it was wrong, twice over.**
+
+- The premise of the argument for `'false'` — a project with no translators, where approval can
+  never arrive — was already false when it was made. Enrico Stengert on
+  [INTERN-1346](https://hyland.atlassian.net/browse/INTERN-1346), 28 September 2026: _"I can
+  confirm all source strings for this project are synced and now visible in CrowdIn. Translations
+  can begin on our end."_ **That is readiness, not proof that a proof-reading step is configured**,
+  and the MUST is conditional on proof-reading being _"setup"_ — so this does not on its own make
+  the MUST binding. It does dispose of "approval can never arrive", which is what the case for
+  `'false'` rested on. Confirming the configured workflow is an open owner action in
+  `D8-standard`.
+- The stronger reason does not depend on that timing at all. The Guidelines' **Identified Security
+  Risks** table carries _"Reputation Damage (insertion of controversial or profane content through
+  translations)"_ marked **Resolved**, and the justification is review: _"Translation teams work
+  with the same trusted vendor and linguists for 7+ years and have NDAs… Nothing is crowdsourced
+  by random people and every content is reviewed internally in addition to that."_ Exporting
+  unreviewed machine output ships content no linguist has seen, so that row stops holding. A
+  setting that quietly invalidates an accepted risk rating is not a trade engineering gets to make
+  on its own.
+
+**`'true'` is therefore right under either reading of the condition**, which is why the unverified
+proof-reading step does not leave this open. If proof-reading is set up, the MUST applies directly.
+If it is not, the MUST is dormant — but the risk-table argument still holds, and the cost of being
+wrong in this direction is an empty export, which is visible, rather than unreviewed content in
+front of a customer, which is not.
+
+**So machine pre-translation is not ours to choose.** The Guidelines: _"Defining the Crowdin
+Workflow SHOULD be up to the Translation Team. The default 'In-house translation' workflow,
+including a proof-reading step, is RECOMMENDED, although Crowdin offers Memory and Machine
+translation features that MAY be useful."_ A `Crowdin Pre-translate` workflow was written under
+the earlier framing and is **not shipped**; whether to machine translate goes to the Translation
+Team, and with approved-only export restored its output would not reach the application anyway.
+
+`'true'` is stated **explicitly** in `crowdin-conf.yml` rather than left to the tool default, and
+`checkCrowdinConfig` asserts the value rather than the key — a check that only counted the key
+would have passed throughout the round trip.
+
+### D8f — seeding is a documented SHOULD, but it is not a CI step
+
+The `seed_translations` CI input is **removed**, and the 151 hand-written French and German
+strings are to be **preserved, not superseded**. Those two statements looked contradictory in the
+first version of this record, which is how it came to say the wrong thing.
+
+A `seed_translations` input was built, to upload those 151 as approved translations. It failed on
+the first real run:
+
+```
+UPLOAD TRANSLATIONS
+✔️  Fetching project info
+❌ Permission error: "Endpoint isn't allowed for token scopes."
+```
+
+The source upload in the same job succeeded, so this was neither authentication nor the project id.
+The CI token is scoped to upload sources and download translations — exactly what the sync needs,
+and deliberately not more. Uploading a translation is a separate endpoint outside that scope.
+
+**What this record got wrong.** It read the scope refusal, and `nuxeo-web-ui` having never
+uploaded a translation in four years, as evidence that Crowdin owns non-English content and the
+151 strings should be allowed to lapse. The standard says the opposite. Guidelines: _"If the code
+repository already holds translations for the target languages, they **SHOULD** be uploaded to
+initialize the project. These translations MAY be auto-approved."_ Observed practice in a sibling
+repository is not a standard, and it was treated as one.
+
+**The mechanism is a one-time local CLI run, not CI.** The [Technical Usage
+Guide](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891600892/Localization+with+Crowdin+Translations+Tool+Technical+Usage+Guide)
+has a **Project Content Initialization** section that runs `crowdin upload translations
+--auto-approve-imported` from the command line during initialization. It uses the **setup** token,
+which the Global Administrator Guide notes "needs more permissions" for exactly this reason — not
+the CI token, which correctly refused.
+
+So removing the input was the right call for the wrong reason. The documented mechanism was never
+a CI input, and a dispatch input that always fails is the dead surface this programme has shipped
+before. **Seeding still has to happen**, as a one-time local step by someone holding the setup
+token. It is not done, and it is not something this repository can do for itself.
+
+One thing survives the removal: **the ordering rule in `checkCrowdinConfig`.** The seed step sat
+between the source upload and the context push, so when it failed it skipped the context step
+behind it — the shape D8c records, because a failed step skips the rest of the job. It cost
+nothing only because the context was already in Crowdin and the script is idempotent. The rule
+outlives the step: if a translation upload ever returns it must come last, since it has no bearing
+on the sources or their context. The selftest covers all three paths — upload before context
+(red), no context at all (red), and upload **after** context (green) — because the first two alone
+are also satisfied by an implementation that simply rejects every upload.
+
+A second thing was believed to survive and did not: `skip_untranslated_files: true` on the pull,
+added here to stop a 0% language exporting an empty catalogue over `fr.json` and `de.json`. Neither
+skip option is set any more. See D8h.
+
+**Until seeding happens, the 151 are exposed.** Crowdin does not hold them, so each one that is not
+approved there is exported as its English source, and an export replaces the whole file.
+
+**Which job goes red matters, and an earlier version of this paragraph had it wrong.** The
+`Crowdin Pull` run **succeeds**: the action downloads, opens the pull request and returns, and the
+workflow has no step that checks the catalogues. `checkCataloguesAreTranslated` runs on the pull
+request it opened, so the signal is a **red check on `chore(i18n): new Crowdin translations`**, not
+a red scheduled run. Anyone watching only the Actions list for `Crowdin Pull` will see green every
+night while the pull request beneath it is failing. Nothing reaches `main` either way. That is the
+correct amount of noise for a prerequisite that has not been met, and it is the reason seeding is
+recorded as required rather than optional.
+
+**What `nuxeo-web-ui` measures, and why it is not a licence.** It predates this standard and is
+not compliant with it, so it settles nothing — but the numbers are instructive. It sets neither
+`skip_untranslated_strings` nor `export_only_approved`, and the cost of the first is visible in its
+repository today:
+`messages-cs.json` holds 1,565 keys at full parity with English, of which **1,558 are English** — a
+Czech catalogue that is 99% English while presenting as Czech. `messages-id.json` is 39%. Full key
+parity is what makes it look healthy, which is the whole subject of D8d. We set
+`export_only_approved: 'true'` as the Guidelines require (D8g) and neither skip option (D8h), so
+our catalogues are long and English-padded until strings are approved. `checkCataloguesAreTranslated`
+fails one that is entirely English and warns on one that is 80% or more English, which is what
+nuxeo-web-ui lacks.
+
+### D8h — neither skip option is set, and both are forbidden
+
+**Corrected 29 September 2026.** This section used to conclude that `skip_untranslated_strings` was
+the option to keep. #293 showed that it blanks every unapproved value for our nested JSON (D8d), so
+both options are now removed and `checkCrowdinConfig` forbids both. The history below is kept
+because the pair conflict it records is still true of the toolchain.
+
+`skip_untranslated_files: true` was added to the pull workflow alongside
+`skip_untranslated_strings: true`, and a guardrail was written **requiring** it. The comments
+carefully separated two distinct losses — a catalogue padded with English, versus a catalogue
+emptied — and claimed one option guarded each. They cannot both be active:
+
+> export options `skip_untranslated_strings` and `skip_untranslated_files` are not specifically
+> useful, and the former can lead to empty translations being exported (**and only one of these
+> options can be activated**).
+>
+> — Technical Usage Guide
+
+The guide says the two are mutually exclusive; the pinned toolchain is blunter still and does not
+pick a winner. It **fails**, so neither option took effect and no catalogue would have downloaded
+at all — while a gate asserted both lines were present and the configuration was correct. **A gate
+that is green about something untrue is worse than no gate.**
+
+The rejection, quoted, because the earlier version of this section guessed at "one is silently
+ignored" and that outcome is not reachable on this toolchain. `crowdin/github-action` turns both inputs into CLI
+flags (`entrypoint.sh` lines 70–76 at the pinned SHA), the pinned image is `crowdin/cli:4.14.2`,
+and that CLI rejects the pair before downloading anything:
+
+```java
+// crowdin-cli 4.14.2, PropertiesWithFilesBuilder.checkArgParams()
+if (params.getSkipTranslatedOnly() != null && params.getSkipUntranslatedFiles() != null
+    && params.getSkipTranslatedOnly() && params.getSkipUntranslatedFiles()) {
+    messages.addError(RESOURCE_BUNDLE.getString("error.skip_untranslated_both_strings_and_files"));
+}
+// = "You cannot skip strings and files at the same time. Please use one of these parameters
+//    instead."
+```
+
+`checkArgParams` takes the **CLI** params, so moving the setting into `crowdin-conf.yml` does not
+avoid it — `FileBean` validates the same pair there.
+
+**This section then kept `skip_untranslated_strings`, and that was wrong.** The argument was that an
+English-padded catalogue passes as finished while an empty one is loudly wrong. It rested on the
+option omitting the key, which it does not: it blanks the value (D8d, #293). A blank value is not
+a louder form of the fallback. It renders as a blank label, and as a control with no accessible
+name where the key is an `aria-label`. `skip_untranslated_files` is no better, because it withholds
+a language until every string in it is approved.
+
+**So the configuration follows the standard: approved-only export and neither skip option.** The
+Technical Usage Guide treats English-filling as the default — _"By default, missing translations
+will be filled with the reference translation held by the source file"_ — and the Guidelines name
+`export_only_approved` as the only pull setting needed.
+
+**The guardrail forbids both options, unconditionally.** `checkCrowdinConfig` fails on:
+
+- **any** `skip_untranslated_strings` or `skip_untranslated_files` declaration on a Crowdin step in
+  the pull workflow whose value is not literally `false` — including `'true'`, a trailing comment,
+  and `${{ … }}`, which Actions resolves long after the gate runs;
+- `--skip-untranslated-strings` or `--skip-untranslated-files` in `command`, `command_args` or
+  `download_translations_args` on any Crowdin step, read through block scalars, since those are
+  appended to the command verbatim; and an argument list built from an expression or alias, which
+  cannot be read and so cannot be cleared. Any other literal argument passes, including the
+  `--language=fr --language=de` the pull uses to download only the languages the app ships;
+- either key anywhere in `crowdin-conf.yml`, since the CLI reads the same options there.
+
+Each route was seen red on purpose against the real files, not only fixtures: each option was
+added back to the real `crowdin-pull.yaml` as an input and as a `download_translations_args` flag,
+and to the real `crowdin-conf.yml`, and all six went red for the named reason. Each has a negative
+control.
+
+The general lesson is the one this programme keeps paying for, and it repeated itself inside the fix
+more than once. The original requirement was asserted against the _text_ of the workflow and never
+against the tool that consumes it or the standard that governs it, so the guardrail proved only
+that a broken configuration was present. Then the prohibition replacing it was written by
+enumerating the spellings of "true" — several review rounds, one spelling at a time — until it was
+clear that for a forbidden input **presence is the defect unless it is provably switched off**.
+Enumerating what is forbidden does not terminate; asserting what is required does.
+
+**The three rules that area now follows**, arrived at over ten review rounds in which nearly every
+finding was one of them being applied backwards somewhere:
+
+| Concern                              | Rule                                                                                                                          | Why that direction                                                                                                                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Step **selector** (`CROWDIN_ACTION`) | **Liberal.** Match the action however its `uses:` is quoted.                                                                  | An unrecognised step is an unchecked step. Recognising more steps means checking more steps, so breadth is the safe error.                                                         |
+| Input **values** (`YAML_UNREADABLE`) | **Fail closed.** Anything not provably `false` — or not readable at all, including `${{ … }}` and `*aliases` — counts as set. | Clearing an input means asserting something about text. If the text is not the text the CLI receives, nothing can be asserted.                                                     |
+| **Scope** (`crowdinActionSteps`)     | **The Crowdin steps.** Narrower than the file, wider than the step with `download_translations: true`.                        | Wider judges other people's actions and fails correct workflows — twice. Narrower misses a second step that downloads via `command: download`, which runs before the boolean path. |
+
+All three live in one place each rather than being re-derived per check, because every time one was
+re-derived it came back narrower or wider than the last.
+
+### D8e — a language is advertised when it has translations, not when it is planned
+
+Crowdin project 160 carries nine target languages. `availableLanguages` holds three. That gap
+is deliberate and it is not a backlog item to close on its own.
+
+A locale needs three things that move together, and `checkLocaleDataRegistered` fails in **both**
+directions to enforce it: a catalogue in `apps/nuxeo-ui/public/i18n/`, an entry in
+`register-locale-data.ts`, and an entry in `availableLanguages`. Registering locale data for a
+language with no catalogue fails. Advertising one with no catalogue fails
+`checkAdvertisedLocalesShip`. A fourth moves with them and is not checked: a `--language` in
+`download_translations_args` in `crowdin-pull.yaml`, since the pull downloads only the languages
+listed there.
+
+The temptation is to satisfy all three with an empty or English-filled catalogue so the picker
+offers nine languages. Do not: that is the same fault `checkAdvertisedLocalesShip` was written
+for, whose own comment records the template app "shipped describing two languages it could not
+render". A user who selects Japanese and reads English has been lied to by the language picker.
+
+So the nine are the target and the mechanism is ready for them. Each becomes advertisable in one
+commit — catalogue, registration, `availableLanguages`, pull language — once Crowdin actually holds approved
+translations for it. How that content is produced is the Translation Team's decision, not ours:
+the Guidelines leave the Crowdin workflow to them and recommend in-house translation with a
+proof-reading step. Machine pre-translation is theirs to choose, and with `export_only_approved`
+at `'true'` (D8g) nothing unapproved reaches the application either way.
+
 ### D8a — `%two_letters_code%`, not `%locale%`
 
 The D8 snippet above maps translations to `%locale%.%file_extension%`. Built as written, that
@@ -502,7 +878,9 @@ explicit assumption we inherit: **a developer must never change the meaning of a
 key — change the key instead.** Put that in the maintenance checklist, because nothing
 enforces it.
 
-Two workflows, per the guide:
+Two workflows, per the guide — the repository has three. `Crowdin Status`, a read-only progress
+report, is an addition the guide does not describe; it is not part of the sync and is
+dispatch-only:
 
 - **Push** on push to `main` touching a source catalogue, `upload_sources_args: --delete-obsolete`.
 - **Pull** daily on cron plus `workflow_dispatch`, `create_pull_request: true`,
@@ -610,13 +988,13 @@ strips types through esbuild — so a green `test` proves nothing about type saf
 
 ### Unit
 
-| Test               | Asserts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Catalogue validity | Every `i18n/*.json` parses, is UTF-8, has no empty-string values, sorted keys, newline at EOF. Required by the HXP standard.                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Key parity         | Every non-`en` catalogue's key set matches `en.json`. Catches a Crowdin pull that dropped a file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Loader precedence  | Seeded folders < app catalogue < manifest `labels`, asserted with all three supplying the same key. **Delivered** — `app-translate-loader.spec.ts`. This row said "currently untested" after the tests landed.                                                                                                                                                                                                                                                                                                                                                                                             |
-| Fallback parity    | Every key bound as an accessible name is present and non-empty in `en-fallback.ts`, enforced by `checkAccessibleNameFallbacks`. **Delivered, and the gaps it was written for are closed** — `settings.themes.search` was the one this row named; `shell.search.placeholder` and `shell.ai.input-placeholder` were two more, found later because the gate read only `aria-label` and `title` while those two inputs are named by their `placeholder` alone. `placeholder` is in scope now. A key in our own lowercase shape that no catalogue defines also fails, so a typo cannot pass as an upstream key. |
-| Guardrail selftest | Each new guardrail fires on a crafted violation and stays silent on a crafted near-miss. Negative controls counted separately from positive ones.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Test               | Asserts                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Catalogue validity | Every `i18n/*.json` parses, is UTF-8, has no empty-string values, sorted keys, newline at EOF. Required by the HXP standard.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Key parity         | Asymmetric, deliberately — this row used to say a locale's key set must match `en.json` key-for-key, which D8d makes wrong. A key in `en.json` and absent from a locale **warns**: `setFallbackLang('en')` renders English, and a key added since the last Crowdin pull is legitimately missing until the next one. A Crowdin pull itself arrives at full parity, because unapproved strings export as English (D8d). A key a locale carries that `en.json` does not **fails** — nothing renders it and the translation crew is still paying to maintain it. Full parity is not evidence of translation: a catalogue whose every value equals English fails via `checkCataloguesAreTranslated`, because that is the English export under another name. |
+| Loader precedence  | Seeded folders < app catalogue < manifest `labels`, asserted with all three supplying the same key. **Delivered** — `app-translate-loader.spec.ts`. This row said "currently untested" after the tests landed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Fallback parity    | Every key bound as an accessible name is present and non-empty in `en-fallback.ts`, enforced by `checkAccessibleNameFallbacks`. **Delivered, and the gaps it was written for are closed** — `settings.themes.search` was the one this row named; `shell.search.placeholder` and `shell.ai.input-placeholder` were two more, found later because the gate read only `aria-label` and `title` while those two inputs are named by their `placeholder` alone. `placeholder` is in scope now. A key in our own lowercase shape that no catalogue defines also fails, so a typo cannot pass as an upstream key.                                                                                                                                             |
+| Guardrail selftest | Each new guardrail fires on a crafted violation and stays silent on a crafted near-miss. Negative controls counted separately from positive ones.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 Note for whoever touches `AppTranslateLoader`: `upstream-permissions-panel.spec.ts` defines a
 `StubAdfTranslateLoader` duck-typing all five adf-core methods. **Add a method to the loader
@@ -700,11 +1078,15 @@ say so in the report rather than leaving it unstated.
    Translating strings and formatting dates are separate mechanisms, which is the whole reason this
    is a step of its own rather than a consequence of step 2. Only `en-US` is built into Angular.
 
-4. Confirm the upstream catalogues cover it. Coverage is **uneven**: adf-core ships 19
+4. **Add `--language=<Crowdin language id>` to `download_translations_args`** in
+   `.github/workflows/crowdin-pull.yaml`, in the same pull request as steps 2 and 3. The pull
+   downloads only the languages listed there, so without it the nightly pull never updates the new
+   locale. Nothing checks this yet.
+5. Confirm the upstream catalogues cover it. Coverage is **uneven**: adf-core ships 19
    locales, both adf-hx bundles ship 7 (`de es fr it pl pt` + `en`), satori-ui ships 15. A
    locale outside adf-hx's seven gets English adf-hx strings inside a translated
    application — which reads as a bug, not as a gap.
-5. Add it to the evidence capture's locale matrix.
+6. Add it to the evidence capture's locale matrix.
 
 ### Known debt this plan deliberately leaves open
 

@@ -355,9 +355,9 @@
         <div class="picture-card">
           <h4 class="picture-card-title">{{ 'shared-ui.document-viewer.exif' | translate }}</h4>
           <div class="picture-card-body">
-            @for (entry of exifEntries(); track entry.label) {
+            @for (entry of exifEntries(); track entry.labelKey) {
               <div class="info-row">
-                <span class="info-label">{{ entry.label }}</span>
+                <span class="info-label">{{ entry.labelKey | translate }}</span>
                 <span class="info-value">{{ entry.value }}</span>
               </div>
             }
@@ -370,9 +370,9 @@
         <div class="picture-card">
           <h4 class="picture-card-title">{{ 'shared-ui.document-viewer.iptc' | translate }}</h4>
           <div class="picture-card-body">
-            @for (entry of iptcEntries(); track entry.label) {
+            @for (entry of iptcEntries(); track entry.labelKey) {
               <div class="info-row">
-                <span class="info-label">{{ entry.label }}</span>
+                <span class="info-label">{{ entry.labelKey | translate }}</span>
                 <span class="info-value">{{ entry.value }}</span>
               </div>
             }

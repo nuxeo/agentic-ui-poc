@@ -29,6 +29,7 @@ import {
   l10nEntryLabel,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
 
 export interface EditDocumentDialogData {
   document: NuxeoDocument;
@@ -50,7 +51,7 @@ export interface EditDocumentDialogData {
     MatChipsModule,
     MatIconModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideTranslatedDatepickerIntl(), provideNativeDateAdapter()],
   templateUrl: './edit-document-dialog.html',
   styles: [
     `

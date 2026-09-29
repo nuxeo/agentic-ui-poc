@@ -1,12 +1,17 @@
 # Uploads English to Crowdin when a source catalogue changes.
 #
-# One of the two workflows D8 in `docs/i18n-localization-plan.md` calls for. Push and pull are
-# separate because they fail for different reasons and on different schedules: an upload
-# failure means the source is wrong and blocks a developer, a download failure means the
-# translation pull request did not open and blocks nobody until tomorrow. Merging them into
-# one job makes the second look like the first.
+# The upload half of the two-workflow model the Hyland Crowdin standard describes, and a MUST:
+# "Source strings MUST be uploaded to Crowdin on every change merged to the main branch."
+# Conformance is tracked clause by clause in `D8-standard` of `docs/i18n-localization-plan.md`.
 #
-# `nuxeo-web-ui` runs a single combined workflow. The divergence is deliberate and is D8's.
+# Push and pull are separate files, which is our own choice on top of that — the standard's samples
+# show two workflows but do not require separate files. They fail for different reasons and on
+# different schedules: an upload failure means the source is wrong and blocks a developer, a
+# download failure means the translation pull request did not open and blocks nobody until
+# tomorrow. Merging them into one job makes the second look like the first.
+#
+# `nuxeo-web-ui` runs a single combined workflow. That is a measurement, not a licence — it
+# predates this standard and is not compliant with it.
 name: Crowdin Push
 
 on:
@@ -23,6 +28,11 @@ on:
       # manual run — and stale context is worse than none, because a translator believes it.
       - 'libs/**/i18n/en.context.json'
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Resolve and authenticate against Crowdin without uploading anything'
+        type: boolean
+        default: false
 
 concurrency:
   group: crowdin-push
@@ -30,12 +40,14 @@ concurrency:
 
 jobs:
   push-sources:
-    # Off until the Crowdin project exists.
+    # The off switch. This said "off until the Crowdin project exists" and was accurate until
+    # project 160 was created and the variable set to `true`; both halves of the sync have since
+    # run against the live tenant, so it now guards a different thing.
     #
-    # Without this the schedule and the push trigger both go live on merge and fail every day
-    # against secrets that are not set — S6 is blocked on manual project creation through the
-    # INTERN board. A workflow that is red for a reason nobody can fix is a workflow people
-    # learn to ignore, and it will be ignored on the day it is red for a real reason.
+    # What it still guards: a fork or a clone has none of these secrets, and without the gate
+    # every push there starts a job that fails against credentials it was never going to have.
+    # A workflow that is red for a reason nobody can fix is a workflow people learn to ignore,
+    # and it will be ignored on the day it is red for a real reason.
     #
     # Same `*_ENABLED` variable convention as `GPG_BOT_SIGNING_ENABLED`, see
     # `docs/github-bot-commit-signing.md`.
@@ -47,7 +59,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Upload sources to Crowdin
         uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
@@ -57,7 +69,16 @@ jobs:
           # A key that no longer exists in English is dead weight the translation crew is still
           # paying to maintain, and it will be offered to a translator who has no way to know
           # it renders nowhere.
-          upload_sources_args: '--delete-obsolete'
+          # `--dryrun`, one word. The Crowdin CLI rejects `--dry-run` outright — "Unknown
+          # option: '--dry-run'. Possible solutions: --dryrun" — and it rejects it while parsing
+          # arguments, BEFORE authenticating, so the first attempt failed without telling us
+          # anything about the token it was meant to test.
+          #
+          # On a manual run, so the first contact with a real tenant can be made
+          # without writing to it. It exercises the parts most likely to be wrong — the token,
+          # the project id, the base_url and which files the globs resolve to — and reports
+          # them without creating a string.
+          upload_sources_args: ${{ inputs.dry_run && '--delete-obsolete --dryrun' || '--delete-obsolete' }}
           # No `auto_approve_imported` here, and the reason is worth recording rather than
           # rediscovering. It was set to `true` with a comment claiming it kept source strings off
           # the Crowdin review queue. It does nothing in this step: the pinned action feeds that
@@ -73,8 +94,12 @@ jobs:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
 
-      # Only after the sources exist: context attaches to strings Crowdin already holds.
+      # Only after the sources exist: context attaches to strings Crowdin already holds. Skipped
+      # on a dry run for the same reason — on a dry run the strings were never created, so every
+      # lookup would miss and the script would exit non-zero reporting a divergence that is an
+      # artefact of the dry run rather than a real one.
       - name: Push translator context
+        if: ${{ !inputs.dry_run }}
         env:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}

@@ -213,7 +213,6 @@ function inlineStyleBlockLines(source) {
   return covered;
 }
 
-
 /**
  * A colour literal must come from a **theme token with a fallback**, not be typed
  * in at the point of use.
@@ -1010,23 +1009,17 @@ function checkNoAdfHxInPublicApi() {
 }
 
 /**
- * A newly added hard-coded user-facing string in a template.
+ * A hard-coded user-facing string in any template.
  *
- * The extraction this guards is deliberately unfinished — NXSAT-284 carries roughly 750
- * hard-coded text nodes and 400 literal `aria-label`/`title` attributes across thirteen
- * projects. Without a gate, that backlog grows faster than it shrinks, which is what the ticket
- * means by "the extraction regresses within weeks".
+ * ## Repo-wide, over every template in `apps/` and `libs/`
  *
- * ## Diff-scoped, and that is a decision rather than an oversight
- *
- * `checkThemeTokens` is diff-scoped; `checkBlobUrlLifecycle` was deliberately converted to
- * repo-wide, because diff-scoping permanently exempts every pre-existing violation and four real
- * leaks hid behind exactly that. Both precedents are in this file and they point opposite ways.
- *
- * This one is diff-scoped **because repo-wide would be red on arrival in thirteen projects**, and
- * a gate that cannot be made green is a gate someone switches off. NXSAT-284/B6 flips it to
- * repo-wide over the core slice once the extraction is done. Until then the honest description is:
- * this stops the backlog growing, it does not measure it.
+ * It started diff-scoped, because the application then held roughly 1,150 hard-coded strings
+ * across thirteen projects and a repo-wide check would have been red on arrival. Diff scope has
+ * a cost this file already records for `checkBlobUrlLifecycle`: every pre-existing violation is
+ * exempt forever, and a string that moves between files in a refactor reads as unchanged. Once
+ * the extraction was done it went repo-wide (slice 12 of `docs/i18n-full-extraction-plan.md`),
+ * so it now measures the tree rather than only stopping new additions. The exemptions are listed
+ * in `EXEMPT` below, each with its reason.
  *
  * ## The heuristic, and why it is narrow
  *
@@ -1469,10 +1462,10 @@ function checkNoHardcodedUiText() {
       if (sources.some(({ isSpec, refs }) => !isSpec && refs.has(fixture))) continue;
 
       // ...and a non-spec that merely MENTIONS the basename blocks it too, resolved or not.
-      // This is the deliberately blunt half: a `templateUrl` built by concatenation quotes no
-      // full path for `htmlRefs` to resolve, so exact matching alone could exempt a served
-      // template. Basename scope makes it over-broad rather than under-broad, and the cost of
-      // a false rejection here is that a fixture gets scanned for hard-coded strings.
+      // That catches a basename quoted in prose or a static `templateUrl`, not concatenation:
+      // `templateUrl: './widget' + '.host.html'` has no contiguous path for `htmlRefs` to
+      // resolve and no basename mention either, so it is NOT proven here and remains scanned.
+      // The trade is intentional — under-broad would ship a served template as a fixture.
       if (sources.some(({ isSpec, body }) => !isSpec && body.includes(name))) continue;
 
       if (configBodies.some((body) => body.includes(name))) continue;
@@ -1581,7 +1574,12 @@ function checkNoHardcodedUiText() {
       }
       index = stop;
     }
-    return new Map(chars.join('').split('\n').map((text, at) => [at + 1, text]));
+    return new Map(
+      chars
+        .join('')
+        .split('\n')
+        .map((text, at) => [at + 1, text]),
+    );
   }
 
   for (const [file, lines] of everyLine) {
@@ -1758,7 +1756,7 @@ function checkNoHardcodedUiText() {
 }
 
 /**
- * A newly added hard-coded user-facing string in a **descriptor**, not a template.
+ * A hard-coded user-facing string in a **descriptor**, not a template.
  *
  * ## The category the template guardrail structurally cannot see
  *
@@ -1778,7 +1776,10 @@ function checkNoHardcodedUiText() {
  *
  * ## Scope and the properties chosen
  *
- * Diff-scoped, for the same reason as the template check: repo-wide would be red on arrival.
+ * Repo-wide, like the template check, with the same three exemptions. It was diff-scoped while
+ * the backlog was large; going repo-wide surfaced 28 descriptors that predated it — the note
+ * editor's toolbar labels and the four packaged theme names — which diff scope had certified by
+ * never looking at them.
  *
  * `label`, `placeholder`, `ariaLabel` and `tooltip` only. These are unambiguously UI chrome in
  * every use in this repository. `title` and `description` are deliberately **excluded** despite
@@ -1809,9 +1810,28 @@ function checkNoHardcodedDescriptorText() {
   // in docs/i18n-status.md rather than papered over with a gate that cannot hold.
   const DESCRIPTOR_TEXT = /\b(label|placeholder|ariaLabel|tooltip)\s*:\s*'([A-Z][^']*)'/g;
 
-  for (const [file, lines] of addedLinesByFile) {
-    if (!/^(libs|apps)\/.+\.ts$/.test(file)) continue;
-    if (/\.spec\.ts$/.test(file)) continue;
+  // Same exemptions as the template sweep, for the same reasons: the starter template is deferred
+  // by decision, the sample extension's strings are a customer's, and `libs/core` renders nowhere.
+  const EXEMPT = [
+    /^apps\/nuxeo-satori-template\//,
+    /^libs\/extensions\/acme-extensions\//,
+    /^libs\/core\//,
+  ];
+
+  const sources = [
+    ...walk('apps', (path) => /\.ts$/.test(path)),
+    ...walk('libs', (path) => /\.ts$/.test(path)),
+  ].filter((path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)));
+
+  if (sources.length === 0) {
+    fail('No TypeScript sources were found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+
+  for (const file of sources) {
+    const lines = read(file)
+      .split('\n')
+      .map((text, index) => ({ line: index + 1, text }));
 
     // A `label` paired with a `labelKey` is the **fixed** shape, not a violation. The key is
     // what renders and the literal is the fallback, which is the whole point of the two-field
@@ -1829,7 +1849,7 @@ function checkNoHardcodedDescriptorText() {
     // its match. Braces inside string literals are not tracked — a brace in a descriptor's text
     // would mis-scope this, which is a smaller and louder failure than borrowing a key, and no
     // descriptor in the repository has one.
-    const source = fileExists(file) ? read(file) : '';
+    const source = read(file);
     const lineStarts = [0];
     for (let at = source.indexOf('\n'); at !== -1; at = source.indexOf('\n', at + 1)) {
       lineStarts.push(at + 1);
@@ -1882,7 +1902,7 @@ function checkNoHardcodedDescriptorText() {
         if ((value.match(/[A-Za-z]/g) ?? []).length < 2) continue;
         if (pairedWithKey(line, property)) continue;
         fail(
-          `${file}:${line} introduces \`${property}: '${value}'\` — a user-facing string in a ` +
+          `${file}:${line} carries \`${property}: '${value}'\` — a user-facing string in a ` +
             'descriptor.\n' +
             '    Templates are not the only place these live, and the translate pipe cannot ' +
             'reach a descriptor. Put a key here and apply the pipe where it renders:\n' +
@@ -2103,6 +2123,161 @@ function checkTranslationCatalogues() {
 }
 
 /**
+ * A non-English catalogue actually translates something.
+ *
+ * ## The defect this exists for
+ *
+ * The first real Crowdin pull opened a pull request carrying nine catalogues, and every one of
+ * them was byte-identical to `en.json` — 1,972 keys, 1,972 values the same as English, none
+ * different. Nothing in the project was translated yet, and without a skip option Crowdin exports
+ * an untranslated string **as its English source**.
+ *
+ * It was not merely empty, it was destructive: `fr.json` and `de.json` held 75 and 76
+ * hand-written translations, and the export overwrote them with English. `Supprimer` became
+ * `Delete` in a commit titled "update translations from Crowdin".
+ *
+ * ## Why `checkTranslationCatalogues` could not see it
+ *
+ * Read that gate's failure conditions and the reason is plain: malformed JSON, wrong shape, a
+ * non-string leaf, a blank value, a key absent from English. An English value satisfies every
+ * one of them. It is well-formed, it is a non-empty string, and because the export covers the
+ * whole file it is at *perfect* key parity — so even the parity half reported nothing.
+ *
+ * That gate ran on the pull request and passed. What failed it was
+ * `checkLocaleDataRegistered`, on the unrelated ground that seven of the nine locales were new
+ * and had no Angular locale data — a real defect and a lucky one, because it is the only reason
+ * anybody looked. Restricted to `fr` and `de`, which are already registered,
+ * `review:guardrails` printed `Review guardrails passed.` over the destruction of 151 strings.
+ *
+ * ## The rule
+ *
+ * Every shared value identical to English means the catalogue translates nothing, and no real
+ * translation of five or more strings does that. Individual matches are legitimate and common —
+ * `PDF`, `Nuxeo`, `OK` are the same word in French — so the failure needs *all* of them, and a
+ * floor of five keys keeps it off a tiny catalogue that could plausibly be all acronyms.
+ *
+ * The partial case warns instead. Approved-only export fills every unapproved string with its
+ * English source, so a high ratio is the normal state of a language with few approvals — and it is
+ * also what a pull that overwrites unapproved hand-written translations looks like, which is why it
+ * is reported rather than ignored.
+ *
+ * A skip option is NOT the way out. `skip_untranslated_strings` does not omit the key for our
+ * nested JSON, it blanks the value (#293), and `checkCrowdinConfig` forbids both skip options.
+ */
+function checkCataloguesAreTranslated() {
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
+  const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
+
+  const flatten = (value, prefix, out) => {
+    for (const [key, entry] of Object.entries(value)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof entry === 'string') out.set(path, entry);
+      else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        flatten(entry, path, out);
+      }
+    }
+    return out;
+  };
+
+  /** Parses a catalogue, or returns null — malformed files are `checkTranslationCatalogues`'s. */
+  const load = (path) => {
+    try {
+      const json = JSON.parse(read(path));
+      if (json === null || typeof json !== 'object' || Array.isArray(json)) return null;
+      return flatten(json, '', new Map());
+    } catch {
+      return null;
+    }
+  };
+
+  let compared = 0;
+
+  for (const catalogue of catalogues) {
+    const locale = catalogue.slice(catalogue.lastIndexOf('/') + 1).replace(/\.json$/, '');
+    if (locale === 'en') continue;
+
+    const reference = `${catalogue.slice(0, catalogue.lastIndexOf('/'))}/en.json`;
+    if (!fileExists(reference)) continue;
+
+    const english = load(reference);
+    const translated = load(catalogue);
+    if (!english || !translated) continue;
+
+    const shared = [...translated.keys()].filter((key) => english.has(key));
+
+    // An emptied catalogue, before the key floor gets a chance to skip it.
+    //
+    // The floor below exists so a legitimately part-translated locale — two approved strings out
+    // of two thousand — is not accused of translating nothing. But `continue` is also how a
+    // catalogue gutted to `{}` escaped: it contributes no shared keys, the parity half only WARNS
+    // about the keys it is missing, and `checkLocaleDataRegistered` and
+    // `checkAdvertisedLocalesShip` are both satisfied by the file merely existing. Worse, the
+    // `compared === 0` guard at the end could not catch it either, because one healthy sibling
+    // increments `compared` and covers for it.
+    //
+    // Zero is different from few. Per D8e a language is advertised only once it has translations,
+    // so a shipped catalogue with none of them is either a destructive sync or a language that
+    // should not be shipped yet. Both are worth stopping.
+    if (translated.size === 0 && english.size >= 5) {
+      fail(
+        `${catalogue} contains no translated strings at all, while ${reference} has ` +
+          `${english.size}.\n` +
+          '    A catalogue may legitimately be SHORT — a key added since the last pull, which ' +
+          'English renders through the fallback — but empty means either ' +
+          'a sync replaced real translations with nothing, or a language is being shipped before ' +
+          'anything was translated for it. D8e: advertise a language when it has translations, ' +
+          'not when it is planned.',
+      );
+      compared += 1;
+      continue;
+    }
+
+    if (shared.length < 5) continue;
+
+    compared += 1;
+    const identical = shared.filter((key) => translated.get(key) === english.get(key));
+    if (identical.length !== shared.length) {
+      const ratio = identical.length / shared.length;
+      if (shared.length >= 25 && ratio >= 0.8) {
+        warn(
+          `${catalogue} repeats the English string for ${identical.length} of its ` +
+            // Floored: 1,964 of 1,972 rounds to "100%", which reads as the all-English failure.
+            `${shared.length} keys (${Math.floor(ratio * 100)}%).\n` +
+            '    Approved-only export fills every string not yet approved in Crowdin with its ' +
+            'English source, so this is the normal state of a language with few approvals. ' +
+            'If this is a Crowdin pull, check its diff for real translations turning back into ' +
+            'English: the export replaces the whole file, so a translation held here but not ' +
+            'approved in Crowdin is overwritten.',
+        );
+      }
+      continue;
+    }
+
+    fail(
+      `${catalogue} repeats the English string for all ${shared.length} of its keys, so it ` +
+        'translates nothing.\n' +
+        '    This is what Crowdin exports for a language with nothing approved: approved-only ' +
+        'export fills every unapproved string with its English source, under a non-English file ' +
+        'name. It is well-formed, non-blank and at perfect key parity with English, which is ' +
+        `why ${'`checkTranslationCatalogues`'} passes it.\n` +
+        '    Merging it replaces whatever real translations the file held — the first such pull ' +
+        'request would have overwritten 151 hand-written French and German strings. It stays ' +
+        'red on purpose until translations for this language are approved in Crowdin. Do not ' +
+        'reach for a skip option: `checkCrowdinConfig` forbids both (see #293).',
+    );
+  }
+
+  if (catalogues.length > 1 && compared === 0) {
+    fail(
+      `${catalogues.length} catalogues were found but none was compared against an en.json ` +
+        'sibling with at least 5 shared keys, so this gate asserted nothing. Check the ' +
+        '`i18n/<locale>.json` glob and the key floor in `checkCataloguesAreTranslated`.',
+    );
+  }
+}
+
+/**
  * Translator context exists for every string, and for no string that no longer exists.
  *
  * INFO-144 (*Internationalization Strategy for software*) is unambiguous about this: "All strings
@@ -2254,6 +2429,179 @@ function checkTranslationContext() {
 }
 
 /**
+ * Product names and acronyms in the English, and what their translator notes must then say.
+ *
+ * AC3 of NXSAT-284 asks that product names be flagged do-not-translate and acronyms expanded.
+ * `checkTranslationContext` guarantees a note exists; it cannot tell "Visible text in browse" from a
+ * note a translator can use. These two lists are the judgement calls a note must carry, kept short
+ * and explicit on purpose: a name that is not here is not checked, and adding one is a one-line
+ * change reviewed with the notes it forces.
+ *
+ * Matching is by whole word and case-sensitive, so `AI` matches "AI Insights" and not "Said", and
+ * `Nuxeo` also covers "Nuxeo Drive".
+ */
+const DO_NOT_TRANSLATE_PRODUCTS = [
+  'Nuxeo',
+  'Knowledge Discovery',
+  'Knowledge Enrichment',
+  'Content Lake',
+  'Hyland',
+  'HxAI',
+  'ARender',
+  'Context API',
+  'OAuth',
+];
+const DO_NOT_TRANSLATE_MARKER = /do not translate/i;
+const ACRONYM_EXPANSIONS = {
+  AI: 'artificial intelligence',
+  API: 'application programming interface',
+  CIC: 'Content Innovation Cloud',
+  CSV: 'comma-separated values',
+  EXIF: 'Exchangeable Image File Format',
+  HTML: 'HyperText Markup Language',
+  HTTP: 'Hypertext Transfer Protocol',
+  ID: 'identifier',
+  IPTC: 'International Press Telecommunications Council',
+  JSON: 'JavaScript Object Notation',
+  NXQL: 'Nuxeo Query Language',
+  PDF: 'Portable Document Format',
+  REST: 'Representational State Transfer',
+  SMTP: 'Simple Mail Transfer Protocol',
+  UI: 'user interface',
+  URL: 'Uniform Resource Locator',
+  XML: 'Extensible Markup Language',
+};
+
+function checkTranslatorNotesFlagProductsAndAcronyms() {
+  const isReference = (path) => /(^|\/)i18n\/en\.json$/.test(path);
+  const references = [...walk('apps', isReference), ...walk('libs', isReference)].filter(
+    (path) => !/^apps\/nuxeo-satori-template\//.test(path),
+  );
+  if (references.length === 0) {
+    fail('No en.json was found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+  // A hyphen is a delimiter: "AI-powered" and "non-JSON" contain the acronym.
+  const word = (term) => new RegExp(`(?<!\\w)${escapeRegExp(term)}(?!\\w)`);
+  let checked = 0;
+  for (const reference of references) {
+    const contextFile = reference.replace(/en\.json$/, 'en.context.json');
+    if (!fileExists(contextFile)) continue; // checkTranslationContext reports the missing file.
+    let english;
+    let notes;
+    try {
+      english = JSON.parse(read(reference));
+      notes = JSON.parse(read(contextFile));
+    } catch {
+      continue; // checkTranslationCatalogues reports malformed JSON.
+    }
+    const entries = [];
+    const collect = (node, prefix) => {
+      for (const [key, value] of Object.entries(node)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (value && typeof value === 'object') collect(value, path);
+        else if (typeof value === 'string') entries.push([path, value]);
+      }
+    };
+    collect(english, '');
+    for (const [key, value] of entries) {
+      const note = typeof notes[key] === 'string' ? notes[key] : '';
+      if (!note) continue; // checkTranslationContext reports a missing note.
+      const products = DO_NOT_TRANSLATE_PRODUCTS.filter((name) => word(name).test(value));
+      if (products.length) {
+        checked += 1;
+        if (!DO_NOT_TRANSLATE_MARKER.test(note)) {
+          fail(
+            `${contextFile}: the note for \`${key}\` ("${value}") does not flag ` +
+              `${products.map((name) => `"${name}"`).join(', ')} as do-not-translate.\n` +
+              '    Say what the product is and add "(product name, do not translate)" — the phrase ' +
+              '"do not translate" is what this check looks for.',
+          );
+        }
+      }
+      const missing = Object.entries(ACRONYM_EXPANSIONS).filter(
+        ([acronym, expansion]) =>
+          word(acronym).test(value) && !note.toLowerCase().includes(expansion.toLowerCase()),
+      );
+      if (missing.length) {
+        fail(
+          `${contextFile}: the note for \`${key}\` ("${value}") does not expand ` +
+            `${missing.map(([acronym, expansion]) => `${acronym} (${expansion})`).join(', ')}.\n` +
+            '    Write the expansion into the note, for example "CSV = comma-separated values", so a ' +
+            'translator knows what the letters stand for and whether to keep them.',
+        );
+      }
+      if (Object.keys(ACRONYM_EXPANSIONS).some((acronym) => word(acronym).test(value)))
+        checked += 1;
+    }
+  }
+  if (checked === 0) {
+    fail(
+      'No catalogue string contains a listed product name or acronym, so this gate asserted nothing.',
+    );
+  }
+}
+
+/**
+ * The English `@nuxeo-satori/platform` ships must be the application's English, for exactly the
+ * keys the package uses.
+ *
+ * The package's entry points reference ~300 keys that live only in `apps/nuxeo-ui/public/i18n/en.json`,
+ * which does not travel with it. `PLATFORM_EN_TRANSLATIONS` is the copy that does, served by the
+ * opt-in `providePlatformEnglishFallback()`. A copy is only worth having while it is the same
+ * English: a key reworded in the catalogue and not here would show a host the old wording, and a key
+ * the package starts using without a copy would show a host the raw key again. So this fails on a
+ * value that differs from `en.json`, a key the package references that the copy lacks, and a key the
+ * copy carries that nothing references any more. The fix is always to regenerate.
+ */
+async function checkPlatformEnglishFallback() {
+  const tool = await import(new URL('../tools/i18n/platform-english.mjs', import.meta.url).href);
+  if (!fileExists(tool.APP_CATALOGUE)) return; // checkTranslationCatalogues owns a missing catalogue.
+  if (tool.platformSourceDirs(repoRoot).length === 0) return; // no platform package in this tree.
+  const regenerate = '    Regenerate it: `node tools/i18n/platform-english.mjs`.';
+  const shipped = tool.readPlatformEnglish(repoRoot);
+  if (!shipped) {
+    fail(`${tool.PLATFORM_EN_FILE} is missing or unreadable.\n${regenerate}`);
+    return;
+  }
+  let catalogue;
+  let expected;
+  try {
+    catalogue = tool.flatCatalogue(repoRoot);
+    expected = tool.expectedPlatformEnglish(repoRoot);
+  } catch {
+    return; // checkTranslationCatalogues reports malformed JSON.
+  }
+  const missing = Object.keys(expected).filter((key) => !(key in shipped));
+  const extra = Object.keys(shipped).filter((key) => !(key in expected));
+  const drifted = Object.keys(shipped).filter(
+    (key) => key in catalogue && shipped[key] !== catalogue[key],
+  );
+  const sample = (keys) => keys.slice(0, 5).join(', ') + (keys.length > 5 ? ', …' : '');
+  if (missing.length) {
+    fail(
+      `${tool.PLATFORM_EN_FILE} has no English for ${missing.length} key(s) the package uses: ` +
+        `${sample(missing)}.\n    A host without the app catalogue would see these as raw keys.\n${regenerate}`,
+    );
+  }
+  if (drifted.length) {
+    fail(
+      `${tool.PLATFORM_EN_FILE} differs from ${tool.APP_CATALOGUE} for ${drifted.length} key(s): ` +
+        `${drifted
+          .slice(0, 5)
+          .map((key) => `${key} ("${shipped[key]}" vs "${catalogue[key]}")`)
+          .join(', ')}.\n${regenerate}`,
+    );
+  }
+  if (extra.length) {
+    fail(
+      `${tool.PLATFORM_EN_FILE} carries ${extra.length} key(s) the package no longer uses: ` +
+        `${sample(extra)}.\n${regenerate}`,
+    );
+  }
+}
+
+/**
  * The translator-context push can actually reach every context file in the repository.
  *
  * `tools/i18n/crowdin-push-context.mjs` used to name one context file, the app's, while
@@ -2356,7 +2704,9 @@ async function checkTranslatorContextPush() {
     // guardrail green while no translator context reached Crowdin at all — the gate verified the
     // doorbell and never checked whether anyone answered. The green fixture in the selftest had the
     // same gap, which is how it survived being written.
-    if (!new RegExp(`node\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(read(pushWorkflow))) {
+    // A STEP has to run it. Searching the document matches the command inside any block scalar,
+    // so this assertion could be satisfied by prose describing the step it is looking for.
+    if (runStepOffset(read(pushWorkflow), script) === -1) {
       fail(
         `${pushWorkflow} never runs \`node ${script}\`, so no translator context is uploaded.\n` +
           "    The catalogue goes up through the Crowdin action, but Crowdin's JSON source format " +
@@ -2670,8 +3020,7 @@ function checkAccessibleNameFallbacks() {
   // pre-existing catalogue keys that never passed through the attribute binding pattern.
   const HEADER_SEARCH_LABEL_BLOCK =
     /<label\b[^>]*\bfor="global-header-search-input"[^>]*>([\s\S]*?)<\/label>/g;
-  const TRANSLATE_INTERPOLATION =
-    /\{\{\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*\}\}/g;
+  const TRANSLATE_INTERPOLATION = /\{\{\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*\}\}/g;
 
   // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
   // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns
@@ -2927,6 +3276,476 @@ function crowdinFileEntries(body) {
   return entries.length > 0 ? entries : null;
 }
 
+/**
+ * Drop whole-line YAML comments, so a token search reads configuration rather than prose.
+ *
+ * Needed by any check that forbids a token the file also EXPLAINS. Both `crowdin-conf.yml` and
+ * the pull workflow argue at length about `skip_untranslated_files` and `export_only_approved`,
+ * and a raw search would match the argument — which makes the check impossible to satisfy and,
+ * worse, green only while nobody documents the decision.
+ *
+ * @param {string} body YAML source
+ * @returns {string} the same text with `#` comment lines removed
+ */
+function stripYamlComments(body) {
+  return body
+    .split('\n')
+    .filter((line) => !/^\s*#/.test(line))
+    .join('\n');
+}
+
+/**
+ * Match a workflow input set to a truthy YAML value, in any form the action actually honours.
+ *
+ * `uses:`-style inputs reach a Docker action as strings, and `entrypoint.sh` compares with
+ * `[ "$INPUT_X" = true ]`. So `x: true`, `x: 'true'` and `x: "true"` are all equivalent, and a
+ * trailing `# comment` is not part of the value.
+ *
+ * An anchored `:\s*true\s*$` misses every one of those but the first, and which direction that
+ * breaks depends on the check. For a REQUIRED input it is a false red: loud, and the safe way to
+ * be wrong. For a FORBIDDEN one it is a silent pass, and the forbidden thing runs while the gate
+ * stays green.
+ *
+ * **So this is for REQUIRED inputs only.** The forbidden ones do not enumerate truthy spellings at
+ * all — three rounds of review were lost doing that, one spelling at a time (`true`, then `'true'`
+ * and a trailing comment, then `${{ true }}`) — and instead fail closed on any value that is not
+ * literally `false`. An expression is resolved by Actions long after this runs, so it can never be
+ * cleared here; for a required input that means red, which is correct.
+ *
+ * @param {string} key the input name
+ * @returns {RegExp} matches the key set to true, quoted or not, with or without a trailing comment
+ */
+function yamlInputIsTrue(key) {
+  return new RegExp(`^\\s*['"]?${key}['"]?:\\s*(?:'true'|"true"|true)\\s*(?:#.*)?$`, 'm');
+}
+
+/**
+ * The steps of a workflow job, each with its byte offset in the document.
+ *
+ * Checks about a step's inputs must read that step, not the file. `checkCrowdinConfig` already
+ * learned this once at the top level — matching `uses: crowdin/github-action` anywhere found a
+ * preparation step rather than the one that downloads — and the prohibitions added later scanned
+ * the whole workflow again, so an unrelated action carrying `command: ${{ … }}` was classified as
+ * an unreadable Crowdin upload. Offsets are kept because the ordering rule compares positions.
+ *
+ * @param {string} body workflow YAML
+ * @returns {{text: string, offset: number}[]} in document order
+ */
+function workflowSteps(body) {
+  const lines = body.split('\n');
+  const offsets = [];
+  let running = 0;
+  for (const line of lines) {
+    offsets.push(running);
+    running += line.length + 1;
+  }
+
+  // Every sequence item under a `steps:` key, whatever its first key happens to be.
+  //
+  // This used to match `- ` followed by `name:` or `uses:`, which is only the common spelling. A
+  // step may validly start with `if:`, `id:`, `env:` or `with:` and carry `uses:` on a later line —
+  // and such a Crowdin step was not recognised as a step at all, so every check scoped to Crowdin
+  // steps skipped it. Same silent-pass direction as the quoted `uses:` value, one level lower.
+  const starts = [];
+  let stepsIndent = null;
+  let itemIndent = null;
+  for (let at = 0; at < lines.length; at += 1) {
+    const line = lines[at];
+    // Blank and comment-only lines carry no structure. A comment aligned with `steps:` was being
+    // read as a dedent, which ENDED enumeration — so a translation upload after such a comment was
+    // never examined while the context step before it was.
+    if (line.trim() === '' || /^[^\S\n]*#/.test(line)) continue;
+    const indent = /^[^\S\n]*/.exec(line)[0].length;
+
+    // Dedenting to or past the `steps:` key ends the block — the next job, or a sibling key.
+    if (stepsIndent !== null && indent <= stepsIndent) {
+      stepsIndent = null;
+      itemIndent = null;
+    }
+    // `'steps':` and `steps: # comment` are both valid. A second job spelled either way was
+    // not a steps block at all, so a forbidden Crowdin step inside it was never enumerated.
+    if (/^[^\S\n]*['"]?steps['"]?:[^\S\n]*(?:#.*)?$/.test(line)) {
+      stepsIndent = indent;
+      itemIndent = null;
+      continue;
+    }
+    if (stepsIndent === null) continue;
+
+    // Only items at the block's own depth. Anything deeper is a list INSIDE a step.
+    const item = /^([^\S\n]*)-[^\S\n]+\S/.exec(line);
+    if (item && (itemIndent === null || item[1].length === itemIndent)) {
+      itemIndent = item[1].length;
+      starts.push(offsets[at]);
+    }
+  }
+
+  return starts.map((offset, at) => ({
+    offset,
+    text: body.slice(offset, at + 1 < starts.length ? starts[at + 1] : body.length),
+  }));
+}
+
+/**
+ * EVERY value a key is given in a YAML document, with block scalars folded in, and the byte
+ * offset of each.
+ *
+ * Three review rounds were spent on checks that read one declaration in one form, and each round
+ * found another way past them. The holes were all the same two mistakes:
+ *
+ * - **First match only.** `regex.exec` stops at the first declaration, so a harmless
+ *   `skip_untranslated_files: false` on a preparation step masked a `true` on the step that
+ *   actually downloads. Same for `upload_translations` and the ordering rule.
+ * - **First line only.** `download_translations_args: >-` puts the value on the CONTINUATION
+ *   lines. Reading the line the key is on captures `>-` and nothing else, while the action
+ *   receives the folded text and passes it to the CLI.
+ * - **Bare keys only.** `'upload_translations': true` is valid YAML and reaches the action
+ *   identically. `crowdin-conf.yml` quotes every key in this repository, so the form is not
+ *   hypothetical here, and a workflow may use it too.
+ *
+ * So callers get all of them and decide, rather than each check re-deriving a parser badly.
+ *
+ * This is still a matcher and not a YAML parser. It reads block mappings, which is what these
+ * workflows are; it does not resolve aliases, and it cannot see inside a flow mapping
+ * (`{ key: value }`). Those limits are enforced rather than assumed, which is the only thing that
+ * makes a matcher defensible here: `YAML_UNREADABLE` fails any value whose content is unknown, and
+ * the callers reject a flow-mapping `with:` outright. An earlier version of this comment claimed
+ * the same protection while an alias in `download_translations_args` was read as a harmless
+ * literal — the claim was true of the design and false of one branch.
+ *
+ * @param {string} body YAML source, comments already stripped if the caller needs that
+ * @param {string} keyPattern a regex alternation of key names, e.g. `'a|b'`
+ * @returns {{value: string, index: number}[]} in document order
+ */
+function yamlValues(body, keyPattern) {
+  const lines = body.split('\n');
+  // The optional `- ` matters: a sequence marker can precede the FIRST key of a step, so
+  // `- run: node x`, `- with: { … }` and `- uses: …` are all keys on a step. Without it every
+  // first-key form was invisible — found by this file's own green control for
+  // `checkTranslatorContextPush`, whose fixture writes the uploader as `- run:`.
+  const wanted = new RegExp(
+    `^([^\\S\\n]*)((?:-[^\\S\\n]+)?)['"]?(?:${keyPattern})['"]?:[^\\S\\n]*(.*)$`,
+  );
+  // Any key at all, so a block scalar belonging to a key we do NOT want can still be skipped.
+  const anyKey = /^([^\S\n]*)(?:-[^\S\n]+)?['"]?[^\s:#'"][^:#]*['"]?:[^\S\n]*(.*)$/;
+  const found = [];
+  let offset = 0;
+  let at = 0;
+  while (at < lines.length) {
+    const line = lines[at];
+    const match = wanted.exec(line);
+    const generic = anyKey.exec(line);
+    const indent = (match ?? generic)?.[1].length ?? 0;
+    const isBlock = generic !== null && /^[|>]/.test(generic[2].trim());
+
+    // The extent of a block scalar: the more-indented lines that follow, blanks included.
+    let end = at + 1;
+    if (isBlock) {
+      while (end < lines.length) {
+        if (lines[end].trim() !== '' && /^[^\S\n]*/.exec(lines[end])[0].length <= indent) break;
+        end += 1;
+      }
+    }
+
+    if (match) {
+      const first = match[3].replace(/\s+#.*$/, '').trim();
+      found.push({
+        value: isBlock
+          ? lines
+              .slice(at + 1, end)
+              .map((text) => text.trim())
+              .filter((text) => text !== '')
+              .join(' ')
+          : first,
+        index: offset,
+        // The column the key itself starts at, sequence marker included, so a caller can tell a
+        // STEP-level key from one nested under `with:` or `env:`.
+        indent: match[1].length + match[2].length,
+      });
+    }
+
+    // Skip the block's body either way. Its lines are TEXT, not configuration — a
+    // `pull_request_body: |` that explains `skip_untranslated_files: true` in prose is
+    // documentation, and reading it as an input made the check fire on its own explanation.
+    for (; at < end; at += 1) offset += lines[at].length + 1;
+  }
+  return found;
+}
+
+/**
+ * A double-quoted YAML scalar carrying a backslash escape.
+ *
+ * YAML resolves `"crowdin\u002fgithub-action@v2"` and `"skip\u005funtranslated_files"` to the
+ * real action reference and the real key, so an escaped spelling is a working spelling — and every
+ * matcher here compares raw text, which sees neither.
+ *
+ * REJECTED rather than decoded, for the reason the rest of this area rejects rather than parses:
+ * implementing YAML's escape table to catch a spelling nobody writes buys a decoder to maintain,
+ * while failing closed costs one line and cannot be got subtly wrong. Nothing in these files is
+ * double-quoted at all.
+ *
+ * This is also where the enumeration ends. Previous rounds chased one spelling at a time; an
+ * escape is not another spelling but a general encoding, so rejecting the encoding closes the
+ * class rather than one member of it.
+ */
+const YAML_ESCAPED_SCALAR = /"[^"\n]*\\[^"\n]*"/;
+
+/**
+ * The keys of a YAML flow mapping, at its own depth, ignoring quoted scalars.
+ *
+ * A regex cannot do this safely: searching a flow entry for `skip_untranslated_files\s*:` also
+ * matches the token inside a LONGER key, inside a quoted value, or inside a nested mapping — so a
+ * config that does not declare the option was rejected. Keys only, depth one only.
+ *
+ * @param {string} entry one flow mapping, e.g. `{ 'source': '…', 'update_option': '…' }`
+ * @returns {string[]}
+ */
+function flowMappingKeys(entry) {
+  const keys = [];
+  let depth = 0;
+  let quote = null;
+  let token = '';
+  // Whether the scanner is past a `:` and inside that key's VALUE. Without it every depth-one
+  // colon read as a key separator, so the second colon of a plain scalar — `{ 'note':
+  // skip_untranslated_files:never }` — invented a key that is not declared anywhere.
+  let inValue = false;
+  for (let at = 0; at < entry.length; at += 1) {
+    const ch = entry[at];
+    if (quote !== null) {
+      if (quote === '"' && ch === '\\') {
+        at += 1;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      else token += ch;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '{' || ch === '[') {
+      depth += 1;
+      token = '';
+    } else if (ch === '}' || ch === ']') {
+      depth -= 1;
+      token = '';
+      // Closing a nested collection returns to the middle of the PARENT key's value.
+      if (depth === 1) inValue = true;
+    } else if (ch === ',') {
+      token = '';
+      if (depth === 1) inValue = false;
+    } else if (ch === '\n') {
+      token = '';
+    } else if (ch === ':' && depth === 1 && !inValue) {
+      keys.push(token.trim());
+      token = '';
+      inValue = true;
+    } else {
+      token += ch;
+    }
+  }
+  return keys.filter((key) => key !== '');
+}
+
+/**
+ * Drop an INLINE YAML comment, leaving a quoted `#` alone.
+ *
+ * `stripYamlComments` removes whole-line comments; this removes the tail of a line. Needed
+ * wherever a token search runs over text that may carry a comment explaining the very token being
+ * searched for — `'update_option': 'update_without_changes', # skip_untranslated_files stays
+ * forbidden` is a note, not configuration, and reading it as configuration fails a correct file.
+ *
+ * A `#` only opens a comment at the start of a line or after whitespace, and never inside a quoted
+ * scalar — which matters here because every value in `crowdin-conf.yml` is quoted.
+ *
+ * @param {string} line one line of YAML
+ * @returns {string}
+ */
+function stripInlineComment(line) {
+  let quote = null;
+  for (let at = 0; at < line.length; at += 1) {
+    const ch = line[at];
+    if (quote !== null) {
+      // Only a double-quoted YAML scalar has backslash escapes; a single-quoted one escapes its
+      // delimiter by doubling it, which this loop handles naturally by closing and reopening.
+      // Without the skip, `"… \\" # literal"` closed at the escaped quote and the `#` after it
+      // was read as a comment — truncating the line before anything that followed.
+      if (quote === '"' && ch === '\\') {
+        at += 1;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '#' && (at === 0 || /\s/.test(line[at - 1]))) return line.slice(0, at);
+  }
+  return line;
+}
+
+/** A YAML scalar that explicitly switches an input off. Anything else is treated as on. */
+const YAML_FALSE = /^(?:false|'false'|"false")$/;
+
+/**
+ * A value whose content this script cannot know.
+ *
+ * `${{ … }}` is resolved by Actions after the gate runs; `*anchor` is resolved by the YAML parser
+ * from a definition elsewhere in the document. Either way the text the CLI receives is not the
+ * text here, so nothing can be concluded about it.
+ *
+ * Callers must treat this as a FAILURE for anything forbidden, never as absence. That is the whole
+ * basis on which `yamlValues` is allowed to be a matcher rather than a parser, and it was stated
+ * as the justification before it was true of every branch — an alias in `download_translations_args`
+ * was being read as a harmless literal. Raised in review; the guarantee now holds where it is
+ * claimed.
+ */
+const YAML_UNREADABLE = /^\*|\$\{\{/;
+
+/**
+ * A step that runs the Crowdin action, however its `uses:` value is quoted.
+ *
+ * `uses: 'crowdin/github-action@…'` is valid workflow YAML. Recognising only the bare form meant a
+ * quoted Crowdin step was not recognised as one at all — so every input prohibition scoped to
+ * "Crowdin steps" skipped it and passed by absence. Raised in review; the failure direction is the
+ * dangerous one, because an unrecognised step is an unchecked step.
+ */
+/**
+ * Whether a step runs the Crowdin action, judged on its STEP-LEVEL `uses` key.
+ *
+ * Depth matters in both directions. A `uses:` nested under `env:`, under `with:` or inside a block
+ * scalar belongs to some other action's configuration, and treating such a step as Crowdin's made
+ * the fail-closed rules fire on inputs that never reach Crowdin — a false positive on a valid
+ * workflow. A step-level `uses` is the only one GitHub acts on.
+ *
+ * Liberal about spelling and strict about position: quotes optional on the key and on the value,
+ * because the action honours all of those; depth exact, because that is what makes it a step.
+ *
+ * @param {string} stepText one step, as returned by `workflowSteps`
+ * @returns {boolean}
+ */
+function isCrowdinStep(stepText) {
+  return yamlValues(stepText, 'uses').some(
+    ({ value, indent }) =>
+      indent === stepKeyIndent(stepText) && /^['"]?crowdin\/github-action/.test(value),
+  );
+}
+
+/**
+ * The inputs that hand text straight to the Crowdin CLI.
+ *
+ * `command:` is one of them, not just a selector: at the pinned SHA the action runs
+ * `crowdin $INPUT_COMMAND $INPUT_COMMAND_ARGS` and returns, so `command: download` downloads
+ * without `download_translations: true` appearing anywhere.
+ */
+const ARG_INPUTS = 'command|command_args|download_translations_args';
+
+/**
+ * The Crowdin steps of a workflow, each with its byte offset.
+ *
+ * Every check about a Crowdin input belongs here: narrower than the file, because an unrelated
+ * action's inputs are not ours to judge, and wider than "the step with
+ * `download_translations: true`", because that is not the only step that can download.
+ *
+ * @param {string} body workflow YAML
+ * @returns {{text: string, offset: number}[]}
+ */
+function crowdinActionSteps(body) {
+  return workflowSteps(body).filter((step) => isCrowdinStep(step.text));
+}
+
+/**
+ * The offset of the step that actually RUNS a script, or `-1` if no step does.
+ *
+ * Asserted on execution rather than on text. A document-wide search for the command is satisfied
+ * by the same characters appearing inside ANY block scalar — an action input, or the
+ * `pull_request_body` prose that explains the pipeline — so "the workflow must attach translator
+ * context" could pass on a sentence about attaching translator context. That is the
+ * comment-versus-code failure this guardrail file exists to catch, in the guardrail file.
+ *
+ * `yamlValues` folds `run: |` blocks, so a multi-line script still matches, and it ignores
+ * key-shaped text inside other keys' blocks, so prose no longer counts.
+ *
+ * @param {string} body workflow YAML
+ * @param {string} script path the step must invoke with `node`
+ * @returns {number} byte offset of the step, or -1
+ */
+function runStepOffset(body, script) {
+  const invocation = new RegExp(`\\bnode\\s+${script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+  for (const step of workflowSteps(body)) {
+    // STEP-LEVEL `run` only. A `run:` nested under `with:` or `env:` is an input or a variable,
+    // not a command the runner executes — and accepting one let a Crowdin action that uploads no
+    // context satisfy both context assertions.
+    if (
+      yamlValues(step.text, 'run').some(
+        ({ value, indent }) => indent === stepKeyIndent(step.text) && invocation.test(value),
+      )
+    ) {
+      return step.offset;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The column a step's own keys start at, sequence marker included.
+ *
+ * `- name: X` puts `name` at the marker's width; the sibling `run:`/`uses:`/`with:` on following
+ * lines line up with it. Anything deeper belongs to one of those keys.
+ *
+ * @param {string} stepText one step, as returned by `workflowSteps`
+ * @returns {number}
+ */
+function stepKeyIndent(stepText) {
+  const marker = /^[^\S\n]*-[^\S\n]+/.exec(stepText);
+  return marker ? marker[0].length : 0;
+}
+
+/**
+ * A step's `with:` block — its action INPUTS — with the offset it starts at inside the step.
+ *
+ * Inputs are children of `with:`, so that is where to look for them. Reading the whole step
+ * instead means a `command:` under `env:`, or any nested mapping that happens to reuse an input
+ * name, is read as configuration. For a forbidden input that direction is a false positive rather
+ * than a silent pass, so it was the less dangerous half of the same mistake `run` made — but it is
+ * still a gate failing a workflow that is correct.
+ *
+ * Returns nothing when the block is absent or in a form `yamlValues` cannot read; the opaque-`with`
+ * check fails those separately, so absence here never means "cleared".
+ *
+ * @param {string} stepText one step, as returned by `workflowSteps`
+ * @returns {{text: string, offset: number}|null}
+ */
+function stepWithBlock(stepText) {
+  const keyIndent = stepKeyIndent(stepText);
+  const lines = stepText.split('\n');
+  let offset = 0;
+  for (let at = 0; at < lines.length; at += 1) {
+    const isWith = new RegExp(`^[^\\S\\n]{${keyIndent}}['"]?with['"]?:[^\\S\\n]*(?:#.*)?$`).test(
+      lines[at].replace(
+        /^([^\S\n]*)-([^\S\n]+)/,
+        (_, lead, gap) => lead + ' '.repeat(gap.length + 1),
+      ),
+    );
+    if (isWith) {
+      // Blank AND comment-only lines carry no structure, exactly as in `workflowSteps`. A comment
+      // aligned with `with:` does not end the mapping, and treating it as a dedent dropped every
+      // input after it — so an `upload_translations: true` below such a comment was invisible.
+      let end = at + 1;
+      while (end < lines.length) {
+        const structural = lines[end].trim() !== '' && !/^[^\S\n]*#/.test(lines[end]);
+        if (structural && /^[^\S\n]*/.exec(lines[end])[0].length <= keyIndent) break;
+        end += 1;
+      }
+      return { text: lines.slice(at + 1, end).join('\n'), offset: offset + lines[at].length + 1 };
+    }
+    offset += lines[at].length + 1;
+  }
+  return null;
+}
+
 function checkCrowdinConfig() {
   const config = 'crowdin-conf.yml';
   // Two workflows, per D8: push on a source change, pull daily. Both must exist, and both
@@ -2966,9 +3785,11 @@ function checkCrowdinConfig() {
     return;
   }
 
-  // Wildcards are allowed — D8 uses them, and the `libs/**` entry is what makes per-library
-  // catalogues (NXSAT-284 AC4) an asset glob rather than a change to this contract. What is
-  // not allowed is a ROOT that could reach `node_modules`, which is where the 48 upstream
+  // Wildcards are allowed — D8 uses them, and a `libs/**` entry will be right once there is a
+  // library catalogue for it to match. It must arrive WITH that catalogue, though, not ahead
+  // of it: see the per-source check below for what an empty pattern costs.
+  //
+  // What is never allowed is a ROOT that could reach `node_modules`, where the 48 upstream
   // catalogues live. `apps/` and `libs/` sit beside it, so neither can.
   for (const source of sources) {
     if (!/^\/(apps|libs)\//.test(source)) {
@@ -2980,12 +3801,27 @@ function checkCrowdinConfig() {
       );
       continue;
     }
-    // A pattern matching nothing makes the sync a silent no-op: it uploads nothing, downloads
-    // nothing, opens no pull request and reports success. Nobody investigates a green job.
-    // The `libs/` entry legitimately matches nothing yet, so only a total miss across all
-    // sources is a failure.
   }
-  const anyMatch = sources.some((source) => {
+  /**
+   * EVERY source pattern must match at least one file, not merely one of them.
+   *
+   * This check accepted a pattern that matched nothing as long as a sibling matched something,
+   * on the reasoning that a forward-looking glob is harmless. It is not. Crowdin treats an
+   * unmatched source as an error and fails the run:
+   *
+   *     File 'apps/nuxeo-ui/public/i18n/en.json'
+   *     No sources found for '/libs/**' + '/i18n/en.json' pattern.
+   *     Current execution finished with errors
+   *
+   * The catalogue had already uploaded at that point, so the failure was not even honest about
+   * what happened — and because the job failed, the translator-context step that follows it was
+   * skipped. A pattern added for a future slice cost the context upload.
+   *
+   * `--dryrun` does not report it either: the dry run listed the file it would upload and said
+   * nothing about the unmatched pattern. So CI is the only place this can be caught before a
+   * real run, which is why it is caught here.
+   */
+  const matches = (source) => {
     const pattern = source.replace(/^\//, '');
     if (!/[*?]/.test(pattern)) return fileExists(pattern);
     const regex = new RegExp(
@@ -2999,12 +3835,14 @@ function checkCrowdinConfig() {
       [...walk('apps', (path) => regex.test(path)), ...walk('libs', (path) => regex.test(path))]
         .length > 0
     );
-  });
-  if (!anyMatch) {
+  };
+  for (const source of sources.filter((source) => !matches(source))) {
     fail(
-      `${config} declares ${sources.length} source pattern(s) and none matches a file.\n` +
-        '    The sync would upload nothing and report success — the one failure mode nobody ' +
-        'investigates.',
+      `${config} declares the source \`${source}\` and nothing matches it.\n` +
+        '    Crowdin fails the whole run on an unmatched pattern, AFTER uploading the files ' +
+        'that did match — so the catalogue lands, the job goes red, and the translator-context ' +
+        'step that runs afterwards is skipped. Add a pattern in the change that ships the ' +
+        'first file for it, not before.',
     );
   }
 
@@ -3035,10 +3873,24 @@ function checkCrowdinConfig() {
     // while doing the opposite of what D8 asks for.
     const D8_OPTIONS = [
       [
+        // A MUST in the Crowdin Guidelines, not a preference: "when proof-reading is setup,
+        // export options MUST be configured so that only approved translations end up in the
+        // source code." Whether proof-reading is configured on the project is not established —
+        // the team confirming on INTERN-1346 that translations can begin is readiness, not
+        // workflow configuration — but `true` is correct either way, because the Guidelines'
+        // security risk table marks reputation damage RESOLVED on the grounds that every
+        // translation is reviewed internally, and that holds only while this is `true`.
+        //
+        // Asserted at `true` after a round trip through `false`. See D8g for why that was
+        // wrong; the short version is that the mechanical finding behind it (machine
+        // pre-translation cannot auto-approve) was true and the conclusion was not.
         'export_only_approved',
         'true',
         'Unapproved work is a draft; exporting it puts half-finished translations in front of ' +
-          "users and makes the reviewer's approval meaningless.",
+          "users and makes the reviewer's approval meaningless. The Guidelines make it a MUST " +
+          'once proof-reading is set up, and rest the "no controversial or profane content" ' +
+          'risk rating on every translation being reviewed internally — which holds only while ' +
+          'this is `true`, whether or not proof-reading is configured yet. See D8g.',
       ],
       [
         'update_option',
@@ -3140,13 +3992,15 @@ function checkCrowdinConfig() {
           'that is not this one.',
       );
     }
-    // Merged without this, both workflows go live against secrets that do not exist and fail
-    // every day until S6 is unblocked. A job that is red for a reason nobody can fix is a job
-    // people stop reading, including on the day it is red for a real reason.
+    // The variable is set and both workflows have run, so this is no longer about waiting for a
+    // project — it is the off switch. Keep it: a fork or a clone of this repository has no
+    // Crowdin secrets, and without the gate every push there triggers a job that fails against
+    // credentials it was never going to have. A job that is red for a reason nobody can fix is a
+    // job people stop reading, including on the day it is red for a real reason.
     if (!text.includes("vars.CROWDIN_SYNC_ENABLED == 'true'")) {
       fail(
-        `${workflow} is not gated on \`vars.CROWDIN_SYNC_ENABLED\`. The Crowdin project is ` +
-          'created manually through the INTERN board and does not exist yet.',
+        `${workflow} is not gated on \`vars.CROWDIN_SYNC_ENABLED\`, so it runs wherever this ` +
+          'repository is forked or cloned — against Crowdin secrets that exist only here.',
       );
     }
   }
@@ -3169,9 +4023,33 @@ function checkCrowdinConfig() {
   // the arrangement it exists to reject. Caught by its own negative control, which kept the dead
   // host step in the fixture on purpose.
   const pull = read(workflows[1]);
-  const pullSteps = pull.split(/^\s*-\s(?=name:|uses:)/m);
-  const crowdinStep = pullSteps.find((step) => /uses:\s*crowdin\/github-action/.test(step));
-  if (crowdinStep !== undefined && !/^\s*gpg_private_key:/m.test(crowdinStep)) {
+  // Split with the real step parser, not `name:`/`uses:`-first. An `if:`-first downloader was
+  // merged into the step BEFORE it, so that step's `gpg_private_key` satisfied these checks while
+  // the actual downloader omitted it — masking by mis-splitting, which is the wrong-step failure
+  // in its original form.
+  const pullSteps = workflowSteps(pull).map((step) => step.text);
+  // The step that DOWNLOADS, not merely the first Crowdin step.
+  //
+  // `find` on the action name alone was wrong in a way that was invisible while the pull workflow
+  // had exactly one Crowdin step — and this change added a second Crowdin step to the PUSH
+  // workflow, so the arrangement is no longer hypothetical. A preparation step carrying
+  // `gpg_private_key` would satisfy the signing assertion below while the step that actually
+  // downloads — and therefore commits — omitted it.
+  //
+  // And both of these are INPUTS, so both are read from the step's `with:` block rather than from
+  // the step. `download_translations: true` and `gpg_private_key` placed under `env:` are passed
+  // to the action by nobody — the step does not download and does not sign — yet every assertion
+  // here was satisfied by their presence anywhere in the step.
+  const crowdinSteps = pullSteps
+    .filter((step) => isCrowdinStep(step))
+    .map((step) => stepWithBlock(step)?.text ?? '');
+  // Through `yamlInputIsTrue`, so a REQUIRED input follows the same YAML semantics as every other
+  // one. `download_translations: 'true'` is honoured by the action, and rejecting it reported that
+  // the workflow had no downloader at all — a false red that would have been read as a real defect.
+  const crowdinStep = crowdinSteps.find((inputs) =>
+    yamlInputIsTrue('download_translations').test(inputs),
+  );
+  if (crowdinStep !== undefined && !/^\s*['"]?gpg_private_key['"]?:/m.test(crowdinStep)) {
     fail(
       `${workflows[1]} runs crowdin/github-action without passing \`gpg_private_key\`, so its ` +
         'commits are unsigned.\n' +
@@ -3179,6 +4057,316 @@ function checkCrowdinConfig() {
         'Importing a key in a preceding host step configures the RUNNER, not the container — it ' +
         'succeeds and changes nothing. Pass `gpg_private_key` (and `gpg_passphrase`) to the ' +
         'action itself.',
+    );
+  }
+
+  // Both skip options are FORBIDDEN, on every channel that reaches the CLI. The Hyland standard's
+  // only pull setting is approved-only export; an unapproved string is then filled with its English
+  // source, so every catalogue arrives at full key parity.
+  //
+  // `skip_untranslated_strings` was REQUIRED here until the nightly pull of 29 September 2026
+  // (#293). The reasoning was that an untranslated key would be omitted and English would render
+  // through the fallback. That was never tested, and it is false for our nested JSON: Crowdin keeps
+  // the key and BLANKS the value, so nine catalogues arrived with every unapproved value empty. The
+  // Technical Usage Guide had warned of exactly that. `skip_untranslated_files` withholds a
+  // language until it is 100% approved, and crowdin-cli 4.14.2 rejects the pair outright.
+  //
+  // Three ways in, all read below:
+  //
+  //   1. the action inputs `skip_untranslated_strings` / `skip_untranslated_files`
+  //   2. `command`, `command_args`, `download_translations_args` — appended VERBATIM to the
+  //      command (`entrypoint.sh` 82-83 and 408-409), so a `--skip-untranslated-*` flag passes
+  //      straight through
+  //   3. `crowdin-conf.yml`, which the CLI reads the same options from
+  //
+  // Comments are stripped before matching, because both files explain why these options are
+  // absent — a raw text search would fire on the explanation and make the check unfixable.
+  if (crowdinStep === undefined) {
+    fail(
+      `${workflows[1]} contains no \`uses: crowdin/github-action\` step with ` +
+        `\`download_translations: true\`${
+          crowdinSteps.length
+            ? ` (it has ${crowdinSteps.length} Crowdin step(s), none of them ` + 'downloading)'
+            : ''
+        }, so the signing assertion examined nothing. It cannot download translations in this ` +
+        'state.',
+    );
+  }
+
+  const SKIP_OPTIONS = ['skip_untranslated_strings', 'skip_untranslated_files'];
+  const SKIP_FLAG = /--skip-untranslated-(?:strings|files)\b/;
+  const WHY_NO_SKIP =
+    "    The standard's only pull setting is `export_only_approved`; a string without approval is " +
+    'then filled with its English source. Technical Usage Guide: "export options ' +
+    '`skip_untranslated_strings` and `skip_untranslated_files` are not specifically useful, and ' +
+    'the former can lead to empty translations being exported".\n' +
+    '    That is what happened here: with `skip_untranslated_strings` set, the nightly pull of ' +
+    '29 September 2026 (#293) exported nine catalogues with every unapproved value blank. ' +
+    '`skip_untranslated_files` instead withholds a language until it is 100% approved. See D8d ' +
+    'and D8h in docs/i18n-localization-plan.md.';
+
+  const pullCode = stripYamlComments(pull);
+
+  // Fail CLOSED, on EVERY declaration whose value is not literally false.
+  //
+  // Enumerating truthy spellings was the wrong shape and lost three rounds of review to it:
+  // `true`, then `'true'` and a trailing comment, then `${{ true }}`. An expression cannot be
+  // evaluated here at all, so for a FORBIDDEN input the only sound rule is that its presence is
+  // the defect unless it is provably switched off.
+  //
+  // Every declaration on a CROWDIN step, not the first, and not the whole file. Every
+  // declaration, because a `false` on a preparation step must not mask a `true` on the downloader.
+  // Crowdin steps only, because the input means nothing on any other action, and reading the whole
+  // file made a mention in `pull_request_body` into a configuration change.
+  for (const option of SKIP_OPTIONS) {
+    const offending = crowdinActionSteps(pullCode)
+      .flatMap((step) => {
+        const inputs = stepWithBlock(step.text);
+        return inputs ? yamlValues(inputs.text, option) : [];
+      })
+      .find(({ value }) => !YAML_FALSE.test(value));
+    if (offending !== undefined) {
+      fail(
+        `${workflows[1]} declares \`${option}: ${offending.value}\`.\n` +
+          '    Anything but a literal `false` fails here, including `${{ … }}`, because an ' +
+          'expression is resolved by Actions long after this runs — so a forbidden input cannot ' +
+          'be cleared by making its value unreadable. Every declaration in the file is read, so a ' +
+          '`false` on another step does not excuse this one.\n' +
+          WHY_NO_SKIP,
+      );
+    }
+  }
+
+  // The argument channels, on EVERY Crowdin step rather than only the boolean downloader.
+  //
+  // `command:` is a route of its own: at the pinned SHA a step with `command: download` runs
+  // `crowdin $INPUT_COMMAND $INPUT_COMMAND_ARGS` and returns before the boolean-driven path, so a
+  // SECOND Crowdin step can download with a forbidden flag while `crowdinStep` carries none.
+  //
+  // Read through block scalars, because `download_translations_args: >-` puts the flag on the
+  // following lines and the action folds them before passing them on. Any OTHER literal argument
+  // — `--language=fr` is the one this workflow uses — is not this check's business.
+  for (const step of crowdinActionSteps(pullCode)) {
+    const inputs = stepWithBlock(step.text);
+    for (const { value } of inputs ? yamlValues(inputs.text, ARG_INPUTS) : []) {
+      const flag = SKIP_FLAG.exec(value)?.[0];
+      if (flag !== undefined) {
+        fail(
+          `${workflows[1]} passes \`${flag}\` to a Crowdin step: \`${value}\`.\n` +
+            '    `command`, `command_args` and `download_translations_args` all reach the CLI ' +
+            'VERBATIM, so this arrives exactly as the boolean input would.\n' +
+            WHY_NO_SKIP,
+        );
+      } else if (YAML_UNREADABLE.test(value)) {
+        fail(
+          `${workflows[1]} gives a Crowdin step a command or argument this script cannot read: ` +
+            `\`${value}\`.\n` +
+            '    An Actions expression is resolved after this gate runs, and a YAML alias is ' +
+            'resolved from an anchor elsewhere in the document — either way the text the CLI ' +
+            'receives is not the text here, so nothing can tell whether it contains a ' +
+            '`--skip-untranslated-*` flag. What cannot be read cannot be cleared, so it fails ' +
+            'closed. Pass the command and its flags literally.\n' +
+            WHY_NO_SKIP,
+        );
+      }
+    }
+  }
+
+  // A KEY, not a substring. `stripYamlComments` drops whole-line comments only, so an inline
+  // one — `'preserve_hierarchy': true # skip_untranslated_files stays off` — was read as the
+  // option being set, and the gate reported a defect in a correct file.
+  //
+  // Both shapes, because this file uses both. `yamlValues` reads the block form, which is how the
+  // entries are written today — one key per line inside `{ … }`. It cannot see inside a ONE-LINE
+  // flow entry, and `crowdinFileEntries` accepts those and the per-entry D8 checks read them, so a
+  // single-line entry was a shape the rest of this function understood and this prohibition did
+  // not. Scanning the parsed entries closes it without teaching the matcher flow mappings.
+  const configBody = stripYamlComments(read(config));
+  if (YAML_ESCAPED_SCALAR.test(configBody)) {
+    fail(
+      `${config} contains an escaped double-quoted scalar.\n` +
+        '    YAML resolves `"skip\\u005funtranslated_files"` to the forbidden key, and every ' +
+        'check here compares raw text — so an escaped spelling would declare the option while ' +
+        'reading as something else entirely.\n' +
+        '    Every value in this file is single-quoted; keep it that way.',
+    );
+  }
+  for (const option of SKIP_OPTIONS) {
+    const declared =
+      yamlValues(configBody, option).length > 0 ||
+      (crowdinFileEntries(configBody) ?? []).some((entry) =>
+        flowMappingKeys(entry.split('\n').map(stripInlineComment).join('\n')).includes(option),
+      );
+    if (declared) {
+      fail(
+        `${config} sets \`${option}\`.\n` +
+          '    The CLI reads the export options from the CONFIG FILE too, so moving the option ' +
+          'out of the workflow does not remove it.\n' +
+          WHY_NO_SKIP,
+      );
+    }
+  }
+
+  // The push workflow must attach translator context, and nothing that uploads translations may
+  // come before it.
+  //
+  // The first half is the live rule. The second guards against reintroducing something that has
+  // already been removed: a `seed_translations` step that uploaded the repository's existing
+  // non-English catalogues. Seeding itself is a documented SHOULD and still has to happen, but
+  // NOT from CI — the standard's mechanism is a one-time `crowdin upload translations
+  // --auto-approve-imported` from the command line with the setup token, which is why the CI
+  // token refused it. So the step is gone because CI was never the mechanism. See D8f.
+  //
+  // The rule outlives it because of HOW it failed. It sat between the source upload and the
+  // context push, failed on a token scope, and skipped the context step behind it: a failed step
+  // skips the rest of the job. That is the shape D8c records — the job goes red over one thing and
+  // the translator context INFO-144 requires is silently never attached. It cost nothing only
+  // because the context was already in Crowdin and the script is idempotent, which is luck rather
+  // than design.
+  //
+  // So if a translation upload ever comes back, it goes last. It has no bearing on the sources or
+  // their context, so there is never a reason for it to precede them.
+  const push = read(workflows[0]);
+  // The step that RUNS the uploader, not the first place its name appears. A document search
+  // matches the same text inside any block scalar, including the `pull_request_body` prose that
+  // explains this pipeline — so the context guarantee could be satisfied by a sentence.
+  const contextAt = runStepOffset(push, 'tools/i18n/crowdin-push-context.mjs');
+  // Fail closed, exactly as the prohibition above does: any declared `upload_translations` counts
+  // as an upload unless it is literally `false`. An expression is resolved by Actions long after
+  // this runs, so a step whose upload is `${{ … }}` can still run, still fail, and still skip the
+  // context step behind it — which is the whole failure this rule exists for.
+  //
+  // TWO interfaces and EVERY declaration, both learned in review. The action also runs a bare
+  // `command:`, so `command: upload translations` uploads without the boolean ever appearing; and
+  // reading only the first `upload_translations` let an explicit `false` on an earlier step mask an
+  // enabled upload on a later one. The rule is "nothing that uploads may come before context", so
+  // what matters is the EARLIEST upload of any kind.
+  // A `command:` that cannot be read counts as an upload for the same reason a `${{ }}` boolean
+  // counts as `true`: it might be one, and nothing here can rule it out. Failing closed on the
+  // forbidden side is the only direction that cannot hide the failure this rule exists for.
+  //
+  // Both interfaces are read off CROWDIN steps only. `command:` is a generic input name — an
+  // unrelated action with `command: ${{ inputs.command }}` cannot invoke Crowdin, and classifying
+  // it as an unreadable translation upload failed the gate on a workflow that was correct.
+  const uploads = workflowSteps(push)
+    .filter((step) => isCrowdinStep(step.text))
+    .flatMap((step) => {
+      const inputs = stepWithBlock(step.text);
+      if (!inputs) return [];
+      const at = ({ index }) => step.offset + inputs.offset + index;
+      return [
+        ...yamlValues(inputs.text, 'upload_translations')
+          .filter(({ value }) => !YAML_FALSE.test(value))
+          .map(at),
+        ...yamlValues(inputs.text, 'command')
+          .filter(
+            ({ value }) =>
+              /^['"]?upload\s+translations\b/.test(value) || YAML_UNREADABLE.test(value),
+          )
+          .map(at),
+      ];
+    });
+  const translationUploadAt = uploads.length > 0 ? Math.min(...uploads) : -1;
+
+  // An input map this script cannot read, in either workflow.
+  //
+  // Three forms, all valid YAML, all invisible to `yamlValues`: a flow mapping
+  // `with: { command: upload translations }`, an alias `with: *upload_inputs` resolving to a map
+  // defined elsewhere, and `with: ${{ … }}`. In every case the checks above read the step as
+  // carrying NO inputs — absence, when the truth is unknown, which turns the prohibitions into
+  // no-ops.
+  //
+  // Rejected rather than parsed. These workflows are block-style throughout, nothing needs the
+  // other forms, and adding a YAML dependency to a script that has none to cover styles nobody
+  // writes is the wrong trade. But the limit has to FAIL, not pass quietly, or the justification
+  // for using a matcher at all stops holding — which is exactly how the alias form got in: the
+  // flow mapping was rejected and the alias, which hides just as much, was not.
+  //
+  // CROWDIN steps only. Only a Crowdin step's inputs can hide the three values these checks read,
+  // so an unrelated `uses: some-org/action` with `with: { command: value }` is valid and none of
+  // our business. The first version of this scanned both whole files and failed it — the same
+  // cross-action false positive the `command` scan above had just been scoped to avoid, recreated
+  // one check further down within the hour.
+  // A flow-style STEP hides even its `uses:`, so `isCrowdinStep` cannot tell whether it is a
+  // Crowdin step — and every Crowdin-scoped rule, the opaque-input check below included, skips it
+  // rather than failing it. Unreadable a level above the inputs, so it is rejected before anything
+  // is scoped.
+  for (const workflow of workflows) {
+    // Crowdin's own flow steps only. An unrelated `- { uses: actions/checkout@… }` hides nothing
+    // this guardrail reads, and failing it would be the cross-action false positive these scopes
+    // exist to avoid — the third time that trap has been walked into in this sequence.
+    // Crowdin's own flow steps, and any flow step whose action reference is ESCAPED — those two
+    // forms combine: `- { uses: "crowdin\\u002fgithub-action@v2", … }` names Crowdin in a
+    // spelling the substring test cannot see, inside a shape `yamlValues` cannot read, so neither
+    // fail-closed rule reached it. An unreadable action reference is reason enough on its own.
+    const flowStep = workflowSteps(stripYamlComments(read(workflow))).find(
+      (step) =>
+        /^[^\S\n]*-[^\S\n]*\{/.test(step.text) &&
+        (/crowdin\/github-action/.test(step.text) || YAML_ESCAPED_SCALAR.test(step.text)),
+    );
+    const escapedUses = workflowSteps(stripYamlComments(read(workflow))).find((step) =>
+      yamlValues(step.text, 'uses').some(
+        ({ value, indent }) =>
+          indent === stepKeyIndent(step.text) && YAML_ESCAPED_SCALAR.test(value),
+      ),
+    );
+    if (escapedUses !== undefined) {
+      fail(
+        `${workflow} has a step whose \`uses:\` value is an escaped double-quoted scalar.\n` +
+          '    YAML resolves `"crowdin\\u002fgithub-action@v2"` to the Crowdin action; this ' +
+          'guardrail compares raw text and would see a different string, so the step would not ' +
+          "be recognised as Crowdin's and every Crowdin-scoped rule would skip it.\n" +
+          '    Write the reference plainly. Nothing in these workflows is double-quoted.',
+      );
+    }
+
+    if (flowStep !== undefined) {
+      fail(
+        `${workflow} declares a step as a YAML flow mapping: ` +
+          `\`${flowStep.text.split('\n')[0].trim()}\`.\n` +
+          '    The Crowdin guardrails read block-style steps. A flow-style one hides its own ' +
+          '`uses:`, so nothing here can tell whether it runs the Crowdin action, and every ' +
+          'Crowdin-scoped rule skips it rather than failing it.\n' +
+          '    Use the block form (`- uses:` then one `key: value` per line), which is what every ' +
+          'other step in these workflows uses.',
+      );
+    }
+  }
+
+  for (const workflow of workflows) {
+    for (const step of crowdinActionSteps(stripYamlComments(read(workflow)))) {
+      const opaque = step.text
+        .split('\n')
+        // `- with: { … }` is valid: the sequence marker can precede the first key, and
+        // `uses:` then follows on a later line. Without the optional marker the hidden
+        // inputs read as absent on exactly the step this check exists for.
+        .find((line) => /^\s*(?:-\s+)?['"]?with['"]?:\s*(?:\{|\*|\$\{\{)/.test(line));
+      if (opaque !== undefined) {
+        fail(
+          `${workflow} declares Crowdin step inputs in a form this guardrail cannot read: ` +
+            `\`${opaque.trim()}\`.\n` +
+            '    A flow mapping, a YAML alias and an expression all hide the keys inside them, ' +
+            'so `skip_untranslated_files`, `upload_translations` and `command` would read as ' +
+            'ABSENT rather than unknown — which turns three prohibitions into no-ops.\n' +
+            '    Use the block form (`with:` then one `key: value` per line), which is what ' +
+            'every other step in these workflows uses.',
+        );
+      }
+    }
+  }
+  if (contextAt === -1) {
+    fail(
+      `${workflows[0]} never runs \`tools/i18n/crowdin-push-context.mjs\`, so the sources upload ` +
+        'without the translator context INFO-144 requires on every string.',
+    );
+  } else if (translationUploadAt !== -1 && translationUploadAt < contextAt) {
+    fail(
+      `${workflows[0]} uploads translations before pushing translator context.\n` +
+        '    A failed step skips the rest of the job, so a step ahead of the context push can ' +
+        'stop it running — which is what happened the first time `seed_translations` ran: it ' +
+        'failed on a token scope and the context step behind it was skipped. Move the ' +
+        'translation upload after the context push; it has no bearing on either the sources or ' +
+        'their context. See D8c in docs/i18n-localization-plan.md.',
     );
   }
 
@@ -3263,6 +4451,53 @@ function checkPackagedConfigIsNotADemo() {
         '    The packaged file layers over the compiled themes; shipping one here means every ' +
         'installation gets it. Demo themes belong in the demo, per the runbook.',
     );
+  }
+
+  // A loopback URL or a self-declared temporary edit, ANYWHERE in either Layer 0 file.
+  //
+  // The three checks above were written for the Acme demo leak and they are shaped like it —
+  // named keys, one per symptom. That leaves them blind to every other route a local edit takes
+  // into this file, and one took it: an NXSAT-279 ARender override pointing the annotation viewer
+  // at `http://localhost:8181`, swept in by a `git add -A` during an unrelated i18n change. Its
+  // own annotation read "LOCAL DEV ONLY (NXSAT-279) - revert with git checkout". A reviewer found
+  // it. This gate did not, which is the second leak of this exact kind it has missed.
+  //
+  // Hence a rule about the file rather than about particular keys. These are installed on a
+  // customer's server, where a loopback address cannot mean anything but a mistake — it resolves
+  // to THEIR machine, not ours — and a note saying to revert the edit is the edit admitting it
+  // does not belong. The template is included because it is the example a customer copies.
+  const layer0 = [packaged, 'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json'];
+  for (const file of layer0.filter((path) => fileExists(path))) {
+    const body = read(file);
+
+    // The whole of 127.0.0.0/8 and the IPv6 loopback, not just `127.0.0.1`.
+    //
+    // The first version of this matched `127.0.0.1` literally while the comment above promised
+    // "any loopback address". `127.0.0.2` and `http://[::1]:8181` reach the customer's own machine
+    // exactly as `127.0.0.1` does, so the narrow regex made the guarantee false rather than
+    // partial — and a guarantee that is wrong is worse than one that is absent, because it stops
+    // the next person looking.
+    const loopback =
+      /\b(?:localhost|host\.docker\.internal)\b|\b127\.\d{1,3}\.\d{1,3}\.\d{1,3}\b|\b0\.0\.0\.0\b|\[::1\]|(?<![\w:.])::1(?![\w:.])/.exec(
+        body,
+      );
+    if (loopback) {
+      fail(
+        `${file} contains the local address \`${loopback[0]}\`.\n` +
+          '    This file is installed on a customer server, where a loopback address resolves to ' +
+          'their machine — so it can only ever be a developer environment that escaped. Point ' +
+          'it at a real host, or revert the file.',
+      );
+    }
+
+    const temporary = /LOCAL DEV ONLY|revert with git checkout|DO NOT COMMIT|TEMPORARY/i.exec(body);
+    if (temporary) {
+      fail(
+        `${file} says \`${temporary[0]}\` about its own contents.\n` +
+          '    A note telling the reader to revert the change is the change admitting it should ' +
+          'not ship. Run the `git checkout --` it asks for.',
+      );
+    }
   }
 }
 
@@ -3592,14 +4827,14 @@ function checkNoHardcodedDialogText() {
   const sources = [
     ...walk('apps', (path) => /\.ts$/.test(path)),
     ...walk('libs', (path) => /\.ts$/.test(path)),
-  ].filter(
-    (path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)),
-  );
+  ].filter((path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)));
 
   if (sources.length === 0) {
     fail('No TypeScript sources were found under apps/ or libs/, so this gate asserted nothing.');
     return;
   }
+
+  const constants = proseStringConstants(sources);
 
   for (const file of sources) {
     const text = read(file);
@@ -3607,8 +4842,45 @@ function checkNoHardcodedDialogText() {
     const spans = dialogRegions(text);
     if (spans.length === 0) continue;
 
+    const inDialog = (index) => spans.some(([open, close]) => open <= index && index <= close);
+
+    // The same fields set through a ternary or a named constant, which `FIELD` cannot see because
+    // it needs the literal straight after the colon: `title: isFolder ? 'Delete folder' : 'Delete
+    // document'` and `message: DOMAIN_CONTAINER_GUIDANCE` are both hard-coded English.
+    //
+    // The value is read to its own top-level `,` or closing brace rather than to the end of the
+    // line: Prettier breaks a long ternary across lines, and a line-bounded match let
+    // `title: cond\n  ? 'Delete Reply'\n  : 'Delete Comment'` through on formatting alone.
+    for (const match of text.matchAll(
+      /\b(title|message|confirmLabel|cancelLabel|confirmText|cancelText)\s*:/g,
+    )) {
+      if (!inDialog(match.index)) continue;
+      const value = topLevelText(text, match.index + match[0].length);
+      if (!/\?/.test(value.replace(/(['"`])(?:\\.|(?!\1).)*\1/gs, ''))) continue;
+      const branch = /(?:\?|:)\s*(['"`])([A-Z][^'"`]*)\1/.exec(value);
+      if (!branch) continue;
+      const line = text.slice(0, match.index).split('\n').length;
+      fail(
+        `${file}:${line} sets \`${match[1]}\` in a dialog's data from a ternary with the ` +
+          `hard-coded branch \`${branch[2]}\`.\n` +
+          "    Resolve each branch from the catalogue — `cond ? instant('x.a') : instant('x.b')` " +
+          "— or select the key and resolve once: `instant(cond ? 'x.a' : 'x.b')`.",
+      );
+    }
+    for (const match of text.matchAll(
+      /\b(title|message|confirmLabel|cancelLabel|confirmText|cancelText)\s*:\s*([A-Z][A-Z0-9_]*)\s*[,}\n]/g,
+    )) {
+      if (!inDialog(match.index) || !constants.has(match[2])) continue;
+      const line = text.slice(0, match.index).split('\n').length;
+      fail(
+        `${file}:${line} sets \`${match[1]}\` in a dialog's data to the constant \`${match[2]}\`, ` +
+          `which holds the hard-coded English \`${constants.get(match[2])}\`.\n` +
+          '    Make the constant a catalogue KEY and resolve it here with `translate.instant`.',
+      );
+    }
+
     for (const match of text.matchAll(FIELD)) {
-      if (!spans.some(([open, close]) => open <= match.index && match.index <= close)) continue;
+      if (!inDialog(match.index)) continue;
       const line = text.slice(0, match.index).split('\n').length;
       const literal = match[2];
       const interpolated = literal.startsWith('`') && literal.includes('${');
@@ -3621,7 +4893,7 @@ function checkNoHardcodedDialogText() {
               '    where English puts it in German or Japanese. INFO-144 forbids the shape, so the\n' +
               '    fix is one parameterised string rather than a lookup per fragment:\n' +
               `      ${match[1]}: this.translate.instant('confirm.delete-named', { name })\n` +
-              "      en.json: 'Delete \"{{ name }}\"?'\n"
+              '      en.json: \'Delete "{{ name }}"?\'\n'
             : "    Add a key to the owning project's `i18n/en.json` and resolve it at the call site:\n" +
               `      ${match[1]}: this.translate.instant('confirm.delete-document.${match[1]}')\n`) +
           '    A dialog is the one place `title` is unambiguously prose, which is why this gate ' +
@@ -3706,7 +4978,7 @@ function checkNoStaleAgnosticClaim() {
     fail(
       `${CONTRACT_FILE} injects TranslateService while carrying the \`${MARKER}\` marker. The ` +
         'descriptor contract is meant to take a resolver from its caller; a service here makes the ' +
-        'choice of translation library this library\'s rather than the host\'s.',
+        "choice of translation library this library's rather than the host's.",
     );
   }
 }
@@ -3766,9 +5038,20 @@ function checkNoHardcodedImperativeUiText() {
     // `[A-Z]` in the literal meaningless too, so the check started flagging the catalogue keys
     // it had just introduced. The name's capitalisation is spelled out in the class instead.
     /\.\s*(\w*(?:[Ee]rror|[Ss]tatus|[Mm]essage|[Nn]otice|[Ww]arning|[Ss]ummary|[Hh]int)\w*)\s*\.\s*set\((?:[^;]{0,200}?)(['"`])([A-Z][^'"`]{2,})\2/g,
-    // A toast helper.
-    /\btoast\(\s*(['"`])([A-Z][^'"`]{2,})\1/g,
   ];
+
+  /**
+   * Calls whose whole argument list reaches the screen, scanned by balanced parentheses rather
+   * than by a regex window.
+   *
+   * `toast(` was matched as `toast\(\s*'…'`, so the literal had to be the first thing in the call,
+   * and `toast(wasLocked ? 'Document unlocked' : 'Document locked')` — the most common shape in
+   * the lock, favourite and subscribe handlers — passed. A regex window cannot stop at the call's
+   * own closing parenthesis, so the argument is read by counting parentheses instead, skipping
+   * string contents so a `(` inside a message cannot unbalance it.
+   */
+  const CALL_SINKS =
+    /\b(?:toast|snackBar\s*\.\s*open|\w*(?:[Ee]rror|[Ss]tatus|[Mm]essage|[Nn]otice|[Ww]arning|[Ss]ummary|[Hh]int)\w*\s*\.\s*set)\s*\(/g;
 
   const EXEMPT = [
     /^apps\/nuxeo-satori-template\//,
@@ -3786,9 +5069,71 @@ function checkNoHardcodedImperativeUiText() {
     return;
   }
 
+  const constants = proseStringConstants(sources);
+  const reported = new Set();
+  const report = (file, line, literal, via) => {
+    const id = `${file}:${line}:${literal}`;
+    if (reported.has(id)) return;
+    reported.add(id);
+    fail(
+      `${file}:${line} passes the hard-coded string \`${literal}\`${via} to a user-facing sink — ` +
+        'text a user reads, built in TypeScript where no template pipe can reach it.\n' +
+        '    Add a key to the app catalogue and resolve it here:\n' +
+        "      this.snackBar.open(this.translate.instant('x.saved'), this.translate.instant('common.ok'))\n" +
+        '    A message assembled with `${…}` needs one parameterised key, not a lookup per ' +
+        'fragment: a translator handed the pieces cannot reorder them.',
+    );
+  };
+
   for (const file of sources) {
     const text = read(file);
     if (!/snackBar|\.set\(|toast\(/.test(text)) continue;
+
+    for (const call of text.matchAll(CALL_SINKS)) {
+      const open = call.index + call[0].length - 1;
+      const argument = balancedArgument(text, open);
+      const line = text.slice(0, call.index).split('\n').length;
+      // The literal as the whole first argument — `toast('Document restored.')`.
+      const direct = /^\s*(['"`])([A-Z][^'"`]{2,})\1/.exec(argument);
+      if (direct) report(file, line, direct[2], '');
+      // Each branch of a ternary, and a `??` / `||` fallback: a literal that follows `?`, `:`,
+      // `??` or `||`. A literal handed to a nested call — `instant('x.k')`, `captureError('Op')` —
+      // or compared against — `startsWith('Cannot sort by')` — follows `(` or `,`, so it is not.
+      for (const m of argument.matchAll(/(?:\?\??|:|\|\|)\s*(['"`])([A-Z][^'"`]{2,})\1/g)) {
+        report(file, line, m[2], '');
+      }
+      // A module constant holding prose, named rather than written inline.
+      for (const [name, value] of constants) {
+        if (new RegExp(`(?<![\\w.'"])${escapeRegExp(name)}(?![\\w(])`).test(argument)) {
+          report(file, line, value, ` (through the constant \`${name}\`)`);
+        }
+      }
+    }
+
+    // A local `const` holding prose, passed to a sink later in the same block:
+    //
+    //   const msg = err?.error?.message || 'Failed to delegate task.';
+    //   this.snackBar.open(msg, …);
+    //
+    // Scoped to the declaring block, so a same-named `msg` in another method is not blamed for it.
+    for (const decl of text.matchAll(/\bconst\s+([a-z_$][\w$]*)\s*(?::\s*string\s*)?=/g)) {
+      const valueStart = decl.index + decl[0].length;
+      const value = statementText(text, valueStart);
+      const literal =
+        /^\s*(['"`])([A-Z][^'"`]{2,})\1\s*$/.exec(value) ??
+        /(?:\?\??|:|\|\|)\s*(['"`])([A-Z][^'"`]{2,})\1/.exec(value);
+      if (!literal || !/\s/.test(literal[2])) continue;
+      const blockEnd = enclosingBlockEnd(text, valueStart);
+      const uses = new RegExp(`(?<![\\w.'"])${escapeRegExp(decl[1])}(?![\\w(])`);
+      for (const call of text.slice(valueStart, blockEnd).matchAll(CALL_SINKS)) {
+        const at = valueStart + call.index;
+        const argument = balancedArgument(text, at + call[0].length - 1);
+        if (!uses.test(argument)) continue;
+        const line = text.slice(0, at).split('\n').length;
+        report(file, line, literal[2], ` (through the local \`${decl[1]}\`)`);
+      }
+    }
+
     for (const sink of SINKS) {
       for (const match of text.matchAll(sink)) {
         // The signal pattern captures the NAME first, so the literal is the last group either way.
@@ -3813,17 +5158,135 @@ function checkNoHardcodedImperativeUiText() {
         if (/[=!]==?\s*$/.test(argumentPrefix)) continue;
 
         const line = text.slice(0, match.index).split('\n').length;
-        fail(
-          `${file}:${line} passes the hard-coded string \`${literal}\` to a user-facing sink — ` +
-            'text a user reads, built in TypeScript where no template pipe can reach it.\n' +
-            "    Add a key to the app catalogue and resolve it here:\n" +
-            "      this.snackBar.open(this.translate.instant('x.saved'), this.translate.instant('common.ok'))\n" +
-            '    A message assembled with `${…}` needs one parameterised key, not a lookup per ' +
-            'fragment: a translator handed the pieces cannot reorder them.',
-        );
+        report(file, line, literal, '');
       }
     }
   }
+}
+
+/**
+ * The text between the `(` at `open` and its matching `)`, with quoted contents kept intact.
+ *
+ * Quotes are tracked so a parenthesis inside a message — `'Failed (retry later)'` — cannot end
+ * the argument early. A `${…}` inside a template literal is not tracked; no sink argument in this
+ * repository nests a call inside one, and the failure would be to stop early, not to over-read.
+ */
+function balancedArgument(text, open) {
+  let depth = 0;
+  let quote = null;
+  for (let at = open; at < text.length; at += 1) {
+    const ch = text[at];
+    if (quote) {
+      if (ch === '\\') at += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '(') depth += 1;
+    else if (ch === ')') {
+      depth -= 1;
+      if (depth === 0) return text.slice(open + 1, at);
+    }
+  }
+  return text.slice(open + 1);
+}
+
+/**
+ * The text of a property value starting at `from`, up to its own top-level `,` or the brace or
+ * parenthesis that closes the enclosing object. Nested brackets and quoted strings are skipped
+ * whole, so a comma inside `instant('k', { a, b })` does not end the value early.
+ */
+function topLevelText(text, from) {
+  let depth = 0;
+  let quote = null;
+  for (let at = from; at < text.length; at += 1) {
+    const ch = text[at];
+    if (quote) {
+      if (ch === '\\') at += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '(' || ch === '[' || ch === '{') depth += 1;
+    else if (ch === ')' || ch === ']' || ch === '}') {
+      if (depth === 0) return text.slice(from, at);
+      depth -= 1;
+    } else if (ch === ',' && depth === 0) return text.slice(from, at);
+  }
+  return text.slice(from);
+}
+
+/** `text` with every regular-expression metacharacter escaped, for building a pattern from it. */
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** The text of a statement starting at `from`, up to its own top-level `;` or line-ending brace. */
+function statementText(text, from) {
+  let depth = 0;
+  let quote = null;
+  for (let at = from; at < text.length; at += 1) {
+    const ch = text[at];
+    if (quote) {
+      if (ch === '\\') at += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '(' || ch === '[' || ch === '{') depth += 1;
+    else if (ch === ')' || ch === ']' || ch === '}') {
+      if (depth === 0) return text.slice(from, at);
+      depth -= 1;
+    } else if (ch === ';' && depth === 0) return text.slice(from, at);
+  }
+  return text.slice(from);
+}
+
+/** The index of the `}` closing the block that contains `from`, or the end of the text. */
+function enclosingBlockEnd(text, from) {
+  let depth = 0;
+  let quote = null;
+  for (let at = from; at < text.length; at += 1) {
+    const ch = text[at];
+    if (quote) {
+      if (ch === '\\') at += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '{') depth += 1;
+    else if (ch === '}') {
+      if (depth === 0) return at;
+      depth -= 1;
+    }
+  }
+  return text.length;
+}
+
+/**
+ * `const NAME = 'Some prose.'` declarations across the given sources, as `[name, value]` pairs.
+ *
+ * Prose means capitalised and at least two words — `'Open Sections, Templates, or Workspaces,
+ * then…'` — so a key (`'common.ok'`), an operation name (`'Document.Lock'`) or a single enum-ish
+ * word is not collected. This is what lets a sink check see `toast(CREATABLE_SUBTYPES_NOTICE)`:
+ * the literal was declared once in a shared library and passed by name in five places, and every
+ * gate that looked for a literal at the call site read all five as clean.
+ *
+ * SCREAMING_CASE names only. The lookup is repo-wide, and a local `const message = 'Saved.'` in
+ * one file would otherwise match every `message` identifier in every other file. Backtick
+ * literals count as well as quoted ones; an interpolated one is still prose.
+ */
+function proseStringConstants(sources) {
+  const found = new Map();
+  for (const file of sources) {
+    const text = read(file);
+    for (const m of text.matchAll(
+      /\bconst\s+([A-Z][A-Z0-9_]*)\s*(?::\s*string\s*)?=\s*(['"`])([A-Z][^'"`\n]*\s[^'"`\n]*)\2\s*;/g,
+    )) {
+      found.set(m[1], m[3]);
+    }
+  }
+  return found;
 }
 
 /**
@@ -3962,10 +5425,13 @@ const GUARDRAILS = [
   checkCatalogueValuesAreRenderable,
   checkNoStaleAgnosticClaim,
   checkTranslationCatalogues,
+  checkCataloguesAreTranslated,
   checkAdvertisedLocalesShip,
   checkCrowdinConfig,
   checkPackagedConfigIsNotADemo,
   checkTranslationContext,
+  checkTranslatorNotesFlagProductsAndAcronyms,
+  checkPlatformEnglishFallback,
   checkTranslatorContextPush,
   checkNoProseInComponentInputs,
   checkNoTemplateSyntaxInDocumentShell,

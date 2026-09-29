@@ -7,7 +7,7 @@ import { firstValueFrom, of, Observable } from 'rxjs';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
-import { AuthService } from '../auth/auth.service';
+import { AuthService, SignInError } from '../auth/auth.service';
 import { LoginPageComponent } from './login-page.component';
 import { testTranslateModule } from '../i18n/translate-testing';
 
@@ -529,6 +529,26 @@ describe('LoginPageComponent', () => {
       const hero = (fixture.nativeElement as HTMLElement).querySelector('.login-hero');
       expect(hero?.getAttribute('aria-hidden')).toBe('true');
     });
+  });
+
+  it('shows a sign-in failure in the active language, from its catalogue key', () => {
+    const snackBar = fixture.debugElement.injector.get(MatSnackBar);
+    spyOn(snackBar, 'open');
+
+    auth.login.and.returnValue(
+      new Observable((subscriber) => {
+        subscriber.error(new SignInError('login.message.server-unreachable'));
+      }),
+    );
+
+    component.form.setValue({ username: 'user', password: 'secret' });
+    component.submit();
+
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'Could not reach Nuxeo. Check the server, proxy, and URL.',
+      'Dismiss',
+      { duration: 6000 },
+    );
   });
 
   it('resets submitting and shows snackbar on auth failure', () => {

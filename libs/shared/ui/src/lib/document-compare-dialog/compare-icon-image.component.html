@@ -1,5 +1,9 @@
 @if (blobUrl()) {
-  <img [src]="blobUrl()!" [alt]="alt()" class="compare-icon-image" />
+  <img
+    [src]="blobUrl()!"
+    [alt]="alt() || ('shared-ui.document-compare-dialog.document-type-icon' | translate)"
+    class="compare-icon-image"
+  />
 } @else if (path()) {
   <span class="compare-icon-fallback">{{ path() }}</span>
 }

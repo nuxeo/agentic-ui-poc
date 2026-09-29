@@ -32,10 +32,12 @@ import {
   BrowseService,
   DirectoryService,
   DocumentImportService,
-  RESTRICTED_IMPORT_LOCATION_MESSAGE,
-  DOMAIN_CONTAINER_GUIDANCE,
+  RESTRICTED_IMPORT_LOCATION_MESSAGE_KEY,
+  DOMAIN_CONTAINER_GUIDANCE_KEY,
   defaultNoteContent,
+  BLOB_NOT_ATTACHED_ERROR,
   docTypeIcon,
+  docTypeLabel,
   directoryPickerLabel,
   filterDirectoryPickerEntries,
   isBlobHoldingDocType,
@@ -62,6 +64,7 @@ import {
   isCollectionDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
 
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */
@@ -106,49 +109,6 @@ export interface DocTypeDef {
   type: string;
   label: string;
   icon: string;
-}
-
-const DOC_TYPE_LABEL_KEYS: Record<string, string> = {
-  Audio: 'doc-type.audio',
-  Collection: 'doc-type.collection',
-  File: 'doc-type.file',
-  Folder: 'doc-type.folder',
-  Note: 'doc-type.note',
-  OrderedFolder: 'doc-type.ordered-folder',
-  Picture: 'doc-type.picture',
-  Video: 'doc-type.video',
-  Workspace: 'doc-type.workspace',
-  Section: 'doc-type.section',
-  SectionRoot: 'doc-type.section-root',
-  TemplateRoot: 'doc-type.template-root',
-  Domain: 'doc-type.domain',
-  WorkspaceRoot: 'doc-type.workspace-root',
-};
-
-const DOC_TYPE_LABELS: Record<string, string> = {
-  Audio: 'Audio',
-  Collection: 'Collection',
-  File: 'File',
-  Folder: 'Folder',
-  Note: 'Note',
-  OrderedFolder: 'Ordered Folder',
-  Picture: 'Picture',
-  Video: 'Video',
-  Workspace: 'Workspace',
-  Section: 'Section',
-  SectionRoot: 'Section Root',
-  TemplateRoot: 'Template Root',
-  Domain: 'Domain',
-  WorkspaceRoot: 'Workspace Root',
-};
-
-function docTypeLabel(type: string, translate: (key: string) => string): string {
-  const key = DOC_TYPE_LABEL_KEYS[type];
-  if (key) return translate(key);
-  // A type a customer has added that no catalogue knows about. Splitting the camel case is a
-  // better guess than showing `OrderedFolder`, and it cannot be translated because nothing
-  // knew the type existed at build time.
-  return DOC_TYPE_LABELS[type] ?? type.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
 function defaultImportPropertiesState(file: File): ImportPropertiesState {
@@ -218,7 +178,7 @@ const DIALOG_SIZE = {
     MatCheckboxModule,
     FormsModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideTranslatedDatepickerIntl(), provideNativeDateAdapter()],
   templateUrl: './create-import-dialog.component.html',
   styleUrl: './create-import-dialog.component.scss',
 })
@@ -401,9 +361,9 @@ export class CreateImportDialogComponent implements OnInit {
 
   readonly importLocationHint = computed(() => {
     if (isDomainParentType(this.parentFolderType())) {
-      return DOMAIN_CONTAINER_GUIDANCE;
+      return DOMAIN_CONTAINER_GUIDANCE_KEY;
     }
-    return RESTRICTED_IMPORT_LOCATION_MESSAGE;
+    return RESTRICTED_IMPORT_LOCATION_MESSAGE_KEY;
   });
 
   ngOnInit(): void {
@@ -748,12 +708,15 @@ export class CreateImportDialogComponent implements OnInit {
 
   uploadProgressLabel(progress: ImportProgress): string {
     if (progress.phase === 'creating') {
-      return 'Creating document…';
+      return this.translate.instant('browse.message.creating-document');
     }
     if (progress.fileCount && progress.fileCount > 1 && progress.fileIndex !== undefined) {
-      return `Uploading file ${progress.fileIndex + 1} of ${progress.fileCount}…`;
+      return this.translate.instant('browse.message.uploading-file-of', {
+        index: progress.fileIndex + 1,
+        count: progress.fileCount,
+      });
     }
-    return 'Uploading…';
+    return this.translate.instant('browse.message.uploading');
   }
 
   formatFileSize(bytes: number): string {
@@ -1209,7 +1172,11 @@ export class CreateImportDialogComponent implements OnInit {
       .subscribe({
         next: (doc) => this.finishCreateAndNavigate(doc, title, docType.type, !!mainFile),
         error: (err: { error?: { message?: string }; message?: string }) => {
-          const message = err?.error?.message ?? err?.message ?? 'Create failed';
+          const raw = err?.error?.message ?? err?.message;
+          const message =
+            raw === BLOB_NOT_ATTACHED_ERROR
+              ? this.translate.instant('browse.message.file-not-attached')
+              : (raw ?? this.translate.instant('browse.message.create-failed'));
           if (hasBlob && mainFile) {
             this.contentError.set(message);
           } else {
@@ -1483,7 +1450,9 @@ export class CreateImportDialogComponent implements OnInit {
         next: (report) => {
           this.busy.set(false);
           this.csvFile.set(null);
-          const summary = summarizeCsvImportReport(report);
+          const summary =
+            summarizeCsvImportReport(report) ||
+            this.translate.instant('browse.message.csv-import-completed');
           this.successMessage.set(summary);
           this.view.set('success');
         },
