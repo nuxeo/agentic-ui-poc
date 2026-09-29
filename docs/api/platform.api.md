@@ -1474,6 +1474,7 @@ interface SearchCollectionOption {
     id: string;
     title: string;
     itemCount: number;
+    }
 }
 interface SearchQueryParams {
     q?: string;
