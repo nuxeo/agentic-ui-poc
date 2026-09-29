@@ -77,7 +77,7 @@ set -euo pipefail
 # both `*.spec.ts` lines and are indistinguishable by filename. A `page.goto()` timeout is
 # thrown from a line the spec wrote, so it counted toward the threshold with no `expect`
 # having run at all. A run where the wrong password broke navigation everywhere could
-# therefore satisfy a control whose entire purpose is to prove the specs read repository data.
+# therefore satisfy a control whose entire purpose is to prove that specs' assertions are credential-sensitive.
 #
 # So the fact is emitted rather than inferred. `apps/nuxeo-ui-e2e/assertion-failure-reporter.ts`
 # reads `TestStep.category === 'expect'` — which Playwright sets itself and its JSON reporter
