@@ -52,7 +52,13 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { resolveBaseUrl } from '../env.mjs';
 import { surfaceUnusableReason } from '../surface.mjs';
-import { credentialsOrExit, gotoOrExit, launchChromium, requireBackend } from './preconditions.mjs';
+import {
+  credentialsOrExit,
+  gotoOrExit,
+  launchChromium,
+  requireAdministrationAccess,
+  requireBackend,
+} from './preconditions.mjs';
 
 /**
  * This file lives at `a11y/diagnostics/`, so the repository root is two levels up.
@@ -201,7 +207,12 @@ const rows = [];
 let measured = 0;
 
 try {
-  await requireBackend(page, baseUrl, 'axe-differential');
+  const me = await requireBackend(page, baseUrl, 'axe-differential');
+  // Only when administration is among the requested surfaces: `--surface browse` must not be
+  // refused for an identity that can measure browse perfectly well.
+  if (SURFACES.some(([label]) => label === 'administration')) {
+    requireAdministrationAccess(me, user, 'axe-differential');
+  }
   await gotoOrExit(page, baseUrl, 'axe-differential');
   await page.waitForTimeout(800);
   await page.evaluate(
@@ -262,7 +273,11 @@ try {
         rows.push({
           surface,
           rule: v.id,
-          impact: v.impact,
+          // axe types `impact` as nullable. The printing paths below happen to survive a null
+          // today (`?? '?'` in the table; the blocking list only ever holds serious/critical),
+          // but the row type says `string` and the next reader will trust it. Normalised here,
+          // once, rather than guarded wherever it is read.
+          impact: v.impact ?? 'unknown',
           variant,
           nodes: v.nodes.length,
           targets: v.nodes.slice(0, 4).map((n) => n.target.join(' ')),

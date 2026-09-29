@@ -20,7 +20,7 @@
  * broken environment from a failing check, and flattening everything to 1 erases that.
  */
 
-import { requireNuxeoCredentials } from '../env.mjs';
+import { hasAdministrationAccess, requireNuxeoCredentials } from '../env.mjs';
 
 /**
  * @param {string} tool   the diagnostic's name, so the message says who could not measure
@@ -84,18 +84,41 @@ export async function launchChromium(chromium, tool) {
  */
 export async function requireBackend(page, baseUrl, tool) {
   const url = `${baseUrl}/nuxeo/api/v1/me`;
-  let status;
+  let res;
   try {
-    status = (await page.request.get(url, { failOnStatusCode: false })).status();
+    res = await page.request.get(url, { failOnStatusCode: false });
   } catch (err) {
     const first = (err instanceof Error ? err.message : String(err)).split('\n')[0];
     return cannotMeasure(tool, `${url} is not reachable: ${first}`, 'npx nx serve nuxeo-ui');
   }
-  if (status !== 200) {
+  if (res.status() !== 200) {
+    return cannotMeasure(
+      tool,
+      `${url} returned ${res.status()}. An empty screen scans clean and proves nothing.`,
+      'Check both the dev server and the Nuxeo container are up.',
+    );
+  }
+  // Returned so a caller that visits an admin-only route can check the identity with
+  // `requireAdministrationAccess` without a second request.
+  return res.json().catch(() => null);
+}
+
+/**
+ * Exit 2 if this identity cannot reach `/#/administration` and the diagnostic is about to
+ * measure it. Without this the route redirects to the dashboard, and the diagnostic measures
+ * the dashboard under the administration label.
+ *
+ * @param {unknown} me        the body `requireBackend` returned
+ * @param {string}  username
+ * @param {string}  tool
+ */
+export function requireAdministrationAccess(me, username, tool) {
+  if (!hasAdministrationAccess(me, username)) {
     cannotMeasure(
       tool,
-      `${url} returned ${status}. An empty screen scans clean and proves nothing.`,
-      'Check both the dev server and the Nuxeo container are up.',
+      `${username} has no administration access, and /#/administration is one of the routes ` +
+        'measured here — adminGuard would redirect it to the dashboard.',
+      'Use an administrator or powerusers account.',
     );
   }
 }

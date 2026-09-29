@@ -477,11 +477,55 @@ test.describe('accessibility: display modes report', () => {
           '    no preference, none under prefers-reduced-motion: reduce.',
         );
       } else {
-        lines.push(
-          `    VERDICT: reduced motion is NOT honoured — ${reducedT.length} finite animation(s)`,
-          `    still ran under the preference (longest ${Math.max(...reducedT.map((a) => a.durationMs))}ms),`,
-          `    against ${controlT.length} with no preference.`,
-        );
+        // A finite animation surviving under `reduce` is not, by itself, evidence the
+        // preference was ignored: an implementation may shorten or simplify an animation
+        // rather than remove it. This branch used to say NOT honoured on the mere presence of
+        // one. Flagged in review on PR #225.
+        //
+        // So each reduced animation is paired with a control animation on the same target and
+        // kind. Only an animation that ran UNCHANGED — same duration and iterations — proves
+        // the preference was ignored. Shortened ones are reported as such, and anything
+        // without a counterpart cannot be judged either way.
+        const counterpart = (a: ObservedAnimation) =>
+          controlT.find((c) => c.target === a.target && c.kind === a.kind);
+        const unchanged = reducedT.filter((a) => {
+          const c = counterpart(a);
+          return c !== undefined && a.durationMs >= c.durationMs && a.iterations === c.iterations;
+        });
+        const shortened = reducedT.filter((a) => {
+          const c = counterpart(a);
+          return c !== undefined && a.durationMs < c.durationMs;
+        });
+        // Everything else: no counterpart at all, or a counterpart that differs in some way
+        // other than being shorter (a changed iteration count, say). Neither can be judged,
+        // and letting them fall through to the "reduced" branch would drop them from the
+        // report while claiming every animation had been accounted for.
+        const unpaired = reducedT.filter((a) => !unchanged.includes(a) && !shortened.includes(a));
+
+        if (unchanged.length > 0) {
+          lines.push(
+            `    VERDICT: reduced motion is NOT honoured — ${unchanged.length} animation(s) ran`,
+            '    unchanged under the preference, matched to the control by target and kind:',
+            ...unchanged.map((a) => `      ${a.durationMs}ms  ${a.kind}  ${a.target}`),
+          );
+        } else if (unpaired.length > 0) {
+          lines.push(
+            `    INCONCLUSIVE: ${unpaired.length} finite animation(s) ran under the preference with no`,
+            '    comparable animation in the control (none on the same target and kind, or one',
+            '    that differs other than by being shorter), so they cannot be judged either way.',
+            ...unpaired.map((a) => `      ${a.durationMs}ms  ${a.kind}  ${a.target}`),
+          );
+        } else {
+          lines.push(
+            `    REDUCED, NOT REMOVED — all ${shortened.length} finite animation(s) under the preference`,
+            '    are shorter versions of control animations. That is a legitimate reduction; whether',
+            '    it is enough is a judgement about the motion, not something this probe measures:',
+            ...shortened.map((a) => {
+              const c = counterpart(a);
+              return `      ${c?.durationMs ?? '?'}ms -> ${a.durationMs}ms  ${a.kind}  ${a.target}`;
+            }),
+          );
+        }
       }
     }
     lines.push(

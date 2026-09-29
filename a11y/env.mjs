@@ -71,3 +71,34 @@ export function nuxeoBasicAuthHeader() {
   const { username, password } = requireNuxeoCredentials();
   return `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
 }
+
+/**
+ * Would the app let this identity into `/#/administration`?
+ *
+ * Every suite and diagnostic that scans the seven surfaces visits that route, and `adminGuard`
+ * redirects anyone without administration access to the dashboard. The preflight used to
+ * accept any account that could read one document, so a valid ordinary account got "the stack
+ * is ready" followed by a guaranteed failure on that route — or, in a diagnostic, a dashboard
+ * measured under the administration label. Flagged in review on PR #225.
+ *
+ * Mirrors `AuthService.hasAdministrationAccess` in `apps/nuxeo-ui/src/app/auth/auth.service.ts`
+ * and `isPowerUserFromGroups` in `libs/shared/nuxeo-client/src/lib/auth/user-groups.util.ts`,
+ * which a `.mjs` script cannot import. If either changes, change this with it.
+ *
+ * @param {unknown} me        the body of `GET /nuxeo/api/v1/me`
+ * @param {string}  username  the identity the scan runs as
+ */
+export function hasAdministrationAccess(me, username) {
+  /** Nuxeo returns this flag as a boolean, a string or 1 depending on version. */
+  const truthy = (/** @type {unknown} */ v) => v === true || v === 'true' || v === 1;
+  const o = me && typeof me === 'object' ? /** @type {Record<string, any>} */ (me) : {};
+  const props = o['properties'] && typeof o['properties'] === 'object' ? o['properties'] : {};
+  const groups = Array.isArray(props['groups']) ? props['groups'] : [];
+
+  const isAdministrator =
+    truthy(o['isAdministrator']) ||
+    truthy(props['isAdministrator']) ||
+    username.trim().toLowerCase() === 'administrator';
+  const isPowerUser = groups.some((g) => typeof g === 'string' && g.trim().toLowerCase() === 'powerusers');
+  return isAdministrator || isPowerUser;
+}

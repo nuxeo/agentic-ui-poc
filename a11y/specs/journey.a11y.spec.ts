@@ -171,21 +171,33 @@ async function waitForNavTreeSettled(page: Page, required: boolean): Promise<voi
   ).toHaveCount(0);
 
   // Absence of spinners is not the same as "finished": a node can arrive between two
-  // renders with no spinner of its own. Require the node count to repeat before scanning.
+  // renders with no spinner of its own. Require the node count to hold still for a quiet
+  // window before scanning.
+  //
+  // This used to accept the first repeated count, which proves only that nothing arrived
+  // during one 300ms gap — a slower child landing just after would still be missed, and the
+  // scan would take the partial tree this helper exists to prevent. The app exposes no
+  // "tree loaded" signal to wait on instead, so the window is the evidence: the count must be
+  // unchanged across TREE_QUIET_MS of polling. Flagged in review on PR #225.
+  const TREE_QUIET_MS = 1500;
   let previous = -1;
+  let stableSince = 0;
   await expect
     .poll(
       async () => {
         const current = await page.locator('.tree-node').count();
-        const stable = current === previous;
-        previous = current;
-        return stable;
+        if (current !== previous) {
+          previous = current;
+          stableSince = Date.now();
+          return false;
+        }
+        return Date.now() - stableSince >= TREE_QUIET_MS;
       },
       {
         message:
-          'the folder tree never stopped growing, so any scan of it is a snapshot of ' +
-          'a partial tree',
-        intervals: [300, 300, 300, 500, 500, 1000],
+          `the folder tree never held still for ${TREE_QUIET_MS}ms, so any scan of it is a ` +
+          'snapshot of a partial tree',
+        intervals: [250],
         timeout: 20_000,
       },
     )

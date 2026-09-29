@@ -37,7 +37,12 @@
 
 import { nuxeoBasicAuthHeader, resolveBaseUrl } from '../env.mjs';
 import { surfaceUnusableReason } from '../surface.mjs';
-import { credentialsOrExit, gotoOrExit, launchChromium } from './preconditions.mjs';
+import {
+  credentialsOrExit,
+  gotoOrExit,
+  launchChromium,
+  requireAdministrationAccess,
+} from './preconditions.mjs';
 
 const REFLOW_WIDTH = 320;
 const REFLOW_HEIGHT = 256;
@@ -55,10 +60,14 @@ const { username: user, password: pass } = credentialsOrExit('reflow-probe');
  * Refuse to measure a backend that is not answering.
  *
  * `run.mjs` skips the shared preflight for the diagnostics, on the grounds that a 20-second
- * answer should not wait on a document query. That reasoning holds for the other two, which
- * assert something about the page they load — but this one measures *geometry*, and an error
- * panel has perfectly good geometry. A route whose data failed to load would be measured as a
- * clean layout and reported as `fits`. Flagged in review on PR #225.
+ * answer should not wait on a document query, so each diagnostic checks the backend itself.
+ * It matters most here: this one measures *geometry*, and an error panel has perfectly good
+ * geometry. A route whose data failed to load would be measured as a clean layout and
+ * reported as `fits`. Flagged in review on PR #225.
+ *
+ * Also checks the identity can reach `/#/administration`, one of the seven routes. Without
+ * that, adminGuard redirects to the dashboard and its geometry is reported under the
+ * administration label.
  *
  * Cheap enough to always run: one request, and it is the difference between measuring the app
  * and measuring its error state.
@@ -78,6 +87,7 @@ async function requireBackend() {
       );
       process.exit(2);
     }
+    requireAdministrationAccess(await res.json().catch(() => null), user, 'reflow-probe');
   } catch (error) {
     console.error(
       `reflow-probe: could not reach Nuxeo through ${baseUrl}: ` +

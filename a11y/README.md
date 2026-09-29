@@ -76,6 +76,11 @@ scans as the wrong identity and the report never says so. Both the Playwright co
 Node tooling throw when either is unset, so a run fails at load rather than silently
 mis-authenticating.
 
+**The account needs administration access** — an administrator or a `powerusers` member — for
+`surfaces`, `modes` and the three diagnostics, because all of them visit `/#/administration`
+and `adminGuard` redirects anyone else to the dashboard. `journey` and `states` do not go
+there and run with any account. Each command that needs it checks it and exits 2 if not.
+
 `npm run a11y:scan -- preflight` checks all of it and changes nothing.
 
 Because everything is `--no-save`, **`package-lock.json` is untouched by this folder** — there

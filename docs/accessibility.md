@@ -401,7 +401,9 @@ reasoning is kept because the _mechanism_ is general: any element whose loading 
 `aria-label` that its settled state drops will be under-reported by a scan arriving too early.)
 
 `waitForNavTreeSettled()` therefore waits for the root loader to clear, for zero per-node
-spinners, and for the node count to repeat before scanning. It is a correctness fix, not a flake
+spinners, and for the node count to hold still for 1.5 seconds before scanning. (It first
+accepted a single repeated count, which proves only that nothing arrived during one 300ms gap;
+a slower child landing just after would still have been missed.) It is a correctness fix, not a flake
 suppression: waiting to make a number stable is worth nothing if the stable number is the wrong
 one, and here the unstable number was the optimistic one.
 

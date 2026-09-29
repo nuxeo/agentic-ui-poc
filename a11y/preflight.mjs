@@ -16,9 +16,21 @@
  * fix the environment, do not iterate on the code.
  */
 
-import { nuxeoBasicAuthHeader, resolveBaseUrl } from './env.mjs';
+import {
+  hasAdministrationAccess,
+  nuxeoBasicAuthHeader,
+  requireNuxeoCredentials,
+  resolveBaseUrl,
+} from './env.mjs';
 
 const BASE = resolveBaseUrl();
+
+/**
+ * Set by `run.mjs` for the suites that scan `/#/administration`. The others (journey,
+ * interaction states) never go there, and refusing them for an identity that could run them
+ * perfectly well would be a false precondition failure.
+ */
+const NEEDS_ADMIN = process.argv.includes('--needs-admin');
 
 const problems = [];
 const ok = [];
@@ -149,6 +161,44 @@ if (appStatus !== null && auth) {
   } catch (error) {
     problems.push(
       `Could not query Nuxeo through the proxy: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+/**
+ * 3b. The identity can reach `/#/administration`, when the suite being guarded scans it.
+ *
+ * Checked against `/me` rather than assumed from the username, because a powerusers member
+ * who is not `Administrator` is allowed in, and an `Administrator`-named account on a server
+ * that says otherwise is still let in by the app's own rule — `hasAdministrationAccess`
+ * mirrors that rule exactly, including the username fallback.
+ */
+if (appStatus !== null && auth) {
+  try {
+    const res = await fetch(new URL('/nuxeo/api/v1/me', BASE), {
+      headers: { Authorization: auth },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.status === 200) {
+      const { username } = requireNuxeoCredentials();
+      const allowed = hasAdministrationAccess(await res.json(), username);
+      if (allowed) {
+        ok.push(`${username} has administration access, so /#/administration will render`);
+      } else if (NEEDS_ADMIN) {
+        problems.push(
+          `${username} is neither an administrator nor in powerusers, and this suite scans\n` +
+            '  /#/administration. adminGuard would redirect it to the dashboard, so that surface\n' +
+            '  would fail — or worse, be measured as the dashboard. Use an account with\n' +
+            '  administration access, or run a suite that does not visit it (journey, states).',
+        );
+      } else {
+        ok.push(`${username} has no administration access — fine for this suite, which does not visit it`);
+      }
+    }
+    // Any other status is already reported by the document query above.
+  } catch (error) {
+    problems.push(
+      `Could not read /nuxeo/api/v1/me through the proxy: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }

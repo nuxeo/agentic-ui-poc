@@ -32,7 +32,13 @@
  * (a precondition failed, or any route could not be loaded and none rendered nothing).
  */
 import { resolveBaseUrl } from '../env.mjs';
-import { credentialsOrExit, gotoOrExit, launchChromium, requireBackend } from './preconditions.mjs';
+import {
+  credentialsOrExit,
+  gotoOrExit,
+  launchChromium,
+  requireAdministrationAccess,
+  requireBackend,
+} from './preconditions.mjs';
 
 const baseUrl = resolveBaseUrl();
 // Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
@@ -87,7 +93,8 @@ const page = await context.newPage();
 const results = [];
 
 try {
-  await requireBackend(page, baseUrl, 'route-render-check');
+  const me = await requireBackend(page, baseUrl, 'route-render-check');
+  requireAdministrationAccess(me, user, 'route-render-check');
   await gotoOrExit(page, baseUrl, 'route-render-check');
   await page.waitForTimeout(800);
   await page.evaluate(

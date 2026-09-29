@@ -33,6 +33,8 @@ const COMMANDS = {
   surfaces: {
     describe: 'Seven routes in their default loaded state (~27 min)',
     preflight: true,
+    // Scans /#/administration, so the identity must be allowed past adminGuard.
+    needsAdmin: true,
     argv: ['playwright', 'test', '-c', CONFIG, '--project=surfaces'],
   },
   states: {
@@ -43,6 +45,7 @@ const COMMANDS = {
   modes: {
     describe: 'Dark theme, forced colors and reduced motion (~20 min)',
     preflight: true,
+    needsAdmin: true,
     argv: ['playwright', 'test', '-c', CONFIG, '--project=display-modes'],
   },
   journey: {
@@ -169,7 +172,7 @@ if (!SKIP_DRIFT.has(command)) {
 }
 
 if (entry.preflight) {
-  const pre = run(['node', 'a11y/preflight.mjs']);
+  const pre = run(['node', 'a11y/preflight.mjs', ...(entry.needsAdmin ? ['--needs-admin'] : [])]);
   // 2 is "precondition not met" — propagate it rather than flattening to 1, so a caller can
   // tell a broken environment from a failing scan.
   if (pre.status !== 0) process.exit(pre.status ?? 2);
