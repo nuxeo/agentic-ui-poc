@@ -9,8 +9,7 @@ import { vi } from 'vitest';
 import {
   DocumentDetailService,
   NuxeoAce,
-  PERMISSION_NOTIFICATION_MAIL_HINT,
-  permissionUpdateMailFailureMessage,
+  PERMISSION_NOTIFICATION_MAIL_HINT_KEY,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { UpdatePermissionDialogComponent } from './update-permission-dialog';
@@ -77,7 +76,7 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
   });
 
   it('exposes SMTP mail hint constant', () => {
-    expect(fixture.componentInstance.mailHint).toBe(PERMISSION_NOTIFICATION_MAIL_HINT);
+    expect(fixture.componentInstance.mailHintKey).toBe(PERMISSION_NOTIFICATION_MAIL_HINT_KEY);
   });
 
   it('updates local permission via replacePermissionWithNotification', () => {
@@ -105,14 +104,14 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
       of({
         document: { uid: 'doc-1' },
         notificationSent: false,
-        notificationError: 'Permission was updated, but the notification email could not be sent.',
+        notificationErrorKey: 'permissions.notification.mail-send-failed-update',
       }),
     );
 
     fixture.componentInstance.update();
 
     expect(snackBarOpenSpy).toHaveBeenCalledWith(
-      expect.stringContaining('notification email could not be sent'),
+      'Permission was updated, but the notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
       'Dismiss',
       { duration: 7000 },
     );
@@ -127,9 +126,13 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
 
     fixture.componentInstance.update();
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(permissionUpdateMailFailureMessage(), 'Dismiss', {
-      duration: 7000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Permission could not be updated. Configure outbound mail (SMTP) on the Nuxeo server.',
+      'Dismiss',
+      {
+        duration: 7000,
+      },
+    );
     expect(closeSpy).not.toHaveBeenCalled();
   });
 });

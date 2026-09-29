@@ -57,7 +57,9 @@ export class ProfilePageComponent {
   private readonly changePasswordButton =
     viewChild.required<ElementRef<HTMLButtonElement>>('changePasswordButton');
 
-  readonly username = computed(() => this.auth.username() ?? 'Unknown user');
+  readonly username = computed(
+    () => this.auth.username() ?? this.translate.instant('settings.profile.unknown-user'),
+  );
   readonly email = signal('—');
   readonly company = signal('—');
   readonly groups = signal<Array<{ identifier: string; label: string }>>([]);

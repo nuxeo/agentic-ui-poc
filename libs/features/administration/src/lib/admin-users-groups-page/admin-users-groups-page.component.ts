@@ -111,8 +111,14 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   });
 
   readonly selectedTabIndex = signal(0);
-  readonly usersTabLabel = computed(() => `Users (${this.usersTotal()})`);
-  readonly groupsTabLabel = computed(() => `Groups (${this.groupsTotal()})`);
+  readonly usersTabLabel = computed(() =>
+    this.translate.instant('admin.admin-users-groups-page.users-tab', { count: this.usersTotal() }),
+  );
+  readonly groupsTabLabel = computed(() =>
+    this.translate.instant('admin.admin-users-groups-page.groups-tab', {
+      count: this.groupsTotal(),
+    }),
+  );
   private readonly tabGroup = viewChild<MatTabGroup>('ugTabGroup');
 
   ngOnInit(): void {
@@ -541,16 +547,16 @@ export class AdminUsersGroupsPageComponent implements OnInit {
 
   usersEmptyMessage(): string {
     if (this.combinedSearchQuery.trim() && this.users().length === 0 && this.groupsTotal() > 0) {
-      return 'No users match this search. Matching groups are on the Groups tab.';
+      return this.translate.instant('admin.admin-users-groups-page.no-users-match-see-groups');
     }
-    return 'No users match this search.';
+    return this.translate.instant('admin.admin-users-groups-page.no-users-match');
   }
 
   groupsEmptyMessage(): string {
     if (this.combinedSearchQuery.trim() && this.groups().length === 0 && this.usersTotal() > 0) {
-      return 'No groups match this search. Matching users are on the Users tab.';
+      return this.translate.instant('admin.admin-users-groups-page.no-groups-match-see-users');
     }
-    return 'No groups match this search.';
+    return this.translate.instant('admin.admin-users-groups-page.no-groups-match');
   }
 
   /** Switch tabs after a combined search based on which result set has matches. */

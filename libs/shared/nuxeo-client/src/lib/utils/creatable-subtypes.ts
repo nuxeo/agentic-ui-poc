@@ -8,8 +8,8 @@ export const DOMAIN_STRUCTURAL_ROOT_TYPES = new Set([
   'TemplateRoot',
 ]);
 
-export const DOMAIN_CONTAINER_GUIDANCE =
-  'Open Sections, Templates, or Workspaces, then create content inside those folders.';
+/** Catalogue key for the notice telling the user where content can be created under a domain. */
+export const DOMAIN_CONTAINER_GUIDANCE_KEY = 'browse.message.domain-container-guidance';
 
 export function isDomainParentType(parentType: string | null | undefined): boolean {
   return parentType === 'Domain';

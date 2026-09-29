@@ -82,7 +82,7 @@ export class KdCitationDialogComponent implements OnDestroy {
   readonly headerLabel = computed(() => {
     const reference = this.activeReference();
     if (!reference) {
-      return 'Reference document';
+      return this.translate.instant('kd.kd-citation-dialog.reference-document');
     }
     return reference.title || this.documentTitle() || reference.objectId;
   });
@@ -129,7 +129,10 @@ export class KdCitationDialogComponent implements OnDestroy {
   }
 
   formatExcerpt(content?: string): string {
-    return formatReferenceExcerpt(content) || 'No excerpt was returned for this reference.';
+    return (
+      formatReferenceExcerpt(content) ||
+      this.translate.instant('kd.kd-citation-dialog.no-excerpt-returned')
+    );
   }
 
   close(): void {

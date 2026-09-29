@@ -25,12 +25,18 @@ interface ContextApiResultsEnvelope {
 /**
  * Error thrown when the Nuxeo KE automation op or the upstream Context API
  * fails. `details` carries the parsed error body when available.
+ *
+ * `messageKey` is set when `message` is this client's own generic wording rather than text from
+ * the server: a caller that shows the error resolves the key (with `messageParams`) so the user
+ * reads it in their language. A server-supplied message has no key and is shown as it came.
  */
 export class KeEnrichmentError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
     public readonly details?: unknown,
+    public readonly messageKey?: string,
+    public readonly messageParams?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'KeEnrichmentError';
@@ -151,13 +157,25 @@ export class KeClientService {
     }
 
     if (maybeEnvelope.responseCode < 200 || maybeEnvelope.responseCode >= 300) {
-      const message =
-        maybeEnvelope.responseCode === 403
-          ? 'Knowledge Enrichment credentials are not authorized for the Context API.'
-          : maybeEnvelope.responseMessage ||
-            `Knowledge Enrichment returned HTTP ${maybeEnvelope.responseCode}.`;
-
-      throw new KeEnrichmentError(message, maybeEnvelope.responseCode, maybeEnvelope.response);
+      const code = maybeEnvelope.responseCode;
+      if (code === 403) {
+        throw new KeEnrichmentError(
+          'Knowledge Enrichment credentials are not authorized for the Context API.',
+          code,
+          maybeEnvelope.response,
+          'ke-client.message.not-authorized',
+        );
+      }
+      if (maybeEnvelope.responseMessage) {
+        throw new KeEnrichmentError(maybeEnvelope.responseMessage, code, maybeEnvelope.response);
+      }
+      throw new KeEnrichmentError(
+        `Knowledge Enrichment returned HTTP ${code}.`,
+        code,
+        maybeEnvelope.response,
+        'ke-client.message.http-status',
+        { code },
+      );
     }
 
     return maybeEnvelope.response;
@@ -282,18 +300,21 @@ export class KeClientService {
             'Knowledge Enrichment request failed unexpectedly.',
             undefined,
             error,
+            'ke-client.message.failed-unexpectedly',
           ),
       );
     }
 
     const detail = this.extractErrorDetail(error.error);
-    return throwError(
-      () =>
-        new KeEnrichmentError(
-          detail || error.message || 'Knowledge Enrichment request failed.',
-          error.status,
-          error.error,
-        ),
+    return throwError(() =>
+      detail || error.message
+        ? new KeEnrichmentError(detail || error.message, error.status, error.error)
+        : new KeEnrichmentError(
+            'Knowledge Enrichment request failed.',
+            error.status,
+            error.error,
+            'ke-client.message.failed',
+          ),
     );
   }
 

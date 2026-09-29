@@ -59,6 +59,54 @@ That instrument has been wrong twice, both times under-reporting:
 - The prose test required letters only, so anything with a number was skipped in
   silence: the five size buckets, every date range, `2 result(s)`.
 
+## Slice 10 and slice 12 — 29 September 2026
+
+Plan slices 10 and 12 of [`docs/i18n-full-extraction-plan.md`](i18n-full-extraction-plan.md), in
+one pull request for NXSAT-284.
+
+**Messages built in TypeScript are in the catalogue.** 146 new keys, each with translator context:
+toasts, error and status messages, dialog titles, Knowledge Enrichment and Knowledge Discovery
+progress and error text, Content Lake messages, sign-in errors. The English is byte-identical
+to the literal it replaced, with one deliberate exception below. Messages thrown by a service and
+shown by a page are translated where the page shows them — `SignInError`, `KdDiscoveryError`'s own
+fields, `KeEnrichmentError.messageKey`, `PermissionWithNotificationResult.notificationErrorKey` —
+except `ContentLakeIngestService`, whose stalled-ingest message is composed from status fields only
+it holds, so it resolves the text itself.
+
+**Plurals stay two keys, no ICU compiler.** The tasks due-date label (`tasks.due-label.*`) is the
+one new plural pair set chosen by `count === 1`. Several count-bearing messages use one form in
+English (`… ({{ count }} failed)`, `Users ({{ count }})`); their context says so, because
+languages that inflect those words will need plural rules. The French zero defect described under
+_Pluralisation_ below applies to the new pair too.
+
+**The guardrails that let these through are closed.** `checkNoHardcodedImperativeUiText` read a
+toast's argument only when a literal came first, so `toast(wasLocked ? 'Document unlocked' :
+'Document locked')` passed; it now reads the whole argument by counting parentheses, and also
+follows a `SCREAMING_CASE` constant holding prose (`DOMAIN_CONTAINER_GUIDANCE` was passed by name in
+five places). `checkNoHardcodedDialogText` catches the same two shapes inside dialog data. Run
+against untouched `origin/main`, the new checks report 23 and 4 violations where the old ones
+reported none.
+
+**`checkNoHardcodedDescriptorText` is repo-wide.** On `origin/main` it reported 28 descriptors the
+diff-scoped version had never looked at: the note editor's 24 toolbar labels (test metadata; now
+`labelKey`s pointing at the keys the template already used) and the four packaged theme names (now
+`labelKey: 'settings.themes.name.<id>'`, rendered through `descriptorLabel`). A customer who sets a
+theme's `label` in `bootstrap.json` without a `labelKey` gets their label as written; a customer
+theme may carry its own `labelKey`.
+
+**Four smaller fixes.** Document types render through `docTypeLabel` (16 bindings), which falls
+back to the type's own name, camel case split, for a custom type — never a raw `doc-type.*` key.
+`<html lang>` follows the active language. The date picker's labels come from the catalogue. And
+22 English values carrying a template line break plus indentation are single-spaced — the only
+English text this change alters, and invisible in HTML text, which collapses whitespace anyway.
+
+**Deliberately left hard-coded**, each for a stated reason: CSV export header rows (a file format
+downstream tools key on); `Manage everything` / `Can collect` in the share-saved-search dialogs,
+which double as data values mapped back to API rights; `versionLabel: 'Current'`, which is also the
+publish dialog's form value; adf-hx port errors, which are diagnostics returned to the upstream
+library; product names (`Nuxeo Drive`, the Layer 0 branding defaults); and `apps/nuxeo-satori-template`
+(slice 11).
+
 ## Locale-aware date formatting — closed 2026-09-22
 
 Eleven call sites formatted dates with a hardcoded `'en-US'` or a bare `toLocaleDateString()`
@@ -186,13 +234,13 @@ the file before acting on it.
 
 ### What the remaining findings are
 
-| Count | What                                                                    | Action                                                   |
-| ----: | ----------------------------------------------------------------------- | -------------------------------------------------------- |
-|     9 | `Skip to main content`, hard-coded inside satori-ui's compiled template | Upstream finding 1.4 — no host-side fix exists           |
-|     4 | Theme names — Nuxeo, Dark, Kawaii, Light                                | Layer 0 customer data, correctly a literal               |
-|     1 | `Open calendar`                                                         | Angular Material's own i18n mechanism                    |
-|   4–6 | Repository content — document titles, type names, AI severities         | Instance data; translating it would corrupt user content |
-|   3–6 | Generated AI insight sentences                                          | Written by the server                                    |
+| Count | What                                                                    | Action                                                    |
+| ----: | ----------------------------------------------------------------------- | --------------------------------------------------------- |
+|     9 | `Skip to main content`, hard-coded inside satori-ui's compiled template | Upstream finding 1.4 — no host-side fix exists            |
+|     4 | Theme names — Nuxeo, Dark, Kawaii, Light                                | **Keyed 29 Sep 2026** — `labelKey` on the packaged themes |
+|     1 | `Open calendar`                                                         | **Fixed 29 Sep 2026** — `TranslatedDatepickerIntl`        |
+|   4–6 | Repository content — document titles, type names, AI severities         | Instance data; translating it would corrupt user content  |
+|   3–6 | Generated AI insight sentences                                          | Written by the server                                     |
 
 **Nothing here is actionable from this repository.** Every one is upstream, written by the server,
 or customer data.
@@ -360,7 +408,7 @@ descriptor definition, because the descriptor is Layer 1 data rather than markup
 
 **`checkNoHardcodedUiText` is structurally blind to them.** It reads added lines in `.html` and
 sees `{{ item.label }}`, which is exactly the shape it asks for. `checkNoHardcodedDescriptorText`
-now covers the gap, diff-scoped, over `label`, `placeholder`, `ariaLabel` and `tooltip`. `title`
+now covers the gap, repo-wide since 29 Sep 2026, over `label`, `placeholder`, `ariaLabel` and `tooltip`. `title`
 and `description` are deliberately excluded — they name Nuxeo document properties and schema
 documentation as often as UI chrome, and a check that argues with the reviewer gets disabled.
 
@@ -458,12 +506,12 @@ failed fetch named that control with the raw key. Its catalogue value was also l
 
 ### Four gates, and the first controls any guardrail here has had
 
-| Guardrail                      | Enforces                                                                                        | Scope    |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
-| `checkNoHardcodedUiText`       | a newly added hard-coded user-facing string                                                     | **diff** |
-| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, no key `en.json` lacks (missing keys warn — D8d) | repo     |
-| `checkTranslationContext`      | translator context exists for every string and for no deleted one                               | repo     |
-| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch                                 | repo     |
+| Guardrail                      | Enforces                                                                                        | Scope |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | ----- |
+| `checkNoHardcodedUiText`       | a hard-coded user-facing string in any template                                                 | repo  |
+| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, no key `en.json` lacks (missing keys warn — D8d) | repo  |
+| `checkTranslationContext`      | translator context exists for every string and for no deleted one                               | repo  |
+| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch                                 | repo  |
 
 Plus `checkAngularDevAssets` extended to compare the `ignore` list, which it did not before — an
 entry excluding a file in the base array and not in `development` read as identical while the two

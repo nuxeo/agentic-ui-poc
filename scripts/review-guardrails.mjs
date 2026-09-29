@@ -1008,23 +1008,17 @@ function checkNoAdfHxInPublicApi() {
 }
 
 /**
- * A newly added hard-coded user-facing string in a template.
+ * A hard-coded user-facing string in any template.
  *
- * The extraction this guards is deliberately unfinished — NXSAT-284 carries roughly 750
- * hard-coded text nodes and 400 literal `aria-label`/`title` attributes across thirteen
- * projects. Without a gate, that backlog grows faster than it shrinks, which is what the ticket
- * means by "the extraction regresses within weeks".
+ * ## Repo-wide, over every template in `apps/` and `libs/`
  *
- * ## Diff-scoped, and that is a decision rather than an oversight
- *
- * `checkThemeTokens` is diff-scoped; `checkBlobUrlLifecycle` was deliberately converted to
- * repo-wide, because diff-scoping permanently exempts every pre-existing violation and four real
- * leaks hid behind exactly that. Both precedents are in this file and they point opposite ways.
- *
- * This one is diff-scoped **because repo-wide would be red on arrival in thirteen projects**, and
- * a gate that cannot be made green is a gate someone switches off. NXSAT-284/B6 flips it to
- * repo-wide over the core slice once the extraction is done. Until then the honest description is:
- * this stops the backlog growing, it does not measure it.
+ * It started diff-scoped, because the application then held roughly 1,150 hard-coded strings
+ * across thirteen projects and a repo-wide check would have been red on arrival. Diff scope has
+ * a cost this file already records for `checkBlobUrlLifecycle`: every pre-existing violation is
+ * exempt forever, and a string that moves between files in a refactor reads as unchanged. Once
+ * the extraction was done it went repo-wide (slice 12 of `docs/i18n-full-extraction-plan.md`),
+ * so it now measures the tree rather than only stopping new additions. The exemptions are listed
+ * in `EXEMPT` below, each with its reason.
  *
  * ## The heuristic, and why it is narrow
  *
@@ -1484,7 +1478,7 @@ function checkNoHardcodedUiText() {
 }
 
 /**
- * A newly added hard-coded user-facing string in a **descriptor**, not a template.
+ * A hard-coded user-facing string in a **descriptor**, not a template.
  *
  * ## The category the template guardrail structurally cannot see
  *
@@ -1504,7 +1498,10 @@ function checkNoHardcodedUiText() {
  *
  * ## Scope and the properties chosen
  *
- * Diff-scoped, for the same reason as the template check: repo-wide would be red on arrival.
+ * Repo-wide, like the template check, with the same three exemptions. It was diff-scoped while
+ * the backlog was large; going repo-wide surfaced 28 descriptors that predated it — the note
+ * editor's toolbar labels and the four packaged theme names — which diff scope had certified by
+ * never looking at them.
  *
  * `label`, `placeholder`, `ariaLabel` and `tooltip` only. These are unambiguously UI chrome in
  * every use in this repository. `title` and `description` are deliberately **excluded** despite
@@ -1535,9 +1532,28 @@ function checkNoHardcodedDescriptorText() {
   // in docs/i18n-status.md rather than papered over with a gate that cannot hold.
   const DESCRIPTOR_TEXT = /\b(label|placeholder|ariaLabel|tooltip)\s*:\s*'([A-Z][^']*)'/g;
 
-  for (const [file, lines] of addedLinesByFile) {
-    if (!/^(libs|apps)\/.+\.ts$/.test(file)) continue;
-    if (/\.spec\.ts$/.test(file)) continue;
+  // Same exemptions as the template sweep, for the same reasons: the starter template is deferred
+  // by decision, the sample extension's strings are a customer's, and `libs/core` renders nowhere.
+  const EXEMPT = [
+    /^apps\/nuxeo-satori-template\//,
+    /^libs\/extensions\/acme-extensions\//,
+    /^libs\/core\//,
+  ];
+
+  const sources = [
+    ...walk('apps', (path) => /\.ts$/.test(path)),
+    ...walk('libs', (path) => /\.ts$/.test(path)),
+  ].filter((path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)));
+
+  if (sources.length === 0) {
+    fail('No TypeScript sources were found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+
+  for (const file of sources) {
+    const lines = read(file)
+      .split('\n')
+      .map((text, index) => ({ line: index + 1, text }));
 
     // A `label` paired with a `labelKey` is the **fixed** shape, not a violation. The key is
     // what renders and the literal is the fallback, which is the whole point of the two-field
@@ -1555,7 +1571,7 @@ function checkNoHardcodedDescriptorText() {
     // its match. Braces inside string literals are not tracked — a brace in a descriptor's text
     // would mis-scope this, which is a smaller and louder failure than borrowing a key, and no
     // descriptor in the repository has one.
-    const source = fileExists(file) ? read(file) : '';
+    const source = read(file);
     const lineStarts = [0];
     for (let at = source.indexOf('\n'); at !== -1; at = source.indexOf('\n', at + 1)) {
       lineStarts.push(at + 1);
@@ -1608,7 +1624,7 @@ function checkNoHardcodedDescriptorText() {
         if ((value.match(/[A-Za-z]/g) ?? []).length < 2) continue;
         if (pairedWithKey(line, property)) continue;
         fail(
-          `${file}:${line} introduces \`${property}: '${value}'\` — a user-facing string in a ` +
+          `${file}:${line} carries \`${property}: '${value}'\` — a user-facing string in a ` +
             'descriptor.\n' +
             '    Templates are not the only place these live, and the translate pipe cannot ' +
             'reach a descriptor. Put a key here and apply the pipe where it renders:\n' +
@@ -3257,7 +3273,10 @@ function stepWithBlock(stepText) {
   let offset = 0;
   for (let at = 0; at < lines.length; at += 1) {
     const isWith = new RegExp(`^[^\\S\\n]{${keyIndent}}['"]?with['"]?:[^\\S\\n]*(?:#.*)?$`).test(
-      lines[at].replace(/^([^\S\n]*)-([^\S\n]+)/, (_, lead, gap) => lead + ' '.repeat(gap.length + 1)),
+      lines[at].replace(
+        /^([^\S\n]*)-([^\S\n]+)/,
+        (_, lead, gap) => lead + ' '.repeat(gap.length + 1),
+      ),
     );
     if (isWith) {
       // Blank AND comment-only lines carry no structure, exactly as in `workflowSteps`. A comment
@@ -3615,8 +3634,9 @@ function checkCrowdinConfig() {
     fail(
       `${workflows[1]} contains no \`uses: crowdin/github-action\` step with ` +
         `\`download_translations: true\`${
-          crowdinSteps.length ? ` (it has ${crowdinSteps.length} Crowdin step(s), none of them ` +
-            'downloading)' : ''
+          crowdinSteps.length
+            ? ` (it has ${crowdinSteps.length} Crowdin step(s), none of them ` + 'downloading)'
+            : ''
         }, so the signing assertion examined nothing. It cannot download translations in this ` +
         'state.',
     );
@@ -3844,7 +3864,7 @@ function checkCrowdinConfig() {
         `${workflow} has a step whose \`uses:\` value is an escaped double-quoted scalar.\n` +
           '    YAML resolves `"crowdin\\u002fgithub-action@v2"` to the Crowdin action; this ' +
           'guardrail compares raw text and would see a different string, so the step would not ' +
-          'be recognised as Crowdin\'s and every Crowdin-scoped rule would skip it.\n' +
+          "be recognised as Crowdin's and every Crowdin-scoped rule would skip it.\n" +
           '    Write the reference plainly. Nothing in these workflows is double-quoted.',
       );
     }
@@ -4363,14 +4383,47 @@ function checkNoHardcodedDialogText() {
     return;
   }
 
+  const constants = proseStringConstants(sources);
+
   for (const file of sources) {
     const text = read(file);
     if (!/DialogData\b|\bdata:\s*\{/.test(text)) continue;
     const spans = dialogRegions(text);
     if (spans.length === 0) continue;
 
+    const inDialog = (index) => spans.some(([open, close]) => open <= index && index <= close);
+
+    // The same fields set through a ternary or a named constant, which `FIELD` cannot see because
+    // it needs the literal straight after the colon: `title: isFolder ? 'Delete folder' : 'Delete
+    // document'` and `message: DOMAIN_CONTAINER_GUIDANCE` are both hard-coded English.
+    for (const match of text.matchAll(
+      /\b(title|message|confirmLabel|cancelLabel|confirmText|cancelText)\s*:\s*([^,\n{}]*?\?[^,\n{}]*)/g,
+    )) {
+      if (!inDialog(match.index)) continue;
+      const branch = /(?:\?|:)\s*(['"`])([A-Z][^'"`]*)\1/.exec(match[2]);
+      if (!branch) continue;
+      const line = text.slice(0, match.index).split('\n').length;
+      fail(
+        `${file}:${line} sets \`${match[1]}\` in a dialog's data from a ternary with the ` +
+          `hard-coded branch \`${branch[2]}\`.\n` +
+          "    Resolve each branch from the catalogue — `cond ? instant('x.a') : instant('x.b')` " +
+          "— or select the key and resolve once: `instant(cond ? 'x.a' : 'x.b')`.",
+      );
+    }
+    for (const match of text.matchAll(
+      /\b(title|message|confirmLabel|cancelLabel|confirmText|cancelText)\s*:\s*([A-Z][A-Z0-9_]*)\s*[,}\n]/g,
+    )) {
+      if (!inDialog(match.index) || !constants.has(match[2])) continue;
+      const line = text.slice(0, match.index).split('\n').length;
+      fail(
+        `${file}:${line} sets \`${match[1]}\` in a dialog's data to the constant \`${match[2]}\`, ` +
+          `which holds the hard-coded English \`${constants.get(match[2])}\`.\n` +
+          '    Make the constant a catalogue KEY and resolve it here with `translate.instant`.',
+      );
+    }
+
     for (const match of text.matchAll(FIELD)) {
-      if (!spans.some(([open, close]) => open <= match.index && match.index <= close)) continue;
+      if (!inDialog(match.index)) continue;
       const line = text.slice(0, match.index).split('\n').length;
       const literal = match[2];
       const interpolated = literal.startsWith('`') && literal.includes('${');
@@ -4528,9 +4581,20 @@ function checkNoHardcodedImperativeUiText() {
     // `[A-Z]` in the literal meaningless too, so the check started flagging the catalogue keys
     // it had just introduced. The name's capitalisation is spelled out in the class instead.
     /\.\s*(\w*(?:[Ee]rror|[Ss]tatus|[Mm]essage|[Nn]otice|[Ww]arning|[Ss]ummary|[Hh]int)\w*)\s*\.\s*set\((?:[^;]{0,200}?)(['"`])([A-Z][^'"`]{2,})\2/g,
-    // A toast helper.
-    /\btoast\(\s*(['"`])([A-Z][^'"`]{2,})\1/g,
   ];
+
+  /**
+   * Calls whose whole argument list reaches the screen, scanned by balanced parentheses rather
+   * than by a regex window.
+   *
+   * `toast(` was matched as `toast\(\s*'…'`, so the literal had to be the first thing in the call,
+   * and `toast(wasLocked ? 'Document unlocked' : 'Document locked')` — the most common shape in
+   * the lock, favourite and subscribe handlers — passed. A regex window cannot stop at the call's
+   * own closing parenthesis, so the argument is read by counting parentheses instead, skipping
+   * string contents so a `(` inside a message cannot unbalance it.
+   */
+  const CALL_SINKS =
+    /\b(?:toast|snackBar\s*\.\s*open|\w*(?:[Ee]rror|[Ss]tatus|[Mm]essage|[Nn]otice|[Ww]arning|[Ss]ummary|[Hh]int)\w*\s*\.\s*set)\s*\(/g;
 
   const EXEMPT = [
     /^apps\/nuxeo-satori-template\//,
@@ -4548,9 +4612,44 @@ function checkNoHardcodedImperativeUiText() {
     return;
   }
 
+  const constants = proseStringConstants(sources);
+  const reported = new Set();
+  const report = (file, line, literal, via) => {
+    const id = `${file}:${line}:${literal}`;
+    if (reported.has(id)) return;
+    reported.add(id);
+    fail(
+      `${file}:${line} passes the hard-coded string \`${literal}\`${via} to a user-facing sink — ` +
+        'text a user reads, built in TypeScript where no template pipe can reach it.\n' +
+        '    Add a key to the app catalogue and resolve it here:\n' +
+        "      this.snackBar.open(this.translate.instant('x.saved'), this.translate.instant('common.ok'))\n" +
+        '    A message assembled with `${…}` needs one parameterised key, not a lookup per ' +
+        'fragment: a translator handed the pieces cannot reorder them.',
+    );
+  };
+
   for (const file of sources) {
     const text = read(file);
     if (!/snackBar|\.set\(|toast\(/.test(text)) continue;
+
+    for (const call of text.matchAll(CALL_SINKS)) {
+      const open = call.index + call[0].length - 1;
+      const argument = balancedArgument(text, open);
+      const line = text.slice(0, call.index).split('\n').length;
+      // Each branch of a ternary, and a `??` / `||` fallback: a literal that follows `?`, `:`,
+      // `??` or `||`. A literal handed to a nested call — `instant('x.k')`, `captureError('Op')` —
+      // or compared against — `startsWith('Cannot sort by')` — follows `(` or `,`, so it is not.
+      for (const m of argument.matchAll(/(?:\?\??|:|\|\|)\s*(['"`])([A-Z][^'"`]{2,})\1/g)) {
+        report(file, line, m[2], '');
+      }
+      // A module constant holding prose, named rather than written inline.
+      for (const [name, value] of constants) {
+        if (new RegExp(`(?<![\\w.'"])${name}(?![\\w(])`).test(argument)) {
+          report(file, line, value, ` (through the constant \`${name}\`)`);
+        }
+      }
+    }
+
     for (const sink of SINKS) {
       for (const match of text.matchAll(sink)) {
         // The signal pattern captures the NAME first, so the literal is the last group either way.
@@ -4575,17 +4674,62 @@ function checkNoHardcodedImperativeUiText() {
         if (/[=!]==?\s*$/.test(argumentPrefix)) continue;
 
         const line = text.slice(0, match.index).split('\n').length;
-        fail(
-          `${file}:${line} passes the hard-coded string \`${literal}\` to a user-facing sink — ` +
-            'text a user reads, built in TypeScript where no template pipe can reach it.\n' +
-            '    Add a key to the app catalogue and resolve it here:\n' +
-            "      this.snackBar.open(this.translate.instant('x.saved'), this.translate.instant('common.ok'))\n" +
-            '    A message assembled with `${…}` needs one parameterised key, not a lookup per ' +
-            'fragment: a translator handed the pieces cannot reorder them.',
-        );
+        report(file, line, literal, '');
       }
     }
   }
+}
+
+/**
+ * The text between the `(` at `open` and its matching `)`, with quoted contents kept intact.
+ *
+ * Quotes are tracked so a parenthesis inside a message — `'Failed (retry later)'` — cannot end
+ * the argument early. A `${…}` inside a template literal is not tracked; no sink argument in this
+ * repository nests a call inside one, and the failure would be to stop early, not to over-read.
+ */
+function balancedArgument(text, open) {
+  let depth = 0;
+  let quote = null;
+  for (let at = open; at < text.length; at += 1) {
+    const ch = text[at];
+    if (quote) {
+      if (ch === '\\') at += 1;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') quote = ch;
+    else if (ch === '(') depth += 1;
+    else if (ch === ')') {
+      depth -= 1;
+      if (depth === 0) return text.slice(open + 1, at);
+    }
+  }
+  return text.slice(open + 1);
+}
+
+/**
+ * `const NAME = 'Some prose.'` declarations across the given sources, as `[name, value]` pairs.
+ *
+ * Prose means capitalised and at least two words — `'Open Sections, Templates, or Workspaces,
+ * then…'` — so a key (`'common.ok'`), an operation name (`'Document.Lock'`) or a single enum-ish
+ * word is not collected. This is what lets a sink check see `toast(CREATABLE_SUBTYPES_NOTICE)`:
+ * the literal was declared once in a shared library and passed by name in five places, and every
+ * gate that looked for a literal at the call site read all five as clean.
+ *
+ * SCREAMING_CASE names only. The lookup is repo-wide, and a local `const message = 'Saved.'` in
+ * one file would otherwise match every `message` identifier in every other file.
+ */
+function proseStringConstants(sources) {
+  const found = new Map();
+  for (const file of sources) {
+    const text = read(file);
+    for (const m of text.matchAll(
+      /\bconst\s+([A-Z][A-Z0-9_]*)\s*(?::\s*string\s*)?=\s*(['"])([A-Z][^'"\n]*\s[^'"\n]*)\2\s*;/g,
+    )) {
+      found.set(m[1], m[3]);
+    }
+  }
+  return found;
 }
 
 /**

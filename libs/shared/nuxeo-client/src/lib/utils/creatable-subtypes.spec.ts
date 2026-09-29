@@ -1,5 +1,4 @@
 import {
-  DOMAIN_CONTAINER_GUIDANCE,
   filterCreatableSubtypesForParent,
   isDomainParentType,
   resolveCreatableSubtypes,

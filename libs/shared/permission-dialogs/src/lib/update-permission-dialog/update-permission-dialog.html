@@ -64,7 +64,7 @@
   }
 
   @if (!isExternal && sendNotify) {
-    <p class="mail-hint">{{ mailHint }}</p>
+    <p class="mail-hint">{{ mailHintKey | translate }}</p>
   }
 
   @if (isExternal || sendNotify) {

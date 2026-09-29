@@ -16,7 +16,6 @@ import {
   DocumentDetailService,
   SelectionService,
   TagService,
-  mailSendFailureMessage,
   type NuxeoAce,
   type NuxeoAcl,
   type NuxeoDocument,
@@ -442,9 +441,13 @@ describe('BrowseComponent — permissions tab', () => {
 
     expect(component.actionInProgress()).toBeNull();
     expect(snackBar).toHaveBeenCalledWith('Failed to send notification', 'OK', { duration: 7000 });
-    expect(snackBar).not.toHaveBeenCalledWith(mailSendFailureMessage('send'), 'OK', {
-      duration: 7000,
-    });
+    expect(snackBar).not.toHaveBeenCalledWith(
+      'Notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
+      'OK',
+      {
+        duration: 7000,
+      },
+    );
   });
 
   // ── ACE presentation ──

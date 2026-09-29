@@ -591,6 +591,8 @@ describe('KeClientService', () => {
       );
       expect(error.status).toBe(403);
       expect(error.details).toEqual({ detail: 'client is not entitled' });
+      // The client's own wording carries a key, so the page showing it can translate it.
+      expect(error.messageKey).toBe('ke-client.message.not-authorized');
     });
 
     it('falls back to the status code when the envelope carries no message', async () => {
@@ -601,6 +603,8 @@ describe('KeClientService', () => {
       expect(error.message).toBe('Knowledge Enrichment returned HTTP 502.');
       expect(error.status).toBe(502);
       expect(error.details).toBeNull();
+      expect(error.messageKey).toBe('ke-client.message.http-status');
+      expect(error.messageParams).toEqual({ code: 502 });
     });
 
     it('reads `detail` out of a JSON error body on an HTTP failure', async () => {
@@ -714,6 +718,7 @@ describe('KeClientService when the failure is not an HTTP response', () => {
     );
 
     expect(error.message).toBe('Knowledge Enrichment request failed unexpectedly.');
+    expect(error.messageKey).toBe('ke-client.message.failed-unexpectedly');
     expect(error.status).toBeUndefined();
     expect(error.details).toBe(cause);
     // The interceptor short-circuited, so nothing ever reached the backend.

@@ -31,13 +31,17 @@ import {
   trustObjectUrl,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
-import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
+import {
+  DocumentViewerComponent,
+  provideTranslatedDatepickerIntl,
+} from '@nuxeo-satori/platform/ui';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-tasks-page',
   standalone: true,
+  providers: [provideTranslatedDatepickerIntl()],
   imports: [
     TranslatePipe,
     FormsModule,
@@ -933,10 +937,30 @@ export class TasksPageComponent implements OnInit {
     const absDiff = Math.abs(diff);
     const days = Math.floor(absDiff / 86_400_000);
     const hours = Math.floor(absDiff / 3_600_000);
-    let label: string;
-    if (days >= 1) label = days === 1 ? '1 day' : `${days} days`;
-    else label = hours <= 1 ? 'less than an hour' : `${hours} hours`;
-    return diff > 0 ? `Due in ${label}` : `${label} overdue`;
+    const due = diff > 0;
+    if (days >= 1) {
+      if (days === 1) {
+        return this.translate.instant(
+          due ? 'tasks.due-label.due-in-days-one' : 'tasks.due-label.overdue-days-one',
+          { count: days },
+        );
+      }
+      return this.translate.instant(
+        due ? 'tasks.due-label.due-in-days-many' : 'tasks.due-label.overdue-days-many',
+        { count: days },
+      );
+    }
+    if (hours <= 1) {
+      return this.translate.instant(
+        due
+          ? 'tasks.due-label.due-in-less-than-an-hour'
+          : 'tasks.due-label.overdue-less-than-an-hour',
+      );
+    }
+    return this.translate.instant(
+      due ? 'tasks.due-label.due-in-hours-many' : 'tasks.due-label.overdue-hours-many',
+      { count: hours },
+    );
   }
 
   docProp(key: string): unknown {

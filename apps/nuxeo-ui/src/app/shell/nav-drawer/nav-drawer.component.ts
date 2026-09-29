@@ -55,6 +55,7 @@ import {
   writeClipboardDocs,
   type ClipboardDoc,
   formatRelativeTime,
+  DocTypeLabelPipe,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { toAdfHxBrowseRouterUrl } from '@agentic-ui/shared/adf-hx-bridge';
 import { HxpBrowseNavDrawerComponent } from '@agentic-ui/shared/adf-hx-bridge/providers';
@@ -90,6 +91,7 @@ export interface FolderNode {
   selector: 'app-nav-drawer',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
     DescriptorLabelPipe,
     NgTemplateOutlet,
     DatePipe,
@@ -1129,12 +1131,28 @@ export class NavDrawerComponent {
     const absDiff = Math.abs(diff);
     const days = Math.floor(absDiff / 86_400_000);
     const hours = Math.floor(absDiff / 3_600_000);
-    let label: string;
-    if (days >= 1) label = days === 1 ? '1 day' : `${days} days`;
-    else label = hours <= 1 ? 'less than an hour' : `${hours} hours`;
-
-    if (diff > 0) return `in ${label}`;
-    return `by ${label}`;
+    const due = diff > 0;
+    if (days >= 1) {
+      if (days === 1) {
+        return this.translate.instant(
+          due ? 'shell.task-due.in-days-one' : 'shell.task-due.by-days-one',
+          { count: days },
+        );
+      }
+      return this.translate.instant(
+        due ? 'shell.task-due.in-days-many' : 'shell.task-due.by-days-many',
+        { count: days },
+      );
+    }
+    if (hours <= 1) {
+      return this.translate.instant(
+        due ? 'shell.task-due.in-less-than-an-hour' : 'shell.task-due.by-less-than-an-hour',
+      );
+    }
+    return this.translate.instant(
+      due ? 'shell.task-due.in-hours-many' : 'shell.task-due.by-hours-many',
+      { count: hours },
+    );
   }
 
   /** Workflow as a single sentence-style line (e.g. "Parallel document review"). */

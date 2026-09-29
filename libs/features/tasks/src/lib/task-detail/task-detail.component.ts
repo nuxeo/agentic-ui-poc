@@ -27,10 +27,12 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
 
 @Component({
   selector: 'lib-task-detail',
   standalone: true,
+  providers: [provideTranslatedDatepickerIntl()],
   imports: [
     TranslatePipe,
     DatePipe,

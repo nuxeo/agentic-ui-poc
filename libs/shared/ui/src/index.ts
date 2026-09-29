@@ -54,3 +54,7 @@ export {
   observeStripRedundantMatInputAriaRequired,
   stripRedundantMatInputAriaRequired,
 } from './lib/login-mat-input-required-a11y';
+export {
+  TranslatedDatepickerIntl,
+  provideTranslatedDatepickerIntl,
+} from './lib/datepicker-intl/translated-datepicker-intl';

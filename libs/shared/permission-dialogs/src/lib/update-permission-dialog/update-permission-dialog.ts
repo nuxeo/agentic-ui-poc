@@ -18,11 +18,12 @@ import { switchMap } from 'rxjs';
 import {
   DocumentDetailService,
   NuxeoAce,
-  PERMISSION_NOTIFICATION_MAIL_HINT,
+  PERMISSION_NOTIFICATION_MAIL_HINT_KEY,
   isMailSendError,
   permissionUpdateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
 
 export interface UpdatePermissionDialogData {
   documentUid: string;
@@ -55,7 +56,7 @@ const PERMISSION_OPTIONS = [
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideNativeDateAdapter(), provideTranslatedDatepickerIntl()],
   templateUrl: './update-permission-dialog.html',
   styles: [
     `
@@ -138,7 +139,7 @@ export class UpdatePermissionDialogComponent {
 
   readonly saving = signal(false);
   readonly permissionOptions = PERMISSION_OPTIONS;
-  readonly mailHint = PERMISSION_NOTIFICATION_MAIL_HINT;
+  readonly mailHintKey = PERMISSION_NOTIFICATION_MAIL_HINT_KEY;
   readonly isExternal: boolean;
 
   permission: string;
@@ -186,7 +187,7 @@ export class UpdatePermissionDialogComponent {
       .subscribe({
         next: (result) => {
           this.saving.set(false);
-          const message = this.successMessage(result.notificationSent, result.notificationError);
+          const message = this.successMessage(result.notificationSent, result.notificationErrorKey);
           if (message) {
             this.snackBar.open(message, this.translate.instant('common.dismiss'), {
               duration: 7000,
@@ -231,7 +232,7 @@ export class UpdatePermissionDialogComponent {
       .subscribe({
         next: (result) => {
           this.saving.set(false);
-          const message = this.successMessage(result.notificationSent, result.notificationError);
+          const message = this.successMessage(result.notificationSent, result.notificationErrorKey);
           if (message) {
             this.snackBar.open(message, this.translate.instant('common.dismiss'), {
               duration: 7000,
@@ -250,25 +251,29 @@ export class UpdatePermissionDialogComponent {
       });
   }
 
-  private successMessage(notificationSent: boolean, notificationError?: string): string | null {
-    if (notificationError) {
-      return notificationError;
+  private successMessage(notificationSent: boolean, notificationErrorKey?: string): string | null {
+    if (notificationErrorKey) {
+      return this.translate.instant(notificationErrorKey);
     }
     if (this.sendNotify && notificationSent) {
-      return 'Permission updated and notification sent';
+      return this.translate.instant(
+        'permission-dialogs.message.permission-updated-notification-sent',
+      );
     }
     if (this.isExternal && notificationSent) {
-      return 'Permission updated and notification sent';
+      return this.translate.instant(
+        'permission-dialogs.message.permission-updated-notification-sent',
+      );
     }
     return null;
   }
 
   private permissionErrorMessage(err: unknown): string {
     if (isMailSendError(err)) {
-      return permissionUpdateMailFailureMessage();
+      return permissionUpdateMailFailureMessage((key) => this.translate.instant(key));
     }
     const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
-    return raw || 'Could not update permission';
+    return raw || this.translate.instant('permission-dialogs.message.could-not-update-permission');
   }
 
   private formatDate(d: Date): string {

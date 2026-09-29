@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { Observable, catchError, forkJoin, map, of, switchMap, throwError, timer } from 'rxjs';
 
 import type {
@@ -33,6 +34,9 @@ export const CONTENT_LAKE_INGEST_POLL_MAX_ATTEMPTS = 60;
 export class ContentLakeIngestService {
   private readonly api = inject(NuxeoApiBase);
   private readonly browseService = inject(BrowseService);
+  // Its error messages reach the screen through `err.message` in two components, and the stalled
+  // one is composed from status fields only this service holds, so they are resolved here.
+  private readonly translate = inject(TranslateService);
 
   startIngest(documentUids: string[]): Observable<ContentLakeIngestCommand> {
     if (documentUids.length === 0) {
@@ -50,7 +54,7 @@ export class ContentLakeIngestService {
           this.throwIfAutomationException(body);
           const commandId = this.readCommandId(body);
           if (!commandId) {
-            throw new Error('Bulk ingest did not return a command id.');
+            throw new Error(this.translate.instant('shared.content-lake.no-command-id'));
           }
           return { commandId };
         }),
@@ -288,7 +292,7 @@ export class ContentLakeIngestService {
     const message =
       typeof record['message'] === 'string' && record['message'].trim().length > 0
         ? record['message'].trim()
-        : 'Bulk ingest request failed.';
+        : this.translate.instant('shared.content-lake.bulk-ingest-failed');
     throw new Error(message);
   }
 
@@ -339,11 +343,17 @@ export class ContentLakeIngestService {
   }
 
   private buildStalledIngestMessage(status: ContentLakeIngestStatus): string {
-    const total = status.total === undefined ? 'unknown' : status.total;
-    return (
-      `Content Lake ingest command ${status.commandId} did not finish. ` +
-      `Last Nuxeo bulk state was ${status.state} (${status.processed}/${total} processed). ` +
-      'Check the Nuxeo HxAI connector logs and ingest credentials, then retry.'
+    const params = {
+      commandId: status.commandId,
+      state: status.state,
+      processed: status.processed,
+      total: status.total,
+    };
+    return this.translate.instant(
+      status.total === undefined
+        ? 'shared.content-lake.ingest-stalled-unknown-total'
+        : 'shared.content-lake.ingest-stalled',
+      params,
     );
   }
 

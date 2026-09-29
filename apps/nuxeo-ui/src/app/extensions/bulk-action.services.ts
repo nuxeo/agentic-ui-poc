@@ -73,7 +73,10 @@ export class BulkDeleteActionService implements ExtensionActionHandler {
             error: (err) => {
               console.error('Failed to delete selected documents', err);
               this.snackBar.open(
-                deleteErrorMessage(err),
+                deleteErrorMessage(
+                  err,
+                  this.translate.instant('app.message.failed-to-delete-selected-documents'),
+                ),
                 this.translate.instant('common.dismiss'),
                 { duration: 5000 },
               );
@@ -294,7 +297,7 @@ export class BulkCompareActionService implements ExtensionActionHandler {
 }
 
 /** The API's message when it has one, so the user sees why the delete failed. */
-function deleteErrorMessage(err: unknown): string {
+function deleteErrorMessage(err: unknown, fallback: string): string {
   if (typeof err === 'string' && err.trim().length > 0) return err;
 
   const maybeObj = err as { error?: { message?: string }; message?: string } | null;
@@ -304,5 +307,5 @@ function deleteErrorMessage(err: unknown): string {
   const defaultMessage = maybeObj?.message;
   if (typeof defaultMessage === 'string' && defaultMessage.trim().length > 0) return defaultMessage;
 
-  return 'Failed to delete selected documents. Please try again.';
+  return fallback;
 }
