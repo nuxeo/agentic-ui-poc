@@ -108,6 +108,21 @@ publish dialog's form value; adf-hx port errors, which are diagnostics returned 
 library; product names (`Nuxeo Drive`, the Layer 0 branding defaults); and `apps/nuxeo-satori-template`
 (slice 11).
 
+## Translator notes — 29 September 2026
+
+AC3 asks that every string carry context with product names flagged do-not-translate and acronyms
+expanded. Every key already had a note; 1,275 of 2,135 are still the generated kind ("Visible text
+in X"), and are deliberately left that way. Per decision D3, the hand-written set is the strings
+that need judgement. 242 notes were written or rewritten: strings naming a product (Nuxeo, Content
+Lake, Knowledge Discovery, Knowledge Enrichment, Hyland, HxAI, OAuth, Context API), strings with an
+acronym (AI, CSV, NXQL, HTTP, JSON, HTML, URL, XML, ID and others), and 128 single words that read
+as a noun or a verb ("Share", "Edit", "Comment", "Type", "State", "Modified", "Due", "Lock"), each
+stating which one it is in that place.
+
+`checkTranslatorNotesFlagProductsAndAcronyms` keeps the first two from regressing: a string
+containing a listed product name needs "do not translate" in its note, and one containing a listed
+acronym needs the expansion. Both lists sit together at the top of that check.
+
 ## Locale-aware date formatting — closed 2026-09-22
 
 Eleven call sites formatted dates with a hardcoded `'en-US'` or a bare `toLocaleDateString()`
@@ -821,6 +836,15 @@ fails any source that is not.
   loader path, and a gate asserting every key a library references is in a catalogue that library
   ships. That is an architectural change and belongs in its own pull request — this page already
   required per-library catalogues, so the requirement is not new, only unmet.
+
+  **Partly closed, 29 Sep 2026: English travels with the package.** `PLATFORM_EN_TRANSLATIONS` in
+  `@nuxeo-satori/platform/ui` is the English for the 299 keys the package's entry points reference,
+  generated from `en.json` by `tools/i18n/platform-english.mjs`. A host opts in with
+  `providePlatformEnglishFallback()`, a missing-translation handler that answers only keys its own
+  catalogues lack and can hand anything else to the host's existing handler. `nuxeo-ui` does not opt
+  in, so its behaviour is unchanged. `checkPlatformEnglishFallback` fails when the copy differs
+  from `en.json`, lacks a key the package references, or keeps one it no longer does. Translations
+  into other languages, through a package catalogue of its own in Crowdin, remain open as NXSAT-296.
 
 - **Dialog text — 48 strings, now keyed and gated.** `title`, `message` and `confirmLabel` on
   `ConfirmDialogData` and the `data:` of a `MatDialog.open(...)` were English literals across 13

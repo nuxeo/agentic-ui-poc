@@ -2,15 +2,15 @@
 
 **Status: approved 19 Sep 2026. In progress.**
 
-| Decision                     | Answer                                                                                                                                 |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| D1 locale completeness       | **A** — English complete; `fr`/`de` partial with English fallback; parity **warns** on missing keys, still **fails** on extra ones.    |
-| D2 catalogue layout          | **A** — single app catalogue, per-feature namespaces; `libs/platform` gets its own when it needs one.                                  |
-| D3 translator context        | **A** — codemod generates what it can derive; ambiguous strings hand-written; the split is reported, not averaged.                     |
-| D4 inline templates          | **Yes** — extracted to `.html` first, as slice 0.                                                                                      |
-| D5 imperative `.ts` strings  | **Done 29 Sep 2026 (slice 10, NXSAT-284).** 160 new keys; plurals as `-one`/`-many` pairs, no ICU compiler. See `docs/i18n-status.md`. |
-| D6 delivery                  | One PR per project.                                                                                                                    |
-| `apps/nuxeo-satori-template` | **Deferred.** 105 strings. Slice 11, unstarted.                                                                                        |
+| Decision                     | Answer                                                                                                                                                                                              |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1 locale completeness       | **A** — English complete; `fr`/`de` partial with English fallback; parity **warns** on missing keys, still **fails** on extra ones.                                                                 |
+| D2 catalogue layout          | **A** — single app catalogue, per-feature namespaces; `libs/platform` gets its own when it needs one.                                                                                               |
+| D3 translator context        | **A** — codemod generates what it can derive; ambiguous strings hand-written; the split is reported, not averaged. Hand-written set done 29 Sep 2026, and product-name and acronym notes are gated. |
+| D4 inline templates          | **Yes** — extracted to `.html` first, as slice 0.                                                                                                                                                   |
+| D5 imperative `.ts` strings  | **Done 29 Sep 2026 (slice 10, NXSAT-284).** 160 new keys; plurals as `-one`/`-many` pairs, no ICU compiler. See `docs/i18n-status.md`.                                                              |
+| D6 delivery                  | One PR per project.                                                                                                                                                                                 |
+| `apps/nuxeo-satori-template` | **Deferred.** 105 strings. Slice 11, unstarted.                                                                                                                                                     |
 
 **Known incompleteness, as of 29 Sep 2026:** slices 10 and 12 are done — the imperative strings
 are in the catalogue, and `checkNoHardcodedUiText` and `checkNoHardcodedDescriptorText` are both

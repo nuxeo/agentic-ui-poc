@@ -2151,6 +2151,178 @@ function checkTranslationContext() {
 }
 
 /**
+ * Product names and acronyms in the English, and what their translator notes must then say.
+ *
+ * AC3 of NXSAT-284 asks that product names be flagged do-not-translate and acronyms expanded.
+ * `checkTranslationContext` guarantees a note exists; it cannot tell "Visible text in browse" from a
+ * note a translator can use. These two lists are the judgement calls a note must carry, kept short
+ * and explicit on purpose: a name that is not here is not checked, and adding one is a one-line
+ * change reviewed with the notes it forces.
+ *
+ * Matching is by whole word and case-sensitive, so `AI` matches "AI Insights" and not "Said", and
+ * `Nuxeo` also covers "Nuxeo Drive".
+ */
+const DO_NOT_TRANSLATE_PRODUCTS = [
+  'Nuxeo',
+  'Knowledge Discovery',
+  'Knowledge Enrichment',
+  'Content Lake',
+  'Hyland',
+  'HxAI',
+  'ARender',
+  'Context API',
+  'OAuth',
+];
+const DO_NOT_TRANSLATE_MARKER = /do not translate/i;
+const ACRONYM_EXPANSIONS = {
+  AI: 'artificial intelligence',
+  API: 'application programming interface',
+  CIC: 'Content Innovation Cloud',
+  CSV: 'comma-separated values',
+  EXIF: 'Exchangeable Image File Format',
+  HTML: 'HyperText Markup Language',
+  HTTP: 'Hypertext Transfer Protocol',
+  ID: 'identifier',
+  IPTC: 'International Press Telecommunications Council',
+  JSON: 'JavaScript Object Notation',
+  NXQL: 'Nuxeo Query Language',
+  PDF: 'Portable Document Format',
+  REST: 'Representational State Transfer',
+  SMTP: 'Simple Mail Transfer Protocol',
+  UI: 'user interface',
+  URL: 'Uniform Resource Locator',
+  XML: 'Extensible Markup Language',
+};
+
+function checkTranslatorNotesFlagProductsAndAcronyms() {
+  const isReference = (path) => /(^|\/)i18n\/en\.json$/.test(path);
+  const references = [...walk('apps', isReference), ...walk('libs', isReference)].filter(
+    (path) => !/^apps\/nuxeo-satori-template\//.test(path),
+  );
+  if (references.length === 0) {
+    fail('No en.json was found under apps/ or libs/, so this gate asserted nothing.');
+    return;
+  }
+  const word = (term) => new RegExp(`(?<![\\w-])${escapeRegExp(term)}(?![\\w-])`);
+  let checked = 0;
+  for (const reference of references) {
+    const contextFile = reference.replace(/en\.json$/, 'en.context.json');
+    if (!fileExists(contextFile)) continue; // checkTranslationContext reports the missing file.
+    let english;
+    let notes;
+    try {
+      english = JSON.parse(read(reference));
+      notes = JSON.parse(read(contextFile));
+    } catch {
+      continue; // checkTranslationCatalogues reports malformed JSON.
+    }
+    const entries = [];
+    const collect = (node, prefix) => {
+      for (const [key, value] of Object.entries(node)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (value && typeof value === 'object') collect(value, path);
+        else if (typeof value === 'string') entries.push([path, value]);
+      }
+    };
+    collect(english, '');
+    for (const [key, value] of entries) {
+      const note = typeof notes[key] === 'string' ? notes[key] : '';
+      if (!note) continue; // checkTranslationContext reports a missing note.
+      const products = DO_NOT_TRANSLATE_PRODUCTS.filter((name) => word(name).test(value));
+      if (products.length) {
+        checked += 1;
+        if (!DO_NOT_TRANSLATE_MARKER.test(note)) {
+          fail(
+            `${contextFile}: the note for \`${key}\` ("${value}") does not flag ` +
+              `${products.map((name) => `"${name}"`).join(', ')} as do-not-translate.\n` +
+              '    Say what the product is and add "(product name, do not translate)" — the phrase ' +
+              '"do not translate" is what this check looks for.',
+          );
+        }
+      }
+      const missing = Object.entries(ACRONYM_EXPANSIONS).filter(
+        ([acronym, expansion]) =>
+          word(acronym).test(value) && !note.toLowerCase().includes(expansion.toLowerCase()),
+      );
+      if (missing.length) {
+        fail(
+          `${contextFile}: the note for \`${key}\` ("${value}") does not expand ` +
+            `${missing.map(([acronym, expansion]) => `${acronym} (${expansion})`).join(', ')}.\n` +
+            '    Write the expansion into the note, for example "CSV = comma-separated values", so a ' +
+            'translator knows what the letters stand for and whether to keep them.',
+        );
+      }
+      if (Object.keys(ACRONYM_EXPANSIONS).some((acronym) => word(acronym).test(value)))
+        checked += 1;
+    }
+  }
+  if (checked === 0) {
+    fail(
+      'No catalogue string contains a listed product name or acronym, so this gate asserted nothing.',
+    );
+  }
+}
+
+/**
+ * The English `@nuxeo-satori/platform` ships must be the application's English, for exactly the
+ * keys the package uses.
+ *
+ * The package's entry points reference ~300 keys that live only in `apps/nuxeo-ui/public/i18n/en.json`,
+ * which does not travel with it. `PLATFORM_EN_TRANSLATIONS` is the copy that does, served by the
+ * opt-in `providePlatformEnglishFallback()`. A copy is only worth having while it is the same
+ * English: a key reworded in the catalogue and not here would show a host the old wording, and a key
+ * the package starts using without a copy would show a host the raw key again. So this fails on a
+ * value that differs from `en.json`, a key the package references that the copy lacks, and a key the
+ * copy carries that nothing references any more. The fix is always to regenerate.
+ */
+async function checkPlatformEnglishFallback() {
+  const tool = await import(new URL('../tools/i18n/platform-english.mjs', import.meta.url).href);
+  if (!fileExists(tool.APP_CATALOGUE)) return; // checkTranslationCatalogues owns a missing catalogue.
+  if (tool.platformSourceDirs(repoRoot).length === 0) return; // no platform package in this tree.
+  const regenerate = '    Regenerate it: `node tools/i18n/platform-english.mjs`.';
+  const shipped = tool.readPlatformEnglish(repoRoot);
+  if (!shipped) {
+    fail(`${tool.PLATFORM_EN_FILE} is missing or unreadable.\n${regenerate}`);
+    return;
+  }
+  let catalogue;
+  let expected;
+  try {
+    catalogue = tool.flatCatalogue(repoRoot);
+    expected = tool.expectedPlatformEnglish(repoRoot);
+  } catch {
+    return; // checkTranslationCatalogues reports malformed JSON.
+  }
+  const missing = Object.keys(expected).filter((key) => !(key in shipped));
+  const extra = Object.keys(shipped).filter((key) => !(key in expected));
+  const drifted = Object.keys(shipped).filter(
+    (key) => key in catalogue && shipped[key] !== catalogue[key],
+  );
+  const sample = (keys) => keys.slice(0, 5).join(', ') + (keys.length > 5 ? ', …' : '');
+  if (missing.length) {
+    fail(
+      `${tool.PLATFORM_EN_FILE} has no English for ${missing.length} key(s) the package uses: ` +
+        `${sample(missing)}.\n    A host without the app catalogue would see these as raw keys.\n${regenerate}`,
+    );
+  }
+  if (drifted.length) {
+    fail(
+      `${tool.PLATFORM_EN_FILE} differs from ${tool.APP_CATALOGUE} for ${drifted.length} key(s): ` +
+        `${drifted
+          .slice(0, 5)
+          .map((key) => `${key} ("${shipped[key]}" vs "${catalogue[key]}")`)
+          .join(', ')}.\n${regenerate}`,
+    );
+  }
+  if (extra.length) {
+    fail(
+      `${tool.PLATFORM_EN_FILE} carries ${extra.length} key(s) the package no longer uses: ` +
+        `${sample(extra)}.\n${regenerate}`,
+    );
+  }
+}
+
+/**
  * The translator-context push can actually reach every context file in the repository.
  *
  * `tools/i18n/crowdin-push-context.mjs` used to name one context file, the app's, while
@@ -4979,6 +5151,8 @@ const GUARDRAILS = [
   checkCrowdinConfig,
   checkPackagedConfigIsNotADemo,
   checkTranslationContext,
+  checkTranslatorNotesFlagProductsAndAcronyms,
+  checkPlatformEnglishFallback,
   checkTranslatorContextPush,
   checkNoProseInComponentInputs,
   checkNoTemplateSyntaxInDocumentShell,
