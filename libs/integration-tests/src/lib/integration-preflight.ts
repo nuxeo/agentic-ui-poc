@@ -97,6 +97,18 @@ export function parseAllowedHosts(raw: string | undefined): string[] {
     .filter((entry) => entry.length > 0);
 }
 
+/** Node fetch rejects jsdom's `AbortSignal.timeout` products under Vitest's jsdom environment. */
+function timeoutSignal(ms: number): AbortSignal {
+  const controller = new AbortController();
+  const handle = setTimeout(() => {
+    controller.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+  }, ms);
+  if (typeof handle === 'object' && handle !== null && 'unref' in handle) {
+    handle.unref();
+  }
+  return controller.signal;
+}
+
 /**
  * The target's `host` and `hostname`, lower-cased, or a thrown explanation.
  *
@@ -402,7 +414,7 @@ export async function runPreflightChecks(
     const auth = `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
     const res = await fetch(`${nuxeoUrl}/nuxeo/api/v1/repo/default/path/`, {
       headers: { Authorization: auth },
-      signal: AbortSignal.timeout(10000),
+      signal: timeoutSignal(10000),
     });
 
     if (res.status === 200) {
@@ -440,7 +452,7 @@ export async function runPreflightChecks(
 
       const res = await fetch(url, {
         headers: { Authorization: auth, 'X-NXproperties': '*' },
-        signal: AbortSignal.timeout(15000),
+        signal: timeoutSignal(15000),
       });
 
       if (res.status === 200) {
