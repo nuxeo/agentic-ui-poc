@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, type Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   MissingTranslationHandler,
@@ -22,7 +22,7 @@ class HostHandler implements MissingTranslationHandler {
 }
 
 /** A host application with its own, partial catalogue — none of the app's `en.json`. */
-function host(extraProviders: unknown[] = []): TranslateService {
+function host(extraProviders: Provider[] = []): TranslateService {
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     imports: [
@@ -32,7 +32,7 @@ function host(extraProviders: unknown[] = []): TranslateService {
         fallbackLang: 'fr',
       }),
     ],
-    providers: extraProviders as never[],
+    providers: extraProviders,
   });
   const translate = TestBed.inject(TranslateService);
   translate.setTranslation('fr', { 'shared-ui': { 'confirm-dialog': { cancel: 'Annuler' } } });

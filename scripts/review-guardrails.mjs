@@ -2203,7 +2203,8 @@ function checkTranslatorNotesFlagProductsAndAcronyms() {
     fail('No en.json was found under apps/ or libs/, so this gate asserted nothing.');
     return;
   }
-  const word = (term) => new RegExp(`(?<![\\w-])${escapeRegExp(term)}(?![\\w-])`);
+  // A hyphen is a delimiter: "AI-powered" and "non-JSON" contain the acronym.
+  const word = (term) => new RegExp(`(?<!\\w)${escapeRegExp(term)}(?!\\w)`);
   let checked = 0;
   for (const reference of references) {
     const contextFile = reference.replace(/en\.json$/, 'en.context.json');

@@ -3999,6 +3999,17 @@ expectRed(
 // The fixture also holds "Said so" with a generic note. Matching is whole-word and case-sensitive,
 // so it does not count as containing the acronym AI and must not be flagged.
 falsePositiveControls += 1;
+expectRed(
+  'a hyphenated acronym whose note does not expand it',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "Run AI-powered analysis"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': '{\n  "a": "Button on the audit page."\n}\n',
+  },
+  null,
+  /the note for `a` \("Run AI-powered analysis"\) does not expand AI \(artificial intelligence\)/,
+);
+
 expectGreen(
   'notes that flag the product and expand the acronym, beside a look-alike word',
   'checkTranslatorNotesFlagProductsAndAcronyms',

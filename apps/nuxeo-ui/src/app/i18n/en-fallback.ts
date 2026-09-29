@@ -94,6 +94,8 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'app.login-page.hyland': 'Hyland',
   'app.login-page.log-in': 'Log in',
   'login.skip-link': 'Skip to sign in',
+  // The repository root's name in the navigation tree, also the `name` in its toggle's accessible name.
+  'nav.tree.root': 'Root',
   'admin.admin-users-groups-page.show-more-members-one': 'Show {{ count }} more member',
   'admin.admin-users-groups-page.show-more-members-many': 'Show {{ count }} more members',
   // Sign-in failures: the login page is the screen most likely to be up when the catalogue fetch
