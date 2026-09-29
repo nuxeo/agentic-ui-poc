@@ -1,4 +1,4 @@
-import { expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
+import { aiFindingsNote, expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
 
 /**
  * WCAG 2.1 AA scan of the authenticated surfaces, through `@a11y-scout/playwright`.
@@ -113,7 +113,8 @@ test.describe('accessibility: authenticated surfaces', () => {
         '',
         `  pages scanned : ${state.meta.pagesScanned.length}`,
         `  findings      : ${state.findings.length}`,
-        `  LLM provider  : ${state.meta.llmProvider}${state.meta.llmMockMode ? ' (MOCK — AI content-quality checks were skipped)' : ''}`,
+        `  LLM provider  : ${state.meta.llmProvider}${state.meta.llmMockMode ? ' (MOCK)' : ''}`,
+        `  ai findings   : ${aiFindingsNote(state)}`,
         `  LLM cost      : $${state.cost.totalUsd.toFixed(4)}`,
         `  report        : ${reportPaths.html}`,
         '',

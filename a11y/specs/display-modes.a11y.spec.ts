@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
+import { aiFindingsNote, expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
 
 /**
  * WCAG scan of the three **display modes** the application has never been rendered in by any
@@ -315,7 +315,11 @@ test.describe('accessibility: motion', () => {
 
     test('route change animates normally', async ({ signedIn: page }) => {
       await page.goto('/#/browse', { waitUntil: 'networkidle' });
-      await expect(page.locator('lib-browse')).toBeVisible();
+      // Same standard as every other scan here: a failed load renders lib-browse with an
+      // error panel inside it, and an error panel animates exactly as little as a working
+      // page does � so a bare host check would let the control "observe no animations" for
+      // the wrong reason and make the reduced-motion result uninterpretable in silence.
+      await expectSurfaceUsable(page, 'lib-browse', 'browse (motion control)');
       const sample = await measureRouteChangeMotion(page, '#/search');
       motion.push({ label: 'no-preference', sample });
 
@@ -333,7 +337,7 @@ test.describe('accessibility: motion', () => {
 
     test('route change respects the preference', async ({ signedIn: page }) => {
       await page.goto('/#/browse', { waitUntil: 'networkidle' });
-      await expect(page.locator('lib-browse')).toBeVisible();
+      await expectSurfaceUsable(page, 'lib-browse', 'browse (reduced motion)');
 
       const honoured = await page.evaluate(
         () => matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -359,7 +363,13 @@ test.describe('accessibility: display modes report', () => {
     const byMode = new Map<string, ModeResult[]>();
     for (const r of results) byMode.set(r.mode, [...(byMode.get(r.mode) ?? []), r]);
 
-    const lines: string[] = ['', '  findings by display mode', ''];
+    const lines: string[] = [
+      '',
+      `  ai findings : ${aiFindingsNote(state)}`,
+      '',
+      '  findings by display mode',
+      '',
+    ];
     for (const [mode, rows] of byMode) {
       const total = rows.reduce((n, r) => n + r.findings, 0);
       const blockers = rows.reduce((n, r) => n + r.blockers, 0);

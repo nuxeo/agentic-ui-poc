@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect, REPORT_DIR, test } from '../fixtures';
+import { aiFindingsNote, expect, REPORT_DIR, test } from '../fixtures';
 
 /**
  * WCAG 2.1 AA scan of **interaction states** — surfaces that exist only after a click.
@@ -281,7 +281,8 @@ test.describe('accessibility: interaction states', () => {
         rows,
         '',
         `  total findings : ${state.findings.length}`,
-        `  LLM provider   : ${state.meta.llmProvider}${state.meta.llmMockMode ? ' (MOCK — AI content-quality checks skipped)' : ''}`,
+        `  LLM provider   : ${state.meta.llmProvider}${state.meta.llmMockMode ? ' (MOCK)' : ''}`,
+        `  ai findings    : ${aiFindingsNote(state)}`,
         `  report         : ${reportPaths.html}`,
         '',
       ].join('\n'),

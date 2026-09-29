@@ -19,9 +19,14 @@ a11y/
   run.mjs              the only entry point; every suite and diagnostic is a subcommand
   preflight.mjs        refuses to scan a stack that is not there
   playwright.config.ts self-contained; does not extend the critical-path config
-  fixtures.ts          the a11y-scout test object plus installSession
+  fixtures.ts          the a11y-scout test object, installSession, expectSurfaceUsable,
+                       aiFindingsNote, REPORT_DIR
+  env.mjs              resolveBaseUrl + required Nuxeo credentials — one definition, shared
+                       by the config, the preflight and all three diagnostics
+  surface.mjs          the Node-side twin of expectSurfaceUsable, and the single list of
+                       this application's error-state classes
   package.json         "type": "module", because a11y-scout is ESM-only
-  tsconfig.json
+  tsconfig.json        allowJs + checkJs, so the .ts side can import those two .mjs modules
   specs/
     journey.screens.ts        single source for screen id -> project name, tag, report name
     surfaces.a11y.spec.ts     pages, default loaded state

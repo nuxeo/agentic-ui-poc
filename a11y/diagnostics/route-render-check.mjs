@@ -147,13 +147,18 @@ for (const r of results) {
   );
 }
 
-const dead = results.filter((r) => !r.hostPresent);
+// An absent host OR an empty main region. `textLen` was measured, printed as evidence and
+// then left out of the verdict, so a route whose host mounted around nothing still passed —
+// which is the same clean-result-that-means-nothing this file opens by describing. The
+// host-independent signal only earns its place if it can change the answer.
+const dead = results.filter((r) => !r.hostPresent || r.textLen === 0);
 if (dead.length > 0) {
   console.log(
     `\n--- ${dead.length} route(s) rendered nothing an accessibility scan could meaningfully check ---`,
   );
   for (const r of dead) {
-    console.log(`  ${r.route} — ${r.host} absent, main region holds ${r.textLen} characters`);
+    const why = !r.hostPresent ? `${r.host} absent` : `${r.host} rendered but the main region is empty`;
+    console.log(`  ${r.route} — ${why}, main region holds ${r.textLen} characters`);
   }
   console.log(
     '\nA scan of these routes returns clean because there is nothing on them, not because they are\n' +

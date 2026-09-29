@@ -1,6 +1,6 @@
 import type { A11yFixture, ScanPageOptions } from '@a11y-scout/playwright';
 import type { Page, TestInfo, TestType } from '@playwright/test';
-import { expect, REPORT_DIR, test } from '../fixtures';
+import { aiFindingsNote, expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
 import {
   JOURNEY_SCREENS,
   journeyReportName,
@@ -211,22 +211,6 @@ async function emitScreenReport(a11y: A11yFixture, reportName: string): Promise<
     .map((s) => `${s}=${findings.filter((f) => f.source === s).length}`)
     .join(' ');
 
-  /**
-   * Whether the AI content-quality checks actually produced anything.
-   *
-   * Printed on its own line because `provider: haip` is not evidence that they ran. Measured
-   * on 2026-09-22: the provider reported READY, the cost meter billed 15 calls, and every
-   * content-quality call returned 403 — `aiGenerated` stayed 0 on all four screens while the
-   * header read like a successful AI run. Zero here means eleven WCAG criteria (1.1.1, 1.3.3,
-   * 2.4.2, 2.4.4, 2.5.3, 3.3.1, 3.3.2 at A; 1.3.5, 2.4.6, 3.1.2, 3.3.3 at AA) were **not
-   * measured**, which is not the same as clean.
-   */
-  const aiCount = findings.filter((f) => f.aiGenerated).length;
-  const aiNote =
-    aiCount > 0
-      ? `${aiCount}`
-      : `0 — the 11 AI-judged criteria are UNMEASURED, not clean${state.meta.llmMockMode ? ' (mock mode)' : ' (provider selected but produced nothing; check stderr for LLM errors)'}`;
-
   // eslint-disable-next-line no-console
   console.log(
     [
@@ -237,7 +221,7 @@ async function emitScreenReport(a11y: A11yFixture, reportName: string): Promise<
       `  blockers  : ${findings.filter((f) => f.severity === 'blocker').length}`,
       `  rules     : ${[...new Set(findings.map((f) => f.ruleId))].sort().join(', ') || '—'}`,
       `  provider  : ${state.meta.llmProvider}${state.meta.llmMockMode ? ' (MOCK)' : ''}`,
-      `  ai findings: ${aiNote}`,
+      `  ai findings: ${aiFindingsNote(state)}`,
       `  report    : ${reportPaths.html}`,
       '',
     ].join('\n'),
@@ -365,20 +349,19 @@ journeyTest('login', async ({ page, a11y }) => {
 /**
  * Screen 2 — the dashboard, the landing screen after sign-in.
  *
- * Asserting the host plus real text content: the dashboard has no single piece of repository
- * data that is guaranteed present, so a `toContainText` on a known string would be brittle.
- * A non-empty `main` is the weaker but honest check — it separates "rendered" from "rendered
- * an empty shell", and the distinction is recorded here rather than glossed.
+ * `expectSurfaceUsable` rather than a hand-rolled host-plus-text check. It makes the same two
+ * assertions and adds absence of the known error classes, and using the shared helper is what
+ * stops this screen drifting below the standard the other scans hold — which is exactly what
+ * had happened: surfaces and display-modes were tightened and this was left behind.
+ *
+ * Its limit still applies and is worth restating here: the dashboard has no single piece of
+ * repository data guaranteed to be present, so nothing asserts the data actually arrived. A
+ * silent failure with a plausible empty layout would still pass.
  */
 journeyTest('dashboard', async ({ signedIn: page, a11y }) => {
   await page.goto('/#/dashboard', { waitUntil: 'networkidle' });
 
-  await expect(page.locator('app-dashboard-page'), 'app-dashboard-page must render').toBeVisible();
-  await expect
-    .poll(async () => (await page.locator('main').innerText()).trim().length, {
-      message: 'the dashboard rendered an empty shell — scanning it would prove nothing',
-    })
-    .toBeGreaterThan(0);
+  await expectSurfaceUsable(page, 'app-dashboard-page', 'dashboard');
 
   // The drawer renders a folder tree only on browse-family routes, so it is not required
   // here — but if one is mid-load the same name-masking applies, so it is still awaited.

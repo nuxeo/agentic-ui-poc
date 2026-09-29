@@ -85,10 +85,18 @@ export default defineConfig({
 
   // A scan is not a page load. Each surface runs axe, a keyboard walk of up to 300 real key
   // presses, and reflow geometry. The critical-path suite's 45s budget does not begin to cover
-  // it — the first run took 2.8 minutes on `trash` and exceeded 240s on `browse`. Sized against
-  // measured worst case rather than guessed, and generous on purpose: this is an opt-in local
-  // scan, not a PR gate, so a slow pass beats a timeout that reports nothing.
-  timeout: 600_000,
+  // it — the first run took 2.8 minutes on `trash` and exceeded 240s on `browse`.
+  //
+  // Raised from 600s to 900s after `browse` took **11.1 minutes** on 2026-09-29 and timed out.
+  // The cost of getting this wrong is worse than a slow run, and it is not a lost test: a
+  // Playwright timeout **restarts the worker**, which recreates the worker-scoped a11y-scout
+  // accumulator, so every surface scanned before it is dropped from the consolidated report.
+  // That run reported `pages scanned: 1` after five successful scans. The
+  // `pagesScanned.length` assertion is what made it visible rather than silent.
+  //
+  // Generous on purpose: this is an opt-in local scan, not a PR gate, so a slow pass beats a
+  // timeout that discards the work already done.
+  timeout: 900_000,
   expect: { timeout: 15_000 },
 
   // The findings accumulator is worker-scoped, so one worker is what produces ONE consolidated

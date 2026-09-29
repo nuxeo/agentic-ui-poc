@@ -105,8 +105,10 @@ export async function installSession(page: Page): Promise<void> {
  * weaker claim it makes.
  */
 export async function expectSurfaceUsable(page: Page, host: string, label: string): Promise<void> {
+  // `.first()` for the same reason `surface.mjs` uses it: a host selector that matches more
+  // than once is a strict-mode violation, which fails for a reason unrelated to the surface.
   await expectFn(
-    page.locator(host),
+    page.locator(host).first(),
     `${host} must render before ${label} is scanned`,
   ).toBeVisible();
 
@@ -115,11 +117,47 @@ export async function expectSurfaceUsable(page: Page, host: string, label: strin
     `${label} is showing an error state — scanning it would measure the error, not the surface`,
   ).toHaveCount(0);
 
+  // The read is wrapped because a poll is allowed to be too early, and this one was: on the
+  // dashboard it raced a navigation and threw "Execution context was destroyed", failing the
+  // test rather than retrying. A throw inside `expect.poll` is a failure, not a retry, so any
+  // transient page state has to be turned into a falsy value the poll can try again on.
   await expectFn
-    .poll(async () => (await page.locator(host).innerText()).trim().length, {
-      message: `${label} rendered an empty shell, so a clean scan of it would prove nothing`,
-    })
+    .poll(
+      async () => {
+        try {
+          return (await page.locator(host).first().innerText()).trim().length;
+        } catch {
+          return 0;
+        }
+      },
+      { message: `${label} rendered an empty shell, so a clean scan of it would prove nothing` },
+    )
     .toBeGreaterThan(0);
+}
+
+/**
+ * The line every report summary must print about the AI content-quality checks.
+ *
+ * `provider: haip` is not evidence that they ran, and this was measured rather than imagined:
+ * on 2026-09-22 the provider reported READY, the cost meter billed 15 calls, and every
+ * content-quality call returned 403 — `aiGenerated` stayed 0 while the header read like a
+ * successful AI run. Zero means eleven WCAG criteria (1.1.1, 1.3.3, 2.4.2, 2.4.4, 2.5.3,
+ * 3.3.1, 3.3.2 at A; 1.3.5, 2.4.6, 3.1.2, 3.3.3 at AA) were **not measured**, which is not
+ * the same as clean.
+ *
+ * Shared rather than written per suite, because it was written for `journey` alone and the
+ * other three kept printing a provider name with no way to tell whether it produced anything.
+ */
+export function aiFindingsNote(state: {
+  findings: ReadonlyArray<{ aiGenerated?: boolean }>;
+  meta: { llmProvider: string; llmMockMode: boolean };
+}): string {
+  const count = state.findings.filter((f) => f.aiGenerated).length;
+  if (count > 0) return `${count} (provider ${state.meta.llmProvider})`;
+  const why = state.meta.llmMockMode
+    ? 'mock mode — no key'
+    : `provider ${state.meta.llmProvider} selected but produced nothing; check stderr for LLM errors`;
+  return `0 — the 11 AI-judged criteria are UNMEASURED, not clean (${why})`;
 }
 
 /** A page that is already past the route guard. */

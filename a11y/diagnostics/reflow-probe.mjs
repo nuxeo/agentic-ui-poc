@@ -341,7 +341,13 @@ console.log(
 if (process.argv.includes('--negative-control')) {
   // The SAME signed-in context helper the measurement loop uses. Previously this built its
   // own context with `httpCredentials` only, so it was never past the route guard.
-  const ctx2 = await newSignedInContext(REFLOW_WIDTH, REFLOW_HEIGHT);
+  //
+  // And the SAME sequence: load wide, assert the surface, then resize. Creating the context
+  // at 320x256 and navigating straight into it does not work — `lib-browse` never becomes
+  // visible at that width, so the control aborted with "never became visible" on a page that
+  // the measurement loop had just measured successfully. The loop loads at 1440x900 first for
+  // this reason; the control has to do the same or it is not reproducing the loop.
+  const ctx2 = await newSignedInContext(1440, 900);
   const p2 = await ctx2.newPage();
   await p2.goto(`${baseUrl}/#/browse`, { waitUntil: 'networkidle', timeout: 45_000 });
 
@@ -354,6 +360,12 @@ if (process.argv.includes('--negative-control')) {
     await browser.close();
     process.exit(2);
   }
+
+  await p2.setViewportSize({ width: REFLOW_WIDTH, height: REFLOW_HEIGHT });
+  await p2.addStyleTag({
+    content: `*, *::before, *::after { transition: none !important; animation: none !important; }`,
+  });
+  await p2.waitForTimeout(400);
 
   const MARKER = 'reflow-negative-control';
 

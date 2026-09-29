@@ -20,8 +20,12 @@ a11y/
   run.mjs                           the only entry point; suites and diagnostics are subcommands
   preflight.mjs                     refuses to scan a stack that is not there
   playwright.config.ts              testDir: './specs'
-  fixtures.ts                       test object, installSession, expectSurfaceUsable, REPORT_DIR
-  env.mjs                           required Nuxeo credentials for the Node-side tooling
+  fixtures.ts                       test object, installSession, expectSurfaceUsable,
+                                    aiFindingsNote, REPORT_DIR
+  env.mjs                           resolveBaseUrl + required Nuxeo credentials, shared by the
+                                    config, the preflight and every diagnostic
+  surface.mjs                       the Node-side twin of expectSurfaceUsable, and the one
+                                    list of this app's error-state classes
   package.json  tsconfig.json  .gitignore
   specs/
     journey.screens.ts              single source: screen id -> project name, tag, report name
@@ -408,16 +412,17 @@ assuming a fresh route means a fresh state.
 
 ## 6. Traps, each one already paid for
 
-| Trap                          | What happens                                                                   | Fix                                                              |
-| ----------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
-| `npm install --no-save X`     | **Prunes** anything previously `--no-save`'d, silently removing Playwright     | Install all packages in ONE command                              |
-| Plain `npm install <tarball>` | Writes `file:C:\Users\you\…` into the lockfile, breaking `npm ci` for everyone | Always `--no-save`                                               |
-| a11y-scout is ESM-only        | `No "exports" main defined` — Playwright transpiles specs to CJS               | `a11y/package.json` sets `"type": "module"` for this folder only |
-| Hash routing                  | `goto('/#/x')` is **same-document**, so `APP_INITIALIZER` never re-runs        | Use a real `page.reload()` when asserting reloaded-app behaviour |
-| Keyboard walk is slow         | Up to 150 steps per direction; browse takes 8.8 minutes                        | Per-test timeout is 600s in `a11y/playwright.config.ts`          |
-| A failing test                | Fragments the worker-scoped report                                             | Assert `pagesScanned.length`                                     |
-| Dev proxy                     | `proxy.conf.json` is **not** hot-reloaded                                      | Restart `nx serve` after editing it                              |
-| Node 22+                      | A built-in `localStorage` shadows jsdom's                                      | Node is pinned to 20 in `.nvmrc`                                 |
+| Trap                          | What happens                                                                                                                                                                                    | Fix                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `npm install --no-save X`     | **Prunes** anything previously `--no-save`'d, silently removing Playwright                                                                                                                      | Install all packages in ONE command                                        |
+| Plain `npm install <tarball>` | Writes `file:C:\Users\you\…` into the lockfile, breaking `npm ci` for everyone                                                                                                                  | Always `--no-save`                                                         |
+| a11y-scout is ESM-only        | `No "exports" main defined` — Playwright transpiles specs to CJS                                                                                                                                | `a11y/package.json` sets `"type": "module"` for this folder only           |
+| Hash routing                  | `goto('/#/x')` is **same-document**, so `APP_INITIALIZER` never re-runs                                                                                                                         | Use a real `page.reload()` when asserting reloaded-app behaviour           |
+| Keyboard walk is slow         | Up to 150 steps per direction; browse has taken **11.1 minutes**                                                                                                                                | Per-test timeout is 900s in `a11y/playwright.config.ts`                    |
+| A timed-out test              | Playwright **restarts the worker**, recreating the a11y-scout accumulator, so every surface already scanned is dropped. One browse timeout turned five successful scans into `pages scanned: 1` | Assert `pagesScanned.length`; it is the only thing that makes this visible |
+| A failing test                | Fragments the worker-scoped report                                                                                                                                                              | Assert `pagesScanned.length`                                               |
+| Dev proxy                     | `proxy.conf.json` is **not** hot-reloaded                                                                                                                                                       | Restart `nx serve` after editing it                                        |
+| Node 22+                      | A built-in `localStorage` shadows jsdom's                                                                                                                                                       | Node is pinned to 20 in `.nvmrc`                                           |
 
 ## 7. Before you commit a new check
 
