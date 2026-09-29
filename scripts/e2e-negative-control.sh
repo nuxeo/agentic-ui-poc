@@ -146,8 +146,11 @@ echo ""
 # Clear previous results, so a stale file from an earlier run can never be counted.
 rm -f "$RESULTS_FILE" "$ASSERTIONS_FILE"
 
+# Default-deny host allowlist — name localhost explicitly for local runs.
+export E2E_ALLOWED_HOSTS="${E2E_ALLOWED_HOSTS:-localhost:4200}"
+
 # Run preflight with correct credentials first
-if ! node scripts/beta-harness/e2e-preflight.mjs; then
+if ! npx tsx scripts/beta-harness/e2e-preflight.mjs; then
   echo "ERROR: Preflight failed with correct credentials"
   echo "Fix environment before running negative control"
   exit 2

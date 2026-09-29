@@ -18,8 +18,45 @@
 
 const BASE = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
 
+const { parseAllowedHosts, isHostAllowed, ALLOWED_HOSTS_ENV } = await import(
+  new URL('../../libs/integration-tests/src/lib/integration-preflight.ts', import.meta.url).href,
+);
+
+const E2E_ALLOWED_HOSTS_ENV = 'E2E_ALLOWED_HOSTS';
+
 const problems = [];
 const ok = [];
+
+/** 0a. The app origin is named before any Basic header is built or sent. */
+const allowedHosts = parseAllowedHosts(
+  process.env[E2E_ALLOWED_HOSTS_ENV] ?? process.env[ALLOWED_HOSTS_ENV],
+);
+if (allowedHosts.length === 0) {
+  problems.push(
+    `${E2E_ALLOWED_HOSTS_ENV} (or ${ALLOWED_HOSTS_ENV}) must name the host(s) this run may target.\n\n` +
+      '    export E2E_ALLOWED_HOSTS=localhost:4200\n\n' +
+      '  Default deny — localhost is not implicit. A mistyped E2E_BASE_URL must not receive\n' +
+      '  NUXEO_USER/NUXEO_PASS before the run refuses.',
+  );
+} else {
+  try {
+    if (!isHostAllowed(BASE, allowedHosts)) {
+      problems.push(
+        `E2E_BASE_URL (${BASE}) is not named in ${E2E_ALLOWED_HOSTS_ENV} / ${ALLOWED_HOSTS_ENV}.\n` +
+          `  Allowed: ${allowedHosts.join(', ')}\n\n` +
+          '  Fix the base URL or extend the allowlist — do not point destructive credentials at an\n' +
+          '  unintended host.',
+      );
+    } else {
+      ok.push(`E2E_BASE_URL host is named in ${E2E_ALLOWED_HOSTS_ENV} / ${ALLOWED_HOSTS_ENV}`);
+    }
+  } catch (error) {
+    problems.push(
+      `E2E_BASE_URL is not usable: ${error instanceof Error ? error.message : String(error)}\n` +
+        '  Set E2E_BASE_URL to a full http(s) URL with a host, e.g. http://localhost:4200',
+    );
+  }
+}
 
 /**
  * 0. The credentials, from the environment, with **no** fallback — the same rule

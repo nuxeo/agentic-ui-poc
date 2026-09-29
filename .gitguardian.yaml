@@ -1,8 +1,8 @@
 version: 2
 
-# False positive from an early PR commit: a `file:` URL fixture used a well-known system path
-# as a neutral non-http scheme example. Later commits renamed it; the occurrence remains in
-# this branch's history until the PR is squash-merged.
-matches-ignore:
-  - name: Generic Password
-    match: file:///etc/passwd
+# GitHub Check Runs do not read this file — dashboard exclusion is required for historical
+# occurrences still in a long PR's commit range. Kept for ggshield/local scans.
+secret:
+  ignored_matches:
+    - name: Generic Password
+      match: file:///etc/passwd
