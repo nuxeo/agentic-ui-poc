@@ -3956,6 +3956,135 @@ expectGreen(
   },
 );
 
+/* ---------------- checkTranslatorNotesFlagProductsAndAcronyms ---------------- */
+
+// AC3: a product name must be flagged do-not-translate and an acronym expanded, in the note of
+// the string that contains it. A generic "Visible text in X" note satisfied the existence check.
+const NOTES_EN = `{
+  "nav": { "drive": "Open in Nuxeo Drive", "export": "Export CSV", "said": "Said so" }
+}
+`;
+const notesFixture = (drive, exportNote) => ({
+  'apps/nuxeo-ui/public/i18n/en.json': NOTES_EN,
+  'apps/nuxeo-ui/public/i18n/en.context.json': JSON.stringify(
+    {
+      'nav.drive': drive,
+      'nav.export': exportNote,
+      'nav.said': 'Visible text in a fixture.',
+    },
+    null,
+    2,
+  ),
+});
+const GOOD_DRIVE =
+  'Button. Nuxeo Drive is the desktop sync client (product name, do not translate).';
+const GOOD_EXPORT = 'Button. CSV = comma-separated values; keep the acronym.';
+
+expectRed(
+  'a product name in the English with no do-not-translate flag in its note',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  notesFixture('Visible text in browse. Rendered in browse.html.', GOOD_EXPORT),
+  null,
+  /the note for `nav\.drive` \("Open in Nuxeo Drive"\) does not flag "Nuxeo" as do-not-translate/,
+);
+
+expectRed(
+  'an acronym in the English whose note does not expand it',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  notesFixture(GOOD_DRIVE, 'Accessible name (aria-label) of a control in browse.'),
+  null,
+  /the note for `nav\.export` \("Export CSV"\) does not expand CSV \(comma-separated values\)/,
+);
+
+// The fixture also holds "Said so" with a generic note. Matching is whole-word and case-sensitive,
+// so it does not count as containing the acronym AI and must not be flagged.
+falsePositiveControls += 1;
+expectRed(
+  'a hyphenated acronym whose note does not expand it',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "Run AI-powered analysis"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': '{\n  "a": "Button on the audit page."\n}\n',
+  },
+  null,
+  /the note for `a` \("Run AI-powered analysis"\) does not expand AI \(artificial intelligence\)/,
+);
+
+expectGreen(
+  'notes that flag the product and expand the acronym, beside a look-alike word',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  notesFixture(GOOD_DRIVE, GOOD_EXPORT),
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a product name not on the list is not checked',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json':
+      '{\n  "a": "Open in Nuxeo Drive",\n  "b": "Sync with Dropbox"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json':
+      '{\n  "a": "Nuxeo Drive is the desktop client (do not translate).",\n  "b": "Visible text."\n}\n',
+  },
+);
+
+/* ---------------- checkPlatformEnglishFallback ---------------- */
+
+// The package ships English for the keys its own code uses; it must be the catalogue's English, for
+// exactly those keys, or a host sees stale wording or raw keys.
+const platformFile = (map) =>
+  '// @generated-begin\n// prettier-ignore\nexport const PLATFORM_EN_TRANSLATIONS: Readonly<Record<string, string>> = ' +
+  `${JSON.stringify(map, null, 2)};\n// @generated-end\n`;
+const PLATFORM = (map, source = "export const K = 'shared-ui.a';\n") => ({
+  'apps/nuxeo-ui/public/i18n/en.json':
+    '{\n  "shared-ui": { "a": "Alpha", "b": "Beta" },\n  "app": { "c": "Gamma" }\n}\n',
+  'libs/platform/ui/ng-package.json':
+    '{ "lib": { "entryFile": "../../shared/ui/src/index.ts" } }\n',
+  'libs/shared/ui/src/index.ts': source,
+  'libs/shared/ui/src/lib/i18n/platform-en.ts': platformFile(map),
+});
+
+expectGreen(
+  'a platform English copy that matches the catalogue and the references',
+  'checkPlatformEnglishFallback',
+  PLATFORM({ 'shared-ui.a': 'Alpha' }),
+);
+
+expectRed(
+  'a key the package references with no English copy',
+  'checkPlatformEnglishFallback',
+  PLATFORM({ 'shared-ui.a': 'Alpha' }, "export const K = ['shared-ui.a', 'shared-ui.b'];\n"),
+  null,
+  /has no English for 1 key\(s\) the package uses: shared-ui\.b/,
+);
+
+expectRed(
+  'an English copy that differs from the catalogue',
+  'checkPlatformEnglishFallback',
+  PLATFORM({ 'shared-ui.a': 'Alpah' }),
+  null,
+  /differs from apps\/nuxeo-ui\/public\/i18n\/en\.json for 1 key\(s\): shared-ui\.a \("Alpah" vs "Alpha"\)/,
+);
+
+expectRed(
+  'a copied key the package no longer references',
+  'checkPlatformEnglishFallback',
+  PLATFORM({ 'shared-ui.a': 'Alpha', 'app.c': 'Gamma' }),
+  null,
+  /carries 1 key\(s\) the package no longer uses: app\.c/,
+);
+
+// A key built from a prefix at runtime references every catalogue key under that prefix.
+falsePositiveControls += 1;
+expectGreen(
+  'a prefix-built key covers the whole family',
+  'checkPlatformEnglishFallback',
+  PLATFORM(
+    { 'shared-ui.a': 'Alpha', 'shared-ui.b': 'Beta' },
+    'export const label = (k: string) => `shared-ui.${k}`;\n',
+  ),
+);
+
 /* ---------------- report ---------------- */
 
 const total = negative + positive;

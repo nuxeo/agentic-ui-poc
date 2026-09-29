@@ -1063,7 +1063,7 @@ export class NavDrawerComponent {
   }
 
   nodeLabel(node: FolderNode): string {
-    if (node.isRoot) return 'Root';
+    if (node.isRoot) return this.translate.instant('nav.tree.root');
     return node.doc.title;
   }
 

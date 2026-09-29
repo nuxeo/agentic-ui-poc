@@ -518,7 +518,7 @@ export class KnowledgeDiscoveryComponent {
     const cleaned = answer.replace(/^#{1,6}\s*/gm, '').trim();
     if (!cleaned) return '';
     if (cleaned.toLowerCase() === this.insufficientAnswerText.toLowerCase()) {
-      return "I couldn't find enough relevant information in this agent's knowledge base to answer that yet.";
+      return this.translate.instant('kd.knowledge-discovery.insufficient-answer');
     }
     return cleaned;
   }

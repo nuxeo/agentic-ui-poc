@@ -1910,7 +1910,7 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void;
 
 ## @nuxeo-satori/platform/ui
 
-37 exported symbol(s).
+41 exported symbol(s).
 
 ```ts
 class ConfirmDialogComponent {
@@ -2095,6 +2095,8 @@ interface IptcData {
     [key: string]: string | undefined;
     }
 }
+const PLATFORM_EN_TRANSLATIONS: Readonly<Record<string, string>>;
+const PLATFORM_MISSING_TRANSLATION_NEXT: InjectionToken<MissingTranslationHandler>;
 interface PermissionEntry {
     id: string;
     userGroup: string;
@@ -2119,6 +2121,12 @@ interface PictureView {
     fileSize: string;
     format: string;
     downloadUrl: string;
+    }
+}
+class PlatformEnglishMissingTranslationHandler implements MissingTranslationHandler {
+    handle(params: MissingTranslationHandlerParams): _ngx_translate_core.StrictTranslation | rxjs.Observable<_ngx_translate_core.StrictTranslation>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<PlatformEnglishMissingTranslationHandler, never>;
+    static ɵprov: _angular_core.ɵɵInjectableDeclaration<PlatformEnglishMissingTranslationHandler>;
     }
 }
 const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig>;
@@ -2252,6 +2260,7 @@ class WidgetGridComponent {
 }
 function observeStripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): MutationObserver | null;
 function openDocumentCompareDialog(dialog: MatDialog, items: DocumentCompareDialogData['items']): void;
+function providePlatformEnglishFallback(): Provider;
 function provideTranslatedDatepickerIntl(): Provider;
 function stripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): void;
 function trashDocumentConfirmData(title: string, translate: TranslateFn): ConfirmDialogData;
