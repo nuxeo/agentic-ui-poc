@@ -4653,7 +4653,7 @@ function checkNoHardcodedImperativeUiText() {
       }
       // A module constant holding prose, named rather than written inline.
       for (const [name, value] of constants) {
-        if (new RegExp(`(?<![\\w.'"])${name}(?![\\w(])`).test(argument)) {
+        if (new RegExp(`(?<![\\w.'"])${escapeRegExp(name)}(?![\\w(])`).test(argument)) {
           report(file, line, value, ` (through the constant \`${name}\`)`);
         }
       }
@@ -4673,7 +4673,7 @@ function checkNoHardcodedImperativeUiText() {
         /(?:\?\??|:|\|\|)\s*(['"`])([A-Z][^'"`]{2,})\1/.exec(value);
       if (!literal || !/\s/.test(literal[2])) continue;
       const blockEnd = enclosingBlockEnd(text, valueStart);
-      const uses = new RegExp(`(?<![\\w.'"])${decl[1].replace(/\$/g, '\\$')}(?![\\w(])`);
+      const uses = new RegExp(`(?<![\\w.'"])${escapeRegExp(decl[1])}(?![\\w(])`);
       for (const call of text.slice(valueStart, blockEnd).matchAll(CALL_SINKS)) {
         const at = valueStart + call.index;
         const argument = balancedArgument(text, at + call[0].length - 1);
@@ -4763,6 +4763,11 @@ function topLevelText(text, from) {
     } else if (ch === ',' && depth === 0) return text.slice(from, at);
   }
   return text.slice(from);
+}
+
+/** `text` with every regular-expression metacharacter escaped, for building a pattern from it. */
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /** The text of a statement starting at `from`, up to its own top-level `;` or line-ending brace. */
