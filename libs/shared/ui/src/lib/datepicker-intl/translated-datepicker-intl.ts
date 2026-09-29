@@ -10,20 +10,20 @@ type DatepickerLabel = Exclude<
 >;
 
 const LABEL_KEYS: Record<DatepickerLabel, string> = {
-  calendarLabel: 'app.datepicker.calendar',
-  openCalendarLabel: 'app.datepicker.open-calendar',
-  closeCalendarLabel: 'app.datepicker.close-calendar',
-  prevMonthLabel: 'app.datepicker.previous-month',
-  nextMonthLabel: 'app.datepicker.next-month',
-  prevYearLabel: 'app.datepicker.previous-year',
-  nextYearLabel: 'app.datepicker.next-year',
-  prevMultiYearLabel: 'app.datepicker.previous-24-years',
-  nextMultiYearLabel: 'app.datepicker.next-24-years',
-  switchToMonthViewLabel: 'app.datepicker.choose-date',
-  switchToMultiYearViewLabel: 'app.datepicker.choose-month-and-year',
-  startDateLabel: 'app.datepicker.start-date',
-  endDateLabel: 'app.datepicker.end-date',
-  comparisonDateLabel: 'app.datepicker.comparison-range',
+  calendarLabel: 'shared-ui.datepicker.calendar',
+  openCalendarLabel: 'shared-ui.datepicker.open-calendar',
+  closeCalendarLabel: 'shared-ui.datepicker.close-calendar',
+  prevMonthLabel: 'shared-ui.datepicker.previous-month',
+  nextMonthLabel: 'shared-ui.datepicker.next-month',
+  prevYearLabel: 'shared-ui.datepicker.previous-year',
+  nextYearLabel: 'shared-ui.datepicker.next-year',
+  prevMultiYearLabel: 'shared-ui.datepicker.previous-24-years',
+  nextMultiYearLabel: 'shared-ui.datepicker.next-24-years',
+  switchToMonthViewLabel: 'shared-ui.datepicker.choose-date',
+  switchToMultiYearViewLabel: 'shared-ui.datepicker.choose-month-and-year',
+  startDateLabel: 'shared-ui.datepicker.start-date',
+  endDateLabel: 'shared-ui.datepicker.end-date',
+  comparisonDateLabel: 'shared-ui.datepicker.comparison-range',
 };
 
 /**
@@ -55,17 +55,21 @@ export class TranslatedDatepickerIntl extends MatDatepickerIntl {
   }
 
   override formatYearRange(start: string, end: string): string {
-    return this.resolve('app.datepicker.year-range', super.formatYearRange(start, end), {
+    return this.resolve('shared-ui.datepicker.year-range', super.formatYearRange(start, end), {
       start,
       end,
     });
   }
 
   override formatYearRangeLabel(start: string, end: string): string {
-    return this.resolve('app.datepicker.year-range-label', super.formatYearRangeLabel(start, end), {
-      start,
-      end,
-    });
+    return this.resolve(
+      'shared-ui.datepicker.year-range-label',
+      super.formatYearRangeLabel(start, end),
+      {
+        start,
+        end,
+      },
+    );
   }
 
   private refresh(): void {

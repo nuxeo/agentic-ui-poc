@@ -542,25 +542,7 @@
       "sign-out": "Sign out",
       "stay-signed-in": "Stay signed in"
     },
-    "title": "Hyland Nuxeo",
-    "datepicker": {
-      "calendar": "Calendar",
-      "choose-date": "Choose date",
-      "choose-month-and-year": "Choose month and year",
-      "close-calendar": "Close calendar",
-      "comparison-range": "Comparison range",
-      "end-date": "End date",
-      "next-24-years": "Next 24 years",
-      "next-month": "Next month",
-      "next-year": "Next year",
-      "open-calendar": "Open calendar",
-      "previous-24-years": "Previous 24 years",
-      "previous-month": "Previous month",
-      "previous-year": "Previous year",
-      "start-date": "Start date",
-      "year-range": "{{ start }} – {{ end }}",
-      "year-range-label": "{{ start }} to {{ end }}"
-    }
+    "title": "Hyland Nuxeo"
   },
   "assets": {
     "asset-search-results": {
@@ -2114,6 +2096,24 @@
   "shared-ui": {
     "confirm-dialog": {
       "cancel": "Cancel"
+    },
+    "datepicker": {
+      "calendar": "Calendar",
+      "choose-date": "Choose date",
+      "choose-month-and-year": "Choose month and year",
+      "close-calendar": "Close calendar",
+      "comparison-range": "Comparison range",
+      "end-date": "End date",
+      "next-24-years": "Next 24 years",
+      "next-month": "Next month",
+      "next-year": "Next year",
+      "open-calendar": "Open calendar",
+      "previous-24-years": "Previous 24 years",
+      "previous-month": "Previous month",
+      "previous-year": "Previous year",
+      "start-date": "Start date",
+      "year-range": "{{ start }} – {{ end }}",
+      "year-range-label": "{{ start }} to {{ end }}"
     },
     "document-compare-dialog": {
       "close": "Close",

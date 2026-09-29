@@ -43,7 +43,7 @@ describe('TranslatedDatepickerIntl', () => {
     intl.changes.subscribe(changed);
 
     translate.setTranslation('fr', {
-      app: {
+      'shared-ui': {
         datepicker: {
           'open-calendar': 'Ouvrir le calendrier',
           'year-range-label': 'de {{ start }} à {{ end }}',
@@ -73,7 +73,7 @@ describe('TranslatedDatepickerIntl', () => {
   it('reaches the toggle of a picker inside a component that imports MatDatepickerModule', () => {
     TestBed.configureTestingModule({ providers: [provideZonelessChangeDetection()] });
     const translate = TestBed.inject(TranslateService);
-    translate.setTranslation('fr', { app: { datepicker: { 'open-calendar': 'Ouvrir' } } });
+    translate.setTranslation('fr', { 'shared-ui': { datepicker: { 'open-calendar': 'Ouvrir' } } });
     translate.use('fr');
 
     const fixture = TestBed.createComponent(PickerHostComponent);
