@@ -1526,6 +1526,45 @@ expectGreen('an unrelated step mentioning the Crowdin action in a nested value',
     `          uses: crowdin/github-action@v2\n`,
 });
 
+// YAML resolves an escaped double-quoted scalar, so an escaped spelling is a WORKING spelling that
+// every raw-text matcher here reads as something else. Rejected rather than decoded — that closes
+// the encoding rather than one more member of it.
+expectRed(
+  'a Crowdin step whose uses value hides the slash behind a YAML escape',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: "crowdin\\u002fgithub-action@v2"\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /escaped double-quoted scalar/,
+);
+
+expectRed(
+  'crowdin-conf.yml hiding the forbidden key behind a YAML escape',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+          `'update_option': 'update_without_changes',`,
+          `'update_option': 'update_without_changes',\n      "skip\\u005funtranslated_files": true,`,
+        ),
+      ]),
+    ),
+  /contains an escaped double-quoted scalar/,
+);
+
 // A longer key CONTAINING the token is not the token. The entry fallback searched for a substring,
 // so `'legacy_skip_untranslated_files'` — a key this repository does not use and Crowdin does not
 // define, but valid YAML — rejected a config that declares nothing forbidden.

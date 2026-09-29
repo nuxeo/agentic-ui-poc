@@ -3001,6 +3001,24 @@ function yamlValues(body, keyPattern) {
 }
 
 /**
+ * A double-quoted YAML scalar carrying a backslash escape.
+ *
+ * YAML resolves `"crowdin\u002fgithub-action@v2"` and `"skip\u005funtranslated_files"` to the
+ * real action reference and the real key, so an escaped spelling is a working spelling — and every
+ * matcher here compares raw text, which sees neither.
+ *
+ * REJECTED rather than decoded, for the reason the rest of this area rejects rather than parses:
+ * implementing YAML's escape table to catch a spelling nobody writes buys a decoder to maintain,
+ * while failing closed costs one line and cannot be got subtly wrong. Nothing in these files is
+ * double-quoted at all.
+ *
+ * This is also where the enumeration ends. Previous rounds chased one spelling at a time; an
+ * escape is not another spelling but a general encoding, so rejecting the encoding closes the
+ * class rather than one member of it.
+ */
+const YAML_ESCAPED_SCALAR = /"[^"\n]*\\[^"\n]*"/;
+
+/**
  * The keys of a YAML flow mapping, at its own depth, ignoring quoted scalars.
  *
  * A regex cannot do this safely: searching a flow entry for `skip_untranslated_files\s*:` also
@@ -3719,6 +3737,15 @@ function checkCrowdinConfig() {
   // single-line entry was a shape the rest of this function understood and this prohibition did
   // not. Scanning the parsed entries closes it without teaching the matcher flow mappings.
   const configBody = stripYamlComments(read(config));
+  if (YAML_ESCAPED_SCALAR.test(configBody)) {
+    fail(
+      `${config} contains an escaped double-quoted scalar.\n` +
+        '    YAML resolves `"skip\\u005funtranslated_files"` to the forbidden key, and every ' +
+        'check here compares raw text — so an escaped spelling would declare the option while ' +
+        'reading as something else entirely.\n' +
+        '    Every value in this file is single-quoted; keep it that way.',
+    );
+  }
   const declaresSkipFiles =
     yamlValues(configBody, 'skip_untranslated_files').length > 0 ||
     (crowdinFileEntries(configBody) ?? []).some((entry) =>
@@ -3828,6 +3855,22 @@ function checkCrowdinConfig() {
       (step) =>
         /^[^\S\n]*-[^\S\n]*\{/.test(step.text) && /crowdin\/github-action/.test(step.text),
     );
+    const escapedUses = workflowSteps(stripYamlComments(read(workflow))).find((step) =>
+      yamlValues(step.text, 'uses').some(
+        ({ value, indent }) =>
+          indent === stepKeyIndent(step.text) && YAML_ESCAPED_SCALAR.test(value),
+      ),
+    );
+    if (escapedUses !== undefined) {
+      fail(
+        `${workflow} has a step whose \`uses:\` value is an escaped double-quoted scalar.\n` +
+          '    YAML resolves `"crowdin\\u002fgithub-action@v2"` to the Crowdin action; this ' +
+          'guardrail compares raw text and would see a different string, so the step would not ' +
+          'be recognised as Crowdin\'s and every Crowdin-scoped rule would skip it.\n' +
+          '    Write the reference plainly. Nothing in these workflows is double-quoted.',
+      );
+    }
+
     if (flowStep !== undefined) {
       fail(
         `${workflow} declares a step as a YAML flow mapping: ` +
