@@ -3000,6 +3000,121 @@ function yamlValues(body, keyPattern) {
   return found;
 }
 
+/**
+ * A double-quoted YAML scalar carrying a backslash escape.
+ *
+ * YAML resolves `"crowdin\u002fgithub-action@v2"` and `"skip\u005funtranslated_files"` to the
+ * real action reference and the real key, so an escaped spelling is a working spelling — and every
+ * matcher here compares raw text, which sees neither.
+ *
+ * REJECTED rather than decoded, for the reason the rest of this area rejects rather than parses:
+ * implementing YAML's escape table to catch a spelling nobody writes buys a decoder to maintain,
+ * while failing closed costs one line and cannot be got subtly wrong. Nothing in these files is
+ * double-quoted at all.
+ *
+ * This is also where the enumeration ends. Previous rounds chased one spelling at a time; an
+ * escape is not another spelling but a general encoding, so rejecting the encoding closes the
+ * class rather than one member of it.
+ */
+const YAML_ESCAPED_SCALAR = /"[^"\n]*\\[^"\n]*"/;
+
+/**
+ * The keys of a YAML flow mapping, at its own depth, ignoring quoted scalars.
+ *
+ * A regex cannot do this safely: searching a flow entry for `skip_untranslated_files\s*:` also
+ * matches the token inside a LONGER key, inside a quoted value, or inside a nested mapping — so a
+ * config that does not declare the option was rejected. Keys only, depth one only.
+ *
+ * @param {string} entry one flow mapping, e.g. `{ 'source': '…', 'update_option': '…' }`
+ * @returns {string[]}
+ */
+function flowMappingKeys(entry) {
+  const keys = [];
+  let depth = 0;
+  let quote = null;
+  let token = '';
+  // Whether the scanner is past a `:` and inside that key's VALUE. Without it every depth-one
+  // colon read as a key separator, so the second colon of a plain scalar — `{ 'note':
+  // skip_untranslated_files:never }` — invented a key that is not declared anywhere.
+  let inValue = false;
+  for (let at = 0; at < entry.length; at += 1) {
+    const ch = entry[at];
+    if (quote !== null) {
+      if (quote === '"' && ch === '\\') {
+        at += 1;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      else token += ch;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '{' || ch === '[') {
+      depth += 1;
+      token = '';
+    } else if (ch === '}' || ch === ']') {
+      depth -= 1;
+      token = '';
+      // Closing a nested collection returns to the middle of the PARENT key's value.
+      if (depth === 1) inValue = true;
+    } else if (ch === ',') {
+      token = '';
+      if (depth === 1) inValue = false;
+    } else if (ch === '\n') {
+      token = '';
+    } else if (ch === ':' && depth === 1 && !inValue) {
+      keys.push(token.trim());
+      token = '';
+      inValue = true;
+    } else {
+      token += ch;
+    }
+  }
+  return keys.filter((key) => key !== '');
+}
+
+/**
+ * Drop an INLINE YAML comment, leaving a quoted `#` alone.
+ *
+ * `stripYamlComments` removes whole-line comments; this removes the tail of a line. Needed
+ * wherever a token search runs over text that may carry a comment explaining the very token being
+ * searched for — `'update_option': 'update_without_changes', # skip_untranslated_files stays
+ * forbidden` is a note, not configuration, and reading it as configuration fails a correct file.
+ *
+ * A `#` only opens a comment at the start of a line or after whitespace, and never inside a quoted
+ * scalar — which matters here because every value in `crowdin-conf.yml` is quoted.
+ *
+ * @param {string} line one line of YAML
+ * @returns {string}
+ */
+function stripInlineComment(line) {
+  let quote = null;
+  for (let at = 0; at < line.length; at += 1) {
+    const ch = line[at];
+    if (quote !== null) {
+      // Only a double-quoted YAML scalar has backslash escapes; a single-quoted one escapes its
+      // delimiter by doubling it, which this loop handles naturally by closing and reopening.
+      // Without the skip, `"… \\" # literal"` closed at the escaped quote and the `#` after it
+      // was read as a comment — truncating the line before anything that followed.
+      if (quote === '"' && ch === '\\') {
+        at += 1;
+        continue;
+      }
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '#' && (at === 0 || /\s/.test(line[at - 1]))) return line.slice(0, at);
+  }
+  return line;
+}
+
 /** A YAML scalar that explicitly switches an input off. Anything else is treated as on. */
 const YAML_FALSE = /^(?:false|'false'|"false")$/;
 
@@ -3026,7 +3141,26 @@ const YAML_UNREADABLE = /^\*|\$\{\{/;
  * "Crowdin steps" skipped it and passed by absence. Raised in review; the failure direction is the
  * dangerous one, because an unrecognised step is an unchecked step.
  */
-const CROWDIN_ACTION = /['"]?uses['"]?:\s*['"]?crowdin\/github-action/;
+/**
+ * Whether a step runs the Crowdin action, judged on its STEP-LEVEL `uses` key.
+ *
+ * Depth matters in both directions. A `uses:` nested under `env:`, under `with:` or inside a block
+ * scalar belongs to some other action's configuration, and treating such a step as Crowdin's made
+ * the fail-closed rules fire on inputs that never reach Crowdin — a false positive on a valid
+ * workflow. A step-level `uses` is the only one GitHub acts on.
+ *
+ * Liberal about spelling and strict about position: quotes optional on the key and on the value,
+ * because the action honours all of those; depth exact, because that is what makes it a step.
+ *
+ * @param {string} stepText one step, as returned by `workflowSteps`
+ * @returns {boolean}
+ */
+function isCrowdinStep(stepText) {
+  return yamlValues(stepText, 'uses').some(
+    ({ value, indent }) =>
+      indent === stepKeyIndent(stepText) && /^['"]?crowdin\/github-action/.test(value),
+  );
+}
 
 /**
  * The inputs that hand text straight to the Crowdin CLI.
@@ -3048,7 +3182,7 @@ const ARG_INPUTS = 'command|command_args|download_translations_args';
  * @returns {{text: string, offset: number}[]}
  */
 function crowdinActionSteps(body) {
-  return workflowSteps(body).filter((step) => CROWDIN_ACTION.test(step.text));
+  return workflowSteps(body).filter((step) => isCrowdinStep(step.text));
 }
 
 /**
@@ -3435,7 +3569,7 @@ function checkCrowdinConfig() {
   // the step does not download, does not sign and does not skip anything — yet every assertion
   // here was satisfied by their presence anywhere in the step.
   const crowdinSteps = pullSteps
-    .filter((step) => CROWDIN_ACTION.test(step))
+    .filter((step) => isCrowdinStep(step))
     .map((step) => stepWithBlock(step)?.text ?? '');
   // Through `yamlInputIsTrue`, so a REQUIRED input follows the same YAML semantics as every other
   // one. `download_translations: 'true'` is honoured by the action, and rejecting it reported that
@@ -3480,7 +3614,7 @@ function checkCrowdinConfig() {
   // and the boolean was the only one guarded:
   //
   //   1. `skip_untranslated_files: true`            — the action input
-  //   2. `download_translations_args`, `command_args`, `upload_*_args` — appended VERBATIM to the
+  //   2. `command`, `command_args`, `download_translations_args` — appended VERBATIM to the
   //      command (`entrypoint.sh` 82-83 and 408-409), so `--skip-untranslated-files` passes straight
   //      through
   //   3. `crowdin-conf.yml`                         — `FileBean` validates the same pair there
@@ -3603,7 +3737,33 @@ function checkCrowdinConfig() {
     }
   }
 
-  if (/skip_untranslated_files/.test(stripYamlComments(read(config)))) {
+  // A KEY, not a substring. `stripYamlComments` drops whole-line comments only, so an inline
+  // one — `'preserve_hierarchy': true # skip_untranslated_files stays off` — was read as the
+  // option being set, and the gate reported a defect in a correct file.
+  //
+  // Both shapes, because this file uses both. `yamlValues` reads the block form, which is how the
+  // entries are written today — one key per line inside `{ … }`. It cannot see inside a ONE-LINE
+  // flow entry, and `crowdinFileEntries` accepts those and the per-entry D8 checks read them, so a
+  // single-line entry was a shape the rest of this function understood and this prohibition did
+  // not. Scanning the parsed entries closes it without teaching the matcher flow mappings.
+  const configBody = stripYamlComments(read(config));
+  if (YAML_ESCAPED_SCALAR.test(configBody)) {
+    fail(
+      `${config} contains an escaped double-quoted scalar.\n` +
+        '    YAML resolves `"skip\\u005funtranslated_files"` to the forbidden key, and every ' +
+        'check here compares raw text — so an escaped spelling would declare the option while ' +
+        'reading as something else entirely.\n' +
+        '    Every value in this file is single-quoted; keep it that way.',
+    );
+  }
+  const declaresSkipFiles =
+    yamlValues(configBody, 'skip_untranslated_files').length > 0 ||
+    (crowdinFileEntries(configBody) ?? []).some((entry) =>
+      flowMappingKeys(entry.split('\n').map(stripInlineComment).join('\n')).includes(
+        'skip_untranslated_files',
+      ),
+    );
+  if (declaresSkipFiles) {
     fail(
       `${config} sets \`skip_untranslated_files\`.\n` +
         '    The CLI validates the pair in the CONFIG FILE too, via `FileBean`, so moving the ' +
@@ -3655,7 +3815,7 @@ function checkCrowdinConfig() {
   // unrelated action with `command: ${{ inputs.command }}` cannot invoke Crowdin, and classifying
   // it as an unreadable translation upload failed the gate on a workflow that was correct.
   const uploads = workflowSteps(push)
-    .filter((step) => CROWDIN_ACTION.test(step.text))
+    .filter((step) => isCrowdinStep(step.text))
     .flatMap((step) => {
       const inputs = stepWithBlock(step.text);
       if (!inputs) return [];
@@ -3693,6 +3853,52 @@ function checkCrowdinConfig() {
   // our business. The first version of this scanned both whole files and failed it — the same
   // cross-action false positive the `command` scan above had just been scoped to avoid, recreated
   // one check further down within the hour.
+  // A flow-style STEP hides even its `uses:`, so `isCrowdinStep` cannot tell whether it is a
+  // Crowdin step — and every Crowdin-scoped rule, the opaque-input check below included, skips it
+  // rather than failing it. Unreadable a level above the inputs, so it is rejected before anything
+  // is scoped.
+  for (const workflow of workflows) {
+    // Crowdin's own flow steps only. An unrelated `- { uses: actions/checkout@… }` hides nothing
+    // this guardrail reads, and failing it would be the cross-action false positive these scopes
+    // exist to avoid — the third time that trap has been walked into in this sequence.
+    // Crowdin's own flow steps, and any flow step whose action reference is ESCAPED — those two
+    // forms combine: `- { uses: "crowdin\\u002fgithub-action@v2", … }` names Crowdin in a
+    // spelling the substring test cannot see, inside a shape `yamlValues` cannot read, so neither
+    // fail-closed rule reached it. An unreadable action reference is reason enough on its own.
+    const flowStep = workflowSteps(stripYamlComments(read(workflow))).find(
+      (step) =>
+        /^[^\S\n]*-[^\S\n]*\{/.test(step.text) &&
+        (/crowdin\/github-action/.test(step.text) || YAML_ESCAPED_SCALAR.test(step.text)),
+    );
+    const escapedUses = workflowSteps(stripYamlComments(read(workflow))).find((step) =>
+      yamlValues(step.text, 'uses').some(
+        ({ value, indent }) =>
+          indent === stepKeyIndent(step.text) && YAML_ESCAPED_SCALAR.test(value),
+      ),
+    );
+    if (escapedUses !== undefined) {
+      fail(
+        `${workflow} has a step whose \`uses:\` value is an escaped double-quoted scalar.\n` +
+          '    YAML resolves `"crowdin\\u002fgithub-action@v2"` to the Crowdin action; this ' +
+          'guardrail compares raw text and would see a different string, so the step would not ' +
+          'be recognised as Crowdin\'s and every Crowdin-scoped rule would skip it.\n' +
+          '    Write the reference plainly. Nothing in these workflows is double-quoted.',
+      );
+    }
+
+    if (flowStep !== undefined) {
+      fail(
+        `${workflow} declares a step as a YAML flow mapping: ` +
+          `\`${flowStep.text.split('\n')[0].trim()}\`.\n` +
+          '    The Crowdin guardrails read block-style steps. A flow-style one hides its own ' +
+          '`uses:`, so nothing here can tell whether it runs the Crowdin action, and every ' +
+          'Crowdin-scoped rule skips it rather than failing it.\n' +
+          '    Use the block form (`- uses:` then one `key: value` per line), which is what every ' +
+          'other step in these workflows uses.',
+      );
+    }
+  }
+
   for (const workflow of workflows) {
     for (const step of crowdinActionSteps(stripYamlComments(read(workflow)))) {
       const opaque = step.text

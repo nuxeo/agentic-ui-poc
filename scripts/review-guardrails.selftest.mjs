@@ -1511,6 +1511,193 @@ expectRed(
   /declares Crowdin step inputs in a form this guardrail cannot read/,
 );
 
+// A `uses:` nested under `env:` belongs to that action's configuration, not to the step. Treating
+// such a step as Crowdin's made the fail-closed rules fire on inputs that never reach Crowdin —
+// here an expression-valued `command`, which is forbidden on a Crowdin step and fine on any other.
+expectGreen('an unrelated step mentioning the Crowdin action in a nested value', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml':
+    CROWDIN_WORKFLOW(PULL_OK) +
+    `      - name: Something else entirely\n` +
+    `        uses: some-org/some-action@v1\n` +
+    `        with:\n` +
+    `          command: \${{ inputs.command }}\n` +
+    `        env:\n` +
+    `          uses: crowdin/github-action@v2\n`,
+});
+
+// The two forms COMBINE: a flow-style step whose action reference is escaped names Crowdin in a
+// spelling the substring test cannot see, inside a shape `yamlValues` cannot read — so neither
+// fail-closed rule reached it. An unreadable action reference is reason enough on its own now.
+expectRed(
+  'a flow-style step whose escaped uses value names the Crowdin action',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - { uses: "crowdin\\u002fgithub-action@v2", with: { upload_translations: true } }\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares a step as a YAML flow mapping/,
+);
+
+// A colon inside a PLAIN scalar is not a key separator. Every depth-one colon was read as one, so
+// `{ 'note': skip_untranslated_files:never }` invented a key the config does not declare.
+expectGreen('a Crowdin entry whose plain scalar value contains a colon', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+      `'update_option': 'update_without_changes',`,
+      `'update_option': 'update_without_changes',\n      'note': skip_untranslated_files:never,`,
+    ),
+  ]),
+});
+
+// YAML resolves an escaped double-quoted scalar, so an escaped spelling is a WORKING spelling that
+// every raw-text matcher here reads as something else. Rejected rather than decoded — that closes
+// the encoding rather than one more member of it.
+expectRed(
+  'a Crowdin step whose uses value hides the slash behind a YAML escape',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: "crowdin\\u002fgithub-action@v2"\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /escaped double-quoted scalar/,
+);
+
+expectRed(
+  'crowdin-conf.yml hiding the forbidden key behind a YAML escape',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+          `'update_option': 'update_without_changes',`,
+          `'update_option': 'update_without_changes',\n      "skip\\u005funtranslated_files": true,`,
+        ),
+      ]),
+    ),
+  /contains an escaped double-quoted scalar/,
+);
+
+// A longer key CONTAINING the token is not the token. The entry fallback searched for a substring,
+// so `'legacy_skip_untranslated_files'` — a key this repository does not use and Crowdin does not
+// define, but valid YAML — rejected a config that declares nothing forbidden.
+expectGreen('a Crowdin entry with a longer key containing the forbidden token', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+      `'update_option': 'update_without_changes',`,
+      `'update_option': 'update_without_changes',\n      'legacy_skip_untranslated_files': true,`,
+    ),
+  ]),
+});
+
+// The token inside a quoted VALUE is not a key either.
+expectGreen('a Crowdin entry mentioning the forbidden token inside a quoted value', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+      `'update_option': 'update_without_changes',`,
+      `'update_option': 'update_without_changes',\n      'note': 'skip_untranslated_files: never',`,
+    ),
+  ]),
+});
+
+// An unrelated flow-style step hides nothing this guardrail reads, so rejecting it would be the
+// cross-action false positive these scopes exist to avoid.
+expectGreen('an unrelated flow-style step in a Crowdin workflow', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - { uses: actions/checkout@v6, with: { ref: main } }\n` +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+});
+
+// An inline comment INSIDE an entry is a note, not configuration. The entry scan added for the
+// one-line shape reads raw text, so a comment explaining why the option is absent was read as the
+// option being present — the same mistake as the whole-file substring search, one scope smaller.
+expectGreen('a Crowdin entry whose inline comment mentions skip_untranslated_files', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+      `'update_option': 'update_without_changes',`,
+      `'update_option': 'update_without_changes', # skip_untranslated_files: stays forbidden`,
+    ),
+  ]),
+});
+
+// A flow-style STEP hides its own `uses:`, so nothing can tell whether it runs the Crowdin action
+// — and every Crowdin-scoped rule skipped it rather than failing it. Rejected outright, before any
+// scoping, because the unreadability is a level above the inputs.
+expectRed(
+  'a Crowdin step written as a one-line flow mapping',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - { uses: crowdin/github-action@v2, with: { upload_translations: true } }\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares a step as a YAML flow mapping/,
+);
+
+// A ONE-LINE flow entry is a shape the rest of this function understands — `crowdinFileEntries`
+// parses it and the per-entry D8 checks read it — but `yamlValues` cannot see inside it. So the
+// prohibition was bypassable by writing the entry on one line, which is valid and which the other
+// checks accept.
+expectRed(
+  'crowdin-conf.yml hiding skip_untranslated_files in a one-line flow entry',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        `    { 'source': '/libs/**/i18n/en.json', 'translation': '/%original_path%/%two_letters_code%.%file_extension%', 'export_only_approved': 'true', 'update_option': 'update_without_changes', 'skip_untranslated_files': true },\n`,
+      ]),
+    ),
+  /crowdin-conf\.yml sets `skip_untranslated_files`/,
+);
+
+// An INLINE comment is not configuration. `stripYamlComments` drops whole-line comments only, so a
+// raw token search read `# skip_untranslated_files stays off` as the option being set — the gate
+// reporting a defect in a correct file, and unfixable without deleting the note.
+expectGreen('crowdin-conf.yml mentioning skip_untranslated_files in an inline comment', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+  ]).replace(
+    `'preserve_hierarchy': true`,
+    `'preserve_hierarchy': true # skip_untranslated_files stays off, see D8h`,
+  ),
+});
+
 // The same rule one level down: a comment aligned with `with:` does not end the input mapping, and
 // treating it as a dedent dropped every input after it — so an upload below such a comment was
 // invisible to the ordering rule.
