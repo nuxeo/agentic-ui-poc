@@ -1302,21 +1302,18 @@ const CROWDIN_WORKFLOW = (extra) =>
   `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
   `        with:\n          config: crowdin-conf.yml\n${extra}`;
 
-/**
- * The two inputs the pull workflow's action step must carry, separately so a control can remove
- * exactly one and stay red for exactly one reason.
- */
+/** The input the pull workflow's downloading step must carry, so its commits are signed. */
 const PULL_SIGNING = `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}\n`;
-const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
-/** What identifies the step both assertions must examine: the one that downloads. */
+/** What identifies the step the signing assertion must examine: the one that downloads. */
 const PULL_DOWNLOAD = `          download_translations: true\n`;
 /**
- * NOT part of the green fixture. The pinned Crowdin CLI rejects this alongside
- * `skip_untranslated_strings`, so it appears only in the control that proves the pair is
- * caught — see D8h.
+ * NOT part of the green fixture — both skip options are forbidden. `skip_untranslated_strings`
+ * blanks every unapproved value for our nested JSON (#293); `skip_untranslated_files` withholds a
+ * language until it is fully approved. See D8d and D8h.
  */
+const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
 const PULL_SKIP_UNTRANSLATED_FILES = `          skip_untranslated_files: true\n`;
-const PULL_OK = PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED;
+const PULL_OK = PULL_DOWNLOAD + PULL_SIGNING;
 
 const CROWDIN = {
   'crowdin-conf.yml': crowdinConf([
@@ -1377,7 +1374,7 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SKIP_UNTRANSLATED).replace(
+      CROWDIN_WORKFLOW(PULL_DOWNLOAD).replace(
         '      - uses: crowdin/github-action@v2\n',
         `      - uses: crazy-max/ghaction-import-gpg@v6\n` +
           `        with:\n` +
@@ -1726,7 +1723,7 @@ expectRed(
 expectGreen('a pull workflow quoting the download_translations value', 'checkCrowdinConfig', {
   ...CROWDIN,
   '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
-    `          download_translations: 'true'\n` + PULL_SIGNING + PULL_SKIP_UNTRANSLATED,
+    `          download_translations: 'true'\n` + PULL_SIGNING,
   ),
 });
 
@@ -1771,8 +1768,8 @@ expectRed(
   /uploads translations before pushing translator context/,
 );
 
-// Inputs under `env:` are passed to the action by nobody. The step does not download, does not
-// sign and does not skip anything, so the downloader must not be found there.
+// Inputs under `env:` are passed to the action by nobody. The step does not download and does not
+// sign, so the downloader must not be found there.
 expectRed(
   'the download inputs placed under env: instead of with:',
   'checkCrowdinConfig',
@@ -1785,8 +1782,7 @@ expectRed(
         `        with:\n          config: crowdin-conf.yml\n` +
         `        env:\n` +
         PULL_DOWNLOAD +
-        PULL_SIGNING +
-        PULL_SKIP_UNTRANSLATED,
+        PULL_SIGNING,
     ),
   /contains no `uses: crowdin\/github-action` step with `download_translations: true`/,
 );
@@ -1863,8 +1859,7 @@ expectRed(
         `      - if: \${{ always() }}\n` +
         `        uses: crowdin/github-action@v2\n` +
         `        with:\n` +
-        PULL_DOWNLOAD +
-        PULL_SKIP_UNTRANSLATED,
+        PULL_DOWNLOAD,
     ),
   /without passing `gpg_private_key`, so its commits are unsigned/,
 );
@@ -2101,34 +2096,78 @@ expectGreen('a push workflow uploading translations AFTER the context push', 'ch
     `          upload_translations: true\n`,
 });
 
-// `skip_untranslated_strings: false` exports every untranslated string WITH ITS ENGLISH SOURCE,
-// which is how the first real pull overwrote 151 hand-written strings. Asserted on the
-// configuration rather than on a catalogue, because once most of a catalogue is genuinely
-// translated the resulting file is only ~96% English — a warning, not a failure. The gate that
-// only catches the pathological extreme stops working as the product improves.
+// `skip_untranslated_strings: true` does not omit an unapproved key for our nested JSON — it
+// exports the key with a BLANK value. The nightly pull of 29 September 2026 (#293) blanked all
+// 1,972 values in nine catalogues. This check REQUIRED the option until then; these controls are
+// the inversion, so the requirement cannot come back.
 expectRed(
-  'the pull workflow leaving skip_untranslated_strings at its default',
+  'the pull workflow setting skip_untranslated_strings',
   'checkCrowdinConfig',
   CROWDIN,
-  (write) => write(
-      '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING),
-    ),
-  /does not set `skip_untranslated_strings: true`/,
+  (write) =>
+    write('.github/workflows/crowdin-pull.yaml', CROWDIN_WORKFLOW(PULL_OK + PULL_SKIP_UNTRANSLATED)),
+  /declares `skip_untranslated_strings: true`[\s\S]*#293/,
 );
 
 expectRed(
-  'setting skip_untranslated_strings to false explicitly',
+  'the pull workflow hiding skip_untranslated_strings behind an Actions expression',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          skip_untranslated_strings: \${{ true }}\n`),
+    ),
+  /declares `skip_untranslated_strings: \$\{\{ true \}\}`/,
+);
+
+// An explicit `false` is the action's own default, so it is not the defect.
+expectGreen('a pull workflow that explicitly disables skip_untranslated_strings', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    PULL_OK + `          skip_untranslated_strings: false\n`,
+  ),
+});
+
+expectRed(
+  'the pull workflow passing --skip-untranslated-strings through download_translations_args',
   'checkCrowdinConfig',
   CROWDIN,
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
       CROWDIN_WORKFLOW(
-        PULL_DOWNLOAD + PULL_SIGNING + `          skip_untranslated_strings: false\n`,
+        PULL_OK + `          download_translations_args: '--language=fr --skip-untranslated-strings'\n`,
       ),
     ),
-  /does not set `skip_untranslated_strings: true`/,
+  /passes `--skip-untranslated-strings` to a Crowdin step/,
+);
+
+// The positive half of the argument scan. The real workflow restricts the download to the
+// languages the app ships with `--language`, and the forbidden-flag scan must let that through.
+expectGreen('a pull workflow restricting the download with --language', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    PULL_OK + `          download_translations_args: '--language=fr --language=de'\n`,
+  ),
+});
+
+expectRed(
+  'crowdin-conf.yml setting skip_untranslated_strings',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+      ]).replace(
+        `'update_option': 'update_without_changes',`,
+        `'update_option': 'update_without_changes',\n      'skip_untranslated_strings': true,`,
+      ),
+    ),
+  /crowdin-conf\.yml sets `skip_untranslated_strings`/,
 );
 
 // A pull workflow with no action step at all: both assertions above would examine nothing, and
@@ -2148,12 +2187,10 @@ expectRed(
   /contains no `uses: crowdin\/github-action` step/,
 );
 
-// Two Crowdin steps, with the option on the one that does NOT download. Matching the action name
-// alone found the first step and passed, while the step that actually downloads omitted it — and
-// this arrangement stopped being hypothetical in this very PR, which added a second Crowdin step
-// to the push workflow.
+// Two Crowdin steps, with the forbidden option on the one that does NOT download. The prohibition
+// reads every Crowdin step, so a preparation step is not a hiding place.
 expectRed(
-  'the option set on a preparation step while the downloading step omits it',
+  'skip_untranslated_strings set on a preparation step rather than the downloader',
   'checkCrowdinConfig',
   CROWDIN,
   (write) =>
@@ -2168,7 +2205,7 @@ expectRed(
         PULL_DOWNLOAD +
         PULL_SIGNING,
     ),
-  /does not set `skip_untranslated_strings: true`/,
+  /declares `skip_untranslated_strings: true`/,
 );
 
 // Only one of the two options can be active — Technical Usage Guide — so setting both guards
@@ -2270,16 +2307,18 @@ expectRed(
   /declares `skip_untranslated_files: true`/,
 );
 
-// The quoted key on the REQUIRED input, which must be ACCEPTED rather than rejected.
-// `'skip_untranslated_strings': true` reaches the action identically, so failing it would be a
-// false red on a correct workflow — the mirror image of the forbidden-input controls below, and a
-// spelling the first version of `yamlInputIsTrue` did not read.
-expectGreen('a pull workflow quoting the skip_untranslated_strings key', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
-    PULL_DOWNLOAD + PULL_SIGNING + `          'skip_untranslated_strings': true\n`,
-  ),
-});
+// The quoted key reaches the action identically, so it is the same defect.
+expectRed(
+  'the pull workflow declaring skip_untranslated_strings with a quoted key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          'skip_untranslated_strings': true\n`),
+    ),
+  /declares `skip_untranslated_strings: true`/,
+);
 
 // Key-shaped text inside a block scalar is PROSE, not configuration. `pull_request_body: |` is
 // where these options get explained to whoever reads the generated pull request, so reading its
