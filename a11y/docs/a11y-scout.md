@@ -119,7 +119,14 @@ Measured on this application: **8.8 minutes for `/#/browse`**, ~39s for `/#/sear
 minutes for `/#/trash`, 3.0 for `/#/tasks`, 4.5 for administration, 4.0 for knowledge
 discovery, 3.2 for the adf-hx POC. The cost is the keyboard walk — up to 150 steps per direction, each a
 real key press plus a DOM read, against a page where Angular runs change detection on every
-one of them. The per-test timeout is 600s for that reason.
+one of them.
+
+**Browse has since taken 11.1 minutes** (2026-09-29), so treat those figures as a floor on
+one machine rather than a range. The per-test timeout is **900s** in
+`a11y/playwright.config.ts` for that reason, and the margin matters more than it looks: a
+Playwright timeout restarts the worker, and the findings accumulator is worker-scoped, so a
+single timeout discards every scan the worker had already completed. The run that hit the
+600s limit reported `pages scanned: 1` after five successful scans.
 
 Tier-2 focus-indicator screenshots are disabled in the spec (`noFocusIndicatorScreenshots:
 true`). They pixel-diff up to 30 clipped screenshots per page to upgrade a style-delta

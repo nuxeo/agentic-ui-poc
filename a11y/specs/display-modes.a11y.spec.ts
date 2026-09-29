@@ -317,7 +317,7 @@ test.describe('accessibility: motion', () => {
       await page.goto('/#/browse', { waitUntil: 'networkidle' });
       // Same standard as every other scan here: a failed load renders lib-browse with an
       // error panel inside it, and an error panel animates exactly as little as a working
-      // page does � so a bare host check would let the control "observe no animations" for
+      // page does — so a bare host check would let the control "observe no animations" for
       // the wrong reason and make the reduced-motion result uninterpretable in silence.
       await expectSurfaceUsable(page, 'lib-browse', 'browse (motion control)');
       const sample = await measureRouteChangeMotion(page, '#/search');

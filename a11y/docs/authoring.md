@@ -37,6 +37,7 @@ a11y/
     axe-differential.mjs
     reflow-probe.mjs
     route-render-check.mjs
+    error-class-drift.mjs
   docs/          authoring.md (this file) · a11y-scout.md
   reports/  artifacts/              gitignored output
 ```
@@ -210,8 +211,17 @@ host passes and the scan measures the error state under the surface's name. Use
       await expectSurfaceUsable(page, host, label);
 ```
 
-Be clear on its limit: it proves the surface rendered, is not in a known error state, and is
-not an empty shell. It does **not** prove repository data arrived. Where a route-specific
+The word doing the work there is **known**. The classes live in `a11y/surface.mjs`, they
+belong to eighteen feature templates nothing in this folder owns, and the first version of
+that list was missing twenty of them — including `.widget-error`, which the dashboard renders
+in four places, so a dashboard whose widgets had all failed passed this check with room to
+spare. `npm run a11y:scan -- drift` re-derives the list from the templates and runs before
+every scan, so adding a feature with a new error class now fails loudly instead of quietly
+widening the blind spot. **If you add an error state to a template, expect that check to stop
+you** — classify it as a surface failure or document why it is not one.
+
+Be clear on the remaining limit: it proves the surface rendered, is not in a known error
+state, and is not an empty shell. It does **not** prove repository data arrived. Where a route-specific
 success selector is known, assert that instead — `openBrowse()` in
 `interaction-states.a11y.spec.ts` waits for `.browse-row, .doc-card-wrapper`, which only exist
 when the folder request succeeded.

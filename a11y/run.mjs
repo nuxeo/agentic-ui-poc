@@ -66,12 +66,26 @@ const COMMANDS = {
     preflight: false,
     argv: ['node', 'a11y/diagnostics/route-render-check.mjs'],
   },
+  drift: {
+    describe: 'Diagnostic: the error-state class lists still match the templates',
+    preflight: false,
+    argv: ['node', 'a11y/diagnostics/error-class-drift.mjs'],
+  },
   preflight: {
     describe: 'Check the stack and the untracked installs, change nothing',
     preflight: false,
     argv: ['node', 'a11y/preflight.mjs'],
   },
 };
+
+/**
+ * Commands that do not scan anything, and so do not depend on the error-state lists.
+ *
+ * Everything else runs the drift check first. It reads eighty files and takes under a second,
+ * and the alternative is a diagnostic that only runs when somebody remembers it — which is
+ * how the list it guards came to be missing twenty classes in the first place.
+ */
+const SKIP_DRIFT = new Set(['drift', 'preflight']);
 
 function usage() {
   const width = Math.max(...Object.keys(COMMANDS).map((k) => k.length));
@@ -123,6 +137,17 @@ const run = (argv) =>
     stdio: 'inherit',
     shell: process.platform === 'win32',
   });
+
+if (!SKIP_DRIFT.has(command)) {
+  const drift = run(['node', 'a11y/diagnostics/error-class-drift.mjs']);
+  if (drift.status !== 0) {
+    console.error(
+      '\nRefusing to scan: a surface showing an unclassified error state would be measured\n' +
+        'as if it had loaded. Fix a11y/surface.mjs first.\n',
+    );
+    process.exit(drift.status ?? 1);
+  }
+}
 
 if (entry.preflight) {
   const pre = run(['node', 'a11y/preflight.mjs']);

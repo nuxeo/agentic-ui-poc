@@ -37,6 +37,7 @@ a11y/
     axe-differential.mjs      axe under two rule configurations, diffed
     reflow-probe.mjs          320px overflow measured independently of the scanner
     route-render-check.mjs    every scanned route renders its feature host
+    error-class-drift.mjs     surface.mjs still matches the templates it describes
   docs/
     authoring.md              how to write a new check
     a11y-scout.md             what the tool is and how to install it
@@ -117,6 +118,7 @@ npm run a11y:scan -- modes        # ~20 min
 npm run a11y:scan -- reflow       # diagnostics, seconds to a minute
 npm run a11y:scan -- routes
 npm run a11y:scan -- diff
+npm run a11y:scan -- drift       # runs automatically before every scan above
 ```
 
 Extra arguments pass through, so a single screen with a visible browser is:
