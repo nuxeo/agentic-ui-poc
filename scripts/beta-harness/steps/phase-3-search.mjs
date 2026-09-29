@@ -170,7 +170,7 @@ export default async function run(page, h) {
 
   const signedIn = await signIn(page, h.baseUrl).catch(() => false);
   h.requirePrecondition(
-    'signed in as Administrator',
+    `signed in as ${USER}`,
     signedIn,
     'The login form did not complete. This Nuxeo allows anonymous access, so an ' +
       'unauthenticated run would search a fraction of the repository and report a ' +
