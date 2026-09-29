@@ -20,7 +20,6 @@ import {
   CURRENT_USERNAME,
   DirectoryService,
   DocumentDetailService,
-  mailSendFailureMessage,
   NuxeoApiBase,
   PERMISSION_DENIED_KEY,
   type NuxeoComment,
@@ -34,7 +33,11 @@ import {
   AiFeatureFlagService,
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
-import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
+import {
+  KeClientService,
+  KeEnrichmentError,
+  type KeEnrichmentResult,
+} from '@agentic-ui/shared/ke-client';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 const STUB_DOC: NuxeoDocument = {
@@ -232,11 +235,15 @@ describe('DocumentDetailComponent', () => {
 
       component.sendPermissionNotification(ace);
 
-      expect(snackBarOpenSpy).toHaveBeenCalledWith(mailSendFailureMessage('send'), 'OK', {
-        duration: 3000,
-        horizontalPosition: 'center',
-        verticalPosition: 'bottom',
-      });
+      expect(snackBarOpenSpy).toHaveBeenCalledWith(
+        'Notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
+        'OK',
+        {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        },
+      );
     });
   });
 
@@ -383,6 +390,39 @@ describe('DocumentDetailComponent', () => {
 
       expect(updateSpy).not.toHaveBeenCalled();
       expect(component.keError()).toMatch(/"Hallucinated".*not one of the \d+ document categories/);
+    });
+
+    it('shows the Knowledge Enrichment client error through its catalogue key', async () => {
+      const keClient = TestBed.inject(KeClientService);
+      vi.spyOn(keClient, 'enrich').mockReturnValue(
+        throwError(
+          () =>
+            new KeEnrichmentError(
+              'Knowledge Enrichment returned HTTP 502.',
+              502,
+              null,
+              'ke-client.message.http-status',
+              { code: 502 },
+            ),
+        ),
+      );
+
+      component.runTextClassification();
+      await fixture.whenStable();
+
+      expect(component.keError()).toBe('Knowledge Enrichment returned HTTP 502.');
+    });
+
+    it('shows a server-supplied Knowledge Enrichment message as it came', async () => {
+      const keClient = TestBed.inject(KeClientService);
+      vi.spyOn(keClient, 'enrich').mockReturnValue(
+        throwError(() => new KeEnrichmentError('Quota exceeded for tenant', 429)),
+      );
+
+      component.runTextClassification();
+      await fixture.whenStable();
+
+      expect(component.keError()).toBe('Quota exceeded for tenant');
     });
 
     it('writes the vocabulary id when KE returns a valid display label', async () => {

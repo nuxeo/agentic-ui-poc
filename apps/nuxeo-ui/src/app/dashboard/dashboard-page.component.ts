@@ -20,6 +20,7 @@ import {
   TaskService,
   CollectionService,
   docTypeIcon,
+  docTypeLabel,
   FOLDERISH_TYPES,
   avatarColor,
   formatRelativeTime,
@@ -232,7 +233,7 @@ export class DashboardPageComponent {
   }
 
   docTypeLabel(doc: NuxeoDocument): string {
-    return doc.type ?? 'File';
+    return docTypeLabel(doc.type ?? 'File', (key) => this.translate.instant(key));
   }
 
   lastContributor(doc: NuxeoDocument): string {

@@ -258,9 +258,10 @@ export class ContentLakeUploadComponent {
         next: (status) => {
           this.ingestProcessedCount.set(status.processed);
           if (status.error || status.errorCount > 0) {
-            const message =
-              `Content Lake ingest finished with errors (${status.errorCount} failed). ` +
-              'Check that the HxAI connector and ingest credentials are configured on Nuxeo.';
+            const message = this.translate.instant(
+              'kd.content-lake-upload.ingest-finished-with-errors',
+              { count: status.errorCount },
+            );
             this.phase.set('error');
             this.errorMessage.set(message);
             this.statusMessage.set(null);
@@ -280,7 +281,8 @@ export class ContentLakeUploadComponent {
           this.dialogRef.close({ uploadedDocuments: this.uploadedDocuments() });
         },
         error: (err: Error) => {
-          const message = err.message || 'Upload or Content Lake ingest failed.';
+          const message =
+            err.message || this.translate.instant('kd.content-lake-upload.upload-or-ingest-failed');
           this.phase.set('error');
           this.errorMessage.set(message);
           this.statusMessage.set(null);

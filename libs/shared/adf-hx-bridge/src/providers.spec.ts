@@ -1,3 +1,4 @@
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -158,6 +159,7 @@ describe('adf-hx-bridge providers entry point', () => {
     // real entry point. A drift between the two would work in tests and fail in the app.
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
+      imports: [testTranslateModule()],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideAdfHxNuxeoBridge()],
     });
 

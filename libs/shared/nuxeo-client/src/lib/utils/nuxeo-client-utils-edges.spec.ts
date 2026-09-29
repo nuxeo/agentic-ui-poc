@@ -1,3 +1,5 @@
+import { TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { NuxeoAce } from '../models/acl.model';
@@ -376,18 +378,22 @@ describe('permission notification helpers', () => {
     expect(isMailSendError(undefined)).toBe(false);
   });
 
+  const en = (key: string): string => TestBed.inject(TranslateService).instant(key) as string;
+
   it('names the operation that succeeded in each mail-failure message', () => {
-    expect(mailSendFailureMessage('add')).toContain('Permission was added');
-    expect(mailSendFailureMessage('update')).toContain('Permission was updated');
-    expect(mailSendFailureMessage('send')).toContain('Notification email could not be sent.');
+    expect(mailSendFailureMessage('add', en)).toContain('Permission was added');
+    expect(mailSendFailureMessage('update', en)).toContain('Permission was updated');
+    expect(mailSendFailureMessage('send', en)).toContain('Notification email could not be sent.');
     for (const context of ['add', 'update', 'send'] as const) {
-      expect(mailSendFailureMessage(context)).toContain('Configure outbound mail (SMTP)');
+      expect(mailSendFailureMessage(context, en)).toContain('Configure outbound mail (SMTP)');
     }
   });
 
   it('tells the user the permission itself survived when the ACE could not be located', () => {
-    expect(permissionNotificationAceNotFoundMessage('add')).toContain('Permission was added');
-    expect(permissionNotificationAceNotFoundMessage('update')).toContain('Permission was updated');
+    expect(permissionNotificationAceNotFoundMessage('add', en)).toContain('Permission was added');
+    expect(permissionNotificationAceNotFoundMessage('update', en)).toContain(
+      'Permission was updated',
+    );
   });
 
   it('returns the newest granted local ACE for the principal', () => {

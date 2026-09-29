@@ -55,6 +55,8 @@ import {
   writeClipboardDocs,
   type ClipboardDoc,
   formatRelativeTime,
+  DocTypeLabelPipe,
+  taskDueDistance,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { toAdfHxBrowseRouterUrl } from '@agentic-ui/shared/adf-hx-bridge';
 import { HxpBrowseNavDrawerComponent } from '@agentic-ui/shared/adf-hx-bridge/providers';
@@ -76,6 +78,7 @@ import {
   POWERUSER_ADMINISTRATION_DRAWER_ITEMS,
 } from '../../platform-nav-items';
 import { ThemingFeatureFlagService } from '../../theme/theming-feature-flag.service';
+import { drawerDueKey } from './nav-drawer-due';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -90,6 +93,7 @@ export interface FolderNode {
   selector: 'app-nav-drawer',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
     DescriptorLabelPipe,
     NgTemplateOutlet,
     DatePipe,
@@ -1125,16 +1129,8 @@ export class NavDrawerComponent {
   /** Relative due fragment only (pairs with the "Due"/"Overdue" prefix in the template). */
   dueRelativeOnly(task: NuxeoTask): string {
     if (!task.dueDate) return '';
-    const diff = new Date(task.dueDate).getTime() - Date.now();
-    const absDiff = Math.abs(diff);
-    const days = Math.floor(absDiff / 86_400_000);
-    const hours = Math.floor(absDiff / 3_600_000);
-    let label: string;
-    if (days >= 1) label = days === 1 ? '1 day' : `${days} days`;
-    else label = hours <= 1 ? 'less than an hour' : `${hours} hours`;
-
-    if (diff > 0) return `in ${label}`;
-    return `by ${label}`;
+    const distance = taskDueDistance(task.dueDate);
+    return this.translate.instant(drawerDueKey(distance), { count: distance.count });
   }
 
   /** Workflow as a single sentence-style line (e.g. "Parallel document review"). */

@@ -422,17 +422,19 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
     const lower = raw.toLowerCase();
 
     if (lower.includes('user already exists')) {
-      return 'A user or pending invitation with this username already exists.';
+      return this.translate.instant('admin.message.user-already-exists');
     }
     if (lower.includes('must have a password')) {
-      return 'Password is required for this server. Enable "Set user password" or configure User.Invite.';
+      return this.translate.instant('admin.message.password-required-for-server');
     }
 
     const simplified = this.simplifyNuxeoAutomationMessage(raw);
     if (simplified) {
       return simplified;
     }
-    return invited ? 'Invitation failed' : 'Create failed';
+    return this.translate.instant(
+      invited ? 'admin.message.invitation-failed' : 'admin.message.create-failed',
+    );
   }
 
   private extractApiErrorMessage(err: unknown): string {

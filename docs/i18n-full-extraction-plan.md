@@ -2,20 +2,22 @@
 
 **Status: approved 19 Sep 2026. In progress.**
 
-| Decision                     | Answer                                                                                                                                  |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| D1 locale completeness       | **A** — English complete; `fr`/`de` partial with English fallback; parity **warns** on missing keys, still **fails** on extra ones.     |
-| D2 catalogue layout          | **A** — single app catalogue, per-feature namespaces; `libs/platform` gets its own when it needs one.                                   |
-| D3 translator context        | **A** — codemod generates what it can derive; ambiguous strings hand-written; the split is reported, not averaged.                      |
-| D4 inline templates          | **Yes** — extracted to `.html` first, as slice 0.                                                                                       |
-| D5 imperative `.ts` strings  | **Deferred.** 192 strings — snackbars, error messages, dialog data — stay hard-coded for now. Slice 10 remains in this plan, unstarted. |
-| D6 delivery                  | One PR per project.                                                                                                                     |
-| `apps/nuxeo-satori-template` | **Deferred.** 105 strings. Slice 11, unstarted.                                                                                         |
+| Decision                     | Answer                                                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| D1 locale completeness       | **A** — English complete; `fr`/`de` partial with English fallback; parity **warns** on missing keys, still **fails** on extra ones.    |
+| D2 catalogue layout          | **A** — single app catalogue, per-feature namespaces; `libs/platform` gets its own when it needs one.                                  |
+| D3 translator context        | **A** — codemod generates what it can derive; ambiguous strings hand-written; the split is reported, not averaged.                     |
+| D4 inline templates          | **Yes** — extracted to `.html` first, as slice 0.                                                                                      |
+| D5 imperative `.ts` strings  | **Done 29 Sep 2026 (slice 10, NXSAT-284).** 160 new keys; plurals as `-one`/`-many` pairs, no ICU compiler. See `docs/i18n-status.md`. |
+| D6 delivery                  | One PR per project.                                                                                                                    |
+| `apps/nuxeo-satori-template` | **Deferred.** 105 strings. Slice 11, unstarted.                                                                                        |
 
-**Known incompleteness, stated plainly:** with D5 and the template app deferred, roughly **297
-user-facing strings remain hard-coded** after slice 12. The repo-wide guardrail flip in slice 12
-must therefore exempt those two areas explicitly, or it cannot go green — and an exemption is a
-debt marker, not a pass.
+**Known incompleteness, as of 29 Sep 2026:** slices 10 and 12 are done — the imperative strings
+are in the catalogue, and `checkNoHardcodedUiText` and `checkNoHardcodedDescriptorText` are both
+repo-wide. The one deferred area left is `apps/nuxeo-satori-template` (slice 11, roughly 105
+strings), which the guardrails exempt explicitly — an exemption is a debt marker, not a pass —
+along with the sample extension and `libs/core`, which ship nothing. What stays hard-coded on
+purpose elsewhere is listed, with reasons, in `docs/i18n-status.md`.
 
 Goal, stated the way it was asked for: **every user-facing string in the application resolves
 through the translation service.** Tables, titles, columns, dialogs, menus, toasts, error
@@ -197,9 +199,9 @@ Each step is its own PR, each green before the next starts.
 |   7 | `libs/features/search`, `tasks`, `collections`, `trash`, `assets`, `knowledge-discovery` |     339 | Batchable.                                                                                          |
 |   8 | `libs/shared/adf-hx-bridge`                                                              |      67 |                                                                                                     |
 |   9 | Descriptors: actions, columns, tabs                                                      |     242 | Extends the `labelKey` contract from nav. Columns need a decision on adf-core's `DataColumn.title`. |
-|  10 | Imperative `.ts` strings                                                                 |     192 | D5. May need the ICU compiler.                                                                      |
+|  10 | Imperative `.ts` strings                                                                 |     192 | **Done 29 Sep 2026.** No ICU compiler: two keys per plural, chosen by `count === 1`.                |
 |  11 | `apps/nuxeo-satori-template`                                                             |     105 | Separate app, separate catalogue.                                                                   |
-|  12 | Flip `checkNoHardcodedUiText` and `checkNoHardcodedDescriptorText` to repo-wide          |       — | The point of the whole exercise: the gates stop being diff-scoped.                                  |
+|  12 | Flip `checkNoHardcodedUiText` and `checkNoHardcodedDescriptorText` to repo-wide          |       — | **Done 29 Sep 2026.** The descriptor flip surfaced 28 existing violations, all fixed.               |
 
 ## Verification, per slice
 

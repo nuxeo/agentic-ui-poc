@@ -135,7 +135,7 @@ export class CreateVersionDialogComponent {
           this.saving.set(false);
           const message = isPermissionDeniedError(err)
             ? this.translate.instant(PERMISSION_DENIED_KEY)
-            : 'Failed to create version';
+            : this.translate.instant('document-detail.message.failed-to-create-version');
           this.snackBar.open(message, this.translate.instant('common.ok'), { duration: 3000 });
         },
       });

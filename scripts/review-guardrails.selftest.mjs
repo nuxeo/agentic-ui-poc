@@ -333,7 +333,11 @@ const SIX = {
   'apps/nuxeo-ui/public/i18n/fr.json': FR_SIX,
 };
 
-expectGreen('a real translation that leaves a proper noun in English', 'checkCataloguesAreTranslated', SIX);
+expectGreen(
+  'a real translation that leaves a proper noun in English',
+  'checkCataloguesAreTranslated',
+  SIX,
+);
 
 expectRed(
   'a catalogue that is the English export under a French name — the Crowdin defect itself',
@@ -751,7 +755,7 @@ expectRed(
       'libs/shared/extensions/src/lib/nav-items.ts',
       `${GOOD_DESCRIPTORS}export const EXTRA = [{ id: 'x', label: 'Knowledge Discovery' }];\n`,
     ),
-  /introduces `label: 'Knowledge Discovery'` — a user-facing string in a descriptor/,
+  /carries `label: 'Knowledge Discovery'` — a user-facing string in a descriptor/,
 );
 
 const SHELL = (title) =>
@@ -972,7 +976,7 @@ expectRed(
       'libs/shared/extensions/src/lib/nav-items.ts',
       `${GOOD_DESCRIPTORS}export const F = { placeholder: 'Enter a name for your saved search' };\n`,
     ),
-  /introduces `placeholder: 'Enter a name for your saved search'`/,
+  /carries `placeholder: 'Enter a name for your saved search'`/,
 );
 
 /**
@@ -1511,17 +1515,21 @@ expectRed(
 // A `uses:` nested under `env:` belongs to that action's configuration, not to the step. Treating
 // such a step as Crowdin's made the fail-closed rules fire on inputs that never reach Crowdin —
 // here an expression-valued `command`, which is forbidden on a Crowdin step and fine on any other.
-expectGreen('an unrelated step mentioning the Crowdin action in a nested value', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  '.github/workflows/crowdin-pull.yaml':
-    CROWDIN_WORKFLOW(PULL_OK) +
-    `      - name: Something else entirely\n` +
-    `        uses: some-org/some-action@v1\n` +
-    `        with:\n` +
-    `          command: \${{ inputs.command }}\n` +
-    `        env:\n` +
-    `          uses: crowdin/github-action@v2\n`,
-});
+expectGreen(
+  'an unrelated step mentioning the Crowdin action in a nested value',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml':
+      CROWDIN_WORKFLOW(PULL_OK) +
+      `      - name: Something else entirely\n` +
+      `        uses: some-org/some-action@v1\n` +
+      `        with:\n` +
+      `          command: \${{ inputs.command }}\n` +
+      `        env:\n` +
+      `          uses: crowdin/github-action@v2\n`,
+  },
+);
 
 // The two forms COMBINE: a flow-style step whose action reference is escaped names Crowdin in a
 // spelling the substring test cannot see, inside a shape `yamlValues` cannot read — so neither
@@ -1596,28 +1604,36 @@ expectRed(
 // A longer key CONTAINING the token is not the token. The entry fallback searched for a substring,
 // so `'legacy_skip_untranslated_files'` — a key this repository does not use and Crowdin does not
 // define, but valid YAML — rejected a config that declares nothing forbidden.
-expectGreen('a Crowdin entry with a longer key containing the forbidden token', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  'crowdin-conf.yml': crowdinConf([
-    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
-    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
-      `'update_option': 'update_without_changes',`,
-      `'update_option': 'update_without_changes',\n      'legacy_skip_untranslated_files': true,`,
-    ),
-  ]),
-});
+expectGreen(
+  'a Crowdin entry with a longer key containing the forbidden token',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    'crowdin-conf.yml': crowdinConf([
+      CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+      CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+        `'update_option': 'update_without_changes',`,
+        `'update_option': 'update_without_changes',\n      'legacy_skip_untranslated_files': true,`,
+      ),
+    ]),
+  },
+);
 
 // The token inside a quoted VALUE is not a key either.
-expectGreen('a Crowdin entry mentioning the forbidden token inside a quoted value', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  'crowdin-conf.yml': crowdinConf([
-    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
-    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
-      `'update_option': 'update_without_changes',`,
-      `'update_option': 'update_without_changes',\n      'note': 'skip_untranslated_files: never',`,
-    ),
-  ]),
-});
+expectGreen(
+  'a Crowdin entry mentioning the forbidden token inside a quoted value',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    'crowdin-conf.yml': crowdinConf([
+      CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+      CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+        `'update_option': 'update_without_changes',`,
+        `'update_option': 'update_without_changes',\n      'note': 'skip_untranslated_files: never',`,
+      ),
+    ]),
+  },
+);
 
 // An unrelated flow-style step hides nothing this guardrail reads, so rejecting it would be the
 // cross-action false positive these scopes exist to avoid.
@@ -1633,16 +1649,20 @@ expectGreen('an unrelated flow-style step in a Crowdin workflow', 'checkCrowdinC
 // An inline comment INSIDE an entry is a note, not configuration. The entry scan added for the
 // one-line shape reads raw text, so a comment explaining why the option is absent was read as the
 // option being present — the same mistake as the whole-file substring search, one scope smaller.
-expectGreen('a Crowdin entry whose inline comment mentions skip_untranslated_files', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  'crowdin-conf.yml': crowdinConf([
-    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
-    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
-      `'update_option': 'update_without_changes',`,
-      `'update_option': 'update_without_changes', # skip_untranslated_files: stays forbidden`,
-    ),
-  ]),
-});
+expectGreen(
+  'a Crowdin entry whose inline comment mentions skip_untranslated_files',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    'crowdin-conf.yml': crowdinConf([
+      CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+      CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+        `'update_option': 'update_without_changes',`,
+        `'update_option': 'update_without_changes', # skip_untranslated_files: stays forbidden`,
+      ),
+    ]),
+  },
+);
 
 // A flow-style STEP hides its own `uses:`, so nothing can tell whether it runs the Crowdin action
 // — and every Crowdin-scoped rule skipped it rather than failing it. Rejected outright, before any
@@ -1684,16 +1704,20 @@ expectRed(
 // An INLINE comment is not configuration. `stripYamlComments` drops whole-line comments only, so a
 // raw token search read `# skip_untranslated_files stays off` as the option being set — the gate
 // reporting a defect in a correct file, and unfixable without deleting the note.
-expectGreen('crowdin-conf.yml mentioning skip_untranslated_files in an inline comment', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  'crowdin-conf.yml': crowdinConf([
-    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
-    CROWDIN_ENTRY('/libs/**/i18n/en.json'),
-  ]).replace(
-    `'preserve_hierarchy': true`,
-    `'preserve_hierarchy': true # skip_untranslated_files stays off, see D8h`,
-  ),
-});
+expectGreen(
+  'crowdin-conf.yml mentioning skip_untranslated_files in an inline comment',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    'crowdin-conf.yml': crowdinConf([
+      CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+      CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+    ]).replace(
+      `'preserve_hierarchy': true`,
+      `'preserve_hierarchy': true # skip_untranslated_files stays off, see D8h`,
+    ),
+  },
+);
 
 // The same rule one level down: a comment aligned with `with:` does not end the input mapping, and
 // treating it as a dedent dropped every input after it — so an upload below such a comment was
@@ -2019,17 +2043,21 @@ expectRed(
 // `command:` is a generic input name. On an action that is not Crowdin it cannot upload anything,
 // so an unreadable one ahead of the context push is not an ordering violation — classifying it as
 // one failed the gate on a correct workflow.
-expectGreen('an unrelated action with an unreadable command before the context push', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  '.github/workflows/crowdin-push.yaml':
-    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
-    `      - name: Something else entirely\n` +
-    `        uses: some-org/some-action@v1\n` +
-    `        with:\n` +
-    `          command: \${{ inputs.command }}\n` +
-    `      - name: Push translator context\n` +
-    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
-});
+expectGreen(
+  'an unrelated action with an unreadable command before the context push',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-push.yaml':
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+      `      - name: Something else entirely\n` +
+      `        uses: some-org/some-action@v1\n` +
+      `        with:\n` +
+      `          command: \${{ inputs.command }}\n` +
+      `      - name: Push translator context\n` +
+      `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+  },
+);
 
 // Masking, on the ordering side. An explicit `false` on an earlier step must not excuse an enabled
 // upload on a later one that still sits ahead of the context push.
@@ -2105,7 +2133,10 @@ expectRed(
   'checkCrowdinConfig',
   CROWDIN,
   (write) =>
-    write('.github/workflows/crowdin-pull.yaml', CROWDIN_WORKFLOW(PULL_OK + PULL_SKIP_UNTRANSLATED)),
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + PULL_SKIP_UNTRANSLATED),
+    ),
   /declares `skip_untranslated_strings: true`[\s\S]*#293/,
 );
 
@@ -2122,12 +2153,16 @@ expectRed(
 );
 
 // An explicit `false` is the action's own default, so it is not the defect.
-expectGreen('a pull workflow that explicitly disables skip_untranslated_strings', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
-    PULL_OK + `          skip_untranslated_strings: false\n`,
-  ),
-});
+expectGreen(
+  'a pull workflow that explicitly disables skip_untranslated_strings',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+      PULL_OK + `          skip_untranslated_strings: false\n`,
+    ),
+  },
+);
 
 expectRed(
   'the pull workflow passing --skip-untranslated-strings through download_translations_args',
@@ -2137,7 +2172,8 @@ expectRed(
     write(
       '.github/workflows/crowdin-pull.yaml',
       CROWDIN_WORKFLOW(
-        PULL_OK + `          download_translations_args: '--language=fr --skip-untranslated-strings'\n`,
+        PULL_OK +
+          `          download_translations_args: '--language=fr --skip-untranslated-strings'\n`,
       ),
     ),
   /passes `--skip-untranslated-strings` to a Crowdin step/,
@@ -2196,9 +2232,7 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(
-        `          upload_sources: false\n` + PULL_SKIP_UNTRANSLATED,
-      ) +
+      CROWDIN_WORKFLOW(`          upload_sources: false\n` + PULL_SKIP_UNTRANSLATED) +
         `      - uses: crowdin/github-action@v2\n` +
         `        with:\n` +
         `          config: crowdin-conf.yml\n` +
@@ -2278,12 +2312,16 @@ expectRed(
 // An explicit `false` is the one value that is NOT the defect, so the fail-closed rule has to let
 // it through — otherwise "remove the option" and "disable the option" would be indistinguishable
 // and the message would be unactionable.
-expectGreen('a pull workflow that explicitly disables skip_untranslated_files', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
-    PULL_OK + `          skip_untranslated_files: false\n`,
-  ),
-});
+expectGreen(
+  'a pull workflow that explicitly disables skip_untranslated_files',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+      PULL_OK + `          skip_untranslated_files: false\n`,
+    ),
+  },
+);
 
 // Masking. Reading only the FIRST declaration let a harmless `false` on a preparation step excuse
 // a `true` on the step that actually downloads — the same wrong-step blindness the `crowdinSteps`
@@ -2324,14 +2362,18 @@ expectRed(
 // where these options get explained to whoever reads the generated pull request, so reading its
 // lines as inputs made the check fire on its own documentation — and unfixable without deleting
 // the explanation. The existing prose control covers the CLI spelling; this covers the input one.
-expectGreen('the pull request body explaining skip_untranslated_files in prose', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  '.github/workflows/crowdin-pull.yaml':
-    CROWDIN_WORKFLOW(PULL_OK) +
-    `          pull_request_body: |\n` +
-    `            We do not set skip_untranslated_files: true — only one of the two\n` +
-    `            options can be active. See D8h.\n`,
-});
+expectGreen(
+  'the pull request body explaining skip_untranslated_files in prose',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml':
+      CROWDIN_WORKFLOW(PULL_OK) +
+      `          pull_request_body: |\n` +
+      `            We do not set skip_untranslated_files: true — only one of the two\n` +
+      `            options can be active. See D8h.\n`,
+  },
+);
 
 // Quoted keys. `'skip_untranslated_files': true` is valid YAML and reaches the action identically.
 // Not hypothetical: `crowdin-conf.yml` quotes every key in this repository.
@@ -2419,13 +2461,17 @@ expectRed(
 // mention anywhere else — the pull request body is the realistic one, since it explains these very
 // options — reaches the CLI on no path, and failing the gate on it would make the check unfixable
 // without deleting the explanation.
-expectGreen('the pull request body mentioning --skip-untranslated-files in prose', 'checkCrowdinConfig', {
-  ...CROWDIN,
-  '.github/workflows/crowdin-pull.yaml':
-    CROWDIN_WORKFLOW(PULL_OK) +
-    `          pull_request_body: |\n` +
-    `            We do not pass --skip-untranslated-files; see D8h.\n`,
-});
+expectGreen(
+  'the pull request body mentioning --skip-untranslated-files in prose',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml':
+      CROWDIN_WORKFLOW(PULL_OK) +
+      `          pull_request_body: |\n` +
+      `            We do not pass --skip-untranslated-files; see D8h.\n`,
+  },
+);
 
 // The ordering rule had the identical blind spot, and the consequence is the one D8c records: a
 // quoted upload ahead of the context push runs, fails, and skips the context step behind it, while
@@ -3120,7 +3166,7 @@ expectRed(
         "  { label: 'Delete', path: '/delete' },\n" +
         '];\n',
     ),
-  /introduces `label: 'Delete'`/,
+  /carries `label: 'Delete'`/,
 );
 
 // And the pairing still works, single-line and multi-line, or the fix would flag 89 correctly
@@ -3637,6 +3683,276 @@ expectGreen(
       "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
       "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n" +
       '    steps:\n      - run: node tools/i18n/crowdin-push-context.mjs\n',
+  },
+);
+
+/* ---------------- NXSAT-284: sink text through a ternary or a constant ---------------- */
+
+// The shapes `toast(wasLocked ? 'Document unlocked' : 'Document locked')` and
+// `toast(DOMAIN_CONTAINER_GUIDANCE)` were read as clean by every check, because each looked for a
+// literal as the first thing in the call. 23 such strings were live when this was found.
+expectRed(
+  'a toast whose message is a ternary of two literals',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.toast(wasLocked ? 'Document unlocked' : 'Document locked');\n",
+    ),
+  /passes the hard-coded string `Document unlocked`[\s\S]*passes the hard-coded string `Document locked`/,
+);
+
+expectRed(
+  'a toast whose hard-coded branch is the else side of a keyed ternary',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.toast(\n  denied(err) ? this.translate.instant(KEY) : 'Failed to save note',\n);\n",
+    ),
+  /passes the hard-coded string `Failed to save note`/,
+);
+
+expectRed(
+  'a snackbar message passed through a prose constant declared in another file',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/shared/x/src/lib/notice.ts':
+      "export const DOMAIN_CONTAINER_GUIDANCE =\n  'Open Sections, Templates, or Workspaces, then create content inside those folders.';\n",
+  },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.snackBar.open(DOMAIN_CONTAINER_GUIDANCE, this.translate.instant('common.ok'));\n",
+    ),
+  /through the constant `DOMAIN_CONTAINER_GUIDANCE`/,
+);
+
+expectRed(
+  'an error signal set through a prose constant',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "const LOAD_FAILED = 'Could not load the folder.';\nthis.scopeNotice.set(LOAD_FAILED);\n",
+    ),
+  /through the constant `LOAD_FAILED`/,
+);
+
+// The same argument parsing must not start flagging what is correct, or it gets switched off.
+falsePositiveControls += 1;
+expectGreen(
+  'a ternary that selects between two catalogue keys',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/features/x/src/lib/x.ts':
+      "this.toast(\n  this.translate.instant(wasLocked ? 'x.message.unlocked' : 'x.message.locked'),\n);\n",
+  },
+);
+
+falsePositiveControls += 1;
+expectGreen('a constant holding a catalogue KEY', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "const GUIDANCE_KEY = 'browse.message.domain-container-guidance';\n" +
+    'this.toast(this.translate.instant(GUIDANCE_KEY));\n',
+});
+
+falsePositiveControls += 1;
+expectGreen(
+  'a local lower-case prose const is not matched across files',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/features/x/src/lib/a.ts':
+      "const message = 'Saved the document.';\nconsole.log(message);\n",
+    'libs/features/x/src/lib/b.ts': 'this.toast(message);\n',
+  },
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a parenthesis inside a keyed argument does not end the scan early',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/features/x/src/lib/x.ts':
+      "this.toast(this.translate.instant('x.k', { n: count(items) }));\nconsole.warn('Not (a) sink');\n",
+  },
+);
+
+expectRed(
+  'a dialog title set from a ternary',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+        "    title: isReply ? 'Delete Reply' : 'Delete Comment',\n" +
+        "    confirmLabel: this.translate.instant('confirm.delete'),\n  },\n});\n",
+    ),
+  /sets `title` in a dialog's data from a ternary with the hard-coded branch `Delete Reply`/,
+);
+
+expectRed(
+  'a dialog message set from a prose constant',
+  'checkNoHardcodedDialogText',
+  {
+    ...APP,
+    'libs/shared/x/src/lib/notice.ts': "export const MOVE_WARNING = 'This cannot be undone.';\n",
+  },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n    message: MOVE_WARNING,\n  },\n});\n',
+    ),
+  /sets `message` in a dialog's data to the constant `MOVE_WARNING`/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a dialog title choosing between two keys', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+    "    title: this.translate.instant(isReply ? 'confirm.delete-reply' : 'confirm.delete-comment'),\n" +
+    '  },\n});\n',
+});
+
+/* ---------------- NXSAT-284: checkNoHardcodedDescriptorText is repo-wide ---------------- */
+
+// Committed in the BASELINE, so the diff is empty. Under the diff-scoped version this passed —
+// which is exactly how 28 descriptors predating the check went unmeasured.
+expectRed(
+  'a hard-coded descriptor that predates the change is still flagged',
+  'checkNoHardcodedDescriptorText',
+  {
+    'libs/features/x/src/lib/toolbar.ts':
+      "export const CONTROLS = [{ selector: 'button.ql-bold', label: 'Bold' }];\n",
+  },
+  null,
+  /toolbar\.ts:1 carries `label: 'Bold'`/,
+);
+
+expectRed(
+  'the starter template is exempt, but a shipped library beside it is not',
+  'checkNoHardcodedDescriptorText',
+  {
+    'apps/nuxeo-satori-template/src/app/nav.ts':
+      "export const N = [{ label: 'Deferred Label' }];\n",
+    'libs/features/x/src/lib/nav.ts': "export const N = [{ label: 'Shipped Label' }];\n",
+  },
+  null,
+  /libs\/features\/x\/src\/lib\/nav\.ts:1 carries `label: 'Shipped Label'`/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a pre-existing descriptor keyed with labelKey', 'checkNoHardcodedDescriptorText', {
+  'libs/features/x/src/lib/toolbar.ts':
+    "export const CONTROLS = [{ selector: 'button.ql-bold', labelKey: 'x.bold' }];\n" +
+    "export const THEMES = [{ id: 'dark', labelKey: 'x.dark', label: 'Dark' }];\n",
+});
+
+falsePositiveControls += 1;
+expectGreen(
+  'a hard-coded descriptor in the exempt starter template',
+  'checkNoHardcodedDescriptorText',
+  {
+    'apps/nuxeo-satori-template/src/app/nav.ts':
+      "export const N = [{ label: 'Deferred Label' }];\n",
+    'libs/features/x/src/lib/nav.ts': "export const N = [{ label: 'x.nav.browse' }];\n",
+  },
+);
+
+/* ---------------- NXSAT-284 review round 1: shapes the first version missed ---------------- */
+
+// The balanced-argument pass replaced the old `toast\('…'` regex and only looked after `?`/`:`, so
+// the plainest shape of all went green.
+expectRed(
+  'a toast whose whole first argument is a literal',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) => write('libs/features/x/src/lib/x.ts', "this.toast('Document restored');\n"),
+  /passes the hard-coded string `Document restored`/,
+);
+
+expectRed(
+  'a toast passed a prose constant written as a template literal',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'const WARNING = `This cannot be undone.`;\nthis.toast(WARNING);\n',
+    ),
+  /through the constant `WARNING`/,
+);
+
+// Prettier breaks a long ternary across lines; a line-bounded match could not see it.
+expectRed(
+  'a dialog title ternary broken across lines',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+        "    title: isReply\n      ? 'Delete Reply'\n      : 'Delete Comment',\n  },\n});\n",
+    ),
+  /sets `title` in a dialog's data from a ternary with the hard-coded branch `Delete Reply`/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a multi-line dialog ternary that selects between keys', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+    "    title: this.translate.instant(\n      isReply ? 'confirm.delete-reply' : 'confirm.delete-comment',\n    ),\n" +
+    "    message: this.translate.instant('confirm.delete-question', { name: 'x' }),\n" +
+    '  },\n});\n',
+});
+
+/* ---------------- NXSAT-284 review round 2: a local alias ---------------- */
+
+// `const msg = err?.error?.message || 'Failed to delegate task.'; this.snackBar.open(msg, …)` —
+// four task handlers did this, and neither the literal patterns nor the SCREAMING_CASE constant
+// lookup could see it.
+expectRed(
+  'a hard-coded fallback held in a local const and passed to a snackbar',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'function onError(err) {\n' +
+        "  const msg = err?.error?.message || 'Failed to delegate task.';\n" +
+        "  this.snackBar.open(msg, this.translate.instant('common.close'));\n" +
+        '}\n',
+    ),
+  /passes the hard-coded string `Failed to delegate task\.` \(through the local `msg`\)/,
+);
+
+// Scoped to the declaring block: a same-named `msg` in another method is not blamed for it.
+falsePositiveControls += 1;
+expectGreen(
+  'a same-named local in another block is not borrowed',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/features/x/src/lib/x.ts':
+      'function a() {\n' +
+      "  const msg = 'Only logged, never shown.';\n" +
+      '  console.warn(msg);\n' +
+      '}\n' +
+      'function b() {\n' +
+      "  const msg = this.translate.instant('x.message.saved');\n" +
+      "  this.snackBar.open(msg, this.translate.instant('common.close'));\n" +
+      '}\n',
   },
 );
 

@@ -1,9 +1,14 @@
 import { UserPreferenceValues } from '@alfresco/adf-core';
-import { of } from 'rxjs';
+import { LangChangeEvent } from '@ngx-translate/core';
+import { Subject, of } from 'rxjs';
 
-import { initialiseAppConfigAndLanguage, provideAppConfig } from './provide-app-config';
+import {
+  initialiseAppConfigAndLanguage,
+  provideAppConfig,
+  syncDocumentLanguage,
+} from './provide-app-config';
 import { AppConfigService, DEFAULT_APP_BOOTSTRAP_CONFIG } from '@nuxeo-satori/platform/app-config';
-import { FactoryProvider, LOCALE_ID, signal } from '@angular/core';
+import { DestroyRef, FactoryProvider, LOCALE_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 /**
@@ -165,5 +170,48 @@ describe('LOCALE_ID provider', () => {
     // A test that only checked 'en' would pass with no provider at all, because Angular's
     // default already starts with those two letters.
     expect(injectLocaleFor('fr')).not.toBe('en-US');
+  });
+});
+
+describe('syncDocumentLanguage', () => {
+  function harness(current: string) {
+    const onLangChange = new Subject<LangChangeEvent>();
+    const translate = {
+      onLangChange,
+      getCurrentLang: () => current,
+    };
+    const doc = document.implementation.createHTMLDocument('lang');
+    doc.documentElement.lang = 'en';
+    const destroyCallbacks: Array<() => void> = [];
+    const destroyRef = {
+      onDestroy: (callback: () => void) => {
+        destroyCallbacks.push(callback);
+        return () => undefined;
+      },
+    } as unknown as DestroyRef;
+    syncDocumentLanguage(translate, doc, destroyRef);
+    return { onLangChange, doc, destroy: () => destroyCallbacks.forEach((cb) => cb()) };
+  }
+
+  const change = (lang: string): LangChangeEvent => ({ lang, translations: {} });
+
+  it('sets <html lang> to the language already active', () => {
+    const { doc } = harness('fr');
+    expect(doc.documentElement.lang).toBe('fr');
+  });
+
+  it('follows every later language change, including one adf-core makes after boot', () => {
+    const { onLangChange, doc } = harness('en');
+    onLangChange.next(change('de'));
+    expect(doc.documentElement.lang).toBe('de');
+    onLangChange.next(change('fr'));
+    expect(doc.documentElement.lang).toBe('fr');
+  });
+
+  it('stops listening once the application is destroyed', () => {
+    const { onLangChange, doc, destroy } = harness('en');
+    destroy();
+    onLangChange.next(change('de'));
+    expect(doc.documentElement.lang).toBe('en');
   });
 });

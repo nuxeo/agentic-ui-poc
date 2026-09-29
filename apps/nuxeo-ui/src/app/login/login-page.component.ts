@@ -32,7 +32,7 @@ import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client
 
 import { observeStripRedundantMatInputAriaRequired } from '@nuxeo-satori/platform/ui';
 
-import { AuthService } from '../auth/auth.service';
+import { AuthService, SignInError } from '../auth/auth.service';
 
 const LAST_USER_KEY = 'agentic_ui_last_username';
 
@@ -291,7 +291,9 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
       error: (err: Error) => {
         this.submitting.set(false);
 
-        this.snackBar.open(err.message, this.translate.instant('common.dismiss'), {
+        const message =
+          err instanceof SignInError ? this.translate.instant(err.messageKey) : err.message;
+        this.snackBar.open(message, this.translate.instant('common.dismiss'), {
           duration: 6000,
         });
       },

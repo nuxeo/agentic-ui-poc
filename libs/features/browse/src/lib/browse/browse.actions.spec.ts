@@ -19,7 +19,6 @@ import {
   BrowseContextService,
   BrowseService,
   CURRENT_USERNAME,
-  DOMAIN_CONTAINER_GUIDANCE,
   DirectoryService,
   DocumentDetailService,
   PERMISSION_DENIED_KEY,
@@ -474,7 +473,11 @@ describe('BrowseComponent — actions', () => {
     component.openCreateImportDialog();
 
     expect(dialogOpen).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(DOMAIN_CONTAINER_GUIDANCE, 'OK', { duration: 6000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      'Open Sections, Templates, or Workspaces, then create content inside those folders.',
+      'OK',
+      { duration: 6000 },
+    );
   });
 
   it('openCreateImportDialog navigates to a freshly created document', () => {

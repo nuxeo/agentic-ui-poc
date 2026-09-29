@@ -136,6 +136,7 @@ import {
 } from '@agentic-ui/shared/ai-client';
 import {
   KeClientService,
+  KeEnrichmentError,
   type KeEnrichRequest,
   type KeEnrichmentResult,
 } from '@agentic-ui/shared/ke-client';
@@ -170,6 +171,7 @@ import {
   type StoryboardItem,
   type VideoInfo,
   type VideoSource,
+  provideTranslatedDatepickerIntl,
 } from '@nuxeo-satori/platform/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 import {
@@ -226,6 +228,30 @@ type KeUiAction =
   | 'named-entity-recognition-text'
   | 'text-summarization'
   | 'image-enrichment';
+
+/** Catalogue keys for the progress, success and failure message of each enrichment action. */
+const KE_MESSAGE_KEYS: Record<KeUiAction, { start: string; success: string; failed: string }> = {
+  'text-classification': {
+    start: 'document-detail.message.ke-start-classification',
+    success: 'document-detail.message.ke-success-classification',
+    failed: 'document-detail.message.ke-failed-classification',
+  },
+  'named-entity-recognition-text': {
+    start: 'document-detail.message.ke-start-entity-extraction',
+    success: 'document-detail.message.ke-success-entity-extraction',
+    failed: 'document-detail.message.ke-failed-entity-extraction',
+  },
+  'text-summarization': {
+    start: 'document-detail.message.ke-start-summarization',
+    success: 'document-detail.message.ke-success-summarization',
+    failed: 'document-detail.message.ke-failed-summarization',
+  },
+  'image-enrichment': {
+    start: 'document-detail.message.ke-start-image-enrichment',
+    success: 'document-detail.message.ke-success-image-enrichment',
+    failed: 'document-detail.message.ke-failed-image-enrichment',
+  },
+};
 
 const MIME_BY_EXTENSION: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -286,7 +312,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     SatBreadcrumbsComponent,
     SatTagModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideTranslatedDatepickerIntl(), provideNativeDateAdapter()],
   templateUrl: './document-detail.html',
   styleUrl: './document-detail.scss',
 })
@@ -1311,9 +1337,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   runTextClassification(): void {
     const candidates = this.natureVocabulary().map((entry) => entry.id);
     if (candidates.length === 0) {
-      const message =
-        'Document classification is unavailable: the "nature" vocabulary failed to load. ' +
-        'Refresh the page and try again.';
+      const message = this.translate.instant(
+        'document-detail.message.classification-unavailable-vocabulary',
+      );
       this.keError.set(message);
       this.toast(message);
       return;
@@ -1369,17 +1395,19 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: ({ status, updatedDoc }) => {
           if (status.error || status.errorCount > 0) {
-            const message =
-              `Content Lake ingest finished with errors (${status.errorCount} failed). ` +
-              'Check that the HxAI connector and ingest credentials are configured on Nuxeo.';
+            const message = this.translate.instant(
+              'document-detail.message.content-lake-ingest-finished-with-errors',
+              { count: status.errorCount },
+            );
             this.contentLakeIngestError.set(message);
             this.contentLakeIngestStatus.set(null);
             this.toast(message);
             return;
           }
 
-          const message =
-            'Ingested to Content Lake. Knowledge Discovery agents can search this document once indexing completes.';
+          const message = this.translate.instant(
+            'document-detail.message.ingested-to-content-lake',
+          );
           this.contentLakeIngestStatus.set(message);
           this.contentLakePresenceVerified.set(true);
           if (updatedDoc) {
@@ -1390,7 +1418,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.toast(message);
         },
         error: (err: Error) => {
-          const message = err.message || 'Content Lake ingest failed.';
+          const message =
+            err.message ||
+            this.translate.instant('document-detail.message.content-lake-ingest-failed');
           this.contentLakeIngestError.set(message);
           this.contentLakeIngestStatus.set(null);
           this.toast(message);
@@ -1482,13 +1512,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       case 'text-classification': {
         const category = result.textClassification?.result?.trim();
         const vocabularySize = this.natureVocabulary().length;
-        const manualHint =
-          'To set it manually, click the Edit button and pick a value for Document Category.';
 
         if (!category) {
           console.warn('[KE] text-classification returned no category', result);
           return this.throwKeResultError(
-            `Knowledge Enrichment did not return a document category. ${manualHint}`,
+            this.translate.instant('document-detail.message.ke-no-category'),
           );
         }
         if (category === KE_NO_MATCH_SENTINEL) {
@@ -1497,8 +1525,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             { candidates: this.natureVocabulary().map((entry) => entry.id), result },
           );
           return this.throwKeResultError(
-            `Knowledge Enrichment could not match this document to any of the ${vocabularySize} ` +
-              `available document categories. ${manualHint}`,
+            this.translate.instant('document-detail.message.ke-no-category-match', {
+              count: vocabularySize,
+            }),
           );
         }
         // Map back to a vocabulary id. Accept either the id or the display label
@@ -1510,8 +1539,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             result,
           });
           return this.throwKeResultError(
-            `Knowledge Enrichment returned "${category}", which is not one of the ` +
-              `${vocabularySize} document categories. ${manualHint}`,
+            this.translate.instant('document-detail.message.ke-category-not-in-vocabulary', {
+              category,
+              count: vocabularySize,
+            }),
           );
         }
         propertyUpdates['dc:nature'] = resolvedId;
@@ -1521,7 +1552,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       case 'text-summarization': {
         const summary = result.textSummary?.result?.trim();
         if (!summary) {
-          return this.throwKeResultError('Knowledge Enrichment did not return a summary.');
+          return this.throwKeResultError(
+            this.translate.instant('document-detail.message.ke-no-summary'),
+          );
         }
         propertyUpdates['dc:description'] = summary;
         break;
@@ -1530,7 +1563,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       case 'named-entity-recognition-text': {
         tagsToApply = this.collectNamedEntityTags(result.namedEntityText?.result);
         if (tagsToApply.length === 0) {
-          return this.throwKeResultError('Knowledge Enrichment did not return any text entities.');
+          return this.throwKeResultError(
+            this.translate.instant('document-detail.message.ke-no-text-entities'),
+          );
         }
         break;
       }
@@ -1544,7 +1579,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         }
         if (Object.keys(propertyUpdates).length === 0 && tagsToApply.length === 0) {
           return this.throwKeResultError(
-            'Knowledge Enrichment did not return an image description or image entities.',
+            this.translate.instant('document-detail.message.ke-no-image-result'),
           );
         }
         break;
@@ -1591,64 +1626,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private keStartMessage(action: KeUiAction): string {
-    switch (action) {
-      case 'text-classification':
-        return 'Running document classification...';
-      case 'named-entity-recognition-text':
-        return 'Extracting named entities from the PDF...';
-      case 'text-summarization':
-        return 'Generating document summary...';
-      case 'image-enrichment':
-        return 'Generating image description and tags...';
-    }
+    return this.translate.instant(KE_MESSAGE_KEYS[action].start);
   }
 
   private keSuccessMessage(action: KeUiAction): string {
-    switch (action) {
-      case 'text-classification':
-        return 'Document category updated from Knowledge Enrichment.';
-      case 'named-entity-recognition-text':
-        return 'Document tags updated from Knowledge Enrichment.';
-      case 'text-summarization':
-        return 'Document description updated from Knowledge Enrichment.';
-      case 'image-enrichment':
-        return 'Image description and tags updated from Knowledge Enrichment.';
-    }
+    return this.translate.instant(KE_MESSAGE_KEYS[action].success);
   }
 
   private resolveKnowledgeEnrichmentError(error: unknown, action: KeUiAction): string {
-    const fallback = `Failed to run ${this.keActionLabel(action)}.`;
+    const fallback = this.translate.instant(KE_MESSAGE_KEYS[action].failed);
+    if (error instanceof KeEnrichmentError && error.messageKey) {
+      return this.translate.instant(error.messageKey, error.messageParams);
+    }
     if (error instanceof Error && error.message) {
       if (error.message.includes('No authentication info for calling the Enrichment service')) {
-        return (
-          'Knowledge Enrichment is not configured on this Nuxeo server yet. ' +
-          'Add the CIC contextEnrichment/enrichment credentials to Nuxeo, then retry.'
-        );
+        return this.translate.instant('document-detail.message.ke-not-configured');
       }
       return error.message;
     }
     const maybeMessage = (error as { error?: { message?: string }; message?: string } | null)?.error
       ?.message;
     if (maybeMessage?.includes('No authentication info for calling the Enrichment service')) {
-      return (
-        'Knowledge Enrichment is not configured on this Nuxeo server yet. ' +
-        'Add the CIC contextEnrichment/enrichment credentials to Nuxeo, then retry.'
-      );
+      return this.translate.instant('document-detail.message.ke-not-configured');
     }
     return maybeMessage ?? (error as { message?: string } | null)?.message ?? fallback;
-  }
-
-  private keActionLabel(action: KeUiAction): string {
-    switch (action) {
-      case 'text-classification':
-        return 'document classification';
-      case 'named-entity-recognition-text':
-        return 'entity extraction';
-      case 'text-summarization':
-        return 'document summarization';
-      case 'image-enrichment':
-        return 'image enrichment';
-    }
   }
 
   private throwKeResultError(message: string): Observable<never> {
@@ -3174,7 +3175,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         // told every user someone else held their own lock.
         this.lockOwner.set(wasLocked ? null : (this.currentUsername() ?? null));
         this.actionInProgress.set(null);
-        this.toast(wasLocked ? 'Document unlocked' : 'Document locked');
+        this.toast(
+          this.translate.instant(
+            wasLocked
+              ? 'document-detail.message.document-unlocked'
+              : 'document-detail.message.document-locked',
+          ),
+        );
       },
       error: () => {
         this.actionInProgress.set(null);
@@ -3195,7 +3202,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         const wasFav = this.isFavorite();
         this.isFavorite.set(!wasFav);
         this.actionInProgress.set(null);
-        this.toast(wasFav ? 'Removed from favorites' : 'Added to favorites');
+        this.toast(
+          this.translate.instant(
+            wasFav
+              ? 'document-detail.message.removed-from-favorites'
+              : 'document-detail.message.added-to-favorites',
+          ),
+        );
         window.dispatchEvent(new Event('favorites-changed'));
       },
       error: () => {
@@ -3217,7 +3230,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         const wasSub = this.isSubscribed();
         this.isSubscribed.set(!wasSub);
         this.actionInProgress.set(null);
-        this.toast(wasSub ? 'Notifications disabled' : 'Notifications enabled');
+        this.toast(
+          this.translate.instant(
+            wasSub
+              ? 'document-detail.message.notifications-disabled'
+              : 'document-detail.message.notifications-enabled',
+          ),
+        );
       },
       error: () => {
         this.actionInProgress.set(null);
@@ -3451,7 +3470,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.toast(
             isPermissionDeniedError(err)
               ? this.translate.instant(PERMISSION_DENIED_KEY)
-              : 'Failed to save note',
+              : this.translate.instant('document-detail.message.failed-to-save-note'),
           );
         },
       });
@@ -3460,7 +3479,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   shareDocument(): void {
     this.dialog.open(ShareDialogComponent, {
       data: {
-        title: this.doc()?.title ?? 'Document',
+        title: this.doc()?.title ?? this.translate.instant('document-detail.share-fallback-title'),
         url: window.location.href,
       } satisfies ShareDialogData,
       width: '520px',
@@ -3745,8 +3764,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const isReply = !!parentCommentId;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: isReply ? 'Delete Reply' : 'Delete Comment',
-        message: isReply ? 'Delete this reply?' : 'Delete this comment?',
+        title: this.translate.instant(isReply ? 'confirm.delete-reply' : 'confirm.delete-comment'),
+        message: this.translate.instant(
+          isReply ? 'confirm.delete-reply-question' : 'confirm.delete-comment-question',
+        ),
         confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
@@ -3779,7 +3800,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
               }
             },
             error: () =>
-              this.toast(isReply ? 'Failed to delete reply' : 'Failed to delete comment'),
+              this.toast(
+                this.translate.instant(
+                  isReply
+                    ? 'document-detail.message.failed-to-delete-reply'
+                    : 'document-detail.message.failed-to-delete-comment',
+                ),
+              ),
           });
       });
   }
@@ -3992,10 +4019,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const d = this.doc();
     const rends = d?.contextParameters?.['renditions'] as Array<{ name: string }> | undefined;
     const labelMap: Record<string, string> = {
-      thumbnail: 'Thumbnail',
-      pdf: 'PDF',
-      zipExport: 'ZIP Export',
-      xmlExport: 'XML Export',
+      thumbnail: this.translate.instant('rendition.thumbnail'),
+      pdf: this.translate.instant('rendition.pdf'),
+      zipExport: this.translate.instant('rendition.zip-export'),
+      xmlExport: this.translate.instant('rendition.xml-export'),
     };
     if (!rends) return Object.entries(labelMap).map(([name, label]) => ({ name, label }));
     return rends.map((r) => ({ name: r.name, label: labelMap[r.name] ?? r.name }));
@@ -4141,7 +4168,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         error: (err) => {
           this.actionInProgress.set(null);
           this.toast(
-            isMailSendError(err) ? mailSendFailureMessage('send') : 'Failed to send notification',
+            isMailSendError(err)
+              ? mailSendFailureMessage('send', (key) => this.translate.instant(key))
+              : this.translate.instant('document-detail.message.failed-to-send-notification'),
           );
         },
       });
@@ -4157,7 +4186,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.actionInProgress.set(null);
-        this.toast(blocked ? 'Permission inheritance unblocked' : 'Permission inheritance blocked');
+        this.toast(
+          this.translate.instant(
+            blocked
+              ? 'document-detail.message.permission-inheritance-unblocked'
+              : 'document-detail.message.permission-inheritance-blocked',
+          ),
+        );
         this.reloadDocumentPermissions();
       },
       error: () => {

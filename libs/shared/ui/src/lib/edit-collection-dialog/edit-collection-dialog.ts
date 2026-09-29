@@ -32,6 +32,7 @@ import {
   isPermissionDeniedError,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '../datepicker-intl/translated-datepicker-intl';
 
 export interface EditCollectionDialogData {
   document: NuxeoDocument;
@@ -54,7 +55,7 @@ export interface EditCollectionDialogData {
     MatIconModule,
     MatSnackBarModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideNativeDateAdapter(), provideTranslatedDatepickerIntl()],
   templateUrl: './edit-collection-dialog.html',
   styleUrl: './edit-collection-dialog.scss',
 })
