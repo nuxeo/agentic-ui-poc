@@ -1344,19 +1344,35 @@ function checkNoHardcodedUiText() {
        * tightening would have introduced a false rejection while closing a false acceptance.
        * Both are controlled.
        */
-      const componentBindings = new Set();
-      for (const statement of source.statements) {
-        if (!ts.isImportDeclaration(statement)) continue;
-        if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
-        if (statement.moduleSpecifier.text !== '@angular/core') continue;
+      const languageService = ts.createLanguageService({
+        getScriptFileNames: () => [path],
+        getScriptVersion: () => '0',
+        getScriptSnapshot: (fileName) =>
+          fileName === path ? ts.ScriptSnapshot.fromString(body) : undefined,
+        getCurrentDirectory: () => repoRoot,
+        getCompilationSettings: () => ({
+          target: ts.ScriptTarget.Latest,
+          module: ts.ModuleKind.ESNext,
+        }),
+        fileExists: (fileName) => fileName === path,
+        readFile: (fileName) => (fileName === path ? body : undefined),
+        getCanonicalFileName: (fileName) => fileName,
+      });
 
-        const bindings = statement.importClause?.namedBindings;
-        if (!bindings || !ts.isNamedImports(bindings)) continue;
-        for (const element of bindings.elements) {
-          const imported = element.propertyName?.text ?? element.name.text;
-          if (imported === 'Component') componentBindings.add(element.name.text);
-        }
-      }
+      const isImportedAngularComponent = (identifier) => {
+        if (!ts.isIdentifier(identifier)) return false;
+        const defs = languageService.getDefinitionAtPosition(path, identifier.getStart(source) + 1) ?? [];
+        return defs.some((def) => {
+          const node = def.node;
+          if (!ts.isImportSpecifier(node)) return false;
+          const imported = node.propertyName?.text ?? node.name.text;
+          if (imported !== 'Component') return false;
+          const decl = node.parent?.parent?.parent;
+          if (!decl || !ts.isImportDeclaration(decl)) return false;
+          const mod = decl.moduleSpecifier;
+          return ts.isStringLiteral(mod) && mod.text === '@angular/core';
+        });
+      };
 
       // The metadata of an `@angular/core` `@Component({ ... })` used as a DECORATOR, or null.
       //
@@ -1366,13 +1382,11 @@ function checkNoHardcodedUiText() {
       // `Decorator` node is what makes "this class's template" the thing being matched, rather
       // than any call that happens to be spelled `Component`.
       const componentMetadata = (node) => {
-        if (componentBindings.size === 0) return null;
         if (!ts.isDecorator(node)) return null;
         const call = node.expression;
 
         return ts.isCallExpression(call) &&
-          ts.isIdentifier(call.expression) &&
-          componentBindings.has(call.expression.text) &&
+          isImportedAngularComponent(call.expression) &&
           call.arguments.length > 0 &&
           ts.isObjectLiteralExpression(call.arguments[0])
           ? call.arguments[0]

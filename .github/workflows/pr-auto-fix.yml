@@ -132,7 +132,7 @@ jobs:
               echo "### Unresolved review threads"
               echo ""
               jq -r '.[] |
-                "#### `\(.path)` line \(.line // "n/a") — @\(.comments.nodes[0].author.login // "unknown")\n\n\((.comments.nodes[0].body // "") | split("\n") | map("> " + .) | join("\n"))\n"
+                "#### `\(.path)` line \(.line // "n/a") — @\(.comments.nodes[0].author.login // "unknown")\n\n\((.comments.nodes[0].body // "" | .[0:2000] | if length >= 2000 then . + "\n\n> _Thread truncated._" else . end) | split("\n") | map("> " + .) | join("\n"))\n"
               ' /tmp/open-threads.json
             fi
 
@@ -196,7 +196,7 @@ jobs:
                 echo "### Unresolved review threads"
                 echo ""
                 jq -r '.[] |
-                  "#### `\(.path)` line \(.line // "n/a") — @\(.comments.nodes[0].author.login // "unknown")\n\n\((.comments.nodes[0].body // "") | split("\n") | map("> " + .) | join("\n"))\n"
+                  "#### `\(.path)` line \(.line // "n/a") — @\(.comments.nodes[0].author.login // "unknown")\n\n\((.comments.nodes[0].body // "" | .[0:2000] | if length >= 2000 then . + "\n\n> _Thread truncated._" else . end) | split("\n") | map("> " + .) | join("\n"))\n"
                 ' /tmp/open-threads.json
               fi
               SETTLED=$(cat /tmp/settled-count.txt)
