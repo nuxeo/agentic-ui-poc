@@ -1362,7 +1362,7 @@ function checkNoHardcodedUiText() {
         const name = identifier.text;
         const useStart = identifier.getStart(source);
         for (const stmt of source.statements) {
-          if (stmt.getStart() >= useStart) break;
+          if (stmt.getStart(source) >= useStart) break;
           if (ts.isFunctionDeclaration(stmt) && stmt.name?.text === name) return true;
           if (ts.isClassDeclaration(stmt) && stmt.name?.text === name) return true;
           if (ts.isVariableStatement(stmt)) {
