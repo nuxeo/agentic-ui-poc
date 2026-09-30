@@ -136,6 +136,97 @@ export async function expectSurfaceUsable(page: Page, host: string, label: strin
 }
 
 /**
+ * Wait for the nav drawer's folder tree to finish loading before scanning.
+ *
+ * ## Why this exists — the flake it fixes was hiding a real defect
+ *
+ * Two document-detail runs minutes apart on unchanged code disagreed:
+ *
+ *     08:32   button-name x6   + nested-interactive x1, target-size x1   (25 findings)
+ *     08:39   button-name x7                                            (24 findings)
+ *
+ * All three differing findings were on the same element, `.tree-node:nth-child(7) >
+ * .tree-toggle` — the last folder to arrive in the drawer. `nav-drawer.component.html`
+ * explains it: while `node.loading` is true the toggle contains
+ * `<mat-spinner aria-label="Loading">`, and afterwards it contains a `<mat-icon>`, which
+ * Angular Material marks `aria-hidden` by default.
+ *
+ * So the loading spinner **lends the button an accessible name it does not really have**.
+ * A scan that catches the tree mid-load does not merely add two spurious findings — it
+ * suppresses a genuine `button-name` failure and reports six unnamed toggles where there
+ * are seven. The settled state is the truthful one, and it is the worse one.
+ *
+ * That makes this a correctness fix rather than a flake suppression, which is the only
+ * reason to add a wait: waiting to make a number stable is worth nothing if the stable
+ * number is the wrong one.
+ *
+ * ## Why every suite calls it, not only `journey`
+ *
+ * The drawer is a sibling of the feature host, so `expectSurfaceUsable` — which looks only
+ * inside the host — cannot see it. `surfaces` and `display-modes` scan the same shell and were
+ * exposed to the same race. The markup belongs to the shell, not to one route, so it is
+ * called on every route: where no tree renders, the counts are zero and it costs the quiet
+ * window and nothing else. `required` is for the routes that must show a tree, so an empty
+ * drawer there fails instead of passing as "settled". Flagged in review on PR #225.
+ *
+ * Not covered: `/#/browse-adf-hx`, whose drawer is upstream `hxp-document-tree` with its own
+ * markup and no `.tree-node`. Nothing here observes its loading state.
+ */
+export async function waitForNavTreeSettled(page: Page, required: boolean): Promise<void> {
+  if (required) {
+    await expectFn(
+      page.locator('.tree-node').first(),
+      'this screen shows the folder tree, so it must have rendered before the scan starts',
+    ).toBeVisible();
+  }
+
+  // A tree is settled when nothing is loading AND the node count has held still for a quiet
+  // window. Both are read on every poll: checking the loaders once up front, then polling the
+  // count alone, let a child load that began afterwards — a spinner inside an existing node,
+  // which changes no count — run out the window and pass mid-load. Flagged in review on
+  // PR #225. The app exposes no "tree loaded" signal to wait on instead, so the window is the
+  // evidence.
+  const TREE_QUIET_MS = 1500;
+  let previous = -1;
+  let stableSince = 0;
+  // The poll returns what it saw rather than a boolean, so a timeout reports the last state of
+  // the tree as the received value instead of `false`.
+  await expectFn
+    .poll(
+      async () => {
+        let nodes: number;
+        let loading: number;
+        try {
+          nodes = await page.locator('.tree-node').count();
+          loading =
+            (await page.locator('.folder-tree .tree-loading').count()) +
+            (await page.locator('.tree-node mat-spinner').count());
+        } catch {
+          // A read racing a navigation throws, and a throw inside `expect.poll` is a failure
+          // rather than a retry — see `expectSurfaceUsable`.
+          previous = -1;
+          return 'unreadable (page was navigating)';
+        }
+        const seen = `${nodes} node(s), ${loading} loader(s)`;
+        if (loading > 0 || nodes !== previous) {
+          previous = loading > 0 ? -1 : nodes;
+          stableSince = Date.now();
+          return seen;
+        }
+        return Date.now() - stableSince >= TREE_QUIET_MS ? 'settled' : seen;
+      },
+      {
+        message:
+          `the folder tree never held still, with no loader present, for ${TREE_QUIET_MS}ms, ` +
+          'so any scan of it is a snapshot of a partial tree',
+        intervals: [250],
+        timeout: 20_000,
+      },
+    )
+    .toBe('settled');
+}
+
+/**
  * The line every report summary must print about the AI content-quality checks.
  *
  * `provider: haip` is not evidence that they ran, and this was measured rather than imagined:

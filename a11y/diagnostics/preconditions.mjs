@@ -56,9 +56,10 @@ export function credentialsOrExit(tool) {
 /**
  * Launch Chromium, or exit 2 explaining how to get one.
  *
- * @param {{launch: (o: object) => Promise<any>}} chromium
+ * @template Browser
+ * @param {{launch: (o: object) => Promise<Browser>}} chromium
  * @param {string} tool
- * @returns {Promise<any>}
+ * @returns {Promise<Browser>}
  */
 export async function launchChromium(chromium, tool) {
   try {

@@ -1,6 +1,13 @@
 import type { A11yFixture, ScanPageOptions } from '@a11y-scout/playwright';
 import type { Page, TestInfo, TestType } from '@playwright/test';
-import { aiFindingsNote, expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
+import {
+  aiFindingsNote,
+  expect,
+  expectSurfaceUsable,
+  REPORT_DIR,
+  test,
+  waitForNavTreeSettled,
+} from '../fixtures';
 import {
   JOURNEY_SCREENS,
   journeyReportName,
@@ -125,83 +132,6 @@ function assertEveryScreenDeclared(): void {
         `entry from JOURNEY_SCREENS.`,
     );
   }
-}
-
-/**
- * Wait for the nav drawer's folder tree to finish loading before scanning.
- *
- * ## Why this exists — the flake it fixes was hiding a real defect
- *
- * Two document-detail runs minutes apart on unchanged code disagreed:
- *
- *     08:32   button-name x6   + nested-interactive x1, target-size x1   (25 findings)
- *     08:39   button-name x7                                            (24 findings)
- *
- * All three differing findings were on the same element, `.tree-node:nth-child(7) >
- * .tree-toggle` — the last folder to arrive in the drawer. `nav-drawer.component.html`
- * explains it: while `node.loading` is true the toggle contains
- * `<mat-spinner aria-label="Loading">`, and afterwards it contains a `<mat-icon>`, which
- * Angular Material marks `aria-hidden` by default.
- *
- * So the loading spinner **lends the button an accessible name it does not really have**.
- * A scan that catches the tree mid-load does not merely add two spurious findings — it
- * suppresses a genuine `button-name` failure and reports six unnamed toggles where there
- * are seven. The settled state is the truthful one, and it is the worse one.
- *
- * That makes this a correctness fix rather than a flake suppression, which is the only
- * reason to add a wait: waiting to make a number stable is worth nothing if the stable
- * number is the wrong one.
- */
-async function waitForNavTreeSettled(page: Page, required: boolean): Promise<void> {
-  if (required) {
-    await expect(
-      page.locator('.tree-node').first(),
-      'this screen shows the folder tree, so it must have rendered before the scan starts',
-    ).toBeVisible();
-  }
-
-  await expect(
-    page.locator('.folder-tree .tree-loading'),
-    'the folder tree root is still loading',
-  ).toHaveCount(0);
-  await expect(
-    page.locator('.tree-node mat-spinner'),
-    'a folder node is still loading, and its spinner would lend its toggle a name it loses ' +
-      'once loaded',
-  ).toHaveCount(0);
-
-  // Absence of spinners is not the same as "finished": a node can arrive between two
-  // renders with no spinner of its own. Require the node count to hold still for a quiet
-  // window before scanning.
-  //
-  // This used to accept the first repeated count, which proves only that nothing arrived
-  // during one 300ms gap — a slower child landing just after would still be missed, and the
-  // scan would take the partial tree this helper exists to prevent. The app exposes no
-  // "tree loaded" signal to wait on instead, so the window is the evidence: the count must be
-  // unchanged across TREE_QUIET_MS of polling. Flagged in review on PR #225.
-  const TREE_QUIET_MS = 1500;
-  let previous = -1;
-  let stableSince = 0;
-  await expect
-    .poll(
-      async () => {
-        const current = await page.locator('.tree-node').count();
-        if (current !== previous) {
-          previous = current;
-          stableSince = Date.now();
-          return false;
-        }
-        return Date.now() - stableSince >= TREE_QUIET_MS;
-      },
-      {
-        message:
-          `the folder tree never held still for ${TREE_QUIET_MS}ms, so any scan of it is a ` +
-          'snapshot of a partial tree',
-        intervals: [250],
-        timeout: 20_000,
-      },
-    )
-    .toBe(true);
 }
 
 /**

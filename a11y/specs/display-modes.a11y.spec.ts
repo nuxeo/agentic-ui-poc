@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { aiFindingsNote, expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
+import {
+  aiFindingsNote,
+  expect,
+  expectSurfaceUsable,
+  REPORT_DIR,
+  test,
+  waitForNavTreeSettled,
+} from '../fixtures';
 
 /**
  * WCAG scan of the three **display modes** the application has never been rendered in by any
@@ -88,6 +95,14 @@ const results: ModeResult[] = [];
 /** One animation observed mid-flight, identified well enough to tell what produced it. */
 interface ObservedAnimation {
   readonly target: string;
+  /**
+   * What is animating on that target: `transitionProperty` for a CSS transition,
+   * `animationName` for a CSS animation, the effect `id` otherwise (empty when unset).
+   * `target` + `kind` is not an identity — one element routinely runs several transitions at
+   * once, one per property — so without this the verdict could compare a reduced `transform`
+   * against a control `opacity`. Flagged in review on PR #225.
+   */
+  readonly name: string;
   readonly durationMs: number;
   readonly iterations: string;
   readonly kind: string;
@@ -98,7 +113,7 @@ interface MotionSample {
   readonly peakConcurrent: number;
   readonly longestMs: number;
   readonly totalObserved: number;
-  /** Deduplicated by target+duration. The reason the raw counts above are interpretable. */
+  /** Deduplicated by full identity. The reason the raw counts above are interpretable. */
   readonly animations: readonly ObservedAnimation[];
 }
 const motion: Array<{ label: string; sample: MotionSample }> = [];
@@ -213,6 +228,12 @@ async function measureRouteChangeMotion(page: Page, toHash: string): Promise<Mot
         // separates a CSS-driven effect from an Angular/WAAPI one, and it is what tells us
         // whether a CSS media query could ever have reached it.
         const kind = a.constructor?.name ?? 'Animation';
+        const name =
+          a instanceof CSSTransition
+            ? a.transitionProperty
+            : a instanceof CSSAnimation
+              ? a.animationName
+              : a.id;
 
         // Build the key from the SAME rounded value that gets stored, and include
         // `iterations`.
@@ -225,11 +246,12 @@ async function measureRouteChangeMotion(page: Page, toHash: string): Promise<Mot
         // the distinction the reduced-motion verdict is computed from. Flagged in review on
         // PR #225.
         const durationMs = Math.round(d);
-        const key = `${target}|${durationMs}|${iterations}|${kind}`;
-        if (
-          !probe.seen.some((s) => `${s.target}|${s.durationMs}|${s.iterations}|${s.kind}` === key)
-        ) {
-          probe.seen.push({ target, durationMs, iterations, kind });
+        const identity = (s: ObservedAnimation) =>
+          `${s.target}|${s.name}|${s.durationMs}|${s.iterations}|${s.kind}`;
+        const observed: ObservedAnimation = { target, name, durationMs, iterations, kind };
+        const key = identity(observed);
+        if (!probe.seen.some((s) => identity(s) === key)) {
+          probe.seen.push(observed);
         }
       }
       probe.raf = requestAnimationFrame(sample);
@@ -275,6 +297,8 @@ test.describe('accessibility: dark theme', () => {
       // dark-themed error panel would be scanned and counted as the route. See
       // `expectSurfaceUsable`.
       await expectSurfaceUsable(page, host, `${label} (dark theme)`);
+      // The nav drawer is outside the host, so the check above cannot see it loading.
+      await waitForNavTreeSettled(page, route === '/#/browse');
 
       // Two assertions, because either alone is satisfiable while dark mode is not actually on:
       // the attribute can be set by something that failed to load a palette, and a dark
@@ -326,6 +350,7 @@ test.describe('accessibility: forced colors', () => {
     test(`scans ${label} in forced-colors mode`, async ({ signedIn: page, a11y }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
       await expectSurfaceUsable(page, host, `${label} (forced colors)`);
+      await waitForNavTreeSettled(page, route === '/#/browse');
 
       // Prove the emulation reached the page. Without this the whole describe could silently
       // run in normal colours and report a clean high-contrast pass.
@@ -445,6 +470,8 @@ test.describe('accessibility: display modes report', () => {
     // — in the one case it most needs to catch, reduced motion being ignored by an animation
     // that repeats. Flagged in review on PR #225.
     const isAmbient = (a: ObservedAnimation) => a.iterations === 'Infinity';
+    const describeAnimation = (a: ObservedAnimation) =>
+      `${a.kind.padEnd(13)} ${a.target}${a.name ? ` (${a.name})` : ''}`;
     for (const m of motion) {
       const transitions = m.sample.animations.filter((a) => !isAmbient(a));
       const ambient = m.sample.animations.filter(isAmbient);
@@ -455,7 +482,7 @@ test.describe('accessibility: display modes report', () => {
       for (const a of m.sample.animations) {
         lines.push(
           `      ${isAmbient(a) ? 'loop  ' : 'finite'} ${String(a.durationMs).padStart(5)}ms  ` +
-            `${a.kind.padEnd(13)} ${a.target}`,
+            describeAnimation(a),
         );
       }
     }
@@ -482,12 +509,13 @@ test.describe('accessibility: display modes report', () => {
         // rather than remove it. This branch used to say NOT honoured on the mere presence of
         // one. Flagged in review on PR #225.
         //
-        // So each reduced animation is paired with a control animation on the same target and
-        // kind. Only an animation that ran UNCHANGED — same duration and iterations — proves
-        // the preference was ignored. Shortened ones are reported as such, and anything
-        // without a counterpart cannot be judged either way.
+        // So each reduced animation is paired with the control animation of the same target,
+        // kind and name (property or animation name — see `ObservedAnimation.name`). Only an
+        // animation that ran UNCHANGED — same duration and iterations — proves the preference
+        // was ignored. Shortened ones are reported as such, and anything without a
+        // counterpart cannot be judged either way.
         const counterpart = (a: ObservedAnimation) =>
-          controlT.find((c) => c.target === a.target && c.kind === a.kind);
+          controlT.find((c) => c.target === a.target && c.kind === a.kind && c.name === a.name);
         const unchanged = reducedT.filter((a) => {
           const c = counterpart(a);
           return c !== undefined && a.durationMs >= c.durationMs && a.iterations === c.iterations;
@@ -505,15 +533,15 @@ test.describe('accessibility: display modes report', () => {
         if (unchanged.length > 0) {
           lines.push(
             `    VERDICT: reduced motion is NOT honoured — ${unchanged.length} animation(s) ran`,
-            '    unchanged under the preference, matched to the control by target and kind:',
-            ...unchanged.map((a) => `      ${a.durationMs}ms  ${a.kind}  ${a.target}`),
+            '    unchanged under the preference, matched to the control by target, kind and name:',
+            ...unchanged.map((a) => `      ${a.durationMs}ms  ${describeAnimation(a)}`),
           );
         } else if (unpaired.length > 0) {
           lines.push(
             `    INCONCLUSIVE: ${unpaired.length} finite animation(s) ran under the preference with no`,
-            '    comparable animation in the control (none on the same target and kind, or one',
+            '    comparable animation in the control (none on the same target, kind and name, or one',
             '    that differs other than by being shorter), so they cannot be judged either way.',
-            ...unpaired.map((a) => `      ${a.durationMs}ms  ${a.kind}  ${a.target}`),
+            ...unpaired.map((a) => `      ${a.durationMs}ms  ${describeAnimation(a)}`),
           );
         } else {
           lines.push(
@@ -522,7 +550,7 @@ test.describe('accessibility: display modes report', () => {
             '    it is enough is a judgement about the motion, not something this probe measures:',
             ...shortened.map((a) => {
               const c = counterpart(a);
-              return `      ${c?.durationMs ?? '?'}ms -> ${a.durationMs}ms  ${a.kind}  ${a.target}`;
+              return `      ${c?.durationMs ?? '?'}ms -> ${a.durationMs}ms  ${describeAnimation(a)}`;
             }),
           );
         }

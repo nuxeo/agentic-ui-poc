@@ -165,7 +165,9 @@ const claimed = new Map();
 const reportPath = resolveScoutReport();
 if (reportPath && existsSync(reportPath)) {
   console.log(`axe-differential: comparing against ${relative(repoRoot, reportPath)}\n`);
-  /** @type {any} */
+  // Only the fields read below, each `unknown` and narrowed where it is used: this is a file
+  // on disk from an earlier run, not a shape anything guarantees.
+  /** @type {{ meta?: { pagesScanned?: unknown } | null, findings?: unknown } | null} */
   let report;
   try {
     report = JSON.parse(readFileSync(reportPath, 'utf8'));
@@ -197,9 +199,11 @@ if (reportPath && existsSync(reportPath)) {
     process.exit(2);
   }
 
-  for (const f of report.findings ?? []) {
-    if (f.source !== 'axe') continue;
-    const surface = SURFACES.find(([, route]) => (f.pageUrl ?? '').endsWith(route))?.[0];
+  /** @type {Array<{ source?: unknown, pageUrl?: unknown, ruleId?: unknown } | null>} */
+  const findings = Array.isArray(report?.findings) ? report.findings : [];
+  for (const f of findings) {
+    if (f?.source !== 'axe') continue;
+    const surface = SURFACES.find(([, route]) => String(f.pageUrl ?? '').endsWith(route))?.[0];
     if (!surface) continue;
     const key = `${surface}::${f.ruleId}`;
     claimed.set(key, (claimed.get(key) ?? 0) + 1);

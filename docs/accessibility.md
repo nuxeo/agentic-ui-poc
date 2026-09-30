@@ -400,12 +400,19 @@ the truthful one, and it is the worse one.
 reasoning is kept because the _mechanism_ is general: any element whose loading state carries an
 `aria-label` that its settled state drops will be under-reported by a scan arriving too early.)
 
-`waitForNavTreeSettled()` therefore waits for the root loader to clear, for zero per-node
-spinners, and for the node count to hold still for 1.5 seconds before scanning. (It first
+`waitForNavTreeSettled()` in `a11y/fixtures.ts` therefore requires the node count to hold still
+for 1.5 seconds with no loader present — the root `.tree-loading` and every per-node
+`mat-spinner` are read on each poll, and the window restarts whenever either appears. (It first
 accepted a single repeated count, which proves only that nothing arrived during one 300ms gap;
-a slower child landing just after would still have been missed.) It is a correctness fix, not a flake
+then it checked the loaders once before polling the count, so a child load starting afterwards —
+which changes no count — could run out the window mid-load.) It is a correctness fix, not a flake
 suppression: waiting to make a number stable is worth nothing if the stable number is the wrong
 one, and here the unstable number was the optimistic one.
+
+The drawer is part of the shell, not of one route, so all four suites call it before every scan —
+it began in `journey` alone, while `surfaces`, `modes` and `states` scanned the same drawer
+unguarded. It does not observe `/#/browse-adf-hx`, whose drawer is upstream
+`hxp-document-tree` with markup of its own.
 
 **Verified reproducible afterwards:** two further runs against the same uid produced 24 findings
 each, identical on rule _and_ selector, with all seven tree toggles reported. Two runs is not a

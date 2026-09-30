@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { aiFindingsNote, expect, REPORT_DIR, test } from '../fixtures';
+import { aiFindingsNote, expect, REPORT_DIR, test, waitForNavTreeSettled } from '../fixtures';
 
 /**
  * WCAG 2.1 AA scan of **interaction states** — surfaces that exist only after a click.
@@ -95,7 +95,10 @@ const results: StateResult[] = [];
  * `toBeVisible()` on `lib-browse` is not enough: an unauthenticated or failed load renders the
  * same component with an error panel, which is visible and would let every scan below report a
  * clean overlay that never opened. Asserting a real row is what ties the scan to real content —
- * the same reasoning as `expectSurfaceWithData` in `./fixtures`.
+ * the route-specific evidence `expectSurfaceUsable` in `../fixtures` defers to where it exists.
+ *
+ * Every scan below covers the whole page, drawer included, so the folder tree has to be settled
+ * too — see `waitForNavTreeSettled` for what a mid-load tree does to the findings.
  */
 async function openBrowse(page: Page): Promise<void> {
   await page.goto(BROWSE, { waitUntil: 'networkidle' });
@@ -104,6 +107,7 @@ async function openBrowse(page: Page): Promise<void> {
     page.locator('.browse-row, .doc-card-wrapper').first(),
     'browse must show at least one document, or every state below scans an empty page',
   ).toBeVisible();
+  await waitForNavTreeSettled(page, true);
 }
 
 /**

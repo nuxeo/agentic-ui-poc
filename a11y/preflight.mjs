@@ -194,8 +194,21 @@ if (appStatus !== null && auth) {
       } else {
         ok.push(`${username} has no administration access — fine for this suite, which does not visit it`);
       }
+    } else if (NEEDS_ADMIN) {
+      // Not "already reported by the document query": that is a different endpoint, and it
+      // can return 200 while this one fails, which let `--needs-admin` pass with the access it
+      // exists to establish never checked. Flagged in review on PR #225.
+      problems.push(
+        `/nuxeo/api/v1/me returned HTTP ${res.status}, so administration access could not be\n` +
+          '  established, and this suite scans /#/administration. Check the backend and the\n' +
+          '  NUXEO_USER / NUXEO_PASS account.',
+      );
+    } else {
+      ok.push(
+        `/nuxeo/api/v1/me returned HTTP ${res.status} — administration access not checked, ` +
+          'which this suite does not need',
+      );
     }
-    // Any other status is already reported by the document query above.
   } catch (error) {
     problems.push(
       `Could not read /nuxeo/api/v1/me through the proxy: ${error instanceof Error ? error.message : String(error)}`,

@@ -1,4 +1,11 @@
-import { aiFindingsNote, expect, expectSurfaceUsable, REPORT_DIR, test } from '../fixtures';
+import {
+  aiFindingsNote,
+  expect,
+  expectSurfaceUsable,
+  REPORT_DIR,
+  test,
+  waitForNavTreeSettled,
+} from '../fixtures';
 
 /**
  * WCAG 2.1 AA scan of the authenticated surfaces, through `@a11y-scout/playwright`.
@@ -79,6 +86,8 @@ test.describe('accessibility: authenticated surfaces', () => {
       // renders the same host with an error panel, which is visible. See its own comment for
       // what it proves and what it still does not.
       await expectSurfaceUsable(page, host, label);
+      // The nav drawer is outside the host, so the check above cannot see it loading.
+      await waitForNavTreeSettled(page, route === '/#/browse');
 
       await a11y.scanPage({
         level: 'AA',

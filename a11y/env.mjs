@@ -91,8 +91,14 @@ export function nuxeoBasicAuthHeader() {
 export function hasAdministrationAccess(me, username) {
   /** Nuxeo returns this flag as a boolean, a string or 1 depending on version. */
   const truthy = (/** @type {unknown} */ v) => v === true || v === 'true' || v === 1;
-  const o = me && typeof me === 'object' ? /** @type {Record<string, any>} */ (me) : {};
-  const props = o['properties'] && typeof o['properties'] === 'object' ? o['properties'] : {};
+  // `unknown` all the way down: this is an untrusted response body, and `any` here would switch
+  // `checkJs` off for exactly the lines that parse it. `Array.isArray` narrows to `any[]`, so
+  // `groups` is annotated back to `unknown[]` to keep the `typeof g` check below load-bearing.
+  const asRecord = (/** @type {unknown} */ v) =>
+    v !== null && typeof v === 'object' ? /** @type {Record<string, unknown>} */ (v) : {};
+  const o = asRecord(me);
+  const props = asRecord(o['properties']);
+  /** @type {unknown[]} */
   const groups = Array.isArray(props['groups']) ? props['groups'] : [];
 
   const isAdministrator =
