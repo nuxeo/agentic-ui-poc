@@ -178,7 +178,10 @@ if (!command || command === '--help' || command === '-h') {
   process.exit(command ? 0 : 1);
 }
 
-const entry = COMMANDS[command];
+// Own properties only: `COMMANDS` is a plain object, so `constructor` or `toString` would
+// otherwise resolve to an inherited function and crash below instead of reading as unknown.
+// Flagged in review on PR #225.
+const entry = Object.hasOwn(COMMANDS, command) ? COMMANDS[command] : undefined;
 if (!entry) {
   console.error(`\nUnknown command: ${command}`);
   usage();

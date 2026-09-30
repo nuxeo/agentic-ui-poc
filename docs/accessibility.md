@@ -8,8 +8,9 @@ at this app and write a check that finds something new.
 
 It exists because three scanners had accumulated with overlapping remits, two incompatible
 suppression mechanisms, and no single definition of green. Two of them ran axe against the
-same surfaces and disagreed about the result — see [The open disagreement](#the-open-disagreement)
-— and there was no rule saying whose answer won.
+same surfaces and disagreed about the result — see
+[The disagreement](#the-disagreement--resolved-2026-09-11-against-phase-6) — and there was no
+rule saying whose answer won.
 
 ---
 
@@ -35,9 +36,13 @@ thing that turns a run red and the number anyone quotes.
 
 Both run axe, so one of them had to give it up. phase-6 keeps it for three reasons:
 
-1. **It is already at zero.** `KNOWN_VIOLATIONS` is empty and the verdict is unconditional.
-   Seven rule classes and 77 violating nodes were driven to zero to get there. Moving the
-   verdict to a scanner with 22 untriaged axe findings would discard that.
+1. **It was driven to zero, and is one fix from zero again.** Seven rule classes and 77
+   violating nodes were cleared to empty `KNOWN_VIOLATIONS` and make the verdict
+   unconditional. That zero has since gone stale — two `color-contrast` nodes on `/#/tasks`
+   still fail under phase-6's own tags as of 2026-09-30; see
+   [The disagreement](#the-disagreement--resolved-2026-09-11-against-phase-6). The remedy is
+   to fix those and re-measure phase-6, not to move the verdict to a scanner with 22
+   untriaged axe findings.
 2. **It depends on a public package.** `@axe-core/playwright` is on the public registry.
    a11y-scout is distributed as hand-passed tarballs that no registry can serve. A
    customer-shippable product should not have its conformance claim depend on a file
@@ -176,17 +181,23 @@ while `phase-6-a11y.mjs` recorded both rules as driven to zero. Two scripts sett
 `a11y/diagnostics/axe-differential.mjs` and `a11y/diagnostics/route-render-check.mjs`.
 
 **a11y-scout was right. phase-6's zero is stale.** Under phase-6's _own_ four-tag set, at its
-own 1440×900 viewport, against the current app:
+own 1440×900 viewport, measured on 2026-09-11 and again on 2026-09-30:
 
-| Surface            | Rule                     | Impact   | Nodes                                             |
-| ------------------ | ------------------------ | -------- | ------------------------------------------------- |
-| `/#/browse`        | `button-name`            | critical | 2 — the document-tree expand toggles              |
-| `/#/tasks`         | `color-contrast`         | serious  | 2                                                 |
-| `/#/browse-adf-hx` | `aria-required-children` | critical | 2 — the documented upstream exclusion, legitimate |
+| Surface            | Rule                     | Impact   | 11 Sep                                | 30 Sep                               |
+| ------------------ | ------------------------ | -------- | ------------------------------------- | ------------------------------------ |
+| `/#/browse`        | `button-name`            | critical | 2 — the document-tree expand toggles  | **0** — fixed by `NXSAT-227`         |
+| `/#/tasks`         | `color-contrast`         | serious  | 2                                     | **2** — still open                   |
+| `/#/browse-adf-hx` | `aria-required-children` | critical | 2 — the documented upstream exclusion | 2 — unchanged, legitimately excluded |
 
-So **four blocking nodes** that phase-6 claims do not exist. Its table is dated 2026-08-24 and
-the tree has moved a long way since; the claim was true when written and was never re-measured.
-`KNOWN_VIOLATIONS` being empty is not evidence that there is nothing to know.
+On 11 September that was **four blocking nodes** phase-6 claimed did not exist. Its table is
+dated 2026-08-24; the claim was true when written and was never re-measured. `KNOWN_VIOLATIONS`
+being empty is not evidence that there is nothing to know.
+
+**Today it is two**, both `color-contrast` on `/#/tasks`. The 30 September column is a
+measurement, not an inference from the browse journey figures: `axe-differential.mjs` with
+`--surface browse --surface tasks` against that day's surfaces report found browse at zero under
+both tag sets, and the two tasks nodes reproducing under both. Re-run it rather than trusting
+either column.
 
 ### What the two hypotheses turned out to be worth
 
@@ -211,6 +222,8 @@ and one on `/#/knowledge-discovery` (`mat-label`). Those are date-range and sele
 the likeliest explanation is that a11y-scout reached a state — a filter panel open, a control
 focused — that a plain navigate-and-wait does not. It is not the engine and not the viewport;
 both are ruled out above. Reproduce the state before treating these as either real or spurious.
+The five on `/#/browse` still did not reproduce on 2026-09-30; `/#/knowledge-discovery` was not
+re-checked, because that route currently renders its load-error state.
 
 ### Gap 5, confirmed the same day
 
@@ -485,16 +498,16 @@ hard requirement for the keyboard and focus checks.
 The standard is written; the code does not fully implement it yet. Gaps, in the order they
 should be closed:
 
-| #   | Gap                                                                                                       | Status                                                                                                               |
-| --- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 1   | The axe disagreement                                                                                      | **Resolved** 2026-09-11 — a11y-scout was right, phase-6 was stale                                                    |
-| 1a  | Four blocking nodes phase-6 claims do not exist: `button-name` ×2 on browse, `color-contrast` ×2 on tasks | **Open** — a real defect, and the published conformance number is wrong until it is fixed                            |
-| 1b  | Six `color-contrast` findings that reproduce under neither harness; state-dependent                       | **Open** — reproduce the state before judging them                                                                   |
-| 2   | a11y-scout's verdict does not filter `source !== 'axe'`; it reports all 81 findings equally               | **Open**                                                                                                             |
-| 3   | 81 findings are untriaged, so `failOnBlockers` is `false` everywhere                                      | **Open** — a gate red on its first run for untriaged reasons is one people learn to ignore                           |
-| 4   | a11y-scout has no baseline file; phase-6 uses a rule-id array rather than the keyed-count shape           | **Open**                                                                                                             |
-| 5   | phase-6 scans `/#/collections`, which renders nothing, without a selector assertion                       | **Confirmed** — probe written and red; the fix to phase-6 is still open                                              |
-| 6   | Ownership is documented but not enforced by anything executable                                           | **Partly closed** — `a11y/diagnostics/route-render-check.mjs` enforces the "a scan must have something to scan" half |
+| #   | Gap                                                                                                  | Status                                                                                                                        |
+| --- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1   | The axe disagreement                                                                                 | **Resolved** 2026-09-11 — a11y-scout was right, phase-6 was stale                                                             |
+| 1a  | Blocking nodes phase-6 claims do not exist: `button-name` ×2 on browse, `color-contrast` ×2 on tasks | **Open, halved** — browse fixed by `NXSAT-227` (0 on 2026-09-30); tasks ×2 still real, so the published number is still wrong |
+| 1b  | Six `color-contrast` findings that reproduce under neither harness; state-dependent                  | **Open** — reproduce the state before judging them                                                                            |
+| 2   | a11y-scout's verdict does not filter `source !== 'axe'`; it reports every finding equally            | **Open**                                                                                                                      |
+| 3   | Findings are untriaged (81 in the first baseline), so `failOnBlockers` is `false` everywhere         | **Open** — a gate red on its first run for untriaged reasons is one people learn to ignore                                    |
+| 4   | a11y-scout has no baseline file; phase-6 uses a rule-id array rather than the keyed-count shape      | **Open**                                                                                                                      |
+| 5   | phase-6 scans `/#/collections`, which renders nothing, without a selector assertion                  | **Confirmed** — probe written and red; the fix to phase-6 is still open                                                       |
+| 6   | Ownership is documented but not enforced by anything executable                                      | **Partly closed** — `a11y/diagnostics/route-render-check.mjs` enforces the "a scan must have something to scan" half          |
 
 Do not describe accessibility as standardised until rows 1a, 2 and 5 are closed. Rows 3 and 4
 depend on triage and are expected to take longer.

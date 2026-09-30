@@ -247,8 +247,8 @@ render, so you do not spend an afternoon scanning a dead one.
 
 ## 3. Style A — an a11y-scout spec
 
-Import from `../fixtures`, never from `@a11y-scout/playwright` or `./fixtures` directly;
-two `test` objects cannot coexist in one spec.
+Import from `../fixtures` (`a11y/fixtures.ts`), never from `@a11y-scout/playwright` or
+`apps/nuxeo-ui-e2e/src/fixtures.ts` directly; two `test` objects cannot coexist in one spec.
 
 ```ts
 import { expect, test } from '../fixtures';

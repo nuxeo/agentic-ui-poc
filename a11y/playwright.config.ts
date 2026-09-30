@@ -15,7 +15,7 @@ import { JOURNEY_SCREENS, journeyProjectName, journeyTag } from './specs/journey
  * edit to `docs/accessibility.md` — nothing in application code.
  *
  * It costs one thing, recorded here rather than discovered later: `installSession()` in
- * `../fixtures.ts` is a copy of the same function in `apps/nuxeo-ui-e2e/src/fixtures.ts`. A
+ * `./fixtures.ts` is a copy of the same function in `apps/nuxeo-ui-e2e/src/fixtures.ts`. A
  * shared import would have been one definition, but it would also have been a second reason
  * this folder cannot simply be deleted. The copy fails loudly — a changed session shape means
  * authentication fails and every `expect` in every spec goes red — so the drift is visible

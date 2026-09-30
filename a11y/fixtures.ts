@@ -22,7 +22,7 @@ export { requireNuxeoCredentials };
  * `apps/nuxeo-ui-e2e/src/fixtures.ts` has an identical function, and importing it would mean
  * one definition instead of two. It is copied anyway, and the reason is the point of this
  * folder: `a11y/` is development tooling with an expected end date, and every import reaching
- * out of it is another thing to unpick when it is removed. See `../README.md`.
+ * out of it is another thing to unpick when it is removed. See `./README.md`.
  *
  * The duplication is safe in the way that matters — it cannot fail quietly. If the session
  * shape in `AuthService` changes, authentication stops working and every `expect` in every
