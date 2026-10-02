@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import ts from 'typescript';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -1183,19 +1184,316 @@ function checkNoHardcodedUiText() {
     // A standalone debug page, not referenced by `angular.json` and not copied as an asset, so
     // it is never served to anyone.
     /^apps\/nuxeo-ui\/src\/diagnostic\.html$/,
-    // Spec fixtures. A `*.host.html` is the template of a test host component, compiled only by
-    // the spec that names it and served by no build config — verified for all three: each is
-    // referenced by exactly one `.spec.ts` and appears in no `assets` glob. Their text is test
-    // DATA, chosen to reproduce a rendering bug, so keying it would make the fixture describe
-    // something other than the case under test. They arrived from `main` after this sweep went
-    // repo-wide, which is why the list did not already cover them.
-    /\.host\.html$/,
+    // Spec fixtures are NOT exempted by suffix here. `provenTestOnlyFixtures()` below decides
+    // them one file at a time, by checking the property the suffix used to assume.
     // The document shell. `checkNoTemplateSyntaxInDocumentShell` REQUIRES its title to be a
     // literal — Angular never compiles this file, so a pipe there renders as visible braces.
     // Without this exemption the two gates contradict each other and one of them has to be
     // wrong. The title is replaced at runtime from Layer 0 `branding.documentTitle`.
     /(^|\/)src\/index\.html$/,
   ];
+
+  /**
+   * Fixture templates whose test-only status is PROVEN, not assumed from the filename.
+   *
+   * `/\.host\.html$/` and `/\.spec\.html$/` used to sit in `EXEMPT` as suffix patterns, which
+   * admitted every future file with those names rather than the ones anyone had looked at. That
+   * is not a hypothetical cost: the `.spec.html` entry was justified against two named,
+   * hand-verified fixtures, and by the time it was reviewed there were FOUR `.spec.html` files.
+   * `dashboard-ai-banner-contrast.spec.html` and `header-settings-focus-ring.spec.html` had let
+   * themselves in, and nothing reported it. A blanket rule cannot distinguish the file someone
+   * checked from the file that merely shares its ending.
+   *
+   * So the properties the suffix was standing in for are checked per file, and the check
+   * FAILS CLOSED — an unproven fixture is held to the same standard as any shipped template:
+   *
+   *   1. exactly one `*.spec.ts` REFERENCES it — by a path that resolves to this exact file,
+   *      so it is a fixture rather than shared markup;
+   *   2. NO non-spec source references or even names it, so no shipped component compiles it;
+   *   3. it lies under no `assets` input directory and is named by no build config.
+   *
+   * Only then is its text test DATA — markup chosen to reproduce a rendering bug, where keying
+   * the strings would make the fixture describe something other than the case under test.
+   *
+   * (2) and the directory half of (3) close two holes review found in the first version of this
+   * function, which compared basenames and nothing else. A production component doing
+   * `templateUrl: './thing.host.html'` was not a `.spec.ts` and not a config, so it did not
+   * count against the fixture at all — a shipped template could hold the proof of its own
+   * exemption. And an `assets` entry of `{ "glob": "**\/*", "input": "…" }` serves a whole
+   * directory without ever writing a basename; every asset entry in this repository is of
+   * exactly that form, so the basename scan could not have detected any of them. Both are
+   * checked structurally now rather than textually.
+   *
+   * ## Round three: (1) is a reference, not a name anywhere
+   *
+   * Fixing (2) left (1) still matching a basename against whole file bodies, which is not the
+   * property it claims. `a/x.host.html` and `b/x.host.html` both saw the single spec that
+   * referenced only `a/`, so `b/` — named by nobody — was exempted on the strength of `a/`'s
+   * proof. A quoted `.html` path is now resolved against the referring file's own directory and
+   * compared to the walked path by equality, so a reference proves the file it points at.
+   *
+   * ## Round four: a reference is a `templateUrl`, and `..` cannot leave the tree
+   *
+   * Round three left two ways to be exempted without being hosted. Any quoted `.html` literal
+   * in executable code counted, so an unused `const ref = './widget.host.html'` was proof;
+   * and `resolveRef` popped on `..` without checking, so a path climbing above the repository
+   * root was clamped back onto an in-repo file and proved that file instead. Both reported on
+   * the pull request. A traversal that underflows now resolves to nothing at all, and a
+   * reference is the `templateUrl` of an object literal decorating a class with `Component`
+   * **imported from `@angular/core`**. Review caught three weaker versions of that on the way,
+   * each an accepted proof that hosts nothing: any property called `templateUrl`, which a
+   * decoy object literal satisfies; then any call spelled `Component`, which a naked statement
+   * satisfies; then any decorator of that name, which a locally declared one satisfies.
+   *
+   * **What this still does not prove.** A `templateUrl` assembled by concatenation resolves to
+   * nothing. On the spec side that is fail-closed and needs no fallback — no resolved
+   * reference means no proof, so the fixture is scanned like any template. On the non-spec
+   * side it would be fail-OPEN, so the blunt basename mention is kept there deliberately. The
+   * consequence is asymmetric on purpose:
+   * a production file mentioning `x.host.html` anywhere, even in a comment, blocks every
+   * same-named fixture in the repository. That is a false rejection, whose cost is that a
+   * fixture gets held to the shipped-template standard — the safe direction, and the direction
+   * this check has had to be corrected toward twice.
+   *
+   * Adding a fixture is still easy; adding one that is *served* no longer silently disables the
+   * guard for it.
+   */
+  const provenFixtures = (() => {
+    const isFixtureName = (path) => /\.(?:host|spec)\.html$/.test(path);
+    const fixtures = [...walk('apps', isFixtureName), ...walk('libs', isFixtureName)];
+    if (fixtures.length === 0) return new Set();
+
+    /**
+     * `./thing.host.html` in `a/b/c.spec.ts` -> `a/b/thing.host.html`, or `null`.
+     *
+     * Repo-relative and normalised, so a reference can be compared to a walked path by
+     * equality rather than by basename.
+     *
+     * `null` when the traversal climbs above the repository root, and that is the whole reason
+     * this returns a nullable rather than a string. The loop used to `pop()` unconditionally,
+     * and `pop()` on an empty array is a no-op — so a surplus `..` simply vanished and a path
+     * that really resolves outside the checkout was clamped back onto an in-repo file, whose
+     * exemption it then proved. The comment here claimed such a reference "simply matches no
+     * fixture", which is the fail-closed contract the code did not keep. Reported on the pull
+     * request; controlled in the selftest by a spec seven `..` deep.
+     */
+    const resolveRef = (fromFile, ref) => {
+      const base = fromFile.slice(0, fromFile.lastIndexOf('/'));
+      const out = [];
+      for (const segment of `${base}/${ref}`.split('/')) {
+        if (segment === '' || segment === '.') continue;
+        if (segment === '..') {
+          if (out.length === 0) return null;
+          out.pop();
+          continue;
+        }
+        out.push(segment);
+      }
+      return out.length === 0 ? null : out.join('/');
+    };
+
+    /**
+     * Every `.html` path a source file **hosts as a template**, resolved against its own
+     * directory.
+     *
+     * Parsed, not scanned. The first cut of this matched quoted paths in the raw text, which
+     * review found exempts a fixture nobody hosts on the strength of a comment:
+     * `// See './widget.host.html'` read as a reference, and the control written alongside it
+     * used an UNQUOTED name so it did not catch the case. A comment is not part of the AST, so
+     * taking references from the tree rules that out structurally rather than by another
+     * pattern — which is the same reason the assertion audit stopped enumerating spellings of
+     * `true`.
+     *
+     * Parsing alone was not enough either, and neither was the first narrowing. Any quoted
+     * `.html` literal in executable code counted, used or not, so an unused
+     * `const ref = './widget.host.html'` exempted a template nobody serves. Restricting that
+     * to a `templateUrl` property left the same hole one layer in, because `templateUrl` is
+     * only a property name: a decoy `const proof = { templateUrl: './widget.host.html' }`
+     * hosts nothing and still counted. Both reported on the pull request.
+     *
+     * A reference is therefore the `templateUrl` of the object literal passed to a
+     * `@Component(...)` **decorator whose name is bound to `@angular/core`**, which is the
+     * only position where the property means "this file is my template" — and the same
+     * position the non-spec rule below is looking for in production code. Each weaker version
+     * of that was reported in turn: the call matched by callee name accepts a naked
+     * `Component({ ... })` statement that decorates nothing, and the decorator matched by
+     * spelling accepts one a file declared for itself.
+     *
+     * **Boundary.** A `templateUrl` assembled by concatenation is not a literal, and component
+     * metadata spread in from a variable is not an object literal here; both resolve to
+     * nothing. On the spec side that is fail-closed and needs no fallback — no resolved
+     * reference means no proof, so the fixture is scanned like any template. On the non-spec
+     * side it would be fail-OPEN, which is why the blunt textual basename fallback is kept
+     * there deliberately.
+     */
+    const htmlRefs = (path, body) => {
+      const refs = new Set();
+      const source = ts.createSourceFile(path, body, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+
+      /**
+       * The local names this file binds to `Component` from `@angular/core`.
+       *
+       * Usually the set `{'Component'}`, empty in a file that imports no such thing, and the
+       * alias in `import { Component as NgComponent }`. Resolving the binding rather than
+       * trusting the spelling is what stops a file declaring its own decorator called
+       * `Component` — which Angular never compiles — from exempting a fixture. Review caught
+       * that; it is the same defect as the decoy object literal, one level up again.
+       *
+       * The alias direction matters as much as the spoof: without it, renaming the import
+       * would silently disable the exemption for a legitimately hosted fixture, so the
+       * tightening would have introduced a false rejection while closing a false acceptance.
+       * Both are controlled.
+       */
+      const componentBindings = new Set();
+      for (const statement of source.statements) {
+        if (!ts.isImportDeclaration(statement)) continue;
+        if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
+        if (statement.moduleSpecifier.text !== '@angular/core') continue;
+
+        const bindings = statement.importClause?.namedBindings;
+        if (!bindings || !ts.isNamedImports(bindings)) continue;
+        for (const element of bindings.elements) {
+          const imported = element.propertyName?.text ?? element.name.text;
+          if (imported === 'Component') componentBindings.add(element.name.text);
+        }
+      }
+
+      const isModuleLevelShadow = (identifier) => {
+        const name = identifier.text;
+        const useStart = identifier.getStart(source);
+        for (const stmt of source.statements) {
+          if (stmt.getStart(source) >= useStart) break;
+          if (ts.isFunctionDeclaration(stmt) && stmt.name?.text === name) return true;
+          if (ts.isClassDeclaration(stmt) && stmt.name?.text === name) return true;
+          if (ts.isVariableStatement(stmt)) {
+            for (const decl of stmt.declarationList.declarations) {
+              if (ts.isIdentifier(decl.name) && decl.name.text === name) return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      const isImportedAngularComponent = (identifier) =>
+        ts.isIdentifier(identifier) &&
+        componentBindings.has(identifier.text) &&
+        !isModuleLevelShadow(identifier);
+
+      // The metadata of an `@angular/core` `@Component({ ... })` used as a DECORATOR, or null.
+      //
+      // Matching the call expression by callee name alone was the first attempt and review
+      // caught it in the same round: a naked `Component({ templateUrl: './x.host.html' })`
+      // statement decorates nothing and exempted the fixture anyway. Starting from the
+      // `Decorator` node is what makes "this class's template" the thing being matched, rather
+      // than any call that happens to be spelled `Component`.
+      const componentMetadata = (node) => {
+        if (componentBindings.size === 0) return null;
+        if (!ts.isDecorator(node)) return null;
+        const call = node.expression;
+
+        return ts.isCallExpression(call) &&
+          isImportedAngularComponent(call.expression) &&
+          call.arguments.length > 0 &&
+          ts.isObjectLiteralExpression(call.arguments[0])
+          ? call.arguments[0]
+          : null;
+      };
+
+      const visit = (node) => {
+        const metadata = componentMetadata(node);
+        for (const property of metadata ? metadata.properties : []) {
+          if (!ts.isPropertyAssignment(property)) continue;
+          if (!ts.isIdentifier(property.name) && !ts.isStringLiteral(property.name)) continue;
+          if (property.name.text !== 'templateUrl') continue;
+
+          const value = property.initializer;
+          if (!ts.isStringLiteral(value) && !ts.isNoSubstitutionTemplateLiteral(value)) continue;
+          if (!value.text.endsWith('.html')) continue;
+
+          const resolved = resolveRef(path, value.text);
+          if (resolved !== null) refs.add(resolved);
+        }
+        node.forEachChild(visit);
+      };
+      source.forEachChild(visit);
+      return refs;
+    };
+
+    const sources = [
+      ...walk('apps', (path) => path.endsWith('.ts')),
+      ...walk('libs', (path) => path.endsWith('.ts')),
+    ].map((path) => {
+      const body = read(path);
+      return {
+        isSpec: /\.spec\.ts$/.test(path),
+        body,
+        // Parsing every `.ts` in the repository to find a handful of fixture references is
+        // waste; a file with no `.html` anywhere in it cannot hold one.
+        refs: body.includes('.html') ? htmlRefs(path, body) : new Set(),
+      };
+    });
+
+    const configPaths = [
+      ...walk('apps', (path) => /(?:^|\/)(?:project|angular)\.json$/.test(path)),
+      ...walk('libs', (path) => /(?:^|\/)(?:project|angular)\.json$/.test(path)),
+      ...(fileExists('angular.json') ? ['angular.json'] : []),
+    ];
+    const configBodies = configPaths.map(read);
+
+    /**
+     * Every directory a build copies wholesale, from any `{ glob, input }` asset entry.
+     *
+     * The glob itself is deliberately not interpreted: `**\/*` is the only form here, and
+     * anything narrower is still a pattern this script would have to implement to rule out. The
+     * directory is the part that decides, so a fixture inside a copied tree is unproven whatever
+     * the glob says.
+     */
+    const assetInputs = [];
+    for (const body of configBodies) {
+      let parsed;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        // A config this script cannot parse cannot be cleared, so nothing is proven from it.
+        return new Set();
+      }
+      const visit = (node) => {
+        if (Array.isArray(node)) return node.forEach(visit);
+        if (!node || typeof node !== 'object') return;
+        if (typeof node.input === 'string' && typeof node.glob === 'string') {
+          assetInputs.push(node.input.replace(/\/+$/, ''));
+        }
+        Object.values(node).forEach(visit);
+      };
+      visit(parsed);
+    }
+
+    const proven = new Set();
+    for (const fixture of fixtures) {
+      const name = fixture.slice(fixture.lastIndexOf('/') + 1);
+
+      // Exactly one spec must reference THIS path. Resolved, not basename-matched: two
+      // fixtures sharing a basename used to satisfy each other's proof, so the one no spec
+      // named was exempted on the strength of the other's reference.
+      if (sources.filter(({ isSpec, refs }) => isSpec && refs.has(fixture)).length !== 1) continue;
+
+      // Nothing outside a spec may reference it — a shipped `templateUrl` pointing here means
+      // the file is compiled into the product, so its text is not test data.
+      if (sources.some(({ isSpec, refs }) => !isSpec && refs.has(fixture))) continue;
+
+      // ...and a non-spec that merely MENTIONS the basename blocks it too, resolved or not.
+      // That catches a basename quoted in prose or a static `templateUrl`, not concatenation:
+      // `templateUrl: './widget' + '.host.html'` has no contiguous path for `htmlRefs` to
+      // resolve and no basename mention either, so it is NOT proven here and remains scanned.
+      // The trade is intentional — under-broad would ship a served template as a fixture.
+      if (sources.some(({ isSpec, body }) => !isSpec && body.includes(name))) continue;
+
+      if (configBodies.some((body) => body.includes(name))) continue;
+      if (assetInputs.some((input) => input !== '' && fixture.startsWith(`${input}/`))) continue;
+      proven.add(fixture);
+    }
+    return proven;
+  })();
 
   /**
    * Every template, not only the changed ones.
@@ -1209,7 +1507,7 @@ function checkNoHardcodedUiText() {
   const templates = [
     ...walk('apps', (path) => path.endsWith('.html')),
     ...walk('libs', (path) => path.endsWith('.html')),
-  ].filter((path) => !EXEMPT.some((pattern) => pattern.test(path)));
+  ].filter((path) => !EXEMPT.some((pattern) => pattern.test(path)) && !provenFixtures.has(path));
 
   if (templates.length === 0) {
     fail('No templates were found under apps/ or libs/, so this gate asserted nothing.');

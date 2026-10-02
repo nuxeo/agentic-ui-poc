@@ -420,7 +420,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-312 exported symbol(s).
+313 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1468,6 +1468,12 @@ interface SearchAggregations {
     dc_coverage_agg?: AggregateResult;
     dc_subjects_agg?: AggregateResult;
     common_size_agg?: AggregateResult;
+    }
+}
+interface SearchCollectionOption {
+    id: string;
+    title: string;
+    itemCount: number;
     }
 }
 interface SearchQueryParams {

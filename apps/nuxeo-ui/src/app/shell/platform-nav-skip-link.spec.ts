@@ -67,9 +67,7 @@ describe('platform shell skip link (NXENG-783)', () => {
       }
       for (const rule of Array.from(rules)) {
         const styleRule = rule as CSSStyleRule;
-        const canonical = styleRule.selectorText
-          ?.replace(/\[_ngcontent-[^\]]+\]/g, '')
-          .trim();
+        const canonical = styleRule.selectorText?.replace(/\[_ngcontent-[^\]]+\]/g, '').trim();
         if (canonical === target) {
           matched = styleRule;
           break;
@@ -77,7 +75,9 @@ describe('platform shell skip link (NXENG-783)', () => {
       }
       if (matched) break;
     }
-    expect(matched).withContext(`stylesheet must contain ${target} without a comma list`).toBeDefined();
+    expect(matched)
+      .withContext(`stylesheet must contain ${target} without a comma list`)
+      .toBeDefined();
     expect(matched!.style.opacity).toBe('1');
     expect(matched!.style.position).toBe('fixed');
   });

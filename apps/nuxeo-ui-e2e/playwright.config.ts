@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+import { nuxeoCredentials } from './src/nuxeo-credentials';
+
 /**
  * End-to-end tests for `nuxeo-ui`, against a **live Nuxeo**.
  *
@@ -52,16 +54,30 @@ export default defineConfig({
   // anything beyond this is a defect rather than slowness.
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  reporter: [['list'], ['json', { outputFile: '../../dist/e2e/results.json' }]],
+  // `assertion-failure-reporter.ts` records whether each failing spec failed at an `expect`
+  // of its own. `scripts/e2e-negative-control.sh` needs that and the JSON reporter cannot
+  // supply it: Playwright carries the fact on `TestStep.category`, which `results.json` does
+  // not serialize. See the reporter's own header for why the filename it used instead
+  // could not tell a failed assertion from a navigation timeout thrown out of a spec file.
+  reporter: [
+    ['list'],
+    ['json', { outputFile: '../../dist/e2e/results.json' }],
+    ['./assertion-failure-reporter.ts'],
+  ],
   outputDir: '../../dist/e2e/artifacts',
   use: {
     baseURL,
     viewport: { width: 1440, height: 900 },
-    httpCredentials: {
-      username: process.env['NUXEO_USER'] ?? 'Administrator',
-      password: process.env['NUXEO_PASS'] ?? 'Administrator',
-      origin: baseURL,
-    },
+    // Through the shared helper, which throws. These two lines each carried a `??` fallback on
+    // the user AND the password — a working Basic-auth fallback pair in the repository, which
+    // `.cursor/rules/security.mdc` forbids outright. It also meant an e2e run with the
+    // variables unset silently authenticated as a privileged default instead of stopping, so
+    // the guarantee `nuxeoCredentials()` exists to make was bypassed by the config that loads
+    // before any of it runs.
+    //
+    // Resolved at config load, which is where Playwright needs the value. An unset pair
+    // therefore fails the invocation rather than the first assertion — the intended direction.
+    httpCredentials: { ...nuxeoCredentials(), origin: baseURL },
     // Diagnostics on failure only, so a green run leaves nothing behind.
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
