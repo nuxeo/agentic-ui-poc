@@ -1,5 +1,6 @@
 /**
- * NXENG-858 — `.prop-label` on `.properties-panel` under every compiled palette (IBM 1792790291).
+ * NXENG-858 / NXENG-895 — `.prop-label` on `.properties-panel` under every compiled palette
+ * (IBM 1792790291, 2993932592).
  * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
  * Host tokens come from `:host` in `document-detail.scss` (no inline overrides on the test host).
  */
@@ -83,7 +84,7 @@ function paintedBackground(element: HTMLElement): number[] {
   return compositeBackgroundLayers(layers);
 }
 
-describe('Document detail prop-label contrast by theme (NXENG-858)', () => {
+describe('Document detail prop-label contrast by theme (NXENG-858, NXENG-895)', () => {
   it('compositeBackgroundLayers treats translucent panel backgrounds as painted, not white', () => {
     const mutedLabel = parseColor('rgb(92, 95, 107)');
     const translucentPanel = compositeBackgroundLayers([{ rgb: [0, 0, 0], alpha: 0.5 }]);
