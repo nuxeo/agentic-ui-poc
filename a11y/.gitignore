@@ -1,0 +1,7 @@
+# a11y-scout consolidated reports and Playwright trace/video artifacts.
+#
+# Kept inside this folder rather than at the repository root on purpose: everything this
+# suite produces should disappear with `rm -rf a11y/`, and a root-level ignore entry would
+# be one more thing to remember to remove. See README.md.
+reports/
+artifacts/

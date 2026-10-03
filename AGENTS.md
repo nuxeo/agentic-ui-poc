@@ -136,6 +136,8 @@ Feature flag: **on by default** — gated by `AiFeatureFlagService`, with an exp
 - [ ] `npx nx affected -t test` passes
 - [ ] Unit tests written for any new service method
 - [ ] `docs/api-integrations.md` updated if a new Nuxeo endpoint was called
+- [ ] `docs/accessibility.md` consulted if an accessibility check was added, moved or suppressed
+      — every concern has exactly one owning layer, and duplicating a check is a defect
 - [ ] `docs/ai-features.md` updated if AI backend changed
 - [ ] `AGENTS/01-services.md` updated if a new service method was added
 - [ ] `AGENTS/00-architecture.md` updated if architecture changed
