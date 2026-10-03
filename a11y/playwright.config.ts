@@ -135,8 +135,8 @@ export default defineConfig({
 
     // The journey suite — one project per screen, and here the split is about the deliverable
     // itself. `journey.a11y.spec.ts` produces a SELF-CONTAINED report per screen, and the
-    // accumulator is never cleared by `generateReport()`. Four calls in one worker would emit
-    // login, then login+dashboard, then login+dashboard+browse — each labelled with one screen
+    // accumulator is never cleared by `generateReport()`. One call per screen in one worker would
+    // emit login, then login+dashboard, then login+dashboard+browse — each labelled with one screen
     // and containing several. `emitScreenReport()` asserts `pagesScanned.length === 1` so the
     // day that stops being true is a red run rather than a quietly wrong artifact.
     //
@@ -151,7 +151,9 @@ export default defineConfig({
       // builds a session from the reply, and `authGuard` forwards `/` to the dashboard.
       use: screen.authenticated ? CHROMIUM : { ...CHROMIUM, httpCredentials: undefined },
       testMatch: '**/journey.a11y.spec.ts',
-      grep: new RegExp(journeyTag(screen.id)),
+      // Bounded on the right, so a screen id that is a prefix of another (`search` and a future
+      // `search-results`) cannot pull the other screen's test into this project.
+      grep: new RegExp(`${journeyTag(screen.id)}(?![\\w-])`),
     })),
   ],
 

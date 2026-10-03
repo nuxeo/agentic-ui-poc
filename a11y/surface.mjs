@@ -19,9 +19,10 @@
  * Both are false-clean, which is the failure mode this whole folder exists to avoid. Flagged
  * in review on PR #225.
  *
- * This module is the single definition of both lists below; `fixtures.ts` imports them, which
- * is why the folder sets `allowJs`. It is `.mjs` rather than `.ts` so the diagnostics, which
- * are plain Node scripts and never see the TypeScript compiler, can import it too.
+ * This module is the single definition of both lists below and of `screenUnsettledReason`, the
+ * wait every scan makes before measuring; `fixtures.ts` imports them, which is why the folder
+ * sets `allowJs`. It is `.mjs` rather than `.ts` so the diagnostics, which are plain Node
+ * scripts and never see the TypeScript compiler, can import it too.
  */
 
 /**
@@ -140,4 +141,155 @@ export async function surfaceUnusableReason(page, host, label, timeoutMs = 20_00
   }
 
   return null;
+}
+
+/**
+ * Everything that means "still loading", in the nav drawer or inside a feature host.
+ *
+ * Spinners are matched by element, not by the wrapper class they sit in (`.results-loading`,
+ * `.tab-loading`, `.browse-loading`, …): the Material ones everywhere, and the hand-written
+ * `hxp-spinner` that `/#/browse-adf-hx` and its panels use instead. Loaders that show text or
+ * a skeleton rather than a spinner can only be identified by class, so those are listed.
+ */
+const LOADING_SELECTOR = [
+  'mat-spinner',
+  'mat-progress-spinner',
+  'mat-progress-bar',
+  'hxp-spinner',
+  '.tree-loading',
+  // Text only: "Loading…" in the trash filters drawer, no spinner inside it.
+  '.drawer-results-loading',
+  // Text only: "Loading…" while an extension outlet resolves its component, in the drawer.
+  '.extension-outlet__loading',
+  // Grey placeholder lines while a document-detail AI card waits for its answer.
+  '.ai-loading-skeleton',
+].join(', ');
+
+/** The shell's nav drawer. Present on every signed-in route, absent on the sign-in page. */
+const NAV_DRAWER = 'app-nav-drawer';
+
+/**
+ * Wait until a screen has stopped changing, or explain why it never did.
+ *
+ * ## Why a quiet window, and why it covers the drawer AND the host
+ *
+ * A scan that arrives mid-load does not just add noise, it can report the wrong number. The
+ * drawer's folder tree showed that first: while a node loads, its toggle holds
+ * `<mat-spinner aria-label="Loading">`, which lends the button an accessible name its settled
+ * state does not have, so an early scan reported six unnamed toggles where there were seven
+ * (`docs/accessibility.md`, "The run-to-run difference was a loading spinner masking a real
+ * defect").
+ *
+ * The same shape recurs well beyond the tree, which is why this observes both regions:
+ *
+ *   - the drawer's other panels — favorites, recently viewed, expired, collections, tasks —
+ *     each render their own `.tree-loading` **outside** `.folder-tree`, which the earlier
+ *     tree-only wait never looked at;
+ *   - those panels, and the result lists inside feature hosts, fetch thumbnails after the list
+ *     renders and swap an icon for an `<img>` when each arrives, with no loading marker at all.
+ *
+ * The app exposes no "loaded" signal for any of this, so stillness is the evidence: no loader
+ * visible, and the tree node count, `<img>` count and element count of both regions unchanged
+ * for `quietMs`. All are read in one `evaluate`, so a poll sees one consistent DOM rather than
+ * counts taken across a re-render.
+ *
+ * `<img>` is counted separately because an icon-to-thumbnail swap replaces one element with one
+ * element and leaves the element count unchanged.
+ *
+ * Shared by the Playwright specs (through `waitForScreenSettled` in `fixtures.ts`) and the
+ * Node diagnostics, so the two cannot disagree about when a screen is ready to measure.
+ *
+ * Not covered: a loading state with none of the markers in `LOADING_SELECTOR` — on
+ * `/#/browse-adf-hx`, whatever upstream `hxp-document-tree` shows while it loads, if it is not
+ * one of them. The element counts still have to hold still, so such a state is only missed if
+ * it outlasts `quietMs` without the DOM changing.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {object}  options
+ * @param {string|null} options.host   the feature host, or `null` for a screen without one
+ * @param {boolean} options.treeRequired  the screen must show the folder tree, so an empty
+ *   drawer fails rather than settling as "nothing to wait for"
+ * @param {number}  [options.quietMs]
+ * @param {number}  [options.timeoutMs]
+ * @returns {Promise<string|null>} null when settled, otherwise what was last seen
+ */
+export async function screenUnsettledReason(
+  page,
+  { host, treeRequired, quietMs = 1500, timeoutMs = 20_000 },
+) {
+  const deadline = Date.now() + timeoutMs;
+
+  if (host) {
+    try {
+      await page.locator(host).first().waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch {
+      return `${host} never became visible, so there was nothing to wait on`;
+    }
+  }
+  if (treeRequired) {
+    try {
+      await page
+        .locator('.tree-node')
+        .first()
+        .waitFor({ state: 'visible', timeout: Math.max(deadline - Date.now(), 1) });
+    } catch {
+      return 'this screen shows the folder tree, and no .tree-node ever rendered';
+    }
+  }
+
+  let previous = '';
+  let stableSince = Date.now();
+  let seen = 'not read yet';
+  while (Date.now() < deadline) {
+    /** @type {{loading: number, shape: string} | null} */
+    let state = null;
+    try {
+      state = await page.evaluate(
+        ({ roots, loaders }) => {
+          // `checkVisibility` rather than a box test: a closed `mat-sidenav` is
+          // `visibility: hidden`, which still has boxes, and a spinner nobody can see is
+          // not a loader the scan would meet.
+          /** @param {Element} el */
+          const visible = (el) =>
+            el.checkVisibility({ visibilityProperty: true, opacityProperty: false });
+          let loading = 0;
+          let images = 0;
+          let elements = 0;
+          for (const selector of roots) {
+            const root = document.querySelector(selector);
+            if (!root) continue;
+            loading += [...root.querySelectorAll(loaders)].filter(visible).length;
+            images += root.querySelectorAll('img').length;
+            elements += root.getElementsByTagName('*').length;
+          }
+          const nodes = document.querySelectorAll('.tree-node').length;
+          return { loading, shape: `${nodes} tree node(s), ${images} img, ${elements} elements` };
+        },
+        { roots: host ? [NAV_DRAWER, host] : [NAV_DRAWER], loaders: LOADING_SELECTOR },
+      );
+    } catch {
+      // A read racing a navigation throws. That is "not settled yet", not a failure.
+      state = null;
+    }
+
+    if (state === null) {
+      seen = 'unreadable (page was navigating)';
+      previous = '';
+      stableSince = Date.now();
+    } else {
+      seen = `${state.loading} loader(s), ${state.shape}`;
+      if (state.loading > 0 || state.shape !== previous) {
+        previous = state.loading > 0 ? '' : state.shape;
+        stableSince = Date.now();
+      } else if (Date.now() - stableSince >= quietMs) {
+        return null;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  return (
+    `the screen never held still, with no loader visible, for ${quietMs}ms within ` +
+    `${timeoutMs}ms — last seen: ${seen}. A scan now would measure a partial load.`
+  );
 }

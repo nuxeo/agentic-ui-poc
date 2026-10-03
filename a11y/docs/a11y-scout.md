@@ -160,8 +160,8 @@ which surface failed and why.
 
 ## Nothing fails the run yet
 
-`failOnBlockers` is `false` everywhere. Not because the checks have never run — this document
-records baselines for seven surfaces and four screens — but because **the findings they
+`failOnBlockers` is `false` everywhere. Not because the checks have never run — baselines exist
+for seven surfaces here and for fifteen screens in `docs/accessibility.md` — but because **the findings they
 produced are untriaged and unowned**. Nobody has yet decided which are real, which are
 accepted, and who fixes the rest, and a gate that goes red for reasons nobody has triaged is
 one people learn to ignore — `coverage-gate.mjs` and `scripts/a11y-scan.mjs` both

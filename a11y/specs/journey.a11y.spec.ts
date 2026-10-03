@@ -1,12 +1,13 @@
 import type { A11yFixture, ScanPageOptions } from '@a11y-scout/playwright';
-import type { Page, TestInfo, TestType } from '@playwright/test';
+import type { Page, Response, TestInfo, TestType } from '@playwright/test';
 import {
   aiFindingsNote,
   expect,
   expectSurfaceUsable,
   REPORT_DIR,
+  requireNuxeoCredentials,
   test,
-  waitForNavTreeSettled,
+  waitForScreenSettled,
 } from '../fixtures';
 import {
   JOURNEY_SCREENS,
@@ -27,16 +28,39 @@ import {
  * screens in the order a real user meets them and emits a separate report for each, so a
  * screen can be handed to whoever owns it without them reading around six other screens.
  *
- * Three of the four screens below are scanned here for the first time by anything:
+ * Most screens below are scanned here and by nothing else:
  *
  *   - **login** — no committed script has ever scanned it. It was covered once by an ad-hoc
  *     `a11y-scout scan-url` against a backend-less dev server, which is not the same page:
  *     that run saw the form in its error state.
  *   - **dashboard** — `app.routes.ts` redirects `path: ''` here, so it is the first screen
  *     every signed-in user sees, and it is absent from `SURFACES`.
- *   - **document detail** — the most-used read surface in the product, never scanned.
+ *   - **document detail** — the most-used read surface in the product.
+ *   - **search with a query, documents, a collection, personal space** — routed screens with
+ *     real result lists, none in `SURFACES` except `/#/search`, which that suite scans with no
+ *     query applied.
+ *   - **favorites, recently viewed, clipboard, expired queue** — these routes render a
+ *     "Coming soon" placeholder; the screen is the nav-drawer panel that a deep link opens.
+ *     Other suites see the drawer only as it is on their own routes — the folder tree on
+ *     browse, the tasks panel on tasks — so these four panels are scanned here and nowhere else.
  *
- * ## Why one Playwright project per screen, rather than four `generateReport()` calls
+ * Tasks, trash and administration are in `SURFACES` too, but there with only the general
+ * `expectSurfaceUsable` check. How strongly each screen here is tied to real content varies,
+ * and each test says which applies:
+ *
+ *   - **its own data request succeeded, and the first entry it returned is on screen** —
+ *     search, documents, collection, favorites, recently viewed, trash, and the expired queue
+ *     when it has entries. See `captureDataRequest`.
+ *   - **its own data request succeeded, and the screen that follows from it is shown** — tasks
+ *     (the first task's form, or the empty inbox), personal space (the redirect to the path the
+ *     server returned) and administration (the request succeeded; the landing tab shows no
+ *     repository data to check against).
+ *   - **a named document is on screen, from a separate repository query** — document detail,
+ *     and clipboard, whose content is seeded in the browser rather than requested.
+ *   - **the screen rendered without an error state** — login, dashboard and browse, which have
+ *     no single piece of data guaranteed to be present.
+ *
+ * ## Why one Playwright project per screen, rather than one `generateReport()` call each
  *
  * The a11y-scout accumulator is **worker-scoped**, and `finalizeAndEmit` does not clear
  * `pageScans` when it emits — it only flips `reportEmitted`. Calling `generateReport()` once
@@ -140,8 +164,15 @@ function assertEveryScreenDeclared(): void {
  * The assertion is the load-bearing part. A per-screen report that silently accumulated a
  * previous screen would still be a valid HTML file with plausible numbers in it, and nobody
  * reading it would notice.
+ *
+ * `screenState` is printed beside the report when what was scanned is not the screen's
+ * populated state — an empty task inbox, say — so a low count is never read as a clean one.
  */
-async function emitScreenReport(a11y: A11yFixture, reportName: string): Promise<void> {
+async function emitScreenReport(
+  a11y: A11yFixture,
+  reportName: string,
+  screenState?: string,
+): Promise<void> {
   const { state, reportPaths } = await a11y.generateReport({
     outDir: REPORT_DIR,
     reportName,
@@ -158,6 +189,7 @@ async function emitScreenReport(a11y: A11yFixture, reportName: string): Promise<
     [
       '',
       `  screen    : ${reportName}`,
+      ...(screenState ? [`  state     : ${screenState}`] : []),
       `  page      : ${state.meta.pagesScanned.join(', ')}`,
       `  findings  : ${findings.length} (${bySource})`,
       `  blockers  : ${findings.filter((f) => f.severity === 'blocker').length}`,
@@ -203,34 +235,161 @@ async function emitScreenReport(a11y: A11yFixture, reportName: string): Promise<
  * The title comes back with the uid so the screen assertion can prove the detail view
  * rendered *that* document rather than an error panel, which is also visible.
  */
-async function firstOpenableDocument(page: Page): Promise<{ uid: string; title: string }> {
-  const response = await page.request.get('/nuxeo/api/v1/search/lang/NXQL/execute', {
-    params: {
-      query:
-        "SELECT * FROM File WHERE ecm:mixinType <> 'HiddenInNavigation' " +
-        'AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ORDER BY dc:created',
-      pageSize: 1,
-    },
-  });
+async function firstOpenableDocument(page: Page): Promise<RepoEntry> {
+  const entries = await nxqlEntries(
+    page,
+    "SELECT * FROM File WHERE ecm:mixinType <> 'HiddenInNavigation' " +
+      'AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ORDER BY dc:created',
+    1,
+    'document detail',
+  );
+  return requireEntry(
+    entries,
+    'the repository holds no File document, so there is nothing to open in the detail view — ' +
+      'seed a document before running this screen rather than letting it scan an error panel',
+  );
+}
 
+/** The fields of a Nuxeo document entry this file reads. */
+interface RepoEntry {
+  readonly uid: string;
+  readonly title: string;
+  readonly type?: string;
+}
+
+/**
+ * Run an NXQL query through the app origin and return its entries.
+ *
+ * For **setup** only — choosing which collection to open, say. It is never the evidence that
+ * a screen loaded; that is the screen's own request, captured by `captureDataRequest`.
+ * Credentials come from `httpCredentials`, as in `firstOpenableDocument`.
+ */
+async function nxqlEntries(
+  page: Page,
+  query: string,
+  pageSize: number,
+  label: string,
+): Promise<RepoEntry[]> {
+  const response = await page.request.get('/nuxeo/api/v1/search/lang/NXQL/execute', {
+    params: { query, pageSize },
+  });
   expect(
     response.ok(),
-    `repository query failed with ${response.status()} — document detail cannot be scanned`,
+    `repository query failed with ${response.status()} — ${label} cannot be scanned`,
   ).toBeTruthy();
+  return entriesOf(await response.json());
+}
 
-  const body = (await response.json()) as { entries?: Array<{ uid: string; title: string }> };
-  const entry = body.entries?.[0];
+/** `entries` from a Nuxeo list response, or none — never a throw on an unexpected shape. */
+function entriesOf(body: unknown): RepoEntry[] {
+  const entries = (body as { entries?: unknown } | null)?.entries;
+  return Array.isArray(entries) ? (entries as RepoEntry[]) : [];
+}
 
-  // `throw` rather than `expect(...).toBeTruthy()`: the latter does not narrow the type, so it
-  // would leave two non-null assertions behind and the failure message below is no weaker.
-  if (!entry) {
+/**
+ * The first entry, or a failure that says what to seed.
+ *
+ * `throw` rather than `expect(...).toBeTruthy()`: the latter does not narrow the type, so it
+ * would leave non-null assertions behind at every call site, and the message is no weaker.
+ *
+ * The entry's `uid` and `title` are checked, not trusted from the cast in `entriesOf`. Every
+ * caller goes on to require that title on screen, and a missing or empty one would make that
+ * check vacuous: `filter({ hasText: '' })` keeps every row and `toContainText('')` passes on
+ * any page, error panels included.
+ */
+function requireEntry(entries: readonly RepoEntry[], whyEmptyIsFatal: string): RepoEntry {
+  const entry = entries[0];
+  if (!entry) throw new Error(whyEmptyIsFatal);
+  const { uid, title } = entry as { uid?: unknown; title?: unknown };
+  if (typeof uid !== 'string' || uid === '' || typeof title !== 'string' || title.trim() === '') {
     throw new Error(
-      'the repository holds no File document, so there is nothing to open in the detail view — ' +
-        'seed a document before running this screen rather than letting it scan an error panel',
+      `the first entry has no usable uid or title (${JSON.stringify({ uid, title })}), so ` +
+        'nothing on screen could be checked against it',
     );
   }
+  return entry;
+}
 
-  return { uid: entry.uid, title: entry.title };
+/**
+ * Navigate, and capture the response to the screen's **own** data request.
+ *
+ * ## Why the screen's request, not a separate query
+ *
+ * A REST query made by the test proves the repository holds data. It does not prove this
+ * screen received it, and several screens here cannot be trusted to say when they did not:
+ * the search page sets an `error` signal its template never renders, and the favorites and
+ * collections panels have no error state at all — a failed request on any of them renders as
+ * an empty list, which the error-class check cannot tell from a real one. Capturing the
+ * request the screen itself made, and requiring it to succeed, closes that.
+ *
+ * The listener is registered before navigating, so a response that arrives during the
+ * navigation is not missed. A navigation that fails is reported as that, not as a missing
+ * request — the two have different causes and a shared message sent people after the wrong one.
+ *
+ * @param matches  identifies the request. Each call site matches on more than the endpoint
+ *   where another component on the same screen calls that endpoint too.
+ */
+async function captureDataRequest(
+  page: Page,
+  label: string,
+  matches: (url: URL, method: string) => boolean,
+  navigate: () => Promise<unknown>,
+): Promise<unknown> {
+  const firstLine = (err: unknown) =>
+    err instanceof Error ? err.message.split('\n')[0] : String(err);
+  const pending = page.waitForResponse((r) => matches(new URL(r.url()), r.request().method()), {
+    timeout: 30_000,
+  });
+  try {
+    await navigate();
+  } catch (err) {
+    // Observed so the abandoned wait cannot surface later as an unhandled rejection.
+    pending.catch(() => undefined);
+    throw new Error(`${label}: navigating to the screen failed — ${firstLine(err)}`);
+  }
+  let response: Response;
+  try {
+    response = await pending;
+  } catch (err) {
+    throw new Error(
+      `${label}: the screen never made the data request this test waits for, so it cannot be ` +
+        `shown to have loaded — ${firstLine(err)}`,
+    );
+  }
+  expect(
+    response.ok(),
+    `${label}: its data request ${new URL(response.url()).pathname} failed with ` +
+      `${response.status()} — the screen is showing a failure, not data`,
+  ).toBeTruthy();
+  return response.json();
+}
+
+/** True for an NXQL GET whose query contains every fragment given. */
+function isNxqlQuery(url: URL, ...fragments: string[]): boolean {
+  if (!url.pathname.endsWith('/search/lang/NXQL/execute')) return false;
+  const query = url.searchParams.get('query') ?? '';
+  return fragments.every((f) => query.includes(f));
+}
+
+/** The shell's nav drawer, which is the whole screen on the placeholder routes. */
+const NAV_DRAWER = 'app-nav-drawer';
+
+/**
+ * Prove the drawer is open and is not showing a load error.
+ *
+ * `.tree-empty.error` is deliberately absent from `ERROR_STATE_CLASSES`, whose checks are
+ * scoped to a feature host — see `NOT_A_SURFACE_ERROR` in `../surface.mjs`. On the screens
+ * where the drawer panel IS the screen, it has to be checked here or not at all.
+ */
+async function expectDrawerPanelHealthy(page: Page, label: string): Promise<void> {
+  await expect(
+    page.locator('mat-sidenav.nav-drawer-sidenav'),
+    `${label}: the deep link must open the nav drawer, or there is no panel to scan`,
+  ).toBeVisible();
+  await expect(
+    page.locator(`${NAV_DRAWER} .tree-empty.error`),
+    `${label}: the drawer panel is showing its load error`,
+  ).toHaveCount(0);
 }
 
 /**
@@ -259,7 +418,7 @@ const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
  * in on the app's behalf.
  *
  * That failure is the reason this test asserts the URL before scanning. Without it the scan
- * would have run on the dashboard and emitted a report titled `journey-1-login` containing
+ * would have run on the dashboard and emitted a report titled `journey-01-login` containing
  * dashboard findings, which is the vacuous pass `phase-6-a11y.mjs` shipped once already.
  *
  * ## The two mechanisms used instead, and what each is for
@@ -281,8 +440,8 @@ journeyTest('login', async ({ page, a11y }) => {
   );
   await expect(page.locator('app-login-page'), 'app-login-page must render').toBeVisible();
 
-  // No drawer on the sign-in page, so this asserts the absence rather than waiting for it.
-  await waitForNavTreeSettled(page, false);
+  // No drawer on the sign-in page; this waits on the form alone.
+  await waitForScreenSettled(page, 'app-login-page', false);
 
   await a11y.scanPage(SCREEN_SCAN);
   await emitScreenReport(a11y, journeyReportName('login'));
@@ -303,11 +462,10 @@ journeyTest('login', async ({ page, a11y }) => {
 journeyTest('dashboard', async ({ signedIn: page, a11y }) => {
   await page.goto('/#/dashboard', { waitUntil: 'networkidle' });
 
-  await expectSurfaceUsable(page, 'app-dashboard-page', 'dashboard');
-
   // The drawer renders a folder tree only on browse-family routes, so it is not required
-  // here — but if one is mid-load the same name-masking applies, so it is still awaited.
-  await waitForNavTreeSettled(page, false);
+  // here — but the widgets load on their own, and an error panel can arrive last.
+  await waitForScreenSettled(page, 'app-dashboard-page', false);
+  await expectSurfaceUsable(page, 'app-dashboard-page', 'dashboard');
 
   await a11y.scanPage(SCREEN_SCAN);
   await emitScreenReport(a11y, journeyReportName('dashboard'));
@@ -329,7 +487,8 @@ journeyTest('browse', async ({ signedIn: page, a11y }) => {
     page.locator('.browse-row, .doc-card-wrapper').first(),
     'browse must list at least one document, or this scans an empty table',
   ).toBeVisible();
-  await waitForNavTreeSettled(page, true);
+  await waitForScreenSettled(page, 'lib-browse', true);
+  await expectSurfaceUsable(page, 'lib-browse', 'browse');
 
   await a11y.scanPage(SCREEN_SCAN);
   await emitScreenReport(a11y, journeyReportName('browse'));
@@ -355,10 +514,489 @@ journeyTest('document-detail', async ({ signedIn: page, a11y }) => {
   ).toContainText(title);
   // Required: the drawer keeps the browse folder tree while a document is open, and this is
   // the screen whose findings were unstable because of it.
-  await waitForNavTreeSettled(page, true);
+  await waitForScreenSettled(page, 'lib-document-detail', true);
+  await expectSurfaceUsable(page, 'lib-document-detail', 'document detail');
 
   await a11y.scanPage(SCREEN_SCAN);
   await emitScreenReport(a11y, journeyReportName('document-detail'));
+});
+
+// ─────────────────────────── core flows ───────────────────────────
+
+/**
+ * Screen 5 — search, with a query applied and results returned.
+ *
+ * ## Why the query is a quick filter and not typed text
+ *
+ * The obvious query — text in the drawer's Full Text box — cannot be scanned on a stock
+ * server, and finding that out is the reason this comment exists. The page sends it as
+ * `ecm_fulltext`, and Nuxeo answers **400 "Fulltext search disabled by configuration"** when
+ * full-text search is not enabled, which is the default. The search page renders that failure
+ * as an empty result list (it sets an `error` signal its template never shows), so a typed
+ * query would have scanned an empty page under the label "search results". The drawer's
+ * facet filters are no alternative on the same server: they are built from aggregations, and
+ * `default_search` returns none.
+ *
+ * What does narrow the query everywhere is the URL: the "No Containers" quick filter and a
+ * sort. It is a real query — on the instance this was written against it took 59 results to
+ * 44 — and it is the state a shared or bookmarked search link opens in.
+ */
+journeyTest('search', async ({ signedIn: page, a11y }) => {
+  const body = await captureDataRequest(
+    page,
+    'search',
+    // `sortBy` as well as the filter: the drawer fires its own `default_search` for its
+    // counts with the same quick filter and the default sort, and that response is not the
+    // one the page renders.
+    (url) =>
+      url.pathname.endsWith('/search/pp/default_search/execute') &&
+      url.searchParams.get('quickFilters') === 'noFolder' &&
+      url.searchParams.get('sortBy') === 'dc:title',
+    () =>
+      page.goto('/#/search?quickFilters=noFolder&sortBy=dc:title&sortOrder=asc', {
+        waitUntil: 'networkidle',
+      }),
+  );
+  const first = requireEntry(
+    entriesOf(body),
+    'search: the "No Containers" query matched no document, so there are no results to scan',
+  );
+
+  await expect(
+    page.locator('lib-search .list-row').filter({ hasText: first.title }).first(),
+    `search must list "${first.title}", the first result its own request returned`,
+  ).toBeVisible();
+  await waitForScreenSettled(page, 'lib-search', false);
+  await expectSurfaceUsable(page, 'lib-search', 'search');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('search'));
+});
+
+/** Screen 6 — documents, the asset search, as it opens with no filter applied. */
+journeyTest('documents', async ({ signedIn: page, a11y }) => {
+  const body = await captureDataRequest(
+    page,
+    'documents',
+    // `pageSize` identifies the page's request: the drawer runs the same search with
+    // `pageSize: 200` for its facets, and its first entry need not be on the page. 40 is
+    // `AssetService.searchAssets`' default, which the page does not override.
+    (url) =>
+      url.pathname.endsWith('/search/pp/assets_search/execute') &&
+      url.searchParams.get('pageSize') === '40',
+    () => page.goto('/#/documents', { waitUntil: 'networkidle' }),
+  );
+  const first = requireEntry(
+    entriesOf(body),
+    'documents: the asset search returned nothing, so there is no result list to scan',
+  );
+
+  await expect(
+    page.locator('lib-asset-search-results .list-row').filter({ hasText: first.title }).first(),
+    `documents must list "${first.title}", the first result its own request returned`,
+  ).toBeVisible();
+  await waitForScreenSettled(page, 'lib-asset-search-results', false);
+  await expectSurfaceUsable(page, 'lib-asset-search-results', 'documents');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('documents'));
+});
+
+/**
+ * Screen 7 — one collection, opened by uid, with members in it.
+ *
+ * `/#/collections` alone renders nothing — `collectionsRoutes` declares only `:uid` — which is
+ * why `SURFACES` leaves it out and why phase-6's scan of it is a vacuous pass. A real uid is
+ * the only way in. The collection is chosen by the same query the app's own collections panel
+ * runs, and must have a member: an empty collection renders a one-line placeholder.
+ *
+ * `.collection-unavailable` is asserted absent here because it is not an error class — it is
+ * the not-found/unavailable panel, rendered instead of the page rather than inside it.
+ */
+journeyTest('collection', async ({ signedIn: page, a11y }) => {
+  await page.goto('/#/dashboard', { waitUntil: 'networkidle' });
+  const collections = await nxqlEntries(
+    page,
+    "SELECT * FROM Collection WHERE ecm:isTrashed = 0 AND ecm:currentLifeCycleState != 'deleted' " +
+      'ORDER BY dc:modified DESC',
+    20,
+    'collection',
+  );
+  let chosen: RepoEntry | undefined;
+  for (const candidate of collections) {
+    const members = await page.request.get(
+      '/nuxeo/api/v1/search/pp/default_content_collection/execute',
+      { params: { queryParams: candidate.uid, pageSize: 1 } },
+    );
+    if (members.ok() && entriesOf(await members.json()).length > 0) {
+      chosen = candidate;
+      break;
+    }
+  }
+  const collection = requireEntry(
+    chosen ? [chosen] : [],
+    `collection: none of the ${collections.length} collection(s) in the repository has a ` +
+      'member — add a document to one before running this screen',
+  );
+
+  const body = await captureDataRequest(
+    page,
+    'collection',
+    (url) =>
+      url.pathname.endsWith('/search/pp/default_content_collection/execute') &&
+      url.searchParams.get('queryParams') === collection.uid,
+    () => page.goto(`/#/collections/${collection.uid}`, { waitUntil: 'networkidle' }),
+  );
+  const member = requireEntry(
+    entriesOf(body),
+    `collection: "${collection.title}" had a member a moment ago and its page received none`,
+  );
+
+  const host = page.locator('lib-collection-detail');
+  await expect(host.locator('.collection-unavailable')).toHaveCount(0);
+  await expect(host, `the page must be "${collection.title}"`).toContainText(collection.title);
+  await expect(
+    host.locator('.member-row').filter({ hasText: member.title }).first(),
+    `the collection must list its member "${member.title}"`,
+  ).toBeVisible();
+  await waitForScreenSettled(page, 'lib-collection-detail', false);
+  await expectSurfaceUsable(page, 'lib-collection-detail', 'collection');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('collection'));
+});
+
+/**
+ * Screen 8 — the favorites panel.
+ *
+ * The panel has no error state: a failed request renders the empty "no favorites" message. So
+ * the members request is captured, and the precondition is checked first — when the user has
+ * no Favorites collection the app makes no members request at all, and the capture would fail
+ * as a timeout that says nothing useful.
+ */
+journeyTest('favorites', async ({ signedIn: page, a11y }) => {
+  const { username } = requireNuxeoCredentials();
+  await page.goto('/#/dashboard', { waitUntil: 'networkidle' });
+  // The query FAVORITES_COLLECTION_QUERY in libs/shared/nuxeo-client/src/lib/queries/nxql-queries.ts
+  // runs, with the username escaped as an NXQL literal, which the app's copy does not do.
+  // `STARTSWITH` on `ecm:path` matches by path segment, so another user whose name begins
+  // with this one's is not matched.
+  const literal = username.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const favoritesCollection = requireEntry(
+    await nxqlEntries(
+      page,
+      "SELECT * FROM Document WHERE ecm:primaryType = 'Favorites' " +
+        `AND ecm:path STARTSWITH '/default-domain/UserWorkspaces/${literal}'`,
+      1,
+      'favorites',
+    ),
+    'favorites: this user has never favorited a document, so the panel can only show its ' +
+      'empty message — mark a document as a favorite before running this screen',
+  );
+
+  const body = await captureDataRequest(
+    page,
+    'favorites',
+    (url) =>
+      url.pathname.endsWith('/search/pp/default_content_collection/execute') &&
+      url.searchParams.get('queryParams') === favoritesCollection.uid,
+    () => page.goto('/#/favorites', { waitUntil: 'networkidle' }),
+  );
+  const first = requireEntry(
+    entriesOf(body),
+    'favorites: the Favorites collection is empty — mark a document as a favorite first',
+  );
+
+  await expect(
+    page.locator(`${NAV_DRAWER} .favorite-card`).filter({ hasText: first.title }).first(),
+    `the favorites panel must list "${first.title}"`,
+  ).toBeVisible();
+  await waitForScreenSettled(page, null, false);
+  await expectDrawerPanelHealthy(page, 'favorites');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('favorites'));
+});
+
+/**
+ * Screen 9 — the recently viewed panel.
+ *
+ * Named for views, but `RECENTLY_VIEWED_QUERY` lists documents the user created or last
+ * modified; it reads no audit trail. The request is matched on that clause.
+ */
+journeyTest('recently-viewed', async ({ signedIn: page, a11y }) => {
+  const body = await captureDataRequest(
+    page,
+    'recently viewed',
+    (url) => isNxqlQuery(url, 'dc:lastContributor'),
+    () => page.goto('/#/recently-viewed', { waitUntil: 'networkidle' }),
+  );
+  const first = requireEntry(
+    entriesOf(body),
+    'recently viewed: this user has created or edited no document, so the panel is empty',
+  );
+
+  await expect(
+    page.locator(`${NAV_DRAWER} .rv-card`).filter({ hasText: first.title }).first(),
+    `the recently viewed panel must list "${first.title}"`,
+  ).toBeVisible();
+  await waitForScreenSettled(page, null, false);
+  await expectDrawerPanelHealthy(page, 'recently viewed');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('recently-viewed'));
+});
+
+/**
+ * Screen 10 — personal space.
+ *
+ * `/#/personal-space` is a redirect: the page asks for the user's workspace and navigates to
+ * `/#/browse<workspace path>`, so the screen a user lands on is browse, rooted in their own
+ * workspace. The URL is asserted against the path the server returned, so a redirect to the
+ * wrong folder — or none — cannot be scanned under this label.
+ *
+ * The drawer asks for the workspace too, with the identical request, so the response captured
+ * may be the drawer's. The redirect is what ties it to the page: only the page's own answer
+ * navigates, so a page request that failed while the drawer's succeeded never reaches the URL
+ * asserted below.
+ */
+journeyTest('personal-space', async ({ signedIn: page, a11y }) => {
+  const body = await captureDataRequest(
+    page,
+    'personal space',
+    (url, method) =>
+      method === 'POST' && url.pathname.endsWith('/automation/User.GetUserWorkspace'),
+    () => page.goto('/#/personal-space', { waitUntil: 'networkidle' }),
+  );
+  const workspacePath = (body as { path?: unknown } | null)?.path;
+  if (typeof workspacePath !== 'string' || workspacePath === '') {
+    throw new Error('personal space: User.GetUserWorkspace returned no path to redirect to');
+  }
+
+  await page.waitForURL((url) => decodeURIComponent(url.hash) === `#/browse${workspacePath}`, {
+    timeout: 15_000,
+  });
+  await expect(
+    page.locator('lib-browse .browse-row').first(),
+    `the workspace at ${workspacePath} must list something, or this scans an empty table`,
+  ).toBeVisible();
+  await waitForScreenSettled(page, 'lib-browse', true);
+  await expectSurfaceUsable(page, 'lib-browse', 'personal space');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('personal-space'));
+});
+
+/**
+ * Mirrors `CLIPBOARD_STORAGE_KEY` in `libs/shared/nuxeo-client/src/lib/utils/clipboard.utils.ts`.
+ */
+const CLIPBOARD_STORAGE_KEY = 'nuxeo_clipboard';
+
+/**
+ * Screen 11 — the clipboard panel.
+ *
+ * The clipboard lives in the browser, not on the server, so it is seeded rather than found:
+ * one real document, written in the app's own storage shape. Nothing on the server changes,
+ * and the browser context — and the seed with it — is discarded when the test ends.
+ *
+ * Written after the shell has loaded and before the deep link, which is a same-document
+ * navigation: the panel re-reads storage when it opens, so no reload is needed, and an init
+ * script would never run.
+ */
+journeyTest('clipboard', async ({ signedIn: page, a11y }) => {
+  await page.goto('/#/dashboard', { waitUntil: 'networkidle' });
+  const doc = await firstOpenableDocument(page);
+  await page.evaluate(({ key, value }) => localStorage.setItem(key, value), {
+    key: CLIPBOARD_STORAGE_KEY,
+    value: JSON.stringify([{ uid: doc.uid, title: doc.title, type: doc.type }]),
+  });
+
+  await page.goto('/#/clipboard', { waitUntil: 'networkidle' });
+
+  await expect(
+    page.locator(`${NAV_DRAWER} .clipboard-card`).filter({ hasText: doc.title }),
+    `the clipboard panel must list exactly the seeded document "${doc.title}"`,
+  ).toHaveCount(1);
+  await waitForScreenSettled(page, null, false);
+  await expectDrawerPanelHealthy(page, 'clipboard');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('clipboard'));
+});
+
+// ─────────────────────────── work screens ───────────────────────────
+
+/**
+ * What a screen showed when it was scanned, for screens where empty is a legitimate state.
+ *
+ * Only tasks and the expired queue use this. Both are commonly empty on a working server, and
+ * creating data to fill them would mean starting workflows or rewriting `dc:expired` on shared
+ * content from a test. So each scans what is actually there — but which state it scanned is
+ * decided by the screen's own response, the matching element is required, and the state is
+ * printed beside the report so an empty-state count is never read as the populated screen's.
+ */
+function describeState(count: number, noun: string): string {
+  return count > 0
+    ? `populated — ${count} ${noun}`
+    : `EMPTY STATE scanned — the server returned no ${noun}, so the populated screen is unmeasured`;
+}
+
+/**
+ * Screen 12 — tasks.
+ *
+ * With tasks, the page selects the first one and navigates to `/#/tasks/<id>`, so the screen
+ * is the task form; without, it is a prompt to pick a task from the drawer. Both are required
+ * explicitly rather than inferred. The task list itself is in the drawer, and the page's own
+ * `listError` is never rendered, which is why the response decides.
+ *
+ * The page and the drawer make the identical request — `getUserTasks(user, 50)` — so the one
+ * captured may be either. What that leaves open is bounded: a failed drawer request shows
+ * `.tree-empty.error`, which `expectDrawerPanelHealthy` refuses; a failed page request, with
+ * tasks on the server, never shows the task form this then requires; and a failed page
+ * request with none renders the same `.empty-detail` a successful one does, so the DOM
+ * scanned is the empty state either way.
+ */
+journeyTest('tasks', async ({ signedIn: page, a11y }) => {
+  const body = await captureDataRequest(
+    page,
+    'tasks',
+    (url) => url.pathname.endsWith('/api/v1/task'),
+    () => page.goto('/#/tasks', { waitUntil: 'networkidle' }),
+  );
+  const tasks = entriesOf(body);
+
+  if (tasks.length > 0) {
+    const firstId = (tasks[0] as { id?: unknown }).id;
+    if (typeof firstId !== 'string' || firstId === '') {
+      throw new Error('tasks: the first task in the response has no id to open');
+    }
+    await expect(page, 'with tasks, the page opens the first one').toHaveURL(
+      (url) => decodeURIComponent(url.hash) === `#/tasks/${firstId}`,
+    );
+    await expect(page.locator('lib-tasks-page .task-form-title')).toBeVisible();
+    await expect(page.locator(`${NAV_DRAWER} button.task-item`).first()).toBeVisible();
+  } else {
+    await expect(page.locator('lib-tasks-page .empty-detail')).toBeVisible();
+    await expect(
+      page.locator(`${NAV_DRAWER} .tasks-panel-body .tree-empty`),
+      'with no tasks, the drawer must show its empty inbox, not an error',
+    ).toBeVisible();
+  }
+  await waitForScreenSettled(page, 'lib-tasks-page', false);
+  await expectDrawerPanelHealthy(page, 'tasks');
+  await expectSurfaceUsable(page, 'lib-tasks-page', 'tasks');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('tasks'), describeState(tasks.length, 'task(s)'));
+});
+
+/** Screen 13 — the expired queue panel: documents whose `dc:expired` date has passed. */
+journeyTest('expired-queue', async ({ signedIn: page, a11y }) => {
+  const body = await captureDataRequest(
+    page,
+    'expired queue',
+    (url) => isNxqlQuery(url, 'dc:expired <'),
+    () => page.goto('/#/expired-queue', { waitUntil: 'networkidle' }),
+  );
+  const expired = entriesOf(body);
+
+  if (expired.length > 0) {
+    const first = requireEntry(expired, 'expired queue: unreachable — the list is non-empty');
+    await expect(
+      page.locator(`${NAV_DRAWER} .expired-card`).filter({ hasText: first.title }).first(),
+      `the expired queue must list "${first.title}"`,
+    ).toBeVisible();
+  } else {
+    // The icon identifies the panel: every drawer panel's empty state is a `.tree-empty`.
+    await expect(
+      page.locator(`${NAV_DRAWER} .tree-empty .empty-icon`),
+      'with nothing expired, the drawer must show the expired queue empty state',
+    ).toHaveText('timer_off');
+  }
+  await waitForScreenSettled(page, null, false);
+  await expectDrawerPanelHealthy(page, 'expired queue');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(
+    a11y,
+    journeyReportName('expired-queue'),
+    describeState(expired.length, 'expired document(s)'),
+  );
+});
+
+/** Screen 14 — trash, with something in it. */
+journeyTest('trash', async ({ signedIn: page, a11y }) => {
+  const body = await captureDataRequest(
+    page,
+    'trash',
+    // `pageSize` identifies the page's request: the filters drawer runs the same query with
+    // `pageSize: 200` for its counts, and its first entry need not be on the page.
+    (url) => isNxqlQuery(url, 'ecm:isTrashed = 1') && url.searchParams.get('pageSize') === '100',
+    () => page.goto('/#/trash', { waitUntil: 'networkidle' }),
+  );
+  const first = requireEntry(
+    entriesOf(body),
+    'trash: nothing is in the trash, so the screen shows only "Trash is empty" — trash a ' +
+      'document before running this screen',
+  );
+
+  await expect(
+    page.locator('lib-trash .list-row').filter({ hasText: first.title }).first(),
+    `trash must list "${first.title}", the first document its own request returned`,
+  ).toBeVisible();
+  await waitForScreenSettled(page, 'lib-trash', false);
+  await expectSurfaceUsable(page, 'lib-trash', 'trash');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('trash'));
+});
+
+/**
+ * Screen 15 — administration, as an administrator lands on it.
+ *
+ * `/#/administration` redirects to `analytics`, whose first tab is Document Distribution. At
+ * the domain root that tab deliberately shows a callout instead of counts — the query would
+ * be too expensive — so the callout is the real landing state, not a failure.
+ *
+ * The evidence is weaker than on the other screens, and only the request carries it. The page
+ * looks up the domain with `GET /path/default-domain` and fills the path field from the answer
+ * — but the field starts at `/default-domain/`, which is also what a stock server returns, so on
+ * such a server the field reads the same whether the lookup succeeded or failed, and the tab
+ * beneath it shows a fixed callout either way. The lookup is captured and must succeed; that
+ * is the proof the page reached the server. (`searchAuditLogs` can request the same URL through
+ * its fallback, but this page never calls it.) The field is still checked, as
+ * a consistency check that the page used what came back, not as evidence of the request.
+ *
+ * `run.mjs` gives the journey `needsAdmin`, so an identity `adminGuard` would turn away is
+ * refused before any screen is scanned rather than measured as the dashboard.
+ */
+journeyTest('administration', async ({ signedIn: page, a11y }) => {
+  const body = await captureDataRequest(
+    page,
+    'administration',
+    (url) => url.pathname.endsWith('/api/v1/path/default-domain'),
+    () => page.goto('/#/administration', { waitUntil: 'networkidle' }),
+  );
+  const domainPath = (body as { path?: unknown } | null)?.path;
+  if (typeof domainPath !== 'string' || domainPath === '') {
+    throw new Error('administration: the default domain request returned no path');
+  }
+
+  // A `powerusers` member is let in by `adminGuard` but redirected to users and groups by
+  // `fullAdministratorGuard`, so this fails for one rather than scanning another page here.
+  await expect(
+    page,
+    'an administrator lands on analytics — a powerusers member does not, and cannot run this screen',
+  ).toHaveURL(/#\/administration\/analytics$/);
+  await expect(
+    page.locator('lib-admin-analytics-page input[name="distPath"]'),
+    'the path field must hold the domain path the lookup returned',
+  ).toHaveValue(domainPath.endsWith('/') ? domainPath : `${domainPath}/`);
+  await waitForScreenSettled(page, 'lib-admin-analytics-page', false);
+  await expectSurfaceUsable(page, 'lib-admin-analytics-page', 'administration');
+
+  await a11y.scanPage(SCREEN_SCAN);
+  await emitScreenReport(a11y, journeyReportName('administration'));
 });
 
 // Last, after every declaration. See the function's own note: a screen listed in

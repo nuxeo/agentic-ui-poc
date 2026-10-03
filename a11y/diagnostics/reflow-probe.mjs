@@ -32,11 +32,15 @@
  * independently. A route that overflows via a NON-exempt element and was still reported clean
  * by a11y-scout would mean the scanner is broken.
  *
+ * A row measured after closing the nav drawer says so. At 320px every route measured on
+ * 2026-10-02 opened with the drawer filling the screen and the content 0px wide; see
+ * `revealContentBehindDrawer`.
+ *
  * Run:  node a11y/diagnostics/reflow-probe.mjs
  */
 
 import { nuxeoBasicAuthHeader, resolveBaseUrl } from '../env.mjs';
-import { surfaceUnusableReason } from '../surface.mjs';
+import { screenUnsettledReason, surfaceUnusableReason } from '../surface.mjs';
 import {
   credentialsOrExit,
   gotoOrExit,
@@ -167,6 +171,162 @@ const browser = await launchChromium(chromium, 'reflow-probe');
 const context = await newSignedInContext(1440, 900);
 
 /**
+ * Wait for the layout to stop moving after a resize, or report that it never did.
+ *
+ * This was a fixed 400ms pause (200ms in the control). A resize reaches this app through
+ * `BreakpointObserver` and change detection, so the narrow layout lands some frames later,
+ * and a pause guesses how many. Instead `scrollWidth` — the number the verdict is computed
+ * from — and the element count are read every frame until both hold for `stillFrames` frames
+ * in a row, so the measurement is taken of the layout the narrow viewport produced rather than
+ * of one still in transition. Flagged in review on PR #225 as the same fixed-delay defect as
+ * the other two diagnostics.
+ *
+ * This watches layout only. Anything the narrow layout starts loading is waited for separately,
+ * by `screenUnsettledReason`, after it.
+ *
+ * @param {import('@playwright/test').Page} p
+ * @returns {Promise<boolean>} false when it was still moving after `maxFrames` frames
+ */
+async function layoutHeldStill(p) {
+  return p.evaluate(
+    ({ stillFrames, maxFrames }) =>
+      new Promise((resolve) => {
+        let last = '';
+        let still = 0;
+        let frames = 0;
+        const tick = () => {
+          const shape = `${document.documentElement.scrollWidth}/${document.getElementsByTagName('*').length}`;
+          still = shape === last ? still + 1 : 0;
+          last = shape;
+          frames += 1;
+          if (still >= stillFrames) resolve(true);
+          else if (frames >= maxFrames) resolve(false);
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    // About 170ms of stillness, inside a 5s budget at 60fps.
+    { stillFrames: 10, maxFrames: 300 },
+  );
+}
+
+const NAV_DRAWER_SIDENAV = 'mat-sidenav.nav-drawer-sidenav';
+const FREEZE_STYLE_ID = 'reflow-probe-freeze-motion';
+
+/**
+ * Turn transitions and animations off for the measurement, and back on before the next route.
+ *
+ * Removable because the route loop reuses one page and `/#/…` navigations are same-document:
+ * a tag added on one route was still there on the next, so the drawer on that route could not
+ * finish closing — see `revealContentBehindDrawer`.
+ *
+ * @param {import('@playwright/test').Page} p
+ */
+async function freezeMotion(p) {
+  await p.evaluate((id) => {
+    const style = document.createElement('style');
+    style.id = id;
+    style.textContent = '*, *::before, *::after { transition: none !important; animation: none !important; }';
+    document.head.appendChild(style);
+  }, FREEZE_STYLE_ID);
+}
+
+/** @param {import('@playwright/test').Page} p */
+async function unfreezeMotion(p) {
+  await p.evaluate((id) => document.getElementById(id)?.remove(), FREEZE_STYLE_ID).catch(() => undefined);
+}
+
+/**
+ * At 320px, show the screen rather than the nav drawer, or say why that was not possible.
+ *
+ * The drawer is a `mode="side"` sidenav, 280px wide, that a deep link opens and nothing closes
+ * at a narrow width. At 320×256 it takes the whole container and the feature host is laid out
+ * 0px wide — measured on 2026-10-02 on all six routes this probe reaches. Every earlier `fits`
+ * here was therefore a measurement of the drawer, and the summary note blamed a "closed"
+ * drawer that was open.
+ *
+ * The user's way out is the rail item that opened the drawer: clicking the active item again
+ * closes it (`onNavClick` in `app-shell.component.ts`). The ☰ button in the header toggles the
+ * rail, not the drawer, so it is not used. A click that silently did something else is ruled
+ * out by asserting the drawer closed, the URL did not change, and the host now has a width.
+ *
+ * Decided on the drawer being open, not on the host being 0px: a drawer that left the content a
+ * sliver would still be measured as the drawer's layout.
+ *
+ * @param {import('@playwright/test').Page} p
+ * @param {string} host
+ * @returns {Promise<{drawerWasOpen: boolean, widthBehindDrawer?: number, error?: string}>}
+ *   `widthBehindDrawer` is the host's width before the drawer was closed; `error` when the
+ *   screen could not be revealed
+ */
+async function revealContentBehindDrawer(p, host) {
+  /** @returns {Promise<number | null>} null when the host is not in the page */
+  const hostWidth = () =>
+    p.evaluate((h) => {
+      const el = document.querySelector(h);
+      return el ? Math.round(el.getBoundingClientRect().width) : null;
+    }, host);
+  const drawerOpen = () =>
+    p.evaluate(
+      (sel) => document.querySelector(sel)?.classList.contains('mat-drawer-opened') ?? false,
+      NAV_DRAWER_SIDENAV,
+    );
+
+  if (!(await drawerOpen())) return { drawerWasOpen: false };
+
+  const widthBehindDrawer = await hostWidth();
+  if (widthBehindDrawer === null) {
+    return { drawerWasOpen: true, error: `${host} is not in the page after the resize` };
+  }
+  const urlBefore = p.url();
+  const activeItem = p.locator('sat-platform-nav-list-item a.sat-platform-nav-item-active');
+  if ((await activeItem.count()) !== 1) {
+    return {
+      drawerWasOpen: true,
+      widthBehindDrawer,
+      error: `the nav drawer is open and there is not exactly one active rail item to close it with`,
+    };
+  }
+  await activeItem.click();
+  // Waited for as the condition itself, not as layout stillness: `scrollWidth` and the element
+  // count do not move while the drawer slides out, so stillness resolves before it has.
+  // Material removes the content's 280px margin only when the close transition ends, which is
+  // why the caller must not have disabled transitions yet — with them off, the drawer closed
+  // and the host stayed 0px wide, measured on 2026-10-02.
+  await p
+    .waitForFunction(
+      ({ h, sel }) =>
+        !document.querySelector(sel)?.classList.contains('mat-drawer-opened') &&
+        (document.querySelector(h)?.getBoundingClientRect().width ?? 0) > 0,
+      { h: host, sel: NAV_DRAWER_SIDENAV },
+      { timeout: 5_000 },
+    )
+    .catch(() => undefined);
+  if (await drawerOpen()) {
+    return {
+      drawerWasOpen: true,
+      widthBehindDrawer,
+      error: 'clicking the active rail item did not close the nav drawer',
+    };
+  }
+  if (p.url() !== urlBefore) {
+    return { drawerWasOpen: true, widthBehindDrawer, error: `closing the nav drawer navigated to ${p.url()}` };
+  }
+  const width = await hostWidth();
+  if (width === null) {
+    return { drawerWasOpen: true, widthBehindDrawer, error: `${host} left the page when the nav drawer closed` };
+  }
+  if (width <= 0) {
+    return {
+      drawerWasOpen: true,
+      widthBehindDrawer,
+      error: `${host} was still 0px wide 5s after clicking the active rail item`,
+    };
+  }
+  return { drawerWasOpen: true, widthBehindDrawer };
+}
+
+/**
  * Measure horizontal overflow at the narrow viewport and classify it.
  *
  * Extracted so the route loop and the negative control run **the same code**. They did not
@@ -249,8 +409,18 @@ let couldNotMeasure = 0;
 
 for (const [label, route, host] of ROUTES) {
   try {
+    await unfreezeMotion(page);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${baseUrl}${route}`, { waitUntil: 'networkidle', timeout: 45_000 });
+
+    // `goto` to another `/#/…` is same-document, so `networkidle` resolves at once; this is
+    // the wait the load actually gets. Same definition as the specs.
+    const unsettled = await screenUnsettledReason(page, { host, treeRequired: route === '/#/browse' });
+    if (unsettled) {
+      couldNotMeasure += 1;
+      rows.push({ label, error: unsettled });
+      continue;
+    }
 
     // Waiting for the host is not enough, and the `/me` preflight does not cover this: it
     // proves the backend is reachable, not that THIS route's data request succeeded. A route
@@ -264,14 +434,45 @@ for (const [label, route, host] of ROUTES) {
     }
 
     await page.setViewportSize({ width: REFLOW_WIDTH, height: REFLOW_HEIGHT });
-    await page.addStyleTag({
-      content: `*, *::before, *::after { transition: none !important; animation: none !important; }`,
-    });
-    await page.waitForTimeout(400);
+    if (!(await layoutHeldStill(page))) {
+      couldNotMeasure += 1;
+      rows.push({
+        label,
+        error: 'the layout was still changing 300 frames (about 5s) after the resize',
+      });
+      continue;
+    }
+    const revealed = await revealContentBehindDrawer(page, host);
+    // The host's width behind the open drawer; absent when the drawer was not open.
+    const behindDrawer = revealed.drawerWasOpen ? { width: revealed.widthBehindDrawer ?? null } : undefined;
+    if (revealed.error) {
+      couldNotMeasure += 1;
+      rows.push({ label, behindDrawer, error: revealed.error });
+      continue;
+    }
+    await freezeMotion(page);
+    if (!(await layoutHeldStill(page))) {
+      couldNotMeasure += 1;
+      rows.push({
+        label,
+        behindDrawer,
+        error: 'the layout was still changing 300 frames (about 5s) after motion was frozen',
+      });
+      continue;
+    }
+    // The narrow layout can start loads of its own — a re-rendered list fetching thumbnails.
+    // No tree is required: the drawer that holds it was closed above, or was never open.
+    const unsettledNarrow = await screenUnsettledReason(page, { host, treeRequired: false });
+    if (unsettledNarrow) {
+      couldNotMeasure += 1;
+      rows.push({ label, behindDrawer, error: `after the resize: ${unsettledNarrow}` });
+      continue;
+    }
 
     const m = await measureReflow(page);
     rows.push({
       label,
+      behindDrawer,
       scrollWidth: m.scrollWidth,
       overflows: m.overflows,
       total: m.total,
@@ -305,35 +506,58 @@ for (const r of rows) {
   }
   console.log(
     `  ${r.label.padEnd(22)}${String(r.scrollWidth).padStart(8)}${String(r.total).padStart(13)}${String(r.nonExempt).padStart(12)}  ${r.verdict}` +
-      (r.firstNonExempt ? `  (${r.firstNonExempt})` : ''),
+      (r.firstNonExempt ? `  (${r.firstNonExempt})` : '') +
+      (r.behindDrawer
+        ? `  [content ${r.behindDrawer.width}px wide behind the nav drawer; measured after closing it]`
+        : ''),
   );
 }
 
 const violations = rows.filter((r) => r.verdict === 'VIOLATION');
 const exempted = rows.filter((r) => r.verdict === 'exempt');
 const fits = rows.filter((r) => r.verdict === 'fits');
+const measured = rows.filter((r) => !r.error);
+const behindDrawer = rows.filter((r) => r.behindDrawer);
 console.log(
   [
     '',
+    behindDrawer.length > 0
+      ? `  ${behindDrawer.length} route(s) opened at ${REFLOW_WIDTH}px behind the nav drawer, with the feature content\n` +
+        '  only as wide as each row says, until the user closes the drawer from its rail item. A scan of\n' +
+        '  that state measures the drawer, not the screen; rows marked so were measured after closing it.'
+      : '',
     `  ${violations.length} route(s) overflow via a NON-exempt element — a11y-scout should report these`,
     `  ${exempted.length} route(s) overflow only inside exempt subtrees (table/pre/svg) — correctly silent`,
     `  ${fits.length} route(s) do not scroll horizontally at all (scrollWidth <= ${REFLOW_WIDTH + TOLERANCE})`,
     '',
-    // Said explicitly because the two middle columns invite the opposite reading. Hundreds of
-    // elements have a bounding rect extending past 320px on every route, yet `scrollWidth` is
-    // exactly 320: they are clipped by an ancestor that hides overflow — the closed
-    // `mat-sidenav` drawer — so they never contribute to the document's scroll extent. Clipped
-    // content is not a 1.4.10 failure, and the scanner returns early on `scrollWidth` before it
-    // ever attributes an offender. The "non-exempt" column therefore says nothing about
-    // conformance here; it is printed to make that early return visible rather than assumed.
-    '  Note: the overflow columns count elements whose bounding rect exceeds 320px. On every',
-    '  route those are clipped by the closed mat-sidenav drawer, so scrollWidth stays at 320 and',
-    '  the scanner returns a pass before attribution runs. Clipped content is not a 1.4.10 fail.',
+    // Said only when this run shows it, because the two middle columns invite the opposite
+    // reading: a route that fits while elements extend past the viewport. Those elements never
+    // reach the document's scroll extent — on 2026-10-02, with the drawer closed, their nearest
+    // ancestor with `overflow-x` other than `visible` was inside the content: Material tab label
+    // strips and tab bodies (`hidden`), and scroll containers (`auto`) such as `div.result-list`
+    // on search and trash and `div.browse-table-wrapper` on browse. This used to blame the
+    // "closed" drawer, which was open and was the only thing being measured.
+    //
+    // The scanner returns early on `scrollWidth` and never attributes them. That is a limit of
+    // this check, not a pass: whether those regions make the user scroll in two dimensions for
+    // content 1.4.10 does not exempt is not decided here.
+    fits.some((r) => r.total > 0)
+      ? `  Note: on ${fits.filter((r) => r.total > 0).length} route(s) that fit, elements extend past ${REFLOW_WIDTH}px without reaching\n` +
+        "  the document's scroll extent — clipped or scrolled inside a container, or positioned out of\n" +
+        '  flow — so the scanner returns a pass before attribution runs. Horizontal scrolling inside a\n' +
+        '  region is NOT measured by this check either way.'
+      : '',
     '',
-    violations.length > 0
-      ? '  a11y-scout reported ZERO reflow findings. Any VIOLATION above is a scanner defect.'
-      : '  Consistent with a11y-scout reporting zero — but a zero that was never seen to be a',
-    violations.length > 0 ? '' : '  non-zero proves nothing. Re-run with --negative-control.',
+    measured.length === 0
+      ? ''
+      : violations.length > 0
+        ? '  a11y-scout reported ZERO reflow findings. Any VIOLATION above is a scanner defect.'
+        : '  Consistent with a11y-scout reporting zero — but a zero that was never seen to be a',
+    measured.length === 0 || violations.length > 0
+      ? ''
+      : process.argv.includes('--negative-control')
+        ? '  non-zero proves nothing. The negative control below is that non-zero.'
+        : '  non-zero proves nothing. Re-run with --negative-control.',
     '',
   ]
     .filter((l) => l !== '')
@@ -370,7 +594,9 @@ if (process.argv.includes('--negative-control')) {
 
   // Same check as the measurement loop. A control run against an error panel would still
   // "prove" the detection path works, but it would prove it on a page nobody is measuring.
-  const controlUnusable = await surfaceUnusableReason(p2, 'lib-browse', 'negative control');
+  const controlUnusable =
+    (await screenUnsettledReason(p2, { host: 'lib-browse', treeRequired: true })) ??
+    (await surfaceUnusableReason(p2, 'lib-browse', 'negative control'));
   if (controlUnusable) {
     console.error(`\nreflow-probe: cannot run the negative control — ${controlUnusable}\n`);
     await ctx2.close();
@@ -379,10 +605,22 @@ if (process.argv.includes('--negative-control')) {
   }
 
   await p2.setViewportSize({ width: REFLOW_WIDTH, height: REFLOW_HEIGHT });
-  await p2.addStyleTag({
-    content: `*, *::before, *::after { transition: none !important; animation: none !important; }`,
-  });
-  await p2.waitForTimeout(400);
+  // The loop's order exactly: reveal before freezing motion, or the drawer cannot finish closing.
+  let controlNarrowUnsettled = (await layoutHeldStill(p2))
+    ? (await revealContentBehindDrawer(p2, 'lib-browse')).error
+    : 'the layout never held still after the resize';
+  if (!controlNarrowUnsettled) {
+    await freezeMotion(p2);
+    controlNarrowUnsettled = (await layoutHeldStill(p2))
+      ? await screenUnsettledReason(p2, { host: 'lib-browse', treeRequired: false })
+      : 'the layout never held still after motion was frozen';
+  }
+  if (controlNarrowUnsettled) {
+    console.error(`\nreflow-probe: cannot run the negative control — ${controlNarrowUnsettled}\n`);
+    await ctx2.close();
+    await browser.close();
+    process.exit(2);
+  }
 
   const MARKER = 'reflow-negative-control';
 
@@ -395,7 +633,16 @@ if (process.argv.includes('--negative-control')) {
     d.style.cssText = 'width:900px;height:8px;background:red';
     document.body.appendChild(d);
   }, MARKER);
-  await p2.waitForTimeout(200);
+  // Reading layout forces it, so the measurement below would see the element without this.
+  // The wait is for whatever the injection sets off — a resize observer, a re-render — to
+  // finish first. Whether the element itself was classified is the `marker` field, checked
+  // below; stillness proves nothing about it.
+  if (!(await layoutHeldStill(p2))) {
+    console.error('\nreflow-probe: cannot run the negative control — the layout never settled after the injection\n');
+    await ctx2.close();
+    await browser.close();
+    process.exit(2);
+  }
   const after = await measureReflow(p2, MARKER);
   await ctx2.close();
 

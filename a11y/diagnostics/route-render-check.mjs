@@ -28,10 +28,12 @@
  * Usage:
  *   node a11y/diagnostics/route-render-check.mjs
  *
- * Exit codes: 0 every route rendered, 1 at least one rendered nothing, 2 could not measure
- * (a precondition failed, or any route could not be loaded and none rendered nothing).
+ * Exit codes: 0 every route rendered, 1 at least one rendered nothing or only its error state,
+ * 2 could not measure (a precondition failed, or any route could not be loaded and none rendered
+ * nothing).
  */
 import { resolveBaseUrl } from '../env.mjs';
+import { ERROR_STATE_SELECTOR, screenUnsettledReason } from '../surface.mjs';
 import {
   credentialsOrExit,
   gotoOrExit,
@@ -89,14 +91,16 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 
-/** @type {{label:string, route:string, host:string, hostPresent:boolean, textLen:number, error?:string}[]} */
+/** @type {{label:string, route:string, host:string, hostPresent:boolean, textLen:number, errorState?:boolean, error?:string}[]} */
 const results = [];
 
 try {
   const me = await requireBackend(page, baseUrl, 'route-render-check');
   requireAdministrationAccess(me, user, 'route-render-check');
-  await gotoOrExit(page, baseUrl, 'route-render-check');
-  await page.waitForTimeout(800);
+  // `networkidle` rather than a fixed pause, so the app's own session hydration has very
+  // likely finished before the session below is written. The reload after it is what makes
+  // the written session the one the app starts from.
+  await gotoOrExit(page, baseUrl, 'route-render-check', { waitUntil: 'networkidle' });
   await page.evaluate(
     ({ key, value, signedOutKey }) => {
       sessionStorage.setItem(key, value);
@@ -115,7 +119,6 @@ try {
     },
   );
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForTimeout(1200);
 
   for (const [label, route, host] of ROUTES) {
     // A navigation failure is "could not measure" for this route, not a crash that discards
@@ -127,13 +130,22 @@ try {
       results.push({ label, route, host, hostPresent: false, textLen: 0, error });
       continue;
     }
-    await page.waitForTimeout(1200);
 
+    // Waited for, not sampled after a fixed pause. `goto` to another `/#/…` is a same-document
+    // navigation, so `networkidle` resolves at once and a 1.2s pause was the only wait there
+    // was: a lazily loaded feature slower than that read as "absent", and a host caught
+    // before its data arrived had its text measured mid-load. Flagged in review on PR #225.
+    // The same timeout and the same settle definition as the specs.
+    const unsettled = await screenUnsettledReason(page, { host, treeRequired: route === '/#/browse' });
     const hostPresent = await page
       .locator(host)
       .first()
       .isVisible()
       .catch(() => false);
+    if (hostPresent && unsettled) {
+      results.push({ label, route, host, hostPresent, textLen: 0, error: unsettled });
+      continue;
+    }
 
     // Text inside the feature host itself, not inside `main`.
     //
@@ -151,7 +163,14 @@ try {
           .catch(() => 0)
       : 0;
 
-    results.push({ label, route, host, hostPresent, textLen });
+    // A host showing its error panel is visible and full of text, so the two checks above pass
+    // it — and a scan of it measures the error. Knowledge discovery did exactly that on
+    // 2026-10-01, when its agents call returned 500: 670 characters, "rendered", no row flagged.
+    // The same selector the specs refuse to scan through.
+    const errorState =
+      hostPresent && (await page.locator(`${host} :is(${ERROR_STATE_SELECTOR})`).count()) > 0;
+
+    results.push({ label, route, host, hostPresent, textLen, errorState });
   }
 } finally {
   await context.close();
@@ -161,7 +180,7 @@ try {
 console.log(`App: ${baseUrl}\n`);
 console.log(`${'route'.padEnd(24)}${'expected host'.padEnd(28)}${'rendered'.padEnd(10)}${'host text'.padStart(10)}`);
 for (const r of results) {
-  const rendered = r.error ? '?' : r.hostPresent ? 'yes' : 'NO';
+  const rendered = r.error ? '?' : !r.hostPresent ? 'NO' : r.errorState ? 'ERROR' : 'yes';
   console.log(
     `${r.route.padEnd(24)}${r.host.padEnd(28)}${rendered.padEnd(10)}${String(r.textLen).padStart(10)}` +
       (r.error ? `  could not measure: ${r.error}` : ''),
@@ -173,18 +192,24 @@ const unmeasured = results.filter((r) => r.error);
 // An absent host OR a host with no text in it. `textLen` was measured, printed as evidence
 // and then left out of the verdict, so a route whose host mounted around nothing still
 // passed — which is the same clean-result-that-means-nothing this file opens by describing.
-const dead = results.filter((r) => !r.error && (!r.hostPresent || r.textLen === 0));
+const dead = results.filter(
+  (r) => !r.error && (!r.hostPresent || r.textLen === 0 || r.errorState),
+);
 if (dead.length > 0) {
   console.log(
     `\n--- ${dead.length} route(s) rendered nothing an accessibility scan could meaningfully check ---`,
   );
   for (const r of dead) {
-    const why = !r.hostPresent ? `${r.host} absent` : `${r.host} rendered with no text inside it`;
+    const why = !r.hostPresent
+      ? `${r.host} absent`
+      : r.errorState
+        ? `${r.host} is showing its error state`
+        : `${r.host} rendered with no text inside it`;
     console.log(`  ${r.route} — ${why}`);
   }
   console.log(
-    '\nA scan of these routes returns clean because there is nothing on them, not because they are\n' +
-      'accessible. Either fix the route, or remove it from the scan — do not leave it counting as a pass.',
+    '\nA scan of these routes measures an empty page or an error panel, not the screen. Either fix\n' +
+      'the route or its backend, or remove it from the scan — do not leave it counting as a pass.',
   );
   // A confirmed empty route outranks an unmeasured one: the defect is real either way, and
   // the unmeasured routes are still listed above so they are not lost behind it.

@@ -55,6 +55,19 @@ export const JOURNEY_SCREENS = [
   { id: 'dashboard', label: 'dashboard screen', authenticated: true },
   { id: 'browse', label: 'browse screen', authenticated: true },
   { id: 'document-detail', label: 'document detail screen', authenticated: true },
+  // Core flows: finding and returning to content.
+  { id: 'search', label: 'search results screen', authenticated: true },
+  { id: 'documents', label: 'documents (assets) screen', authenticated: true },
+  { id: 'collection', label: 'collection screen', authenticated: true },
+  { id: 'favorites', label: 'favorites panel', authenticated: true },
+  { id: 'recently-viewed', label: 'recently viewed panel', authenticated: true },
+  { id: 'personal-space', label: 'personal space screen', authenticated: true },
+  { id: 'clipboard', label: 'clipboard panel', authenticated: true },
+  // Work screens: what a user acts on rather than reads.
+  { id: 'tasks', label: 'tasks screen', authenticated: true },
+  { id: 'expired-queue', label: 'expired queue panel', authenticated: true },
+  { id: 'trash', label: 'trash screen', authenticated: true },
+  { id: 'administration', label: 'administration screen', authenticated: true },
 ] as const satisfies ReadonlyArray<Omit<JourneyScreen, 'id'> & { id: string }>;
 
 /** Every screen id, as a literal union — a mistyped id is a compile error, not a silent skip. */
@@ -64,11 +77,12 @@ export type JourneyScreenId = (typeof JOURNEY_SCREENS)[number]['id'];
  * The Playwright project name for a screen.
  *
  * Numbered from the array index so `--project="journey-*"` lists them in journey order, which
- * is the order someone reads the reports in.
+ * is the order someone reads the reports in. Zero-padded because the reports directory sorts
+ * by name, and unpadded `journey-10-…` lists before `journey-2-…` once there are ten screens.
  */
 export function journeyProjectName(id: JourneyScreenId): string {
   const index = JOURNEY_SCREENS.findIndex((s) => s.id === id);
-  return `journey-${index + 1}-${id}`;
+  return `journey-${String(index + 1).padStart(2, '0')}-${id}`;
 }
 
 /** The tag that appears in the test title and that the project's `grep` matches. */

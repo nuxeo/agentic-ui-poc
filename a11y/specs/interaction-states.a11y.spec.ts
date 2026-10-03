@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { aiFindingsNote, expect, REPORT_DIR, test, waitForNavTreeSettled } from '../fixtures';
+import { aiFindingsNote, expect, REPORT_DIR, test, waitForScreenSettled } from '../fixtures';
 
 /**
  * WCAG 2.1 AA scan of **interaction states** — surfaces that exist only after a click.
@@ -98,7 +98,7 @@ const results: StateResult[] = [];
  * the route-specific evidence `expectSurfaceUsable` in `../fixtures` defers to where it exists.
  *
  * Every scan below covers the whole page, drawer included, so the folder tree has to be settled
- * too — see `waitForNavTreeSettled` for what a mid-load tree does to the findings.
+ * too — see `waitForScreenSettled` for what a mid-load tree does to the findings.
  */
 async function openBrowse(page: Page): Promise<void> {
   await page.goto(BROWSE, { waitUntil: 'networkidle' });
@@ -107,7 +107,7 @@ async function openBrowse(page: Page): Promise<void> {
     page.locator('.browse-row, .doc-card-wrapper').first(),
     'browse must show at least one document, or every state below scans an empty page',
   ).toBeVisible();
-  await waitForNavTreeSettled(page, true);
+  await waitForScreenSettled(page, 'lib-browse', true);
 }
 
 /**
@@ -229,11 +229,11 @@ test.describe('accessibility: interaction states', () => {
    * **`keyboard: false` also disables the reflow scanner (WCAG 1.4.10)**, which is not obvious
    * from the option name — `scan-page.ts` gates reflow behind the same flag:
    * `if (keyboard !== false) { runReflowCheck(...) }`. There is no way to keep reflow without
-   * paying for the keyboard walk. That is an acceptable loss only because reflow has been
-   * separately measured on this application and passes: `a11y/diagnostics/reflow-probe.mjs`
-   * reproduces the scanner's algorithm across all seven routes, finds `scrollWidth` pinned at
-   * 320 on every one, and proves its own detection path by flipping to a violation under
-   * `--negative-control`. Re-check that if the layout stops being drawer-clipped.
+   * paying for the keyboard walk. The loss is smaller than it looks, not zero:
+   * `a11y/diagnostics/reflow-probe.mjs` reproduces the scanner's algorithm, closes the nav
+   * drawer that covers browse at 320px, measured `/#/browse` fitting on 2026-10-02, and
+   * proves its own detection path under `--negative-control`. It measures browse in list view,
+   * though, so card view at 320px is measured by nothing.
    */
   test('card view', async ({ signedIn: page, a11y }) => {
     await openBrowse(page);
@@ -242,6 +242,8 @@ test.describe('accessibility: interaction states', () => {
       page.getByRole('button', { name: 'Card view' }),
       page.locator('.card-grid'),
     );
+    // Cards render an icon until `thumbnailMap` resolves, then swap in an `<img>`.
+    await waitForScreenSettled(page, 'lib-browse', true);
     await scanState(a11y, 'browse › card view', { keyboard: false });
   });
 
@@ -282,6 +284,9 @@ test.describe('accessibility: interaction states', () => {
           .first(),
         `the ${tab} tab rendered no content, so its scan would be vacuous`,
       ).toBeVisible();
+      // Permissions, History and Trash each fetch on activation behind a `mat-spinner` inside
+      // `lib-browse`, and a heading can render beside it. The overlays above fetch nothing.
+      await waitForScreenSettled(page, 'lib-browse', true);
       await scanState(a11y, `browse › ${tab} tab`, { keyboard: false });
     });
   }

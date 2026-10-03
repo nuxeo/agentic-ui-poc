@@ -16,10 +16,12 @@
  */
 
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const requireFromHere = createRequire(import.meta.url);
 const ROOT = resolve(HERE, '..');
 const CONFIG = 'a11y/playwright.config.ts';
 
@@ -39,7 +41,7 @@ const COMMANDS = {
     argv: ['playwright', 'test', '-c', CONFIG, '--project=surfaces'],
   },
   states: {
-    describe: 'Dialogs, CDK overlays, tabs and card view behind a click (~20 min)',
+    describe: 'Dialogs, CDK overlays, tabs and card view behind a click (~25 min)',
     preflight: true,
     argv: ['playwright', 'test', '-c', CONFIG, '--project=interaction-states'],
   },
@@ -50,8 +52,11 @@ const COMMANDS = {
     argv: ['playwright', 'test', '-c', CONFIG, '--project=display-modes'],
   },
   journey: {
-    describe: 'Login, dashboard, browse, document detail — one report per screen (~15 min)',
+    describe: 'Fifteen screens, from sign-in to administration — one report per screen (~70 min)',
     preflight: true,
+    // Its last screen is /#/administration, so the identity must be allowed past adminGuard.
+    // Checked per command, not per project, so a run narrowed to one screen needs it too.
+    needsAdmin: true,
     // A wildcard, so adding a screen to journey.screens.ts needs no change here.
     argv: ['playwright', 'test', '-c', CONFIG, '--project=journey-*'],
   },
@@ -61,12 +66,12 @@ const COMMANDS = {
     argv: ['node', 'a11y/diagnostics/axe-differential.mjs'],
   },
   reflow: {
-    describe: 'Diagnostic: 320px horizontal overflow, measured independently',
+    describe: 'Diagnostic: 320px horizontal overflow, measured independently with the nav drawer closed',
     preflight: false,
     argv: ['node', 'a11y/diagnostics/reflow-probe.mjs', '--negative-control'],
   },
   routes: {
-    describe: 'Diagnostic: every scanned route actually renders its feature host',
+    describe: 'Diagnostic: every scanned route renders its feature host, not an error state',
     preflight: false,
     argv: ['node', 'a11y/diagnostics/route-render-check.mjs'],
   },
@@ -93,6 +98,11 @@ const COMMANDS = {
     describe: 'Type-check the specs and fixtures (CI cannot — see README)',
     preflight: false,
     argv: ['tsc', '-p', 'a11y/tsconfig.json', '--noEmit'],
+    // Installed `--no-save`. Without them tsc fails on missing modules — a precondition, not a
+    // type error — so their absence is checked first and reported as 2.
+    requires: ['@playwright/test', 'a11y-scout', '@a11y-scout/playwright'],
+    // With those present, tsc's 2 is "type errors found", and 2 here means "could not measure".
+    statusMap: { 2: 1 },
   },
   preflight: {
     describe: 'Check the stack and the untracked installs, change nothing',
@@ -118,7 +128,7 @@ function usage() {
     console.log(`    ${name.padEnd(width)}  ${c.describe}`);
   }
   console.log('\n  Extra arguments are passed through, e.g.:');
-  console.log('    npm run a11y:scan -- journey --project=journey-1-login --headed');
+  console.log('    npm run a11y:scan -- journey --project=journey-01-login --headed');
   console.log('    npm run a11y:scan -- states --headed --grep "column picker"\n');
 }
 
@@ -126,8 +136,8 @@ function usage() {
  * Merge the command's own argv with whatever the caller appended.
  *
  * `--project` needs special handling and this was found the hard way: Playwright treats
- * repeated `--project` flags as a UNION, so `journey --project=journey-1-login` ran the
- * wildcard AND the named screen — all four, when one was asked for. A caller naming a project
+ * repeated `--project` flags as a UNION, so `journey --project=journey-01-login` ran the
+ * wildcard AND the named screen — every screen, when one was asked for. A caller naming a project
  * is narrowing, never widening, so their flag replaces ours rather than joining it.
  */
 function mergeArgs(own, extra) {
@@ -149,13 +159,13 @@ function projectsIn(argv) {
  * The caller's `--project` values that fall outside this command's own scope.
  *
  * `mergeArgs` REPLACES the command's project with the caller's, on the assumption that a
- * caller is narrowing. Nothing enforced that. `states --project=journey-1-login` ran the login
+ * caller is narrowing. Nothing enforced that. `states --project=journey-01-login` ran the login
  * suite under the `states` command, and `journey --project=surfaces` ran the surfaces suite
  * past a preflight that had not checked administration access, because that check is chosen
  * per command. Flagged in review on PR #225.
  *
  * A caller value is in scope when the command's own project pattern (`surfaces`, or a wildcard
- * such as `journey-*`) matches it as text — so `journey --project=journey-1-login` and
+ * such as `journey-*`) matches it as text — so `journey --project=journey-01-login` and
  * `journey --project=journey-*` are accepted, and anything else is refused.
  *
  * @param {string[]} own    the command's argv
@@ -201,14 +211,73 @@ if (outOfScope.length > 0) {
   process.exit(1);
 }
 
+/** The package whose `bin` provides each non-`node` command above. */
+const BIN_PACKAGE = { playwright: '@playwright/test', tsc: 'typescript' };
+
+/**
+ * The JavaScript file behind a package's bin, run with this Node rather than through `npx`.
+ *
+ * `npx` on Windows is `npx.cmd`, which Node will only spawn through a shell, and `cmd` then
+ * re-parses the caller's arguments: `--grep "a b"` arrived as two arguments and found no tests,
+ * and `--grep=a|b` ran `b` as a command. No shell, no re-parsing.
+ *
+ * @param {string} name
+ * @returns {string}
+ */
+function binEntry(name) {
+  const pkg = BIN_PACKAGE[/** @type {keyof typeof BIN_PACKAGE} */ (name)];
+  if (!pkg) throw new Error(`run.mjs: no package is declared for the "${name}" command`);
+  const manifestPath = requireFromHere.resolve(`${pkg}/package.json`);
+  const { bin } = requireFromHere(manifestPath);
+  const rel = typeof bin === 'string' ? bin : bin?.[name];
+  if (!rel) throw new Error(`run.mjs: ${pkg} declares no "${name}" bin`);
+  return resolve(dirname(manifestPath), rel);
+}
+
 // Run from the repository root so the relative paths above resolve and, more importantly, so
 // a11y-scout's report `outDir` lands where this folder's .gitignore covers it.
-const run = (argv) =>
-  spawnSync(argv[0] === 'node' ? process.execPath : 'npx', argv[0] === 'node' ? argv.slice(1) : argv, {
+const run = (argv) => {
+  let script;
+  try {
+    script = argv[0] === 'node' ? argv[1] : binEntry(argv[0]);
+  } catch (err) {
+    console.error(
+      `\n${err instanceof Error ? err.message : String(err)}\n` +
+        (argv[0] === 'playwright'
+          ? 'It is installed --no-save; `node a11y/run.mjs preflight` prints the install command.\n'
+          : ''),
+    );
+    process.exit(2);
+  }
+  const result = spawnSync(process.execPath, [script, ...argv.slice(argv[0] === 'node' ? 2 : 1)], {
     cwd: ROOT,
     stdio: 'inherit',
-    shell: process.platform === 'win32',
   });
+  // A process that never started, or was killed, measured nothing: 2, never the 1 of a finding.
+  if (result.error || result.status === null) {
+    console.error(
+      `\nrun.mjs: ${script} ${result.error ? `could not be started: ${result.error.message}` : `was killed by ${result.signal}`}\n`,
+    );
+    process.exit(2);
+  }
+  return result;
+};
+
+const missing = (entry.requires ?? []).filter((pkg) => {
+  try {
+    import.meta.resolve(pkg);
+    return false;
+  } catch {
+    return true;
+  }
+});
+if (missing.length > 0) {
+  console.error(
+    `\n"${command}" needs ${missing.join(', ')}, which ${missing.length === 1 ? 'is' : 'are'} not installed.\n` +
+      'They are installed --no-save; `node a11y/run.mjs preflight` prints the install command.\n',
+  );
+  process.exit(2);
+}
 
 if (!SKIP_DRIFT.has(command)) {
   const drift = run(['node', 'a11y/diagnostics/error-class-drift.mjs']);
@@ -217,7 +286,7 @@ if (!SKIP_DRIFT.has(command)) {
       '\nRefusing to scan: a surface showing an unclassified error state would be measured\n' +
         'as if it had loaded. Fix a11y/surface.mjs first.\n',
     );
-    process.exit(drift.status ?? 1);
+    process.exit(drift.status);
   }
 }
 
@@ -225,8 +294,8 @@ if (entry.preflight) {
   const pre = run(['node', 'a11y/preflight.mjs', ...(entry.needsAdmin ? ['--needs-admin'] : [])]);
   // 2 is "precondition not met" — propagate it rather than flattening to 1, so a caller can
   // tell a broken environment from a failing scan.
-  if (pre.status !== 0) process.exit(pre.status ?? 2);
+  if (pre.status !== 0) process.exit(pre.status);
 }
 
 const result = run(mergeArgs(entry.argv, passthrough));
-process.exit(result.status ?? 1);
+process.exit(entry.statusMap?.[result.status] ?? result.status);

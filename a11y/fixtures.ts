@@ -5,7 +5,7 @@ import { expect as expectFn, type Page } from '@playwright/test';
 // copy and a `.mjs` copy of the same list and the same eight-line credential check, which is
 // exactly the drift this folder keeps being reviewed for.
 import { requireNuxeoCredentials } from './env.mjs';
-import { ERROR_STATE_SELECTOR } from './surface.mjs';
+import { ERROR_STATE_SELECTOR, screenUnsettledReason } from './surface.mjs';
 
 export { requireNuxeoCredentials };
 
@@ -136,7 +136,7 @@ export async function expectSurfaceUsable(page: Page, host: string, label: strin
 }
 
 /**
- * Wait for the nav drawer's folder tree to finish loading before scanning.
+ * Wait for the screen — nav drawer and feature host — to finish loading before scanning.
  *
  * ## Why this exists — the flake it fixes was hiding a real defect
  *
@@ -160,70 +160,33 @@ export async function expectSurfaceUsable(page: Page, host: string, label: strin
  * reason to add a wait: waiting to make a number stable is worth nothing if the stable
  * number is the wrong one.
  *
- * ## Why every suite calls it, not only `journey`
+ * ## Why it covers more than the tree
+ *
+ * It began as a wait on the folder tree alone, and two other loaders of the same kind went
+ * unobserved: the drawer's favorites, recently-viewed, expired, collections and tasks panels
+ * each render a `.tree-loading` outside `.folder-tree`, and result lists in the drawer and in
+ * feature hosts swap icons for thumbnails after they render, with no marker at all. What it
+ * watches, and why each signal is there, is documented once on `screenUnsettledReason` in
+ * `./surface.mjs`, which the Node diagnostics call too — one definition, so a spec and a
+ * diagnostic cannot disagree about when a screen is ready.
+ *
+ * ## Why every scan calls it
  *
  * The drawer is a sibling of the feature host, so `expectSurfaceUsable` — which looks only
- * inside the host — cannot see it. `surfaces` and `display-modes` scan the same shell and were
- * exposed to the same race. The markup belongs to the shell, not to one route, so it is
- * called on every route: where no tree renders, the counts are zero and it costs the quiet
- * window and nothing else. `required` is for the routes that must show a tree, so an empty
- * drawer there fails instead of passing as "settled". Flagged in review on PR #225.
+ * inside the host — cannot see it, and every suite scans the same shell. `treeRequired` is
+ * for the routes that must show a tree, so an empty drawer there fails instead of passing as
+ * "settled". Flagged in review on PR #225.
  *
- * Not covered: `/#/browse-adf-hx`, whose drawer is upstream `hxp-document-tree` with its own
- * markup and no `.tree-node`. Nothing here observes its loading state.
+ * Call it before `expectSurfaceUsable`, not after: an error panel can arrive at the end of a
+ * load, so the error check is only meaningful once the load has finished.
  */
-export async function waitForNavTreeSettled(page: Page, required: boolean): Promise<void> {
-  if (required) {
-    await expectFn(
-      page.locator('.tree-node').first(),
-      'this screen shows the folder tree, so it must have rendered before the scan starts',
-    ).toBeVisible();
-  }
-
-  // A tree is settled when nothing is loading AND the node count has held still for a quiet
-  // window. Both are read on every poll: checking the loaders once up front, then polling the
-  // count alone, let a child load that began afterwards — a spinner inside an existing node,
-  // which changes no count — run out the window and pass mid-load. Flagged in review on
-  // PR #225. The app exposes no "tree loaded" signal to wait on instead, so the window is the
-  // evidence.
-  const TREE_QUIET_MS = 1500;
-  let previous = -1;
-  let stableSince = 0;
-  // The poll returns what it saw rather than a boolean, so a timeout reports the last state of
-  // the tree as the received value instead of `false`.
-  await expectFn
-    .poll(
-      async () => {
-        let nodes: number;
-        let loading: number;
-        try {
-          nodes = await page.locator('.tree-node').count();
-          loading =
-            (await page.locator('.folder-tree .tree-loading').count()) +
-            (await page.locator('.tree-node mat-spinner').count());
-        } catch {
-          // A read racing a navigation throws, and a throw inside `expect.poll` is a failure
-          // rather than a retry — see `expectSurfaceUsable`.
-          previous = -1;
-          return 'unreadable (page was navigating)';
-        }
-        const seen = `${nodes} node(s), ${loading} loader(s)`;
-        if (loading > 0 || nodes !== previous) {
-          previous = loading > 0 ? -1 : nodes;
-          stableSince = Date.now();
-          return seen;
-        }
-        return Date.now() - stableSince >= TREE_QUIET_MS ? 'settled' : seen;
-      },
-      {
-        message:
-          `the folder tree never held still, with no loader present, for ${TREE_QUIET_MS}ms, ` +
-          'so any scan of it is a snapshot of a partial tree',
-        intervals: [250],
-        timeout: 20_000,
-      },
-    )
-    .toBe('settled');
+export async function waitForScreenSettled(
+  page: Page,
+  host: string | null,
+  treeRequired: boolean,
+): Promise<void> {
+  const reason = await screenUnsettledReason(page, { host, treeRequired });
+  expectFn(reason, `${host ?? 'the page'} did not settle before the scan`).toBeNull();
 }
 
 /**

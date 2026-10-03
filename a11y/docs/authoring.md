@@ -26,11 +26,11 @@ a11y/
   preflight.mjs                     refuses to scan a stack that is not there
   playwright.config.ts              testDir: './specs'
   fixtures.ts                       test object, installSession, expectSurfaceUsable,
-                                    aiFindingsNote, REPORT_DIR
+                                    waitForScreenSettled, aiFindingsNote, REPORT_DIR
   env.mjs                           resolveBaseUrl + required Nuxeo credentials, shared by the
                                     config, the preflight and every diagnostic
-  surface.mjs                       the Node-side twin of expectSurfaceUsable, and the one
-                                    list of this app's error-state classes
+  surface.mjs                       the Node-side twin of expectSurfaceUsable, the one list
+                                    of this app's error-state classes, and the settle wait
   package.json  tsconfig.json  .gitignore
   specs/
     journey.screens.ts              single source: screen id -> project name, tag, report name
@@ -74,7 +74,7 @@ Three rules, and each is enforced by something rather than by goodwill:
 | A whole **new suite**            | a spec file + a project in the config + a `COMMANDS` entry in `run.mjs` | — (see below)                                                                         |
 
 **`package.json` does not need touching**, and that is the guarantee worth having: `a11y:scan
--- journey` selects projects with a `journey-*` wildcard, so a fifth screen is picked up
+-- journey` selects projects with a `journey-*` wildcard, so a new screen is picked up
 without a script change, and `package.json` keeps a single line for this folder.
 
 This table used to end "nothing else needs touching", which was wrong twice. A new suite also
@@ -160,8 +160,10 @@ const context = await browser.newContext({
   httpCredentials: { username: user, password: pass, origin: baseUrl },
 });
 
-await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-await page.waitForTimeout(800);
+// `networkidle`, not a fixed pause, so the app's own session hydration has very likely
+// finished before the session below is written; the reload that follows is what makes the
+// written session the one the app starts from.
+await page.goto(baseUrl, { waitUntil: 'networkidle' });
 await page.evaluate(
   ({ key, value, signedOutKey }) => {
     sessionStorage.setItem(key, value);
@@ -185,7 +187,7 @@ await page.reload({ waitUntil: 'networkidle' });
 In a **spec**, do not hand-roll this — the `signedIn` fixture already does it, and
 `fixtures.ts` rebases it onto a11y-scout's `test` so both are available in one spec:
 
-```23:28:a11y/fixtures.ts
+```235:240:a11y/fixtures.ts
 export const test = a11yBase.extend<{ signedIn: Page }>({
   signedIn: async ({ page }, use) => {
     await installSession(page);
@@ -213,7 +215,7 @@ same host component with an error panel inside it, which is visible — so `toBe
 host passes and the scan measures the error state under the surface's name. Use
 `expectSurfaceUsable()`, which adds absence of the known error classes and non-empty content:
 
-```70:80:a11y/specs/surfaces.a11y.spec.ts
+```78:90:a11y/specs/surfaces.a11y.spec.ts
     test(`scans ${label}`, async ({ signedIn: page, a11y }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
 
@@ -221,11 +223,26 @@ host passes and the scan measures the error state under the surface's name. Use
       // vacuous pass this repository keeps getting caught by — `phase-6-a11y.mjs` shipped
       // a step labelled "Login surface" that actually scanned the dashboard.
       //
+      // Settled first, so the error check below sees the end of the load rather than its start.
+      await waitForScreenSettled(page, host, route === '/#/browse');
       // `expectSurfaceUsable` rather than a bare `toBeVisible` on the host: a failed load
       // renders the same host with an error panel, which is visible. See its own comment for
       // what it proves and what it still does not.
       await expectSurfaceUsable(page, host, label);
 ```
+
+**Wait for the screen to settle, and never with a fixed pause.** `waitForScreenSettled()` waits
+until nothing is loading and nothing is changing in the nav drawer or the host; diagnostics
+call `screenUnsettledReason()` from `surface.mjs`, the same definition. A pause guesses, and on
+this app it guesses badly: the routes are hash routes, so a `goto` to another `/#/…` is a
+same-document navigation and `networkidle` resolves at once — the pause is then the only wait
+there is. A scan that arrives mid-load can under-report, not just add noise; see
+`docs/accessibility.md` on the loading spinner that hid a `button-name` failure.
+
+The one fixed wait in these specs is not a readiness wait: `measureRouteChangeMotion()` in
+`display-modes.a11y.spec.ts` samples animations for 900ms after a route change, because that
+interval is the measurement itself. A duration that defines what is measured is fine; a
+duration standing in for "the page is ready" is not.
 
 The word doing the work there is **known**. The classes live in `a11y/surface.mjs`, they
 belong to eighteen feature templates nothing in this folder owns, and the first version of
@@ -242,8 +259,15 @@ success selector is known, assert that instead — `openBrowse()` in
 `interaction-states.a11y.spec.ts` waits for `.browse-row, .doc-card-wrapper`, which only exist
 when the folder request succeeded.
 
+The strongest form is in `journey.a11y.spec.ts`: `captureDataRequest()` waits for the response
+to the screen's **own** data request, requires it to succeed, and the test then requires an
+element showing an entry from that response. That matters most where a failure has no error
+class to catch — the search page and several drawer panels render a failed request as an empty
+list.
+
 Run `npm run a11y:scan -- routes` before authoring anything new — it tells you which routes currently
-render, so you do not spend an afternoon scanning a dead one.
+render and which are showing only their error state, so you do not spend an afternoon scanning a
+dead one.
 
 ## 3. Style A — an a11y-scout spec
 
@@ -442,6 +466,10 @@ async function clickIfPresent(page, selector) {
 Then **assert the state was reached** before scanning — `h.check('the column picker was actually
 opened', columnPanel, …)`. A helper that returns `false` and a caller that ignores it is the
 same vacuous pass in a different costume.
+
+Quoted for the presence check, not for its `waitForTimeout(1600)`, which predates the rule in
+section 2: in a spec here, follow the click by asserting the opened state, as `enterState()` in
+`interaction-states.a11y.spec.ts` does, and wait on that.
 
 ### State survives navigation
 

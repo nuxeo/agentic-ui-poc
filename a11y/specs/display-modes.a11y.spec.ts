@@ -5,7 +5,7 @@ import {
   expectSurfaceUsable,
   REPORT_DIR,
   test,
-  waitForNavTreeSettled,
+  waitForScreenSettled,
 } from '../fixtures';
 
 /**
@@ -205,11 +205,39 @@ async function measureRouteChangeMotion(page: Page, toHash: string): Promise<Mot
     const probe: NonNullable<Window['__motionProbe']> = { frames: [], seen: [] };
     window.__motionProbe = probe;
 
+    // A structural path from the root, not `tag#id.firstClass`. The short form is shared by
+    // every sibling of the same kind — seven `.tree-node` spinners read as one element — so
+    // two animations on different elements merged into one `seen` entry, and the verdict
+    // paired a reduced animation with a control animation on some other element. Flagged in
+    // review on PR #225. `:nth-of-type` makes each segment unique among its siblings, so the
+    // path is unique in the document at the moment it is read; the first class stays for
+    // readability.
+    //
+    // Pairing the control and reduced runs relies on the path being the same in both, which
+    // holds when both load the same route into the same DOM — what the two motion tests do.
+    // Two things could still move it mid-transition, and only one is handled: Angular's own
+    // `ng-*` classes (`ng-animating`, `ng-star-inserted`, `ng-tns-…`) come and go during an
+    // animation, so they are skipped; a sibling entering or leaving can still shift an
+    // `:nth-of-type` index. That usually leaves the animation without a counterpart, which
+    // the verdict reports as INCONCLUSIVE rather than as a pass or a failure.
     const describe = (el: Element | null): string => {
       if (!el) return '(no target)';
-      const id = el.id ? `#${el.id}` : '';
-      const cls = (el.getAttribute('class') || '').split(/\s+/).filter(Boolean)[0];
-      return `${el.tagName.toLowerCase()}${id}${cls ? '.' + cls : ''}`;
+      const segments: string[] = [];
+      let node: Element | null = el;
+      while (node && node !== document.documentElement) {
+        const current: Element = node;
+        const parent = current.parentElement;
+        const cls = (current.getAttribute('class') || '')
+          .split(/\s+/)
+          .filter((c) => c && !c.startsWith('ng-'))[0];
+        const sameTag = parent
+          ? Array.from(parent.children).filter((c) => c.tagName === current.tagName)
+          : [];
+        const nth = sameTag.length > 1 ? `:nth-of-type(${sameTag.indexOf(current) + 1})` : '';
+        segments.unshift(`${current.tagName.toLowerCase()}${cls ? '.' + cls : ''}${nth}`);
+        node = parent;
+      }
+      return segments.join(' > ');
     };
 
     const sample = () => {
@@ -293,12 +321,11 @@ test.describe('accessibility: dark theme', () => {
   for (const [label, route, host] of ROUTES) {
     test(`scans ${label} in dark theme`, async ({ signedIn: page, a11y }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
+      await waitForScreenSettled(page, host, route === '/#/browse');
       // Not a bare host check: a failed load renders the same host with an error panel, and a
       // dark-themed error panel would be scanned and counted as the route. See
       // `expectSurfaceUsable`.
       await expectSurfaceUsable(page, host, `${label} (dark theme)`);
-      // The nav drawer is outside the host, so the check above cannot see it loading.
-      await waitForNavTreeSettled(page, route === '/#/browse');
 
       // Two assertions, because either alone is satisfiable while dark mode is not actually on:
       // the attribute can be set by something that failed to load a palette, and a dark
@@ -349,8 +376,8 @@ test.describe('accessibility: forced colors', () => {
   for (const [label, route, host] of ROUTES) {
     test(`scans ${label} in forced-colors mode`, async ({ signedIn: page, a11y }) => {
       await page.goto(route, { waitUntil: 'networkidle' });
+      await waitForScreenSettled(page, host, route === '/#/browse');
       await expectSurfaceUsable(page, host, `${label} (forced colors)`);
-      await waitForNavTreeSettled(page, route === '/#/browse');
 
       // Prove the emulation reached the page. Without this the whole describe could silently
       // run in normal colours and report a clean high-contrast pass.
@@ -393,6 +420,10 @@ test.describe('accessibility: motion', () => {
       // error panel inside it, and an error panel animates exactly as little as a working
       // page does — so a bare host check would let the control "observe no animations" for
       // the wrong reason and make the reduced-motion result uninterpretable in silence.
+      //
+      // Settled first, in both runs, so the sample is the route change and not the tail of
+      // the load: a tree still loading contributes spinners to one run and not the other.
+      await waitForScreenSettled(page, 'lib-browse', true);
       await expectSurfaceUsable(page, 'lib-browse', 'browse (motion control)');
       const sample = await measureRouteChangeMotion(page, '#/search');
       motion.push({ label: 'no-preference', sample });
@@ -411,6 +442,7 @@ test.describe('accessibility: motion', () => {
 
     test('route change respects the preference', async ({ signedIn: page }) => {
       await page.goto('/#/browse', { waitUntil: 'networkidle' });
+      await waitForScreenSettled(page, 'lib-browse', true);
       await expectSurfaceUsable(page, 'lib-browse', 'browse (reduced motion)');
 
       const honoured = await page.evaluate(

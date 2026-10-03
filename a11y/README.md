@@ -20,11 +20,12 @@ a11y/
   preflight.mjs        refuses to scan a stack that is not there
   playwright.config.ts self-contained; does not extend the critical-path config
   fixtures.ts          the a11y-scout test object, installSession, expectSurfaceUsable,
-                       aiFindingsNote, REPORT_DIR
+                       waitForScreenSettled, aiFindingsNote, REPORT_DIR
   env.mjs              resolveBaseUrl + required Nuxeo credentials — one definition, shared
                        by the config, the preflight and all three diagnostics
-  surface.mjs          the Node-side twin of expectSurfaceUsable, and the single list of
-                       this application's error-state classes
+  surface.mjs          the Node-side twin of expectSurfaceUsable, the single list of this
+                       application's error-state classes, and the settle wait every scan
+                       makes before measuring
   package.json         "type": "module", because a11y-scout is ESM-only
   tsconfig.json        allowJs + checkJs, so the .ts side can import those two .mjs modules
   specs/
@@ -35,8 +36,9 @@ a11y/
     journey.a11y.spec.ts      workflows, one self-contained report per screen
   diagnostics/
     axe-differential.mjs      axe under two rule configurations, diffed
-    reflow-probe.mjs          320px overflow measured independently of the scanner
-    route-render-check.mjs    every scanned route renders its feature host
+    reflow-probe.mjs          320px overflow measured independently of the scanner, with the
+                              nav drawer closed so the screen is measured, not the drawer
+    route-render-check.mjs    every scanned route renders its feature host, not an error state
     error-class-drift.mjs     surface.mjs still matches the templates it describes
   docs/
     authoring.md              how to write a new check
@@ -77,9 +79,15 @@ Node tooling throw when either is unset, so a run fails at load rather than sile
 mis-authenticating.
 
 **The account needs administration access** — an administrator or a `powerusers` member — for
-`surfaces`, `modes` and the three diagnostics, because all of them visit `/#/administration`
-and `adminGuard` redirects anyone else to the dashboard. `journey` and `states` do not go
-there and run with any account. Each command that needs it checks it and exits 2 if not.
+`surfaces`, `modes`, `journey` and the three diagnostics, because all of them visit
+`/#/administration` and `adminGuard` redirects anyone else to the dashboard. Only `states`
+does not go there and runs with any account. Each command that needs it checks it and exits 2
+if not.
+
+`journey` asks one thing more: its administration screen is the analytics page an
+**administrator** lands on. A `powerusers` member passes the preflight but is redirected to
+users and groups instead, and that screen fails rather than scanning a different page under
+the same name.
 
 `npm run a11y:scan -- preflight` checks all of it and changes nothing.
 
@@ -116,14 +124,14 @@ without saying which scanner made them, and the fix agents use the same model. T
 signal is stderr. A `content-quality: LLM call failed` line means the eleven criteria were
 **not measured**; its absence, with calls completed, is the only case where zero may mean
 clean. (In mock mode zero is simply unmeasured.) Cost is not the constraint: a full
-four-screen journey billed **$0.0059**.
+four-screen journey billed **$0.0059** on 2026-09-22.
 
 ## Running it
 
 ```bash
-npm run a11y:scan -- journey      # ~15 min, one report per screen
+npm run a11y:scan -- journey      # ~70 min, fifteen screens, one report per screen
 npm run a11y:scan -- surfaces     # ~27 min
-npm run a11y:scan -- states       # ~20 min
+npm run a11y:scan -- states       # ~25 min
 npm run a11y:scan -- modes        # ~20 min
 
 npm run a11y:scan -- reflow       # diagnostics, seconds to a minute
@@ -151,7 +159,7 @@ command**. Run it before pushing. Flagged in review on PR #225.
 Extra arguments pass through, so a single screen with a visible browser is:
 
 ```bash
-npm run a11y:scan -- journey --project=journey-1-login --headed
+npm run a11y:scan -- journey --project=journey-01-login --headed
 ```
 
 `--project` can only narrow a command, never switch it: `journey --project=surfaces` is

@@ -26,8 +26,8 @@ import {
 const BASE = resolveBaseUrl();
 
 /**
- * Set by `run.mjs` for the suites that scan `/#/administration`. The others (journey,
- * interaction states) never go there, and refusing them for an identity that could run them
+ * Set by `run.mjs` for the suites that scan `/#/administration`. The one that does not
+ * (interaction states) never goes there, and refusing it for an identity that could run it
  * perfectly well would be a false precondition failure.
  */
 const NEEDS_ADMIN = process.argv.includes('--needs-admin');
@@ -189,7 +189,7 @@ if (appStatus !== null && auth) {
           `${username} is neither an administrator nor in powerusers, and this suite scans\n` +
             '  /#/administration. adminGuard would redirect it to the dashboard, so that surface\n' +
             '  would fail — or worse, be measured as the dashboard. Use an account with\n' +
-            '  administration access, or run a suite that does not visit it (journey, states).',
+            '  administration access, or run the suite that does not visit it (states).',
         );
       } else {
         ok.push(`${username} has no administration access — fine for this suite, which does not visit it`);

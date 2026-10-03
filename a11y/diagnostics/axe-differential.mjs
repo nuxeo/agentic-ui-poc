@@ -51,7 +51,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { resolveBaseUrl } from '../env.mjs';
-import { surfaceUnusableReason } from '../surface.mjs';
+import { screenUnsettledReason, surfaceUnusableReason } from '../surface.mjs';
 import {
   credentialsOrExit,
   gotoOrExit,
@@ -159,6 +159,28 @@ function resolveScoutReport() {
   return newest ? resolve(REPORTS_DIR, newest, 'report.json') : null;
 }
 
+/**
+ * Whether a URL a11y-scout recorded is the page reached from `route`.
+ *
+ * a11y-scout records the URL after any redirect, and `/#/administration` lands on
+ * `/#/administration/analytics`, so `endsWith(route)` never matched it and a complete baseline
+ * still exited 2 naming administration as unscanned. A child path or a query string counts; a
+ * sibling that merely shares the prefix, `/#/browse-adf-hx` against `/#/browse`, does not.
+ *
+ * @param {unknown} url
+ * @param {string} route
+ */
+function reachedFrom(url, route) {
+  let hash;
+  try {
+    hash = new URL(String(url)).hash;
+  } catch {
+    return false;
+  }
+  const want = route.slice(route.indexOf('#'));
+  return hash === want || hash.startsWith(`${want}/`) || hash.startsWith(`${want}?`);
+}
+
 // What a11y-scout claimed, so the reproduction can be judged against it rather than against memory.
 /** @type {Map<string, number>} `${surface}::${ruleId}` -> node count */
 const claimed = new Map();
@@ -186,7 +208,7 @@ if (reportPath && existsSync(reportPath)) {
   // That happened here: the only baseline on disk covered /#/browse-adf-hx alone, and a
   // `--surface browse` run reported a clean comparison. Flagged in review on PR #225.
   const scanned = Array.isArray(report?.meta?.pagesScanned) ? report.meta.pagesScanned : [];
-  const uncovered = SURFACES.filter(([, route]) => !scanned.some((u) => String(u).endsWith(route)));
+  const uncovered = SURFACES.filter(([, route]) => !scanned.some((u) => reachedFrom(u, route)));
   if (uncovered.length > 0) {
     console.error(
       `axe-differential: the baseline did not scan ${uncovered.length} of the ${SURFACES.length} ` +
@@ -203,7 +225,7 @@ if (reportPath && existsSync(reportPath)) {
   const findings = Array.isArray(report?.findings) ? report.findings : [];
   for (const f of findings) {
     if (f?.source !== 'axe') continue;
-    const surface = SURFACES.find(([, route]) => String(f.pageUrl ?? '').endsWith(route))?.[0];
+    const surface = SURFACES.find(([, route]) => reachedFrom(f.pageUrl, route))?.[0];
     if (!surface) continue;
     const key = `${surface}::${f.ruleId}`;
     claimed.set(key, (claimed.get(key) ?? 0) + 1);
@@ -244,8 +266,10 @@ try {
   if (SURFACES.some(([label]) => label === 'administration')) {
     requireAdministrationAccess(me, user, 'axe-differential');
   }
-  await gotoOrExit(page, baseUrl, 'axe-differential');
-  await page.waitForTimeout(800);
+  // `networkidle` rather than a fixed pause, so the app's own session hydration has very
+  // likely finished before the session below is written. The reload after it is what makes
+  // the written session the one the app starts from.
+  await gotoOrExit(page, baseUrl, 'axe-differential', { waitUntil: 'networkidle' });
   await page.evaluate(
     ({ key, value, signedOutKey }) => {
       sessionStorage.setItem(key, value);
@@ -264,7 +288,6 @@ try {
     },
   );
   await page.reload({ waitUntil: 'networkidle' });
-  await page.waitForTimeout(1200);
 
   for (const [surface, route, host] of SURFACES) {
     process.stdout.write(`scanning ${surface} `);
@@ -280,7 +303,19 @@ try {
       rows.push({ surface, rule: '(not measurable)', impact: '-', variant: '-', nodes: 0, targets: [why] });
       continue;
     }
-    await page.waitForTimeout(1200);
+
+    // Settled before anything is read, and by the same definition the specs use. This was a
+    // fixed 1.2s pause, and the hash routes make it worse than it looks: `goto` to another
+    // `/#/…` is a same-document navigation, so `networkidle` resolves at once and the pause
+    // was the only wait there was. A drawer tree still loading lends its toggles accessible
+    // names they do not have, so a differential taken mid-load compares two snapshots of a
+    // page that never existed in either. Flagged in review on PR #225.
+    const unsettled = await screenUnsettledReason(page, { host, treeRequired: route === '/#/browse' });
+    if (unsettled) {
+      console.log(`- SKIPPED, ${unsettled} (nothing to compare, NOT a pass)`);
+      rows.push({ surface, rule: '(not measurable)', impact: '-', variant: '-', nodes: 0, targets: [unsettled] });
+      continue;
+    }
 
     // The surface assertion is the difference between a scan and a clean-looking blank. phase-6
     // omits it on five of its routes, which is how it has been scanning `/#/collections` — a path

@@ -4,7 +4,7 @@ import {
   expectSurfaceUsable,
   REPORT_DIR,
   test,
-  waitForNavTreeSettled,
+  waitForScreenSettled,
 } from '../fixtures';
 
 /**
@@ -82,12 +82,12 @@ test.describe('accessibility: authenticated surfaces', () => {
       // vacuous pass this repository keeps getting caught by — `phase-6-a11y.mjs` shipped
       // a step labelled "Login surface" that actually scanned the dashboard.
       //
+      // Settled first, so the error check below sees the end of the load rather than its start.
+      await waitForScreenSettled(page, host, route === '/#/browse');
       // `expectSurfaceUsable` rather than a bare `toBeVisible` on the host: a failed load
       // renders the same host with an error panel, which is visible. See its own comment for
       // what it proves and what it still does not.
       await expectSurfaceUsable(page, host, label);
-      // The nav drawer is outside the host, so the check above cannot see it loading.
-      await waitForNavTreeSettled(page, route === '/#/browse');
 
       await a11y.scanPage({
         level: 'AA',

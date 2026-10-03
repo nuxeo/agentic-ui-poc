@@ -29,7 +29,7 @@ thing that turns a run red and the number anyone quotes.
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------- |
 | **Static templates** | `npm run a11y`                                                                                                                                                                          | `@angular-eslint/template` rules over 89 `.html` files              | seconds                                     |
 | **axe at runtime**   | `npm run beta:evidence -- phase-6-a11y`                                                                                                                                                 | **WCAG 2.1 AA conformance** — the number we publish                 | minutes (not measured)                      |
-| **a11y-scout**       | `npm run a11y:scan -- surfaces` (routes), `npm run a11y:scan -- states` (interaction states), `npm run a11y:scan -- modes` (display modes), `npm run a11y:scan -- journey` (per-screen) | Keyboard traps, focus order, focus visibility, reflow, AI semantics | 26.8, 19.5, 19.5 and 15.1 min, all measured |
+| **a11y-scout**       | `npm run a11y:scan -- surfaces` (routes), `npm run a11y:scan -- states` (interaction states), `npm run a11y:scan -- modes` (display modes), `npm run a11y:scan -- journey` (per-screen) | Keyboard traps, focus order, focus visibility, reflow, AI semantics | 26.8, 25.3, 19.5 and 70.3 min, all measured |
 | **Manual**           | —                                                                                                                                                                                       | Everything automation cannot decide                                 | per release                                 |
 
 ### Why axe is owned by `phase-6-a11y.mjs` and not by a11y-scout
@@ -173,6 +173,20 @@ Stated explicitly, because "WCAG 2.1 AA met" is a claim whose scope is what make
   renders a DOM attribute literally named `attr.aria-label`, leaving the control unnamed. None
   of the eleven template rules catches it; verified against the one instance in this repo.
 - **Screen-reader output.** No layer tests it.
+- **Seven routes no runtime layer visits:** `/#/contracts`, `/#/search-adf-hx` and the five
+  `/#/settings/*` pages (Nuxeo Drive, profile, authorized applications, cloud services, themes).
+  Contracts was dropped from the journey on purpose — see "Fifteen screens" below.
+- **Populated tasks and expired-queue screens.** The journey scans their empty states on a server
+  with neither, and says so in its output; a task form or an expired card has never been scanned.
+- **Horizontal scrolling inside a region at 320px.** Reflow checks the document's `scrollWidth`
+  only, and overflow inside a scroll container never reaches it — search and trash results and
+  the browse table wrapper all scroll inside their own box. See "Reflow measured the nav drawer"
+  below.
+- **The narrow layout as a user first sees it.** At 320px every route `reflow-probe.mjs`
+  measured — six, on 2026-10-02 — opens behind the nav drawer with the screen 0px wide. The probe
+  measures the screen only after closing the drawer; a11y-scout's reflow check does not close
+  it. Card view, and the journey's screens other than those six, have never been measured at
+  320px with the drawer closed.
 
 ## The disagreement — resolved 2026-09-11, against phase-6
 
@@ -236,6 +250,48 @@ scan; do not leave it reading as green.
 
 That probe went red on the first run it ever made, which is the bar this repository sets before
 a gate is trusted.
+
+It checked presence and text only until 2026-10-01, when it passed `/#/knowledge-discovery` as
+rendered — 670 characters — while the page showed nothing but "Failed to load Knowledge
+Discovery agents" because `HylandKnowledgeDiscovery.getAllAgents` returned 500 on the local
+server. A host showing its error panel now fails the route too, through the same
+`ERROR_STATE_SELECTOR` the specs refuse to scan through, so while that 500 lasts the probe
+reports seven of nine, not eight. The suites already refused it: that day the surfaces and
+display-modes runs refused the route in every mode and then failed their every-route coverage
+assertion, so neither counts as a complete measurement, and `reflow` marked it unmeasured and
+exited 2. Interaction states and journey do not visit it.
+
+### Reflow measured the nav drawer, not the screen — found 2026-10-02
+
+The nav drawer is a `mode="side"` sidenav, 280px wide, that a deep link opens and nothing closes
+at a narrow width. At 320×256 it fills the container and the feature host is laid out **0px
+wide** — measured on all six routes `reflow-probe.mjs` reaches. A user lands on the drawer and
+sees the screen only after clicking the active rail item to close it; the header's ☰ toggles
+the rail, not the drawer.
+
+So every `fits` the probe printed before that date measured the drawer, and its summary note
+attributed the clipping to a "closed" drawer that was open. a11y-scout's reflow scanner
+(`reflow.ts`) calls `setViewportSize` on the page the suite left it on, and the suites leave the
+drawer open on these routes, so its reflow zeros there are very likely measurements of the same
+state. That is inferred from the sequence, not observed inside an a11y-scout run.
+
+The probe now records the collapse per route, closes the drawer the way a user would — asserting
+it closed, the URL did not change and the host gained a width — and only then measures. With the
+content visible all six routes still fit: `scrollWidth` 320, and the elements wider than that sit
+inside the content's own containers — tab label strips and tab bodies (`overflow: hidden`), and
+scroll containers (`overflow: auto`) such as `div.result-list` on search and trash and
+`div.browse-table-wrapper` on browse. Overflow inside a scroll container never reaches the
+document's `scrollWidth`, so neither this probe nor the scanner measures horizontal scrolling
+inside a region; that is listed under "What nothing covers".
+
+Whether a drawer that has to be closed before the screen is visible fails 1.4.10 is a judgement
+this document does not make — the content does reflow once it is closed. It is an application
+change, outside `a11y/`, and is recorded here rather than fixed.
+
+One trap cost a run while closing it: the probe disables transitions before measuring, and
+Material removes the content's 280px margin only when the drawer's close transition ends. With
+transitions already off the drawer closed and the host stayed 0px wide, so the probe closes the
+drawer first and freezes motion after.
 
 ## Interaction states — first scan 2026-09-12
 
@@ -314,8 +370,9 @@ reduce`.
 
 ## Per-screen journey — first scan 2026-09-16
 
-`a11y/specs/journey.a11y.spec.ts` (`npm run a11y:scan -- journey`) walks the four screens in
-the order a user meets them and emits **one self-contained report per screen** rather than a
+`a11y/specs/journey.a11y.spec.ts` (`npm run a11y:scan -- journey`) walks its screens in
+the order a user meets them — four when this section was written, fifteen since 2026-10-01
+(below) — and emits **one self-contained report per screen** rather than a
 consolidated one. The other suites answer "which rules does the app fail"; this answers "how bad
 is the screen I am about to hand to its owner". **15.1 minutes, 50 findings, 32 blockers** as
 first measured on 2026-09-16. Document detail has since been re-measured at 17 and 15 after an
@@ -330,9 +387,105 @@ here are a snapshot rather than a current count.
 | Document detail | `/#/doc/:uid`  | 24 → **17** | 22 → **15** | `color-contrast`, `focus-indicator-missing`, `heading-order` — `button-name` fixed, see below                            |
 
 Three of the four had never been scanned by anything. **Document detail is the worst screen in
-the application measured so far**, now at 15 blockers, 15 of them `color-contrast`. Dashboard
+the application measured so far** — 15 blockers at the 21 September re-measurement, all
+`color-contrast`, and 14 in the fifteen-screen run below. Dashboard
 matters for a different reason: `app.routes.ts` redirects `path: ''` to it, so it is the first
 screen every signed-in user sees, and it was absent from `SURFACES`.
+
+### Fifteen screens — extended and measured 2026-10-01 (current)
+
+Eleven screens were added: the core flows a user moves through and the screens they work in.
+`captureDataRequest()` waits for the screen's own data request and fails if it was never made or
+did not return 2xx. Asserting an element alone would not do: the search page has an `error()`
+signal no template renders, and the favorites and collections drawer panels have no error state
+at all, so on those screens a failed load looks like an empty one. How much more each test then
+requires differs, and the spec's header lists it per screen:
+
+- **The first entry the response returned is on screen** — search, documents, collection,
+  favorites, recently viewed, trash, and the expired queue when it has entries.
+- **The screen that follows from the response is shown** — tasks (the first task's form at its
+  own URL, or the empty inbox), personal space (the redirect to the returned path) and
+  administration, where only the request's success is evidence: the landing tab shows no
+  repository data, and its path field starts at the value a stock server returns.
+- **A named document is on screen, from a separate repository query** — document detail, and
+  clipboard, whose one entry is seeded in the browser.
+- **The screen rendered without an error state** — login, dashboard and browse.
+
+| Screen          | Route scanned                        | Findings | Blockers | Rule classes                                                                                                                                                                                                                               |
+| --------------- | ------------------------------------ | -------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Login           | `/#/login`                           | 3        | 2        | `color-contrast`, `focus-indicator-missing`                                                                                                                                                                                                |
+| Dashboard       | `/#/dashboard`                       | 4        | 2        | `color-contrast`, `focus-indicator-missing`, `heading-order`                                                                                                                                                                               |
+| Browse          | `/#/browse`                          | 8        | 5        | `color-contrast`, `focus-indicator-missing`, `focus-offscreen`, `th-has-data-cells`                                                                                                                                                        |
+| Document detail | `/#/doc/:uid`                        | 16       | 14       | `color-contrast`, `focus-indicator-missing`, `heading-order`                                                                                                                                                                               |
+| Search results  | `/#/search?quickFilters=noFolder&…`  | 57       | 10       | `focus-indicator-missing`, `focus-obscured-min`, `focus-offscreen`, `label-content-name-mismatch`                                                                                                                                          |
+| Documents       | `/#/documents`                       | 37       | 6        | `button-name`, `color-contrast`, `content-quality-2.4.2`, `focus-indicator-missing`, `focus-obscured-min`, `focus-offscreen`, `label-content-name-mismatch`, `landmark-main-is-top-level`, `landmark-no-duplicate-main`, `landmark-unique` |
+| Collection      | `/#/collections/:uid`                | 2        | 1        | `color-contrast`, `focus-indicator-missing`                                                                                                                                                                                                |
+| Favorites       | `/#/favorites` (drawer panel)        | 1        | 0        | `focus-indicator-missing`                                                                                                                                                                                                                  |
+| Recently viewed | `/#/recently-viewed` (drawer panel)  | 14       | 13       | `color-contrast`, `focus-indicator-missing`                                                                                                                                                                                                |
+| Personal space  | `/#/browse/<user workspace path>`    | 9        | 5        | `color-contrast`, `focus-indicator-missing`, `focus-offscreen`, `th-has-data-cells`                                                                                                                                                        |
+| Clipboard       | `/#/clipboard` (drawer panel)        | 1        | 0        | `focus-indicator-missing`                                                                                                                                                                                                                  |
+| Tasks           | `/#/tasks` — **empty state**         | 6        | 2        | `color-contrast`, `focus-indicator-missing`, `landmark-main-is-top-level`, `landmark-no-duplicate-main`, `landmark-unique`                                                                                                                 |
+| Expired queue   | `/#/expired-queue` — **empty state** | 1        | 0        | `focus-indicator-missing`                                                                                                                                                                                                                  |
+| Trash           | `/#/trash`                           | 14       | 0        | `focus-indicator-missing`, `focus-offscreen`                                                                                                                                                                                               |
+| Administration  | `/#/administration/analytics`        | 2        | 1        | `color-contrast`, `focus-indicator-missing`                                                                                                                                                                                                |
+| **total**       |                                      | **175**  | **61**   |                                                                                                                                                                                                                                            |
+
+**70.3 minutes**, one worker, every screen passing. The four original screens reproduced their
+22 September figures exactly — 3/2, 4/2, 8/5 and 16/14 — which makes them the only counts in
+this document observed twice against the same target nine days apart. Document detail is still
+the worst screen by blockers; recently viewed, all 13 of its blockers `color-contrast`, is second and
+had never been scanned. 56 of search's 57 findings are keyboard findings — 45 `focus-offscreen`
+and all 10 blockers `focus-obscured-min`. Time does not track finding count: search took under a
+minute, while recently viewed (10.9 min), browse (10.8), personal space and collection (8.1 each)
+were the slowest, and collection reported two findings. Documents and tasks both report
+`landmark-no-duplicate-main`: each feature template
+declares its own `<main>` (`asset-search-results.component.html:85`,
+`tasks-page.component.html:3`) on a page that already has one.
+
+**Re-measured 2026-10-03, after the review fixes: 176 findings, 61 blockers, 69.2 minutes, all
+fifteen passing.** Every screen reproduced its blockers and its non-AI findings exactly. The two
+differences are both AI-judged `content-quality` findings, which vary between runs: search gained
+one (`content-quality-2.4.2`, 58 in all), and documents' one AI finding was judged against 1.1.1
+instead of 2.4.2. The table keeps the 1 October figures. A count that includes AI findings is not
+reproducible to the finding, so compare runs on blockers and on the non-AI rules.
+
+**What some rows actually measure:**
+
+- **Tasks and expired queue are empty-state scans.** The local server has no open tasks and no
+  expired documents, and the suite never writes server data to manufacture some. Each test reads
+  its screen's own response. With entries it requires the populated screen (a task form, an
+  expired card); with none it requires the real empty-state element and prints
+  `state : EMPTY STATE scanned`, so the report cannot be read as covering the populated screen.
+- **Favorites, recently viewed, clipboard and expired queue are drawer panels.** Their routes
+  render a "Coming soon" placeholder in the main outlet; what a user works in is the drawer panel
+  the deep link opens. The scan covers the whole page, placeholder included. Clipboard is seeded
+  by writing one entry to the app's own `nuxeo_clipboard` key in `localStorage` — client state,
+  not a server write.
+- **Personal space** redirects to `/browse` plus the user's workspace path, resolved through
+  `User.GetUserWorkspace`; the test waits for that exact URL.
+- **Administration** is the analytics page, which `fullAdministratorGuard` protects. A member of
+  `powerusers` is redirected to users-and-groups, so the test asserts the analytics URL and fails
+  rather than scanning a different page under the administration label.
+- **The AI-judged criteria were measured on two screens only.** Content-quality returned 403 on
+  thirteen. Search and documents logged no failure, and documents produced the first AI-judged
+  finding in this document, `content-quality-2.4.2`. Search's zero, with calls completed and no
+  failure line, is the one case `a11y/README.md` says may mean clean. Why the same key is refused
+  on some pages and not others has not been investigated.
+
+**Seen failing on purpose before being trusted**, on the trash screen because its helpers are
+shared by every screen added here: the data request answered with a 500 failed in 3.9s naming the
+status; a matcher the screen never satisfies failed after 30s with "the screen never made the
+data request"; and requiring a title the response did not contain failed on the missing row. The
+settle check was separately driven to fail by a visible loader in a drawer panel, a spinner
+inside the host, an icon-to-image swap at a constant element count, a required tree that never
+renders and an absent host — and to pass with the same loader hidden.
+
+**Left out, and why.** Knowledge discovery was excluded from this extension by decision; the
+surfaces and display-modes suites already scan `/#/knowledge-discovery`. `/#/contracts` was
+dropped: it is a component showcase built on mock data (`Contract ABC-123.pdf`), reachable only by
+URL or through a customer manifest's navbar entry, and its findings would belong to the shared
+`@nuxeo-satori/platform/ui` dialogs it demonstrates rather than to a screen anyone owns. See
+"What nothing covers".
 
 ### The whole journey re-measured 2026-09-22, and most of it is fixed
 
@@ -413,19 +566,35 @@ the truthful one, and it is the worse one.
 reasoning is kept because the _mechanism_ is general: any element whose loading state carries an
 `aria-label` that its settled state drops will be under-reported by a scan arriving too early.)
 
-`waitForNavTreeSettled()` in `a11y/fixtures.ts` therefore requires the node count to hold still
-for 1.5 seconds with no loader present — the root `.tree-loading` and every per-node
-`mat-spinner` are read on each poll, and the window restarts whenever either appears. (It first
-accepted a single repeated count, which proves only that nothing arrived during one 300ms gap;
-then it checked the loaders once before polling the count, so a child load starting afterwards —
-which changes no count — could run out the window mid-load.) It is a correctness fix, not a flake
-suppression: waiting to make a number stable is worth nothing if the stable number is the wrong
-one, and here the unstable number was the optimistic one.
+`screenUnsettledReason()` in `a11y/surface.mjs` therefore waits for the screen to hold still for
+1.5 seconds with no loader visible. On every poll it reads, across the nav drawer and the feature
+host together, every visible spinner (Material's or the hand-written `hxp-spinner`), progress
+indicator and text or skeleton loader listed in its `LOADING_SELECTOR`, plus the tree
+node count, the `<img>` count and the element count; the window restarts whenever a loader is
+visible or any count changes. (It first accepted a single repeated count, which proves only that
+nothing arrived during one 300ms gap; then it checked the loaders once before polling the count,
+so a child load starting afterwards — which changes no count — could run out the window mid-load.
+It then watched the folder tree alone, and missed the drawer panels' own `.tree-loading` outside
+`.folder-tree` and the thumbnails that replace icons after a list renders, a swap that changes
+no element count, which is why `<img>` is counted separately.) It is a correctness fix, not a
+flake suppression: waiting to make a number stable is worth nothing if the stable number is the
+wrong one, and here the unstable number was the optimistic one.
 
-The drawer is part of the shell, not of one route, so all four suites call it before every scan —
-it began in `journey` alone, while `surfaces`, `modes` and `states` scanned the same drawer
-unguarded. It does not observe `/#/browse-adf-hx`, whose drawer is upstream
-`hxp-document-tree` with markup of its own.
+The drawer is part of the shell, not of one route, so every suite waits on it through
+`waitForScreenSettled()` in `a11y/fixtures.ts`, and `axe-differential`, `route-render-check`
+and `reflow-probe` call the same function directly. Surfaces, display modes and journey call it
+immediately before each scan, and display modes also before the route change each motion sample
+measures. Interaction states calls it when it opens
+`/#/browse` and again after card view and each of the three tabs open, because the tabs fetch
+behind a spinner and the cards swap icons for thumbnails; its three overlays fetch nothing and
+wait only for the state they open.
+It began in
+`journey` alone, and the diagnostics kept a fixed 1.2-second pause for longer still — which on
+hash routes was the only wait they had, because a `goto` to another `/#/…` is a same-document
+navigation and `networkidle` resolves at once. What it cannot see is a loading state carrying
+none of those markers — on `/#/browse-adf-hx`, whatever upstream `hxp-document-tree` shows while
+it loads, if it is not one of them — and that is only missed if it outlasts the quiet window
+without the DOM changing.
 
 **Verified reproducible afterwards:** two further runs against the same uid produced 24 findings
 each, identical on rule _and_ selector, with all seven tree toggles reported. Two runs is not a
@@ -461,12 +630,12 @@ and the reason generalises to any future unauthenticated test. With no stored se
 challenge automatically, so the app builds a session from the reply and `authGuard` allows the
 dashboard. **"No session injected" is not "signed out" — the browser signs itself in.**
 
-`journey-1-login` is therefore the only project that sets `httpCredentials: undefined`, and the
+`journey-01-login` is therefore the only project that sets `httpCredentials: undefined`, and the
 test also sets the app's own `agentic_ui_signed_out` marker so hydration short-circuits before it
 probes the server. Both are setup; the `toHaveURL(/#\/login/)` assertion is what proves the form
 is on screen, and it is the assertion that caught the problem.
 
-Had that assertion not been there, the run would have emitted a report titled `journey-1-login`
+Had that assertion not been there, the run would have emitted a report titled `journey-01-login`
 containing dashboard findings — the same vacuous pass `phase-6-a11y.mjs` shipped when its "Login
 surface" step actually scanned the dashboard.
 
@@ -518,10 +687,10 @@ Both are diagnostics rather than gates, both run in well under a minute, and bot
 a claim about accessibility should be reproducible on demand rather than remembered from a run
 three weeks ago.
 
-| Script                                         | Answers                                                                                                                                                                                                                                                                                                                                 | Exit                                               |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `node a11y/diagnostics/axe-differential.mjs`   | Runs the one shared axe engine under both harnesses' tag sets, back to back in the same page visit, so the tag list is the only variable. Compares against the newest `a11y/reports/nuxeo-satori-surfaces-*/report.json`, and exits 2 rather than comparing against an empty baseline or one that did not scan every requested surface. | 0 measured, 2 could not measure                    |
-| `node a11y/diagnostics/route-render-check.mjs` | Does every route a scan visits actually render its feature host?                                                                                                                                                                                                                                                                        | 0 all rendered, 1 one did not, 2 could not measure |
+| Script                                         | Answers                                                                                                                                                                                                                                                                                                                                 | Exit                                                                                |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `node a11y/diagnostics/axe-differential.mjs`   | Runs the one shared axe engine under both harnesses' tag sets, back to back in the same page visit, so the tag list is the only variable. Compares against the newest `a11y/reports/nuxeo-satori-surfaces-*/report.json`, and exits 2 rather than comparing against an empty baseline or one that did not scan every requested surface. | 0 measured, 2 could not measure                                                     |
+| `node a11y/diagnostics/route-render-check.mjs` | Does every route a scan visits actually render its feature host?                                                                                                                                                                                                                                                                        | 0 all rendered, 1 one rendered nothing or only its error state, 2 could not measure |
 
 The differential resolves the newest **surfaces** report rather than `a11y/reports/latest/`,
 which is a rolling pointer that every a11y-scout run overwrites — including `a11y:scan -- states`, whose
@@ -533,7 +702,8 @@ need a specific run.
 Neither is a build gate: a diagnostic that turns the build red is one people stop running. Their
 exit codes still differ, and the table above is the reference. The axe differential treats its
 findings as non-fatal and exits non-zero only when it could not measure. The route render check
-exits **1** when a route renders nothing, because that is its finding. Both reserve **2** for
+exits **1** when a route renders nothing or only its error state, because that is its finding.
+Both reserve **2** for
 an incomplete measurement, because a scan that silently did not happen must never read as clean.
 
 `a11y/README.md` covers the other two diagnostics in that folder — the reflow probe with its
