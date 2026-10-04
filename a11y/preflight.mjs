@@ -18,6 +18,7 @@
 
 import {
   hasAdministrationAccess,
+  isFullAdministrator,
   nuxeoBasicAuthHeader,
   requireNuxeoCredentials,
   resolveBaseUrl,
@@ -29,8 +30,13 @@ const BASE = resolveBaseUrl();
  * Set by `run.mjs` for the suites that scan `/#/administration`. The one that does not
  * (interaction states) never goes there, and refusing it for an identity that could run it
  * perfectly well would be a false precondition failure.
+ *
+ * `--needs-full-admin` is for the journey, whose last screen asserts the analytics tab. A
+ * powerusers member passes the broader check, is sent to `users-groups` by
+ * `administrationLandingGuard`, and would fail that screen after "the stack is ready".
  */
-const NEEDS_ADMIN = process.argv.includes('--needs-admin');
+const NEEDS_FULL_ADMIN = process.argv.includes('--needs-full-admin');
+const NEEDS_ADMIN = NEEDS_FULL_ADMIN || process.argv.includes('--needs-admin');
 
 const problems = [];
 const ok = [];
@@ -181,15 +187,32 @@ if (appStatus !== null && auth) {
     });
     if (res.status === 200) {
       const { username } = requireNuxeoCredentials();
-      const allowed = hasAdministrationAccess(await res.json(), username);
-      if (allowed) {
-        ok.push(`${username} has administration access, so /#/administration will render`);
+      const me = await res.json();
+      const allowed = hasAdministrationAccess(me, username);
+      if (allowed && NEEDS_FULL_ADMIN && !isFullAdministrator(me, username)) {
+        problems.push(
+          `${username} is in powerusers but is not an administrator, and this suite asserts the\n` +
+            '  analytics tab /#/administration lands an administrator on. A powerusers member is\n' +
+            '  sent to users-groups instead (fullAdministratorGuard), so that screen would fail.\n' +
+            '  Use an administrator account.',
+        );
+      } else if (allowed && NEEDS_FULL_ADMIN) {
+        ok.push(`${username} is an administrator, so /#/administration lands on analytics`);
+      } else if (allowed) {
+        ok.push(
+          isFullAdministrator(me, username)
+            ? `${username} is an administrator, so /#/administration will render (and journey can run)`
+            : `${username} has administration access as a powerusers member, so /#/administration ` +
+                'will render — but journey needs an administrator and will refuse it',
+        );
       } else if (NEEDS_ADMIN) {
         problems.push(
           `${username} is neither an administrator nor in powerusers, and this suite scans\n` +
             '  /#/administration. adminGuard would redirect it to the dashboard, so that surface\n' +
-            '  would fail — or worse, be measured as the dashboard. Use an account with\n' +
-            '  administration access, or run the suite that does not visit it (states).',
+            '  would fail — or worse, be measured as the dashboard. ' +
+            (NEEDS_FULL_ADMIN
+              ? 'Use an administrator account.'
+              : 'Use an account with\n  administration access, or run the suite that does not visit it (states).'),
         );
       } else {
         ok.push(`${username} has no administration access — fine for this suite, which does not visit it`);

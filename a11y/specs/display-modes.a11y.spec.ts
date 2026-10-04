@@ -53,7 +53,8 @@ import {
  *     **Zero finite animations were observed in either run**, so no route transition was ever
  *     captured and the verdict was about furniture.
  *   - The fix was identification, not more sampling. The report now records each animation's
- *     target, duration and iteration count, distinguishes looping from finite, and prints
+ *     target, effective duration, iteration count and shape (easing, direction, keyframes),
+ *     distinguishes looping from finite, and prints
  *     INCONCLUSIVE rather than a verdict when the control saw no finite animation. That is what
  *     stopped the wrong claim, and it is the load-bearing part of this file.
  *
@@ -103,9 +104,20 @@ interface ObservedAnimation {
    * against a control `opacity`. Flagged in review on PR #225.
    */
   readonly name: string;
+  /**
+   * Per iteration, as it plays: the declared duration divided by `playbackRate`. The declared
+   * duration alone would read an animation sped up to honour the preference as unchanged.
+   */
   readonly durationMs: number;
   readonly iterations: string;
   readonly kind: string;
+  /**
+   * What the motion looks like: easing, direction and the keyframes from `getKeyframes()`.
+   * Same target and duration is not the same motion — an implementation can honour the
+   * preference by animating opacity instead of a transform, or by moving 0px — so "ran
+   * unchanged" also requires this to match.
+   */
+  readonly shape: string;
 }
 
 /** Max concurrent animations and longest declared duration seen while `action` ran. */
@@ -273,10 +285,27 @@ async function measureRouteChangeMotion(page: Page, toHash: string): Promise<Mot
         // animation with a looping one of the same target and duration, which is precisely
         // the distinction the reduced-motion verdict is computed from. Flagged in review on
         // PR #225.
-        const durationMs = Math.round(d);
+        //
+        // A paused animation (`playbackRate` 0) keeps its declared duration rather than
+        // dividing by zero; it is still told apart from a running one by `shape`.
+        const rate = a.playbackRate;
+        const durationMs = Math.round(rate === 0 ? d : d / Math.abs(rate));
+        // `computedOffset` is dropped: it is derived from `offset`, so it adds nothing to
+        // compare and only lengthens the key.
+        const keyframes =
+          effect instanceof KeyframeEffect
+            ? effect.getKeyframes().map(({ computedOffset: _derived, ...frame }) => frame)
+            : [];
+        const shape = JSON.stringify({
+          easing: t?.easing ?? 'linear',
+          direction: t?.direction ?? 'normal',
+          reversed: rate < 0,
+          paused: rate === 0,
+          keyframes,
+        });
         const identity = (s: ObservedAnimation) =>
-          `${s.target}|${s.name}|${s.durationMs}|${s.iterations}|${s.kind}`;
-        const observed: ObservedAnimation = { target, name, durationMs, iterations, kind };
+          `${s.target}|${s.name}|${s.durationMs}|${s.iterations}|${s.kind}|${s.shape}`;
+        const observed: ObservedAnimation = { target, name, durationMs, iterations, kind, shape };
         const key = identity(observed);
         if (!probe.seen.some((s) => identity(s) === key)) {
           probe.seen.push(observed);
@@ -543,21 +572,30 @@ test.describe('accessibility: display modes report', () => {
         //
         // So each reduced animation is paired with the control animation of the same target,
         // kind and name (property or animation name — see `ObservedAnimation.name`). Only an
-        // animation that ran UNCHANGED — same duration and iterations — proves the preference
-        // was ignored. Shortened ones are reported as such, and anything without a
-        // counterpart cannot be judged either way.
+        // animation that ran UNCHANGED — same effective duration, iterations, easing, direction
+        // and keyframes — proves the preference was ignored. Matching on duration and
+        // iterations alone would call a fade that replaced a slide "unchanged". Flagged in
+        // review on PR #225. Shortened ones are reported as such, and anything without a counterpart
+        // cannot be judged either way.
         const counterpart = (a: ObservedAnimation) =>
           controlT.find((c) => c.target === a.target && c.kind === a.kind && c.name === a.name);
         const unchanged = reducedT.filter((a) => {
           const c = counterpart(a);
-          return c !== undefined && a.durationMs >= c.durationMs && a.iterations === c.iterations;
+          return (
+            c !== undefined &&
+            a.durationMs >= c.durationMs &&
+            a.iterations === c.iterations &&
+            a.shape === c.shape
+          );
         });
         const shortened = reducedT.filter((a) => {
           const c = counterpart(a);
           return c !== undefined && a.durationMs < c.durationMs;
         });
         // Everything else: no counterpart at all, or a counterpart that differs in some way
-        // other than being shorter (a changed iteration count, say). Neither can be judged,
+        // other than being shorter (a changed iteration count, easing or keyframes, say). A
+        // changed shape may be a reduction or may not — a different easing is not less motion —
+        // so it is not counted as one. Neither can be judged,
         // and letting them fall through to the "reduced" branch would drop them from the
         // report while claiming every animation had been accounted for.
         const unpaired = reducedT.filter((a) => !unchanged.includes(a) && !shortened.includes(a));
@@ -565,14 +603,16 @@ test.describe('accessibility: display modes report', () => {
         if (unchanged.length > 0) {
           lines.push(
             `    VERDICT: reduced motion is NOT honoured — ${unchanged.length} animation(s) ran`,
-            '    unchanged under the preference, matched to the control by target, kind and name:',
+            '    unchanged under the preference — same target, kind and name, and the same',
+            '    effective duration, iterations, easing, direction and keyframes as the control:',
             ...unchanged.map((a) => `      ${a.durationMs}ms  ${describeAnimation(a)}`),
           );
         } else if (unpaired.length > 0) {
           lines.push(
             `    INCONCLUSIVE: ${unpaired.length} finite animation(s) ran under the preference with no`,
             '    comparable animation in the control (none on the same target, kind and name, or one',
-            '    that differs other than by being shorter), so they cannot be judged either way.',
+            '    that differs other than by being shorter — in iterations, easing, direction or',
+            '    keyframes), so they cannot be judged either way.',
             ...unpaired.map((a) => `      ${a.durationMs}ms  ${describeAnimation(a)}`),
           );
         } else {

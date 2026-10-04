@@ -85,9 +85,10 @@ does not go there and runs with any account. Each command that needs it checks i
 if not.
 
 `journey` asks one thing more: its administration screen is the analytics page an
-**administrator** lands on. A `powerusers` member passes the preflight but is redirected to
-users and groups instead, and that screen fails rather than scanning a different page under
-the same name.
+**administrator** lands on, which `fullAdministratorGuard` closes to `powerusers` members —
+they are redirected to users and groups instead. So `journey` requires an administrator and
+exits 2 for a `powerusers` member, rather than reporting the stack ready and failing on its
+last screen.
 
 `npm run a11y:scan -- preflight` checks all of it and changes nothing.
 

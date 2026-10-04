@@ -263,7 +263,9 @@ The strongest form is in `journey.a11y.spec.ts`: `captureDataRequest()` waits fo
 to the screen's **own** data request, requires it to succeed, and the test then requires an
 element showing an entry from that response. That matters most where a failure has no error
 class to catch — the search page and several drawer panels render a failed request as an empty
-list.
+list. Where another component on the screen makes the same request, use
+`captureEveryDataRequest()` instead: it requires every matching response to succeed, so the
+other component's success cannot stand in for the page's failure.
 
 Run `npm run a11y:scan -- routes` before authoring anything new — it tells you which routes currently
 render and which are showing only their error state, so you do not spend an afternoon scanning a

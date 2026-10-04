@@ -360,7 +360,10 @@ probe is therefore reporting the truth about the code as it stands.
 
 That makes this check a **tripwire rather than a result**. The moment anyone binds an animation
 trigger, `measureRouteChangeMotion` will observe a finite animation and the run will say whether
-`prefers-reduced-motion` is honoured. Two things to get right when that happens, because an
+`prefers-reduced-motion` is honoured. It reports an animation as unchanged — the preference
+ignored — only when its effective duration, iterations, easing, direction and keyframes all match
+the control's; a shorter one is reported as reduced, and one that differs in any other way as
+inconclusive. Two things to get right when that happens, because an
 earlier draft of the work got both wrong: durations must read `--app-motion-duration-*` or
 `matchMedia` rather than being hardcoded, and a `prefers-reduced-motion` block in a stylesheet
 cannot reach Angular animations at all, because they run through the Web Animations API.
@@ -398,8 +401,12 @@ Eleven screens were added: the core flows a user moves through and the screens t
 `captureDataRequest()` waits for the screen's own data request and fails if it was never made or
 did not return 2xx. Asserting an element alone would not do: the search page has an `error()`
 signal no template renders, and the favorites and collections drawer panels have no error state
-at all, so on those screens a failed load looks like an empty one. How much more each test then
-requires differs, and the spec's header lists it per screen:
+at all, so on those screens a failed load looks like an empty one. Where the drawer makes the
+same request — identically on tasks and personal space, with a different page size or sort on
+search, documents and trash — `captureEveryDataRequest()` requires every one of them to succeed.
+Taking the first match there would let the drawer's success stand in for the page's failure, and
+the drawers on search, documents and trash render their own failure as empty or fallback counts.
+How much more each test then requires differs, and the spec's header lists it per screen:
 
 - **The first entry the response returned is on screen** — search, documents, collection,
   favorites, recently viewed, trash, and the expired queue when it has entries.

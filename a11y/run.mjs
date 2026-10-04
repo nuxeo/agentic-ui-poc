@@ -31,6 +31,9 @@ const CONFIG = 'a11y/playwright.config.ts';
  * `preflight` is a boolean rather than always-on: the diagnostics check their own
  * preconditions and print their own guidance, and making them wait on a Nuxeo document query
  * would slow a 20-second answer down for no gain.
+ *
+ * `needsAdmin` is `true` for a suite that visits `/#/administration` and measures whatever it
+ * lands on, and `'full'` for one that asserts the administrator's landing tab itself.
  */
 const COMMANDS = {
   surfaces: {
@@ -54,9 +57,11 @@ const COMMANDS = {
   journey: {
     describe: 'Fifteen screens, from sign-in to administration — one report per screen (~70 min)',
     preflight: true,
-    // Its last screen is /#/administration, so the identity must be allowed past adminGuard.
-    // Checked per command, not per project, so a run narrowed to one screen needs it too.
-    needsAdmin: true,
+    // Its last screen asserts the analytics tab /#/administration lands an administrator on,
+    // which fullAdministratorGuard closes to powerusers — so a full administrator, not just
+    // administration access. Checked per command, not per project, so a run narrowed to one
+    // screen needs it too.
+    needsAdmin: 'full',
     // A wildcard, so adding a screen to journey.screens.ts needs no change here.
     argv: ['playwright', 'test', '-c', CONFIG, '--project=journey-*'],
   },
@@ -291,7 +296,9 @@ if (!SKIP_DRIFT.has(command)) {
 }
 
 if (entry.preflight) {
-  const pre = run(['node', 'a11y/preflight.mjs', ...(entry.needsAdmin ? ['--needs-admin'] : [])]);
+  const adminFlag =
+    entry.needsAdmin === 'full' ? ['--needs-full-admin'] : entry.needsAdmin ? ['--needs-admin'] : [];
+  const pre = run(['node', 'a11y/preflight.mjs', ...adminFlag]);
   // 2 is "precondition not met" — propagate it rather than flattening to 1, so a caller can
   // tell a broken environment from a failing scan.
   if (pre.status !== 0) process.exit(pre.status);

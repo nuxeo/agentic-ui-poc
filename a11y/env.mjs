@@ -89,6 +89,33 @@ export function nuxeoBasicAuthHeader() {
  * @param {string}  username  the identity the scan runs as
  */
 export function hasAdministrationAccess(me, username) {
+  const { isAdministrator, isPowerUser } = administrationRoles(me, username);
+  return isAdministrator || isPowerUser;
+}
+
+/**
+ * Would the app let this identity into `/#/administration/analytics`, the tab
+ * `/#/administration` lands an administrator on?
+ *
+ * Narrower than `hasAdministrationAccess`. `fullAdministratorGuard` in
+ * `libs/shared/nuxeo-client/src/lib/auth/admin-route.guards.ts` admits only administrators, and
+ * `administrationLandingGuard` sends a powerusers member to `users-groups` instead. Only a
+ * caller that asserts the analytics tab itself needs this.
+ *
+ * @param {unknown} me        the body of `GET /nuxeo/api/v1/me`
+ * @param {string}  username  the identity the scan runs as
+ */
+export function isFullAdministrator(me, username) {
+  return administrationRoles(me, username).isAdministrator;
+}
+
+/**
+ * `AuthService.isAdministrator` and `AuthService.isPowerUser`, from `/me`.
+ *
+ * @param {unknown} me
+ * @param {string}  username
+ */
+function administrationRoles(me, username) {
   /** Nuxeo returns this flag as a boolean, a string or 1 depending on version. */
   const truthy = (/** @type {unknown} */ v) => v === true || v === 'true' || v === 1;
   // `unknown` all the way down: this is an untrusted response body, and `any` here would switch
@@ -106,5 +133,5 @@ export function hasAdministrationAccess(me, username) {
     truthy(props['isAdministrator']) ||
     username.trim().toLowerCase() === 'administrator';
   const isPowerUser = groups.some((g) => typeof g === 'string' && g.trim().toLowerCase() === 'powerusers');
-  return isAdministrator || isPowerUser;
+  return { isAdministrator, isPowerUser };
 }

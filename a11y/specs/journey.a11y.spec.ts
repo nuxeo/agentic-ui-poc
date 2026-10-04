@@ -50,11 +50,13 @@ import {
  *
  *   - **its own data request succeeded, and the first entry it returned is on screen** —
  *     search, documents, collection, favorites, recently viewed, trash, and the expired queue
- *     when it has entries. See `captureDataRequest`.
+ *     when it has entries. See `captureDataRequest`. On search, documents and trash the drawer
+ *     makes the same kind of request, and every one of them must succeed — see
+ *     `captureEveryDataRequest`.
  *   - **its own data request succeeded, and the screen that follows from it is shown** — tasks
- *     (the first task's form, or the empty inbox), personal space (the redirect to the path the
- *     server returned) and administration (the request succeeded; the landing tab shows no
- *     repository data to check against).
+ *     (the first task's form, or the empty inbox; the drawer's identical request must succeed
+ *     too), personal space (the redirect to the path the server returned) and administration
+ *     (the request succeeded; the landing tab shows no repository data to check against).
  *   - **a named document is on screen, from a separate repository query** — document detail,
  *     and clipboard, whose content is seeded in the browser rather than requested.
  *   - **the screen rendered without an error state** — login, dashboard and browse, which have
@@ -261,7 +263,8 @@ interface RepoEntry {
  * Run an NXQL query through the app origin and return its entries.
  *
  * For **setup** only — choosing which collection to open, say. It is never the evidence that
- * a screen loaded; that is the screen's own request, captured by `captureDataRequest`.
+ * a screen loaded; that is the screen's own request, captured by `captureDataRequest` or
+ * `captureEveryDataRequest`.
  * Credentials come from `httpCredentials`, as in `firstOpenableDocument`.
  */
 async function nxqlEntries(
@@ -326,8 +329,12 @@ function requireEntry(entries: readonly RepoEntry[], whyEmptyIsFatal: string): R
  * navigation is not missed. A navigation that fails is reported as that, not as a missing
  * request — the two have different causes and a shared message sent people after the wrong one.
  *
- * @param matches  identifies the request. Each call site matches on more than the endpoint
- *   where another component on the same screen calls that endpoint too.
+ * Only for a request no other component on the screen makes. Where another one does, the
+ * first match may be the wrong one, and the other's failure goes unseen: use
+ * `captureEveryDataRequest`.
+ *
+ * @param matches  identifies the request. Call sites match on more than the endpoint where
+ *   the endpoint also serves requests for something else, such as the NXQL endpoint.
  */
 async function captureDataRequest(
   page: Page,
@@ -362,6 +369,88 @@ async function captureDataRequest(
       `${response.status()} — the screen is showing a failure, not data`,
   ).toBeTruthy();
   return response.json();
+}
+
+/**
+ * Navigate, and capture **every** response to a request that more than one component on the
+ * screen makes, until the screen settles.
+ *
+ * For when the first match proves too little. Where the page and the drawer make the identical
+ * request, the drawer's success can arrive first while the page's own request fails. Where
+ * they differ only in `pageSize`, the drawer's request swallows its errors and renders empty
+ * facets, a degraded panel the scan would measure as normal. Requiring every match to succeed,
+ * and at least as many as there are known callers, leaves no unvalidated one.
+ *
+ * @param minimum  how many components are known to make the request; fewer is a failure,
+ *   because one of them never asked
+ * @param settle  run while still listening, so a request made late in the load is included
+ * @returns each response's URL and body, in arrival order
+ */
+async function captureEveryDataRequest(
+  page: Page,
+  label: string,
+  matches: (url: URL, method: string) => boolean,
+  navigate: () => Promise<unknown>,
+  settle: () => Promise<unknown>,
+  minimum: number,
+): Promise<{ url: URL; body: unknown }[]> {
+  const seen: Response[] = [];
+  const onResponse = (r: Response) => {
+    if (matches(new URL(r.url()), r.request().method())) seen.push(r);
+  };
+  let settleError: unknown;
+  page.on('response', onResponse);
+  try {
+    try {
+      await navigate();
+    } catch (err) {
+      throw new Error(
+        `${label}: navigating to the screen failed — ${err instanceof Error ? err.message.split('\n')[0] : String(err)}`,
+      );
+    }
+    // Held until the responses are checked: a failed request is usually why the screen never
+    // settled, and it is the cause worth reporting.
+    await settle().catch((err: unknown) => {
+      settleError = err;
+    });
+  } finally {
+    page.off('response', onResponse);
+  }
+
+  for (const r of seen) {
+    expect(
+      r.ok(),
+      `${label}: one of its data requests, ${new URL(r.url()).pathname}, failed with ${r.status()} — ` +
+        'the screen may be showing a failure, not data',
+    ).toBeTruthy();
+  }
+  if (settleError !== undefined) throw settleError;
+  expect(
+    seen.length,
+    `${label}: ${minimum} components make this data request and only ${seen.length} response(s) ` +
+      'arrived, so at least one of them was never shown to have loaded',
+  ).toBeGreaterThanOrEqual(minimum);
+  return Promise.all(seen.map(async (r) => ({ url: new URL(r.url()), body: await r.json() })));
+}
+
+/**
+ * The page's own body among responses captured together, identified by a query parameter the
+ * drawer's request sets differently.
+ */
+function pageResponse(
+  label: string,
+  responses: readonly { url: URL; body: unknown }[],
+  param: string,
+  value: string,
+): unknown {
+  const own = responses.find((r) => r.url.searchParams.get(param) === value);
+  if (!own) {
+    throw new Error(
+      `${label}: none of the ${responses.length} matching response(s) had ${param}=${value}, ` +
+        "so the page's own request was never seen",
+    );
+  }
+  return own.body;
 }
 
 /** True for an NXQL GET whose query contains every fragment given. */
@@ -542,23 +631,25 @@ journeyTest('document-detail', async ({ signedIn: page, a11y }) => {
  * 44 — and it is the state a shared or bookmarked search link opens in.
  */
 journeyTest('search', async ({ signedIn: page, a11y }) => {
-  const body = await captureDataRequest(
+  // The drawer fires its own `default_search` for its counts, with the same quick filter and
+  // the default sort. If it fails the drawer falls back to the page's narrowed counts rather
+  // than showing an error, so both requests must succeed. `sortBy` then picks the page's: the
+  // drawer's response is not the one the page renders.
+  const responses = await captureEveryDataRequest(
     page,
     'search',
-    // `sortBy` as well as the filter: the drawer fires its own `default_search` for its
-    // counts with the same quick filter and the default sort, and that response is not the
-    // one the page renders.
     (url) =>
       url.pathname.endsWith('/search/pp/default_search/execute') &&
-      url.searchParams.get('quickFilters') === 'noFolder' &&
-      url.searchParams.get('sortBy') === 'dc:title',
+      url.searchParams.get('quickFilters') === 'noFolder',
     () =>
       page.goto('/#/search?quickFilters=noFolder&sortBy=dc:title&sortOrder=asc', {
         waitUntil: 'networkidle',
       }),
+    () => waitForScreenSettled(page, 'lib-search', false),
+    2,
   );
   const first = requireEntry(
-    entriesOf(body),
+    entriesOf(pageResponse('search', responses, 'sortBy', 'dc:title')),
     'search: the "No Containers" query matched no document, so there are no results to scan',
   );
 
@@ -566,7 +657,6 @@ journeyTest('search', async ({ signedIn: page, a11y }) => {
     page.locator('lib-search .list-row').filter({ hasText: first.title }).first(),
     `search must list "${first.title}", the first result its own request returned`,
   ).toBeVisible();
-  await waitForScreenSettled(page, 'lib-search', false);
   await expectSurfaceUsable(page, 'lib-search', 'search');
 
   await a11y.scanPage(SCREEN_SCAN);
@@ -575,19 +665,20 @@ journeyTest('search', async ({ signedIn: page, a11y }) => {
 
 /** Screen 6 — documents, the asset search, as it opens with no filter applied. */
 journeyTest('documents', async ({ signedIn: page, a11y }) => {
-  const body = await captureDataRequest(
+  // The drawer runs the same search with `pageSize: 200` for its facets and renders empty
+  // facets if it fails, so both requests must succeed. `pageSize` then picks the page's: its
+  // first entry need not be the drawer's. 40 is `AssetService.searchAssets`' default, which the
+  // page does not override.
+  const responses = await captureEveryDataRequest(
     page,
     'documents',
-    // `pageSize` identifies the page's request: the drawer runs the same search with
-    // `pageSize: 200` for its facets, and its first entry need not be on the page. 40 is
-    // `AssetService.searchAssets`' default, which the page does not override.
-    (url) =>
-      url.pathname.endsWith('/search/pp/assets_search/execute') &&
-      url.searchParams.get('pageSize') === '40',
+    (url) => url.pathname.endsWith('/search/pp/assets_search/execute'),
     () => page.goto('/#/documents', { waitUntil: 'networkidle' }),
+    () => waitForScreenSettled(page, 'lib-asset-search-results', false),
+    2,
   );
   const first = requireEntry(
-    entriesOf(body),
+    entriesOf(pageResponse('documents', responses, 'pageSize', '40')),
     'documents: the asset search returned nothing, so there is no result list to scan',
   );
 
@@ -595,7 +686,6 @@ journeyTest('documents', async ({ signedIn: page, a11y }) => {
     page.locator('lib-asset-search-results .list-row').filter({ hasText: first.title }).first(),
     `documents must list "${first.title}", the first result its own request returned`,
   ).toBeVisible();
-  await waitForScreenSettled(page, 'lib-asset-search-results', false);
   await expectSurfaceUsable(page, 'lib-asset-search-results', 'documents');
 
   await a11y.scanPage(SCREEN_SCAN);
@@ -755,20 +845,26 @@ journeyTest('recently-viewed', async ({ signedIn: page, a11y }) => {
  * workspace. The URL is asserted against the path the server returned, so a redirect to the
  * wrong folder — or none — cannot be scanned under this label.
  *
- * The drawer asks for the workspace too, with the identical request, so the response captured
- * may be the drawer's. The redirect is what ties it to the page: only the page's own answer
- * navigates, so a page request that failed while the drawer's succeeded never reaches the URL
- * asserted below.
+ * The drawer's personal space panel asks for the workspace too, with the identical request, so
+ * every response to it must succeed and name the same path. The redirect ties that path to
+ * the page: only the page's own answer navigates.
  */
 journeyTest('personal-space', async ({ signedIn: page, a11y }) => {
-  const body = await captureDataRequest(
+  const responses = await captureEveryDataRequest(
     page,
     'personal space',
     (url, method) =>
       method === 'POST' && url.pathname.endsWith('/automation/User.GetUserWorkspace'),
     () => page.goto('/#/personal-space', { waitUntil: 'networkidle' }),
+    () => page.waitForURL((url) => url.hash.startsWith('#/browse/'), { timeout: 15_000 }),
+    2,
   );
-  const workspacePath = (body as { path?: unknown } | null)?.path;
+  const paths = responses.map((r) => (r.body as { path?: unknown } | null)?.path);
+  expect(
+    new Set(paths).size,
+    `personal space: the page and the drawer were given different workspaces (${paths.join(', ')})`,
+  ).toBe(1);
+  const workspacePath = paths[0];
   if (typeof workspacePath !== 'string' || workspacePath === '') {
     throw new Error('personal space: User.GetUserWorkspace returned no path to redirect to');
   }
@@ -849,21 +945,28 @@ function describeState(count: number, noun: string): string {
  * explicitly rather than inferred. The task list itself is in the drawer, and the page's own
  * `listError` is never rendered, which is why the response decides.
  *
- * The page and the drawer make the identical request — `getUserTasks(user, 50)` — so the one
- * captured may be either. What that leaves open is bounded: a failed drawer request shows
- * `.tree-empty.error`, which `expectDrawerPanelHealthy` refuses; a failed page request, with
- * tasks on the server, never shows the task form this then requires; and a failed page
- * request with none renders the same `.empty-detail` a successful one does, so the DOM
- * scanned is the empty state either way.
+ * The page and the drawer make the identical request — `getUserTasks(user, 50)` — so no URL
+ * tells the page's own apart. A failed page request with no tasks renders the same
+ * `.empty-detail` a successful one does, so capturing only the first response could record a
+ * successful empty-state scan while the page's request failed. Every response is captured
+ * instead, both callers are required to have asked, all must succeed, and all must agree on
+ * the count.
  */
 journeyTest('tasks', async ({ signedIn: page, a11y }) => {
-  const body = await captureDataRequest(
+  const responses = await captureEveryDataRequest(
     page,
     'tasks',
     (url) => url.pathname.endsWith('/api/v1/task'),
     () => page.goto('/#/tasks', { waitUntil: 'networkidle' }),
+    () => waitForScreenSettled(page, 'lib-tasks-page', false),
+    2,
   );
-  const tasks = entriesOf(body);
+  const counts = responses.map((r) => entriesOf(r.body).length);
+  expect(
+    new Set(counts).size,
+    `tasks: the page and the drawer were given different task counts (${counts.join(', ')})`,
+  ).toBe(1);
+  const tasks = entriesOf(responses[0].body);
 
   if (tasks.length > 0) {
     const firstId = (tasks[0] as { id?: unknown }).id;
@@ -926,16 +1029,19 @@ journeyTest('expired-queue', async ({ signedIn: page, a11y }) => {
 
 /** Screen 14 — trash, with something in it. */
 journeyTest('trash', async ({ signedIn: page, a11y }) => {
-  const body = await captureDataRequest(
+  // The filters drawer runs the same query with `pageSize: 200` for its counts and shows zero
+  // counts if it fails (`catchError` to an empty list), so both requests must succeed.
+  // `pageSize` then picks the page's: its first entry need not be the drawer's.
+  const responses = await captureEveryDataRequest(
     page,
     'trash',
-    // `pageSize` identifies the page's request: the filters drawer runs the same query with
-    // `pageSize: 200` for its counts, and its first entry need not be on the page.
-    (url) => isNxqlQuery(url, 'ecm:isTrashed = 1') && url.searchParams.get('pageSize') === '100',
+    (url) => isNxqlQuery(url, 'ecm:isTrashed = 1'),
     () => page.goto('/#/trash', { waitUntil: 'networkidle' }),
+    () => waitForScreenSettled(page, 'lib-trash', false),
+    2,
   );
   const first = requireEntry(
-    entriesOf(body),
+    entriesOf(pageResponse('trash', responses, 'pageSize', '100')),
     'trash: nothing is in the trash, so the screen shows only "Trash is empty" — trash a ' +
       'document before running this screen',
   );
@@ -944,7 +1050,6 @@ journeyTest('trash', async ({ signedIn: page, a11y }) => {
     page.locator('lib-trash .list-row').filter({ hasText: first.title }).first(),
     `trash must list "${first.title}", the first document its own request returned`,
   ).toBeVisible();
-  await waitForScreenSettled(page, 'lib-trash', false);
   await expectSurfaceUsable(page, 'lib-trash', 'trash');
 
   await a11y.scanPage(SCREEN_SCAN);
