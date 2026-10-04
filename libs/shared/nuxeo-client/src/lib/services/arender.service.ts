@@ -1,8 +1,17 @@
 import { inject, Injectable, isDevMode } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import { catchError, map, Observable, of } from 'rxjs';
 import { ARENDER_CONFIG, type ARenderConfig } from '../arender.config';
-import { CURRENT_USERNAME } from '../current-user.token';
-import { isNavigableBaseUrl, insecureAllowedForHost } from '../utils/navigable-url';
+import {
+  isNavigableBaseUrl,
+  insecureAllowedForHost,
+  navigableUrlOrNull,
+} from '../utils/navigable-url';
+import { NuxeoApiBase } from './nuxeo-api-base';
+
+/** Shape of the `Document.ARenderGet*Url` automation responses. */
+interface ARenderPreviewerUrlResponse {
+  readonly previewerUrl?: string | null;
+}
 
 /**
  * ARender annotation viewer integration.
@@ -27,7 +36,7 @@ import { isNavigableBaseUrl, insecureAllowedForHost } from '../utils/navigable-u
 @Injectable({ providedIn: 'root' })
 export class ARenderService {
   private readonly rawCfg = inject(ARENDER_CONFIG);
-  private readonly currentUsername = inject(CURRENT_USERNAME);
+  private readonly api = inject(NuxeoApiBase);
 
   /**
    * The configuration, or `null` if it is absent, **incomplete**, or **not safe to navigate**.
@@ -38,8 +47,9 @@ export class ARenderService {
    * **1. Absent.** `integrations.arender` defaults to `null`.
    *
    * **2. A blank endpoint** — worse than `null`, because `fetch('')` resolves against the
-   * *application's own* origin, so `isAvailable()` would report a viewer as present and
-   * `getPreviewerUrl` would build a same-origin `/?url=…` that then gets trusted into an iframe.
+   * *application's own* origin, so `isAvailable()` would report a viewer as present. It would also
+   * allow-list this application's own origin in `framableOrNull`, which is the more dangerous half:
+   * a same-origin URL in the response body would then be framed and trusted.
    *
    * This check is now **defence in depth for direct providers**, not a patch over the layer below.
    * It was written when `bootstrap-config.ts`'s `mergeIntegrations` carried the comment "Both
@@ -52,7 +62,7 @@ export class ARenderService {
    * code that no longer runs.
    *
    * **3. A `viewerOrigin` that is not an http(s) origin.** This is the one that matters most.
-   * `viewerOrigin` is string-concatenated into a URL which is then bypassed and loaded into an
+   * `viewerOrigin` is the allow-list deciding which origin may be bypassed and loaded into an
    * `iframe`, and the manifest it comes from is a *customer-editable* surface. A manifest setting
    * it to `javascript:alert(1)` is complete, non-blank and well-formed — `new URL()` accepts
    * `javascript:` without complaint — so nothing above catches it, and the result is script
@@ -67,10 +77,10 @@ export class ARenderService {
     const cfg = this.rawCfg;
     if (!cfg) return null;
 
-    // Navigated in an iframe — the load-bearing check. `isNavigableBaseUrl`, not
-    // a bare origin check: both URL builders below add parameters to this value, and a base
-    // carrying its own query or fragment silently absorbs them so no top-level `url` parameter
-    // survives. See that function for the three cases it rejects and why.
+    // Navigated in an iframe, and now also the origin allow-list for the URL the server returns
+    // (see `framableOrNull`). `isNavigableBaseUrl` rather than a bare origin check: a value
+    // carrying its own query, fragment or userinfo is a misconfiguration whether or not this code
+    // still appends to it, and `origin` would silently discard all three while reporting a match.
     // `insecureAllowedForHost`, not a bare `isDevMode()`. An iframe is a downgrade only relative to
     // its host document, so refusing `http:` when the application is itself served over `http:` — an
     // ordinary on-prem deployment — silently disabled ARender for exactly those deployments without
@@ -79,104 +89,101 @@ export class ARenderService {
     // policy and implemented another.
     if (!isNavigableBaseUrl(cfg.viewerOrigin, insecureAllowedForHost(isDevMode()))) return null;
 
-    // Not navigated by the browser: this is encoded into the `url=` parameter and fetched by
-    // ARender's own server through the auth-proxy sidecar, so it is legitimately plain http. It is
-    // still a base that gets a path appended, so it carries the same no-query/no-fragment
-    // requirement — a `#` here would truncate the nxfile path ARender is asked to fetch.
+    // `nuxeoInternalUrl` is **vestigial under NEV 2026** and nothing below reads it. It addressed
+    // the ARender 2023 stack, where the client encoded an nxfile URL for the nginx sidecar to fetch
+    // with a shared Basic credential; NEV's connector resolves blobs itself from `documentId` over
+    // OAuth2, so there is no such URL to build.
     //
-    // `isNavigableBaseUrl` rejects a *bare* `?` or `#` as well as a populated one, which it did not
-    // until review found the gap: `new URL('http://proxy/nuxeo?').search` is `''`, so that value
-    // satisfied a check whose entire purpose was to establish that appending to it is safe.
+    // Still validated, and still required non-blank by `completeARenderConfig`, because removing the
+    // field is a breaking change to `AppARenderConfig` — a published type, frozen in
+    // `docs/api/platform.api.md`. Retiring it belongs with that API change, not here, and leaving it
+    // unvalidated in the meantime would mean a value this file accepts but never checks.
     if (!isNavigableBaseUrl(cfg.nuxeoInternalUrl, true)) return null;
 
     return cfg;
   }
 
   /**
-   * `<nuxeoInternalUrl>/nxfile/default/<uid>/<xpath>`, resolved rather than concatenated.
+   * The server-built previewer URL if it is safe to frame, otherwise `null`.
    *
-   * Concatenation was a second instance of the defect `buildViewerUrl` was already written to
-   * avoid, and it survived because `isNavigableBaseUrl` was accepting a base it should not have:
-   * `http://proxy/nuxeo?` + `/nxfile/default/uid/file:content` is a URL whose path is only
-   * `/nuxeo`, with the nxfile path demoted to a query string, so ARender fetches the Nuxeo root
-   * instead of the blob and reports no error. With `#` the suffix becomes a fragment and is never
-   * sent at all.
+   * This is the new point of trust, and it is stricter than what it replaces. The URL no longer
+   * comes from configuration this code concatenated — it arrives in an **HTTP response body** and
+   * is then bypassed into an `iframe`, so it is attacker-controlled the moment the Nuxeo server is.
    *
-   * The validator now rejects those bases, and this resolves structurally so the *shape* of the
-   * bug is unavailable rather than merely unreachable — two independent guards, as elsewhere in
-   * this file, because one function should not be the only thing between a customer-editable
-   * manifest and a wrong fetch.
+   * `allowedOrigins: [viewerOrigin]` is therefore load-bearing rather than belt-and-braces. The
+   * previous implementation validated only the scheme, and
+   * `docs/sonarcloud-security-remediation-plan.md` records that missing origin check as an
+   * accepted residual risk on the Category C bypass. Since `viewerOrigin` is no longer needed to
+   * *build* anything, it can pay for itself as the allow-list instead, which closes that gap.
    *
-   * `uid` is encoded; `xpath` is not, because `file:content` must keep its colon and Nuxeo's
-   * nxfile route expects the raw xpath.
+   * Note `origin` discards any path: a `viewerOrigin` of `https://host/arender` allow-lists the
+   * whole of `https://host`, not just `/arender`. `isNavigableBaseUrl` in `cfg` already refuses a
+   * query, fragment or userinfo on that value, so the widening is limited to the path — acceptable,
+   * because a viewer sharing a host with something untrusted is not a deployment we support.
    */
-  private buildNxfileUrl(base: string, docUid: string, blobXPath: string): string {
-    // A trailing slash is required or `new URL()` resolves the relative path against the base's
-    // *parent*, turning `http://proxy/nuxeo` into `http://proxy/nxfile/…`.
-    const withSlash = base.endsWith('/') ? base : `${base}/`;
-    return new URL(
-      `nxfile/default/${encodeURIComponent(docUid)}/${blobXPath}`,
-      withSlash,
-    ).toString();
+  private framableOrNull(url: string | null | undefined, cfg: ARenderConfig): string | null {
+    return navigableUrlOrNull(url, {
+      allowInsecure: insecureAllowedForHost(isDevMode()),
+      allowedOrigins: [cfg.viewerOrigin],
+    });
   }
 
   /**
-   * `base` with `url` parameters and the acting user attached.
+   * The previewer URL for one document, from the `nuxeo-arender` addon.
    *
-   * Built with `URL`/`searchParams` rather than string concatenation. Concatenation was the defect:
-   * `${viewerOrigin}/?url=${encodeURIComponent(...)}` assumes `viewerOrigin` has no query and no
-   * fragment of its own, and produced a URL with no top-level `url` parameter whenever it did.
-   * `searchParams.append` is also what makes the two-document diff case correct — `url` legitimately
-   * appears twice, which a `set`-based or hand-built approach gets wrong.
-   */
-  private buildViewerUrl(base: string, nxfileUrls: string[]): string {
-    const url = new URL(base);
-    // Preserve the trailing slash the string-concatenation version always produced. It wrote
-    // `${viewerOrigin}/?url=…`, so a configured prefix of `https://host/arender` yielded
-    // `/arender/?url=…`; `new URL()` alone would yield `/arender?url=…`, and those are distinct
-    // routes on the viewer. Moving to `URL`/`searchParams` was meant to fix parameter placement,
-    // not to silently repoint a path-prefixed deployment.
-    if (!url.pathname.endsWith('/')) url.pathname = `${url.pathname}/`;
-    for (const nxfileUrl of nxfileUrls) {
-      url.searchParams.append('url', nxfileUrl);
-    }
-    const user = this.currentUsername();
-    if (user) {
-      url.searchParams.set('user', user);
-    }
-    return url.toString();
-  }
-
-  /**
-   * Builds the ARender viewer URL by passing a direct nxfile download URL as the `url` parameter.
-   * The nxfile URL points to the nginx auth-proxy sidecar inside Docker so the ARender rendition
-   * service can fetch the blob with Basic Auth added automatically.
+   * Asks Nuxeo rather than building the URL here, because **the client cannot build it.** NEV's
+   * `BlobNuxeoURLParser.canParse` claims a request only when it carries a `documentId` parameter,
+   * whose value is `<repository>,<uid>,<xpath>,<digest>` — and the blob digest is not something a
+   * browser can compute. Concatenating `?url=<nxfile-url>` instead, as this method used to, is the
+   * 2023 generic-ARender contract: NEV 2026 leaves it unparsed and renders
+   * "An error occured / Could not open document".
    *
-   * Includes `user` so ARender's `RequestParameterAuthenticationFilter` attributes annotations to
-   * the logged-in Nuxeo user.
+   * The viewer host comes from the server too, via `arender.server.previewer.host` in `nuxeo.conf`.
+   * That retires `nuxeoInternalUrl` and the nginx sidecar that used to inject a **single shared**
+   * Basic credential on every user's behalf: NEV fetches blobs itself over OAuth2 as the signed-in
+   * user, so Nuxeo's per-user ACLs finally apply to the viewer.
    *
-   * Answers `null` when ARender is not configured — the same value the caller already treats as
-   * "no annotation viewer for this document".
+   * Answers `null` when ARender is unconfigured, when the operation fails, or when the URL it
+   * returns is not framable — all of which the caller already treats as "no annotation viewer for
+   * this document".
    */
   getPreviewerUrl(docUid: string, blobXPath = 'file:content'): Observable<string | null> {
     const cfg = this.cfg;
     if (!cfg) return of(null);
 
-    const nxfileUrl = this.buildNxfileUrl(cfg.nuxeoInternalUrl, docUid, blobXPath);
-    return of(this.buildViewerUrl(cfg.viewerOrigin, [nxfileUrl]));
+    return this.api
+      .post<ARenderPreviewerUrlResponse>(
+        '/nuxeo/api/v1/automation/Document.ARenderGetPreviewerUrl',
+        { input: docUid, params: { blobXPath } },
+      )
+      .pipe(
+        map((response) => this.framableOrNull(response?.previewerUrl, cfg)),
+        // The addon is absent on any server without the `nuxeo-arender` package, which answers 404
+        // rather than an empty body. That is a deployment state, not a defect, and it must degrade
+        // to "Annotations are not available" exactly as an unconfigured integration does.
+        catchError(() => of(null)),
+      );
   }
 
   /**
-   * Builds an ARender diff URL for side-by-side document comparison. Answers `null` when ARender
-   * is not configured.
+   * The side-by-side comparison URL for two documents.
+   *
+   * Same reasoning as `getPreviewerUrl`: the server appends a second `documentId` and
+   * `visualization.multiView.doComparison=true`, neither of which the client can assemble without
+   * both digests.
    */
   getDiffUrl(leftDocUid: string, rightDocUid: string): Observable<string | null> {
     const cfg = this.cfg;
     if (!cfg) return of(null);
 
-    const leftUrl = this.buildNxfileUrl(cfg.nuxeoInternalUrl, leftDocUid, 'file:content');
-    const rightUrl = this.buildNxfileUrl(cfg.nuxeoInternalUrl, rightDocUid, 'file:content');
-    return of(this.buildViewerUrl(cfg.viewerOrigin, [leftUrl, rightUrl]));
+    return this.api
+      .post<ARenderPreviewerUrlResponse>('/nuxeo/api/v1/automation/Document.ARenderGetDiffUrl', {
+        params: { leftDocId: leftDocUid, rightDocId: rightDocUid },
+      })
+      .pipe(
+        map((response) => this.framableOrNull(response?.previewerUrl, cfg)),
+        catchError(() => of(null)),
+      );
   }
 
   /**
