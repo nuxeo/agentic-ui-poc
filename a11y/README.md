@@ -90,7 +90,10 @@ they are redirected to users and groups instead. So `journey` requires an admini
 exits 2 for a `powerusers` member, rather than reporting the stack ready and failing on its
 last screen.
 
-`npm run a11y:scan -- preflight` checks all of it and changes nothing.
+`npm run a11y:scan -- preflight` checks the stack and changes nothing. It **reports** the
+account's role but does not enforce one, because it does not know which suite comes next — it
+exits 0 for an ordinary account. Each suite command runs it with the role that suite needs and
+exits 2 if the account falls short.
 
 Because everything is `--no-save`, **`package-lock.json` is untouched by this folder** — there
 is no dependency to unwind when it is removed.

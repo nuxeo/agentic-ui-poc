@@ -215,7 +215,10 @@ if (appStatus !== null && auth) {
               : 'Use an account with\n  administration access, or run the suite that does not visit it (states).'),
         );
       } else {
-        ok.push(`${username} has no administration access — fine for this suite, which does not visit it`);
+        ok.push(
+          `${username} has no administration access — enough for states, which does not visit ` +
+            '/#/administration; surfaces, modes, journey and the diagnostics will refuse it',
+        );
       }
     } else if (NEEDS_ADMIN) {
       // Not "already reported by the document query": that is a different endpoint, and it
@@ -228,8 +231,8 @@ if (appStatus !== null && auth) {
       );
     } else {
       ok.push(
-        `/nuxeo/api/v1/me returned HTTP ${res.status} — administration access not checked, ` +
-          'which this suite does not need',
+        `/nuxeo/api/v1/me returned HTTP ${res.status} — administration access not checked. ` +
+          'states does not need it; the suites that do will refuse to start until /me answers',
       );
     }
   } catch (error) {
