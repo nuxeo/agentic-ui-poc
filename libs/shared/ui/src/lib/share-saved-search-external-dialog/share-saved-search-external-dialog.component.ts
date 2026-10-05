@@ -12,6 +12,7 @@ import { catchError, of } from 'rxjs';
 
 import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '../datepicker-intl/translated-datepicker-intl';
 
 export interface ShareSavedSearchExternalDialogData {
   savedSearchId: string;
@@ -45,7 +46,7 @@ const RIGHT_OPTIONS = [
     MatButtonModule,
     MatDatepickerModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideNativeDateAdapter(), provideTranslatedDatepickerIntl()],
   templateUrl: './share-saved-search-external-dialog.component.html',
   styleUrl: './share-saved-search-external-dialog.component.scss',
 })

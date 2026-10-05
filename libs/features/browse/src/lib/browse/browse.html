@@ -6,7 +6,7 @@
         <mat-icon class="header-doc-icon">{{ docIcon(doc) }}</mat-icon>
         <div class="header-doc-info">
           <div class="header-doc-title" role="heading" aria-level="1">{{ doc.title }}</div>
-          <span class="header-doc-type">{{ doc.type }}</span>
+          <span class="header-doc-type">{{ doc.type | docTypeLabel }}</span>
         </div>
       }
     </div>
@@ -93,7 +93,7 @@
 
   @if (isDomainBrowse() || isRepositoryRootBrowse()) {
     <p class="browse-domain-hint" role="note">
-      {{ domainContainerGuidance }}
+      {{ domainContainerGuidanceKey | translate }}
     </p>
   }
 
@@ -369,7 +369,9 @@
                                   <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
                                 </div>
                               } @else if (col.key === 'type') {
-                                <sat-category-tag category="blue">{{ doc.type }}</sat-category-tag>
+                                <sat-category-tag category="blue">{{
+                                  doc.type | docTypeLabel
+                                }}</sat-category-tag>
                               } @else if (col.key === 'modified') {
                                 {{ doc.lastModified | date: 'mediumDate' }}
                               } @else if (col.key === 'lastContributor') {
@@ -449,7 +451,7 @@
                       </div>
                       <div class="card-body">
                         <span class="card-title">{{ doc.title }}</span>
-                        <span class="card-type">{{ doc.type }}</span>
+                        <span class="card-type">{{ doc.type | docTypeLabel }}</span>
                       </div>
                     </button>
                     @if (isCollectionEntry(doc) && hasCollectionEntryActions(doc)) {
@@ -956,7 +958,9 @@
                             <span class="doc-title">{{ doc.title }}</span>
                           </td>
                           <td>
-                            <sat-category-tag category="blue">{{ doc.type }}</sat-category-tag>
+                            <sat-category-tag category="blue">{{
+                              doc.type | docTypeLabel
+                            }}</sat-category-tag>
                           </td>
                           <td>{{ doc.lastModified | date: 'mediumDate' }}</td>
                           <td>
@@ -1093,7 +1097,7 @@
               </div>
               <div class="panel-info-row">
                 <span class="info-label">{{ 'browse.browse.type' | translate }}</span>
-                <span class="info-value">{{ doc.type }}</span>
+                <span class="info-value">{{ doc.type | docTypeLabel }}</span>
               </div>
             </div>
           </div>

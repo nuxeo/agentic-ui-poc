@@ -75,7 +75,7 @@ import {
   hasDocumentPermissionsEnricher,
   canViewDocumentAuditLog,
   auditActivityLabel,
-  DOMAIN_CONTAINER_GUIDANCE,
+  DOMAIN_CONTAINER_GUIDANCE_KEY,
   isDomainParentType,
   isRepositoryRootPath,
   isRestrictedImportParentPath,
@@ -92,6 +92,7 @@ import {
   formatRelativeTime,
   formatAceDateRange,
   permissionRightLabel,
+  DocTypeLabelPipe,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -110,6 +111,7 @@ import {
   ShareDialogData,
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
+  provideTranslatedDatepickerIntl,
 } from '@nuxeo-satori/platform/ui';
 
 import {
@@ -169,7 +171,9 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
 @Component({
   selector: 'lib-browse',
   standalone: true,
+  providers: [provideTranslatedDatepickerIntl()],
   imports: [
+    DocTypeLabelPipe,
     DescriptorLabelPipe,
     TranslatePipe,
     DatePipe,
@@ -297,7 +301,7 @@ export class BrowseComponent {
   readonly canWriteCurrentDoc = computed(() => canWriteDocument(this.currentDoc()));
   readonly isDomainBrowse = computed(() => isDomainParentType(this.currentDoc()?.type));
   readonly isRepositoryRootBrowse = computed(() => isRepositoryRootPath(this.browsePath()));
-  readonly domainContainerGuidance = DOMAIN_CONTAINER_GUIDANCE;
+  readonly domainContainerGuidanceKey = DOMAIN_CONTAINER_GUIDANCE_KEY;
   readonly canCreateContentHere = computed(() => {
     const doc = this.currentDoc();
     if (!doc || doc.type === 'Favorites' || !canAddChildren(doc) || !this.isBrowseFolderish(doc)) {
@@ -1323,9 +1327,13 @@ export class BrowseComponent {
       return;
     }
     if (isDomainParentType(doc.type) || isRestrictedImportParentPath(doc.path)) {
-      this.snackBar.open(DOMAIN_CONTAINER_GUIDANCE, this.translate.instant('common.ok'), {
-        duration: 6000,
-      });
+      this.snackBar.open(
+        this.translate.instant(DOMAIN_CONTAINER_GUIDANCE_KEY),
+        this.translate.instant('common.ok'),
+        {
+          duration: 6000,
+        },
+      );
       return;
     }
     this.dialog
@@ -2247,8 +2255,8 @@ export class BrowseComponent {
         error: (err) => {
           this.actionInProgress.set(null);
           const message = isMailSendError(err)
-            ? mailSendFailureMessage('send')
-            : 'Failed to send notification';
+            ? mailSendFailureMessage('send', (key) => this.translate.instant(key))
+            : this.translate.instant('browse.message.failed-to-send-notification');
           this.snackBar.open(message, this.translate.instant('common.ok'), { duration: 7000 });
         },
       });

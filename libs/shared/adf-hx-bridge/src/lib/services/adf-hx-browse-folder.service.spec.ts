@@ -3,6 +3,7 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { firstValueFrom } from 'rxjs';
 import type { AuditEntry, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import { nuxeoDocument } from '@agentic-ui/shared/testing';
 
 import { AdfHxBrowseFolderService } from './adf-hx-browse-folder.service';
 
@@ -25,17 +26,23 @@ function auditEntry(overrides: Partial<AuditEntry> = {}): AuditEntry {
   };
 }
 
+/**
+ * Migrated to `@agentic-ui/shared/testing` — the fifth duplicate document builder, and the
+ * one Stage 3's "migrated all duplicate builders" claim was wrong about. Reported on PR #226.
+ *
+ * `state` and `lastModified` are overrides rather than the fixture's defaults because this
+ * file's cases were written around them: `state` is an optional field the factory
+ * deliberately leaves absent, and several specs here read the lifecycle.
+ *
+ * The `as NuxeoDocument` cast is gone with the literal. It was what let the local builder
+ * drift from the model, which is the coupling this library exists to provide.
+ */
 function nuxeoDoc(overrides: Partial<NuxeoDocument> = {}): NuxeoDocument {
-  return {
-    uid: 'doc-1',
-    title: 'Invoice',
-    type: 'File',
-    path: '/default-domain/workspaces/ws/Invoice',
+  return nuxeoDocument({
     state: 'project',
     lastModified: '2026-02-01T00:00:00.000Z',
-    properties: {},
     ...overrides,
-  } as NuxeoDocument;
+  });
 }
 
 describe('AdfHxBrowseFolderService', () => {

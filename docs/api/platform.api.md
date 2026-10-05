@@ -114,6 +114,7 @@ interface AppSsoEndpointConfig {
 interface AppThemeConfig {
     readonly id: string;
     readonly label: string;
+    readonly labelKey?: string;
     readonly base: string;
     readonly preview: AppThemePreview;
     readonly tokens: AppThemeTokens;
@@ -419,7 +420,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-304 exported symbol(s).
+313 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -732,7 +733,8 @@ interface CsvServerImportOptions {
 const DEFAULT_IMPORT_PARENT_PATH = "/";
 const DEFAULT_VOCABULARY_ORDERING = 10000000;
 const DOC_TYPE_ICONS: Record<string, string>;
-const DOMAIN_CONTAINER_GUIDANCE = "Open Sections, Templates, or Workspaces, then create content inside those folders.";
+const DOC_TYPE_LABEL_KEYS: Record<string, string>;
+const DOMAIN_CONTAINER_GUIDANCE_KEY = "browse.message.domain-container-guidance";
 const DOMAIN_STRUCTURAL_ROOT_TYPES: Set<string>;
 interface DirectoryEntriesResponse {
     entries: DirectoryEntryRest[];
@@ -779,6 +781,12 @@ class DirectoryService {
     getEventCategories(): Observable<DirectoryEntry[]>;
     static ɵfac: i0.ɵɵFactoryDeclaration<DirectoryService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<DirectoryService>;
+    }
+}
+class DocTypeLabelPipe implements PipeTransform {
+    transform(type: string | null | undefined): string;
+    static ɵfac: i0.ɵɵFactoryDeclaration<DocTypeLabelPipe, never>;
+    static ɵpipe: i0.ɵɵPipeDeclaration<DocTypeLabelPipe, "docTypeLabel", true>;
     }
 }
 class DocumentDetailService {
@@ -1380,7 +1388,7 @@ interface NuxeoWorkflowModelList {
     }
 }
 const PERMISSION_DENIED_KEY = "common.permission-denied";
-const PERMISSION_NOTIFICATION_MAIL_HINT = "Requires outbound mail (SMTP) configured on the Nuxeo server.";
+const PERMISSION_NOTIFICATION_MAIL_HINT_KEY = "permissions.notification.mail-hint";
 interface PaginatedListMeta {
     totalSize?: number;
     resultsCount?: number;
@@ -1391,10 +1399,11 @@ interface PaginatedListMeta {
     isNextPageAvailable?: boolean;
     }
 }
+type PermissionMessageTranslate = (key: string) => string;
 interface PermissionWithNotificationResult {
     document: NuxeoDocument;
     notificationSent: boolean;
-    notificationError?: string;
+    notificationErrorKey?: string;
     }
 }
 interface PrincipalPermissionPage {
@@ -1426,7 +1435,7 @@ const READ_WRITE_DOCUMENT = "ReadWrite";
 const RECENTLY_EDITED_QUERY: string;
 const RECENTLY_VIEWED_QUERY: string;
 const REMOVE_DOCUMENT = "Remove";
-const RESTRICTED_IMPORT_LOCATION_MESSAGE = "Select a different container to create your content.";
+const RESTRICTED_IMPORT_LOCATION_MESSAGE_KEY = "browse.message.restricted-import-location";
 interface SavedSearch {
     uid: string;
     title: string;
@@ -1459,6 +1468,12 @@ interface SearchAggregations {
     dc_coverage_agg?: AggregateResult;
     dc_subjects_agg?: AggregateResult;
     common_size_agg?: AggregateResult;
+    }
+}
+interface SearchCollectionOption {
+    id: string;
+    title: string;
+    itemCount: number;
     }
 }
 interface SearchQueryParams {
@@ -1586,6 +1601,12 @@ class TagService {
     searchTags(term: string): Observable<string[]>;
     static ɵfac: i0.ɵɵFactoryDeclaration<TagService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<TagService>;
+    }
+}
+interface TaskDueDistance {
+    readonly due: boolean;
+    readonly unit: 'days' | 'hours' | 'under-two-hours';
+    readonly count: number;
     }
 }
 class TaskService {
@@ -1774,6 +1795,7 @@ function directoryPickerLabel(entry: Pick<DirectoryEntry, 'id' | 'displayLabel'>
 function directoryShowsParentField(directoryName: string, metadata?: DirectoryMetadata): boolean;
 function directoryUsesL10nLabel(directoryName: string): boolean;
 function docTypeIcon(type: string): string;
+function docTypeLabel(type: string, translate: (key: string) => string): string;
 function documentHasMainBlob(doc: NuxeoDocument): boolean;
 function documentHasPersistedMainBlob(doc: NuxeoDocument): boolean;
 function documentNavigationUrl(doc: Pick<NuxeoDocument, 'facets' | 'path' | 'type' | 'uid'>, docTypeHint?: string): string;
@@ -1823,7 +1845,8 @@ function isRestrictedImportParentPath(path: string | null | undefined): boolean;
 function isSafeHttpUrl(url: string): boolean;
 function isUserWorkspacePath(nuxeoPath: string): boolean;
 function l10nEntryLabel(entry: L10nDirectoryEntry): string;
-function mailSendFailureMessage(context: 'add' | 'send' | 'update'): string;
+function mailSendFailureKey(context: 'add' | 'send' | 'update'): string;
+function mailSendFailureMessage(context: 'add' | 'send' | 'update', translate: PermissionMessageTranslate): string;
 function mediaTypeEssence(value: string | null | undefined): string;
 function mergeCreateDocumentBody(template: NuxeoCreateDocumentTemplate, docType: string, nameFallback: string, overrides: Record<string, unknown>): Record<string, unknown>;
 function mergeDocumentPermissionsContext(existing: NuxeoDocument, updated: NuxeoDocument, options?: MergeDocumentPermissionsContextOptions): NuxeoDocument;
@@ -1845,10 +1868,11 @@ function parseAdfHxBrowsePathFromRouterUrl(routerUrl: string): string;
 function parseBrowseNuxeoPathFromRouterUrl(routerUrl: string): string;
 function parseBrowseReturnMode(value: string | null | undefined): BrowseReturnMode;
 function parseDocumentSubtypes(doc: NuxeoDocument): string[];
-function permissionCreateMailFailureMessage(): string;
-function permissionNotificationAceNotFoundMessage(context: 'add' | 'update'): string;
+function permissionCreateMailFailureMessage(translate: PermissionMessageTranslate): string;
+function permissionNotificationAceNotFoundKey(context: 'add' | 'update'): string;
+function permissionNotificationAceNotFoundMessage(context: 'add' | 'update', translate: PermissionMessageTranslate): string;
 function permissionRightLabel(permission: string, translate: (key: string) => string): string;
-function permissionUpdateMailFailureMessage(): string;
+function permissionUpdateMailFailureMessage(translate: PermissionMessageTranslate): string;
 function postTrashBrowseRouterUrl(deletedDocPath: string): string;
 function principalPermissionTimeFrameLabel(row: PrincipalPermissionRow, translate: (key: string) => string, locale: string): string;
 function principalPermissionToLocalRow(row: PrincipalPermissionRow, translate: (key: string) => string, locale: string): LocalPermissionRow;
@@ -1874,6 +1898,7 @@ function shouldShowUserWorkspaceBreadcrumbs(nuxeoPath: string, currentUsername: 
 function sortDocumentSubtypes(types: string[]): string[];
 function summarizeCsvImportReport(report: string): string;
 function supportsContentLakeIngest(doc: NuxeoDocument | null | undefined): boolean;
+function taskDueDistance(dueDate: string, now?: number): TaskDueDistance;
 function titleFromFileName(fileName: string): string;
 function toAdfHxBrowseRouterUrl(nuxeoPath: string): string;
 function toBrowseRouterUrl(nuxeoPath: string): string;
@@ -1891,7 +1916,7 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void;
 
 ## @nuxeo-satori/platform/ui
 
-35 exported symbol(s).
+41 exported symbol(s).
 
 ```ts
 class ConfirmDialogComponent {
@@ -1971,11 +1996,11 @@ class DocumentViewerComponent {
     readonly showVideoInfoCard: _angular_core.Signal<boolean>;
     readonly arenderAvailable: _angular_core.Signal<boolean>;
     readonly exifEntries: _angular_core.Signal<{
-    label: string;
+    labelKey: string;
     value: string;
     }[]>;
     readonly iptcEntries: _angular_core.Signal<{
-    label: string;
+    labelKey: string;
     value: string;
     }[]>;
     readonly zoom: _angular_core.WritableSignal<number>;
@@ -2076,6 +2101,8 @@ interface IptcData {
     [key: string]: string | undefined;
     }
 }
+const PLATFORM_EN_TRANSLATIONS: Readonly<Record<string, string>>;
+const PLATFORM_MISSING_TRANSLATION_NEXT: InjectionToken<MissingTranslationHandler>;
 interface PermissionEntry {
     id: string;
     userGroup: string;
@@ -2100,6 +2127,12 @@ interface PictureView {
     fileSize: string;
     format: string;
     downloadUrl: string;
+    }
+}
+class PlatformEnglishMissingTranslationHandler implements MissingTranslationHandler {
+    handle(params: MissingTranslationHandlerParams): _ngx_translate_core.StrictTranslation | rxjs.Observable<_ngx_translate_core.StrictTranslation>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<PlatformEnglishMissingTranslationHandler, never>;
+    static ɵprov: _angular_core.ɵɵInjectableDeclaration<PlatformEnglishMissingTranslationHandler>;
     }
 }
 const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig>;
@@ -2187,6 +2220,14 @@ interface StoryboardItem {
     }
 }
 type TranslateFn = (key: string, params?: Record<string, unknown>) => string;
+class TranslatedDatepickerIntl extends MatDatepickerIntl {
+    constructor();
+    formatYearRange(start: string, end: string): string;
+    formatYearRangeLabel(start: string, end: string): string;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<TranslatedDatepickerIntl, never>;
+    static ɵprov: _angular_core.ɵɵInjectableDeclaration<TranslatedDatepickerIntl>;
+    }
+}
 class UiComponent {
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<UiComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<UiComponent, "lib-ui", never, {}, {}, never, never, true, never>;
@@ -2225,6 +2266,8 @@ class WidgetGridComponent {
 }
 function observeStripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): MutationObserver | null;
 function openDocumentCompareDialog(dialog: MatDialog, items: DocumentCompareDialogData['items']): void;
+function providePlatformEnglishFallback(): Provider;
+function provideTranslatedDatepickerIntl(): Provider;
 function stripRedundantMatInputAriaRequired(input: HTMLInputElement | null | undefined): void;
 function trashDocumentConfirmData(title: string, translate: TranslateFn): ConfirmDialogData;
 function trashSelectedDocumentsConfirmData(count: number, translate: TranslateFn): ConfirmDialogData;

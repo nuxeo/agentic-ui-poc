@@ -333,7 +333,11 @@ const SIX = {
   'apps/nuxeo-ui/public/i18n/fr.json': FR_SIX,
 };
 
-expectGreen('a real translation that leaves a proper noun in English', 'checkCataloguesAreTranslated', SIX);
+expectGreen(
+  'a real translation that leaves a proper noun in English',
+  'checkCataloguesAreTranslated',
+  SIX,
+);
 
 expectRed(
   'a catalogue that is the English export under a French name — the Crowdin defect itself',
@@ -691,6 +695,261 @@ expectRed(
   /introduces placeholder="Search documents"/,
 );
 
+/* ---------------- checkNoHardcodedUiText: the proven-fixture exemption ---------------- */
+//
+// This exemption had NO controls at all, which is how it was wrong twice before review caught
+// a third. It decides whether a `*.host.html` / `*.spec.html` is test data — exempt from the
+// hard-coded-English gate — or a template like any other, and it is meant to FAIL CLOSED.
+//
+// Round one compared basenames against whole file bodies and nothing else. Round two added the
+// non-spec and asset-directory rules. Round three, here, is the half left over: "exactly one
+// spec NAMES it" was still a basename appearing anywhere, which is not the property claimed. A
+// reference is now resolved against the referring file's directory and compared by equality.
+
+/** A fixture whose markup is deliberately the kind of prose the gate exists to catch. */
+const FIXTURE_PROSE = '<div><span>Show details</span></div>\n';
+
+/** A spec that really does host `name` as its template. */
+const hostingSpec = (name) => `import { Component } from '@angular/core';
+
+@Component({
+  standalone: true,
+  selector: 'test-host',
+  templateUrl: './${name}',
+})
+class TestHost {}
+
+it('renders', () => expect(TestHost).toBeTruthy());
+`;
+
+expectGreen('a fixture referenced by exactly one sibling spec is exempt', 'checkNoHardcodedUiText', {
+  ...APP,
+  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+});
+
+// Copilot's case. `dashboard/widget.host.html` is referenced by nothing, but under basename
+// matching it saw `shell/widget.spec.ts` — a spec for a DIFFERENT file — and was exempted on
+// the strength of that. A fixture nobody hosts is just an unreferenced template.
+expectRed(
+  'a same-named fixture in another directory is not exempted by the first one’s spec',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+    'apps/nuxeo-ui/src/app/dashboard/widget.host.html': FIXTURE_PROSE,
+  },
+  null,
+  /dashboard\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// The other direction of the same defect, and the reason resolution beats a stricter basename
+// rule: two fixtures that legitimately share a basename each have their own hosting spec. Under
+// basename matching both saw two specs, failed the "exactly one" test, and NEITHER was exempt —
+// a false rejection. Resolution gives each its own proof.
+expectGreen('two same-named fixtures each with their own hosting spec are both exempt', 'checkNoHardcodedUiText', {
+  ...APP,
+  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+  'apps/nuxeo-ui/src/app/dashboard/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/dashboard/widget.spec.ts': hostingSpec('widget.host.html'),
+});
+
+// A mention is not a reference. Under basename matching, a spec that only talked ABOUT the file
+// — in a comment, in a string, in a variable name — proved it was a fixture.
+expectRed(
+  'a bare mention in a spec comment does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      '// See widget.host.html for the markup that reproduced this.\nit('
+      + "'passes', () => expect(true).toBe(true));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// The same thing again with the path QUOTED, which is the shape the control above missed.
+// References are taken from parsed string-literal tokens now, and a comment is not in the AST,
+// so this is ruled out structurally rather than by a pattern that has to anticipate it. Kept as
+// a separate control from the bare mention because a text scan passes one and fails the other.
+expectRed(
+  'a QUOTED path in a spec comment does not prove a fixture either',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      "// See './widget.host.html' for the markup that reproduced this.\nit("
+      + "'passes', () => expect(true).toBe(true));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// ...and the other side of that: a reference in real code must still count, or the parser change
+// would simply have disabled the exemption. `hostingSpec` puts it in a `templateUrl`, so this is
+// the positive control for the AST path specifically.
+expectGreen('a fixture referenced from a block-commented spec’s live code is still exempt', 'checkNoHardcodedUiText', {
+  ...APP,
+  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/shell/widget.spec.ts':
+    "/* Hosts './other.host.html' in an older revision — kept for context. */\n" +
+    hostingSpec('widget.host.html'),
+});
+
+// Round four: `..` that climbs above the repository root. `resolveRef` walked segments and
+// popped on `..`, and `pop()` on an empty array is a no-op — so a path that really resolves
+// outside the checkout was silently clamped back onto an in-repo file and proved ITS exemption.
+// The function's own comment said such a reference "simply matches no fixture", which is the
+// fail-closed contract it did not keep. Reported on the pull request.
+expectRed(
+  'a reference that traverses above the repository root proves nothing',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    // From `.../shell/deep`, seven `..` exhaust the six real segments and then underflow. The
+    // surplus one used to vanish, leaving `apps/nuxeo-ui/src/app/shell/widget.host.html` —
+    // the fixture — proven by a spec that never pointed inside the tree at all.
+    'apps/nuxeo-ui/src/app/shell/deep/unrelated.spec.ts': hostingSpec(
+      '../../../../../../../apps/nuxeo-ui/src/app/shell/widget.host.html',
+    ),
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// Round four, second half: a quoted `.html` literal in executable code counted as a reference
+// whether or not anything hosted it, so an unused `const ref = './widget.host.html'` exempted a
+// template nobody serves. Parsing ruled out the comment case; it did not rule out this one. A
+// reference now has to be the value of a `templateUrl` property, which is the only shape that
+// makes the file a template under test.
+expectRed(
+  'an unused quoted path in a spec does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      "const ref = './widget.host.html';\n" +
+      "it('passes', () => expect(typeof ref).toBe('string'));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// Round five, and the reason "restrict it to `templateUrl`" was not yet enough: `templateUrl`
+// is just a property name, so any object literal carrying one counted. A decoy that hosts
+// nothing — `const proof = { templateUrl: './widget.host.html' }` — exempted the fixture again.
+// The property now has to sit in the object literal passed to `@Component(...)`, which is the
+// only place it means "this file is my template". Reported on the pull request.
+expectRed(
+  'a decoy object literal with a templateUrl property does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      "const proof = { templateUrl: './widget.host.html' };\n" +
+      "it('passes', () => expect(typeof proof.templateUrl).toBe('string'));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// ...and the same decoy one layer up, which is what "restrict it to `@Component`" missed on the
+// first attempt: matching the call by callee name alone accepts a naked `Component({ ... })`
+// invocation that decorates nothing. The call has to BE a decorator. Reported on the pull
+// request, immediately after the property-name narrowing above.
+expectRed(
+  'a naked Component() call that decorates nothing does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      "import { Component } from '@angular/core';\n\n" +
+      "Component({ standalone: true, templateUrl: './widget.host.html' });\n\n" +
+      "it('passes', () => expect(true).toBe(true));\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// ...and the last of them: the decorator's SPELLING is not its identity. A spec that declares
+// its own decorator called `Component` and applies it hosts nothing Angular will ever compile,
+// and exempted the fixture anyway. The name now has to be bound to `Component` from
+// `@angular/core`, by import, so the check asks what the identifier resolves to rather than
+// what it is called. Reported on the pull request.
+expectRed(
+  'a locally declared decorator named Component does not prove a fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
+      'function Component(_meta: { templateUrl: string }) {\n' +
+      '  return (target: unknown) => target;\n' +
+      '}\n\n' +
+      "@Component({ templateUrl: './widget.host.html' })\n" +
+      'class NotAComponent {}\n\n' +
+      "it('passes', () => expect(NotAComponent).toBeTruthy());\n",
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// The other side of it, or the resolution would just have disabled the exemption for anyone
+// who renames the import. An alias is still the same binding.
+expectGreen('a fixture hosted through an aliased @angular/core Component import is exempt', 'checkNoHardcodedUiText', {
+  ...APP,
+  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+  'apps/nuxeo-ui/src/app/shell/widget.spec.ts': `import { Component as NgComponent } from '@angular/core';
+
+@NgComponent({
+  standalone: true,
+  selector: 'test-host',
+  templateUrl: './widget.host.html',
+})
+class TestHost {}
+
+it('renders', () => expect(TestHost).toBeTruthy());
+`,
+});
+
+// Round two's property, also never controlled: a shipped component compiling the file means its
+// text is not test data, so the fixture cannot hold the proof of its own exemption.
+expectRed(
+  'a fixture a production component hosts is not exempt',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.component.ts': hostingSpec('widget.host.html'),
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
+// Shared markup is not a fixture: if two specs host the same file, keying its strings is a
+// decision about shared code, so it stays inside the gate.
+expectRed(
+  'a template hosted by two specs is shared markup, not a proven fixture',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+    'apps/nuxeo-ui/src/app/shell/widget-two.spec.ts': hostingSpec('widget.host.html'),
+  },
+  null,
+  /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
+);
+
 /**
  * The false-positive controls. Each is a thing that sits where prose sits and is not prose; if
  * any of these went red the guardrail would be unusable and someone would switch it off, which
@@ -751,7 +1010,7 @@ expectRed(
       'libs/shared/extensions/src/lib/nav-items.ts',
       `${GOOD_DESCRIPTORS}export const EXTRA = [{ id: 'x', label: 'Knowledge Discovery' }];\n`,
     ),
-  /introduces `label: 'Knowledge Discovery'` — a user-facing string in a descriptor/,
+  /carries `label: 'Knowledge Discovery'` — a user-facing string in a descriptor/,
 );
 
 const SHELL = (title) =>
@@ -972,7 +1231,7 @@ expectRed(
       'libs/shared/extensions/src/lib/nav-items.ts',
       `${GOOD_DESCRIPTORS}export const F = { placeholder: 'Enter a name for your saved search' };\n`,
     ),
-  /introduces `placeholder: 'Enter a name for your saved search'`/,
+  /carries `placeholder: 'Enter a name for your saved search'`/,
 );
 
 /**
@@ -1302,15 +1561,18 @@ const CROWDIN_WORKFLOW = (extra) =>
   `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
   `        with:\n          config: crowdin-conf.yml\n${extra}`;
 
-/**
- * The two inputs the pull workflow's action step must carry, separately so a control can remove
- * exactly one and stay red for exactly one reason.
- */
+/** The input the pull workflow's downloading step must carry, so its commits are signed. */
 const PULL_SIGNING = `          gpg_private_key: \${{ secrets.GPG_PRIVATE_KEY }}\n`;
-const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
-/** What identifies the step both assertions must examine: the one that downloads. */
+/** What identifies the step the signing assertion must examine: the one that downloads. */
 const PULL_DOWNLOAD = `          download_translations: true\n`;
-const PULL_OK = PULL_DOWNLOAD + PULL_SIGNING + PULL_SKIP_UNTRANSLATED;
+/**
+ * NOT part of the green fixture — both skip options are forbidden. `skip_untranslated_strings`
+ * blanks every unapproved value for our nested JSON (#293); `skip_untranslated_files` withholds a
+ * language until it is fully approved. See D8d and D8h.
+ */
+const PULL_SKIP_UNTRANSLATED = `          skip_untranslated_strings: true\n`;
+const PULL_SKIP_UNTRANSLATED_FILES = `          skip_untranslated_files: true\n`;
+const PULL_OK = PULL_DOWNLOAD + PULL_SIGNING;
 
 const CROWDIN = {
   'crowdin-conf.yml': crowdinConf([
@@ -1371,7 +1633,7 @@ expectRed(
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SKIP_UNTRANSLATED).replace(
+      CROWDIN_WORKFLOW(PULL_DOWNLOAD).replace(
         '      - uses: crowdin/github-action@v2\n',
         `      - uses: crazy-max/ghaction-import-gpg@v6\n` +
           `        with:\n` +
@@ -1383,31 +1645,820 @@ expectRed(
   /without passing `gpg_private_key`, so its commits are unsigned/,
 );
 
-// `skip_untranslated_strings: false` exports every untranslated string WITH ITS ENGLISH SOURCE,
-// which is how the first real pull overwrote 151 hand-written strings. Asserted on the
-// configuration rather than on a catalogue, because once most of a catalogue is genuinely
-// translated the resulting file is only ~96% English — a warning, not a failure. The gate that
-// only catches the pathological extreme stops working as the product improves.
+// A failed step skips the rest of the job, so a translation upload placed ahead of the context
+// push can stop the context ever being attached. The first real `seed_translations` run did
+// precisely that: it failed on a token scope and skipped the context step behind it.
 expectRed(
-  'the pull workflow leaving skip_untranslated_strings at its default',
+  'the push workflow uploading translations before pushing translator context',
   'checkCrowdinConfig',
   CROWDIN,
-  (write) => write('.github/workflows/crowdin-pull.yaml', CROWDIN_WORKFLOW(PULL_DOWNLOAD + PULL_SIGNING)),
-  /does not set `skip_untranslated_strings: true`/,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The same fail-closed rule on the ordering side. An expression-driven upload still RUNS, so it can
+// still fail and still skip the context step behind it.
+expectRed(
+  'the push workflow hiding an upload_translations behind an Actions expression, before context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: \${{ inputs.seed }}\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The OTHER upload interface. The action runs a bare `command:`, so `command: upload translations`
+// uploads without the boolean input ever appearing — and the ordering rule is about uploads, not
+// about one spelling of one input.
+expectRed(
+  'the push workflow uploading translations via `command:` before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: upload translations\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The same quoted-key form on the ordering side.
+expectRed(
+  'the push workflow uploading translations before context with a quoted key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          'upload_translations': true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// A quoted `uses:` value. `uses: 'crowdin/github-action@…'` is valid workflow YAML, and matching
+// only the bare form meant the step was not recognised as a Crowdin step at all — so every
+// prohibition scoped to Crowdin steps skipped it and passed by absence. An unrecognised step is an
+// unchecked step, which is the dangerous direction.
+expectRed(
+  'the push workflow quoting its uses value on an upload step before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: 'crowdin/github-action@v2'\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// An aliased input map hides exactly as much as a flow mapping does. The flow form was rejected and
+// this one was not, which is how a limit that "fails closed" stopped being true of every spelling.
+expectRed(
+  'the push workflow declaring step inputs through a YAML alias',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with: *upload_inputs\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
+// A `uses:` nested under `env:` belongs to that action's configuration, not to the step. Treating
+// such a step as Crowdin's made the fail-closed rules fire on inputs that never reach Crowdin —
+// here an expression-valued `command`, which is forbidden on a Crowdin step and fine on any other.
+expectGreen(
+  'an unrelated step mentioning the Crowdin action in a nested value',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml':
+      CROWDIN_WORKFLOW(PULL_OK) +
+      `      - name: Something else entirely\n` +
+      `        uses: some-org/some-action@v1\n` +
+      `        with:\n` +
+      `          command: \${{ inputs.command }}\n` +
+      `        env:\n` +
+      `          uses: crowdin/github-action@v2\n`,
+  },
+);
+
+// The two forms COMBINE: a flow-style step whose action reference is escaped names Crowdin in a
+// spelling the substring test cannot see, inside a shape `yamlValues` cannot read — so neither
+// fail-closed rule reached it. An unreadable action reference is reason enough on its own now.
+expectRed(
+  'a flow-style step whose escaped uses value names the Crowdin action',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - { uses: "crowdin\\u002fgithub-action@v2", with: { upload_translations: true } }\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares a step as a YAML flow mapping/,
+);
+
+// A colon inside a PLAIN scalar is not a key separator. Every depth-one colon was read as one, so
+// `{ 'note': skip_untranslated_files:never }` invented a key the config does not declare.
+expectGreen('a Crowdin entry whose plain scalar value contains a colon', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  'crowdin-conf.yml': crowdinConf([
+    CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+    CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+      `'update_option': 'update_without_changes',`,
+      `'update_option': 'update_without_changes',\n      'note': skip_untranslated_files:never,`,
+    ),
+  ]),
+});
+
+// YAML resolves an escaped double-quoted scalar, so an escaped spelling is a WORKING spelling that
+// every raw-text matcher here reads as something else. Rejected rather than decoded — that closes
+// the encoding rather than one more member of it.
+expectRed(
+  'a Crowdin step whose uses value hides the slash behind a YAML escape',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: "crowdin\\u002fgithub-action@v2"\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /escaped double-quoted scalar/,
 );
 
 expectRed(
-  'setting skip_untranslated_strings to false explicitly',
+  'crowdin-conf.yml hiding the forbidden key behind a YAML escape',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+          `'update_option': 'update_without_changes',`,
+          `'update_option': 'update_without_changes',\n      "skip\\u005funtranslated_files": true,`,
+        ),
+      ]),
+    ),
+  /contains an escaped double-quoted scalar/,
+);
+
+// A longer key CONTAINING the token is not the token. The entry fallback searched for a substring,
+// so `'legacy_skip_untranslated_files'` — a key this repository does not use and Crowdin does not
+// define, but valid YAML — rejected a config that declares nothing forbidden.
+expectGreen(
+  'a Crowdin entry with a longer key containing the forbidden token',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    'crowdin-conf.yml': crowdinConf([
+      CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+      CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+        `'update_option': 'update_without_changes',`,
+        `'update_option': 'update_without_changes',\n      'legacy_skip_untranslated_files': true,`,
+      ),
+    ]),
+  },
+);
+
+// The token inside a quoted VALUE is not a key either.
+expectGreen(
+  'a Crowdin entry mentioning the forbidden token inside a quoted value',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    'crowdin-conf.yml': crowdinConf([
+      CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+      CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+        `'update_option': 'update_without_changes',`,
+        `'update_option': 'update_without_changes',\n      'note': 'skip_untranslated_files: never',`,
+      ),
+    ]),
+  },
+);
+
+// An unrelated flow-style step hides nothing this guardrail reads, so rejecting it would be the
+// cross-action false positive these scopes exist to avoid.
+expectGreen('an unrelated flow-style step in a Crowdin workflow', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - { uses: actions/checkout@v6, with: { ref: main } }\n` +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+});
+
+// An inline comment INSIDE an entry is a note, not configuration. The entry scan added for the
+// one-line shape reads raw text, so a comment explaining why the option is absent was read as the
+// option being present — the same mistake as the whole-file substring search, one scope smaller.
+expectGreen(
+  'a Crowdin entry whose inline comment mentions skip_untranslated_files',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    'crowdin-conf.yml': crowdinConf([
+      CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+      CROWDIN_ENTRY('/libs/**/i18n/en.json').replace(
+        `'update_option': 'update_without_changes',`,
+        `'update_option': 'update_without_changes', # skip_untranslated_files: stays forbidden`,
+      ),
+    ]),
+  },
+);
+
+// A flow-style STEP hides its own `uses:`, so nothing can tell whether it runs the Crowdin action
+// — and every Crowdin-scoped rule skipped it rather than failing it. Rejected outright, before any
+// scoping, because the unreadability is a level above the inputs.
+expectRed(
+  'a Crowdin step written as a one-line flow mapping',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - { uses: crowdin/github-action@v2, with: { upload_translations: true } }\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares a step as a YAML flow mapping/,
+);
+
+// A ONE-LINE flow entry is a shape the rest of this function understands — `crowdinFileEntries`
+// parses it and the per-entry D8 checks read it — but `yamlValues` cannot see inside it. So the
+// prohibition was bypassable by writing the entry on one line, which is valid and which the other
+// checks accept.
+expectRed(
+  'crowdin-conf.yml hiding skip_untranslated_files in a one-line flow entry',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        `    { 'source': '/libs/**/i18n/en.json', 'translation': '/%original_path%/%two_letters_code%.%file_extension%', 'export_only_approved': 'true', 'update_option': 'update_without_changes', 'skip_untranslated_files': true },\n`,
+      ]),
+    ),
+  /crowdin-conf\.yml sets `skip_untranslated_files`/,
+);
+
+// An INLINE comment is not configuration. `stripYamlComments` drops whole-line comments only, so a
+// raw token search read `# skip_untranslated_files stays off` as the option being set — the gate
+// reporting a defect in a correct file, and unfixable without deleting the note.
+expectGreen(
+  'crowdin-conf.yml mentioning skip_untranslated_files in an inline comment',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    'crowdin-conf.yml': crowdinConf([
+      CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+      CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+    ]).replace(
+      `'preserve_hierarchy': true`,
+      `'preserve_hierarchy': true # skip_untranslated_files stays off, see D8h`,
+    ),
+  },
+);
+
+// The same rule one level down: a comment aligned with `with:` does not end the input mapping, and
+// treating it as a dedent dropped every input after it — so an upload below such a comment was
+// invisible to the ordering rule.
+expectRed(
+  'an upload_translations input after a comment aligned with the with key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `        # seeding inputs below\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// `download_translations: 'true'` is honoured by the action, so the downloader must be FOUND. The
+// selector wrote its own regex instead of reusing `yamlInputIsTrue`, and reported that the workflow
+// had no downloader at all — a false red that reads like a real defect.
+expectGreen('a pull workflow quoting the download_translations value', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    `          download_translations: 'true'\n` + PULL_SIGNING,
+  ),
+});
+
+// A comment is not structure. One aligned with `steps:` was read as a dedent and ENDED step
+// enumeration, so an upload after it was never examined while the context step before it was.
+expectRed(
+  'an upload hidden behind a comment aligned with the steps key, before context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `    # everything below is the seeding half\n` +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// A quoted `'uses':` KEY, not just a quoted value. The step is then not recognised as a Crowdin
+// step, so every Crowdin-scoped prohibition skips it and passes by absence.
+expectRed(
+  'a Crowdin step whose uses KEY is quoted, uploading before context',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        'uses': crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// Inputs under `env:` are passed to the action by nobody. The step does not download and does not
+// sign, so the downloader must not be found there.
+expectRed(
+  'the download inputs placed under env: instead of with:',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      `name: crowdin\non: push\njobs:\n  sync:\n    if: \${{ vars.CROWDIN_SYNC_ENABLED == 'true' }}\n` +
+        `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
+        `        with:\n          config: crowdin-conf.yml\n` +
+        `        env:\n` +
+        PULL_DOWNLOAD +
+        PULL_SIGNING,
+    ),
+  /contains no `uses: crowdin\/github-action` step with `download_translations: true`/,
+);
+
+// A quoted `'with':` key hides the inputs just as a bare one does, so the opaque-input check has
+// to see it too.
+expectRed(
+  'a Crowdin step hiding inputs behind a quoted with key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        'with': { command: upload translations }\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
+// A nested `run:` is not a command the runner executes. Under `with:` it is an action input, under
+// `env:` a variable — and accepting one let a Crowdin step that uploads no context satisfy both
+// context assertions. Step-level keys only.
+expectRed(
+  'a nested run: key standing in for the context step',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(
+        `          command_args: '--delete-obsolete'\n` +
+          `          run: node tools/i18n/crowdin-push-context.mjs\n`,
+      ),
+    ),
+  /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
+);
+
+// A quoted or commented `steps:` key is still a steps block. A second job spelled either way was
+// not enumerated at all, so a forbidden Crowdin step inside it was never checked while the normal
+// job kept the mandatory assertions green.
+expectRed(
+  'a forbidden input inside a job whose steps key is quoted',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `  second:\n    runs-on: ubuntu-latest\n    'steps': # sync\n` +
+        `      - uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          download_translations: true\n` +
+        `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// Masking by MIS-SPLITTING. When the step splitter recognised only `name:`/`uses:`-first items, an
+// `if:`-first downloader was merged into the step before it — so that step's `gpg_private_key`
+// satisfied the signing assertion while the real downloader had none. The wrong-step failure in its
+// original form, reached by a different route.
+expectRed(
+  'an if-first downloader masked by the signing input on the preceding step',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(`          upload_sources: false\n` + PULL_SIGNING) +
+        `      - if: \${{ always() }}\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        PULL_DOWNLOAD,
+    ),
+  /without passing `gpg_private_key`, so its commits are unsigned/,
+);
+
+// `- with: { … }` — the sequence marker can precede the first key, and `uses:` follows on a later
+// line. The opaque-input detector anchored `with:` to the line start and missed it, so the hidden
+// upload read as absent on exactly the step the check exists for.
+expectRed(
+  'a with-first Crowdin step hiding its inputs in a flow mapping',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - with: { command: upload translations }\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
+// Execution, not text. The uploader's name appearing inside a block scalar is PROSE — no step runs
+// it — so the "must attach translator context" guarantee must not be satisfied by a sentence
+// describing the step it is looking for.
+expectRed(
+  'the context uploader named only in prose, with no step running it',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Say what we would do\n` +
+        `        run: echo done\n` +
+        `        env:\n` +
+        `          NOTE: |\n` +
+        `            run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
+);
+
+// A step whose FIRST key is not `name` or `uses`. `if:`, `id:` and `env:` are all valid there, and
+// a step-parser that recognises only the common spelling does not see the step at all — so every
+// check scoped to Crowdin steps skips it. Silent pass, same direction as the quoted `uses:` value.
+expectRed(
+  'an if-first Crowdin step setting skip_untranslated_files',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `      - if: \${{ always() }}\n` +
+        `        id: extra-download\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          download_translations: true\n` +
+        `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// The same shape on the ordering rule, where an unseen step means an unseen upload.
+expectRed(
+  'an if-first Crowdin step uploading translations before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - if: \${{ always() }}\n` +
+        `        name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The bare-command DOWNLOAD path. At the pinned SHA a step with `command: download` runs
+// `crowdin $INPUT_COMMAND $INPUT_COMMAND_ARGS` and returns before the boolean-driven path — so a
+// second Crowdin step can download with the forbidden flag while the step found via
+// `download_translations: true` carries none of it.
+expectRed(
+  'a second Crowdin step downloading via command: with the forbidden flag',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `      - name: Download again\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: download --skip-untranslated-files\n`,
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// Same path, flag in `command_args` instead of the command scalar.
+expectRed(
+  'a second Crowdin step downloading via command: with the flag in command_args',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK) +
+        `      - name: Download again\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: download\n` +
+        `          command_args: '--skip-untranslated-files'\n`,
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// An opaque `with:` on an action that is NOT Crowdin cannot hide any of the three values these
+// checks read, so it must not fail the gate. The first version of the opaque-input check scanned
+// both whole files and failed exactly this — recreating the cross-action false positive the
+// `command` scan had just been scoped to avoid.
+expectGreen('an unrelated action using a flow mapping for its inputs', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml':
+    CROWDIN_WORKFLOW(PULL_OK) +
+    `      - name: Something else entirely\n` +
+    `        uses: some-org/some-action@v1\n` +
+    `        with: { command: value }\n`,
+});
+
+// A `command:` nobody can read counts as an upload, for the same reason a `${{ }}` boolean counts
+// as true: it might be one, and failing closed is the only direction that cannot hide the
+// skipped-context failure this rule exists for.
+expectRed(
+  'the push workflow running an unreadable command before the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Do something\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          command: \${{ inputs.crowdin_command }}\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// `command:` is a generic input name. On an action that is not Crowdin it cannot upload anything,
+// so an unreadable one ahead of the context push is not an ordering violation — classifying it as
+// one failed the gate on a correct workflow.
+expectGreen(
+  'an unrelated action with an unreadable command before the context push',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-push.yaml':
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+      `      - name: Something else entirely\n` +
+      `        uses: some-org/some-action@v1\n` +
+      `        with:\n` +
+      `          command: \${{ inputs.command }}\n` +
+      `      - name: Push translator context\n` +
+      `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+  },
+);
+
+// Masking, on the ordering side. An explicit `false` on an earlier step must not excuse an enabled
+// upload on a later one that still sits ahead of the context push.
+expectRed(
+  'an earlier disabled upload masking a later enabled one ahead of the context push',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(
+        `          command_args: '--delete-obsolete'\n          upload_translations: false\n`,
+      ) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: true\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// And an upload explicitly switched off is not an upload, so it must not trip the ordering rule
+// wherever it sits.
+expectGreen('a disabled upload_translations step ahead of the context push', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - name: Seed existing translations\n` +
+    `        uses: crowdin/github-action@v2\n` +
+    `        with:\n` +
+    `          upload_translations: false\n` +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+});
+
+expectRed(
+  'a push workflow that never attaches translator context at all',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`),
+    ),
+  /never runs `tools\/i18n\/crowdin-push-context\.mjs`/,
+);
+
+// The permitted half of the ordering rule, which the two controls above cannot reach between them:
+// they cover "before" and "absent", so an implementation that rejected EVERY translation upload
+// would satisfy both while contradicting the rule it claims to enforce. The rule is about order,
+// not about uploading being forbidden — no real workflow uploads translations today, so without
+// this control the allowed path is asserted nowhere.
+expectGreen('a push workflow uploading translations AFTER the context push', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-push.yaml':
+    CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+    `      - name: Push translator context\n` +
+    `        run: node tools/i18n/crowdin-push-context.mjs\n` +
+    `      - name: Upload existing translations\n` +
+    `        uses: crowdin/github-action@v2\n` +
+    `        with:\n` +
+    `          upload_translations: true\n`,
+});
+
+// `skip_untranslated_strings: true` does not omit an unapproved key for our nested JSON — it
+// exports the key with a BLANK value. The nightly pull of 29 September 2026 (#293) blanked every
+// unapproved value in nine catalogues. This check REQUIRED the option until then; these controls are
+// the inversion, so the requirement cannot come back.
+expectRed(
+  'the pull workflow setting skip_untranslated_strings',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + PULL_SKIP_UNTRANSLATED),
+    ),
+  /declares `skip_untranslated_strings: true`[\s\S]*#293/,
+);
+
+expectRed(
+  'the pull workflow hiding skip_untranslated_strings behind an Actions expression',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          skip_untranslated_strings: \${{ true }}\n`),
+    ),
+  /declares `skip_untranslated_strings: \$\{\{ true \}\}`/,
+);
+
+// An explicit `false` is the action's own default, so it is not the defect.
+expectGreen(
+  'a pull workflow that explicitly disables skip_untranslated_strings',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+      PULL_OK + `          skip_untranslated_strings: false\n`,
+    ),
+  },
+);
+
+expectRed(
+  'the pull workflow passing --skip-untranslated-strings through download_translations_args',
   'checkCrowdinConfig',
   CROWDIN,
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
       CROWDIN_WORKFLOW(
-        PULL_DOWNLOAD + PULL_SIGNING + `          skip_untranslated_strings: false\n`,
+        PULL_OK +
+          `          download_translations_args: '--language=fr --skip-untranslated-strings'\n`,
       ),
     ),
-  /does not set `skip_untranslated_strings: true`/,
+  /passes `--skip-untranslated-strings` to a Crowdin step/,
+);
+
+// The positive half of the argument scan. The real workflow restricts the download to the
+// languages the app ships with `--language`, and the forbidden-flag scan must let that through.
+expectGreen('a pull workflow restricting the download with --language', 'checkCrowdinConfig', {
+  ...CROWDIN,
+  '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+    PULL_OK + `          download_translations_args: '--language=fr --language=de'\n`,
+  ),
+});
+
+expectRed(
+  'crowdin-conf.yml setting skip_untranslated_strings',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+      ]).replace(
+        `'update_option': 'update_without_changes',`,
+        `'update_option': 'update_without_changes',\n      'skip_untranslated_strings': true,`,
+      ),
+    ),
+  /crowdin-conf\.yml sets `skip_untranslated_strings`/,
 );
 
 // A pull workflow with no action step at all: both assertions above would examine nothing, and
@@ -1427,27 +2478,293 @@ expectRed(
   /contains no `uses: crowdin\/github-action` step/,
 );
 
-// Two Crowdin steps, with the option on the one that does NOT download. Matching the action name
-// alone found the first step and passed, while the step that actually downloads omitted it — and
-// this arrangement stopped being hypothetical in this very PR, which added a second Crowdin step
-// to the push workflow.
+// Two Crowdin steps, with the forbidden option on the one that does NOT download. The prohibition
+// reads every Crowdin step, so a preparation step is not a hiding place.
 expectRed(
-  'the option set on a preparation step while the downloading step omits it',
+  'skip_untranslated_strings set on a preparation step rather than the downloader',
   'checkCrowdinConfig',
   CROWDIN,
   (write) =>
     write(
       '.github/workflows/crowdin-pull.yaml',
-      CROWDIN_WORKFLOW(
-        `          upload_sources: false\n` + PULL_SKIP_UNTRANSLATED,
-      ) +
+      CROWDIN_WORKFLOW(`          upload_sources: false\n` + PULL_SKIP_UNTRANSLATED) +
         `      - uses: crowdin/github-action@v2\n` +
         `        with:\n` +
         `          config: crowdin-conf.yml\n` +
         PULL_DOWNLOAD +
         PULL_SIGNING,
     ),
-  /does not set `skip_untranslated_strings: true`/,
+  /declares `skip_untranslated_strings: true`/,
+);
+
+// Only one of the two options can be active — Technical Usage Guide — so setting both guards
+// neither loss reliably. crowdin-cli 4.14.2 is blunter and refuses the pair outright in
+// `PropertiesWithFilesBuilder.checkArgParams()` before anything downloads. This check REQUIRED
+// `skip_untranslated_files: true` for one commit, which would have made every nightly pull red;
+// the control is here so the requirement cannot come back.
+expectRed(
+  'the pull workflow setting skip_untranslated_files as an action input',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + PULL_SKIP_UNTRANSLATED_FILES),
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// The boolean input is one of THREE ways the flag reaches the CLI, and the first version of this
+// prohibition guarded only that one. `download_translations_args` and `command_args` are appended
+// to the command verbatim, so the option passes straight through while the check stays green and
+// the nightly download still fails. Raised in review on PR #285.
+expectRed(
+  'the pull workflow smuggling --skip-untranslated-files through download_translations_args',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_OK + `          download_translations_args: '--skip-untranslated-files'\n`,
+      ),
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// The same channel in a different YAML spelling. Inputs reach a Docker action as strings and
+// `entrypoint.sh` compares with `[ "$INPUT_X" = true ]`, so `'true'` and a trailing comment are
+// both honoured — while an anchored `:\s*true\s*$` matches neither. For a FORBIDDEN input that is
+// a silent pass: the option runs and the gate stays green. Raised in review on PR #285.
+expectRed(
+  'the pull workflow setting skip_untranslated_files as a quoted string with a trailing comment',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          skip_untranslated_files: 'true' # belt and braces\n`),
+    ),
+  /declares `skip_untranslated_files: 'true'`/,
+);
+
+// The spelling that ended the enumeration. `${{ true }}` is resolved by Actions long after the
+// guardrail runs, so no regex over the YAML can read it — which is why both forbidden inputs now
+// fail CLOSED on any value that is not literally `false`, rather than matching truthy spellings one
+// at a time. Three review rounds were spent adding spellings before that became obvious.
+expectRed(
+  'the pull workflow hiding skip_untranslated_files behind an Actions expression',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          skip_untranslated_files: \${{ true }}\n`),
+    ),
+  /declares `skip_untranslated_files: \$\{\{ true \}\}`/,
+);
+
+// An explicit `false` is the one value that is NOT the defect, so the fail-closed rule has to let
+// it through — otherwise "remove the option" and "disable the option" would be indistinguishable
+// and the message would be unactionable.
+expectGreen(
+  'a pull workflow that explicitly disables skip_untranslated_files',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml': CROWDIN_WORKFLOW(
+      PULL_OK + `          skip_untranslated_files: false\n`,
+    ),
+  },
+);
+
+// Masking. Reading only the FIRST declaration let a harmless `false` on a preparation step excuse
+// a `true` on the step that actually downloads — the same wrong-step blindness the `crowdinSteps`
+// lookup exists to avoid, reintroduced one layer down. Every declaration is read now.
+expectRed(
+  'a preparation step disabling skip_untranslated_files while the downloader enables it',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        `          upload_sources: false\n          skip_untranslated_files: false\n`,
+      ) +
+        `      - uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          config: crowdin-conf.yml\n` +
+        PULL_OK +
+        `          skip_untranslated_files: true\n`,
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// The quoted key reaches the action identically, so it is the same defect.
+expectRed(
+  'the pull workflow declaring skip_untranslated_strings with a quoted key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          'skip_untranslated_strings': true\n`),
+    ),
+  /declares `skip_untranslated_strings: true`/,
+);
+
+// Key-shaped text inside a block scalar is PROSE, not configuration. `pull_request_body: |` is
+// where these options get explained to whoever reads the generated pull request, so reading its
+// lines as inputs made the check fire on its own documentation — and unfixable without deleting
+// the explanation. The existing prose control covers the CLI spelling; this covers the input one.
+expectGreen(
+  'the pull request body explaining skip_untranslated_files in prose',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml':
+      CROWDIN_WORKFLOW(PULL_OK) +
+      `          pull_request_body: |\n` +
+      `            We do not set skip_untranslated_files: true — only one of the two\n` +
+      `            options can be active. See D8h.\n`,
+  },
+);
+
+// Quoted keys. `'skip_untranslated_files': true` is valid YAML and reaches the action identically.
+// Not hypothetical: `crowdin-conf.yml` quotes every key in this repository.
+expectRed(
+  'the pull workflow declaring skip_untranslated_files with a quoted key',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          'skip_untranslated_files': true\n`),
+    ),
+  /declares `skip_untranslated_files: true`/,
+);
+
+// Block scalars. `download_translations_args: >-` puts the value on the CONTINUATION lines, so a
+// check that reads the key's own line captures `>-` and nothing else while the action folds the
+// block and hands the flag to the CLI.
+expectRed(
+  'the downloading step smuggling --skip-untranslated-files through a folded block scalar',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_OK +
+          `          download_translations_args: >-\n` +
+          `            --skip-untranslated-files\n`,
+      ),
+    ),
+  /passes `--skip-untranslated-files` to a Crowdin step/,
+);
+
+// An argument list that cannot be READ cannot be cleared, so it fails closed too. Two ways a value
+// can be unreadable, and only the first was covered when this was written: an Actions expression is
+// resolved after the gate runs, and a YAML alias is resolved from an anchor elsewhere in the
+// document. Both mean the text the CLI gets is not the text here.
+expectRed(
+  'the downloading step building its download arguments from an expression',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(
+        PULL_OK + `          download_translations_args: \${{ inputs.extra_args }}\n`,
+      ),
+    ),
+  /gives a Crowdin step a command or argument this script cannot read/,
+);
+
+expectRed(
+  'the downloading step taking its download arguments from a YAML alias',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      CROWDIN_WORKFLOW(PULL_OK + `          download_translations_args: *download_args\n`),
+    ),
+  /gives a Crowdin step a command or argument this script cannot read/,
+);
+
+// A flow-mapping `with:` hides every input from these checks, so three prohibitions would read as
+// satisfied by absence. Rejected rather than parsed — but rejected LOUDLY, because a limit that
+// passes quietly is what made the matcher indefensible in the first place.
+expectRed(
+  'the pull workflow declaring step inputs as a flow mapping',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-pull.yaml',
+      `name: crowdin\non: push\njobs:\n  sync:\n    if: \${{ vars.CROWDIN_SYNC_ENABLED == 'true' }}\n` +
+        `    runs-on: ubuntu-latest\n    steps:\n      - uses: crowdin/github-action@v2\n` +
+        `        with: { config: crowdin-conf.yml, download_translations: true, skip_untranslated_files: true }\n`,
+    ),
+  /declares Crowdin step inputs in a form this guardrail cannot read/,
+);
+
+// Scope. `--skip-untranslated-files` reaches the CLI through `command`, `command_args` or
+// `download_translations_args` on any CROWDIN step — three channels, and every Crowdin step, not
+// only the one with `download_translations: true`, because `command: download` downloads too. A
+// mention anywhere else — the pull request body is the realistic one, since it explains these very
+// options — reaches the CLI on no path, and failing the gate on it would make the check unfixable
+// without deleting the explanation.
+expectGreen(
+  'the pull request body mentioning --skip-untranslated-files in prose',
+  'checkCrowdinConfig',
+  {
+    ...CROWDIN,
+    '.github/workflows/crowdin-pull.yaml':
+      CROWDIN_WORKFLOW(PULL_OK) +
+      `          pull_request_body: |\n` +
+      `            We do not pass --skip-untranslated-files; see D8h.\n`,
+  },
+);
+
+// The ordering rule had the identical blind spot, and the consequence is the one D8c records: a
+// quoted upload ahead of the context push runs, fails, and skips the context step behind it, while
+// nothing reports that the rule was violated.
+expectRed(
+  'the push workflow uploading translations before context with a quoted upload_translations',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      '.github/workflows/crowdin-push.yaml',
+      CROWDIN_WORKFLOW(`          command_args: '--delete-obsolete'\n`) +
+        `      - name: Seed existing translations\n` +
+        `        uses: crowdin/github-action@v2\n` +
+        `        with:\n` +
+        `          upload_translations: "true" # quoted, still honoured\n` +
+        `      - name: Push translator context\n` +
+        `        run: node tools/i18n/crowdin-push-context.mjs\n`,
+    ),
+  /uploads translations before pushing translator context/,
+);
+
+// The third channel. The CLI validates the pair in the config file too, via `FileBean`, so moving
+// the option out of the workflow does not avoid the conflict — D8h said so while nothing enforced
+// it.
+expectRed(
+  'crowdin-conf.yml setting skip_untranslated_files',
+  'checkCrowdinConfig',
+  CROWDIN,
+  (write) =>
+    write(
+      'crowdin-conf.yml',
+      crowdinConf([
+        CROWDIN_ENTRY('/apps/*/public/i18n/en.json'),
+        CROWDIN_ENTRY('/libs/**/i18n/en.json'),
+      ]).replace(`'files': [`, `'skip_untranslated_files': true\n'files': [`),
+    ),
+  /crowdin-conf\.yml sets `skip_untranslated_files`/,
 );
 
 // The founding defect. Both options deleted from the SECOND entry only: the first still
@@ -1468,8 +2785,10 @@ expectRed(
   /entry `\/libs\/\*\*\/i18n\/en\.json` omits `export_only_approved`/,
 );
 
-// Presence is not the policy. `export_only_approved: 'false'` does the opposite of what D8 asks
-// and satisfied every token-counting form of this check.
+// Presence is not the policy — the VALUE is. `export_only_approved: 'false'` does the opposite of
+// what the Guidelines require and satisfied every token-counting form of this check. It was
+// briefly the required value here, which is exactly why the control asserts the value and not the
+// key: see D8g.
 expectRed(
   'a Crowdin entry that declares export_only_approved and disables it',
   'checkCrowdinConfig',
@@ -2102,7 +3421,7 @@ expectRed(
         "  { label: 'Delete', path: '/delete' },\n" +
         '];\n',
     ),
-  /introduces `label: 'Delete'`/,
+  /carries `label: 'Delete'`/,
 );
 
 // And the pairing still works, single-line and multi-line, or the fix would flag 89 correctly
@@ -2620,6 +3939,405 @@ expectGreen(
       "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n" +
       '    steps:\n      - run: node tools/i18n/crowdin-push-context.mjs\n',
   },
+);
+
+/* ---------------- NXSAT-284: sink text through a ternary or a constant ---------------- */
+
+// The shapes `toast(wasLocked ? 'Document unlocked' : 'Document locked')` and
+// `toast(DOMAIN_CONTAINER_GUIDANCE)` were read as clean by every check, because each looked for a
+// literal as the first thing in the call. 23 such strings were live when this was found.
+expectRed(
+  'a toast whose message is a ternary of two literals',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.toast(wasLocked ? 'Document unlocked' : 'Document locked');\n",
+    ),
+  /passes the hard-coded string `Document unlocked`[\s\S]*passes the hard-coded string `Document locked`/,
+);
+
+expectRed(
+  'a toast whose hard-coded branch is the else side of a keyed ternary',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.toast(\n  denied(err) ? this.translate.instant(KEY) : 'Failed to save note',\n);\n",
+    ),
+  /passes the hard-coded string `Failed to save note`/,
+);
+
+expectRed(
+  'a snackbar message passed through a prose constant declared in another file',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/shared/x/src/lib/notice.ts':
+      "export const DOMAIN_CONTAINER_GUIDANCE =\n  'Open Sections, Templates, or Workspaces, then create content inside those folders.';\n",
+  },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "this.snackBar.open(DOMAIN_CONTAINER_GUIDANCE, this.translate.instant('common.ok'));\n",
+    ),
+  /through the constant `DOMAIN_CONTAINER_GUIDANCE`/,
+);
+
+expectRed(
+  'an error signal set through a prose constant',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      "const LOAD_FAILED = 'Could not load the folder.';\nthis.scopeNotice.set(LOAD_FAILED);\n",
+    ),
+  /through the constant `LOAD_FAILED`/,
+);
+
+// The same argument parsing must not start flagging what is correct, or it gets switched off.
+falsePositiveControls += 1;
+expectGreen(
+  'a ternary that selects between two catalogue keys',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/features/x/src/lib/x.ts':
+      "this.toast(\n  this.translate.instant(wasLocked ? 'x.message.unlocked' : 'x.message.locked'),\n);\n",
+  },
+);
+
+falsePositiveControls += 1;
+expectGreen('a constant holding a catalogue KEY', 'checkNoHardcodedImperativeUiText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    "const GUIDANCE_KEY = 'browse.message.domain-container-guidance';\n" +
+    'this.toast(this.translate.instant(GUIDANCE_KEY));\n',
+});
+
+falsePositiveControls += 1;
+expectGreen(
+  'a local lower-case prose const is not matched across files',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/features/x/src/lib/a.ts':
+      "const message = 'Saved the document.';\nconsole.log(message);\n",
+    'libs/features/x/src/lib/b.ts': 'this.toast(message);\n',
+  },
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a parenthesis inside a keyed argument does not end the scan early',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/features/x/src/lib/x.ts':
+      "this.toast(this.translate.instant('x.k', { n: count(items) }));\nconsole.warn('Not (a) sink');\n",
+  },
+);
+
+expectRed(
+  'a dialog title set from a ternary',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+        "    title: isReply ? 'Delete Reply' : 'Delete Comment',\n" +
+        "    confirmLabel: this.translate.instant('confirm.delete'),\n  },\n});\n",
+    ),
+  /sets `title` in a dialog's data from a ternary with the hard-coded branch `Delete Reply`/,
+);
+
+expectRed(
+  'a dialog message set from a prose constant',
+  'checkNoHardcodedDialogText',
+  {
+    ...APP,
+    'libs/shared/x/src/lib/notice.ts': "export const MOVE_WARNING = 'This cannot be undone.';\n",
+  },
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n    message: MOVE_WARNING,\n  },\n});\n',
+    ),
+  /sets `message` in a dialog's data to the constant `MOVE_WARNING`/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a dialog title choosing between two keys', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+    "    title: this.translate.instant(isReply ? 'confirm.delete-reply' : 'confirm.delete-comment'),\n" +
+    '  },\n});\n',
+});
+
+/* ---------------- NXSAT-284: checkNoHardcodedDescriptorText is repo-wide ---------------- */
+
+// Committed in the BASELINE, so the diff is empty. Under the diff-scoped version this passed —
+// which is exactly how 28 descriptors predating the check went unmeasured.
+expectRed(
+  'a hard-coded descriptor that predates the change is still flagged',
+  'checkNoHardcodedDescriptorText',
+  {
+    'libs/features/x/src/lib/toolbar.ts':
+      "export const CONTROLS = [{ selector: 'button.ql-bold', label: 'Bold' }];\n",
+  },
+  null,
+  /toolbar\.ts:1 carries `label: 'Bold'`/,
+);
+
+expectRed(
+  'the starter template is exempt, but a shipped library beside it is not',
+  'checkNoHardcodedDescriptorText',
+  {
+    'apps/nuxeo-satori-template/src/app/nav.ts':
+      "export const N = [{ label: 'Deferred Label' }];\n",
+    'libs/features/x/src/lib/nav.ts': "export const N = [{ label: 'Shipped Label' }];\n",
+  },
+  null,
+  /libs\/features\/x\/src\/lib\/nav\.ts:1 carries `label: 'Shipped Label'`/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a pre-existing descriptor keyed with labelKey', 'checkNoHardcodedDescriptorText', {
+  'libs/features/x/src/lib/toolbar.ts':
+    "export const CONTROLS = [{ selector: 'button.ql-bold', labelKey: 'x.bold' }];\n" +
+    "export const THEMES = [{ id: 'dark', labelKey: 'x.dark', label: 'Dark' }];\n",
+});
+
+falsePositiveControls += 1;
+expectGreen(
+  'a hard-coded descriptor in the exempt starter template',
+  'checkNoHardcodedDescriptorText',
+  {
+    'apps/nuxeo-satori-template/src/app/nav.ts':
+      "export const N = [{ label: 'Deferred Label' }];\n",
+    'libs/features/x/src/lib/nav.ts': "export const N = [{ label: 'x.nav.browse' }];\n",
+  },
+);
+
+/* ---------------- NXSAT-284 review round 1: shapes the first version missed ---------------- */
+
+// The balanced-argument pass replaced the old `toast\('…'` regex and only looked after `?`/`:`, so
+// the plainest shape of all went green.
+expectRed(
+  'a toast whose whole first argument is a literal',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) => write('libs/features/x/src/lib/x.ts', "this.toast('Document restored');\n"),
+  /passes the hard-coded string `Document restored`/,
+);
+
+expectRed(
+  'a toast passed a prose constant written as a template literal',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'const WARNING = `This cannot be undone.`;\nthis.toast(WARNING);\n',
+    ),
+  /through the constant `WARNING`/,
+);
+
+// Prettier breaks a long ternary across lines; a line-bounded match could not see it.
+expectRed(
+  'a dialog title ternary broken across lines',
+  'checkNoHardcodedDialogText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+        "    title: isReply\n      ? 'Delete Reply'\n      : 'Delete Comment',\n  },\n});\n",
+    ),
+  /sets `title` in a dialog's data from a ternary with the hard-coded branch `Delete Reply`/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a multi-line dialog ternary that selects between keys', 'checkNoHardcodedDialogText', {
+  ...APP,
+  'libs/features/x/src/lib/x.ts':
+    'this.dialog.open(ConfirmDialogComponent, {\n  data: {\n' +
+    "    title: this.translate.instant(\n      isReply ? 'confirm.delete-reply' : 'confirm.delete-comment',\n    ),\n" +
+    "    message: this.translate.instant('confirm.delete-question', { name: 'x' }),\n" +
+    '  },\n});\n',
+});
+
+/* ---------------- NXSAT-284 review round 2: a local alias ---------------- */
+
+// `const msg = err?.error?.message || 'Failed to delegate task.'; this.snackBar.open(msg, …)` —
+// four task handlers did this, and neither the literal patterns nor the SCREAMING_CASE constant
+// lookup could see it.
+expectRed(
+  'a hard-coded fallback held in a local const and passed to a snackbar',
+  'checkNoHardcodedImperativeUiText',
+  APP,
+  (write) =>
+    write(
+      'libs/features/x/src/lib/x.ts',
+      'function onError(err) {\n' +
+        "  const msg = err?.error?.message || 'Failed to delegate task.';\n" +
+        "  this.snackBar.open(msg, this.translate.instant('common.close'));\n" +
+        '}\n',
+    ),
+  /passes the hard-coded string `Failed to delegate task\.` \(through the local `msg`\)/,
+);
+
+// Scoped to the declaring block: a same-named `msg` in another method is not blamed for it.
+falsePositiveControls += 1;
+expectGreen(
+  'a same-named local in another block is not borrowed',
+  'checkNoHardcodedImperativeUiText',
+  {
+    ...APP,
+    'libs/features/x/src/lib/x.ts':
+      'function a() {\n' +
+      "  const msg = 'Only logged, never shown.';\n" +
+      '  console.warn(msg);\n' +
+      '}\n' +
+      'function b() {\n' +
+      "  const msg = this.translate.instant('x.message.saved');\n" +
+      "  this.snackBar.open(msg, this.translate.instant('common.close'));\n" +
+      '}\n',
+  },
+);
+
+/* ---------------- checkTranslatorNotesFlagProductsAndAcronyms ---------------- */
+
+// AC3: a product name must be flagged do-not-translate and an acronym expanded, in the note of
+// the string that contains it. A generic "Visible text in X" note satisfied the existence check.
+const NOTES_EN = `{
+  "nav": { "drive": "Open in Nuxeo Drive", "export": "Export CSV", "said": "Said so" }
+}
+`;
+const notesFixture = (drive, exportNote) => ({
+  'apps/nuxeo-ui/public/i18n/en.json': NOTES_EN,
+  'apps/nuxeo-ui/public/i18n/en.context.json': JSON.stringify(
+    {
+      'nav.drive': drive,
+      'nav.export': exportNote,
+      'nav.said': 'Visible text in a fixture.',
+    },
+    null,
+    2,
+  ),
+});
+const GOOD_DRIVE =
+  'Button. Nuxeo Drive is the desktop sync client (product name, do not translate).';
+const GOOD_EXPORT = 'Button. CSV = comma-separated values; keep the acronym.';
+
+expectRed(
+  'a product name in the English with no do-not-translate flag in its note',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  notesFixture('Visible text in browse. Rendered in browse.html.', GOOD_EXPORT),
+  null,
+  /the note for `nav\.drive` \("Open in Nuxeo Drive"\) does not flag "Nuxeo" as do-not-translate/,
+);
+
+expectRed(
+  'an acronym in the English whose note does not expand it',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  notesFixture(GOOD_DRIVE, 'Accessible name (aria-label) of a control in browse.'),
+  null,
+  /the note for `nav\.export` \("Export CSV"\) does not expand CSV \(comma-separated values\)/,
+);
+
+// The fixture also holds "Said so" with a generic note. Matching is whole-word and case-sensitive,
+// so it does not count as containing the acronym AI and must not be flagged.
+falsePositiveControls += 1;
+expectRed(
+  'a hyphenated acronym whose note does not expand it',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "Run AI-powered analysis"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json': '{\n  "a": "Button on the audit page."\n}\n',
+  },
+  null,
+  /the note for `a` \("Run AI-powered analysis"\) does not expand AI \(artificial intelligence\)/,
+);
+
+expectGreen(
+  'notes that flag the product and expand the acronym, beside a look-alike word',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  notesFixture(GOOD_DRIVE, GOOD_EXPORT),
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a product name not on the list is not checked',
+  'checkTranslatorNotesFlagProductsAndAcronyms',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json':
+      '{\n  "a": "Open in Nuxeo Drive",\n  "b": "Sync with Dropbox"\n}\n',
+    'apps/nuxeo-ui/public/i18n/en.context.json':
+      '{\n  "a": "Nuxeo Drive is the desktop client (do not translate).",\n  "b": "Visible text."\n}\n',
+  },
+);
+
+/* ---------------- checkPlatformEnglishFallback ---------------- */
+
+// The package ships English for the keys its own code uses; it must be the catalogue's English, for
+// exactly those keys, or a host sees stale wording or raw keys.
+const platformFile = (map) =>
+  '// @generated-begin\n// prettier-ignore\nexport const PLATFORM_EN_TRANSLATIONS: Readonly<Record<string, string>> = ' +
+  `${JSON.stringify(map, null, 2)};\n// @generated-end\n`;
+const PLATFORM = (map, source = "export const K = 'shared-ui.a';\n") => ({
+  'apps/nuxeo-ui/public/i18n/en.json':
+    '{\n  "shared-ui": { "a": "Alpha", "b": "Beta" },\n  "app": { "c": "Gamma" }\n}\n',
+  'libs/platform/ui/ng-package.json':
+    '{ "lib": { "entryFile": "../../shared/ui/src/index.ts" } }\n',
+  'libs/shared/ui/src/index.ts': source,
+  'libs/shared/ui/src/lib/i18n/platform-en.ts': platformFile(map),
+});
+
+expectGreen(
+  'a platform English copy that matches the catalogue and the references',
+  'checkPlatformEnglishFallback',
+  PLATFORM({ 'shared-ui.a': 'Alpha' }),
+);
+
+expectRed(
+  'a key the package references with no English copy',
+  'checkPlatformEnglishFallback',
+  PLATFORM({ 'shared-ui.a': 'Alpha' }, "export const K = ['shared-ui.a', 'shared-ui.b'];\n"),
+  null,
+  /has no English for 1 key\(s\) the package uses: shared-ui\.b/,
+);
+
+expectRed(
+  'an English copy that differs from the catalogue',
+  'checkPlatformEnglishFallback',
+  PLATFORM({ 'shared-ui.a': 'Alpah' }),
+  null,
+  /differs from apps\/nuxeo-ui\/public\/i18n\/en\.json for 1 key\(s\): shared-ui\.a \("Alpah" vs "Alpha"\)/,
+);
+
+expectRed(
+  'a copied key the package no longer references',
+  'checkPlatformEnglishFallback',
+  PLATFORM({ 'shared-ui.a': 'Alpha', 'app.c': 'Gamma' }),
+  null,
+  /carries 1 key\(s\) the package no longer uses: app\.c/,
+);
+
+// A key built from a prefix at runtime references every catalogue key under that prefix.
+falsePositiveControls += 1;
+expectGreen(
+  'a prefix-built key covers the whole family',
+  'checkPlatformEnglishFallback',
+  PLATFORM(
+    { 'shared-ui.a': 'Alpha', 'shared-ui.b': 'Beta' },
+    'export const label = (k: string) => `shared-ui.${k}`;\n',
+  ),
 );
 
 /* ---------------- report ---------------- */

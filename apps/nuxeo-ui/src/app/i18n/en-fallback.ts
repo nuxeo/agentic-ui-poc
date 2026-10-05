@@ -94,6 +94,14 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'app.login-page.hyland': 'Hyland',
   'app.login-page.log-in': 'Log in',
   'login.skip-link': 'Skip to sign in',
+  // The repository root's name in the navigation tree, also the `name` in its toggle's accessible name.
+  'nav.tree.root': 'Root',
+  'admin.admin-users-groups-page.show-more-members-one': 'Show {{ count }} more member',
+  'admin.admin-users-groups-page.show-more-members-many': 'Show {{ count }} more members',
+  // Sign-in failures: the login page is the screen most likely to be up when the catalogue fetch
+  // itself failed, and a raw key there would be the user's only explanation.
+  'login.message.invalid-credentials': 'Invalid username or password.',
+  'login.message.server-unreachable': 'Could not reach Nuxeo. Check the server, proxy, and URL.',
   'app.nav.toggle': 'Toggle navigation menu',
   'app.nuxeo-drive-page.remove-synchronization-root': 'Remove synchronization root',
   'app.personal-space-page.loading': 'Loading',

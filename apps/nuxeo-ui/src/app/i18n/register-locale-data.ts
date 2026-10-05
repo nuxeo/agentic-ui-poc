@@ -29,8 +29,10 @@ import localeFr from '@angular/common/locales/fr';
  *
  * ## Adding a locale
  *
- * A locale needs three things that are easy to do only two of: a catalogue in
- * `apps/nuxeo-ui/public/i18n/`, an entry in `availableLanguages`, and an entry here.
+ * A locale needs four things that are easy to do only some of: a catalogue in
+ * `apps/nuxeo-ui/public/i18n/`, an entry in `availableLanguages`, an entry here, and a
+ * `--language` in `download_translations_args` in `.github/workflows/crowdin-pull.yaml`, which
+ * downloads only the languages listed there.
  * `checkLocaleDataRegistered` in `scripts/review-guardrails.mjs` fails the build when a
  * catalogue has no matching registration, because the symptom otherwise appears far from the
  * cause — as a pipe error on a page that has nothing to do with the locale that was added.

@@ -146,11 +146,10 @@ describe('DocumentViewerComponent — format-type text contrast (NXENG-801)', ()
       const backdrop = opaqueBackdrop(strip);
       const painted = compositeOver(parseColor(labelStyle.color), backdrop);
       const ratio = contrastRatio(painted, backdrop);
-      expect(ratio)
-        .withContext(
-          `format-type ${labelStyle.color} on picture-cards backdrop rgb(${backdrop.join(',')}) (${theme ?? 'default'})`,
-        )
-        .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+      expect(
+        ratio,
+        `format-type ${labelStyle.color} on picture-cards backdrop rgb(${backdrop.join(',')}) (${theme ?? 'default'})`,
+      ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
     }
   });
 });

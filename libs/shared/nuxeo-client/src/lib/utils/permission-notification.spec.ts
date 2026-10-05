@@ -1,3 +1,5 @@
+import { TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
 import { describe, expect, it } from 'vitest';
 
 import type { NuxeoDocument } from '../models/document.model';
@@ -7,6 +9,9 @@ import {
   mailSendFailureMessage,
   permissionNotificationAceNotFoundMessage,
 } from './permission-notification';
+
+/** Resolves a key against the real English catalogue, which the test setup loads. */
+const en = (key: string): string => TestBed.inject(TranslateService).instant(key) as string;
 
 function docWithLocalAces(
   aces: Array<{ id: string; username: string; granted?: boolean }>,
@@ -48,13 +53,17 @@ describe('permission-notification', () => {
   });
 
   it('mailSendFailureMessage includes SMTP guidance', () => {
-    expect(mailSendFailureMessage('add')).toContain('SMTP');
-    expect(mailSendFailureMessage('send')).toContain('Notification email could not be sent');
+    expect(mailSendFailureMessage('add', en)).toBe(
+      'Permission was added, but the notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
+    );
+    expect(mailSendFailureMessage('send', en)).toBe(
+      'Notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
+    );
   });
 
   it('permissionNotificationAceNotFoundMessage does not blame SMTP', () => {
-    expect(permissionNotificationAceNotFoundMessage('add')).toContain('could not be located');
-    expect(permissionNotificationAceNotFoundMessage('add')).not.toContain('SMTP');
+    expect(permissionNotificationAceNotFoundMessage('add', en)).toContain('could not be located');
+    expect(permissionNotificationAceNotFoundMessage('add', en)).not.toContain('SMTP');
   });
 
   it('findLocalAceForPrincipal returns the latest matching local ACE', () => {

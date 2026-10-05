@@ -8,21 +8,37 @@
   "target": 90,
   "tolerance": 0.5,
   "projects": {
+    "acme-extensions": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 84.62,
+      "sTotal": 101,
+      "sCovered": 101
+    },
     "adf-hx-bridge": {
-      "lines": 99.65,
-      "statements": 99.65,
-      "branches": 93.41,
+      "lines": 99.82,
+      "statements": 99.82,
+      "branches": 93.58,
       "functions": 100,
       "sTotal": 2258,
-      "sCovered": 2250
+      "sCovered": 2254
     },
     "administration": {
-      "lines": 96.24,
-      "statements": 96.24,
-      "branches": 91.87,
-      "functions": 94.94,
-      "sTotal": 2607,
-      "sCovered": 2509
+      "lines": 96.25,
+      "statements": 96.25,
+      "branches": 91.76,
+      "functions": 94.74,
+      "sTotal": 2615,
+      "sCovered": 2517
+    },
+    "assets": {
+      "lines": 97.44,
+      "statements": 97.44,
+      "branches": 92.31,
+      "functions": 66.67,
+      "sTotal": 78,
+      "sCovered": 76
     },
     "browse": {
       "lines": 98.75,
@@ -33,12 +49,12 @@
       "sCovered": 3250
     },
     "collections": {
-      "lines": 94.73,
-      "statements": 94.73,
-      "branches": 86.24,
-      "functions": 93.22,
+      "lines": 95.02,
+      "statements": 95.02,
+      "branches": 86.3,
+      "functions": 94.92,
       "sTotal": 683,
-      "sCovered": 647
+      "sCovered": 649
     },
     "core": {
       "lines": 100,
@@ -56,6 +72,14 @@
       "sTotal": 4840,
       "sCovered": 4480
     },
+    "integration-tests": {
+      "lines": 30.36,
+      "statements": 30.36,
+      "branches": 94.25,
+      "functions": 57.14,
+      "sTotal": 695,
+      "sCovered": 211
+    },
     "knowledge-discovery": {
       "lines": 65.03,
       "statements": 65.03,
@@ -65,12 +89,20 @@
       "sCovered": 703
     },
     "nuxeo-client": {
-      "lines": 90.28,
-      "statements": 90.28,
-      "branches": 83.8,
-      "functions": 92.33,
-      "sTotal": 4826,
-      "sCovered": 4357
+      "lines": 90.3,
+      "statements": 90.3,
+      "branches": 83.82,
+      "functions": 92.34,
+      "sTotal": 4834,
+      "sCovered": 4365
+    },
+    "permission-dialogs": {
+      "lines": 96.43,
+      "statements": 96.43,
+      "branches": 67.74,
+      "functions": 93.75,
+      "sTotal": 476,
+      "sCovered": 459
     },
     "search": {
       "lines": 94.69,
@@ -79,6 +111,14 @@
       "functions": 91.67,
       "sTotal": 1016,
       "sCovered": 962
+    },
+    "shared-ai-client": {
+      "lines": 97.72,
+      "statements": 97.72,
+      "branches": 98.68,
+      "functions": 94.29,
+      "sTotal": 219,
+      "sCovered": 214
     },
     "shared-app-config": {
       "lines": 99.58,
@@ -112,53 +152,29 @@
       "sTotal": 247,
       "sCovered": 247
     },
-    "ui": {
-      "lines": 97.68,
-      "statements": 97.68,
-      "branches": 96.55,
-      "functions": 88.64,
-      "sTotal": 517,
-      "sCovered": 505
-    },
-    "permission-dialogs": {
-      "lines": 96.43,
-      "statements": 96.43,
-      "branches": 66.29,
-      "functions": 93.75,
-      "sTotal": 476,
-      "sCovered": 459
-    },
-    "acme-extensions": {
-      "lines": 100,
-      "statements": 100,
-      "branches": 100,
-      "functions": 84.62,
-      "sTotal": 101,
-      "sCovered": 101
-    },
-    "assets": {
-      "lines": 97.44,
-      "statements": 97.44,
-      "branches": 92.31,
-      "functions": 66.67,
-      "sTotal": 78,
-      "sCovered": 76
-    },
-    "shared-ai-client": {
-      "lines": 97.72,
-      "statements": 97.72,
-      "branches": 98.7,
-      "functions": 94.44,
-      "sTotal": 219,
-      "sCovered": 214
-    },
     "tasks": {
       "lines": 97.4,
       "statements": 97.4,
       "branches": 93.23,
       "functions": 92.37,
-      "sTotal": 1076,
-      "sCovered": 1048
+      "sTotal": 1077,
+      "sCovered": 1049
+    },
+    "testing": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "sTotal": 31,
+      "sCovered": 31
+    },
+    "ui": {
+      "lines": 97.78,
+      "statements": 97.78,
+      "branches": 96.72,
+      "functions": 89.36,
+      "sTotal": 540,
+      "sCovered": 528
     }
   }
 }

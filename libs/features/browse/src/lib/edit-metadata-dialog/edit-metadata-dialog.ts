@@ -28,6 +28,7 @@ import {
   l10nEntryLabel,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
 
 export interface EditMetadataDialogData {
   uid: string;
@@ -42,6 +43,7 @@ export interface EditMetadataDialogData {
 @Component({
   selector: 'lib-edit-metadata-dialog',
   standalone: true,
+  providers: [provideTranslatedDatepickerIntl()],
   imports: [
     TranslatePipe,
     FormsModule,

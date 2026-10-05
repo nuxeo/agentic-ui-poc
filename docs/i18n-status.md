@@ -1,6 +1,7 @@
 # i18n — where we actually are
 
-**Dated 28 September 2026.** Measured, not estimated: every number below comes from a command
+**Dated 29 September 2026** (the Crowdin state and the #293 note; other sections carry their own
+measurement dates). Measured, not estimated: every number below comes from a command
 that is quoted next to it, so it can be re-run rather than believed.
 
 Re-measure before quoting anything here. The 16 September edition of this page claimed the gate was
@@ -57,6 +58,70 @@ That instrument has been wrong twice, both times under-reporting:
   read as a miss until the generator produced a `zz` for those catalogues too — 22 more.
 - The prose test required letters only, so anything with a number was skipped in
   silence: the five size buckets, every date range, `2 result(s)`.
+
+## Slice 10 and slice 12 — 29 September 2026
+
+Plan slices 10 and 12 of [`docs/i18n-full-extraction-plan.md`](i18n-full-extraction-plan.md), in
+one pull request for NXSAT-284.
+
+**Messages built in TypeScript are in the catalogue.** 160 new keys, each with translator context:
+toasts, error and status messages, dialog titles, Knowledge Enrichment and Knowledge Discovery
+progress and error text, Content Lake messages, sign-in errors. The English is byte-identical
+to the literal it replaced, with one deliberate exception below. Messages thrown by a service and
+shown by a page are translated where the page shows them — `SignInError`, `KdDiscoveryError`'s own
+fields, `KeEnrichmentError.messageKey`, `PermissionWithNotificationResult.notificationErrorKey` —
+except `ContentLakeIngestService`, whose stalled-ingest message is composed from status fields only
+it holds, so it resolves the text itself.
+
+**Plurals stay two keys, no ICU compiler.** The task due-date labels (`tasks.due-label.*` on the
+Tasks page, `shell.task-due.*` in the navigation drawer) are the new plural pairs, chosen by
+`count === 1` from one shared calculation, `taskDueDistance`. Several count-bearing messages use one form in
+English (`… ({{ count }} failed)`, `Users ({{ count }})`); their context says so, because
+languages that inflect those words will need plural rules. The French zero defect described under
+_Pluralisation_ below applies to the new pair too.
+
+**The guardrails that let these through are closed.** `checkNoHardcodedImperativeUiText` read a
+toast's argument only when a literal came first, so `toast(wasLocked ? 'Document unlocked' :
+'Document locked')` passed; it now reads the whole argument by counting parentheses, and also
+follows a `SCREAMING_CASE` constant holding prose (`DOMAIN_CONTAINER_GUIDANCE` was passed by name in
+five places). `checkNoHardcodedDialogText` catches the same two shapes inside dialog data. Run
+against untouched `origin/main`, the new checks report 23 and 4 violations where the old ones
+reported none.
+
+**`checkNoHardcodedDescriptorText` is repo-wide.** On `origin/main` it reported 28 descriptors the
+diff-scoped version had never looked at: the note editor's 24 toolbar labels (test metadata; now
+`labelKey`s pointing at the keys the template already used) and the four packaged theme names (now
+`labelKey: 'settings.themes.name.<id>'`, rendered through `descriptorLabel`). A customer who sets a
+theme's `label` in `bootstrap.json` without a `labelKey` gets their label as written; a customer
+theme may carry its own `labelKey`.
+
+**Four smaller fixes.** Document types render through `docTypeLabel` (16 bindings), which falls
+back to the type's own name, camel case split, for a custom type — never a raw `doc-type.*` key.
+`<html lang>` follows the active language. The date picker's labels come from the catalogue. And
+22 English values carrying a template line break plus indentation are single-spaced — the only
+English text this change alters, and invisible in HTML text, which collapses whitespace anyway.
+
+**Deliberately left hard-coded**, each for a stated reason: CSV export header rows (a file format
+downstream tools key on); `Manage everything` / `Can collect` in the share-saved-search dialogs,
+which double as data values mapped back to API rights; `versionLabel: 'Current'`, which is also the
+publish dialog's form value; adf-hx port errors, which are diagnostics returned to the upstream
+library; product names (`Nuxeo Drive`, the Layer 0 branding defaults); and `apps/nuxeo-satori-template`
+(slice 11).
+
+## Translator notes — 29 September 2026
+
+AC3 asks that every string carry context with product names flagged do-not-translate and acronyms
+expanded. Every key already had a note; 1,275 of 2,135 are still the generated kind ("Visible text
+in X"), and are deliberately left that way. Per decision D3, the hand-written set is the strings
+that need judgement. 242 notes were written or rewritten: strings naming a product (Nuxeo, Content
+Lake, Knowledge Discovery, Knowledge Enrichment, Hyland, HxAI, OAuth, Context API), strings with an
+acronym (AI, CSV, NXQL, HTTP, JSON, HTML, URL, XML, ID and others), and 128 single words that read
+as a noun or a verb ("Share", "Edit", "Comment", "Type", "State", "Modified", "Due", "Lock"), each
+stating which one it is in that place.
+
+`checkTranslatorNotesFlagProductsAndAcronyms` keeps the first two from regressing: a string
+containing a listed product name needs "do not translate" in its note, and one containing a listed
+acronym needs the expansion. Both lists sit together at the top of that check.
 
 ## Locale-aware date formatting — closed 2026-09-22
 
@@ -188,13 +253,12 @@ the file before acting on it.
 | Count | What                                                                    | Action                                                   |
 | ----: | ----------------------------------------------------------------------- | -------------------------------------------------------- |
 |     9 | `Skip to main content`, hard-coded inside satori-ui's compiled template | Upstream finding 1.4 — no host-side fix exists           |
-|     4 | Theme names — Nuxeo, Dark, Kawaii, Light                                | Layer 0 customer data, correctly a literal               |
-|     1 | `Open calendar`                                                         | Angular Material's own i18n mechanism                    |
-|   4–6 | Repository content — document titles, type names, AI severities         | Instance data; translating it would corrupt user content |
+|   4–6 | Repository content — document titles, custom type names, AI severities  | Instance data; translating it would corrupt user content |
 |   3–6 | Generated AI insight sentences                                          | Written by the server                                    |
 
 **Nothing here is actionable from this repository.** Every one is upstream, written by the server,
-or customer data.
+or customer data. Two rows this table used to carry are fixed and gone: the four packaged theme
+names and `Open calendar` (29 Sep 2026, see _Slice 10 and slice 12_ above).
 
 **The total is not a stable number, and quoting one is a mistake I made twice on this page.** It
 first said 41, from a run that could not prove the pseudo-locale was active. Corrected to 24, then
@@ -359,7 +423,7 @@ descriptor definition, because the descriptor is Layer 1 data rather than markup
 
 **`checkNoHardcodedUiText` is structurally blind to them.** It reads added lines in `.html` and
 sees `{{ item.label }}`, which is exactly the shape it asks for. `checkNoHardcodedDescriptorText`
-now covers the gap, diff-scoped, over `label`, `placeholder`, `ariaLabel` and `tooltip`. `title`
+now covers the gap, repo-wide since 29 Sep 2026, over `label`, `placeholder`, `ariaLabel` and `tooltip`. `title`
 and `description` are deliberately excluded — they name Nuxeo document properties and schema
 documentation as often as UI chrome, and a check that argues with the reviewer gets disabled.
 
@@ -457,12 +521,12 @@ failed fetch named that control with the raw key. Its catalogue value was also l
 
 ### Four gates, and the first controls any guardrail here has had
 
-| Guardrail                      | Enforces                                                                                        | Scope    |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
-| `checkNoHardcodedUiText`       | a newly added hard-coded user-facing string                                                     | **diff** |
-| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, no key `en.json` lacks (missing keys warn — D8d) | repo     |
-| `checkTranslationContext`      | translator context exists for every string and for no deleted one                               | repo     |
-| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch                                 | repo     |
+| Guardrail                      | Enforces                                                                                        | Scope |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | ----- |
+| `checkNoHardcodedUiText`       | a hard-coded user-facing string in any template                                                 | repo  |
+| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, no key `en.json` lacks (missing keys warn — D8d) | repo  |
+| `checkTranslationContext`      | translator context exists for every string and for no deleted one                               | repo  |
+| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch                                 | repo  |
 
 Plus `checkAngularDevAssets` extended to compare the `ignore` list, which it did not before — an
 entry excluding a file in the base array and not in `development` read as identical while the two
@@ -623,24 +687,67 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
 **Both halves have run.**
 
 - **Push.** 1,972 English strings and 1,972 translator-context entries are in Crowdin. The context
-  is genuinely there rather than merely reported as sent: a second run reported `0 updated`,
-  because the script compares against what Crowdin already holds.
+  is genuinely there rather than merely reported as sent, on two independent grounds: a second run
+  reported `0 updated`, because the script compares against what Crowdin already holds; and the
+  portal shows it, `action.bulk-actions-add-to-clipboard` carrying _"Action a user invokes from a
+  menu or an icon button, and the accessible name of…"_. The second matters because the first is
+  the script grading its own homework, and INFO-144's requirement is the kind of thing that gets
+  reported as done on exactly that evidence. The editor also paginates at 40 pages, which at 50 a
+  page corroborates 1,972 and rules out the duplicate upload the dashboard's "QA checks for 4,067
+  strings" badge suggested.
 - **Pull.** Opened a real pull request, #282, which also **confirms `BOT_GITHUB_TOKEN` has the
   scopes it needs** — CI started on the branch, which the default `GITHUB_TOKEN` would not have
   caused.
 
 **What is left, and none of it is plumbing.**
 
-1. **Crowdin holds no translations.** Every one of its nine target languages is at zero. This is
-   about **Crowdin's** state, not the application's: the repository ships 151 hand-written French
-   and German strings, written before Crowdin existed, and those render today. What Crowdin has
-   never had is any translation of its own — which is exactly why the first pull was destructive
-   and why `seed_translations` uploads the 151 before any further pull. Beyond them, every locale
-   correctly renders English through the fallback and the catalogues stay short. A translator or
-   machine pre-translation on project 160 is the only thing standing between the pipeline working
-   and the application looking translated.
-2. **Project membership.** The project is not visible to the team in the Crowdin portal; Okta
-   access and project membership are separate grants. Chased on INTERN-1346.
+1. **Crowdin holds almost no approved translations.** Every one of its nine target languages was
+   at zero in the portal on 28 September. By the pull of 29 September, French and German had 8
+   approved strings each, and the other seven languages still had none. This is about
+   **Crowdin's** state, not the application's: the repository ships 151 hand-written French and
+   German strings, written before Crowdin existed, and those render today. None of the 151 is
+   approved in Crowdin, which is why every pull so far has been destructive.
+
+   Those 151 must be **preserved, and that is an open action** — see D8f. The standard says a
+   repository's existing translations SHOULD be uploaded to initialize the project, and the
+   documented mechanism is a one-time `crowdin upload translations --auto-approve-imported` run
+   **from the command line with the setup token**, not from CI. The `seed_translations` CI input is
+   removed because CI was never the mechanism; the CI token refused it for scope, correctly. **The
+   seeding itself has not been done and this repository cannot do it** — it needs a token only the
+   project owner holds.
+
+   Until it is done, every one of the 151 that is not approved in Crowdin is exported as English
+   over `fr.json` and `de.json`.
+   **Watch the pull request, not the scheduled run.** `Crowdin Pull` opens the pull request and
+   returns successfully — it runs no checks of its own — so the nightly job shows **green** while
+   the checks on the `chore(i18n): new Crowdin translations` pull request it opened fail. Nothing
+   reaches `main` either way, but an operator watching only the Actions list sees nothing wrong.
+   Neither skip option is set; both are forbidden (D8h).
+
+   Beyond those 151, every locale renders English: an unapproved string is exported with its
+   English source, so the catalogues arrive at full key parity. **Translation has started, and
+   approval has barely started.** Enrico Stengert on INTERN-1346, 28 September: the sources are
+   visible and "translations can begin on our end". On 29 September the Crowdin portal showed
+   fr/de/es/pl/pt 13% translated and ja/nl/th/zh 4%, with approval at 8 strings each in French and
+   German and none elsewhere. Only approved strings are exported, so translated-but-unapproved work
+   does not reach the repository. Translated, approved and shipped are three different things, and
+   this page has conflated them before.
+   The pipeline **requests** approved-only export (`export_only_approved: 'true'` — D8g), which is
+   the MUST the Guidelines set. It is not yet proof of the effect: the Guidelines also say
+   project-level export settings in Crowdin **take precedence over the settings used by
+   pipelines**, and project 160's settings have not been checked. So the intended behaviour is that
+   a language appears only once a linguist has passed it, and confirming that it is the actual
+   behaviour is an owner action. Whether a proof-reading step is configured is likewise **not yet
+   confirmed**, and whether to use Crowdin's machine-translation features is the Translation Team's
+   decision, not ours. All three are open rows in `D8-standard`.
+
+2. ~~**Project membership.**~~ Resolved on 28 September: Manager access granted on project 160.
+   Worth keeping the lesson, because it cost a day of confusion — Okta access to the Crowdin
+   tenant and membership of a project are **separate grants**, and holding the first shows you a
+   portal with no projects in it, which reads like a broken account rather than a missing
+   permission. There is a third level again: plain membership loads the dashboard but returns
+   `403` on the source strings view, so progress percentages were readable while the strings
+   behind them were not.
 3. **Nine target languages, three advertised.** Deliberate — see D8e in
    `docs/i18n-localization-plan.md`. A language is advertised when it has translations, not when it
    is planned.
@@ -650,9 +757,26 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
 
 **What the first pull cost, because it is the lesson of the slice.** It opened a pull request with
 nine catalogues byte-identical to `en.json` and would have overwritten 75 hand-written French and
-76 German strings. `skip_untranslated_strings` defaulted to `false`, which exports an untranslated
-string **with its English source as the translation** rather than omitting it. Full key parity was
-the reassuring signal and the defect produced it. See D8d.
+76 German strings. With no skip option set, an untranslated string is exported **with its English
+source as the translation**. Full key parity was the reassuring signal and the defect produced it.
+See D8d.
+
+**29 September 2026 — the nightly pull exported blank values.** `skip_untranslated_strings: true`
+had been added to stop the English overwrite, on the untested belief that it would leave an
+untranslated key out. For our nested JSON it keeps the key and blanks the value. The nightly pull
+([#293](https://github.com/nuxeo/agentic-ui-poc/pull/293)) carried nine catalogues with every
+unapproved value `""` — all 1,972 in seven of them, all but 8 approved strings in `fr.json` and
+`de.json` — and
+`checkTranslationCatalogues` failed it, correctly. The Technical Usage Guide warns of exactly this.
+The pull now follows the standard: approved-only export, neither skip option, and only `fr` and
+`de` downloaded (D8d, D8h).
+
+Dispatched from that fix, the pull refreshed #293 to `fr.json` and `de.json` only, each 1,972 keys
+with no blank value, 1,964 English and 8 approved translations. That is 99% English, so
+`checkCataloguesAreTranslated` **warns and the guardrails pass**. It is not the all-English
+failure. Merging it would turn all 75 hand-written French and 75 German strings on `main` back into
+English, because none of them is approved in Crowdin. **Do not merge a Crowdin pull until the D8f
+seeding is done**, or until the diff shows no hand-written string reverting.
 
 One trap is already handled and must stay handled: the standard's `/**/**/i18n/en.json` glob, with
 `base_path: "."`, sweeps `node_modules` and its 48 upstream catalogues — which would push
@@ -712,6 +836,15 @@ fails any source that is not.
   loader path, and a gate asserting every key a library references is in a catalogue that library
   ships. That is an architectural change and belongs in its own pull request — this page already
   required per-library catalogues, so the requirement is not new, only unmet.
+
+  **Partly closed, 29 Sep 2026: English travels with the package.** `PLATFORM_EN_TRANSLATIONS` in
+  `@nuxeo-satori/platform/ui` is the English for the 299 keys the package's entry points reference,
+  generated from `en.json` by `tools/i18n/platform-english.mjs`. A host opts in with
+  `providePlatformEnglishFallback()`, a missing-translation handler that answers only keys its own
+  catalogues lack and can hand anything else to the host's existing handler. `nuxeo-ui` does not opt
+  in, so its behaviour is unchanged. `checkPlatformEnglishFallback` fails when the copy differs
+  from `en.json`, lacks a key the package references, or keeps one it no longer does. Translations
+  into other languages, through a package catalogue of its own in Crowdin, remain open as NXSAT-296.
 
 - **Dialog text — 48 strings, now keyed and gated.** `title`, `message` and `confirmLabel` on
   `ConfirmDialogData` and the `data:` of a `MatDialog.open(...)` were English literals across 13

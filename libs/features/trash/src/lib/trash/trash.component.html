@@ -201,7 +201,7 @@
               >
                 {{ doc.title }}
               </button>
-              <sat-category-tag category="gray">{{ doc.type }}</sat-category-tag>
+              <sat-category-tag category="gray">{{ doc.type | docTypeLabel }}</sat-category-tag>
             </div>
           </div>
         }
@@ -317,6 +317,8 @@
                 </span>
               } @else if (col.key === 'modified' || col.key === 'created') {
                 <span>{{ getCellValue(doc, col.key) | date: 'medium' }}</span>
+              } @else if (col.key === 'type') {
+                <span>{{ doc.type | docTypeLabel }}</span>
               } @else {
                 <span>{{ getCellValue(doc, col.key) }}</span>
               }
@@ -421,7 +423,7 @@
               >
                 {{ doc.title }}
               </button>
-              <sat-category-tag category="gray">{{ doc.type }}</sat-category-tag>
+              <sat-category-tag category="gray">{{ doc.type | docTypeLabel }}</sat-category-tag>
             </div>
             <div class="simple-list-actions col-hover-actions">
               <button

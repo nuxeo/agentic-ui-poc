@@ -14,11 +14,12 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import {
   DocumentDetailService,
-  PERMISSION_NOTIFICATION_MAIL_HINT,
+  PERMISSION_NOTIFICATION_MAIL_HINT_KEY,
   isMailSendError,
   permissionCreateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
 
 export interface ShareExternalDialogData {
   documentUid: string;
@@ -47,7 +48,7 @@ const PERMISSION_OPTIONS = [
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideNativeDateAdapter(), provideTranslatedDatepickerIntl()],
   templateUrl: './share-external-dialog.html',
   styles: [
     `
@@ -121,7 +122,7 @@ export class ShareExternalDialogComponent {
 
   readonly saving = signal(false);
   readonly permissionOptions = PERMISSION_OPTIONS;
-  readonly mailHint = PERMISSION_NOTIFICATION_MAIL_HINT;
+  readonly mailHintKey = PERMISSION_NOTIFICATION_MAIL_HINT_KEY;
 
   email = '';
   permission = 'Read';
@@ -159,7 +160,7 @@ export class ShareExternalDialogComponent {
         next: (result) => {
           this.saving.set(false);
           this.createdAny = true;
-          const message = this.successMessage(result.notificationSent, result.notificationError);
+          const message = this.successMessage(result.notificationSent, result.notificationErrorKey);
           if (message) {
             this.snackBar.open(message, this.translate.instant('common.dismiss'), {
               duration: 7000,
@@ -182,22 +183,24 @@ export class ShareExternalDialogComponent {
       });
   }
 
-  private successMessage(notificationSent: boolean, notificationError?: string): string | null {
-    if (notificationError) {
-      return notificationError;
+  private successMessage(notificationSent: boolean, notificationErrorKey?: string): string | null {
+    if (notificationErrorKey) {
+      return this.translate.instant(notificationErrorKey);
     }
     if (notificationSent) {
-      return 'Permission added and notification sent';
+      return this.translate.instant(
+        'permission-dialogs.message.permission-added-notification-sent',
+      );
     }
     return null;
   }
 
   private permissionErrorMessage(err: unknown): string {
     if (isMailSendError(err)) {
-      return permissionCreateMailFailureMessage();
+      return permissionCreateMailFailureMessage((key) => this.translate.instant(key));
     }
     const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
-    return raw || 'Could not share with external user';
+    return raw || this.translate.instant('permission-dialogs.message.could-not-share-external');
   }
 
   private resetForm(): void {

@@ -68,6 +68,7 @@ import {
   ConfirmDialogData,
   EditCollectionDialogComponent,
   EditCollectionDialogData,
+  provideTranslatedDatepickerIntl,
 } from '@nuxeo-satori/platform/ui';
 import {
   AddPermissionDialogComponent,
@@ -84,6 +85,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 @Component({
   selector: 'lib-collection-detail',
   standalone: true,
+  providers: [provideTranslatedDatepickerIntl()],
   imports: [
     TranslatePipe,
     DatePipe,
@@ -474,7 +476,13 @@ export class CollectionDetailComponent {
         // for the same reason.
         this.lockOwner.set(wasLocked ? null : (this.currentUsername() ?? null));
         this.actionInProgress.set(null);
-        this.toast(wasLocked ? 'Collection unlocked' : 'Collection locked');
+        this.toast(
+          this.translate.instant(
+            wasLocked
+              ? 'collections.message.collection-unlocked'
+              : 'collections.message.collection-locked',
+          ),
+        );
       },
       error: () => {
         this.actionInProgress.set(null);
@@ -495,7 +503,13 @@ export class CollectionDetailComponent {
         const wasSub = this.isSubscribed();
         this.isSubscribed.set(!wasSub);
         this.actionInProgress.set(null);
-        this.toast(wasSub ? 'Notifications disabled' : 'Notifications enabled');
+        this.toast(
+          this.translate.instant(
+            wasSub
+              ? 'collections.message.notifications-disabled'
+              : 'collections.message.notifications-enabled',
+          ),
+        );
       },
       error: () => {
         this.actionInProgress.set(null);
@@ -543,7 +557,7 @@ export class CollectionDetailComponent {
               this.toast(
                 isPermissionDeniedError(err)
                   ? this.translate.instant(PERMISSION_DENIED_KEY)
-                  : 'Failed to delete collection',
+                  : this.translate.instant('browse.message.failed-to-delete-collection'),
               );
             },
           });
@@ -595,7 +609,8 @@ export class CollectionDetailComponent {
   shareCollection(): void {
     this.dialog.open(ShareDialogComponent, {
       data: {
-        title: this.collection()?.title ?? 'Collection',
+        title:
+          this.collection()?.title ?? this.translate.instant('collections.share-fallback-title'),
         url: window.location.href,
       } satisfies ShareDialogData,
       width: '520px',
@@ -696,7 +711,9 @@ export class CollectionDetailComponent {
       error: (err) => {
         this.actionInProgress.set(null);
         this.toast(
-          isMailSendError(err) ? mailSendFailureMessage('send') : 'Failed to send notification',
+          isMailSendError(err)
+            ? mailSendFailureMessage('send', (key) => this.translate.instant(key))
+            : this.translate.instant('collections.message.failed-to-send-notification'),
         );
       },
     });
@@ -729,7 +746,13 @@ export class CollectionDetailComponent {
       next: () => {
         this.actionInProgress.set(null);
         this.loadCollection();
-        this.toast(blocked ? 'Inheritance unblocked' : 'Inheritance blocked');
+        this.toast(
+          this.translate.instant(
+            blocked
+              ? 'collections.message.inheritance-unblocked'
+              : 'collections.message.inheritance-blocked',
+          ),
+        );
       },
       error: () => {
         this.actionInProgress.set(null);
