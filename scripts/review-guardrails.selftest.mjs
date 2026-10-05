@@ -450,6 +450,14 @@ expectRed(
 );
 
 expectRed(
+  'an added empty placeholder is seen — the runtime matches `{{}}` too, and it must not read as none',
+  'checkCataloguePlaceholders',
+  withFrench('{{count}} documents supprimés de {{ folder }} {{}}'),
+  null,
+  /placeholders are \[\(empty\), count, folder\] where .*has \[count, folder\]/,
+);
+
+expectRed(
   'an added hyphenated placeholder is seen, because the runtime interpolates any non-space name',
   'checkCataloguePlaceholders',
   withFrench('{{count}} documents supprimés de {{ folder }} par {{ user-name }}'),

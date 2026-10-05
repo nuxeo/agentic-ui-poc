@@ -2319,11 +2319,10 @@ function checkCataloguesAreTranslated() {
  */
 function checkCataloguePlaceholders() {
   const PLACEHOLDER = /{{\s?([^{}\s]*)\s?}}/g;
-  const signature = (value) =>
-    [...value.matchAll(PLACEHOLDER)]
-      .map((match) => match[1])
-      .sort()
-      .join(', ');
+  // Compared as JSON, not joined: the matcher accepts an empty name, and `['']` and `[]` join to
+  // the same empty string.
+  const names = (value) => [...value.matchAll(PLACEHOLDER)].map((match) => match[1]).sort();
+  const shown = (list) => (list.length ? list.map((name) => name || '(empty)').join(', ') : 'none');
 
   const isCatalogue = (path) =>
     /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
@@ -2364,12 +2363,12 @@ function checkCataloguePlaceholders() {
 
     for (const [key, value] of translated) {
       if (!english.has(key)) continue;
-      const expected = signature(english.get(key));
-      const actual = signature(value);
-      if (expected === actual) continue;
+      const expected = names(english.get(key));
+      const actual = names(value);
+      if (JSON.stringify(expected) === JSON.stringify(actual)) continue;
       fail(
         `${catalogue} maps \`${key}\` to "${value}", whose placeholders are ` +
-          `[${actual || 'none'}] where ${reference} has [${expected || 'none'}].\n` +
+          `[${shown(actual)}] where ${reference} has [${shown(expected)}].\n` +
           '    ngx-translate fills placeholders by name, so a dropped one loses its value and a ' +
           'renamed or translated one renders its braces verbatim. Never hand-edit a non-English ' +
           'catalogue — fix the translation in Crowdin, which overwrites this file on the next pull.',
