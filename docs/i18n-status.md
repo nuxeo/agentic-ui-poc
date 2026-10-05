@@ -721,7 +721,11 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
 
 **What is left, and none of it is plumbing.**
 
-1. **Crowdin holds almost no approved translations.** Every one of its nine target languages was
+1. ~~**Crowdin holds almost no approved translations.**~~ **Superseded on 5 October 2026** — this
+   item records the 29 September state. By 5 October seven languages were 99% approved; NXSAT-293
+   pulled `fr`, `de`, `ja`, `nl`, `th` and `zh` and found none of the 75 translated keys `main`
+   held in `fr.json` or `de.json` reverting to English. See "Languages that ship" at the top. The
+   rest of this item is kept as the record of how it was. Every one of its nine target languages was
    at zero in the portal on 28 September. By the pull of 29 September, French and German had 8
    approved strings each, and the other seven languages still had none. This is about
    **Crowdin's** state, not the application's: the repository ships 151 hand-written French and
@@ -789,15 +793,17 @@ untranslated key out. For our nested JSON it keeps the key and blanks the value.
 unapproved value `""` — all 1,972 in seven of them, all but 8 approved strings in `fr.json` and
 `de.json` — and
 `checkTranslationCatalogues` failed it, correctly. The Technical Usage Guide warns of exactly this.
-The pull now follows the standard: approved-only export, neither skip option, and only `fr` and
-`de` downloaded (D8d, D8h).
+The pull now follows the standard: approved-only export, neither skip option, and only the
+shipped languages downloaded — `fr` and `de` then, `fr de ja nl th zh-CN` since NXSAT-293 (D8d, D8h).
 
 Dispatched from that fix, the pull refreshed #293 to `fr.json` and `de.json` only, each 1,972 keys
 with no blank value, 1,964 English and 8 approved translations. That is 99% English, so
 `checkCataloguesAreTranslated` **warns and the guardrails pass**. It is not the all-English
 failure. Merging it would turn all 75 hand-written French and 75 German strings on `main` back into
 English, because none of them is approved in Crowdin. **Do not merge a Crowdin pull until the D8f
-seeding is done**, or until the diff shows no hand-written string reverting.
+seeding is done**, or until the diff shows no hand-written string reverting. (5 October 2026: the
+second condition held — the NXSAT-293 pull reverted none of them, because Crowdin approval had
+caught up.)
 
 One trap is already handled and must stay handled: the standard's `/**/**/i18n/en.json` glob, with
 `base_path: "."`, sweeps `node_modules` and its 48 upstream catalogues — which would push

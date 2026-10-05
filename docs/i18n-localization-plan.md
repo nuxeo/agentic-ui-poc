@@ -15,9 +15,11 @@ seven target languages. **That changed by 5 October 2026**: Crowdin Status showe
 NXSAT-293 ships `ja`, `nl`, `th` and `zh` beside `fr` and `de`. `es` is held back on one string —
 see D8e. Project membership is resolved (Manager access on
 28 September) and the translation team has confirmed it can begin (INTERN-1346, 28 September).
-That is separate from what the repository ships: `fr.json` and `de.json` carry 151 hand-written
-strings written before Crowdin existed, which is why D8d's data loss mattered. Those 151 are to be
-**preserved**, by a one-time seeding step that has not been run — see D8f. Plus the two gaps D8d
+Until 5 October that was separate from what the repository shipped: `fr.json` and `de.json`
+carried 151 hand-written strings written before Crowdin existed, which is why D8d's data loss
+mattered, and D8f's one-time seeding step to preserve them was never run. NXSAT-293 replaced both
+catalogues with Crowdin output once approval had caught up, and none of the 75 translated keys
+`main` held per file reverted to English, so that risk has passed. Plus the two gaps D8d
 and D8e record. Conformance against the enterprise standard, clause by clause including what is
 still owed, is **`D8-standard`**. The GA extraction is
 [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284).
