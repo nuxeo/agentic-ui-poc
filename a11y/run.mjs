@@ -136,7 +136,8 @@ function usage() {
   console.log('    npm run a11y:scan -- journey --project=journey-01-login --headed');
   console.log('    npm run a11y:scan -- states --headed\n');
   console.log('  surfaces, states and modes emit one consolidated report from a test of their');
-  console.log('  own, so a --grep that excludes it is refused — it would scan and report nothing.');
+  console.log('  own, so a --grep/-g/--grep-invert/-G that excludes it is refused — it would scan');
+  console.log('  and report nothing. Pass --no-report to say that out loud and get neither.');
   console.log('  journey emits one report per screen, so narrowing it with --project is safe.\n');
 }
 
@@ -202,8 +203,57 @@ const CONSOLIDATED_REPORT_SUITES = new Set(['surfaces', 'states', 'modes']);
 /** Ours, not Playwright's — `mergeArgs` removes it, so it must never reach the runner. */
 const NO_REPORT = '--no-report';
 
+/** Playwright's include and exclude grep flags, long form and short alias alike. */
+const GREP_INCLUDE_FLAGS = ['--grep', '-g'];
+const GREP_EXCLUDE_FLAGS = ['--grep-invert', '-G'];
+
 /**
- * Refuse a `--grep` that would filter out the report test.
+ * Pull every value passed to any of `flags` out of `extra`, in both `--flag value` and
+ * `--flag=value` form, returning what is left alongside what was found.
+ *
+ * One parser shared by `grepWouldDropTheReport` (which only reads `values`) and
+ * `suppressReportTest` (which needs `rest` too, to rebuild the arg list around its own
+ * `--grep-invert`). Two copies of this parsing drifted apart once already — flagged in
+ * review on PR #225 as "duplicated almost verbatim" — so there is one now.
+ *
+ * A flag with no following value (`--grep-invert` as the last argument) or an explicit empty
+ * one (`--grep-invert=`) is dropped rather than recorded as `''`: an empty string joined into
+ * a `|`-separated regex alternation is an empty branch, which matches every test title, not
+ * none. Flagged in review on PR #225.
+ *
+ * @param {string[]} extra
+ * @param {string[]} flags
+ * @returns {{ rest: string[], values: string[] }}
+ */
+function stripFlagOccurrences(extra, flags) {
+  const rest = [];
+  const values = [];
+  for (let i = 0; i < extra.length; i++) {
+    const arg = extra[i];
+    if (flags.includes(arg)) {
+      const value = extra[i + 1];
+      if (value !== undefined) values.push(value);
+      i++;
+      continue;
+    }
+    const eqFlag = flags.find((f) => arg.startsWith(`${f}=`));
+    if (eqFlag) {
+      const value = arg.slice(eqFlag.length + 1);
+      if (value !== '') values.push(value);
+      continue;
+    }
+    rest.push(arg);
+  }
+  return { rest, values };
+}
+
+/** Every value passed to any of `flags`, in both `--flag value` and `--flag=value` form. */
+function collectFlagValues(extra, flags) {
+  return stripFlagOccurrences(extra, flags).values;
+}
+
+/**
+ * Refuse a `--grep`/`-g`/`--grep-invert`/`-G` that would filter out the report test.
  *
  * `--grep` applies to every test title, including the one that calls `generateReport()`. So
  * `states --grep "column picker"` scanned one state, passed, and wrote **no report** — the
@@ -226,12 +276,37 @@ const NO_REPORT = '--no-report';
 function grepWouldDropTheReport(name, extra) {
   if (!CONSOLIDATED_REPORT_SUITES.has(name)) return false;
   if (extra.includes(NO_REPORT)) return false;
-  const patterns = extra.flatMap((a, i) => {
-    if (a.startsWith('--grep=')) return [a.slice('--grep='.length)];
-    return a === '--grep' ? [extra[i + 1] ?? ''] : [];
-  });
-  // Every `--grep` must keep the report test: Playwright intersects repeated ones.
-  return patterns.some((p) => !safeMatches(p, REPORT_TEST_TITLE));
+  const includes = collectFlagValues(extra, GREP_INCLUDE_FLAGS);
+  const excludes = collectFlagValues(extra, GREP_EXCLUDE_FLAGS);
+  // Every `--grep`/`-g` must keep the report test: Playwright intersects repeated ones.
+  if (includes.some((p) => !safeMatches(p, REPORT_TEST_TITLE))) return true;
+  // Any `--grep-invert`/`-G` that matches the report test removes it outright.
+  return excludes.some((p) => safeMatches(p, REPORT_TEST_TITLE));
+}
+
+/**
+ * Actually exclude the report test when the caller asked for `--no-report`, instead of only
+ * warning about it. Before this, `--no-report` told `mergeArgs` to strip itself and nothing
+ * else, so `states --no-report` still ran and wrote the report it claimed to skip.
+ *
+ * Playwright applies `--grep` and `--grep-invert` together — a test must match the include
+ * pattern AND not match the exclude one — so adding our own exclusion is additive, not a
+ * replacement: a caller's own `--grep-invert`/`-G` is unioned with the report test's title
+ * rather than discarded. Flagged in review on PR #225.
+ *
+ * `journey` is exempt: it is not in `CONSOLIDATED_REPORT_SUITES`, so this returns `extra`
+ * unchanged for it, since each of its screens emits its own report.
+ *
+ * @param {string} name   the command
+ * @param {string[]} extra  what the caller appended
+ * @returns {string[]}
+ */
+function suppressReportTest(name, extra) {
+  if (!CONSOLIDATED_REPORT_SUITES.has(name)) return extra;
+  if (!extra.includes(NO_REPORT)) return extra;
+  const { rest, values: existingExcludes } = stripFlagOccurrences(extra, GREP_EXCLUDE_FLAGS);
+  const pattern = [...existingExcludes, REPORT_TEST_TITLE].join('|');
+  return [...rest, '--grep-invert', pattern];
 }
 
 /** Does `pattern` match `title`? An unparseable pattern is Playwright's error to report. */
@@ -285,9 +360,18 @@ if (grepWouldDropTheReport(command, passthrough)) {
 }
 
 if (passthrough.includes(NO_REPORT)) {
-  console.warn(
-    `\n${NO_REPORT}: this run writes no consolidated report. It is a look, not a measurement.\n`,
-  );
+  if (CONSOLIDATED_REPORT_SUITES.has(command)) {
+    console.warn(
+      `\n${NO_REPORT}: this run writes no consolidated report. It is a look, not a measurement.\n`,
+    );
+  } else {
+    // journey emits one report per screen rather than a consolidated one, so there is
+    // nothing here for --no-report to suppress. Flagged in review on PR #225.
+    console.warn(
+      `\n${NO_REPORT}: "${command}" has no consolidated report to suppress — each of its\n` +
+        'screens still writes its own.\n',
+    );
+  }
 }
 
 /** The package whose `bin` provides each non-`node` command above. */
@@ -378,5 +462,5 @@ if (entry.preflight) {
   if (pre.status !== 0) process.exit(pre.status);
 }
 
-const result = run(mergeArgs(entry.argv, passthrough));
+const result = run(mergeArgs(entry.argv, suppressReportTest(command, passthrough)));
 process.exit(entry.statusMap?.[result.status] ?? result.status);

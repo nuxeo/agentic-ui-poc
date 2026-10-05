@@ -77,9 +77,9 @@ import {
  * Playwright change, a fixture change — the run goes red instead of quietly emitting a
  * report that covers more than its title claims.
  *
- * ## Prerequisites
+ * ## Prerequisites (versions kept in sync with a11y/versions.mjs)
  *
- *   npm install --no-save @playwright/test @axe-core/playwright \
+ *   npm install --no-save @playwright/test@1.63.0 @axe-core/playwright@4.13.0 \
  *     <path>/a11y-scout-0.3.0.tgz <path>/a11y-scout-playwright-0.3.0.tgz
  *   npm run beta:backend && npx nx serve nuxeo-ui
  *

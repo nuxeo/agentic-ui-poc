@@ -46,8 +46,9 @@ import {
  * case of CI being red for 16 consecutive runs over an unowned ceiling. Read the report,
  * triage, fix or baseline, and only then turn this red.
  *
- * Prerequisites — the two tarballs are hand-distributed, not on any registry:
- *   npm install --no-save @playwright/test @axe-core/playwright \
+ * Prerequisites — the two tarballs are hand-distributed, not on any registry (versions kept
+ * in sync with a11y/versions.mjs):
+ *   npm install --no-save @playwright/test@1.63.0 @axe-core/playwright@4.13.0 \
  *     <path>/a11y-scout-0.3.0.tgz <path>/a11y-scout-playwright-0.3.0.tgz
  *   npm run beta:backend && npx nx serve nuxeo-ui
  *

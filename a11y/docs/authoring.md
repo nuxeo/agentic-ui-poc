@@ -367,7 +367,8 @@ try {
   cannotMeasure(
     TOOL,
     '@playwright/test is not installed',
-    'npm install --no-save @playwright/test',
+    // Kept in sync with a11y/versions.mjs — see PINNED_PLAYWRIGHT_TEST.
+    'npm install --no-save @playwright/test@1.63.0',
   );
 }
 

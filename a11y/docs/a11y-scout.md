@@ -35,10 +35,11 @@ Both packages are distributed by hand from the a11y-scout SharePoint folder. `np
 a11y-scout` returns 404 and always will: the engine is **unscoped**, so it cannot live in
 GitHub Packages either, which only serves `@owner/name`.
 
-Download `a11y-scout-0.3.0.tgz` **and** `a11y-scout-playwright-0.3.0.tgz`, then:
+Download `a11y-scout-0.3.0.tgz` **and** `a11y-scout-playwright-0.3.0.tgz`, then (versions
+kept in sync with `a11y/versions.mjs`, the one runtime source for these pins):
 
 ```bash
-npm install --no-save @playwright/test @axe-core/playwright \
+npm install --no-save @playwright/test@1.63.0 @axe-core/playwright@4.13.0 \
   <path>/a11y-scout-0.3.0.tgz <path>/a11y-scout-playwright-0.3.0.tgz
 ```
 

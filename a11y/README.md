@@ -30,6 +30,8 @@ a11y/
   surface.mjs          the Node-side twin of expectSurfaceUsable, the single list of this
                        application's error-state classes, and the settle wait every scan
                        makes before measuring
+  versions.mjs         the one runtime source for the pinned Playwright/axe install versions;
+                       every printed install command imports from here instead of repeating them
   package.json         "type": "module", because a11y-scout is ESM-only
   tsconfig.json        allowJs + checkJs, so the .ts side can import those two .mjs modules
   specs/
@@ -59,10 +61,16 @@ workflows — not by WCAG rule, because the reports already group by rule.
 The a11y-scout tarballs are hand-distributed and resolve from no registry, and Playwright is
 kept untracked so CI installs are unaffected by a browser download. Install all of them in
 **one command** — `npm install --no-save X` prunes anything previously installed with
-`--no-save`, so separate installs remove each other:
+`--no-save`, so separate installs remove each other. The Playwright and axe versions are
+pinned, not left to resolve to whatever is newest: the recorded findings below were measured
+against `@axe-core/playwright@4.13.0`, which `axe-differential.mjs` confirms resolves the same
+deduped `axe-core@4.13.0` that `a11y-scout@0.3.0` uses, and an unpinned later install could pull
+a different engine or browser build and make a re-scan incomparable to that baseline. These
+versions live in exactly one runtime source, `a11y/versions.mjs`; this and every other
+install command below is kept in sync with it by hand, since prose cannot `import` it:
 
 ```bash
-npm install --no-save @playwright/test @axe-core/playwright \
+npm install --no-save @playwright/test@1.63.0 @axe-core/playwright@4.13.0 \
   <path>/a11y-scout-0.3.0.tgz <path>/a11y-scout-playwright-0.3.0.tgz
 npx playwright install chromium
 

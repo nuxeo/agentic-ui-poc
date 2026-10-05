@@ -36,8 +36,8 @@
  * misleading one: the phase-6 verdicts printed at the end would be computed over whichever
  * surfaces happened to render. A scan that silently did not happen must never read as clean.
  *
- * Prerequisites:
- *   npm install --no-save @playwright/test @axe-core/playwright
+ * Prerequisites (versions kept in sync with a11y/versions.mjs):
+ *   npm install --no-save @playwright/test@1.63.0 @axe-core/playwright@4.13.0
  *     ^ both in ONE command. `npm install --no-save X` prunes previously --no-save'd packages.
  *   npm run beta:backend && npx nx serve nuxeo-ui
  *
@@ -54,6 +54,7 @@ import { parseCliOrExit } from '../cli.mjs';
 import { resolveBaseUrl } from '../env.mjs';
 import { injectedSession, SESSION_KEY, SIGNED_OUT_KEY } from '../session.mjs';
 import { screenUnsettledReason, surfaceUnusableReason } from '../surface.mjs';
+import { PINNED_INSTALL_ARGS } from '../versions.mjs';
 import {
   credentialsOrExit,
   gotoOrExit,
@@ -140,7 +141,7 @@ try {
 } catch (err) {
   console.error(
     `axe-differential: cannot measure — ${err instanceof Error ? err.message : err}\n` +
-      '  npm install --no-save @playwright/test @axe-core/playwright',
+      `  npm install --no-save ${PINNED_INSTALL_ARGS}`,
   );
   process.exit(2);
 }

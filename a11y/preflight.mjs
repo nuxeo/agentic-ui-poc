@@ -24,6 +24,7 @@ import {
   requireNuxeoCredentials,
   resolveBaseUrl,
 } from './env.mjs';
+import { A11Y_SCOUT_VERSION, PINNED_INSTALL_ARGS } from './versions.mjs';
 
 const BASE = resolveBaseUrl();
 
@@ -60,8 +61,8 @@ try {
 }
 
 const INSTALL = [
-  '    npm install --no-save @playwright/test @axe-core/playwright \\',
-  '      <path>/a11y-scout-0.3.0.tgz <path>/a11y-scout-playwright-0.3.0.tgz',
+  `    npm install --no-save ${PINNED_INSTALL_ARGS} \\`,
+  `      <path>/a11y-scout-${A11Y_SCOUT_VERSION}.tgz <path>/a11y-scout-playwright-${A11Y_SCOUT_VERSION}.tgz`,
   '',
   '  All packages in ONE command: `npm install --no-save X` prunes anything previously',
   '  installed with --no-save, so installing them separately removes the first.',

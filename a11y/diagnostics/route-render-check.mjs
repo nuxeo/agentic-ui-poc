@@ -21,8 +21,8 @@
  * It runs no axe and needs no scanner, so it is seconds rather than minutes and can be run before
  * any scan to establish that the scan will have something to look at.
  *
- * Prerequisites:
- *   npm install --no-save @playwright/test
+ * Prerequisites (version kept in sync with a11y/versions.mjs):
+ *   npm install --no-save @playwright/test@1.63.0
  *   npm run beta:backend && npx nx serve nuxeo-ui
  *
  * Usage:
@@ -36,6 +36,7 @@ import { parseCliOrExit } from '../cli.mjs';
 import { resolveBaseUrl } from '../env.mjs';
 import { injectedSession, SESSION_KEY, SIGNED_OUT_KEY } from '../session.mjs';
 import { ERROR_STATE_SELECTOR, screenUnsettledReason } from '../surface.mjs';
+import { PINNED_PLAYWRIGHT_TEST } from '../versions.mjs';
 import {
   credentialsOrExit,
   gotoOrExit,
@@ -81,7 +82,7 @@ try {
 } catch (err) {
   console.error(
     `route-render-check: cannot measure — ${err instanceof Error ? err.message : err}\n` +
-      '  npm install --no-save @playwright/test',
+      `  npm install --no-save ${PINNED_PLAYWRIGHT_TEST}`,
   );
   process.exit(2);
 }

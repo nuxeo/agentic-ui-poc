@@ -43,6 +43,7 @@ import { parseCliOrExit } from '../cli.mjs';
 import { nuxeoBasicAuthHeader, resolveBaseUrl } from '../env.mjs';
 import { injectedSession, SESSION_KEY, SIGNED_OUT_KEY } from '../session.mjs';
 import { screenUnsettledReason, surfaceUnusableReason } from '../surface.mjs';
+import { PINNED_INSTALL_ARGS } from '../versions.mjs';
 import {
   credentialsOrExit,
   gotoOrExit,
@@ -128,7 +129,7 @@ try {
 } catch (err) {
   console.error(
     `reflow-probe: cannot measure — ${err instanceof Error ? err.message : err}\n` +
-      '  npm install --no-save @playwright/test @axe-core/playwright',
+      `  npm install --no-save ${PINNED_INSTALL_ARGS}`,
   );
   process.exit(2);
 }
