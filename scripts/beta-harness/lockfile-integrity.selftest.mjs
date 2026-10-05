@@ -257,9 +257,92 @@ expect(
 );
 
 // ---------------------------------------------------------------------------------------------
-// 10. A scoped name carries its own leading `@`, so the key has to split on the LAST one. Split
-//    on the first and `"@scope/pkg@^2.0.0"` becomes the name `""` with range `scope/pkg@^2.0.0`,
-//    and both of these go the wrong way.
+// 10-13. A nested override is ancestry-scoped: `{ parent: { child: "2.0.0" } }` pins `child`
+//        beneath `parent` and pins `parent` itself not at all. Flattening it got both halves
+//        wrong, so there is a control for each false pass, plus the legitimate waiver it must
+//        not cost and npm's `"."` self-reference, which is the one form that *does* pin the
+//        container.
+// ---------------------------------------------------------------------------------------------
+const NESTED_OVERRIDE = { parent: { child: '2.0.0' } };
+expect(
+  'a nested override does not waive the container package itself',
+  'fail',
+  'requires parent@1.0.0',
+  runGate(
+    'nested-container',
+    { name: 'fixture', version: '0.0.0', overrides: NESTED_OVERRIDE },
+    {
+      name: 'fixture',
+      version: '0.0.0',
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'fixture', version: '0.0.0', dependencies: { parent: '1.0.0' } },
+        'node_modules/parent': { version: '2.0.0' },
+      },
+    },
+  ),
+);
+expect(
+  "a nested override does not waive an unrelated dependent's edge",
+  'fail',
+  'requires child@^1.0.0',
+  runGate(
+    'nested-unrelated',
+    { name: 'fixture', version: '0.0.0', overrides: NESTED_OVERRIDE },
+    {
+      name: 'fixture',
+      version: '0.0.0',
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'fixture', version: '0.0.0', dependencies: { other: '1.0.0' } },
+        'node_modules/other': { version: '1.0.0', dependencies: { child: '^1.0.0' } },
+        'node_modules/child': { version: '2.0.0' },
+      },
+    },
+  ),
+);
+expect(
+  'a nested override still waives the edge inside its own scope',
+  'pass',
+  'lockfile-integrity: pass',
+  runGate(
+    'nested-in-scope',
+    { name: 'fixture', version: '0.0.0', overrides: NESTED_OVERRIDE },
+    {
+      name: 'fixture',
+      version: '0.0.0',
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'fixture', version: '0.0.0', dependencies: { parent: '1.0.0' } },
+        'node_modules/parent': { version: '1.0.0', dependencies: { child: '^1.0.0' } },
+        'node_modules/child': { version: '2.0.0' },
+      },
+    },
+  ),
+);
+expect(
+  'npm\'s "." self-reference does pin the container',
+  'pass',
+  'lockfile-integrity: pass',
+  runGate(
+    'nested-self-reference',
+    { name: 'fixture', version: '0.0.0', overrides: { parent: { '.': '2.0.0' } } },
+    {
+      name: 'fixture',
+      version: '0.0.0',
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'fixture', version: '0.0.0', dependencies: { parent: '1.0.0' } },
+        'node_modules/parent': { version: '2.0.0' },
+      },
+    },
+  ),
+);
+
+// ---------------------------------------------------------------------------------------------
+// 14/15. A scoped name carries its own leading `@`, so the key has to split on the LAST one. Split
+//     on the first and `"@scope/pkg@^2.0.0"` becomes the name `""` with range `scope/pkg@^2.0.0`,
+//     and both of these go the wrong way.
 // ---------------------------------------------------------------------------------------------
 const SCOPED_OVERRIDE = { '@emnapi/core@^2.0.0': '2.1.0' };
 expect(
@@ -284,7 +367,7 @@ expect(
 );
 
 // ---------------------------------------------------------------------------------------------
-// 11. The name half of the invariant, which no override touches: an edge whose package is not in
+// 16. The name half of the invariant, which no override touches: an edge whose package is not in
 //    the lock at all.
 // ---------------------------------------------------------------------------------------------
 expect(
@@ -299,7 +382,7 @@ expect(
 );
 
 // ---------------------------------------------------------------------------------------------
-// 12. The Phase 2 failure itself, on the real lock: prune `@oxc-resolver/binding-wasm32-wasi`'s
+// 17. The Phase 2 failure itself, on the real lock: prune `@oxc-resolver/binding-wasm32-wasi`'s
 //    nested `@emnapi/*` entries, as a bare `npm install` on macOS does, and the v1.11.2 pins
 //    walk up to the top-level 1.11.3. This is the control that was previously run by hand.
 // ---------------------------------------------------------------------------------------------
@@ -325,7 +408,7 @@ expect(
 }
 
 // ---------------------------------------------------------------------------------------------
-// 13. The real lock's own `brace-expansion@^5.0.0` pin is load-bearing: with the key removed,
+// 18. The real lock's own `brace-expansion@^5.0.0` pin is load-bearing: with the key removed,
 //     the real lock goes red on that edge. The pass in control 1 is therefore the selector-scoped
 //     waiver excusing it, not the version check failing to look.
 // ---------------------------------------------------------------------------------------------
@@ -350,15 +433,19 @@ expect(
 rmSync(workspace, { recursive: true, force: true });
 
 const failed = results.filter((r) => !r.ok);
+// The split is reported rather than a total, because only the negative controls prove the gate
+// can fail; the positive ones prove it does not cry wolf, and reading the total as failure-path
+// coverage overstates it. Review on PR #300 caught exactly that wording.
+const negatives = results.filter((r) => r.expected === 'fail').length;
+const positives = results.length - negatives;
+const split = `${negatives} negative (must report) + ${positives} positive (must stay quiet)`;
 console.log();
 if (failed.length === 0) {
-  console.log(
-    `lockfile-integrity selftest: pass — ${results.length} control(s) behaved as specified.`,
-  );
+  console.log(`lockfile-integrity selftest: pass — ${results.length} control(s): ${split}.`);
   process.exit(0);
 }
 console.error(
-  `lockfile-integrity selftest: FAIL — ${failed.length} of ${results.length} control(s) did not behave as specified:`,
+  `lockfile-integrity selftest: FAIL — ${failed.length} of ${results.length} control(s) (${split}) did not behave as specified:`,
 );
 for (const f of failed) console.error(`  - ${f.name} (expected ${f.expected})`);
 process.exit(1);

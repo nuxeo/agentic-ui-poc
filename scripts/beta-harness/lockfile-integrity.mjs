@@ -131,7 +131,7 @@ for (const [path, entry] of Object.entries(entries)) {
         continue;
       }
       const actual = entries[found].version;
-      if (actual && !satisfiesSpec(actual, spec) && !isOverridden(name, spec, actual)) {
+      if (actual && !satisfiesSpec(actual, spec) && !isOverridden(name, spec, actual, path)) {
         problems.push({
           dependent: path || '<root>',
           missing: name,
@@ -178,19 +178,30 @@ for (const [path, entry] of Object.entries(entries)) {
  * applies to any request; and a value that is not a version or range, such as npm's `"$dep"`
  * back-reference, accepts any resolved version.
  *
- * Nested override forms (`{ "@angular/build": { "vite": "6.4.3" } }`) are flattened, since the
- * effect on the resolved version is the same. The outer key is a dependent rather than a pinned
- * package, so it contributes a rule with no value and waives on the name alone.
+ * A nested form (`{ "@angular/build": { "vite": "6.4.3" } }`) is an **ancestry-scoped** rule, not
+ * a second global one: it pins `vite` beneath `@angular/build` and leaves every other `vite` edge
+ * alone, and it does not pin `@angular/build` itself at all. Flattening it did both of those
+ * wrong — the container got a waiver npm never granted it, and the inner pin waived unrelated
+ * dependents' edges — so a rule now carries the scope it was nested under, and the container
+ * contributes no rule of its own. npm's `"."` self-reference, which *does* pin the enclosing
+ * package, is the only thing that gives a container a rule.
+ *
+ * Scope is matched on the lock's physical layout: the dependent is the scope package's own entry,
+ * or lives inside its `node_modules`. That is an approximation of npm's graph ancestry and it is
+ * deliberately the conservative half — a dependency hoisted out of the scope package's subtree
+ * would be reported rather than waived. No edge in this lock relies on it, which the gate passing
+ * is what demonstrates; the alternative, matching on the name alone, is the defect above.
  *
  * @param {string} name package name of the edge
  * @param {string} spec version range the dependent declared
  * @param {string} actual version the lock resolved it to
+ * @param {string} dependentPath lock path of the package declaring the edge
  */
-function isOverridden(name, spec, actual) {
+function isOverridden(name, spec, actual, dependentPath) {
   const rules = overrideRules.get(name);
   if (!rules) return false;
   if (!semver) return true;
-  return rules.some(({ range, value }) => {
+  return rules.some(({ range, value, scope }) => {
     const applies =
       range === null ||
       !semver.validRange(range) ||
@@ -200,34 +211,68 @@ function isOverridden(name, spec, actual) {
       value === null ||
       !semver.validRange(value) ||
       semver.satisfies(actual, value, { includePrerelease: true });
-    return applies && installedWhatItForces;
+    return applies && installedWhatItForces && dependentIsWithin(dependentPath, scope);
   });
 }
 
 /**
- * Every package named anywhere in `overrides`, at any nesting, with the selector its key carried
- * and the version it forces.
+ * Is `dependentPath` the scope package or inside it? `null` scope is unscoped and matches anything.
  *
- * @returns {Map<string, { range: string | null, value: string | null }[]>} name -> one rule per
- *   key that addressed it
+ * @param {string} dependentPath
+ * @param {{ name: string, range: string | null } | null} scope
+ */
+function dependentIsWithin(dependentPath, scope) {
+  if (scope === null) return true;
+  const marker = `node_modules/${scope.name}`;
+  if (dependentPath === marker || dependentPath.endsWith(`/${marker}`)) {
+    return scopeVersionMatches(dependentPath, scope);
+  }
+  const nested = dependentPath.indexOf(`${marker}/`);
+  if (nested === -1) return false;
+  return scopeVersionMatches(dependentPath.slice(0, nested + marker.length), scope);
+}
+
+/** A scope key may itself carry a selector (`{ "vite@^6": { ... } }`); honour it when it does. */
+function scopeVersionMatches(scopePath, scope) {
+  if (scope.range === null || !semver?.validRange(scope.range)) return true;
+  const version = entries[scopePath]?.version;
+  if (!version) return true;
+  return semver.satisfies(version, scope.range, { includePrerelease: true });
+}
+
+/**
+ * Every package pinned anywhere in `overrides`, with the selector its key carried, the version it
+ * forces, and the dependent it was nested under.
+ *
+ * Nesting deeper than one level keeps only the nearest ancestor as the scope. npm applies the
+ * whole chain; matching the nearest is narrower than flattening and wider than the full chain,
+ * and no override in this repository nests twice.
+ *
+ * @returns {Map<string, { range: string | null, value: string | null, scope: { name: string, range: string | null } | null }[]>}
  */
 function collectOverrideRules(overrides) {
-  /** @type {Map<string, { range: string | null, value: string | null }[]>} */
+  /** @type {Map<string, { range: string | null, value: string | null, scope: object | null }[]>} */
   const rules = new Map();
-  const walk = (node) => {
+  const add = (name, rule) => rules.set(name, [...(rules.get(name) ?? []), rule]);
+  const walk = (node, scope) => {
     if (!node || typeof node !== 'object') return;
     for (const [key, value] of Object.entries(node)) {
-      // A key is a package name unless it is the `.` self-reference npm allows.
-      if (key !== '.') {
-        const { name, range } = parseOverrideKey(key);
-        // A nested object is a dependent scope, not a version: no value to compare against.
-        const forced = typeof value === 'string' ? value : null;
-        rules.set(name, [...(rules.get(name) ?? []), { range, value: forced }]);
+      // `"."` pins the package whose object this is — the one case where a container is itself
+      // overridden. Outside a container it addresses nothing.
+      if (key === '.') {
+        if (scope && typeof value === 'string') {
+          add(scope.name, { range: scope.range, value, scope: scope.parent });
+        }
+        continue;
       }
-      if (value && typeof value === 'object') walk(value);
+      const { name, range } = parseOverrideKey(key);
+      if (typeof value === 'string') add(name, { range, value, scope });
+      // A nested object is a dependent scope rather than a pinned version, so it gets no rule of
+      // its own; its children carry it as their scope.
+      else if (value && typeof value === 'object') walk(value, { name, range, parent: scope });
     }
   };
-  walk(overrides);
+  walk(overrides, null);
   return rules;
 }
 
