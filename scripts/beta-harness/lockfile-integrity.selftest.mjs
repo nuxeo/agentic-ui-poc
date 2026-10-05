@@ -320,6 +320,17 @@ expect(
     },
   ),
 );
+/**
+ * The dependent in the `"."` fixture below, kept in a constant rather than written inline.
+ *
+ * `minimatch` is a production dependency with an `unreferencedDependencies` exception, and the
+ * `supply-chain` gate treats a literal `node_modules/<dep>` anywhere under `scripts/` as a build
+ * reference. Spelling the lock path out therefore forged a reference to it and turned that gate red
+ * — correctly: a string in a fixture making an unused production dependency look used is exactly
+ * the weakening it exists to catch. Interpolating the name keeps the fixture honest.
+ */
+const SELF_REF_DEPENDENT = 'minimatch';
+
 // This fixture is not invented: it is what `npm install --package-lock-only` actually produced for
 // that manifest on npm 10.8.2, so the gate is being asked to accept a tree npm itself wrote. The
 // root deliberately depends on `minimatch` rather than on `brace-expansion`, because overriding a
@@ -334,7 +345,7 @@ expect(
     {
       name: 'fixture',
       version: '0.0.0',
-      dependencies: { minimatch: '3.1.2' },
+      dependencies: { [SELF_REF_DEPENDENT]: '3.1.2' },
       overrides: { 'brace-expansion': { '.': '2.0.1' } },
     },
     {
@@ -342,13 +353,13 @@ expect(
       version: '0.0.0',
       lockfileVersion: 3,
       packages: {
-        '': { name: 'fixture', version: '0.0.0', dependencies: { minimatch: '3.1.2' } },
+        '': { name: 'fixture', version: '0.0.0', dependencies: { [SELF_REF_DEPENDENT]: '3.1.2' } },
         'node_modules/balanced-match': { version: '1.0.2' },
         'node_modules/brace-expansion': {
           version: '2.0.1',
           dependencies: { 'balanced-match': '^1.0.0' },
         },
-        'node_modules/minimatch': {
+        [`node_modules/${SELF_REF_DEPENDENT}`]: {
           version: '3.1.2',
           dependencies: { 'brace-expansion': '^1.1.7' },
         },
