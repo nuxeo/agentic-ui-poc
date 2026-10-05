@@ -211,7 +211,7 @@ export const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig = {
   // locale here that has no catalogue would advertise a language the application cannot
   // render, which `checkAdvertisedLocalesShip` fails.
   //
-  // Seven ship besides English — fr, de, es, ja, nl, th and zh (Simplified Chinese, Crowdin's
+  // Six ship besides English — fr, de, ja, nl, th and zh (Simplified Chinese, Crowdin's
   // `zh-CN`) — each pulled from Crowdin once approved. It does NOT mean every key is translated:
   // `setFallbackLang('en')` covers gaps, and a Crowdin pull fills every unapproved string with its
   // English source. `checkTranslationCatalogues` warns on a missing key and fails only on one
@@ -222,7 +222,7 @@ export const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig = {
   //
   // Adding a language here also means adding it to `download_translations_args` in
   // .github/workflows/crowdin-pull.yaml, which downloads only the languages the app ships.
-  availableLanguages: ['en', 'fr', 'de', 'es', 'ja', 'nl', 'th', 'zh'],
+  availableLanguages: ['en', 'fr', 'de', 'ja', 'nl', 'th', 'zh'],
   integrations: {
     arender: null,
     knowledgeDiscoveryOperations: {},

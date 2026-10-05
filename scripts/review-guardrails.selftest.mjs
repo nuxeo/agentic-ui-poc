@@ -405,6 +405,84 @@ expectRed(
   /fr\.json contains no translated strings at all, while .*en\.json has 6/,
 );
 
+/* ---------------- checkCataloguePlaceholders ---------------- */
+
+const EN_PLACEHOLDERS = `{
+  "browse": {
+    "deleted": "Deleted {{count}} documents from {{ folder }}",
+    "title": "Browse"
+  }
+}
+`;
+const placeholders = (deleted) =>
+  `${JSON.stringify({ browse: { deleted, title: 'Parcourir' } }, null, 2)}\n`;
+const withFrench = (deleted) => ({
+  'apps/nuxeo-ui/public/i18n/en.json': EN_PLACEHOLDERS,
+  'apps/nuxeo-ui/public/i18n/fr.json': placeholders(deleted),
+});
+
+expectGreen(
+  'a translation keeping both placeholders',
+  'checkCataloguePlaceholders',
+  withFrench('{{count}} documents supprimés de {{ folder }}'),
+);
+
+expectGreen(
+  'reordered placeholders pass, because word order changes between languages',
+  'checkCataloguePlaceholders',
+  withFrench('Dans {{ folder }} : {{count}} documents supprimés'),
+);
+falsePositiveControls += 1;
+
+expectGreen(
+  'different inner spacing passes, because ngx-translate ignores it',
+  'checkCataloguePlaceholders',
+  withFrench('{{ count }} documents supprimés de {{folder}}'),
+);
+falsePositiveControls += 1;
+
+expectGreen(
+  'a key absent from the locale is skipped — it renders the English fallback',
+  'checkCataloguePlaceholders',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': EN_PLACEHOLDERS,
+    'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "browse": { "title": "Parcourir" }\n}\n',
+  },
+);
+falsePositiveControls += 1;
+
+expectRed(
+  'a dropped placeholder',
+  'checkCataloguePlaceholders',
+  withFrench('Documents supprimés de {{ folder }}'),
+  null,
+  /fr\.json maps `browse\.deleted`.*placeholders are \[folder\] where .*en\.json has \[count, folder\]/,
+);
+
+expectRed(
+  'a renamed (translated) placeholder',
+  'checkCataloguePlaceholders',
+  withFrench('{{nombre}} documents supprimés de {{ folder }}'),
+  null,
+  /fr\.json maps `browse\.deleted`.*placeholders are \[folder, nombre\] where .*has \[count, folder\]/,
+);
+
+expectRed(
+  'an extra placeholder',
+  'checkCataloguePlaceholders',
+  withFrench('{{count}} documents supprimés de {{ folder }} par {{user}}'),
+  null,
+  /fr\.json maps `browse\.deleted`.*placeholders are \[count, folder, user\]/,
+);
+
+expectRed(
+  'a duplicated placeholder counts — the comparison is a multiset, not a set',
+  'checkCataloguePlaceholders',
+  withFrench('{{count}} documents ({{count}}) supprimés de {{ folder }}'),
+  null,
+  /placeholders are \[count, count, folder\]/,
+);
+
 /* ---------------- checkTranslationContext ---------------- */
 
 /** Context for every string in `EN_JSON`, keyed identically, plus one `$` metadata key. */

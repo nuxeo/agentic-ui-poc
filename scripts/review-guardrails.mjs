@@ -2298,6 +2298,89 @@ function checkCataloguesAreTranslated() {
 }
 
 /**
+ * A translation keeps every interpolation placeholder its English source has, and adds none.
+ *
+ * ngx-translate fills `{{ name }}` from the parameters the call site passes. A translator who
+ * drops it loses the data — "Deleted 3 documents" becomes "Deleted documents" — and one who
+ * renames or translates it (`{{ nom }}`) renders the braces verbatim, because no parameter of that
+ * name exists. Every other catalogue check passes both: the value is a well-formed, non-blank,
+ * translated string at full key parity. Crowdin's own QA flags placeholder edits, and it reported
+ * 813 issues on Polish while that language sat at 99% translated and 2% approved — so the
+ * defect is live in the project, held back only by approval.
+ *
+ * Compared as a multiset of names: order may change, because word order does, and inner spacing
+ * is irrelevant to ngx-translate. A key absent from the locale is skipped; it renders the English
+ * fallback, placeholders and all.
+ */
+function checkCataloguePlaceholders() {
+  const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_.]+)\s*\}\}/g;
+  const signature = (value) =>
+    [...value.matchAll(PLACEHOLDER)]
+      .map((match) => match[1])
+      .sort()
+      .join(', ');
+
+  const isCatalogue = (path) =>
+    /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path) && !isGeneratedLocale(path);
+  const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
+
+  const flatten = (value, prefix, out) => {
+    for (const [key, entry] of Object.entries(value)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof entry === 'string') out.set(path, entry);
+      else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        flatten(entry, path, out);
+      }
+    }
+    return out;
+  };
+  /** Parses a catalogue, or returns null — malformed files are `checkTranslationCatalogues`'s. */
+  const load = (path) => {
+    try {
+      const json = JSON.parse(read(path));
+      if (json === null || typeof json !== 'object' || Array.isArray(json)) return null;
+      return flatten(json, '', new Map());
+    } catch {
+      return null;
+    }
+  };
+
+  let compared = 0;
+
+  for (const catalogue of catalogues) {
+    if (catalogue.endsWith('/en.json')) continue;
+    const reference = `${catalogue.slice(0, catalogue.lastIndexOf('/'))}/en.json`;
+    if (!fileExists(reference)) continue;
+
+    const english = load(reference);
+    const translated = load(catalogue);
+    if (!english || !translated) continue;
+    compared += 1;
+
+    for (const [key, value] of translated) {
+      if (!english.has(key)) continue;
+      const expected = signature(english.get(key));
+      const actual = signature(value);
+      if (expected === actual) continue;
+      fail(
+        `${catalogue} maps \`${key}\` to "${value}", whose placeholders are ` +
+          `[${actual || 'none'}] where ${reference} has [${expected || 'none'}].\n` +
+          '    ngx-translate fills placeholders by name, so a dropped one loses its value and a ' +
+          'renamed or translated one renders its braces verbatim. Never hand-edit a non-English ' +
+          'catalogue — fix the translation in Crowdin, which overwrites this file on the next pull.',
+      );
+    }
+  }
+
+  if (catalogues.length > 1 && compared === 0) {
+    fail(
+      `${catalogues.length} catalogues were found but none was compared against an en.json ` +
+        'sibling, so `checkCataloguePlaceholders` asserted nothing.',
+    );
+  }
+}
+
+/**
  * Translator context exists for every string, and for no string that no longer exists.
  *
  * INFO-144 (*Internationalization Strategy for software*) is unambiguous about this: "All strings
@@ -5446,6 +5529,7 @@ const GUARDRAILS = [
   checkNoStaleAgnosticClaim,
   checkTranslationCatalogues,
   checkCataloguesAreTranslated,
+  checkCataloguePlaceholders,
   checkAdvertisedLocalesShip,
   checkCrowdinConfig,
   checkPackagedConfigIsNotADemo,

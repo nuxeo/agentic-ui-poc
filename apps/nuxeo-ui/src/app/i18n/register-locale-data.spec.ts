@@ -21,7 +21,7 @@ describe('registerShippedLocaleData', () => {
 
   it('registers data for every locale it advertises', () => {
     // If these two ever disagree the guardrail is checking the wrong list.
-    expect([...REGISTERED_LOCALES].sort()).toEqual(['de', 'es', 'fr', 'ja', 'nl', 'th', 'zh']);
+    expect([...REGISTERED_LOCALES].sort()).toEqual(['de', 'fr', 'ja', 'nl', 'th', 'zh']);
   });
 
   it('formats a date in French rather than throwing NG0701', () => {
@@ -34,7 +34,6 @@ describe('registerShippedLocaleData', () => {
   });
 
   const LONG_DATE_JULY: ReadonlyArray<readonly [locale: string, expected: string]> = [
-    ['es', 'julio'],
     ['ja', '2026年7月14日'],
     ['nl', 'juli'],
     ['th', 'กรกฎาคม'],

@@ -132,12 +132,12 @@ jobs:
 
           # Only the languages the app ships. A catalogue for a locale with no Angular locale data
           # fails `checkLocaleDataRegistered`, and Crowdin has nine target languages while the app
-          # registers seven; `pt` and `pl` are withheld until approved. Adding a language to the app
+          # registers six; `es`, `pt` and `pl` are withheld until approved. Adding a language to the app
           # means adding it here, in the same pull request as its `register-locale-data.ts` entry
           # and its `availableLanguages` entry.
           # These are Crowdin language IDs. Simplified Chinese is `zh-CN`, which
           # `%two_letters_code%` writes as `zh.json` — the app's locale id is therefore `zh`.
-          download_translations_args: '--language=fr --language=de --language=es --language=ja --language=nl --language=th --language=zh-CN'
+          download_translations_args: '--language=fr --language=de --language=ja --language=nl --language=th --language=zh-CN'
 
           create_pull_request: true
           localization_branch_name: crowdin-translations-update
