@@ -12,7 +12,8 @@
  * tarballs as well, and a missing tarball must cost the accessibility run and nothing else.
  * Keeping it here is also what lets `a11y/` be deleted without editing a shared script.
  *
- * Exits **2**, not 1 — the `precondition-not-met` convention `phase-runner.mjs` established:
+ * Exits **2**, not 1 — the `precondition-not-met` convention that
+ * `scripts/beta-harness/phase-runner.mjs` established:
  * fix the environment, do not iterate on the code.
  */
 
@@ -183,7 +184,7 @@ try {
  * 3. Nuxeo, through the app's own proxy, with documents in it.
  *
  * Reached via the proxy rather than :8080 directly, because the proxy is what the specs use —
- * testing :8080 would pass while a broken `proxy.conf.json` failed every scan.
+ * testing :8080 would pass while a broken `apps/nuxeo-ui/proxy.conf.json` failed every scan.
  *
  * The document count is load-bearing twice over here. Surfaces and interaction states scan
  * lists and dialogs that are empty without content, and `journey.a11y.spec.ts` resolves a real

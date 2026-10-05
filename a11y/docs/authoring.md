@@ -154,7 +154,7 @@ Skip either and your script will produce confident, meaningless green.
 
 `httpCredentials` alone lets XHRs through but does not satisfy the app's route guard. The
 sessionStorage session alone renders pages but leaves `/nuxeo/api` calls returning intermittent
-403s. `helpers.mjs` documents this and both are required:
+403s. `a11y/playwright.config.ts` documents this and both are required:
 
 ```js
 const context = await browser.newContext({
@@ -223,8 +223,9 @@ host passes and the scan measures the error state under the surface's name. Use
       await page.goto(route, { waitUntil: 'networkidle' });
 
       // A surface that did not render scans clean, and a clean scan of nothing is the
-      // vacuous pass this repository keeps getting caught by — `phase-6-a11y.mjs` shipped
-      // a step labelled "Login surface" that actually scanned the dashboard.
+      // vacuous pass this repository keeps getting caught by —
+      // `scripts/beta-harness/steps/phase-6-a11y.mjs` shipped a step labelled
+      // "Login surface" that actually scanned the dashboard.
       //
       // Settled first, so the error check below sees the end of the load rather than its start.
       await waitForScreenSettled(page, host, route === '/#/browse');
@@ -500,7 +501,7 @@ assuming a fresh route means a fresh state.
 | Keyboard walk is slow         | Up to 150 steps per direction; browse has taken **11.1 minutes**                                                                                                                                | Per-test timeout is 900s in `a11y/playwright.config.ts`                    |
 | A timed-out test              | Playwright **restarts the worker**, recreating the a11y-scout accumulator, so every surface already scanned is dropped. One browse timeout turned five successful scans into `pages scanned: 1` | Assert `pagesScanned.length`; it is the only thing that makes this visible |
 | A failing test                | Fragments the worker-scoped report                                                                                                                                                              | Assert `pagesScanned.length`                                               |
-| Dev proxy                     | `proxy.conf.json` is **not** hot-reloaded                                                                                                                                                       | Restart `nx serve` after editing it                                        |
+| Dev proxy                     | `apps/nuxeo-ui/proxy.conf.json` is **not** hot-reloaded                                                                                                                                         | Restart `nx serve` after editing it                                        |
 | Node 22+                      | A built-in `localStorage` shadows jsdom's                                                                                                                                                       | Node is pinned to 20 in `.nvmrc`                                           |
 
 ## 7. Before you commit a new check

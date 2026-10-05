@@ -245,7 +245,8 @@ async function unfreezeMotion(p) {
  * drawer that was open.
  *
  * The user's way out is the rail item that opened the drawer: clicking the active item again
- * closes it (`onNavClick` in `app-shell.component.ts`). The ☰ button in the header toggles the
+ * closes it (`onNavClick` in `apps/nuxeo-ui/src/app/shell/app-shell.component.ts`). The ☰ button
+ * in the header toggles the
  * rail, not the drawer, so it is not used. A click that silently did something else is ruled
  * out by asserting the drawer closed, the URL did not change, and the host now has a width.
  *

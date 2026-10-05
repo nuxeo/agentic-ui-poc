@@ -381,7 +381,8 @@ test.describe('accessibility: dark theme', () => {
         noFocusIndicatorScreenshots: true,
         // Off deliberately. Dark theme changes colour, not focus order or trap behaviour, and
         // `surfaces.a11y.spec.ts` already walks these routes. NOTE: this also disables the
-        // reflow scanner, which rides the same flag in `scan-page.ts`; reflow is covered
+        // reflow scanner, which rides the same flag in a11y-scout's upstream `scan-page.ts`;
+        // reflow is covered
         // separately by `a11y/diagnostics/reflow-probe.mjs`.
         keyboard: false,
         extraWaitMs: 400,

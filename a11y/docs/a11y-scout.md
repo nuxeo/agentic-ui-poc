@@ -10,7 +10,8 @@ HTML/Markdown/JSON report to `a11y/reports/`.
 > Read the standard first. To _write_ a new check, see `a11y/docs/authoring.md`.
 
 Under that standard a11y-scout owns **keyboard traps, focus order and visibility, reflow, and
-AI content semantics**. It does not own the axe verdict — `phase-6-a11y.mjs` does. a11y-scout
+AI content semantics**. It does not own the axe verdict — `scripts/beta-harness/steps/phase-6-a11y.mjs`
+does. a11y-scout
 runs axe too, and its axe findings are an informational cross-check that never fails a run.
 Every finding carries a `source` field, so the boundary **can** be a filter rather than a
 convention — but nothing filters on it yet. a11y-scout's verdict counts all findings equally,
@@ -70,8 +71,8 @@ To enable the AI checks, set `HAIP_API_KEY` in the environment of the shell that
 Nothing in this folder, and nothing in a11y-scout, reads a `.env` file, so a key placed in one
 is never seen. Never commit it.
 
-a11y-scout picks the provider itself, in this order (`detectProvider()` in
-`a11y-scout/src/llm/provider.ts`):
+a11y-scout picks the provider itself, in this order (`detectProvider()` in the package's own
+upstream source, `src/llm/provider.ts` — not a file in this repository):
 
 1. `A11Y_LLM_PROVIDER=bedrock|haip|mock`, if set, decides outright.
 2. `CLAUDE_CODE_USE_BEDROCK=1` selects **Bedrock — even when `HAIP_API_KEY` is set**.
@@ -179,7 +180,7 @@ which surface failed and why.
 for seven surfaces here and for fifteen screens in `docs/accessibility.md` — but because **the findings they
 produced are untriaged and unowned**. Nobody has yet decided which are real, which are
 accepted, and who fixes the rest, and a gate that goes red for reasons nobody has triaged is
-one people learn to ignore — `coverage-gate.mjs` and `scripts/a11y-scan.mjs` both
+one people learn to ignore — `scripts/beta-harness/coverage-gate.mjs` and `scripts/a11y-scan.mjs` both
 carry that warning, and this repository has a recorded case of CI red for 16 consecutive runs
 over an unowned ceiling.
 

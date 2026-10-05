@@ -102,7 +102,8 @@ const COMMANDS = {
    * A subcommand because **no repository gate can run it**, and that is not an oversight to
    * be fixed here: this TypeScript imports `@playwright/test` and the two a11y-scout
    * packages, all installed `--no-save` and absent in CI, so `tsc` there would fail on
-   * missing modules rather than on our types. `spec-typecheck.mjs` also only discovers
+   * missing modules rather than on our types. `scripts/beta-harness/spec-typecheck.mjs` also
+   * only discovers
    * configs under `apps/` and `libs/`, and Playwright's own runner transpiles specs through
    * esbuild without checking them.
    *

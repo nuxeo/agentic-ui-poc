@@ -12,7 +12,8 @@
  *
  *   1. **Different axe versions.** `npm ls axe-core --all` resolves ONE deduped `axe-core@4.13.0`
  *      for both `@axe-core/playwright@4.13.0` and `a11y-scout@0.3.0`. Identical engine.
- *   2. **a11y-scout's reflow check resizing the viewport.** In `a11y-scout/src/agents/scan-page.ts`
+ *   2. **a11y-scout's reflow check resizing the viewport.** In the package's own (upstream, not in
+ *      this repo) `src/agents/scan-page.ts`
  *      axe runs at line 121, reflow at 271 and the keyboard walk at 279 — axe runs FIRST, before
  *      anything resizes, and `reflow.ts:113` restores the original viewport regardless.
  *
@@ -278,9 +279,10 @@ if (reportPath && existsSync(reportPath)) {
 }
 
 const browser = await launchChromium(chromium, 'axe-differential');
-// Mirrors `phase-runner.mjs` exactly: same viewport, and Basic auth on the app origin. Both auth
-// mechanisms are required — httpCredentials for XHRs, the sessionStorage session for the route
-// guard — and helpers.mjs documents what breaks when only one is present.
+// Mirrors `scripts/beta-harness/phase-runner.mjs` exactly: same viewport, and Basic auth on the
+// app origin. Both auth mechanisms are required — httpCredentials for XHRs, the sessionStorage
+// session for the route guard — and `a11y/playwright.config.ts` documents what breaks when only
+// one is present.
 const context = await browser.newContext({
   viewport: { width: 1440, height: 900 },
   httpCredentials: { username: user, password: pass, origin: baseUrl },

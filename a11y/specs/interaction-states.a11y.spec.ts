@@ -6,7 +6,8 @@ import { aiFindingsNote, expect, REPORT_DIR, test, waitForScreenSettled } from '
  *
  * ## Why this file exists
  *
- * `surfaces.a11y.spec.ts` and `phase-6-a11y.mjs` both navigate to a route, wait, and scan.
+ * `surfaces.a11y.spec.ts` and `scripts/beta-harness/steps/phase-6-a11y.mjs` both navigate to a
+ * route, wait, and scan.
  * Between them they cover the default, freshly-loaded state of eight routes and nothing else.
  * Every dialog, overlay, secondary tab and alternate view mode in this application has never
  * been looked at by any layer.
@@ -227,7 +228,7 @@ test.describe('accessibility: interaction states', () => {
    * for this one test rather than globally.
    *
    * **`keyboard: false` also disables the reflow scanner (WCAG 1.4.10)**, which is not obvious
-   * from the option name — `scan-page.ts` gates reflow behind the same flag:
+   * from the option name — a11y-scout's upstream `scan-page.ts` gates reflow behind the same flag:
    * `if (keyboard !== false) { runReflowCheck(...) }`. There is no way to keep reflow without
    * paying for the keyboard walk. The loss is smaller than it looks, not zero:
    * `a11y/diagnostics/reflow-probe.mjs` reproduces the scanner's algorithm, closes the nav

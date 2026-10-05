@@ -138,7 +138,8 @@ export async function expectSurfaceUsable(page: Page, host: string, label: strin
  *     08:39   button-name x7                                            (24 findings)
  *
  * All three differing findings were on the same element, `.tree-node:nth-child(7) >
- * .tree-toggle` — the last folder to arrive in the drawer. `nav-drawer.component.html`
+ * .tree-toggle` — the last folder to arrive in the drawer.
+ * `apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.html`
  * explains it: while `node.loading` is true the toggle contains
  * `<mat-spinner aria-label="Loading">`, and afterwards it contains a `<mat-icon>`, which
  * Angular Material marks `aria-hidden` by default.

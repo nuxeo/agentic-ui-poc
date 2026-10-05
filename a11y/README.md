@@ -219,7 +219,8 @@ self-contained — screenshots inlined — so it can be sent to whoever owns the
 
 `failOnBlockers` is `false` everywhere. None of these findings are triaged, and a gate that
 goes red on its first run for reasons nobody owns is one people learn to ignore —
-`coverage-gate.mjs` carries the same warning and this repository has a recorded case of CI
+`scripts/beta-harness/coverage-gate.mjs` carries the same warning and this repository has a
+recorded case of CI
 being red for sixteen consecutive runs over an unowned ceiling.
 
 It also cannot run in CI today, for a reason that is about the backend rather than about

@@ -296,7 +296,7 @@ drawer first and freezes motion after.
 ## Interaction states — first scan 2026-09-12
 
 `a11y/specs/interaction-states.a11y.spec.ts` (`npm run a11y:scan -- states`) drives seven
-states on `/#/browse` and scans each. It found **71 findings in 19.5 minutes**, and six rule
+states on `/#/browse` and scans each. It found **71 findings in 25.3 minutes**, and six rule
 classes that no previous scan of any layer had ever produced:
 
 | Rule                    | Severity | Where                                        | Ours or upstream                        |
@@ -330,7 +330,12 @@ findings again are reachable behind a single click as the entire route-level sca
 routes in two modes no layer had ever set — the application's dark theme (seeded through
 `data-app-theme`, not Playwright's `colorScheme`; see below) and `forcedColors` — and measures
 one route change under `reducedMotion`. Neither `forcedColors` nor `reducedMotion` appeared in
-any config or spec before this. **17 checks, 1.5 minutes, 81 findings.**
+any config or spec before this. **17 checks, 19.5 minutes, 81 findings.**
+
+> Take the suite runtime from the runner's own wall clock, not from `report.json`. The
+> `summary.durationMs` in `a11y-reports/latest/` is the duration of the **last scan alone** — a
+> re-measurement on 2026-10-05 recorded 0.9 minutes there while the suite took 12.4, and that
+> gap is how this line once read "1.5 minutes".
 
 | Mode                                  | Findings | Blockers | Notes                                              |
 | ------------------------------------- | -------- | -------- | -------------------------------------------------- |

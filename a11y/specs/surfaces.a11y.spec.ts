@@ -41,7 +41,7 @@ import {
  * `failOnBlockers` is `false` on every call. Not because these checks have never run — this
  * suite has a recorded seven-surface baseline in `docs/accessibility.md` — but because the
  * findings in it are **untriaged and unowned**. A gate that goes red for reasons nobody has
- * triaged is one people learn to ignore — `coverage-gate.mjs` and
+ * triaged is one people learn to ignore — `scripts/beta-harness/coverage-gate.mjs` and
  * `scripts/a11y-scan.mjs` both carry the same warning, and this repository has a recorded
  * case of CI being red for 16 consecutive runs over an unowned ceiling. Read the report,
  * triage, fix or baseline, and only then turn this red.
@@ -66,7 +66,8 @@ const SURFACES: ReadonlyArray<readonly [label: string, route: string, host: stri
   // `:uid`, so the bare path matches nothing and the surface never renders — the first run of
   // this file failed on it, which is the render guard below doing its job.
   //
-  // Worth knowing: `phase-6-a11y.mjs` scans `/#/collections` in its secondary-surfaces loop
+  // Worth knowing: `scripts/beta-harness/steps/phase-6-a11y.mjs` scans `/#/collections` in its
+  // secondary-surfaces loop
   // and asserts no selector there, so it has been scanning a non-rendering route and counting
   // the clean result as a pass. Scanning a real collection needs a uid from the repository,
   // which is a fixture this suite does not have yet.

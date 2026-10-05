@@ -33,7 +33,8 @@ import {
  *   - **login** — no committed script has ever scanned it. It was covered once by an ad-hoc
  *     `a11y-scout scan-url` against a backend-less dev server, which is not the same page:
  *     that run saw the form in its error state.
- *   - **dashboard** — `app.routes.ts` redirects `path: ''` here, so it is the first screen
+ *   - **dashboard** — `apps/nuxeo-ui/src/app/app.routes.ts` redirects `path: ''` here, so it is
+ *     the first screen
  *     every signed-in user sees, and it is absent from `SURFACES`.
  *   - **document detail** — the most-used read surface in the product.
  *   - **search with a query, documents, a collection, personal space** — routed screens with
@@ -523,7 +524,8 @@ async function expectDrawerPanelHealthy(page: Page, label: string): Promise<void
 }
 
 /**
- * The app's "the user pressed Sign out" marker. Mirrors `SIGNED_OUT_KEY` in `auth.service.ts`;
+ * The app's "the user pressed Sign out" marker. Mirrors `SIGNED_OUT_KEY` in
+ * `apps/nuxeo-ui/src/app/auth/auth.service.ts`;
  * when it is set, `runHydration()` returns a null session without probing the server at all.
  */
 const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
@@ -549,7 +551,8 @@ const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
  *
  * That failure is the reason this test asserts the URL before scanning. Without it the scan
  * would have run on the dashboard and emitted a report titled `journey-01-login` containing
- * dashboard findings, which is the vacuous pass `phase-6-a11y.mjs` shipped once already.
+ * dashboard findings, which is the vacuous pass
+ * `scripts/beta-harness/steps/phase-6-a11y.mjs` shipped once already.
  *
  * ## The two mechanisms used instead, and what each is for
  *

@@ -6,7 +6,8 @@
  * accessibility tooling, because it produces a **green result that means nothing**, and it has
  * already happened three times:
  *
- *   - `phase-6-a11y.mjs` shipped a step labelled "Login surface" that actually scanned the
+ *   - `scripts/beta-harness/steps/phase-6-a11y.mjs` shipped a step labelled "Login surface" that
+ *     actually scanned the
  *     dashboard, caught only because a selector assertion failed;
  *   - the same file's "browse cards" step scanned the table view, because the view mode is held in
  *     a service and survived navigation;
