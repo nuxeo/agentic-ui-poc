@@ -20,6 +20,8 @@
     "beta:evidence": "node scripts/beta-harness/phase-runner.mjs",
     "beta:fork": "node scripts/beta-harness/fork-simulation.mjs",
     "beta:gate": "node scripts/beta-harness/verify-gate.mjs",
+    "beta:lockfile": "node scripts/beta-harness/lockfile-integrity.mjs",
+    "beta:lockfile-selftest": "node scripts/beta-harness/lockfile-integrity.selftest.mjs",
     "beta:publishable": "node scripts/beta-harness/publishability.mjs",
     "beta:reference": "node scripts/beta-harness/extension-reference-drift.mjs",
     "beta:slides": "node tools/video/export-pptx.mjs",

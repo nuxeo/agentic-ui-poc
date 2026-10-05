@@ -76,16 +76,17 @@ const problems = [];
 let checked = 0;
 
 /**
- * Packages force-resolved by `overrides`.
+ * Packages force-resolved by `overrides`, each with the version selector its key carried.
  *
  * Read from the `package.json` beside the lock, because npm does not record `overrides` in
  * the lockfile — the root `packages[""]` entry omits it, so reading from there silently
  * yielded an empty set and every override still reported as a defect.
  */
 const manifestPath = resolve(dirname(lockPath), 'package.json');
-let overriddenNames = new Set();
+/** @type {Map<string, { range: string | null }[]>} */
+let overrideRules = new Map();
 try {
-  overriddenNames = collectOverriddenNames(
+  overrideRules = collectOverrideRules(
     JSON.parse(await readFile(manifestPath, 'utf8')).overrides ?? {},
   );
 } catch {
@@ -130,7 +131,7 @@ for (const [path, entry] of Object.entries(entries)) {
         continue;
       }
       const actual = entries[found].version;
-      if (actual && !satisfiesSpec(actual, spec) && !isOverridden(name)) {
+      if (actual && !satisfiesSpec(actual, spec) && !isOverridden(name, spec, actual)) {
         problems.push({
           dependent: path || '<root>',
           missing: name,
@@ -143,7 +144,7 @@ for (const [path, entry] of Object.entries(entries)) {
 }
 
 /**
- * Is this package force-resolved by an `overrides` entry in `package.json`?
+ * Is this dependency edge force-resolved by an `overrides` entry in `package.json`?
  *
  * An override exists precisely to install a version some dependency did not ask for —
  * `main`'s block pins 21 transitive packages to patched releases for CVEs — so the
@@ -151,32 +152,73 @@ for (const [path, entry] of Object.entries(entries)) {
  * "unresolvable" made 24 deliberate security pins look like corruption, which is how a
  * gate teaches people that its output is noise.
  *
- * Nested override forms (`{ "@angular/build": { "vite": "6.4.3" } }`) are flattened, since
- * the effect on the resolved version is the same.
+ * The waiver is per *edge*, not per package name, because an override key may be scoped to one
+ * version line: `"brace-expansion@^5.0.0": "5.0.12"` pins only the v5 copies. Waiving the bare
+ * name instead excused every `brace-expansion` edge in a tree that also holds v1 and v2 copies,
+ * so a malformed v1 or v2 edge — including a pruned nested copy whose v1 request then walks up to
+ * the overridden v5 root entry, which is the Phase 2 failure this gate exists for — was accepted
+ * silently. Two conditions, and the second is why checking the resolved version alone is not
+ * enough: 5.0.12 satisfies `^5.0.0`, so a `^1.1.7` request resolving to it would still be excused.
  *
- * @param {string} name
+ *   1. the **request** is in the selector's scope — npm matches an override key's range against
+ *      the dependency's declared spec, so an edge asking for `^1.1.7` is outside `^5.0.0` and
+ *      npm leaves it alone;
+ *   2. the **resolved version** is in the selector's scope too, i.e. what is installed is what
+ *      this override forces rather than some third version neither side asked for.
+ *
+ * A bare key (`"axios": "1.20.0"`) carries no selector and so waives the name outright, which is
+ * what npm does with it. Two deliberate degradations keep the gate from crying wolf on what it
+ * cannot judge: without `semver` resolvable, selector-scoped keys fall back to waiving the name
+ * (the gate can only judge exact pins at all in that state), and a selector that is not a valid
+ * range — a dist-tag, say — does the same.
+ *
+ * Nested override forms (`{ "@angular/build": { "vite": "6.4.3" } }`) are flattened, since the
+ * effect on the resolved version is the same.
+ *
+ * @param {string} name package name of the edge
+ * @param {string} spec version range the dependent declared
+ * @param {string} actual version the lock resolved it to
  */
-function isOverridden(name) {
-  return overriddenNames.has(name);
+function isOverridden(name, spec, actual) {
+  const rules = overrideRules.get(name);
+  if (!rules) return false;
+  return rules.some(({ range }) => {
+    if (range === null) return true;
+    if (!semver || !semver.validRange(range)) return true;
+    const requestInScope = semver.validRange(spec)
+      ? semver.intersects(spec, range, { includePrerelease: true })
+      : true;
+    return (
+      requestInScope && semver.satisfies(actual, range, { includePrerelease: true })
+    );
+  });
 }
 
-/** @returns {Set<string>} every package named anywhere in `overrides`, at any nesting */
-function collectOverriddenNames(overrides) {
-  const names = new Set();
+/**
+ * Every package named anywhere in `overrides`, at any nesting, with the selector its key carried.
+ *
+ * @returns {Map<string, { range: string | null }[]>} name -> one rule per key that addressed it
+ */
+function collectOverrideRules(overrides) {
+  /** @type {Map<string, { range: string | null }[]>} */
+  const rules = new Map();
   const walk = (node) => {
     if (!node || typeof node !== 'object') return;
     for (const [key, value] of Object.entries(node)) {
       // A key is a package name unless it is the `.` self-reference npm allows.
-      if (key !== '.') names.add(packageNameOf(key));
+      if (key !== '.') {
+        const { name, range } = parseOverrideKey(key);
+        rules.set(name, [...(rules.get(name) ?? []), { range }]);
+      }
       if (value && typeof value === 'object') walk(value);
     }
   };
   walk(overrides);
-  return names;
+  return rules;
 }
 
 /**
- * The package name an `overrides` key addresses, with any version selector stripped.
+ * Split an `overrides` key into the package it addresses and the version selector it carries.
  *
  * npm lets an override key carry a range — `"brace-expansion@^5.0.0": "5.0.12"` — so that a pin
  * reaches one major line of a package without touching the others. That form is the only way to
@@ -185,18 +227,20 @@ function collectOverriddenNames(overrides) {
  * dropped the default export, and break them.
  *
  * Storing the raw key recorded `"brace-expansion@^5.0.0"`, a string no package is ever called, so
- * `isOverridden('brace-expansion')` was false and the deliberate pin was reported as an
- * unresolvable edge — the exact "24 deliberate security pins look like corruption" failure the
- * surrounding comment describes, just one key syntax later.
+ * the pin was reported as an unresolvable edge — the exact "24 deliberate security pins look like
+ * corruption" failure the comment above describes, just one key syntax later. Discarding the
+ * selector and keeping only the name fixed that and broke the other side, waiving majors npm
+ * never overrode; the selector has to be kept, which is why this returns both halves.
  *
  * Scoped names carry their own leading `@`, so the separator is the LAST `@` rather than the
- * first, and a key with no separator is already a bare name.
+ * first, and a key with no separator is a bare name with no selector.
  *
  * @param {string} key
+ * @returns {{ name: string, range: string | null }}
  */
-function packageNameOf(key) {
+function parseOverrideKey(key) {
   const at = key.lastIndexOf('@');
-  return at > 0 ? key.slice(0, at) : key;
+  return at > 0 ? { name: key.slice(0, at), range: key.slice(at + 1) } : { name: key, range: null };
 }
 
 /**

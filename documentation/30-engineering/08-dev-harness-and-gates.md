@@ -81,17 +81,17 @@ running the full set on a known-broken tree wastes minutes per iteration.
 
 ### What each gate caught — the honest ledger
 
-| Gate                  | Live defect found                                                      | Hole closed before exploitation                      |
-| --------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------- |
-| `publishability`      | Package unpublishable (full compilation mode)                          | —                                                    |
-| `lint` (boundaries)   | 4 real cross-boundary imports                                          | —                                                    |
-| `api-surface`         | Blind to `const`/`type` bodies — a renamed slot ID read as "no change" | —                                                    |
-| `fork-simulation`     | 27 wrongly non-nullable public types                                   | —                                                    |
-| `bundle`              | `ng-mocks` + 2 `eval()` in the shipped bundle                          | i18n catalogue check asserted existence, not content |
-| `reference-drift`     | Reference wrong in both directions                                     | Treated a **comment** as code                        |
-| `customer-guardrails` | —                                                                      | 3 of 5 checks satisfiable without doing the work     |
-| `lockfile`            | CI red for a phase                                                     | Skipped 52 devDependency edges                       |
-| `state-check`         | 6 phases citing an insufficient re-gate                                | Read `verdict` and not `totals.failed`               |
+| Gate                  | Live defect found                                                      | Hole closed before exploitation                                                                                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `publishability`      | Package unpublishable (full compilation mode)                          | —                                                                                                                                                                                                |
+| `lint` (boundaries)   | 4 real cross-boundary imports                                          | —                                                                                                                                                                                                |
+| `api-surface`         | Blind to `const`/`type` bodies — a renamed slot ID read as "no change" | —                                                                                                                                                                                                |
+| `fork-simulation`     | 27 wrongly non-nullable public types                                   | —                                                                                                                                                                                                |
+| `bundle`              | `ng-mocks` + 2 `eval()` in the shipped bundle                          | i18n catalogue check asserted existence, not content                                                                                                                                             |
+| `reference-drift`     | Reference wrong in both directions                                     | Treated a **comment** as code                                                                                                                                                                    |
+| `customer-guardrails` | —                                                                      | 3 of 5 checks satisfiable without doing the work                                                                                                                                                 |
+| `lockfile`            | CI red for a phase                                                     | Skipped 52 devDependency edges; then waived every `brace-expansion` major off a `^5.0.0`-scoped override — same defect class, opposite direction, which is why it now has 11 executable controls |
+| `state-check`         | 6 phases citing an insufficient re-gate                                | Read `verdict` and not `totals.failed`                                                                                                                                                           |
 
 ---
 
@@ -293,20 +293,22 @@ Two consequences worth separating, from `nx graph`:
 
 ## 7. What runs where
 
-| Check                                                           | Local gate | PR CI | Notes                                                    |
-| --------------------------------------------------------------- | :--------: | :---: | -------------------------------------------------------- |
-| node, lockfile                                                  |     ✅     |   —   | `npm ci` and `setup-node` are CI's stronger equivalents  |
-| guardrails, lint, test, build, typecheck                        |     ✅     |  ✅   |                                                          |
-| assertions, reference-drift, customer-guardrails                |     ✅     |  ✅   | Added to CI 2026-08-24                                   |
-| bundle                                                          |     ✅     |  ✅   | Needs the production build; added to CI 2026-08-24       |
-| api-surface, publishability, fork-simulation, upgrade-rehearsal |     ✅     |  ✅   | Run unconditionally — they catch the expensive class     |
-| **E2E**                                                         |     ✅     |  ❌   | Needs Docker Nuxeo + a served app. **A real limitation** |
-| **Phase evidence**                                              |     ✅     |  ❌   | Needs a live backend                                     |
-| Bundle **size** ceiling                                         |     —      |  ✅   | 6 MiB total shipped JS+CSS                               |
+| Check                                                           | Local gate | PR CI | Notes                                                                                                                                                             |
+| --------------------------------------------------------------- | :--------: | :---: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| node                                                            |     ✅     |   —   | `setup-node` is CI's stronger equivalent                                                                                                                          |
+| lockfile, lockfile-selftest                                     |     ✅     |  ✅   | Added to CI 2026-10-05; `npm ci` proves the lock installs on Linux but says nothing about the gate still being able to report, and that half had been wrong twice |
+| guardrails, lint, test, build, typecheck                        |     ✅     |  ✅   |                                                                                                                                                                   |
+| assertions, reference-drift, customer-guardrails                |     ✅     |  ✅   | Added to CI 2026-08-24                                                                                                                                            |
+| bundle                                                          |     ✅     |  ✅   | Needs the production build; added to CI 2026-08-24                                                                                                                |
+| api-surface, publishability, fork-simulation, upgrade-rehearsal |     ✅     |  ✅   | Run unconditionally — they catch the expensive class                                                                                                              |
+| **E2E**                                                         |     ✅     |  ❌   | Needs Docker Nuxeo + a served app. **A real limitation**                                                                                                          |
+| **Phase evidence**                                              |     ✅     |  ❌   | Needs a live backend                                                                                                                                              |
+| Bundle **size** ceiling                                         |     —      |  ✅   | 6 MiB total shipped JS+CSS                                                                                                                                        |
 
 Earlier on 2026-08-24, CI ran **8 of the then-15** gates, so "green locally" and "green in CI"
 made different claims and neither disclosed it. Four were added to CI that day, and
-`supply-chain` with it, so CI now runs 9 of 17.
+`supply-chain` with it, taking CI to 9 of 17; `lockfile` and its controls followed on
+2026-10-05, so CI now runs 11.
 
 ---
 
