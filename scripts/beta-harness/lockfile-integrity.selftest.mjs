@@ -526,7 +526,7 @@ expect(
 }
 
 // ---------------------------------------------------------------------------------------------
-// 20-22. The degraded path, with `semver` genuinely unresolvable. It is reached through npm's own
+// 20-23. The degraded path, with `semver` genuinely unresolvable. It is reached through npm's own
 //        tree rather than declared, so it can be absent — and it was the one branch no control
 //        covered, which is why it had `return true` for the whole waiver. Ancestry is string
 //        matching and an exact value is a string comparison, so both must still apply there.
@@ -558,6 +558,17 @@ expect(
   runGate(
     'no-semver-stale-value',
     { name: 'fixture', version: '0.0.0', overrides: { axios: '1.21.0' } },
+    bareKeyLock,
+    { hideSemver: true },
+  ),
+);
+expect(
+  'no semver: a RANGE value is left unjudged rather than read as an exact version',
+  'pass',
+  'lockfile-integrity: pass',
+  runGate(
+    'no-semver-range-value',
+    { name: 'fixture', version: '0.0.0', overrides: { axios: '1.20.0 || 2.0.0' } },
     bareKeyLock,
     { hideSemver: true },
   ),

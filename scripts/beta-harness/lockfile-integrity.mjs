@@ -251,9 +251,19 @@ function installedWhatItForces(actual, value) {
   return semver.satisfies(actual, value, { includePrerelease: true });
 }
 
-/** A plain `x.y.z` version, comparable without `semver`. */
+/**
+ * A plain `x.y.z` version — the only form comparable without `semver`, and therefore the only one
+ * the degraded path may judge.
+ *
+ * Anchored at both ends, because unanchored it classified any range that merely *starts* with a
+ * version as exact: `"1.20.0 || 2.0.0"` resolving to 1.20.0 was then rejected by string inequality,
+ * which is the opposite of the documented fallback that leaves ranges unjudged. A prerelease or
+ * build suffix is still exact — `1.2.3-beta.1` compares as a string perfectly well — while anything
+ * containing a space, operator or wildcard is a range and is left alone. The unanchored form came
+ * from `satisfiesSpec`'s own fallback and both call sites share this now, so it is fixed in both.
+ */
 function isExactVersion(value) {
-  return /^\d+\.\d+\.\d+/.test(value);
+  return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(value);
 }
 
 /**
