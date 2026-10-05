@@ -74,10 +74,19 @@ const INSTALL = [
   '  installed with --no-save, so installing them separately removes the first.',
 ].join('\n');
 
-/** 1. Playwright and the two hand-distributed a11y-scout packages. */
+/**
+ * 1. Every untracked package this folder needs, driven by `PINNED` rather than listed again.
+ *
+ * This list used to be written out by hand and omitted `@axe-core/playwright`, which
+ * `axe-differential.mjs` imports and which is one of the four in the install command above.
+ * Section 1a below skips a package it cannot find a version for, on the grounds that a
+ * missing install is reported here — so the one package missing from this list was the one
+ * whose absence nothing reported, and `preflight` exited 0 without it. Flagged in review on
+ * PR #225. Sharing `PINNED` is the fix: the two lists can no longer disagree.
+ */
 let playwright = null;
 let scout = null;
-for (const pkg of ['@playwright/test', '@a11y-scout/playwright', 'a11y-scout']) {
+for (const pkg of Object.keys(PINNED)) {
   try {
     const mod = await import(pkg);
     if (pkg === '@playwright/test') playwright = mod;
@@ -109,8 +118,9 @@ for (const pkg of ['@playwright/test', '@a11y-scout/playwright', 'a11y-scout']) 
  */
 for (const [pkg, want] of Object.entries(PINNED)) {
   const found = installedVersion(pkg);
-  // Not installed at all is already reported above, with the install command; saying it
-  // twice in different words would read as two faults.
+  // Not installed at all is reported by the loop above — which walks these same keys, so
+  // this cannot silently skip a package nothing else checked. Saying it twice in different
+  // words would read as two faults.
   if (found === null) continue;
   if (found === want) ok.push(`${pkg}@${found} matches the pin`);
   else
