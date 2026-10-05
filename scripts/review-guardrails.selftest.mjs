@@ -446,7 +446,26 @@ expectRed(
   'checkCataloguePlaceholders',
   withFrench('{{  count  }} documents supprimés de {{ folder }}'),
   null,
-  /placeholders are \[folder\] where .*has \[count, folder\]/,
+  // Reported as an unparseable token rather than a missing name: both are true, and this is the
+  // more precise diagnosis — the braces reach the screen.
+  /contains \{\{  count  \}\} — braces ngx-translate does not parse/,
+);
+
+// The case review found the control above could not prove: a source with NO placeholders, so the
+// parsed-name lists are `[]` on both sides, and a translation adding an unparseable token.
+expectRed(
+  'an unparseable token fails even when English has no placeholders',
+  'checkCataloguePlaceholders',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': EN_PLACEHOLDERS,
+    'apps/nuxeo-ui/public/i18n/fr.json': `${JSON.stringify(
+      { browse: { deleted: '{{count}} documents supprimés de {{ folder }}', title: 'Parcourir {{  count  }}' } },
+      null,
+      2,
+    )}\n`,
+  },
+  null,
+  /maps `browse\.title` to .*contains \{\{  count  \}\}.*render verbatim/s,
 );
 
 expectRed(

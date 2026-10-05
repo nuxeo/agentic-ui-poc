@@ -2322,6 +2322,15 @@ function checkCataloguePlaceholders() {
   // Compared as JSON, not joined: the matcher accepts an empty name, and `['']` and `[]` join to
   // the same empty string.
   const names = (value) => [...value.matchAll(PLACEHOLDER)].map((match) => match[1]).sort();
+  // A `{{…}}` the runtime does NOT parse (e.g. two spaces inside) is invisible to `names`, so a
+  // source with no placeholders and a translation adding `{{  count  }}` compared `[]` with `[]`
+  // and passed while the braces render raw. Such tokens are compared separately.
+  const TOKEN = /{{[^{}]*}}/g;
+  const unparsed = (value) =>
+    [...value.matchAll(TOKEN)]
+      .map((match) => match[0])
+      .filter((token) => !new RegExp(`^${PLACEHOLDER.source}$`).test(token))
+      .sort();
   const shown = (list) => (list.length ? list.map((name) => name || '(empty)').join(', ') : 'none');
 
   const isCatalogue = (path) =>
@@ -2365,6 +2374,15 @@ function checkCataloguePlaceholders() {
       if (!english.has(key)) continue;
       const expected = names(english.get(key));
       const actual = names(value);
+      const strayTokens = unparsed(value);
+      if (JSON.stringify(strayTokens) !== JSON.stringify(unparsed(english.get(key)))) {
+        fail(
+          `${catalogue} maps \`${key}\` to "${value}", which contains ${strayTokens.join(', ')} — ` +
+            'braces ngx-translate does not parse as a placeholder, so they render verbatim.\n' +
+            '    Fix the translation in Crowdin; never hand-edit a non-English catalogue.',
+        );
+        continue;
+      }
       if (JSON.stringify(expected) === JSON.stringify(actual)) continue;
       fail(
         `${catalogue} maps \`${key}\` to "${value}", whose placeholders are ` +
