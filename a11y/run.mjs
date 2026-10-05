@@ -137,7 +137,7 @@ function usage() {
   console.log('    npm run a11y:scan -- states --headed\n');
   console.log('  surfaces, states and modes emit one consolidated report from a test of their');
   console.log('  own, so a --grep/-g/--grep-invert/-G that excludes it is refused — it would scan');
-  console.log('  and report nothing. Pass --no-report to say that out loud and get neither.');
+  console.log('  and report nothing. Pass --no-report to say so, which excludes it for real.');
   console.log('  journey emits one report per screen, so narrowing it with --project is safe.\n');
 }
 
@@ -208,22 +208,43 @@ const GREP_INCLUDE_FLAGS = ['--grep', '-g'];
 const GREP_EXCLUDE_FLAGS = ['--grep-invert', '-G'];
 
 /**
- * Pull every value passed to any of `flags` out of `extra`, in both `--flag value` and
- * `--flag=value` form, returning what is left alongside what was found.
+ * A grep pattern written as a regex literal, `/body/flags`.
  *
- * One parser shared by `grepWouldDropTheReport` (which only reads `values`) and
+ * Only `g` and `i`, because that is the character class `forceRegExp` uses — `/foo/m` is not
+ * the literal form to Playwright, it is the pattern `/foo/m` compiled as text.
+ */
+const SLASH_FORM = /^\/(.*)\/([gi]*)$/;
+
+/**
+ * Pull the value Playwright would act on for any of `flags` out of `extra`, returning what is
+ * left alongside what was found.
+ *
+ * One parser shared by `grepWouldDropTheReport` (which only reads `value`) and
  * `suppressReportTest` (which needs `rest` too, to rebuild the arg list around its own
  * `--grep-invert`). Two copies of this parsing drifted apart once already — flagged in
  * review on PR #225 as "duplicated almost verbatim" — so there is one now.
  *
- * A flag with no following value (`--grep-invert` as the last argument) or an explicit empty
- * one (`--grep-invert=`) is dropped rather than recorded as `''`: an empty string joined into
- * a `|`-separated regex alternation is an empty branch, which matches every test title, not
- * none. Flagged in review on PR #225.
+ * Every form Playwright's commander accepts, confirmed against `playwright test --list`
+ * rather than assumed, because the first version of this guard missed two of them:
+ *
+ * - `--grep value` and `-g value`
+ * - `--grep=value` — long flags only
+ * - `-gvalue` — the attached short form. Commander takes everything after the two characters
+ *   verbatim, so `-g=value` is the pattern `=value`, matching nothing. Reproduced: `-g=column
+ *   picker` lists 0 tests, where `-gcolumn picker` lists 1.
+ *
+ * `value` is the LAST occurrence, not all of them. Repeated greps override rather than
+ * combine: `-G "column picker" -G "<report title>"` drops the report test and `-G "<report
+ * title>" -G "column picker"` keeps it, so only the final one is live. The comment here used
+ * to say Playwright intersected them, and the guard refused runs Playwright would have run.
+ *
+ * An absent (`--grep-invert` last, with nothing after it) or empty (`--grep-invert=`) value is
+ * no value: Playwright skips a falsy pattern entirely rather than treating it as the
+ * everything-matching empty regex — `--grep-invert ""` lists all 8 tests, not 0.
  *
  * @param {string[]} extra
- * @param {string[]} flags
- * @returns {{ rest: string[], values: string[] }}
+ * @param {string[]} flags  one long form and its short alias, e.g. `['--grep', '-g']`
+ * @returns {{ rest: string[], value: string | undefined }}
  */
 function stripFlagOccurrences(extra, flags) {
   const rest = [];
@@ -236,20 +257,25 @@ function stripFlagOccurrences(extra, flags) {
       i++;
       continue;
     }
-    const eqFlag = flags.find((f) => arg.startsWith(`${f}=`));
-    if (eqFlag) {
-      const value = arg.slice(eqFlag.length + 1);
-      if (value !== '') values.push(value);
+    const longFlag = flags.find((f) => f.startsWith('--') && arg.startsWith(`${f}=`));
+    if (longFlag) {
+      values.push(arg.slice(longFlag.length + 1));
+      continue;
+    }
+    const shortFlag = flags.find((f) => !f.startsWith('--') && arg.startsWith(f) && arg !== f);
+    if (shortFlag) {
+      values.push(arg.slice(shortFlag.length));
       continue;
     }
     rest.push(arg);
   }
-  return { rest, values };
+  const live = values.filter((v) => v !== '');
+  return { rest, value: live.at(-1) };
 }
 
-/** Every value passed to any of `flags`, in both `--flag value` and `--flag=value` form. */
-function collectFlagValues(extra, flags) {
-  return stripFlagOccurrences(extra, flags).values;
+/** The value Playwright would act on for any of `flags`, or `undefined` if there is none. */
+function liveFlagValue(extra, flags) {
+  return stripFlagOccurrences(extra, flags).value;
 }
 
 /**
@@ -265,9 +291,10 @@ function collectFlagValues(extra, flags) {
  *
  * Refused rather than warned, and exit 1 rather than 2: it is a usage error, and a warning
  * printed before a 25-minute scan is a warning nobody is still watching for. Watching one
- * state is still a real need, so `--no-report` is the way to say so out loud; it is consumed
- * here and never reaches Playwright. `--grep` with the `journey` command is untouched and
- * remains the way to scan one screen and still get a report.
+ * state is still a real need, so `--no-report` is the way to say so out loud — the flag itself
+ * never reaches Playwright, but `suppressReportTest` turns it into an exclusion that does.
+ * `--grep` with the `journey` command is untouched and remains the way to scan one screen and
+ * still get a report.
  *
  * @param {string} name   the command
  * @param {string[]} extra  what the caller appended
@@ -276,12 +303,12 @@ function collectFlagValues(extra, flags) {
 function grepWouldDropTheReport(name, extra) {
   if (!CONSOLIDATED_REPORT_SUITES.has(name)) return false;
   if (extra.includes(NO_REPORT)) return false;
-  const includes = collectFlagValues(extra, GREP_INCLUDE_FLAGS);
-  const excludes = collectFlagValues(extra, GREP_EXCLUDE_FLAGS);
-  // Every `--grep`/`-g` must keep the report test: Playwright intersects repeated ones.
-  if (includes.some((p) => !safeMatches(p, REPORT_TEST_TITLE))) return true;
-  // Any `--grep-invert`/`-G` that matches the report test removes it outright.
-  return excludes.some((p) => safeMatches(p, REPORT_TEST_TITLE));
+  const include = liveFlagValue(extra, GREP_INCLUDE_FLAGS);
+  const exclude = liveFlagValue(extra, GREP_EXCLUDE_FLAGS);
+  // A `--grep`/`-g` that does not keep the report test drops it; the two flags are applied
+  // together, so an exclude that matches it removes it even when the include kept it.
+  if (include !== undefined && !playwrightMatches(include, REPORT_TEST_TITLE)) return true;
+  return exclude !== undefined && playwrightMatches(exclude, REPORT_TEST_TITLE);
 }
 
 /**
@@ -304,15 +331,50 @@ function grepWouldDropTheReport(name, extra) {
 function suppressReportTest(name, extra) {
   if (!CONSOLIDATED_REPORT_SUITES.has(name)) return extra;
   if (!extra.includes(NO_REPORT)) return extra;
-  const { rest, values: existingExcludes } = stripFlagOccurrences(extra, GREP_EXCLUDE_FLAGS);
-  const pattern = [...existingExcludes, REPORT_TEST_TITLE].join('|');
-  return [...rest, '--grep-invert', pattern];
+  const { rest, value: theirs } = stripFlagOccurrences(extra, GREP_EXCLUDE_FLAGS);
+  return [...rest, '--grep-invert', alsoExcluding(theirs, REPORT_TEST_TITLE)];
 }
 
-/** Does `pattern` match `title`? An unparseable pattern is Playwright's error to report. */
-function safeMatches(pattern, title) {
+/**
+ * One `--grep-invert` pattern that excludes `title` as well as whatever the caller excluded.
+ *
+ * It has to be one, because a repeated `--grep-invert` overrides rather than unions — so
+ * appending ours would have silently discarded theirs.
+ *
+ * A plain `|` join is enough to keep both sides intact — alternation binds loosest, so an
+ * exclude of `^a` stays anchored to its own branch and does not anchor ours.
+ *
+ * The slash form is rebuilt AS a slash form, carrying the caller's own flags, rather than
+ * flattened into the default case-insensitive compile: flattening `/Column Picker/` would
+ * have widened their exclusion to titles they never asked to drop. Keeping their flags
+ * leaves our branch case-SENSITIVE too, which is exact here and only here — `title` is a
+ * literal copied from the `test()` call, not a pattern.
+ */
+function alsoExcluding(theirs, title) {
+  if (theirs === undefined) return title;
+  const literal = theirs.match(SLASH_FORM);
+  return literal ? `/${literal[1]}|${title}/${literal[2]}` : `${theirs}|${title}`;
+}
+
+/**
+ * Does `pattern` match `title` the way Playwright would?
+ *
+ * A copy of `forceRegExp` in `playwright/lib/util.js`, which is how a `--grep` string becomes
+ * a RegExp: a pattern written as `/body/flags` is taken literally, flags and all, and
+ * anything else is compiled case-INsensitively. Approximating it with a flat
+ * `new RegExp(pattern, 'i')` got both halves of the slash form wrong, in both directions —
+ * `--grep-invert "/<report title>/"` really does drop the report test and was let through,
+ * and `--grep "/consolidated/i"` really does keep it and was refused. Both reproduced
+ * against `playwright test --list` before this was changed.
+ *
+ * An unparseable pattern is Playwright's error to report, not ours, so it is treated as
+ * matching: this guard exists to refuse a silently reportless run, not to validate regexes.
+ */
+function playwrightMatches(pattern, title) {
+  const literal = pattern.match(SLASH_FORM);
   try {
-    return new RegExp(pattern, 'i').test(title);
+    // A fresh RegExp each call, so the `g` Playwright adds carries no `lastIndex` between them.
+    return literal ? new RegExp(literal[1], literal[2]).test(title) : new RegExp(pattern, 'gi').test(title);
   } catch {
     return true;
   }

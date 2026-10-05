@@ -716,9 +716,11 @@ an incomplete measurement, because a scan that silently did not happen must neve
 `a11y/README.md` covers the other two diagnostics in that folder — the reflow probe with its
 negative control, and the error-class drift check that runs before every scan.
 
-Both need `npm install --no-save @playwright/test @axe-core/playwright` — **in one command**, as
-`--no-save` prunes anything previously installed the same way — plus a live backend and dev
-server.
+Both need `npm install --no-save @playwright/test@1.63.0 @axe-core/playwright@4.13.0` — **in one
+command**, as `--no-save` prunes anything previously installed the same way — plus a live backend
+and dev server. The versions are pinned because the findings recorded on this page are the output
+of that specific axe engine; they live in one runtime source, `a11y/versions.mjs`, and
+`a11y/run.mjs preflight` refuses to scan when what is installed does not match.
 
 ## Adding a check
 

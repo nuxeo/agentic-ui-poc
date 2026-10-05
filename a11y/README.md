@@ -67,7 +67,12 @@ against `@axe-core/playwright@4.13.0`, which `axe-differential.mjs` confirms res
 deduped `axe-core@4.13.0` that `a11y-scout@0.3.0` uses, and an unpinned later install could pull
 a different engine or browser build and make a re-scan incomparable to that baseline. These
 versions live in exactly one runtime source, `a11y/versions.mjs`; this and every other
-install command below is kept in sync with it by hand, since prose cannot `import` it:
+install command below is kept in sync with it by hand, since prose cannot `import` it.
+
+Writing a version into an install command only pins it for whoever runs that exact command, and
+nothing here is in the lockfile, so `preflight` reads what is actually in `node_modules` and
+**refuses to scan** (exit 2) when it does not match. `axe-core` arrives transitively and is
+reported rather than enforced — the fix for it is to re-pin the two packages above.
 
 ```bash
 npm install --no-save @playwright/test@1.63.0 @axe-core/playwright@4.13.0 \
@@ -186,9 +191,11 @@ refused, because each command picks its own preflight checks and borrowing anoth
 project would skip them.
 
 `surfaces`, `states` and `modes` write their consolidated report from a test of their own, so
-a `--grep` that excludes it is refused too — `states --grep "column picker"` used to scan one
-state, pass, and write nothing, which is the suite's deliverable missing from a run that read
-like a success. Add `--no-report` to say you are watching one state rather than measuring.
+a `--grep`, `-g`, `--grep-invert` or `-G` that excludes it is refused too — `states --grep
+"column picker"` used to scan one state, pass, and write nothing, which is the suite's
+deliverable missing from a run that read like a success. Add `--no-report` to say you are
+watching one state rather than measuring; it excludes that test for real rather than just
+labelling the run.
 `journey` has no such trap: every screen emits its own report, so narrowing it is always safe.
 
 Reports land in `reports/<name>-<timestamp>/` as `report.html`, `.md` and `.json`. The HTML is

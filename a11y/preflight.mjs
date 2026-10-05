@@ -24,7 +24,13 @@ import {
   requireNuxeoCredentials,
   resolveBaseUrl,
 } from './env.mjs';
-import { A11Y_SCOUT_VERSION, PINNED_INSTALL_ARGS } from './versions.mjs';
+import {
+  A11Y_SCOUT_VERSION,
+  BASELINE_AXE_CORE,
+  PINNED,
+  PINNED_INSTALL_ARGS,
+  installedVersion,
+} from './versions.mjs';
 
 const BASE = resolveBaseUrl();
 
@@ -85,6 +91,48 @@ for (const pkg of ['@playwright/test', '@a11y-scout/playwright', 'a11y-scout']) 
         INSTALL,
     );
   }
+}
+
+/**
+ * 1a. Those packages are the versions the recorded findings were measured against.
+ *
+ * Importable is not enough. These four are installed `--no-save`, so nothing in the
+ * repository records what is actually on disk: no lockfile entry, no `package.json` range,
+ * and `npm ci` neither installs nor removes them. A tree installed before the pins moved
+ * keeps working and says nothing, and the numbers in `docs/accessibility.md` are the output
+ * of a specific axe engine and a specific browser runner — a re-scan under a different one
+ * is a different measurement being compared to the old baseline.
+ *
+ * Reviewed on PR #225: writing the version into the install command pins it only for
+ * somebody who runs that exact command today. This is the check that makes the pin real, so
+ * it is a problem (exit 2, "fix the environment") rather than a note.
+ */
+for (const [pkg, want] of Object.entries(PINNED)) {
+  const found = installedVersion(pkg);
+  // Not installed at all is already reported above, with the install command; saying it
+  // twice in different words would read as two faults.
+  if (found === null) continue;
+  if (found === want) ok.push(`${pkg}@${found} matches the pin`);
+  else
+    problems.push(
+      `\`${pkg}\` is ${found}, but this folder's findings were measured against ${want}.\n` +
+        '  Rule sets and rendering both move between versions, so a scan under it is not\n' +
+        `  comparable to the baseline in docs/accessibility.md. Reinstall at the pin:\n\n${INSTALL}\n\n` +
+        `  If ${found} is deliberate, re-pin a11y/versions.mjs and re-measure the baseline in\n` +
+        '  the same change — otherwise the recorded numbers describe an engine nobody is running.',
+    );
+}
+
+/** `axe-core` itself, which arrives transitively — reported, not enforced. See versions.mjs. */
+{
+  const axe = installedVersion('axe-core');
+  if (axe !== null)
+    ok.push(
+      `axe-core@${axe}` +
+        (axe === BASELINE_AXE_CORE
+          ? ' matches the baseline engine'
+          : ` — the baseline was measured with ${BASELINE_AXE_CORE}, so rule coverage may differ`),
+    );
 }
 
 /**
