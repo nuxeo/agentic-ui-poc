@@ -8,6 +8,26 @@ Re-measure before quoting anything here. The 16 September edition of this page c
 **23 of 23 green** while `guardrails` was failing, and put the catalogue at **1653** keys when it
 held 1968 — both figures had a command printed beside them and neither had been re-run.
 
+## Languages that ship — 5 October 2026
+
+| Language             | Catalogue | Crowdin id | Status                                                                                                                                                  |
+| -------------------- | --------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| English              | `en.json` | source     | ships                                                                                                                                                   |
+| French               | `fr.json` | `fr`       | ships, 99% approved                                                                                                                                     |
+| German               | `de.json` | `de`       | ships, 99% approved                                                                                                                                     |
+| Japanese             | `ja.json` | `ja`       | ships since NXSAT-293, 99% approved                                                                                                                     |
+| Dutch                | `nl.json` | `nl`       | ships since NXSAT-293, 99% approved                                                                                                                     |
+| Thai                 | `th.json` | `th`       | ships since NXSAT-293, 99% approved                                                                                                                     |
+| Chinese (Simplified) | `zh.json` | `zh-CN`    | ships since NXSAT-293, 99% approved                                                                                                                     |
+| Spanish              | —         | `es`       | **pending** — 99% approved, but `kd.knowledge-discovery.selected` is `Seleccionado(s)`, which `checkCatalogueValuesAreRenderable` fails. Fix in Crowdin |
+| Portuguese           | —         | `pt`       | **pending** — 88% approved                                                                                                                              |
+| Polish               | —         | `pl`       | **pending** — 99% translated, 2% approved (813 Crowdin QA issues)                                                                                       |
+
+There is **no language picker** (NXSAT-294): `availableLanguages` is read only by the config
+parser, so a deployment selects its language through `defaultLanguage`. Every shipped catalogue is
+checked by `checkCataloguePlaceholders`, which fails a translation whose `{{ … }}` placeholders differ
+from English; all six had zero mismatches when added.
+
 This is the status page. The **plan** is [`docs/i18n-localization-plan.md`](i18n-localization-plan.md);
 the two are separate on purpose, because a plan that carries its own progress report goes stale
 silently and gets believed anyway.
@@ -701,7 +721,11 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
 
 **What is left, and none of it is plumbing.**
 
-1. **Crowdin holds almost no approved translations.** Every one of its nine target languages was
+1. ~~**Crowdin holds almost no approved translations.**~~ **Superseded on 5 October 2026** — this
+   item records the 29 September state. By 5 October seven languages were 99% approved; NXSAT-293
+   pulled `fr`, `de`, `ja`, `nl`, `th` and `zh` and found none of the 75 translated keys `main`
+   held in `fr.json` or `de.json` reverting to English. See "Languages that ship" at the top. The
+   rest of this item is kept as the record of how it was. Every one of its nine target languages was
    at zero in the portal on 28 September. By the pull of 29 September, French and German had 8
    approved strings each, and the other seven languages still had none. This is about
    **Crowdin's** state, not the application's: the repository ships 151 hand-written French and
@@ -748,7 +772,8 @@ source format cannot carry. `checkCrowdinConfig`, `checkTranslatorContextPush` a
    permission. There is a third level again: plain membership loads the dashboard but returns
    `403` on the source strings view, so progress percentages were readable while the strings
    behind them were not.
-3. **Nine target languages, three advertised.** Deliberate — see D8e in
+3. **Nine target languages, seven advertised** — `en`, `fr`, `de`, `ja`, `nl`, `th`, `zh` since
+   NXSAT-293 (5 October 2026). `es`, `pt` and `pl` are pending; the reasons are in D8e in
    `docs/i18n-localization-plan.md`. A language is advertised when it has translations, not when it
    is planned.
 4. **Bot commits are signed but not verified** — `verified: false`, `reason: unknown_key`. Not a
@@ -768,15 +793,17 @@ untranslated key out. For our nested JSON it keeps the key and blanks the value.
 unapproved value `""` — all 1,972 in seven of them, all but 8 approved strings in `fr.json` and
 `de.json` — and
 `checkTranslationCatalogues` failed it, correctly. The Technical Usage Guide warns of exactly this.
-The pull now follows the standard: approved-only export, neither skip option, and only `fr` and
-`de` downloaded (D8d, D8h).
+The pull now follows the standard: approved-only export, neither skip option, and only the
+shipped languages downloaded — `fr` and `de` then, `fr de ja nl th zh-CN` since NXSAT-293 (D8d, D8h).
 
 Dispatched from that fix, the pull refreshed #293 to `fr.json` and `de.json` only, each 1,972 keys
 with no blank value, 1,964 English and 8 approved translations. That is 99% English, so
 `checkCataloguesAreTranslated` **warns and the guardrails pass**. It is not the all-English
 failure. Merging it would turn all 75 hand-written French and 75 German strings on `main` back into
 English, because none of them is approved in Crowdin. **Do not merge a Crowdin pull until the D8f
-seeding is done**, or until the diff shows no hand-written string reverting.
+seeding is done**, or until the diff shows no hand-written string reverting. (5 October 2026: the
+second condition held — the NXSAT-293 pull reverted none of them, because Crowdin approval had
+caught up.)
 
 One trap is already handled and must stay handled: the standard's `/**/**/i18n/en.json` glob, with
 `base_path: "."`, sweeps `node_modules` and its 48 upstream catalogues — which would push
@@ -870,9 +897,10 @@ fails any source that is not.
 
 ### Separate stories, not part of either ticket
 
-9. **A language picker.** `availableLanguages` is validated, unit-tested and read by nothing.
+9. **A language picker** (NXSAT-294). `availableLanguages` is validated, unit-tested and read only
+   by the config parser, so a deployment selects its language through `defaultLanguage`.
    adf-core ships `LanguagePickerComponent`.
-10. **`LOCALE_ID` — CLOSED 2026-09-22.** Locale _data_ is registered for `fr` and `de`, adf-core's
+10. **`LOCALE_ID` — CLOSED 2026-09-22.** Locale _data_ is registered for `fr` and `de` (and for `ja`, `nl`, `th`, `zh` since NXSAT-293), adf-core's
     formatting locale follows the configuration, and `LOCALE_ID` is now **provided** from it too,
     in `provide-app-config.ts`. Both consumers share `resolveFormattingLocale()`, so Angular's
     formatting locale and adf-core's cannot diverge. Before that provider existed, anything
