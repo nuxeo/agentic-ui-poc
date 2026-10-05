@@ -1,6 +1,7 @@
 /**
  * NXENG-917 — `.no-publications` empty state in doc-info must meet WCAG 2.1 SC 1.4.3 (IBM 3603735683).
- * Per-theme computed contrast: `apps/nuxeo-ui/.../no-publications-contrast.spec.ts`.
+ * Source-level only: asserts the SCSS rule and the `:host` token pair it resolves to. Per-theme
+ * computed contrast of that token pair is covered by `apps/nuxeo-ui/.../doc-info-label-contrast.spec.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -22,7 +23,7 @@ function hostBlock(source: string): string {
 }
 
 function hostCustomProperty(source: string, name: string): string | null {
-  const block = hostBlock(source);
+  const block = stripScssComments(hostBlock(source));
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = block.match(
     new RegExp(`(?:^|[\\s;{])--${escaped}\\s*:\\s*([^;]+);`, 'm'),
