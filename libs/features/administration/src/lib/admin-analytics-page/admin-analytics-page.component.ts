@@ -9,7 +9,11 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { forkJoin } from 'rxjs';
-import { AdministrationService, type NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  AdministrationService,
+  type NuxeoDocument,
+  DocTypeLabelPipe,
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   AiGatewayService,
   AiFeatureFlagService,
@@ -24,6 +28,7 @@ function escapeNxqlLiteral(s: string): string {
   selector: 'lib-admin-analytics-page',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
     TranslatePipe,
     DatePipe,
     UpperCasePipe,

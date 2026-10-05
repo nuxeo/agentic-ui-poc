@@ -84,6 +84,27 @@ export const appConfig = {
 };
 ```
 
+## Translations
+
+The package's components and services ask `@ngx-translate/core` (a peer dependency) for about 300
+translation keys, such as `shared-ui.confirm-dialog.cancel`. The Satori application supplies them
+from its own catalogue. A host that does not have that catalogue can opt in to the package's
+English copy, so it renders English rather than raw keys:
+
+```ts
+import { provideTranslateService } from '@ngx-translate/core';
+import { providePlatformEnglishFallback } from '@nuxeo-satori/platform/ui';
+
+provideTranslateService({ missingTranslationHandler: providePlatformEnglishFallback() });
+```
+
+It answers only keys missing from both the current and the fallback language, so the host's own
+translations always win. ngx-translate allows one missing-translation handler per application; if
+you already have one, provide it as `PLATFORM_MISSING_TRANSLATION_NEXT` and it still handles every
+key the package has no English for. `PLATFORM_EN_TRANSLATIONS` is exported too, for a host that
+would rather merge the English into its own catalogue. Translations into other languages are not
+shipped yet.
+
 ## API surface gate
 
 The published surface is pinned at [`docs/api/platform.api.md`](../../docs/api/platform.api.md).

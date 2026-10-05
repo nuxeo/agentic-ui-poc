@@ -18,6 +18,7 @@ import {
   type NuxeoDocument,
   type UserGroupSuggestion,
   type SavedSearch,
+  DocTypeLabelPipe,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe } from '@ngx-translate/core';
 
@@ -56,6 +57,7 @@ const SIZE_LABELS: Record<string, string> = {
   selector: 'lib-trash-filters-drawer',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
     DescriptorLabelPipe,
     TranslatePipe,
     FormsModule,

@@ -11,8 +11,8 @@ import {
   BrowseService,
   DirectoryService,
   DocumentImportService,
-  DOMAIN_CONTAINER_GUIDANCE,
-  RESTRICTED_IMPORT_LOCATION_MESSAGE,
+  DOMAIN_CONTAINER_GUIDANCE_KEY,
+  RESTRICTED_IMPORT_LOCATION_MESSAGE_KEY,
   type DirectoryEntry,
   type ImportProgress,
   type L10nDirectoryEntry,
@@ -1486,14 +1486,14 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
         );
       });
 
-      expect(component.importLocationHint()).toBe(DOMAIN_CONTAINER_GUIDANCE);
+      expect(component.importLocationHint()).toBe(DOMAIN_CONTAINER_GUIDANCE_KEY);
       expect(component.locationRestricted()).toBe(true);
     });
 
     it('gives the generic hint for a non-domain restricted location', async () => {
       await createDialog({ parentPath: '/default-domain' });
 
-      expect(component.importLocationHint()).toBe(RESTRICTED_IMPORT_LOCATION_MESSAGE);
+      expect(component.importLocationHint()).toBe(RESTRICTED_IMPORT_LOCATION_MESSAGE_KEY);
     });
   });
 

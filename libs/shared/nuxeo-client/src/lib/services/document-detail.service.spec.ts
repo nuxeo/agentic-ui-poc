@@ -227,7 +227,7 @@ describe('DocumentDetailService permissions', () => {
     await expect(result$).resolves.toEqual({
       document: { uid: 'doc-uid' },
       notificationSent: false,
-      notificationError: expect.stringContaining('could not be located'),
+      notificationErrorKey: 'permissions.notification.ace-not-found-add',
     });
   });
 
@@ -249,7 +249,7 @@ describe('DocumentDetailService permissions', () => {
     await expect(refetchFailure$).resolves.toEqual({
       document: { uid: 'doc-uid' },
       notificationSent: false,
-      notificationError: expect.stringContaining('could not be located'),
+      notificationErrorKey: 'permissions.notification.ace-not-found-add',
     });
 
     const notifyFailure$ = firstValueFrom(
@@ -326,7 +326,7 @@ describe('DocumentDetailService permissions', () => {
     await expect(result$).resolves.toEqual({
       document: docWithLocalAce('ace-42', 'user-readonly01'),
       notificationSent: false,
-      notificationError: expect.stringContaining('SMTP'),
+      notificationErrorKey: 'permissions.notification.mail-send-failed-add',
     });
   });
 

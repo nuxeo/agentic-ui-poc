@@ -10,7 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -48,6 +48,11 @@ const GROUP_PERM_PAGE_SIZE = 25;
 export class ProfilePageComponent {
   private readonly auth = inject(AuthService);
   private readonly translate = inject(TranslateService);
+  /** The active language as a signal, so a `computed` that calls `instant()` recomputes on a switch. */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.getCurrentLang() },
+  );
   private readonly locale = inject(LOCALE_ID);
   private readonly destroyRef = inject(DestroyRef);
   private readonly userService = inject(UserService);
@@ -57,7 +62,10 @@ export class ProfilePageComponent {
   private readonly changePasswordButton =
     viewChild.required<ElementRef<HTMLButtonElement>>('changePasswordButton');
 
-  readonly username = computed(() => this.auth.username() ?? 'Unknown user');
+  readonly username = computed(() => {
+    this.currentLang();
+    return this.auth.username() ?? this.translate.instant('settings.profile.unknown-user');
+  });
   readonly email = signal('—');
   readonly company = signal('—');
   readonly groups = signal<Array<{ identifier: string; label: string }>>([]);

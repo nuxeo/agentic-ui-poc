@@ -14,7 +14,6 @@ import {
   BrowseContextService,
   DocumentDetailService,
   DirectoryService,
-  mailSendFailureMessage,
   NuxeoAce,
   NuxeoDocument,
   SelectionService,
@@ -825,9 +824,13 @@ describe('BrowseComponent', () => {
       status: 'effective',
     });
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(mailSendFailureMessage('send'), 'OK', {
-      duration: 7000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
+      'OK',
+      {
+        duration: 7000,
+      },
+    );
   });
 
   it('aceTimeFrame shows date-based label when ACL has begin and end', () => {

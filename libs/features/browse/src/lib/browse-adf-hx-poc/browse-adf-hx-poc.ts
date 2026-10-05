@@ -20,7 +20,7 @@ import {
   BROWSE_RETURN_MODE_PARAM,
   BrowseContextService,
   canAddChildren,
-  DOMAIN_CONTAINER_GUIDANCE,
+  DOMAIN_CONTAINER_GUIDANCE_KEY,
   isBrowseRouterUrl,
   parseBrowseNuxeoPathFromRouterUrl,
   PERMISSION_DENIED_KEY,
@@ -787,7 +787,7 @@ export class BrowseAdfHxPocComponent {
       return;
     }
     if (isDomainParentType(doc.type) || isRestrictedImportParentPath(doc.path)) {
-      this.scopeNotice.set(DOMAIN_CONTAINER_GUIDANCE);
+      this.scopeNotice.set(this.translate.instant(DOMAIN_CONTAINER_GUIDANCE_KEY));
       return;
     }
     this.dialog
@@ -977,7 +977,9 @@ export class BrowseAdfHxPocComponent {
           // is fine and the fix is to sort by something else.
           const message = err instanceof Error ? err.message : '';
           this.error.set(
-            message.startsWith('Cannot sort by') ? message : 'Failed to load folder contents.',
+            message.startsWith('Cannot sort by')
+              ? message
+              : this.translate.instant('browse.message.failed-to-load-folder-contents'),
           );
         },
       });

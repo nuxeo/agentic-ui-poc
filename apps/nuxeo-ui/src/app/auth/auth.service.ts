@@ -102,6 +102,14 @@ function readSessionFlagsFromMe(me: unknown): { isAdministrator: boolean; groups
   };
 }
 
+/** A sign-in failure the login page shows to the user, by catalogue key. */
+export class SignInError extends Error {
+  constructor(readonly messageKey: string) {
+    super(messageKey);
+    this.name = 'SignInError';
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -506,10 +514,10 @@ export class AuthService {
             catchError((err) =>
               throwError(
                 () =>
-                  new Error(
+                  new SignInError(
                     err?.status === 401 || err?.status === 403
-                      ? 'Invalid username or password.'
-                      : 'Could not reach Nuxeo. Check the server, proxy, and URL.',
+                      ? 'login.message.invalid-credentials'
+                      : 'login.message.server-unreachable',
                   ),
               ),
             ),
