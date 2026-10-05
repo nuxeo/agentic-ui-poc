@@ -63,14 +63,11 @@ describe('DocumentDetailComponent — orientation (NXENG-944)', () => {
     expect(panelDvhAt).toBeGreaterThan(panelVhAt);
   });
 
-  it('uses dynamic viewport units for scrollable tab panels where height is viewport-bound', () => {
+  it('sizes AI tab scroll area through flex, not viewport subtraction that can collapse to zero', () => {
     const block = scssBlock(scss, 'ai-tab-content');
-    expect(block).toMatch(/max-height:\s*calc\(100vh\s*-\s*350px\)/);
-    expect(block).toMatch(/max-height:\s*calc\(100dvh\s*-\s*350px\)/);
-    const vhAt = block.indexOf('100vh');
-    const dvhAt = block.indexOf('100dvh');
-    expect(vhAt).toBeGreaterThan(-1);
-    expect(dvhAt).toBeGreaterThan(-1);
-    expect(vhAt).toBeLessThan(dvhAt);
+    expect(block).toMatch(/flex:\s*1/);
+    expect(block).toMatch(/min-height:\s*0/);
+    expect(block).toMatch(/overflow-y:\s*auto/);
+    expect(block).not.toMatch(/max-height:\s*calc\(/);
   });
 });

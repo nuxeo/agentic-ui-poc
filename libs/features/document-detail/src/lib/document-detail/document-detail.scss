@@ -2026,10 +2026,10 @@ sat-breadcrumbs {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* NXENG-944 — fill the mat-tab body via flex; viewport subtraction collapses on short landscape. */
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  /* NXENG-944 — vh fallback first; dvh wins when supported (dynamic browser chrome). */
-  max-height: calc(100vh - 350px);
-  max-height: calc(100dvh - 350px);
 }
 
 // Hero Header
