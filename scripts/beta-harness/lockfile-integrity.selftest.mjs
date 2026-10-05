@@ -191,28 +191,73 @@ expect(
 );
 
 // ---------------------------------------------------------------------------------------------
-// 6. A bare key carries no selector, so it waives the name outright — which is what npm does
-//    with it. 24 of the 26 waived edges on the real lock are this shape.
+// 6/7. The selector says which requests the rule applies to; the **value** is what gets
+//      installed, and the resolved version has to be that. Testing it against the selector
+//      instead gets both of these wrong: a stale 5.0.11 satisfies `^5.0.0` while being a version
+//      neither the tree nor the override asked for, and a legitimate cross-major value resolves
+//      outside its own selector by design.
 // ---------------------------------------------------------------------------------------------
 expect(
-  'bare override key still waives the whole name',
+  'a stale resolution inside the selector but not the forced value is reported',
+  'fail',
+  'requires brace-expansion@5.0.8',
+  runGate(
+    'stale-inside-selector',
+    { name: 'fixture', version: '0.0.0', overrides: V5_OVERRIDE },
+    lockWithEdge({
+      dependent: 'nx',
+      dependentVersion: '22.7.8',
+      name: 'brace-expansion',
+      spec: '5.0.8',
+      resolvedVersion: '5.0.11',
+    }),
+  ),
+);
+expect(
+  'a cross-major override value is excused even though it resolves outside its own selector',
+  'pass',
+  'lockfile-integrity: pass',
+  runGate(
+    'cross-major-value',
+    { name: 'fixture', version: '0.0.0', overrides: { 'brace-expansion@^1.0.0': '2.0.0' } },
+    lockWithEdge({ name: 'brace-expansion', spec: '^1.1.7', resolvedVersion: '2.0.0' }),
+  ),
+);
+
+// ---------------------------------------------------------------------------------------------
+// 8/9. A bare key carries no selector, so it applies to every request for that name — 24 of the
+//      26 waived edges on the real lock are this shape — but its value is still load-bearing.
+// ---------------------------------------------------------------------------------------------
+const bareKeyLock = lockWithEdge({
+  dependent: 'nx',
+  dependentVersion: '22.7.8',
+  name: 'axios',
+  spec: '1.18.1',
+  resolvedVersion: '1.20.0',
+});
+expect(
+  'bare override key waives any request for the name',
   'pass',
   'lockfile-integrity: pass',
   runGate(
     'bare-key',
     { name: 'fixture', version: '0.0.0', overrides: { axios: '1.20.0' } },
-    lockWithEdge({
-      dependent: 'nx',
-      dependentVersion: '22.7.8',
-      name: 'axios',
-      spec: '1.18.1',
-      resolvedVersion: '1.20.0',
-    }),
+    bareKeyLock,
+  ),
+);
+expect(
+  'bare override key does not waive a version it does not force',
+  'fail',
+  'requires axios@1.18.1',
+  runGate(
+    'bare-key-stale',
+    { name: 'fixture', version: '0.0.0', overrides: { axios: '1.21.0' } },
+    bareKeyLock,
   ),
 );
 
 // ---------------------------------------------------------------------------------------------
-// 7. A scoped name carries its own leading `@`, so the key has to split on the LAST one. Split
+// 10. A scoped name carries its own leading `@`, so the key has to split on the LAST one. Split
 //    on the first and `"@scope/pkg@^2.0.0"` becomes the name `""` with range `scope/pkg@^2.0.0`,
 //    and both of these go the wrong way.
 // ---------------------------------------------------------------------------------------------
@@ -239,7 +284,7 @@ expect(
 );
 
 // ---------------------------------------------------------------------------------------------
-// 8. The name half of the invariant, which no override touches: an edge whose package is not in
+// 11. The name half of the invariant, which no override touches: an edge whose package is not in
 //    the lock at all.
 // ---------------------------------------------------------------------------------------------
 expect(
@@ -254,7 +299,7 @@ expect(
 );
 
 // ---------------------------------------------------------------------------------------------
-// 9. The Phase 2 failure itself, on the real lock: prune `@oxc-resolver/binding-wasm32-wasi`'s
+// 12. The Phase 2 failure itself, on the real lock: prune `@oxc-resolver/binding-wasm32-wasi`'s
 //    nested `@emnapi/*` entries, as a bare `npm install` on macOS does, and the v1.11.2 pins
 //    walk up to the top-level 1.11.3. This is the control that was previously run by hand.
 // ---------------------------------------------------------------------------------------------
@@ -280,7 +325,7 @@ expect(
 }
 
 // ---------------------------------------------------------------------------------------------
-// 10. The real lock's own `brace-expansion@^5.0.0` pin is load-bearing: with the key removed,
+// 13. The real lock's own `brace-expansion@^5.0.0` pin is load-bearing: with the key removed,
 //     the real lock goes red on that edge. The pass in control 1 is therefore the selector-scoped
 //     waiver excusing it, not the version check failing to look.
 // ---------------------------------------------------------------------------------------------

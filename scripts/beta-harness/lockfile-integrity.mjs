@@ -157,23 +157,30 @@ for (const [path, entry] of Object.entries(entries)) {
  * name instead excused every `brace-expansion` edge in a tree that also holds v1 and v2 copies,
  * so a malformed v1 or v2 edge — including a pruned nested copy whose v1 request then walks up to
  * the overridden v5 root entry, which is the Phase 2 failure this gate exists for — was accepted
- * silently. Two conditions, and the second is why checking the resolved version alone is not
- * enough: 5.0.12 satisfies `^5.0.0`, so a `^1.1.7` request resolving to it would still be excused.
+ * silently.
  *
- *   1. the **request** is in the selector's scope — npm matches an override key's range against
- *      the dependency's declared spec, so an edge asking for `^1.1.7` is outside `^5.0.0` and
- *      npm leaves it alone;
- *   2. the **resolved version** is in the selector's scope too, i.e. what is installed is what
- *      this override forces rather than some third version neither side asked for.
+ * An override entry has two halves and they answer different questions, which is the distinction
+ * this got wrong once already by testing the resolved version against the selector:
  *
- * A bare key (`"axios": "1.20.0"`) carries no selector and so waives the name outright, which is
- * what npm does with it. Two deliberate degradations keep the gate from crying wolf on what it
- * cannot judge: without `semver` resolvable, selector-scoped keys fall back to waiving the name
- * (the gate can only judge exact pins at all in that state), and a selector that is not a valid
- * range — a dist-tag, say — does the same.
+ *   1. the **key's selector** decides which requests the rule applies to. npm matches it against
+ *      the dependency's declared spec, so an edge asking for `^1.1.7` is outside `^5.0.0` and npm
+ *      leaves it alone;
+ *   2. the **value** is what the override installs. That, not the selector, is what the resolved
+ *      version has to be: under `"brace-expansion@^5.0.0": "5.0.12"` a stale 5.0.11 satisfies the
+ *      selector while being a version nothing in the tree asked for and the override does not
+ *      produce, and the mirror case — a legitimate cross-major `"x@^1.0.0": "2.0.0"` — resolves
+ *      outside its own selector by design and must not be reported.
+ *
+ * A bare key (`"axios": "1.20.0"`) carries no selector, so it applies to every request for that
+ * name — but its value still has to be what is installed. Degradations, each so the gate does not
+ * cry wolf on what it cannot judge: without `semver` resolvable nothing but the name can be
+ * compared, so the waiver is name-level; a selector that is not a valid range — a dist-tag, say —
+ * applies to any request; and a value that is not a version or range, such as npm's `"$dep"`
+ * back-reference, accepts any resolved version.
  *
  * Nested override forms (`{ "@angular/build": { "vite": "6.4.3" } }`) are flattened, since the
- * effect on the resolved version is the same.
+ * effect on the resolved version is the same. The outer key is a dependent rather than a pinned
+ * package, so it contributes a rule with no value and waives on the name alone.
  *
  * @param {string} name package name of the edge
  * @param {string} spec version range the dependent declared
@@ -182,23 +189,30 @@ for (const [path, entry] of Object.entries(entries)) {
 function isOverridden(name, spec, actual) {
   const rules = overrideRules.get(name);
   if (!rules) return false;
-  return rules.some(({ range }) => {
-    if (range === null) return true;
-    if (!semver || !semver.validRange(range)) return true;
-    const requestInScope = semver.validRange(spec)
-      ? semver.intersects(spec, range, { includePrerelease: true })
-      : true;
-    return requestInScope && semver.satisfies(actual, range, { includePrerelease: true });
+  if (!semver) return true;
+  return rules.some(({ range, value }) => {
+    const applies =
+      range === null ||
+      !semver.validRange(range) ||
+      !semver.validRange(spec) ||
+      semver.intersects(spec, range, { includePrerelease: true });
+    const installedWhatItForces =
+      value === null ||
+      !semver.validRange(value) ||
+      semver.satisfies(actual, value, { includePrerelease: true });
+    return applies && installedWhatItForces;
   });
 }
 
 /**
- * Every package named anywhere in `overrides`, at any nesting, with the selector its key carried.
+ * Every package named anywhere in `overrides`, at any nesting, with the selector its key carried
+ * and the version it forces.
  *
- * @returns {Map<string, { range: string | null }[]>} name -> one rule per key that addressed it
+ * @returns {Map<string, { range: string | null, value: string | null }[]>} name -> one rule per
+ *   key that addressed it
  */
 function collectOverrideRules(overrides) {
-  /** @type {Map<string, { range: string | null }[]>} */
+  /** @type {Map<string, { range: string | null, value: string | null }[]>} */
   const rules = new Map();
   const walk = (node) => {
     if (!node || typeof node !== 'object') return;
@@ -206,7 +220,9 @@ function collectOverrideRules(overrides) {
       // A key is a package name unless it is the `.` self-reference npm allows.
       if (key !== '.') {
         const { name, range } = parseOverrideKey(key);
-        rules.set(name, [...(rules.get(name) ?? []), { range }]);
+        // A nested object is a dependent scope, not a version: no value to compare against.
+        const forced = typeof value === 'string' ? value : null;
+        rules.set(name, [...(rules.get(name) ?? []), { range, value: forced }]);
       }
       if (value && typeof value === 'object') walk(value);
     }
