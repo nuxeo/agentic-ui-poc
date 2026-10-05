@@ -320,20 +320,38 @@ expect(
     },
   ),
 );
+// This fixture is not invented: it is what `npm install --package-lock-only` actually produced for
+// that manifest on npm 10.8.2, so the gate is being asked to accept a tree npm itself wrote. The
+// root deliberately depends on `minimatch` rather than on `brace-expansion`, because overriding a
+// *direct* dependency to a different spec is refused outright — `npm error code EOVERRIDE` — and a
+// fixture npm will not install cannot show the gate agreeing with npm about anything.
 expect(
   'npm\'s "." self-reference does pin the container',
   'pass',
   'lockfile-integrity: pass',
   runGate(
     'nested-self-reference',
-    { name: 'fixture', version: '0.0.0', overrides: { parent: { '.': '2.0.0' } } },
+    {
+      name: 'fixture',
+      version: '0.0.0',
+      dependencies: { minimatch: '3.1.2' },
+      overrides: { 'brace-expansion': { '.': '2.0.1' } },
+    },
     {
       name: 'fixture',
       version: '0.0.0',
       lockfileVersion: 3,
       packages: {
-        '': { name: 'fixture', version: '0.0.0', dependencies: { parent: '1.0.0' } },
-        'node_modules/parent': { version: '2.0.0' },
+        '': { name: 'fixture', version: '0.0.0', dependencies: { minimatch: '3.1.2' } },
+        'node_modules/balanced-match': { version: '1.0.2' },
+        'node_modules/brace-expansion': {
+          version: '2.0.1',
+          dependencies: { 'balanced-match': '^1.0.0' },
+        },
+        'node_modules/minimatch': {
+          version: '3.1.2',
+          dependencies: { 'brace-expansion': '^1.1.7' },
+        },
       },
     },
   ),
@@ -367,7 +385,36 @@ expect(
 );
 
 // ---------------------------------------------------------------------------------------------
-// 16. The name half of the invariant, which no override touches: an edge whose package is not in
+// 16. An override never excuses a ROOT edge, because npm refuses to install that tree at all:
+//
+//       dependencies: { "brace-expansion": "1.1.11" }, overrides: { "brace-expansion": "2.0.1" }
+//       npm error code EOVERRIDE
+//       npm error Override for brace-expansion@1.1.11 conflicts with direct dependency
+//
+//     Waiving it hid the very condition the gate claims to check — that `npm ci` will not refuse
+//     this tree. Run against the implementation before this control existed, it reports `pass`.
+// ---------------------------------------------------------------------------------------------
+expect(
+  'an override does not excuse a root edge (npm refuses that tree with EOVERRIDE)',
+  'fail',
+  'requires brace-expansion@1.1.11',
+  runGate(
+    'root-edge-not-waived',
+    { name: 'fixture', version: '0.0.0', overrides: { 'brace-expansion': '2.0.1' } },
+    {
+      name: 'fixture',
+      version: '0.0.0',
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'fixture', version: '0.0.0', dependencies: { 'brace-expansion': '1.1.11' } },
+        'node_modules/brace-expansion': { version: '2.0.1' },
+      },
+    },
+  ),
+);
+
+// ---------------------------------------------------------------------------------------------
+// 17. The name half of the invariant, which no override touches: an edge whose package is not in
 //    the lock at all.
 // ---------------------------------------------------------------------------------------------
 expect(
@@ -382,7 +429,7 @@ expect(
 );
 
 // ---------------------------------------------------------------------------------------------
-// 17. The Phase 2 failure itself, on the real lock: prune `@oxc-resolver/binding-wasm32-wasi`'s
+// 18. The Phase 2 failure itself, on the real lock: prune `@oxc-resolver/binding-wasm32-wasi`'s
 //    nested `@emnapi/*` entries, as a bare `npm install` on macOS does, and the v1.11.2 pins
 //    walk up to the top-level 1.11.3. This is the control that was previously run by hand.
 // ---------------------------------------------------------------------------------------------
@@ -408,7 +455,7 @@ expect(
 }
 
 // ---------------------------------------------------------------------------------------------
-// 18. The real lock's own `brace-expansion@^5.0.0` pin is load-bearing: with the key removed,
+// 19. The real lock's own `brace-expansion@^5.0.0` pin is load-bearing: with the key removed,
 //     the real lock goes red on that edge. The pass in control 1 is therefore the selector-scoped
 //     waiver excusing it, not the version check failing to look.
 // ---------------------------------------------------------------------------------------------

@@ -198,6 +198,19 @@ for (const [path, entry] of Object.entries(entries)) {
  * @param {string} dependentPath lock path of the package declaring the edge
  */
 function isOverridden(name, spec, actual, dependentPath) {
+  // The root's own edges are never excused. npm refuses an override that replaces a direct
+  // dependency with a different spec — verified, not assumed:
+  //
+  //     dependencies: { "brace-expansion": "1.1.11" }, overrides: { "brace-expansion": "2.0.1" }
+  //     npm error code EOVERRIDE
+  //     npm error Override for brace-expansion@1.1.11 conflicts with direct dependency
+  //
+  // So a root edge an override appears to explain is a tree npm will not install, which is the
+  // one claim this gate makes. Excusing it waived exactly the failure it exists to report. No
+  // root edge on this lock is affected — 81 direct dependencies, three of them named in
+  // `overrides` (`@angular/build`, `@angular-devkit/build-angular`, `vite`), none in violation —
+  // so this closes a hole rather than fixing a live break.
+  if (dependentPath === '') return false;
   const rules = overrideRules.get(name);
   if (!rules) return false;
   if (!semver) return true;
