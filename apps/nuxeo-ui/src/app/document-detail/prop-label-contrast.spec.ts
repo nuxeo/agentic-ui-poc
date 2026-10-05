@@ -1,6 +1,6 @@
 /**
- * NXENG-858 / NXENG-891 — `.prop-label` on `.properties-panel` under every compiled palette
- * (IBM 1792790291, IBM 2951482449). Karma loads `apps/nuxeo-ui/src/styles.scss`, so
+ * NXENG-858 / NXENG-891 / NXENG-895 — `.prop-label` on `.properties-panel` under every compiled palette
+ * (IBM 1792790291, 2951482449, 2993932592). Karma loads `apps/nuxeo-ui/src/styles.scss`, so
  * `data-app-theme` resolves real token pairs. Host tokens come from `:host` in
  * `document-detail.scss` (no inline overrides on the test host).
  */
@@ -52,9 +52,7 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function compositeBackgroundLayers(
-  layers: readonly { rgb: number[]; alpha: number }[],
-): number[] {
+function compositeBackgroundLayers(layers: readonly { rgb: number[]; alpha: number }[]): number[] {
   let canvas: number[] = [255, 255, 255];
   for (const layer of layers) {
     if (layer.alpha === 0) {
@@ -84,7 +82,7 @@ function paintedBackground(element: HTMLElement): number[] {
   return compositeBackgroundLayers(layers);
 }
 
-describe('Document detail prop-label contrast by theme (NXENG-858)', () => {
+describe('Document detail prop-label contrast by theme (NXENG-858, NXENG-891, NXENG-895)', () => {
   it('compositeBackgroundLayers treats translucent panel backgrounds as painted, not white', () => {
     const mutedLabel = parseColor('rgb(92, 95, 107)');
     const translucentPanel = compositeBackgroundLayers([{ rgb: [0, 0, 0], alpha: 0.5 }]);
@@ -128,10 +126,18 @@ describe('Document detail prop-label contrast by theme (NXENG-858)', () => {
 
       try {
         const host = fixture.nativeElement as HTMLElement;
-        expect(getComputedStyle(host).getPropertyValue('--document-detail-properties-label-muted').trim())
+        expect(
+          getComputedStyle(host)
+            .getPropertyValue('--document-detail-properties-label-muted')
+            .trim(),
+        )
           .withContext('label token must come from document-detail.scss :host')
           .toBe('#5c5f6b');
-        expect(getComputedStyle(host).getPropertyValue('--document-detail-properties-panel-surface').trim())
+        expect(
+          getComputedStyle(host)
+            .getPropertyValue('--document-detail-properties-panel-surface')
+            .trim(),
+        )
           .withContext('panel surface token must come from document-detail.scss :host')
           .toBe('#ffffff');
 
