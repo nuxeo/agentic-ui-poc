@@ -91,9 +91,16 @@ jobs:
       # runs individual scripts. So "registered as a gate" meant local-only, and review had
       # to point out that the gate guarding a shipped XSS-adjacent defect could not block a
       # merge. Registering a check in ALL_GATES is not the same as running it.
-      - name: Static beta gates (evidence, reference drift, customer guardrails, supply chain, sanitizers)
+      - name: Static beta gates (evidence, reference drift, customer guardrails, supply chain, sanitizers, lockfile controls)
         run: |
           set -euo pipefail
+          # The lockfile gate and its controls. `npm ci` above already proves this lock installs
+          # on Linux, which is the failure the gate was written for — but it says nothing about
+          # the gate still being able to report, and that half has been wrong twice: once green
+          # on the lock that broke Phase 2, once waiving every `brace-expansion` major because
+          # the override selector was stripped. The controls are the only thing that re-asserts it.
+          npm run beta:lockfile
+          npm run beta:lockfile-selftest
           # Fails if an evidence step asserts something it cannot observe. Phase 1 shipped
           # a dead feature past two checks that certified properties they could not see.
           npm run beta:audit
