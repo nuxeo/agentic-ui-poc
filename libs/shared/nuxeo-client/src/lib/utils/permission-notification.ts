@@ -1,14 +1,23 @@
 import type { NuxeoAce } from '../models/acl.model';
 import type { NuxeoDocument } from '../models/document.model';
 
-/** Shown under the notify checkbox in permission dialogs. */
-export const PERMISSION_NOTIFICATION_MAIL_HINT =
-  'Requires outbound mail (SMTP) configured on the Nuxeo server.';
+/** Catalogue key for the hint shown under the notify checkbox in permission dialogs. */
+export const PERMISSION_NOTIFICATION_MAIL_HINT_KEY = 'permissions.notification.mail-hint';
+
+/**
+ * Resolves a catalogue key. Passed in rather than injected so this module stays free of Angular
+ * DI — the same contract as `permissionRightLabel`.
+ */
+export type PermissionMessageTranslate = (key: string) => string;
 
 export interface PermissionWithNotificationResult {
   document: NuxeoDocument;
   notificationSent: boolean;
-  notificationError?: string;
+  /**
+   * Catalogue key of the message explaining why the notification was not sent. A key rather than
+   * text so the service needs no translation dependency; the dialog showing it resolves it.
+   */
+  notificationErrorKey?: string;
 }
 
 /** Nuxeo surfaces SMTP failures with "sending a mail" in the automation error message. */
@@ -20,31 +29,41 @@ export function isMailSendError(err: unknown): boolean {
   return raw.toLowerCase().includes('sending a mail');
 }
 
-export function mailSendFailureMessage(context: 'add' | 'update' | 'send'): string {
-  const action =
-    context === 'add'
-      ? 'Permission was added, but the notification email could not be sent.'
-      : context === 'update'
-        ? 'Permission was updated, but the notification email could not be sent.'
-        : 'Notification email could not be sent.';
-  return `${action} Configure outbound mail (SMTP) on the Nuxeo server.`;
+export function mailSendFailureKey(context: 'add' | 'update' | 'send'): string {
+  return context === 'add'
+    ? 'permissions.notification.mail-send-failed-add'
+    : context === 'update'
+      ? 'permissions.notification.mail-send-failed-update'
+      : 'permissions.notification.mail-send-failed-send';
 }
 
-export function permissionCreateMailFailureMessage(): string {
-  return 'Permission could not be created. Configure outbound mail (SMTP) on the Nuxeo server.';
+export function mailSendFailureMessage(
+  context: 'add' | 'update' | 'send',
+  translate: PermissionMessageTranslate,
+): string {
+  return translate(mailSendFailureKey(context));
 }
 
-export function permissionUpdateMailFailureMessage(): string {
-  return 'Permission could not be updated. Configure outbound mail (SMTP) on the Nuxeo server.';
+export function permissionCreateMailFailureMessage(translate: PermissionMessageTranslate): string {
+  return translate('permissions.notification.create-mail-failed');
+}
+
+export function permissionUpdateMailFailureMessage(translate: PermissionMessageTranslate): string {
+  return translate('permissions.notification.update-mail-failed');
 }
 
 /** Permission saved but local ACE id could not be resolved for a follow-up notification send. */
-export function permissionNotificationAceNotFoundMessage(context: 'add' | 'update'): string {
-  const action =
-    context === 'add'
-      ? 'Permission was added, but the notification email could not be sent because the new permission entry could not be located.'
-      : 'Permission was updated, but the notification email could not be sent because the permission entry could not be located.';
-  return `${action} Refresh the page and try resending from the Permissions tab.`;
+export function permissionNotificationAceNotFoundKey(context: 'add' | 'update'): string {
+  return context === 'add'
+    ? 'permissions.notification.ace-not-found-add'
+    : 'permissions.notification.ace-not-found-update';
+}
+
+export function permissionNotificationAceNotFoundMessage(
+  context: 'add' | 'update',
+  translate: PermissionMessageTranslate,
+): string {
+  return translate(permissionNotificationAceNotFoundKey(context));
 }
 
 /** Locates a granted local ACE for a user or group principal after AddPermission. */

@@ -1,0 +1,8 @@
+version: 2
+
+# GitHub Check Runs do not read this file — dashboard exclusion is required for historical
+# occurrences still in a long PR's commit range. Kept for ggshield/local scans.
+secret:
+  ignored_matches:
+    - name: Generic Password
+      match: file:///etc/passwd

@@ -10,6 +10,7 @@ import {
   DocumentDetailService,
   DocumentService,
   TaskService,
+  type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { AiFeatureFlagService, AiGatewayService } from '@agentic-ui/shared/ai-client';
 
@@ -72,6 +73,18 @@ describe('DashboardPageComponent', () => {
 
     fixture = TestBed.createComponent(DashboardPageComponent);
     fixture.detectChanges();
+  });
+
+  it('names document types through the shared catalogue helper, never as the raw type id', () => {
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('fr', { 'doc-type': { 'ordered-folder': 'Dossier ordonné' } });
+    translate.use('fr');
+    const page = fixture.componentInstance;
+    const doc = (type: string | undefined) => ({ type }) as unknown as NuxeoDocument;
+
+    expect(page.docTypeLabel(doc('OrderedFolder'))).toBe('Dossier ordonné');
+    expect(page.docTypeLabel(doc('InvoiceRecord'))).toBe('Invoice Record');
+    expect(page.docTypeLabel(doc(undefined))).toBe('File');
   });
 
   it('keeps the Create or import FAB naming text in a cdk-visually-hidden span (WCAG 2.5.3)', () => {

@@ -127,7 +127,7 @@
             @if (locationRestricted()) {
               <p class="location-hint" role="alert">
                 <span class="location-hint-bar" aria-hidden="true"></span>
-                {{ importLocationHint() }}
+                {{ importLocationHint() | translate }}
               </p>
             }
           </div>
@@ -174,7 +174,7 @@
                   {{ 'browse.create-import-dialog.file-import-is-not-available-at' | translate }}
                   choose a folder below.
                 } @else {
-                  {{ importLocationHint() }}
+                  {{ importLocationHint() | translate }}
                 }
               </p>
             } @else {
@@ -266,7 +266,7 @@
             }
           } @else {
             @if (csvImportRestricted()) {
-              <p class="empty-hint">{{ importLocationHint() }}</p>
+              <p class="empty-hint">{{ importLocationHint() | translate }}</p>
             } @else {
               <div
                 class="dropzone dropzone--csv"
@@ -407,7 +407,7 @@
                 @if (locationRestricted()) {
                   <p class="location-hint" role="alert">
                     <span class="location-hint-bar" aria-hidden="true"></span>
-                    {{ importLocationHint() }}
+                    {{ importLocationHint() | translate }}
                   </p>
                 }
               </div>

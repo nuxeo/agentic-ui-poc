@@ -33,6 +33,7 @@ import {
   docTypeIcon,
   type NuxeoDocument,
   type NuxeoDocumentList,
+  DocTypeLabelPipe,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
@@ -78,6 +79,7 @@ const SORTABLE_COLUMNS = new Set(['title', 'modified', 'contributor', 'created',
   selector: 'lib-trash',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
     DescriptorLabelPipe,
     TranslatePipe,
     DatePipe,
@@ -345,7 +347,9 @@ export class TrashComponent {
       width: '95vw',
       maxWidth: '1080px',
       data: {
-        title: this.trashFilterService.activeSavedFilterTitle()?.trim() || 'Saved Search',
+        title:
+          this.trashFilterService.activeSavedFilterTitle()?.trim() ||
+          this.translate.instant('ui.saved-search'),
         id,
       },
     });

@@ -9,7 +9,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 
-import { AdministrationService, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  AdministrationService,
+  NuxeoDocument,
+  DocTypeLabelPipe,
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   AiGatewayService,
   AiFeatureFlagService,
@@ -25,6 +29,7 @@ const DEFAULT_NXQL =
   selector: 'lib-admin-nxql-search-page',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
     TranslatePipe,
     DatePipe,
     FormsModule,

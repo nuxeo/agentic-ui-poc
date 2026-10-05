@@ -54,3 +54,13 @@ export {
   observeStripRedundantMatInputAriaRequired,
   stripRedundantMatInputAriaRequired,
 } from './lib/login-mat-input-required-a11y';
+export {
+  TranslatedDatepickerIntl,
+  provideTranslatedDatepickerIntl,
+} from './lib/datepicker-intl/translated-datepicker-intl';
+export { PLATFORM_EN_TRANSLATIONS } from './lib/i18n/platform-en';
+export {
+  PLATFORM_MISSING_TRANSLATION_NEXT,
+  PlatformEnglishMissingTranslationHandler,
+  providePlatformEnglishFallback,
+} from './lib/i18n/platform-english-fallback';

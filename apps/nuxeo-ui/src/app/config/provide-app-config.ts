@@ -1,4 +1,6 @@
-import { APP_INITIALIZER, LOCALE_ID, Provider, inject } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { APP_INITIALIZER, DestroyRef, LOCALE_ID, Provider, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { UserPreferenceValues, UserPreferencesService } from '@alfresco/adf-core';
 import { TranslateService } from '@ngx-translate/core';
@@ -139,6 +141,28 @@ export function resolveFormattingLocale(defaultLanguage: string): string {
   return REGISTERED_LOCALES.includes(defaultLanguage) ? defaultLanguage : 'en';
 }
 
+/**
+ * Keeps `<html lang>` equal to the language the text is rendered in.
+ *
+ * `index.html` ships `lang="en"`, and nothing changed it, so a French page announced itself as
+ * English: screen readers picked an English voice for French text, and browser translation offered
+ * to translate from English. Follows `onLangChange` rather than the configured default because the
+ * language can change after boot — adf-core switches it when an adf-hx surface renders (W14).
+ */
+export function syncDocumentLanguage(
+  translate: Pick<TranslateService, 'onLangChange' | 'getCurrentLang'>,
+  document: Document,
+  destroyRef: DestroyRef,
+): void {
+  const apply = (lang: string | undefined): void => {
+    if (lang) document.documentElement.lang = lang;
+  };
+  apply(translate.getCurrentLang());
+  translate.onLangChange
+    .pipe(takeUntilDestroyed(destroyRef))
+    .subscribe((event) => apply(event.lang));
+}
+
 export function provideAppConfig(): Provider[] {
   return [
     {
@@ -149,6 +173,16 @@ export function provideAppConfig(): Provider[] {
         userPreferences: UserPreferencesService,
       ) => initialiseAppConfigAndLanguage(config, translate, userPreferences),
       deps: [AppConfigService, TranslateService, UserPreferencesService],
+      multi: true,
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: () => {
+        const translate = inject(TranslateService);
+        const document = inject(DOCUMENT);
+        const destroyRef = inject(DestroyRef);
+        return () => syncDocumentLanguage(translate, document, destroyRef);
+      },
       multi: true,
     },
     /*

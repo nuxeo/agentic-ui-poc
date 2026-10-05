@@ -185,8 +185,8 @@
               />
             </div>
             <div class="kd-progress-card__content">
-              <p class="kd-progress-card__title">{{ loadingTitle() }}</p>
-              <p class="kd-progress-card__message">{{ loadingMessage() }}</p>
+              <p class="kd-progress-card__title">{{ loadingTitleKey() | translate }}</p>
+              <p class="kd-progress-card__message">{{ loadingMessageKey() | translate }}</p>
             </div>
           </div>
         }
@@ -254,8 +254,8 @@
                     [attr.aria-label]="'kd.knowledge-discovery.loading' | translate"
                   />
                   <div>
-                    <p class="kd-answer__loading-title">{{ loadingTitle() }}</p>
-                    <p class="kd-answer__loading-copy">{{ loadingMessage() }}</p>
+                    <p class="kd-answer__loading-title">{{ loadingTitleKey() | translate }}</p>
+                    <p class="kd-answer__loading-copy">{{ loadingMessageKey() | translate }}</p>
                   </div>
                 </div>
                 <div class="kd-answer__skeleton" aria-hidden="true">
