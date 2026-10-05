@@ -2,14 +2,15 @@
 title: Developer Learning Path (No-Agent)
 parent: Engineering
 order: 14
-last_reviewed: 2026-09-09
-repo_commit: e334b0f
+last_reviewed: 2026-10-05
+repo_commit: b15d9cf
 audience: engineering
 ---
 
 # Developer Learning Path — Building This Application Without AI Agents
 
-> **Last reviewed:** 2026-09-09 · **Repository:** `e334b0f` (`fix/sonarcloud-security-remediation`)
+> **Last reviewed:** 2026-10-05 · **Repository:** `b15d9cf` (`fix/nxsat-303-production-advisories`)
+> Only the Angular and `dompurify` rows were re-verified at that commit — see Appendix A.
 > **Purpose:** the complete list of technologies, versions and concepts a developer must know to
 > build, extend and operate Nuxeo Satori **by hand**, with no AI assistance of any kind.
 > **Sources:** `package.json`, `package-lock.json`, `pom.xml`, `nx.json`, `angular.json`,
@@ -174,8 +175,8 @@ Estimated effort: **10 hours**.
 
 ### 5. Angular 20.3 — **Must** (the largest single module)
 
-Resolved: **20.3.31** across `@angular/core`, `common`, `router`, `forms`, `compiler`,
-`animations`, `platform-browser`, `platform-browser-dynamic` (`~20.3.31`). CLI and build tooling
+Resolved: **20.3.33** across `@angular/core`, `common`, `router`, `forms`, `compiler`,
+`animations`, `platform-browser`, `platform-browser-dynamic` (`~20.3.33`). CLI and build tooling
 also 20.3.x. `zone.js` **0.15.1**.
 
 Angular 20 is a genuinely different framework from Angular 8–14. If your Angular knowledge predates
@@ -775,7 +776,7 @@ and **must not** be repointed at public npm.
 
 Context that explains a lot of the workarounds: there has been no stable adf-hx release in twelve
 months (last true stable `7.19.5`, on an Angular 15 baseline); the published packages are compiled
-against **Angular 19.2.18** while this repo runs 20.3.31; and the dependency contract is
+against **Angular 19.2.18** while this repo runs 20.3.33; and the dependency contract is
 **under-declared** — one declared peer against thirteen imported packages — so the pin set is
 maintained by hand.
 
@@ -942,7 +943,7 @@ Estimated effort: **20 hours** for §17.1 and §17.2 together.
 | Library                         | Version                     | Where                                         | What to learn                                                                                                                                                                                                                                                     |
 | ------------------------------- | --------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Quill**                       | **2.0.3** (`^2.0.3`)        | `document-detail/note-editor` — 44 references | Delta model, toolbar modules, custom handlers, image insertion                                                                                                                                                                                                    |
-| **DOMPurify**                   | **3.4.13** (`^3.4.12`)      | Notes, comments, AI markdown, `nuxeo-client`  | Configuration, hooks, and _why_ sanitising on output is not enough                                                                                                                                                                                                |
+| **DOMPurify**                   | **3.4.16** (`^3.4.16`)      | Notes, comments, AI markdown, `nuxeo-client`  | Configuration, hooks, and _why_ sanitising on output is not enough                                                                                                                                                                                                |
 | **`@ngx-translate/core`**       | **17.0.0**                  | App and three features                        | Custom `TranslateLoader`. **Trap:** adf-core's `TranslationService` does _not_ use the ngx-translate loader interface — extend `AppTranslateLoader` and override `getTranslation`; swapping in adf-core's loader deletes the manifest-`labels` Layer 0 capability |
 | **`@hylandsoftware/satori-ui`** | **0.2.0**                   | `nuxeo-ui` only                               | `SatAvatar`, `SatBreadcrumbs`, `SatTag`, `sat.theme()`                                                                                                                                                                                                            |
 | **`pdfjs-dist`**                | **6.2.108**                 | Preview                                       | Arrives with the adf-core peer set. Does not tree-shake out.                                                                                                                                                                                                      |
@@ -1250,18 +1251,21 @@ to read each morning of Phase 4 onwards:
 Versions as resolved in `package-lock.json` at commit `e334b0f`. Where `package.json` declares a
 range, the range follows in brackets.
 
-**Two baselines, not one.** The Angular row was refreshed separately, at `3f381e2` (#164), where the
-framework moved to 20.3.31 to clear two advisories — so its numbers do not come from `e334b0f` and
+**Three baselines, not one.** The Angular row was refreshed at `3f381e2` (#164), where the framework
+moved to 20.3.31 to clear two advisories, and again at `b15d9cf` (NXSAT-303, #300) where it moved to
+20.3.33 for GHSA-ff3f-86qr-9cv3 in `@angular/router`; the `dompurify` row was refreshed at that same
+commit, 3.4.13 -> 3.4.16 for GHSA-p98j-92pf-mc4p. Those two rows do not come from `e334b0f` and
 cannot be reproduced there. **No other row has been re-verified since `e334b0f`**, and some may have
-drifted; the honest fix is to re-baseline the whole matrix against one revision, which is more than an
-Angular version bump should carry. Until then, reproduce the Angular row at `3f381e2` and the rest at
-`e334b0f`.
+drifted — `axios` and `brace-expansion` also moved at `b15d9cf`, as `overrides` rather than declared
+dependencies, and neither appears in this matrix at all. The honest fix is to re-baseline the whole
+matrix against one revision, which is more than a security bump should carry. Until then, reproduce
+the Angular and `dompurify` rows at `b15d9cf` and the rest at `e334b0f`.
 
 ### Runtime dependencies
 
 | Package                                                                                    | Resolved                                 |
 | ------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| `@angular/core`, `common`, `router`, `forms`, `compiler`, `animations`, `platform-browser` | 20.3.31 (`~20.3.31`)                     |
+| `@angular/core`, `common`, `router`, `forms`, `compiler`, `animations`, `platform-browser` | 20.3.33 (`~20.3.33`)                     |
 | `@angular/material`                                                                        | 20.2.14 (`~20.2.0`)                      |
 | `@angular/cdk`                                                                             | 20.2.14 (`~20.2.0`)                      |
 | `@angular/material-date-fns-adapter`                                                       | 20.2.14                                  |
@@ -1277,7 +1281,7 @@ Angular version bump should carry. Until then, reproduce the Angular row at `3f3
 | `@ngx-translate/core`                                                                      | 17.0.0 (`^17.0.0`)                       |
 | `angular-oauth2-oidc`                                                                      | 19.0.0 (unused)                          |
 | `quill`                                                                                    | 2.0.3 (`^2.0.3`)                         |
-| `dompurify`                                                                                | 3.4.13 (`^3.4.12`)                       |
+| `dompurify`                                                                                | 3.4.16 (`^3.4.16`)                       |
 | `pdfjs-dist`                                                                               | 6.2.108                                  |
 | `cropperjs`                                                                                | 1.6.2                                    |
 | `date-fns`                                                                                 | 2.30.0                                   |
@@ -1345,7 +1349,7 @@ and lose a day. These should be fixed in the `AGENTS/` knowledge base.
    `libs/shared/nuxeo-client/src/lib/services/`. The weekly `staleness-check.yml` workflow diffs
    exactly this, so the drift is already being reported.
 7. **`documentation/30-engineering/05-technology-stack.md`** lists Nx 22.6.3 (now 22.7.8),
-   DOMPurify `^3.3.3` (now `^3.4.12`), Java 17+ (the POM requires 21), and two unused
+   DOMPurify `^3.3.3` (now `^3.4.16`), Java 17+ (the POM requires 21), and two unused
    dependencies — `openai` and `express` — that are no longer in `package.json`.
 
 ---
