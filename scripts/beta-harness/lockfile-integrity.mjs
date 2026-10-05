@@ -173,10 +173,13 @@ for (const [path, entry] of Object.entries(entries)) {
  *
  * A bare key (`"axios": "1.20.0"`) carries no selector, so it applies to every request for that
  * name — but its value still has to be what is installed. Degradations, each so the gate does not
- * cry wolf on what it cannot judge: without `semver` resolvable nothing but the name can be
- * compared, so the waiver is name-level; a selector that is not a valid range — a dist-tag, say —
- * applies to any request; and a value that is not a version or range, such as npm's `"$dep"`
- * back-reference, accepts any resolved version.
+ * cry wolf on what it cannot judge, and each as narrow as it can be: a selector that is not a valid
+ * range — a dist-tag, say — applies to any request, and a value that is not a version or range,
+ * such as npm's `"$dep"` back-reference, accepts any resolved version. Without `semver` resolvable
+ * only ranges become unjudgeable: ancestry is string matching and an exact value is a string
+ * comparison, so **both still apply**. Returning `true` for the whole waiver in that branch was a
+ * defect of its own — it waived the nested-scope and stale-value cases that controls 10-13 and 6
+ * exist to catch, in the one branch no control covered.
  *
  * A nested form (`{ "@angular/build": { "vite": "6.4.3" } }`) is an **ancestry-scoped** rule, not
  * a second global one: it pins `vite` beneath `@angular/build` and leaves every other `vite` edge
@@ -213,19 +216,44 @@ function isOverridden(name, spec, actual, dependentPath) {
   if (dependentPath === '') return false;
   const rules = overrideRules.get(name);
   if (!rules) return false;
+  return rules.some(
+    (rule) =>
+      dependentIsWithin(dependentPath, rule.scope) &&
+      selectorMatchesRequest(spec, rule.range) &&
+      installedWhatItForces(actual, rule.value),
+  );
+}
+
+/**
+ * Does the key's selector cover this request? npm matches it against the declared spec.
+ *
+ * Without `semver` a range cannot be evaluated at all, so the selector is treated as covering the
+ * request — the permissive half of the degradation, and the only one available.
+ */
+function selectorMatchesRequest(spec, range) {
+  if (range === null) return true;
   if (!semver) return true;
-  return rules.some(({ range, value, scope }) => {
-    const applies =
-      range === null ||
-      !semver.validRange(range) ||
-      !semver.validRange(spec) ||
-      semver.intersects(spec, range, { includePrerelease: true });
-    const installedWhatItForces =
-      value === null ||
-      !semver.validRange(value) ||
-      semver.satisfies(actual, value, { includePrerelease: true });
-    return applies && installedWhatItForces && dependentIsWithin(dependentPath, scope);
-  });
+  if (!semver.validRange(range) || !semver.validRange(spec)) return true;
+  return semver.intersects(spec, range, { includePrerelease: true });
+}
+
+/**
+ * Is the installed version the one this override forces?
+ *
+ * Without `semver` an exact value is still comparable as a string, and it is worth comparing: the
+ * whole override block pins exact versions, so this keeps the check alive in the degraded path
+ * rather than waiving everything. `$dep` back-references and range values stay unjudged.
+ */
+function installedWhatItForces(actual, value) {
+  if (value === null) return true;
+  if (!semver) return isExactVersion(value) ? actual === value : true;
+  if (!semver.validRange(value)) return true;
+  return semver.satisfies(actual, value, { includePrerelease: true });
+}
+
+/** A plain `x.y.z` version, comparable without `semver`. */
+function isExactVersion(value) {
+  return /^\d+\.\d+\.\d+/.test(value);
 }
 
 /**
@@ -247,9 +275,11 @@ function dependentIsWithin(dependentPath, scope) {
 
 /** A scope key may itself carry a selector (`{ "vite@^6": { ... } }`); honour it when it does. */
 function scopeVersionMatches(scopePath, scope) {
-  if (scope.range === null || !semver?.validRange(scope.range)) return true;
+  if (scope.range === null) return true;
   const version = entries[scopePath]?.version;
   if (!version) return true;
+  if (!semver) return isExactVersion(scope.range) ? version === scope.range : true;
+  if (!semver.validRange(scope.range)) return true;
   return semver.satisfies(version, scope.range, { includePrerelease: true });
 }
 
@@ -331,7 +361,7 @@ function satisfiesSpec(version, spec) {
     return semver.satisfies(version, spec, { includePrerelease: true });
   }
   // Without semver, only an exact pin can be judged safely.
-  return /^\d+\.\d+\.\d+/.test(spec) ? version === spec : true;
+  return isExactVersion(spec) ? version === spec : true;
 }
 
 /**

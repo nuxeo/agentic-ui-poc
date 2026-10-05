@@ -30,6 +30,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const GATE = 'scripts/beta-harness/lockfile-integrity.mjs';
@@ -44,16 +45,52 @@ const results = [];
  * against it. The manifest has to sit beside the lock because that is where the gate reads
  * `overrides` from — npm does not record them in the lock.
  */
-function runGate(caseName, manifest, lock) {
+function runGate(caseName, manifest, lock, { hideSemver = false } = {}) {
   const dir = join(workspace, caseName);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'package.json'), JSON.stringify(manifest, null, 2));
   writeFileSync(join(dir, 'package-lock.json'), JSON.stringify(lock, null, 2));
-  const r = spawnSync('node', [GATE, '--lock', join(dir, 'package-lock.json')], {
+  const nodeArgs = hideSemver ? [`--import=${semverHiderUrl()}`] : [];
+  const r = spawnSync('node', [...nodeArgs, GATE, '--lock', join(dir, 'package-lock.json')], {
     cwd: ROOT,
     encoding: 'utf8',
   });
   return { code: r.status, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+}
+
+/**
+ * A module-resolution hook that makes `import('semver')` fail, so the gate's degraded path can be
+ * exercised for real.
+ *
+ * The gate treats `semver` as optional — it is reached through npm's own tree, not declared — and
+ * that branch was the one place no control looked. It had `return true` for the entire override
+ * waiver, so with `semver` absent a nested rule waived unrelated edges and a stale exact value was
+ * accepted: the failures controls 6 and 10-13 exist to catch, alive in a branch they never ran in.
+ *
+ * Hiding the module from the child process is better than a test-only flag in the gate: nothing in
+ * the gate knows this is a test, so the control exercises the real condition — the module genuinely
+ * not resolving — rather than a switch that approximates it.
+ */
+function semverHiderUrl() {
+  const hooks = join(workspace, 'hide-semver-hooks.mjs');
+  const entry = join(workspace, 'hide-semver.mjs');
+  writeFileSync(
+    hooks,
+    `export async function resolve(specifier, context, next) {\n` +
+      `  if (specifier === 'semver') {\n` +
+      `    const error = new Error("Cannot find package 'semver' (hidden by the selftest)");\n` +
+      `    error.code = 'ERR_MODULE_NOT_FOUND';\n` +
+      `    throw error;\n` +
+      `  }\n` +
+      `  return next(specifier, context);\n` +
+      `}\n`,
+  );
+  writeFileSync(
+    entry,
+    `import { register } from 'node:module';\n` +
+      `register(new URL('./hide-semver-hooks.mjs', import.meta.url));\n`,
+  );
+  return pathToFileURL(entry).href;
 }
 
 /**
@@ -487,6 +524,55 @@ expect(
     runGate('real-lock-no-brace-override', manifest, lock),
   );
 }
+
+// ---------------------------------------------------------------------------------------------
+// 20-22. The degraded path, with `semver` genuinely unresolvable. It is reached through npm's own
+//        tree rather than declared, so it can be absent — and it was the one branch no control
+//        covered, which is why it had `return true` for the whole waiver. Ancestry is string
+//        matching and an exact value is a string comparison, so both must still apply there.
+// ---------------------------------------------------------------------------------------------
+expect(
+  'no semver: a nested override still does not waive an unrelated dependent',
+  'fail',
+  'requires child@1.0.0',
+  runGate(
+    'no-semver-nested-unrelated',
+    { name: 'fixture', version: '0.0.0', overrides: NESTED_OVERRIDE },
+    {
+      name: 'fixture',
+      version: '0.0.0',
+      lockfileVersion: 3,
+      packages: {
+        '': { name: 'fixture', version: '0.0.0', dependencies: { other: '1.0.0' } },
+        'node_modules/other': { version: '1.0.0', dependencies: { child: '1.0.0' } },
+        'node_modules/child': { version: '2.0.0' },
+      },
+    },
+    { hideSemver: true },
+  ),
+);
+expect(
+  'no semver: a stale exact resolution is still not waived',
+  'fail',
+  'requires axios@1.18.1',
+  runGate(
+    'no-semver-stale-value',
+    { name: 'fixture', version: '0.0.0', overrides: { axios: '1.21.0' } },
+    bareKeyLock,
+    { hideSemver: true },
+  ),
+);
+expect(
+  'no semver: the real lock still passes (the degradation does not cry wolf)',
+  'pass',
+  'lockfile-integrity: pass',
+  runGate(
+    'no-semver-real-lock',
+    JSON.parse(readFileSync(REAL_MANIFEST, 'utf8')),
+    JSON.parse(readFileSync(REAL_LOCK, 'utf8')),
+    { hideSemver: true },
+  ),
+);
 
 rmSync(workspace, { recursive: true, force: true });
 
