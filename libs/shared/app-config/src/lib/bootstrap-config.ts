@@ -211,14 +211,18 @@ export const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig = {
   // locale here that has no catalogue would advertise a language the application cannot
   // render, which `checkAdvertisedLocalesShip` fails.
   //
-  // It does NOT mean each is translated. `fr` and `de` hold 81 of 1,972 keys today, and
-  // `setFallbackLang('en')` covers the rest; a Crowdin pull fills every unapproved string with its
+  // Seven ship besides English — fr, de, es, ja, nl, th and zh (Simplified Chinese, Crowdin's
+  // `zh-CN`) — each pulled from Crowdin once approved. It does NOT mean every key is translated:
+  // `setFallbackLang('en')` covers gaps, and a Crowdin pull fills every unapproved string with its
   // English source. `checkTranslationCatalogues` warns on a missing key and fails only on one
   // `en.json` does not have. See D8d in docs/i18n-localization-plan.md.
   //
+  // Nothing renders this list yet: there is no language picker (NXSAT-294), and only the config
+  // parser reads it. A deployment selects its language through `defaultLanguage`.
+  //
   // Adding a language here also means adding it to `download_translations_args` in
   // .github/workflows/crowdin-pull.yaml, which downloads only the languages the app ships.
-  availableLanguages: ['en', 'fr', 'de'],
+  availableLanguages: ['en', 'fr', 'de', 'es', 'ja', 'nl', 'th', 'zh'],
   integrations: {
     arender: null,
     knowledgeDiscoveryOperations: {},

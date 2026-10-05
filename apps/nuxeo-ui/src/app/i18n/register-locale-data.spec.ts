@@ -1,4 +1,4 @@
-import { formatDate, formatNumber } from '@angular/common';
+import { formatDate, formatNumber, getLocaleCurrencyName } from '@angular/common';
 
 import { REGISTERED_LOCALES, registerShippedLocaleData } from './register-locale-data';
 
@@ -21,7 +21,7 @@ describe('registerShippedLocaleData', () => {
 
   it('registers data for every locale it advertises', () => {
     // If these two ever disagree the guardrail is checking the wrong list.
-    expect([...REGISTERED_LOCALES].sort()).toEqual(['de', 'fr']);
+    expect([...REGISTERED_LOCALES].sort()).toEqual(['de', 'es', 'fr', 'ja', 'nl', 'th', 'zh']);
   });
 
   it('formats a date in French rather than throwing NG0701', () => {
@@ -31,6 +31,26 @@ describe('registerShippedLocaleData', () => {
 
   it('formats a date in German rather than throwing NG0701', () => {
     expect(formatDate(MIDSUMMER, 'longDate', 'de')).toContain('Juli');
+  });
+
+  const LONG_DATE_JULY: ReadonlyArray<readonly [locale: string, expected: string]> = [
+    ['es', 'julio'],
+    ['ja', '2026年7月14日'],
+    ['nl', 'juli'],
+    ['th', 'กรกฎาคม'],
+    // Simplified, not Traditional: both spell July 7月, so assert the year-month-day form and
+    // rely on the currency name below to tell the scripts apart.
+    ['zh', '2026年7月14日'],
+  ];
+  for (const [locale, expected] of LONG_DATE_JULY) {
+    it(`formats a date in ${locale} rather than throwing NG0701`, () => {
+      expect(formatDate(MIDSUMMER, 'longDate', locale)).toContain(expected);
+    });
+  }
+
+  it('registers Simplified rather than Traditional Chinese under zh', () => {
+    // Traditional data would name the yuan 人民幣; Simplified writes 人民币.
+    expect(getLocaleCurrencyName('zh')).toBe('人民币');
   });
 
   it("uses each locale's own separators, not English ones", () => {

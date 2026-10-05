@@ -1,6 +1,13 @@
 import { registerLocaleData } from '@angular/common';
 import localeDe from '@angular/common/locales/de';
+import localeEs from '@angular/common/locales/es';
 import localeFr from '@angular/common/locales/fr';
+import localeJa from '@angular/common/locales/ja';
+import localeNl from '@angular/common/locales/nl';
+import localeTh from '@angular/common/locales/th';
+// `zh` is Simplified Chinese: identical to `zh-Hans` apart from its id. Crowdin's `zh-CN`
+// downloads as `zh.json` through `%two_letters_code%`, so the app's locale id is `zh`.
+import localeZh from '@angular/common/locales/zh';
 
 /**
  * Angular locale data for every language we ship a catalogue for.
@@ -32,7 +39,8 @@ import localeFr from '@angular/common/locales/fr';
  * A locale needs four things that are easy to do only some of: a catalogue in
  * `apps/nuxeo-ui/public/i18n/`, an entry in `availableLanguages`, an entry here, and a
  * `--language` in `download_translations_args` in `.github/workflows/crowdin-pull.yaml`, which
- * downloads only the languages listed there.
+ * downloads only the languages listed there. Seven ship today: `fr`, `de`, `es`, `ja`, `nl`,
+ * `th` and `zh` (Crowdin's `zh-CN`, Simplified Chinese).
  * `checkLocaleDataRegistered` in `scripts/review-guardrails.mjs` fails the build when a
  * catalogue has no matching registration, because the symptom otherwise appears far from the
  * cause — as a pipe error on a page that has nothing to do with the locale that was added.
@@ -43,6 +51,11 @@ import localeFr from '@angular/common/locales/fr';
 const LOCALE_DATA: ReadonlyArray<readonly [locale: string, data: unknown]> = [
   ['fr', localeFr],
   ['de', localeDe],
+  ['es', localeEs],
+  ['ja', localeJa],
+  ['nl', localeNl],
+  ['th', localeTh],
+  ['zh', localeZh],
 ];
 
 /** Registers Angular locale data for every non-English locale we ship. */
