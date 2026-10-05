@@ -47,4 +47,20 @@ export {
 export {
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
+  // Both functions take this, so a consumer cannot call either without being able to name it.
+  type TranslateFn,
 } from './lib/confirm-dialog/trash-confirm.utils';
+export {
+  observeStripRedundantMatInputAriaRequired,
+  stripRedundantMatInputAriaRequired,
+} from './lib/login-mat-input-required-a11y';
+export {
+  TranslatedDatepickerIntl,
+  provideTranslatedDatepickerIntl,
+} from './lib/datepicker-intl/translated-datepicker-intl';
+export { PLATFORM_EN_TRANSLATIONS } from './lib/i18n/platform-en';
+export {
+  PLATFORM_MISSING_TRANSLATION_NEXT,
+  PlatformEnglishMissingTranslationHandler,
+  providePlatformEnglishFallback,
+} from './lib/i18n/platform-english-fallback';

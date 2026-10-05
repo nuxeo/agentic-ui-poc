@@ -16,6 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 // Shared rather than local: this normalisation guards three separate served-type checks, and a
 // divergence between them would be a bypass.
 import { mediaTypeEssence } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface VideoSource {
   /**
@@ -98,7 +99,13 @@ export interface VideoInfo {
 @Component({
   selector: 'lib-document-viewer',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatTooltipModule, MatProgressSpinnerModule],
+  imports: [
+    TranslatePipe,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    MatProgressSpinnerModule,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './document-viewer.component.html',
   styleUrl: './document-viewer.component.scss',
@@ -290,31 +297,31 @@ export class DocumentViewerComponent {
   readonly exifEntries = computed(() => {
     const data = this.exifData();
     if (!data) return [];
-    const labels: Record<string, string> = {
-      dateTimeOriginal: 'Date',
-      orientation: 'Orientation',
-      fNumber: 'Aperture',
-      exposureTime: 'Exposure',
-      isoSpeedRatings: 'ISO',
-      focalLength: 'Focal Length',
+    const labelKeys: Record<string, string> = {
+      dateTimeOriginal: 'shared-ui.document-viewer.exif-date',
+      orientation: 'shared-ui.document-viewer.exif-orientation',
+      fNumber: 'shared-ui.document-viewer.exif-aperture',
+      exposureTime: 'shared-ui.document-viewer.exif-exposure',
+      isoSpeedRatings: 'shared-ui.document-viewer.exif-iso',
+      focalLength: 'shared-ui.document-viewer.exif-focal-length',
     };
-    return Object.entries(labels)
+    return Object.entries(labelKeys)
       .filter(([key]) => data[key])
-      .map(([key, label]) => ({ label, value: data[key]! }));
+      .map(([key, labelKey]) => ({ labelKey, value: data[key]! }));
   });
 
   readonly iptcEntries = computed(() => {
     const data = this.iptcData();
     if (!data) return [];
-    const labels: Record<string, string> = {
-      copyright: 'Copyright',
-      rights: 'Rights',
-      source: 'Source',
-      description: 'Description',
+    const labelKeys: Record<string, string> = {
+      copyright: 'shared-ui.document-viewer.iptc-copyright',
+      rights: 'shared-ui.document-viewer.iptc-rights',
+      source: 'shared-ui.document-viewer.iptc-source',
+      description: 'shared-ui.document-viewer.iptc-description',
     };
-    return Object.entries(labels)
+    return Object.entries(labelKeys)
       .filter(([key]) => data[key])
-      .map(([key, label]) => ({ label, value: data[key]! }));
+      .map(([key, labelKey]) => ({ labelKey, value: data[key]! }));
   });
 
   readonly zoom = signal(1);

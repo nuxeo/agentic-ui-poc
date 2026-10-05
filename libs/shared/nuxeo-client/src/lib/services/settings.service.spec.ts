@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
 import { SettingsService } from './settings.service';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 describe('SettingsService', () => {
   let service: SettingsService;
@@ -12,6 +13,7 @@ describe('SettingsService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
+      imports: [testTranslateModule()],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),

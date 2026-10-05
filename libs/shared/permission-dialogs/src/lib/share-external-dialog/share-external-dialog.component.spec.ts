@@ -1,4 +1,6 @@
 import { provideZonelessChangeDetection } from '@angular/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
+import { TranslateService } from '@ngx-translate/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -7,8 +9,7 @@ import { vi } from 'vitest';
 
 import {
   DocumentDetailService,
-  PERMISSION_NOTIFICATION_MAIL_HINT,
-  permissionCreateMailFailureMessage,
+  PERMISSION_NOTIFICATION_MAIL_HINT_KEY,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { ShareExternalDialogComponent } from './share-external-dialog';
@@ -27,7 +28,7 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
       .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
 
     await TestBed.configureTestingModule({
-      imports: [ShareExternalDialogComponent],
+      imports: [testTranslateModule(), testTranslateModule(), ShareExternalDialogComponent],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: { documentUid: 'doc-1' } },
@@ -51,8 +52,10 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
   });
 
   it('exposes SMTP mail hint constant', () => {
-    expect(fixture.componentInstance.mailHint).toBe(PERMISSION_NOTIFICATION_MAIL_HINT);
-    expect(fixture.componentInstance.mailHint).toContain('SMTP');
+    expect(fixture.componentInstance.mailHintKey).toBe(PERMISSION_NOTIFICATION_MAIL_HINT_KEY);
+    expect(
+      TestBed.inject(TranslateService).instant(fixture.componentInstance.mailHintKey),
+    ).toContain('SMTP');
   });
 
   it('creates external permission with notification and date-only end', () => {
@@ -80,17 +83,37 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
       of({
         document: { uid: 'doc-1' },
         notificationSent: false,
-        notificationError: 'Permission was added, but the notification email could not be sent.',
+        notificationErrorKey: 'permissions.notification.mail-send-failed-add',
       }),
     );
 
     fixture.componentInstance.create(false);
 
     expect(snackBarOpenSpy).toHaveBeenCalledWith(
-      expect.stringContaining('notification email could not be sent'),
+      'Permission was added, but the notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
       'Dismiss',
       { duration: 7000 },
     );
+    expect(closeSpy).toHaveBeenCalledWith(true);
+  });
+
+  it('handles permission creation when notification is not sent', () => {
+    addExternalPermissionWithNotification.mockReturnValue(
+      of({
+        document: { uid: 'doc-1' },
+        notificationSent: false,
+      }),
+    );
+
+    snackBarOpenSpy.mockClear();
+
+    fixture.componentInstance.create(false);
+
+    // The load-bearing assertion. `notificationSent: false` with no `notificationErrorKey` makes
+    // `successMessage` return null, so nothing should be announced — but the dialog still closes
+    // with `true`, exactly as it does on success. Asserting only the close leaves this test green
+    // if a regression starts reporting success for an email that was never sent.
+    expect(snackBarOpenSpy).not.toHaveBeenCalled();
     expect(closeSpy).toHaveBeenCalledWith(true);
   });
 
@@ -124,9 +147,13 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
 
     fixture.componentInstance.create(false);
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(permissionCreateMailFailureMessage(), 'Dismiss', {
-      duration: 7000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Permission could not be created. Configure outbound mail (SMTP) on the Nuxeo server.',
+      'Dismiss',
+      {
+        duration: 7000,
+      },
+    );
     expect(closeSpy).not.toHaveBeenCalled();
   });
 });

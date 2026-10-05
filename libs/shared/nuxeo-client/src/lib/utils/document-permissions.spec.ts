@@ -13,7 +13,7 @@ import {
   MANAGE_DOCUMENT_PERMISSIONS,
   READ_WRITE_DOCUMENT,
   WRITE_SECURITY,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   REMOVE_DOCUMENT,
   WRITE_DOCUMENT,
   WRITE_PROPERTIES,
@@ -147,7 +147,10 @@ describe('document-permissions', () => {
     expect(isPermissionDeniedError({ status: 500 })).toBe(false);
   });
 
-  it('exports a user-facing permission denied message', () => {
-    expect(PERMISSION_DENIED_MESSAGE.length).toBeGreaterThan(0);
+  it('exports a catalogue KEY rather than an English sentence', () => {
+    // It used to export the sentence, which nine call sites rendered untranslated in every locale.
+    // Asserting the shape is the point: a value containing a space would be prose again.
+    expect(PERMISSION_DENIED_KEY).toBe('common.permission-denied');
+    expect(PERMISSION_DENIED_KEY).not.toMatch(/\s/);
   });
 });

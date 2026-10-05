@@ -1,5 +1,5 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -37,6 +37,7 @@ import {
   UserFormDialogData,
   UserFormDialogResult,
 } from '../user-form-dialog/user-form-dialog.component';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface RecentUserGroupRow {
   kind: 'user' | 'group';
@@ -49,6 +50,7 @@ export interface RecentUserGroupRow {
   selector: 'lib-admin-users-groups-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatButtonModule,
     MatIconModule,
@@ -68,6 +70,12 @@ export interface RecentUserGroupRow {
 })
 export class AdminUsersGroupsPageComponent implements OnInit {
   private readonly userService = inject(UserService);
+  private readonly translate = inject(TranslateService);
+  /** The active language as a signal, so a `computed` that calls `instant()` recomputes on a switch. */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.getCurrentLang() },
+  );
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
@@ -108,8 +116,18 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   });
 
   readonly selectedTabIndex = signal(0);
-  readonly usersTabLabel = computed(() => `Users (${this.usersTotal()})`);
-  readonly groupsTabLabel = computed(() => `Groups (${this.groupsTotal()})`);
+  readonly usersTabLabel = computed(() => {
+    this.currentLang();
+    return this.translate.instant('admin.admin-users-groups-page.users-tab', {
+      count: this.usersTotal(),
+    });
+  });
+  readonly groupsTabLabel = computed(() => {
+    this.currentLang();
+    return this.translate.instant('admin.admin-users-groups-page.groups-tab', {
+      count: this.groupsTotal(),
+    });
+  });
   private readonly tabGroup = viewChild<MatTabGroup>('ugTabGroup');
 
   ngOnInit(): void {
@@ -130,13 +148,17 @@ export class AdminUsersGroupsPageComponent implements OnInit {
     forkJoin({
       users: this.userService.searchUsersPaged(query, this.pageSize, 0).pipe(
         catchError((err) => {
-          this.usersError.set(err?.message ?? 'Could not load users.');
+          this.usersError.set(
+            err?.message ?? this.translate.instant('admin.message.could-not-load-users'),
+          );
           return of({ 'entity-type': 'users', entries: [], totalSize: 0 } satisfies NuxeoUserList);
         }),
       ),
       groups: this.userService.searchGroupsPaged(query, this.pageSize, 0).pipe(
         catchError((err) => {
-          this.groupsError.set(err?.message ?? 'Could not load groups.');
+          this.groupsError.set(
+            err?.message ?? this.translate.instant('admin.message.could-not-load-groups'),
+          );
           return of({
             'entity-type': 'groups',
             entries: [],
@@ -204,7 +226,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           this.usersLoading.set(false);
         },
         error: (err) => {
-          this.usersError.set(err?.message ?? 'Could not load users.');
+          this.usersError.set(
+            err?.message ?? this.translate.instant('admin.message.could-not-load-users'),
+          );
           this.usersLoading.set(false);
         },
       });
@@ -224,7 +248,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           this.groupsLoading.set(false);
         },
         error: (err) => {
-          this.groupsError.set(err?.message ?? 'Could not load groups.');
+          this.groupsError.set(
+            err?.message ?? this.translate.instant('admin.message.could-not-load-groups'),
+          );
           this.groupsLoading.set(false);
         },
       });
@@ -315,9 +341,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           }
           this.snackBar.open(
             invited
-              ? `Invitation sent to ${r.email}. The user will appear after they accept.`
-              : 'User created',
-            'Dismiss',
+              ? this.translate.instant('admin.invitation-sent', { email: r.email })
+              : this.translate.instant('admin.message.user-created'),
+            this.translate.instant('common.dismiss'),
             { duration: invited ? 6000 : 3000 },
           );
           if (!invited) {
@@ -359,13 +385,21 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('User updated', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('admin.message.user-updated'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              );
               this.afterMutation();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
-                duration: 5000,
-              }),
+              this.snackBar.open(
+                e?.error?.message ?? this.translate.instant('admin.message.update-failed'),
+                this.translate.instant('common.dismiss'),
+                {
+                  duration: 5000,
+                },
+              ),
           });
       });
   }
@@ -377,9 +411,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         {
           width: '400px',
           data: {
-            title: 'Delete user',
-            message: `Delete user "${user.id}"? This cannot be undone.`,
-            confirmLabel: 'Delete',
+            title: this.translate.instant('confirm.delete-user'),
+            message: this.translate.instant('confirm.delete-user-named', { name: user.id }),
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )
@@ -388,11 +422,19 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         if (!ok) return;
         this.userService.deleteUser(user.id).subscribe({
           next: () => {
-            this.snackBar.open('User deleted', 'Dismiss', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('admin.message.user-deleted'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            );
             this.afterMutation();
           },
           error: (e) =>
-            this.snackBar.open(e?.error?.message ?? 'Delete failed', 'Dismiss', { duration: 5000 }),
+            this.snackBar.open(
+              e?.error?.message ?? this.translate.instant('admin.message.delete-failed'),
+              this.translate.instant('common.dismiss'),
+              { duration: 5000 },
+            ),
         });
       });
   }
@@ -418,16 +460,24 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('Group created', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('admin.message.group-created'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              );
               this.afterMutation();
               if (r.createAnother) {
                 this.openCreateGroupDialog();
               }
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Create failed', 'Dismiss', {
-                duration: 5000,
-              }),
+              this.snackBar.open(
+                e?.error?.message ?? this.translate.instant('admin.message.create-failed'),
+                this.translate.instant('common.dismiss'),
+                {
+                  duration: 5000,
+                },
+              ),
           });
       });
   }
@@ -448,13 +498,21 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('Group updated', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('admin.message.group-updated'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              );
               this.afterMutation();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
-                duration: 5000,
-              }),
+              this.snackBar.open(
+                e?.error?.message ?? this.translate.instant('admin.message.update-failed'),
+                this.translate.instant('common.dismiss'),
+                {
+                  duration: 5000,
+                },
+              ),
           });
       });
   }
@@ -466,9 +524,11 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         {
           width: '400px',
           data: {
-            title: 'Delete group',
-            message: `Delete group "${group.groupname}"?`,
-            confirmLabel: 'Delete',
+            title: this.translate.instant('confirm.delete-group'),
+            message: this.translate.instant('confirm.delete-group-named', {
+              name: group.groupname,
+            }),
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )
@@ -477,27 +537,35 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         if (!ok) return;
         this.userService.deleteGroup(group.groupname).subscribe({
           next: () => {
-            this.snackBar.open('Group deleted', 'Dismiss', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('admin.message.group-deleted'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            );
             this.afterMutation();
           },
           error: (e) =>
-            this.snackBar.open(e?.error?.message ?? 'Delete failed', 'Dismiss', { duration: 5000 }),
+            this.snackBar.open(
+              e?.error?.message ?? this.translate.instant('admin.message.delete-failed'),
+              this.translate.instant('common.dismiss'),
+              { duration: 5000 },
+            ),
         });
       });
   }
 
   usersEmptyMessage(): string {
     if (this.combinedSearchQuery.trim() && this.users().length === 0 && this.groupsTotal() > 0) {
-      return 'No users match this search. Matching groups are on the Groups tab.';
+      return this.translate.instant('admin.admin-users-groups-page.no-users-match-see-groups');
     }
-    return 'No users match this search.';
+    return this.translate.instant('admin.admin-users-groups-page.no-users-match');
   }
 
   groupsEmptyMessage(): string {
     if (this.combinedSearchQuery.trim() && this.groups().length === 0 && this.usersTotal() > 0) {
-      return 'No groups match this search. Matching users are on the Users tab.';
+      return this.translate.instant('admin.admin-users-groups-page.no-groups-match-see-users');
     }
-    return 'No groups match this search.';
+    return this.translate.instant('admin.admin-users-groups-page.no-groups-match');
   }
 
   /** Switch tabs after a combined search based on which result set has matches. */
@@ -611,7 +679,12 @@ export class AdminUsersGroupsPageComponent implements OnInit {
 
   membersMoreAriaLabel(group: NuxeoGroup): string {
     const count = this.membersOverflowCount(group);
-    return `Show ${count} more member${count === 1 ? '' : 's'}`;
+    return this.translate.instant(
+      count === 1
+        ? 'admin.admin-users-groups-page.show-more-members-one'
+        : 'admin.admin-users-groups-page.show-more-members-many',
+      { count },
+    );
   }
 
   membersPreview(group: NuxeoGroup): string {

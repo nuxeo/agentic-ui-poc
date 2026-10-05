@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
@@ -67,7 +68,12 @@ describe('AdminUsersGroupsPageComponent (NXSAT-166)', () => {
     getRecentlyCreatedUsersAndGroups.mockClear();
 
     await TestBed.configureTestingModule({
-      imports: [AdminUsersGroupsPageComponent, NoopAnimationsModule],
+      imports: [
+        testTranslateModule(),
+        testTranslateModule(),
+        AdminUsersGroupsPageComponent,
+        NoopAnimationsModule,
+      ],
       providers: [
         provideRouter([]),
         {

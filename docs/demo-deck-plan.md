@@ -136,6 +136,6 @@ caption.
 ## 5. Claims
 
 Every factual claim on a slide traces to a row in [`demo-deck-claims.md`](demo-deck-claims.md),
-which also records the Part 6 re-verification behind the runbook corrections: **twelve of thirteen
-"do not demo" entries hold, F6 was wrong and is withdrawn, F7 is right for a different reason, F11 is
-unconfirmed.**
+which also records the Part 6 re-verification behind the runbook corrections: **nine of the fourteen
+"do not demo" entries hold as written, F5, F6 and F13 were wrong and are withdrawn, F7 is right for
+a different reason, F11 is unconfirmed.**

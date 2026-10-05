@@ -1,12 +1,16 @@
 import { Component, inject } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ColumnDef {
   key: string;
   label: string;
+  /** Translation key for `label`, carried from the descriptor so templates can prefer it. */
+  labelKey?: string;
   visible: boolean;
 }
 
@@ -23,18 +27,23 @@ export interface ColumnDef {
  * the duplication cannot drift unnoticed.
  */
 export const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'title', label: 'Title', visible: true },
-  { key: 'type', label: 'Type', visible: false },
-  { key: 'modified', label: 'Modified', visible: true },
-  { key: 'lastContributor', label: 'Last Contributor', visible: true },
-  { key: 'state', label: 'State', visible: false },
-  { key: 'version', label: 'Version', visible: false },
-  { key: 'created', label: 'Created', visible: false },
-  { key: 'author', label: 'Author', visible: false },
-  { key: 'nature', label: 'Nature', visible: false },
-  { key: 'coverage', label: 'Coverage', visible: false },
-  { key: 'subjects', label: 'Subjects', visible: false },
-  { key: 'flags', label: 'Flags', visible: false },
+  { key: 'title', labelKey: 'browse.column.title', label: 'Title', visible: true },
+  { key: 'type', labelKey: 'browse.column.type', label: 'Type', visible: false },
+  { key: 'modified', labelKey: 'browse.column.modified', label: 'Modified', visible: true },
+  {
+    key: 'lastContributor',
+    labelKey: 'browse.column.lastcontributor',
+    label: 'Last Contributor',
+    visible: true,
+  },
+  { key: 'state', labelKey: 'browse.column.state', label: 'State', visible: false },
+  { key: 'version', labelKey: 'browse.column.version', label: 'Version', visible: false },
+  { key: 'created', labelKey: 'browse.column.created', label: 'Created', visible: false },
+  { key: 'author', labelKey: 'browse.column.author', label: 'Author', visible: false },
+  { key: 'nature', labelKey: 'browse.column.nature', label: 'Nature', visible: false },
+  { key: 'coverage', labelKey: 'browse.column.coverage', label: 'Coverage', visible: false },
+  { key: 'subjects', labelKey: 'browse.column.subjects', label: 'Subjects', visible: false },
+  { key: 'flags', labelKey: 'browse.column.flags', label: 'Flags', visible: false },
 ];
 
 const STORAGE_KEY = 'browse_column_settings';
@@ -72,23 +81,15 @@ export function saveColumnSettings(columns: ColumnDef[]): void {
 @Component({
   selector: 'lib-column-settings-dialog',
   standalone: true,
-  imports: [FormsModule, MatDialogModule, MatButtonModule, MatCheckboxModule],
-  template: `
-    <h2 mat-dialog-title>Columns Settings</h2>
-
-    <mat-dialog-content>
-      @for (col of columns; track col.key) {
-        <mat-checkbox [(ngModel)]="col.visible" [disabled]="col.key === 'title'">
-          {{ col.label }}
-        </mat-checkbox>
-      }
-    </mat-dialog-content>
-
-    <mat-dialog-actions align="end">
-      <button mat-stroked-button (click)="reset()">Reset</button>
-      <button mat-flat-button color="primary" (click)="done()">Done</button>
-    </mat-dialog-actions>
-  `,
+  imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatCheckboxModule,
+  ],
+  templateUrl: './column-settings-dialog.html',
   styles: [
     `
       :host {

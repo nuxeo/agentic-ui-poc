@@ -10,7 +10,7 @@ Parallel browse experience that uses Hyland **HxCS / adf-hx** APIs and UI (`hxp-
 
 ```
 apps/nuxeo-ui (shell)
-  ├── Platform nav: Browse | Browse (adf-hx POC)
+  ├── Platform nav: Browse  (the adf-hx entry; the production one ships disabled)
   ├── Nav drawer: hxp-browse-nav-drawer (adf-hx) OR Material tree (production)
   └── Router outlet
         ├── /#/browse/...           → BrowseComponent (production)
@@ -71,7 +71,7 @@ Helpers (in `@nuxeo-satori/platform/nuxeo-client`):
 - `parseBrowseNuxeoPathFromRouterUrl()` / `parseAdfHxBrowsePathFromRouterUrl()`
 - `BROWSE_RETURN_MODE_PARAM` (`browseReturn=adf-hx`) — document detail returns to adf-hx when opened from POC
 
-**Shell path sync:** Clicking **Browse** vs **Browse (adf-hx POC)** in platform nav copies the current folder path across modes (`app-shell.component.ts`).
+**Shell path sync:** Clicking between the two browse entries in platform nav copies the current folder path across modes (`app-shell.component.ts`). Only the adf-hx entry is rendered now — `app.navbar.browse` ships `disabled` — so this path runs only where a manifest has restored the production entry, and on a direct `/#/browse` URL.
 
 ---
 
@@ -93,17 +93,18 @@ Helpers (in `@nuxeo-satori/platform/nuxeo-client`):
 
 Imported from `@alfresco/adf-hx-content-services/ui`. Nothing in this library defines them.
 
-| Selector                      | Rendered by                                |
-| ----------------------------- | ------------------------------------------ |
-| `hxp-document-list`           | `browse-adf-hx-poc.ts`, `search-adf-hx.ts` |
-| `hxp-breadcrumb`              | `browse-adf-hx-poc.ts`                     |
-| `hxp-properties-sidebar`      | `browse-adf-hx-poc.ts` (Properties tab)    |
-| `hxp-ui-document-viewer`      | `browse-adf-hx-poc.ts`                     |
-| `hxp-manage-versions-sidebar` | `browse-adf-hx-poc.ts` (Versions tab)      |
-| `hxp-document-tree`           | wrapped by our `hxp-browse-nav-drawer`     |
+| Selector                           | Rendered by                                                |
+| ---------------------------------- | ---------------------------------------------------------- |
+| `hxp-document-list`                | `browse-adf-hx-poc.ts`, `search-adf-hx.ts`                 |
+| `hxp-ui-breadcrumb`                | `browse-adf-hx-poc.ts`, fed ancestors + the current folder |
+| `hxp-ui-document-viewer`           | `browse-adf-hx-poc.ts`                                     |
+| `hxp-permissions-management-panel` | `browse-adf-hx-poc.ts` (Permissions tab)                   |
+| `hxp-document-tree`                | wrapped by our `hxp-browse-nav-drawer`                     |
 
-`hxp-properties-sidebar` and `hxp-manage-versions-sidebar` both require a **row checkbox tick**;
-a row click leaves them showing "Select a single document in the View tab."
+`hxp-properties-sidebar` and `hxp-manage-versions-sidebar` are no longer rendered. They were the
+browse POC's Properties and Versions tabs until 2026-09-23, removed so the folder tabs match
+production browse, which keeps both on the document page. The ports and mappers they exercised
+(`VERSION`, `MODEL`, the `sys` pseudo-schema) stay, and remain unit-tested.
 
 ### Ours — this library's own components
 
@@ -156,7 +157,9 @@ rendered today is **upstream's**, which is a different component that happens to
 `hxp-document-tree` with upstream's `DocumentTreeDatabaseService`, wrapped by
 `hxp-browse-nav-drawer`. Removed 2026-08-25.
 
-Write methods on `NuxeoDocumentApi` throw _"not implemented in Scope A"_ until Scope B.
+Write methods on `NuxeoDocumentApi` throw _"not implemented in Scope A"_ until Scope B. The browse
+page's one write action, Create/Import, does not go through that port: it opens the application's
+shared dialog, which calls `nuxeo-client` directly.
 
 ---
 
@@ -170,13 +173,13 @@ App shell maps Satori tokens once in `apps/nuxeo-ui/src/styles/hxp-theme.scss` (
 
 ## Scope A vs Scope B
 
-| Area                               | Scope A (current)                              | Scope B (future)                          |
-| ---------------------------------- | ---------------------------------------------- | ----------------------------------------- |
-| View tab                           | List/card, filters, columns, selection, export | —                                         |
-| Permissions / History / Trash tabs | Read-only UI + data                            | Write actions (dialogs, ACL mutations)    |
-| Header actions                     | Download/CSV work; writes show notice          | Create/Import, Edit, Delete, Share, …     |
-| Details panel                      | Info, tags list, activity (read)               | Tag add/remove, edit properties           |
-| Document API                       | Read paths implemented                         | create/patch/delete on `NuxeoDocumentApi` |
+| Area                               | Scope A (current)                                                                                    | Scope B (future)                           |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| View tab                           | List/card, filters, columns, selection, export                                                       | —                                          |
+| Permissions / History / Trash tabs | Read-only UI + data                                                                                  | Write actions (dialogs, ACL mutations)     |
+| Header actions                     | Download/CSV; Create/Import through the app's shared dialog (2026-09-24); other writes show a notice | Drive, Edit, Delete, Share, Notify, Export |
+| Details panel                      | Info, tags list, activity (read)                                                                     | Tag add/remove, edit properties            |
+| Document API                       | Read paths implemented                                                                               | create/patch/delete on `NuxeoDocumentApi`  |
 
 ---
 

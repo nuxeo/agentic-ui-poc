@@ -1,0 +1,48 @@
+# Reports what Crowdin holds. Reads only, writes nothing, safe to run at any time.
+#
+# The third Crowdin workflow, and unlike the other two it is a diagnostic rather than part of the
+# sync. It exists because "is anything translated yet?" had no cheap answer: the portal needs
+# project membership, the API needs a token that lives only in these secrets and that GitHub will
+# not hand back, and the remaining option was to run the pull and read the pull request it opens —
+# which is how the first destructive sync was found, and is a bad way to ask a question, because
+# asking it changed the repository.
+#
+# Deliberately NOT on a schedule. A report nobody asked for is a notification people mute, and
+# this one has no failure it could warn about that the sync workflows would not already be red for.
+name: Crowdin Status
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: crowdin-status
+  cancel-in-progress: true
+
+jobs:
+  status:
+    # Same off switch as the other two, for the same reason: a fork or clone has none of these
+    # secrets, and a dispatchable job that can only ever fail there is noise.
+    if: vars.CROWDIN_SYNC_ENABLED == 'true'
+
+    runs-on: ubuntu-latest
+    # No `contents: write`, no `pull-requests: write`. This job cannot change the repository even
+    # if the script it runs were replaced, which is the point of keeping it separate from the sync.
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+
+      # No `npm ci`: the script uses only `node:` built-ins and `fetch`, so installing the
+      # workspace would add minutes and a lockfile failure mode to a read-only report.
+      - name: Report Crowdin state
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+        run: node tools/i18n/crowdin-status.mjs

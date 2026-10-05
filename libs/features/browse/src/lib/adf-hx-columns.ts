@@ -1,6 +1,6 @@
 import type { DataColumn } from '@alfresco/adf-core';
 
-import type { ExtensionColumnDescriptor } from '@nuxeo-satori/platform/extensions';
+import { descriptorLabel, type ExtensionColumnDescriptor } from '@nuxeo-satori/platform/extensions';
 
 /**
  * Translating Layer 1 column descriptors into adf-core's `DataColumn`.
@@ -57,6 +57,23 @@ const HXP_FIELD_BY_COLUMN: Readonly<Record<string, string>> = {
 const DATE_COLUMNS = new Set(['modified', 'created']);
 
 /**
+ * adf-core's own truncation class: one line, clipped with an ellipsis.
+ *
+ * Without it a text cell wraps, and an unbroken title wraps at every character — a 240-character
+ * name made each row 240–340 px tall.
+ */
+const ELLIPSIS_CELL_CLASS = 'adf-ellipsis-cell';
+
+/**
+ * Past this many characters adf-core shortens the value and puts the full text in the cell's
+ * tooltip. Roughly what fits in upstream's `max-width: 320px` text cell.
+ *
+ * WORKAROUND(adf-hx): W16 — `maxTextLength` rather than `formatTooltip`, because adf-core's
+ * `ObjectDataColumn` does not copy `formatTooltip` and a tooltip set that way never renders.
+ */
+export const TEXT_CELL_MAX_LENGTH = 40;
+
+/**
  * Turn Layer 1 descriptors into a schema upstream's document list can actually read.
  *
  * `sortable` is **not** forced on: it is taken from the descriptor, because a column
@@ -64,13 +81,28 @@ const DATE_COLUMNS = new Set(['modified', 'created']);
  * offer it. `version` has no single-key mapping, so it resolves to its own field name
  * and renders blank — that is a recorded gap, not something this function hides.
  */
-export function toDataColumns(descriptors: readonly ExtensionColumnDescriptor[]): DataColumn[] {
+export function toDataColumns(
+  descriptors: readonly ExtensionColumnDescriptor[],
+  // Upstream's DataTable renders `title`, so there is no template of ours to put a pipe in.
+  // The resolver is passed rather than injected to keep this a pure function.
+  //
+  // REQUIRED, with no identity default. The default was `(key) => key`, and neither production
+  // caller passed anything — so `descriptorLabel` saw `translate(labelKey) === labelKey`, took that
+  // as "unresolved", and returned the English literal for every column. The table headers never
+  // localized, while both call sites carried a comment saying they were translated. A default that
+  // silently produces the untranslated answer is worse than a compile error.
+  translate: (key: string) => string,
+): DataColumn[] {
   return descriptors.map((descriptor) => ({
     ...(DATE_COLUMNS.has(descriptor.field)
       ? { type: 'date' as const, format: 'mediumDate' }
-      : { type: 'text' as const }),
+      : {
+          type: 'text' as const,
+          cssClass: ELLIPSIS_CELL_CLASS,
+          maxTextLength: TEXT_CELL_MAX_LENGTH,
+        }),
     key: HXP_FIELD_BY_COLUMN[descriptor.field] ?? descriptor.field,
-    title: descriptor.label,
+    title: descriptorLabel(descriptor, translate),
     sortable: descriptor.sortable ?? false,
   }));
 }

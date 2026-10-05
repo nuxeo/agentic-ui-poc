@@ -66,4 +66,59 @@ export function hxTopLevelFolderPath(nuxeoPath: string): string | null {
   return parts.length > 0 ? `/${parts[0]}` : null;
 }
 
+/**
+ * Whether a tree folder may show an expand arrow.
+ *
+ * A folder the `QUERY` port marked `hasSubfoldersKey: false` holds only files, which browse does
+ * not list. Unmarked means unknown, and keeps the arrow.
+ */
+export function hxTreeNodeIsExpandable(doc: Document, hasSubfoldersKey: string): boolean {
+  return doc.sys_isFolderish === true && doc[hasSubfoldersKey] !== false;
+}
+
+/** The part of `chain` (root first) from the tree's own root down, or all of it if absent. */
+export function hxTreeBranchFromRoot(
+  chain: readonly Document[],
+  rootId: string | undefined,
+): Document[] {
+  const index = chain.findIndex((doc) => doc.sys_id === rootId);
+  return index >= 0 ? chain.slice(index) : [...chain];
+}
+
+/** The minimum a collapse decision needs from a tree node. */
+export interface HxTreeNodeState {
+  readonly path: string;
+  readonly level: number;
+  readonly expanded: boolean;
+  readonly skeleton: boolean;
+}
+
+/**
+ * The expanded nodes to collapse so only the branch down to `activePath` stays open, as
+ * production browse does.
+ *
+ * Only the topmost off-path node of a branch is returned: collapsing it removes its descendants
+ * from the tree, and collapsing a node that is no longer there corrupts the tree's node list.
+ * The tree's own root (level 0) is never collapsed. `nodes` is in tree order.
+ */
+export function hxTreeNodesToCollapse<T extends HxTreeNodeState>(
+  nodes: readonly T[],
+  activePath: string,
+): T[] {
+  const active = normalizeNuxeoPath(activePath);
+  const collapse: T[] = [];
+  let collapsedPath: string | null = null;
+  for (const node of nodes) {
+    if (node.level === 0 || node.skeleton) continue;
+    const path = normalizeNuxeoPath(node.path);
+    if (collapsedPath && path.startsWith(`${collapsedPath}/`)) continue;
+    const onPath = path === active || isHxAncestorPath(path, active);
+    if (node.expanded && !onPath) {
+      collapse.push(node);
+      collapsedPath = path;
+    }
+  }
+  return collapse;
+}
+
 export { cumulativeNuxeoPathPrefixes };

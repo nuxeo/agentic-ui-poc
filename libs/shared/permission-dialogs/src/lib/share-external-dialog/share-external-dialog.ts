@@ -1,4 +1,5 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -13,26 +14,30 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import {
   DocumentDetailService,
-  PERMISSION_NOTIFICATION_MAIL_HINT,
+  PERMISSION_NOTIFICATION_MAIL_HINT_KEY,
   isMailSendError,
   permissionCreateMailFailureMessage,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
 
 export interface ShareExternalDialogData {
   documentUid: string;
 }
 
 const PERMISSION_OPTIONS = [
-  { value: 'Read', label: 'Read' },
-  { value: 'ReadWrite', label: 'Edit' },
-  { value: 'Everything', label: 'Manage everything' },
-  { value: 'ReadCanCollect', label: 'Can collect' },
+  { value: 'Read', labelKey: 'permission.read', label: 'Read' },
+  { value: 'ReadWrite', labelKey: 'permission.read-write', label: 'Edit' },
+  { value: 'Everything', labelKey: 'permission.everything', label: 'Manage everything' },
+  { value: 'ReadCanCollect', labelKey: 'permission.read-can-collect', label: 'Can collect' },
 ];
 
 @Component({
   selector: 'lib-share-external-dialog',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -43,88 +48,8 @@ const PERMISSION_OPTIONS = [
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
-  providers: [provideNativeDateAdapter()],
-  template: `
-    <h2 mat-dialog-title>Share With External User</h2>
-
-    <mat-dialog-content>
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Email</mat-label>
-        <input matInput type="email" placeholder="name@company.com" [(ngModel)]="email" required />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Right</mat-label>
-        <mat-select [(ngModel)]="permission">
-          @for (opt of permissionOptions; track opt.value) {
-            <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-
-      <div class="date-fields">
-        <mat-form-field appearance="outline">
-          <mat-label>From</mat-label>
-          <input matInput [matDatepicker]="fromPicker" [(ngModel)]="beginDate" />
-          <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
-          <mat-datepicker #fromPicker />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>To</mat-label>
-          <input matInput [matDatepicker]="toPicker" [(ngModel)]="endDate" required />
-          <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
-          <mat-datepicker #toPicker />
-        </mat-form-field>
-      </div>
-
-      <p class="mail-hint">{{ mailHint }}</p>
-
-      <div class="notify-section">
-        <label class="field-label">Notification email</label>
-        <mat-form-field appearance="outline" class="full-width">
-          <textarea
-            matInput
-            [(ngModel)]="notifyComment"
-            rows="2"
-            placeholder="Hi! Could you comment on this document and..."
-          ></textarea>
-        </mat-form-field>
-      </div>
-    </mat-dialog-content>
-
-    <mat-dialog-actions>
-      <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
-      <span class="spacer"></span>
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        class="create-another-btn"
-        [disabled]="!isValid() || saving()"
-        (click)="create(true)"
-      >
-        @if (saving() && addAnother) {
-          <mat-spinner diameter="18" />
-        } @else {
-          Create And Add Another
-        }
-      </button>
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        [disabled]="!isValid() || saving()"
-        (click)="create(false)"
-      >
-        @if (saving() && !addAnother) {
-          <mat-spinner diameter="18" />
-        } @else {
-          Create
-        }
-      </button>
-    </mat-dialog-actions>
-  `,
+  providers: [provideNativeDateAdapter(), provideTranslatedDatepickerIntl()],
+  templateUrl: './share-external-dialog.html',
   styles: [
     `
       :host {
@@ -189,6 +114,7 @@ const PERMISSION_OPTIONS = [
 })
 export class ShareExternalDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ShareExternalDialogComponent, boolean>);
+  private readonly translate = inject(TranslateService);
   private readonly data = inject<ShareExternalDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
@@ -196,7 +122,7 @@ export class ShareExternalDialogComponent {
 
   readonly saving = signal(false);
   readonly permissionOptions = PERMISSION_OPTIONS;
-  readonly mailHint = PERMISSION_NOTIFICATION_MAIL_HINT;
+  readonly mailHintKey = PERMISSION_NOTIFICATION_MAIL_HINT_KEY;
 
   email = '';
   permission = 'Read';
@@ -234,9 +160,11 @@ export class ShareExternalDialogComponent {
         next: (result) => {
           this.saving.set(false);
           this.createdAny = true;
-          const message = this.successMessage(result.notificationSent, result.notificationError);
+          const message = this.successMessage(result.notificationSent, result.notificationErrorKey);
           if (message) {
-            this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+            this.snackBar.open(message, this.translate.instant('common.dismiss'), {
+              duration: 7000,
+            });
           }
           if (andAddAnother) {
             this.resetForm();
@@ -246,27 +174,33 @@ export class ShareExternalDialogComponent {
         },
         error: (err) => {
           this.saving.set(false);
-          this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
+          this.snackBar.open(
+            this.permissionErrorMessage(err),
+            this.translate.instant('common.dismiss'),
+            { duration: 7000 },
+          );
         },
       });
   }
 
-  private successMessage(notificationSent: boolean, notificationError?: string): string | null {
-    if (notificationError) {
-      return notificationError;
+  private successMessage(notificationSent: boolean, notificationErrorKey?: string): string | null {
+    if (notificationErrorKey) {
+      return this.translate.instant(notificationErrorKey);
     }
     if (notificationSent) {
-      return 'Permission added and notification sent';
+      return this.translate.instant(
+        'permission-dialogs.message.permission-added-notification-sent',
+      );
     }
     return null;
   }
 
   private permissionErrorMessage(err: unknown): string {
     if (isMailSendError(err)) {
-      return permissionCreateMailFailureMessage();
+      return permissionCreateMailFailureMessage((key) => this.translate.instant(key));
     }
     const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
-    return raw || 'Could not share with external user';
+    return raw || this.translate.instant('permission-dialogs.message.could-not-share-external');
   }
 
   private resetForm(): void {

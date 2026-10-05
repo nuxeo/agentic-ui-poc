@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, LOCALE_ID, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,11 +26,13 @@ import {
   GroupFormDialogData,
   GroupFormDialogResult,
 } from '../group-form-dialog/group-form-dialog.component';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-admin-group-details-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     RouterLink,
     MatButtonModule,
     MatIconModule,
@@ -46,6 +48,8 @@ import {
 })
 export class AdminGroupDetailsPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly router = inject(Router);
   private readonly userService = inject(UserService);
   private readonly permService = inject(PrincipalPermissionsService);
@@ -86,7 +90,7 @@ export class AdminGroupDetailsPageComponent implements OnInit {
 
   load(): void {
     if (!this.groupId) {
-      this.error.set('Missing group id.');
+      this.error.set(this.translate.instant('admin.message.missing-group-id'));
       return;
     }
     this.loading.set(true);
@@ -99,7 +103,9 @@ export class AdminGroupDetailsPageComponent implements OnInit {
         this.loadLocalPerms();
       },
       error: (e) => {
-        this.error.set(e?.error?.message ?? 'Could not load group details.');
+        this.error.set(
+          e?.error?.message ?? this.translate.instant('admin.message.could-not-load-group-details'),
+        );
         this.loading.set(false);
       },
     });
@@ -126,13 +132,21 @@ export class AdminGroupDetailsPageComponent implements OnInit {
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('Group updated', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('admin.message.group-updated'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              );
               this.load();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
-                duration: 5000,
-              }),
+              this.snackBar.open(
+                e?.error?.message ?? this.translate.instant('admin.message.update-failed'),
+                this.translate.instant('common.dismiss'),
+                {
+                  duration: 5000,
+                },
+              ),
           });
       });
   }
@@ -146,9 +160,11 @@ export class AdminGroupDetailsPageComponent implements OnInit {
         {
           width: '400px',
           data: {
-            title: 'Delete group',
-            message: `Delete group "${group.groupname}"?`,
-            confirmLabel: 'Delete',
+            title: this.translate.instant('confirm.delete-group'),
+            message: this.translate.instant('confirm.delete-group-named', {
+              name: group.groupname,
+            }),
+            confirmLabel: this.translate.instant('confirm.delete'),
           },
         },
       )
@@ -157,11 +173,19 @@ export class AdminGroupDetailsPageComponent implements OnInit {
         if (!ok) return;
         this.userService.deleteGroup(group.groupname).subscribe({
           next: () => {
-            this.snackBar.open('Group deleted', 'Dismiss', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('admin.message.group-deleted'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            );
             this.router.navigate(['/administration/users-groups']);
           },
           error: (e) =>
-            this.snackBar.open(e?.error?.message ?? 'Delete failed', 'Dismiss', { duration: 5000 }),
+            this.snackBar.open(
+              e?.error?.message ?? this.translate.instant('admin.message.delete-failed'),
+              this.translate.instant('common.dismiss'),
+              { duration: 5000 },
+            ),
         });
       });
   }
@@ -172,13 +196,21 @@ export class AdminGroupDetailsPageComponent implements OnInit {
     const nextMembers = (group.memberUsers ?? []).filter((id) => id !== userId);
     this.userService.updateGroup(group.groupname, { memberUsers: nextMembers }).subscribe({
       next: () => {
-        this.snackBar.open('Member removed', 'Dismiss', { duration: 2500 });
+        this.snackBar.open(
+          this.translate.instant('admin.message.member-removed'),
+          this.translate.instant('common.dismiss'),
+          { duration: 2500 },
+        );
         this.load();
       },
       error: (e) =>
-        this.snackBar.open(e?.error?.message ?? 'Could not remove member', 'Dismiss', {
-          duration: 5000,
-        }),
+        this.snackBar.open(
+          e?.error?.message ?? this.translate.instant('admin.message.could-not-remove-member'),
+          this.translate.instant('common.dismiss'),
+          {
+            duration: 5000,
+          },
+        ),
     });
   }
 
@@ -218,18 +250,31 @@ export class AdminGroupDetailsPageComponent implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.snackBar.open('Permission removed', 'Dismiss', { duration: 2500 });
+          this.snackBar.open(
+            this.translate.instant('admin.message.permission-removed'),
+            this.translate.instant('common.dismiss'),
+            { duration: 2500 },
+          );
           this.loadLocalPerms();
         },
         error: (e) =>
-          this.snackBar.open(e?.error?.message ?? 'Could not remove permission', 'Dismiss', {
-            duration: 5000,
-          }),
+          this.snackBar.open(
+            e?.error?.message ??
+              this.translate.instant('admin.message.could-not-remove-permission'),
+            this.translate.instant('common.dismiss'),
+            {
+              duration: 5000,
+            },
+          ),
       });
   }
 
   timeFrameLabel(row: PrincipalPermissionRow): string {
-    return principalPermissionTimeFrameLabel(row);
+    return principalPermissionTimeFrameLabel(
+      row,
+      (key) => this.translate.instant(key),
+      this.locale,
+    );
   }
 
   removeNestedGroup(nestedId: string): void {
@@ -238,13 +283,22 @@ export class AdminGroupDetailsPageComponent implements OnInit {
     const next = (group.memberGroups ?? []).filter((id) => id !== nestedId);
     this.userService.updateGroup(group.groupname, { memberGroups: next }).subscribe({
       next: () => {
-        this.snackBar.open('Nested group removed', 'Dismiss', { duration: 2500 });
+        this.snackBar.open(
+          this.translate.instant('admin.message.nested-group-removed'),
+          this.translate.instant('common.dismiss'),
+          { duration: 2500 },
+        );
         this.load();
       },
       error: (e) =>
-        this.snackBar.open(e?.error?.message ?? 'Could not update nested groups', 'Dismiss', {
-          duration: 5000,
-        }),
+        this.snackBar.open(
+          e?.error?.message ??
+            this.translate.instant('admin.message.could-not-update-nested-groups'),
+          this.translate.instant('common.dismiss'),
+          {
+            duration: 5000,
+          },
+        ),
     });
   }
 }

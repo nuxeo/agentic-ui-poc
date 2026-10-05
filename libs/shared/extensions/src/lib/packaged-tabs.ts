@@ -16,13 +16,14 @@ import type { ExtensionTabDescriptor } from './extension-actions';
  * rewrite, and this makes the tab strip addressable without one.
  */
 export const PACKAGED_DOCUMENT_TABS: readonly ExtensionTabDescriptor[] = [
-  { id: 'app.tabs.view', label: 'View', order: 10 },
-  { id: 'app.tabs.annotations', label: 'Annotations', order: 20 },
-  { id: 'app.tabs.permissions', label: 'Permissions', order: 30 },
-  { id: 'app.tabs.history', label: 'History', order: 40 },
-  { id: 'app.tabs.publishing', label: 'Publishing', order: 50 },
+  { id: 'app.tabs.view', labelKey: 'tab.tabs-view', label: 'View', order: 10 },
+  { id: 'app.tabs.annotations', labelKey: 'tab.tabs-annotations', label: 'Annotations', order: 20 },
+  { id: 'app.tabs.permissions', labelKey: 'tab.tabs-permissions', label: 'Permissions', order: 30 },
+  { id: 'app.tabs.history', labelKey: 'tab.tabs-history', label: 'History', order: 40 },
+  { id: 'app.tabs.publishing', labelKey: 'tab.tabs-publishing', label: 'Publishing', order: 50 },
   {
     id: 'app.tabs.aiInsights',
+    labelKey: 'tab.tabs-ai-insights',
     label: 'AI Insights',
     icon: 'auto_awesome',
     order: 60,

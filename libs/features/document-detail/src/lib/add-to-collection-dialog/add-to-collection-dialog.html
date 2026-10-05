@@ -1,0 +1,78 @@
+<h2 mat-dialog-title>
+  {{ 'document-detail.add-to-collection-dialog.add-to-collection' | translate }}
+</h2>
+
+<mat-dialog-content>
+  @if (loading()) {
+    <div class="dialog-loading">
+      <mat-spinner diameter="24" />
+      <span>{{ 'document-detail.add-to-collection-dialog.loading-collections' | translate }}</span>
+    </div>
+  } @else {
+    <mat-form-field appearance="outline" class="collection-field">
+      <mat-label>{{
+        'document-detail.add-to-collection-dialog.collections' | translate
+      }}</mat-label>
+      <mat-select
+        [(ngModel)]="selectedCollectionId"
+        [placeholder]="'document-detail.add-to-collection-dialog.select-a-collection' | translate"
+        required
+      >
+        @for (col of filteredCollections(); track col.uid) {
+          <mat-option [value]="col.uid">{{ col.title }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+      <!-- A placeholder is not an accessible name: it is announced inconsistently and
+           disappears the moment the user types, leaving the field unnamed. -->
+      <input
+        matInput
+        [placeholder]="
+          'document-detail.add-to-collection-dialog.search-or-create-collection' | translate
+        "
+        [attr.aria-label]="
+          'document-detail.add-to-collection-dialog.search-or-create-collection' | translate
+        "
+        [ngModel]="searchTerm()"
+        (ngModelChange)="searchTerm.set($event)"
+        autocomplete="off"
+      />
+    </mat-form-field>
+
+    @if (showCreateOption()) {
+      <button class="create-collection-btn" (click)="createNewCollection()" [disabled]="creating()">
+        @if (creating()) {
+          <mat-spinner diameter="16" />
+        } @else {
+          <mat-icon>add_circle</mat-icon>
+        }
+        <span>
+          {{
+            'document-detail.add-to-collection-dialog.create-named'
+              | translate: { name: searchTerm() }
+          }}
+        </span>
+      </button>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close>
+    {{ 'document-detail.add-to-collection-dialog.cancel' | translate }}
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="!selectedCollectionId || adding()"
+    (click)="add()"
+  >
+    @if (adding()) {
+      <mat-spinner diameter="18" />
+    } @else {
+      {{ 'document-detail.add-to-collection-dialog.add' | translate }}
+    }
+  </button>
+</mat-dialog-actions>

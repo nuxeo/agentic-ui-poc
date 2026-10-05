@@ -24,10 +24,13 @@ Shell (nuxeo-ui)
                  Nuxeo REST
 ```
 
-- **POC page:** `libs/features/browse/src/lib/browse-adf-hx-poc/` — wires tabs, filters, panel; no Material.
+- **POC page:** `libs/features/browse/src/lib/browse-adf-hx-poc/` — wires tabs, filters, panel; no
+  Material in its template (the shared dialogs below are opened, not embedded).
 - **Bridge:** `libs/shared/adf-hx-bridge/` — all `hxp-*` UI + AdfHx services + Nuxeo→Hx mapper.
 - **Production browse** (`/#/browse`) is unchanged; path sync and `browseReturn=adf-hx` helpers live in `browse-path.utils.ts`.
-- **Scope A:** read-only — write actions show a notice; tabs/load/export are implemented.
+- **Create/Import is the one live write action** (since 2026-09-24). It opens the application's
+  own dialog with production browse's checks — see *Shared dialogs* below. Nuxeo Drive, Edit,
+  Delete, Share, Notify, Export, tag edits and Restore still show the Scope A notice.
 
 ## UI — real adf-hx components first, `hxp-*` for what adf-hx lacks
 
@@ -37,11 +40,13 @@ components are adopted and adf-core brings Material in transitively. An agent fo
 would try to remove working code.** `docs/adf-hx-beta-plan.md` lists updating it as a hard rule for
 this phase.
 
-- **Prefer the real upstream component.** `HxpDocumentListComponent`, `HxpBreadcrumbComponent`,
-  `HxpDocumentTreeComponent`, `ManageVersionsSidebarComponent` and `HxpPropertiesSidebarComponent`
-  are adopted from `@alfresco/adf-hx-content-services/ui`, and each replaced a hand-written
-  equivalent that was deleted in the same change. Do not reintroduce a local imitation of a
-  component upstream provides.
+- **Prefer the real upstream component.** `HxpDocumentListComponent`, `HxpUiBreadcrumbComponent`
+  (the inner breadcrumb, fed the ancestors plus the current folder), `HxpDocumentTreeComponent`,
+  `PermissionsManagementPanelComponent` and `HxpUiDocumentViewerComponent` are adopted from
+  `@alfresco/adf-hx-content-services/ui`. Do not reintroduce a local imitation of a component
+  upstream provides. `ManageVersionsSidebarComponent` and `HxpPropertiesSidebarComponent` were
+  adopted too, and removed from browse on 2026-09-23 because production keeps both on the
+  document page — that is a product decision, not a reason to rebuild them here.
 - **Material arrives transitively through adf-core, and that is expected.** The adopted panels
   render `mat-select`, `mat-expansion-panel`, `mat-icon-button` and Material form fields. Do not
   strip it.
@@ -51,6 +56,17 @@ this phase.
   `hxp-spinner`, `hxp-column-picker`, `hxp-document-cards`, `hxp-browse-toolbar` and
   `hxp-browse-pager` all follow this.
 - **Never** use Satori (`sat-*`) or production browse UI in the POC page or its bridge components.
+
+## Shared dialogs — the one allowed exception
+
+Product decision, 2026-09-24: the page may open the application's `CreateImportDialogComponent`
+through `MatDialog`, so creating and importing behave exactly as on production browse. adf-hx has
+no equivalent (its `UPLOAD` port refuses: R1). No other write dialog is opened from this page.
+
+- Only dialogs, opened as modals. Inline production markup, `sat-*` components and Material widgets
+  in the page template stay banned.
+- Results must route back to **this** page (`toAdfHxBrowseRouterUrl`, `browseReturn=adf-hx`), never
+  to `/browse`.
 - Side nav: `hxp-browse-nav-drawer`, which now hosts upstream's `HxpDocumentTreeComponent`. The
   hand-written `hxp-browse-nav-tree` was deleted when the real tree was adopted.
 - CSS tokens: prefer **`--hxp-*`** in bridge SCSS, aliased from Satori in
@@ -73,4 +89,5 @@ this phase.
 
 ## PR blocker
 
-Any new Material, Satori, direct `BrowseService` usage, or production browse component in the above paths must be removed before merge.
+Any new Material, Satori, direct `BrowseService` usage, or production browse component in the above
+paths must be removed before merge — except the Create/Import dialog above, opened as a modal.

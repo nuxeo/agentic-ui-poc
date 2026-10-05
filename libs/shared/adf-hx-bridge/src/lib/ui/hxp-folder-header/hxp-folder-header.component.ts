@@ -4,13 +4,14 @@ import { ROOT_DOCUMENT } from '../../tokens/adf-hx-bridge.tokens';
 import { hxpDocIconName } from '../../utils/hxp-doc-icon.utils';
 import { hxpDocTitle, hxpDocTypeLabel } from '../../utils/hxp-browse-cell.utils';
 import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'hxp-folder-header',
   standalone: true,
   templateUrl: './hxp-folder-header.component.html',
   styleUrl: './hxp-folder-header.component.scss',
-  imports: [HxpIconComponent],
+  imports: [TranslatePipe, HxpIconComponent],
 })
 export class HxpFolderHeaderComponent {
   readonly document = input<Document>(ROOT_DOCUMENT);

@@ -30,7 +30,7 @@ is a human summary and can go stale exactly as its predecessor did.
 | 3 — adf-hx adoption              | complete        | 55 checks                  |
 | 4 — Layer 2 publishable platform | complete        | 25 checks                  |
 | 5 — Layer 3 agent harness        | complete        | 27 checks                  |
-| 6 — Beta quality bar and proof   | **in progress** | steps 0-5 of 7; gate 17/17 |
+| 6 — Beta quality bar and proof   | **in progress** | 5 of 7; steps 3 and 6 open |
 
 All six completed phases are re-gated against the current 14-gate pipeline, not only the
 smaller pipeline that existed when each was signed off — Phases 0–2 were originally gated
@@ -110,7 +110,7 @@ flowchart TD
   subgraph theirs [Customer owns]
     fork["Forked template<br/>their agent works here"]
     extlib["Their extension library<br/>components, rules, actions"]
-    cfg["Their configuration<br/>survives upgrade"]
+    cfg["Their configuration<br/>installer leaves it in place"]
   end
   libs --> fork
   tmpl --> fork
@@ -230,8 +230,10 @@ remediation below.
 > The first cut of the installer targeted `nxserver/web/…`, which is not a docBase and which
 > nothing serves; the configuration would have 404'd in every real deployment and the tolerant
 > fallback would have hidden it. The path is corrected, and the corrected destination is confirmed
-> to be the directory the `/nuxeo` context is served from, but no package has been built,
-> installed and upgraded on a real server. That is the Phase 6 upgrade rehearsal. See
+> to be the directory the `/nuxeo` context is served from. Since 2026-09-26 the package is
+> built and published — `2026.0.1-20260926071953-BUILD-1109`, live on the preprod listing — but never installed or upgraded on a real server. That outstanding exercise is the **marketplace install rehearsal**, which is _not_ the
+> `upgrade-rehearsal` gate: that gate is done and crosses a version boundary for the npm tarball
+> (see the Phase 6 step marked Done below). See
 > `PHASE-1-REMEDIATION-ADDENDUM.md` in the phase evidence directory.
 
 Delivered:
@@ -240,7 +242,8 @@ Delivered:
   Nuxeo document at `/default-domain/config/agentic-ui` post-auth, both tolerant of absence, denial
   and malformed JSON. Installed by a second `install.xml` copy with `overwrite="false"` into
   `nxserver/nuxeo.war/agentic-ui-config`, a **sibling** of the bundle and therefore outside the
-  destructive copy — which is what makes customer edits survive an upgrade. `nuxeo.war` is the
+  destructive copy — which is what the installer relies on to leave customer edits in place on
+  upgrade. Intended effect of the copy layout; no marketplace upgrade has been run. `nuxeo.war` is the
   Tomcat docBase for the `/nuxeo` context; `nxserver/web` holds only `root.war` and is not served.
 - **Eleven `InjectionToken` factories** repointed at the loaded configuration: the Nuxeo API origin
   and server URL, the AI backend prefix, the ARender endpoints, both Content Intelligence operation
@@ -432,7 +435,7 @@ Largely built. Remaining:
 - Add Nx generators for "new extension component", "new action", "new rule".
 - Package the guardrail script for customer use.
 
-## Phase 6 — Beta quality bar and proof (**all 7 steps done**, 2026-08-31)
+## Phase 6 — Beta quality bar and proof (**5 of 7 steps done**; steps 3 and 6 open as of 2026-09-23)
 
 - NXENG-615's checklist, assessed against the slice: unit coverage above 90% (the bridge has 11
   tests for 2,949 lines today), ~~Playwright E2E on critical paths~~ (**done** — `npm run beta:e2e`,
@@ -448,33 +451,71 @@ Largely built. Remaining:
 
 **Progress, and what each step still needs**
 
-| Step                        | State                                                                                                                                             |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail                                                                                              |
-| 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                                                                                                       |
-| 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate                                                                                                 |
-| 3 — WCAG 2.1 AA met         | **done** — 7 rule classes fixed (77 nodes), `KNOWN_VIOLATIONS` empty, 15 cases scanned                                                            |
-| 4 — SAST + SCA              | **done** — but SAST already existed and was reporting 21 unread alerts, 6 high. Two gates now read the output: `supply-chain` and `code-scanning` |
-| 5 — Safari/WebKit           | **done** — 34 specs (17 × 2 engines), 5 new specs target engine divergence; WebKit not Safari, distinction recorded                               |
-| 6 — coverage to 90%         | **done** — **10 of 10** in-scope projects meet the bar. Read the caveat below before quoting it                                                   |
+| Step                        | State                                                                                                                                                                                                                                                                                                                   |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail                                                                                                                                                                                                                                                                    |
+| 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                                                                                                                                                                                                                                                                             |
+| 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate                                                                                                                                                                                                                                                                       |
+| 3 — WCAG 2.1 AA met         | **IN QUESTION as of 2026-09-23** — was done 2026-08-24 (7 rule classes fixed, 77 nodes, `KNOWN_VIOLATIONS` empty, 15 cases). Five consecutive `phase-6-a11y` captures since 2026-09-15 fail 3 checks: `button-name` on browse, browse cards and the column panel. Undiagnosed, so this is unverified rather than failed |
+| 4 — SAST + SCA              | **done** — but SAST already existed and was reporting 21 unread alerts, 6 high. Two gates now read the output: `supply-chain` and `code-scanning`                                                                                                                                                                       |
+| 5 — Safari/WebKit           | **done** — 34 specs (17 × 2 engines), 5 new specs target engine divergence; WebKit not Safari, distinction recorded                                                                                                                                                                                                     |
+| 6 — coverage to 90%         | **REOPENED 2026-09-22** — **10 of 11** in-scope projects meet the bar (was 10 of 10). `shared-ai-client` is at 15.98%. Read the caveat below                                                                                                                                                                            |
 
-Step 6 closed on 2026-08-31, and all seven steps are now done. The debt was two files rather
+**Two steps are open: 3 and 6. Five of the seven are done.**
+
+Step 6 was closed on 2026-08-31 and is REOPENED as of 2026-09-22; step 3 came back into question
+on 2026-09-23. Neither was reopened by new work — step 6 because the coverage denominator grew,
+step 3 because reading the a11y manifests showed five consecutive failing captures behind a
+recorded pass. Both were already true and unrecorded. `shared-ai-client` is an in-scope project at 15.98%, so "coverage to 90%"
+is not met on its own terms.
+
+A green `npm run beta:coverage` does not close this, and that is worth being explicit about: the
+gate's exit condition is the **ratchet**, not the target. A shortfall against 90% is reported and
+never failed on — see `meetingTargetInScope` in `coverage-gate.mjs` — precisely so the bar can be
+aspirational without the gate becoming un-passable. So the gate being green and the step being
+done are different claims, and reading the first as the second is how this row said 10 of 10 for
+three weeks after it stopped being true. The debt was two files rather
 than two libraries: `document-detail.ts` held 1,606 of its library's 1,615 uncovered statements
 and `browse.ts` held 707 of 1,175, so `browse` went 56.72% → 99.02% and `document-detail`
 59.71% → 92.55%. Seven real bugs surfaced in the process, the worst of which crashed the whole
 document list during change detection for any document with no `dc:lastContributor`.
 
 **The caveat, which must travel with the number.** These are percentages of the _measured_
-subset. 8,733 source lines across 50 files are imported by no test at all, so they contribute
-no statements and cannot lower any percentage — **6,911 of those lines are in-scope**. `ui`
-reports 100% with 1,528 lines outside the measurement; `search` reports 91.16% with a
-1,303-line filters drawer outside it. `npm run beta:coverage` now prints an `excluded` column
-beside every percentage for exactly this reason, and the entries are dated to 2026-11-30 in
-`.ai/state/coverage-uninstrumented-allowlist.json`.
+subset. Re-measured 2026-09-22: **10,155 source lines across 48 files** are imported by no test at
+all, so they contribute no statements and cannot lower any percentage — **6,137 of those lines are
+in-scope**. `ui` reports 97.68% with 1,523 lines outside the measurement; `search` reports 93.41%
+with a 1,330-line filters drawer outside it; `nuxeo-client` reports 90.28% with 1,835. The worst is
+`assets` at 97.44%, which measures 78 statements while 1,644 lines of its two components sit
+outside — a figure that is arithmetically true and evidence of nothing.
 
-So "10 of 10 in-scope projects meet the 90% bar" is true and is the bar as defined. It is not
+`npm run beta:coverage` prints an `excluded` column beside every percentage for exactly this
+reason, and the entries are dated to 2026-11-30 in
+`.ai/state/coverage-uninstrumented-allowlist.json`. Regenerate rather than quoting these:
+
+```bash
+# Counts NEWLINES, matching `wc -l` and the per-file figures in the allowlist. `split('\n').length`
+# counts the empty segment after a trailing newline too, which inflated this by one per file — 48
+# lines across the set, and it is how the assets pair was recorded as 1,646 when 995 + 649 = 1,644.
+node -e "const fs=require('fs');const a=require('./.ai/state/coverage-uninstrumented-allowlist.json');\
+  let f=0,l=0;for(const p of Object.keys(a.files||{})){if(!fs.existsSync(p))continue;\
+  f++;l+=(fs.readFileSync(p,'utf8').match(/\n/g)||[]).length;}console.log(f+' files, '+l+' lines');"
+```
+
+So "10 of 11 in-scope projects meet the 90% bar" is true and is the bar as defined. It is not
 the same claim as "the in-scope code is 90% tested", and it should not be quoted as though it
-were. Closing the remaining 6,911 lines is comparable in size to the work just completed.
+were. Closing the remaining 6,137 in-scope lines is comparable in size to the work just completed.
+
+**The figure was 10 of 10 until 2026-09-22, and it was the denominator that moved, not the code.**
+`assets`, `tasks` and `shared-ai-client` had never appeared in a coverage report, so nothing
+ratcheted them and they were absent from the count in both directions. Reconciling the baseline
+brought them in, and `shared-ai-client` arrived at **15.98%** — in scope, because the excluded set
+above names KD/KE but not the AI client, and `search` and `document-detail` both consume
+`AiGatewayService`.
+
+It was briefly added to `OUT_OF_SCOPE`, which returned the reported figure to 10 of 10 without a
+line of production code changing. That was reverted. The reasoning had argued from KD/KE being
+excluded — an analogy rather than this document, and this document is the scope contract. The
+honest number is 10 of 11, and a project cannot be argued out of scope by editing the gate.
 
 ---
 
@@ -510,7 +551,7 @@ customer-authored code.
 | R4  | `@alfresco/js-api` and the wider adf-core peer set (including `pdfjs-dist`, `@mat-datetimepicker/core`) ship inside a Nuxeo product.                                                                                                                                                                                                                                                                                                                                                                                 | Medium             | SCA, licensing and product-optics review before Phase 3 commits.                                                                                                                                                                                                                                                                                                     |
 | R5  | **9 high-severity audit findings already**, before adf-core arrives. NXENG-615 requires none.                                                                                                                                                                                                                                                                                                                                                                                                                        | Medium             | Triage in Phase 0.                                                                                                                                                                                                                                                                                                                                                   |
 | R6  | This branch carries the monorepo Angular 20 upgrade while `main` is on 19.                                                                                                                                                                                                                                                                                                                                                                                                                                           | Medium             | Land the upgrade as its own PR first.                                                                                                                                                                                                                                                                                                                                |
-| R7  | **The upgrade-safe installer path is prototyped but not rehearsed.** Phase 1 first installed the bootstrap file into `nxserver/web/…`, which nothing serves — it would have 404'd in every deployment. The path is corrected and the corrected destination is confirmed served, but no package has been built, installed and upgraded on a real server. Manifest-as-Nuxeo-document is genuinely evidenced.                                                                                                           | Medium             | Packaging sign-off on the second `install.xml` copy step, then the Phase 6 upgrade rehearsal. Only that rehearsal justifies Low.                                                                                                                                                                                                                                     |
+| R7  | **The upgrade-safe installer path is prototyped but not rehearsed.** Phase 1 first installed the bootstrap file into `nxserver/web/…`, which nothing serves — it would have 404'd in every deployment. The path is corrected and the corrected destination is confirmed served, and since 2026-09-26 the package is built and published — `2026.0.1-20260926071953-BUILD-1109`, live on the preprod listing — but never installed or upgraded on a real server. Manifest-as-Nuxeo-document is genuinely evidenced.   | Medium             | Packaging sign-off on the second `install.xml` copy step, then a **marketplace install rehearsal** — first install, then an upgrade over it. Distinct from the `upgrade-rehearsal` gate, which is done and exercises the **npm tarball**; that gate cannot close R7. Only the marketplace exercise justifies Low.                                                    |
 | R8  | Too few addressable IDs in Layer 1 caps customisation and pushes work into Layer 2, undermining the maintenance economics.                                                                                                                                                                                                                                                                                                                                                                                           | ~~Medium~~ **Low** | **Mitigated in Phase 2.** Slots are keyed by opaque string with no central dispatch, proven by a spec that registers an unknown slot, so a tenth slot is backlog rather than a retrofit. The ceiling that remains is _which_ surfaces are populated, and that is schedule, not architecture.                                                                         |
 | R9  | Selection state is shared with production browse, so the Satori bulk topbar overlays the POC route.                                                                                                                                                                                                                                                                                                                                                                                                                  | Low                | Decide whether Beta keeps one shell or forks it.                                                                                                                                                                                                                                                                                                                     |
 | R11 | **CI now needs Alfresco-org package access.** `@alfresco/adf-extensions` became a production dependency in Phase 2, and the `@alfresco` scope resolves from GitHub Packages, so `SATORI_GH_READONLY_TOKEN` must carry `read:packages` for the Alfresco org — not only `@hylandsoftware`. Untested until a build installs it. _(Supersedes an earlier claim that the scope spanned two registries and blocked Phase 3: all four `@alfresco` packages were confirmed downloadable from GitHub Packages alone, twice.)_ | Medium             | Rotate the CI secret to a token with proven Alfresco access. The first attempt to test this was invalid: `.npmrc` had been repointed but `package-lock.json` still held `registry.npmjs.org` URLs, and `npm ci` installs from `resolved` rather than from the registry mapping. The lock is now regenerated against GitHub Packages, so the next run does settle it. |

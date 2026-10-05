@@ -20,11 +20,13 @@ import {
   type ExportDialogData,
   type SavedSearchDialogData,
 } from '@nuxeo-satori/platform/ui';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-contracts-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     CommonModule,
     MatButtonModule,
     MatCardModule,
@@ -38,6 +40,7 @@ import {
 })
 export class ContractsPageComponent {
   private dialog = inject(MatDialog);
+  private readonly translate = inject(TranslateService);
 
   // Selection topbar demo state
   readonly showSelection = signal(false);
@@ -49,10 +52,9 @@ export class ContractsPageComponent {
 
   openConfirmDialog() {
     const data: ConfirmDialogData = {
-      title: 'Component Showcase Demo',
-      message:
-        'This dialog is imported from @nuxeo-satori/platform/ui. Customers can use it for confirmation prompts, warnings, and destructive actions.',
-      confirmLabel: 'Got it',
+      title: this.translate.instant('contracts.showcase-dialog-title'),
+      message: this.translate.instant('contracts.showcase-dialog-message'),
+      confirmLabel: this.translate.instant('confirm.got-it'),
     };
 
     this.dialog.open(ConfirmDialogComponent, {
@@ -63,7 +65,7 @@ export class ContractsPageComponent {
 
   openShareDialog() {
     const data: ShareDialogData = {
-      title: 'Contract ABC-123.pdf',
+      title: this.translate.instant('contracts.sample-document-title'),
       url: 'https://example.com/nuxeo/ui/#/doc/contract-abc-123',
     };
 
@@ -92,8 +94,8 @@ export class ContractsPageComponent {
 
   openSavedSearchDialog() {
     const data: SavedSearchDialogData = {
-      title: 'Save Current Search',
-      placeholder: 'e.g., "Q3 Contracts Pending Review"',
+      title: this.translate.instant('ui.save-current-search'),
+      placeholder: this.translate.instant('contracts.saved-search-placeholder'),
       initialValue: '',
     };
 

@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of, throwError } from 'rxjs';
@@ -58,7 +59,7 @@ async function createComponent(query: Record<string, string> = {}): Promise<{
   fixture: ComponentFixture<KnowledgeDiscoveryComponent>;
 }> {
   await TestBed.configureTestingModule({
-    imports: [KnowledgeDiscoveryComponent],
+    imports: [testTranslateModule(), KnowledgeDiscoveryComponent],
     providers: [
       provideZonelessChangeDetection(),
       { provide: KdClientService, useValue: mockKdClient },
@@ -82,6 +83,18 @@ describe('KnowledgeDiscoveryComponent', () => {
   it('should create', async () => {
     const { component } = await createComponent();
     expect(component).toBeTruthy();
+  });
+
+  it("replaces the server's insufficient-answer marker with the catalogue's fallback answer", async () => {
+    const { component } = await createComponent();
+    expect(
+      component.formatAnswerText("## I don't have enough information to answer this question"),
+    ).toBe(
+      "I couldn't find enough relevant information in this agent's knowledge base to answer that yet.",
+    );
+    expect(component.formatAnswerText('The renewal clause is in section 4.')).toBe(
+      'The renewal clause is in section 4.',
+    );
   });
 
   it('should load the list of agents on construction', async () => {

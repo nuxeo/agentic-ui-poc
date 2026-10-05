@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
@@ -264,7 +265,7 @@ describe('DocumentDetailComponent — viewer, renditions and vocabularies', () =
     installDefaults();
 
     await TestBed.configureTestingModule({
-      imports: [DocumentDetailComponent],
+      imports: [testTranslateModule(), testTranslateModule(), DocumentDetailComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),

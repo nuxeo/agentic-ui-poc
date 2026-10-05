@@ -5,6 +5,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { TranslateService } from '@ngx-translate/core';
+
 import { SelectionService } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { HxpDocumentCardsComponent } from './hxp-document-cards.component';
@@ -269,6 +271,26 @@ describe('HxpDocumentCardsComponent', () => {
       'Select Invoice.pdf',
       'Select Contracts',
     ]);
+  });
+
+  it('resolves the checkbox label through the catalogue, not by concatenation', () => {
+    // The English assertion above cannot tell `translate.instant('common.select-item', { name })`
+    // from the `\`Select ${title}\`` string interpolation it replaced: both produce
+    // `Select Invoice.pdf` under the real en catalogue. That is the INFO-144 defect, and a
+    // concatenated string has no catalogue entry, so no locale could ever reach it.
+    //
+    // A synthetic locale rather than `fr`: fr.json is Crowdin-owned and holds 79 of 1968 keys, so
+    // asserting against it would be asserting against translation progress. This proves the key
+    // and the `name` parameter are both used, which is the whole claim.
+    const translate = TestBed.inject(TranslateService);
+    translate.setTranslation('zz', { common: { 'select-item': '⟦{{ name }} ← select⟧' } });
+    translate.use('zz');
+
+    render({ documents: [FILE] });
+
+    expect(checkboxes()[0].getAttribute('aria-label')).toBe('⟦Invoice.pdf ← select⟧');
+
+    translate.use('en');
   });
 
   it('ignores a document with no sys_id rather than selecting an undefined key', () => {

@@ -98,7 +98,6 @@
     "date-fns": "Version pin only, to keep @angular/material-date-fns-adapter and adf-core agreeing on one copy.",
     "pdfjs-dist": "Version pin only, and the second deliberate deviation: 4.x downgrades a shared native package, so 6.2.108 is pinned.",
     "minimatch": "Version pin only. Declared as a `>=10.0.0` peer by @alfresco/adf-core.",
-    "angular-oauth2-oidc": "Version pin only. A direct dependency of @alfresco/adf-core; pinned here so a clean install cannot float it.",
-    "cropperjs": "Version pin only. A direct dependency of @alfresco/adf-core; pinned here so a clean install cannot float it."
+    "angular-oauth2-oidc": "Version pin only. A direct dependency of @alfresco/adf-core; pinned here so a clean install cannot float it."
   }
 }

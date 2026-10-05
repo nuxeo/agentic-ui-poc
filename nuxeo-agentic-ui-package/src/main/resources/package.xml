@@ -1,5 +1,5 @@
 <package type="addon" name="nuxeo-agentic-ui" version="@VERSION@">
-  <title>Nuxeo Agentic UI</title>
+  <title>Nuxeo Satori</title>
   <description>
     <p>Angular workspace application with AI-powered Nuxeo integration</p>
   </description>

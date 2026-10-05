@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideZonelessChangeDetection } from '@angular/core';
 import {
   ActivatedRoute,
@@ -223,7 +224,7 @@ describe('CollectionDetailComponent', () => {
     mockDetailService.fetchThumbnail.mockReturnValue(of(null));
 
     await TestBed.configureTestingModule({
-      imports: [CollectionDetailComponent],
+      imports: [testTranslateModule(), testTranslateModule(), CollectionDetailComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -284,6 +285,14 @@ describe('CollectionDetailComponent', () => {
     it('should return empty array when collection has no path', () => {
       component.collection.set(docWith({ path: undefined }));
       expect(component.breadcrumbItems()).toEqual([]);
+    });
+
+    it('should use cached breadcrumbs for same collection path', () => {
+      component.collection.set(mockCollection);
+      const firstCall = component.breadcrumbItems();
+      // Second call with same path should return cached result
+      const secondCall = component.breadcrumbItems();
+      expect(firstCall).toBe(secondCall); // Same reference = cache hit
     });
 
     it('should compute localAces', () => {
@@ -373,6 +382,16 @@ describe('CollectionDetailComponent', () => {
       component.onBreadcrumbClick(mockEvent);
 
       expect(navigateSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('goToCollections', () => {
+    it('should navigate to collections list', () => {
+      const navigateSpy = vi.spyOn(router, 'navigateByUrl');
+
+      component.goToCollections();
+
+      expect(navigateSpy).toHaveBeenCalledWith('/collections');
     });
   });
 
@@ -1125,15 +1144,14 @@ describe('CollectionDetailComponent', () => {
         begin: '2026-01-01T00:00:00.000Z',
         end: '2026-12-31T00:00:00.000Z',
       } as any;
-      const result = component.aceTimeFrame(ace);
-      expect(result).toContain('from');
-      expect(result).toContain('to');
+      // `permissions.time-frame.range` separates the two dates. The previous `from X to Y` was
+      // built by interpolation, so it was English in every locale.
+      expect(component.aceTimeFrame(ace)).toMatch(/^\w{3} \d{2}, 2026 - \w{3} \d{2}, 2026$/);
     });
 
     it('should format from date when only begin present', () => {
       const ace = { begin: '2026-01-01T00:00:00.000Z', end: null } as any;
-      const result = component.aceTimeFrame(ace);
-      expect(result).toContain('from');
+      expect(component.aceTimeFrame(ace)).toMatch(/^From \w{3} \d{2}, 2026$/);
     });
 
     it('should format until date when only end present', () => {

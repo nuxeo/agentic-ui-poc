@@ -1,4 +1,5 @@
 import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -15,7 +16,6 @@ import {
   DocumentDetailService,
   SelectionService,
   TagService,
-  mailSendFailureMessage,
   type NuxeoAce,
   type NuxeoAcl,
   type NuxeoDocument,
@@ -122,7 +122,7 @@ describe('BrowseComponent — permissions tab', () => {
 
     manifest.set({});
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent],
+      imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -441,9 +441,13 @@ describe('BrowseComponent — permissions tab', () => {
 
     expect(component.actionInProgress()).toBeNull();
     expect(snackBar).toHaveBeenCalledWith('Failed to send notification', 'OK', { duration: 7000 });
-    expect(snackBar).not.toHaveBeenCalledWith(mailSendFailureMessage('send'), 'OK', {
-      duration: 7000,
-    });
+    expect(snackBar).not.toHaveBeenCalledWith(
+      'Notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
+      'OK',
+      {
+        duration: 7000,
+      },
+    );
   });
 
   // ── ACE presentation ──
@@ -467,18 +471,37 @@ describe('BrowseComponent — permissions tab', () => {
   });
 
   it('aceTimeFrame covers permanent, open-ended, until-only and bounded ACEs', () => {
+    // Every shape now resolves a `permissions.time-frame.*` key from the real catalogue rather
+    // than interpolating an English connective, so these assert the catalogue's wording. The
+    // bounded case reads as a range because that is what `permissions.time-frame.range` says;
+    // it used to be assembled as `from X to Y`, which no catalogue entry could ever have reached.
     expect(component.aceTimeFrame(ace({ id: 'a' }))).toBe('Permanent');
     expect(component.aceTimeFrame(ace({ id: 'b', end: '2026-12-31T00:00:00.000Z' }))).toMatch(
       /^Until \w{3} \d{2}, 2026$/,
     );
     expect(component.aceTimeFrame(ace({ id: 'c', begin: '2026-07-01T00:00:00.000Z' }))).toMatch(
-      /^from \w{3} \d{2}, 2026$/,
+      /^From \w{3} \d{2}, 2026$/,
     );
     expect(
       component.aceTimeFrame(
         ace({ id: 'd', begin: '2026-07-01T00:00:00.000Z', end: '2026-12-31T00:00:00.000Z' }),
       ),
-    ).toMatch(/^from \w{3} \d{2}, 2026 to \w{3} \d{2}, 2026$/);
+    ).toMatch(/^\w{3} \d{2}, 2026 - \w{3} \d{2}, 2026$/);
+  });
+
+  it('aceTimeFrame resolves catalogue keys rather than leaking them', () => {
+    // The failure this guards is the one the old implementation could not have: a missing or
+    // misspelled key makes ngx-translate pass the key straight through, so the cell would read
+    // `permissions.time-frame.range` to the user.
+    const shapes = [
+      ace({ id: 'a' }),
+      ace({ id: 'b', end: '2026-12-31T00:00:00.000Z' }),
+      ace({ id: 'c', begin: '2026-07-01T00:00:00.000Z' }),
+      ace({ id: 'd', begin: '2026-07-01T00:00:00.000Z', end: '2026-12-31T00:00:00.000Z' }),
+    ];
+    for (const shape of shapes) {
+      expect(component.aceTimeFrame(shape)).not.toContain('permissions.time-frame');
+    }
   });
 
   it('displayUsername strips the transient prefix from an externally shared principal', () => {

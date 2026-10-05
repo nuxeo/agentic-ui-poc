@@ -241,6 +241,7 @@ export function mapNuxeoDocumentToHx(
   const folderish = isFolderishDocument(doc) || FOLDERISH_NUXEO_TYPES.has(doc.type);
   const content = doc.properties?.['file:content'] as { 'mime-type'?: string } | undefined;
   const props = doc.properties ?? {};
+  const mainBlob = props['file:content'];
 
   return {
     // First, so a `sys_*` field always wins over a Nuxeo property of the same name. None
@@ -268,6 +269,11 @@ export function mapNuxeoDocumentToHx(
     sys_mixinTypes: folderish ? ['SysFolderish'] : ['SysFilish'],
     sys_effectivePermissions: effectivePermissions(doc),
     sys_contentType: typeof content?.['mime-type'] === 'string' ? content['mime-type'] : undefined,
+    // HxPR's main-file field. Upstream reads it, not `file_content`, to decide whether a document
+    // has a file at all: the viewer takes its MIME type from here, and without it every file is
+    // "unsupported"; the Download action and the file icon read it too. Downloads of it are
+    // translated back to `file:content` by the DOWNLOAD port.
+    ...(isNuxeoBlob(mainBlob) ? { sysfile_blob: blobForHx(mainBlob) } : {}),
     sys_typeLabel: doc.type,
     // The **standard** HxPR fields, not just our `hx:` custom ones below.
     //

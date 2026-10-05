@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,16 +10,18 @@ import type { Document, QueryResult } from '@hylandsoftware/hxcs-js-client';
 import { SearchService } from '@alfresco/adf-hx-content-services/services';
 import { HxpDocumentListComponent } from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
-import { catchError, debounceTime, distinctUntilChanged, of, switchMap, Subject } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, map, of, switchMap, Subject } from 'rxjs';
 import { escapeHxqlLiteral } from '@agentic-ui/shared/adf-hx-bridge';
 import { PACKAGED_BROWSE_COLUMNS } from '@nuxeo-satori/platform/extensions';
 
 import { toDataColumns } from '../adf-hx-columns';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-search-adf-hx',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatProgressSpinnerModule,
     MatButtonModule,
@@ -57,9 +59,27 @@ export class SearchAdfHxComponent {
    * page has no column picker to switch them on, so including them would render nine
    * permanently empty columns.
    */
-  protected readonly columns: DataColumn[] = toDataColumns(
-    PACKAGED_BROWSE_COLUMNS.filter((column) => !column.hiddenByDefault),
+  private readonly translate = inject(TranslateService);
+
+  /**
+   * A signal, not a field, so the headers follow a language change.
+   *
+   * `translate.instant` is not reactive and a field initializer runs once, so the columns would
+   * have been resolved in whatever language was active at construction and kept it. `onLangChange`
+   * is the only reactive surface ngx-translate offers.
+   */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.currentLang },
   );
+
+  protected readonly columns = computed<DataColumn[]>(() => {
+    this.currentLang();
+    return toDataColumns(
+      PACKAGED_BROWSE_COLUMNS.filter((column) => !column.hiddenByDefault),
+      (key) => this.translate.instant(key),
+    );
+  });
 
   /**
    * Carries a **query key**, not `void`.
@@ -119,7 +139,7 @@ export class SearchAdfHxComponent {
           });
         }),
         catchError((err) => {
-          this.error.set(err.message ?? 'Search failed');
+          this.error.set(err.message ?? this.translate.instant('browse.message.search-failed'));
           return of<QueryResult>({ documents: [], count: 0, limit: 0, offset: 0, totalCount: 0 });
         }),
         takeUntilDestroyed(),

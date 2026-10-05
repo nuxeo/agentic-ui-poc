@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, DestroyRef, LOCALE_ID, inject, signal, OnInit, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -29,15 +29,37 @@ import {
   NuxeoApiBase,
   CURRENT_USERNAME,
   trustObjectUrl,
+  taskDueDistance,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
-import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
+import {
+  DocumentViewerComponent,
+  provideTranslatedDatepickerIntl,
+} from '@nuxeo-satori/platform/ui';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+
+const DUE_LABEL_KEYS = {
+  due: {
+    one: 'tasks.due-label.due-in-days-one',
+    many: 'tasks.due-label.due-in-days-many',
+    hours: 'tasks.due-label.due-in-hours-many',
+    underTwoHours: 'tasks.due-label.due-in-less-than-an-hour',
+  },
+  overdue: {
+    one: 'tasks.due-label.overdue-days-one',
+    many: 'tasks.due-label.overdue-days-many',
+    hours: 'tasks.due-label.overdue-hours-many',
+    underTwoHours: 'tasks.due-label.overdue-less-than-an-hour',
+  },
+} as const;
 
 @Component({
   selector: 'lib-tasks-page',
   standalone: true,
+  providers: [provideTranslatedDatepickerIntl()],
   imports: [
+    TranslatePipe,
     FormsModule,
     MatIconModule,
     MatButtonModule,
@@ -59,6 +81,8 @@ import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/sat
 })
 export class TasksPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   readonly router = inject(Router);
   private readonly taskService = inject(TaskService);
   private readonly userService = inject(UserService);
@@ -233,7 +257,7 @@ export class TasksPageComponent implements OnInit {
         }
       },
       error: () => {
-        this.listError.set('Failed to load tasks.');
+        this.listError.set(this.translate.instant('tasks.message.failed-to-load-tasks'));
         this.listLoading.set(false);
       },
     });
@@ -452,9 +476,13 @@ export class TasksPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.snackBar.open('Task completed successfully.', 'Close', {
-            duration: 4000,
-          });
+          this.snackBar.open(
+            this.translate.instant('tasks.message.task-completed-successfully'),
+            this.translate.instant('common.close'),
+            {
+              duration: 4000,
+            },
+          );
           this.selectedTask.set(null);
           this.targetDoc.set(null);
           // Navigate to /tasks (no task ID) so loadTasks picks the next available task
@@ -465,8 +493,9 @@ export class TasksPageComponent implements OnInit {
         },
         error: (err) => {
           this.submitting.set(false);
-          const msg = err?.error?.message || 'Failed to complete the task.';
-          this.snackBar.open(msg, 'Close', { duration: 6000 });
+          const msg =
+            err?.error?.message || this.translate.instant('tasks.message.failed-to-complete-task');
+          this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
   }
@@ -479,7 +508,11 @@ export class TasksPageComponent implements OnInit {
     this.workflowService.cancelWorkflow(task.workflowInstanceId).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.snackBar.open('Workflow abandoned.', 'Close', { duration: 4000 });
+        this.snackBar.open(
+          this.translate.instant('tasks.message.workflow-abandoned'),
+          this.translate.instant('common.close'),
+          { duration: 4000 },
+        );
         this.selectedTask.set(null);
         this.targetDoc.set(null);
         this.router.navigate(['/tasks'], { replaceUrl: true }).then(() => {
@@ -489,9 +522,13 @@ export class TasksPageComponent implements OnInit {
       },
       error: () => {
         this.submitting.set(false);
-        this.snackBar.open('Failed to abandon workflow.', 'Close', {
-          duration: 4000,
-        });
+        this.snackBar.open(
+          this.translate.instant('tasks.message.failed-to-abandon-workflow'),
+          this.translate.instant('common.close'),
+          {
+            duration: 4000,
+          },
+        );
       },
     });
   }
@@ -558,7 +595,11 @@ export class TasksPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.snackBar.open('Task delegated successfully.', 'Close', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('tasks.message.task-delegated-successfully'),
+            this.translate.instant('common.close'),
+            { duration: 4000 },
+          );
           this.closeDelegatePanel();
           this.refreshCurrentTask();
           this.loadTasks();
@@ -566,8 +607,9 @@ export class TasksPageComponent implements OnInit {
         },
         error: (err) => {
           this.submitting.set(false);
-          const msg = err?.error?.message || 'Failed to delegate task.';
-          this.snackBar.open(msg, 'Close', { duration: 6000 });
+          const msg =
+            err?.error?.message || this.translate.instant('tasks.message.failed-to-delegate-task');
+          this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
   }
@@ -634,7 +676,11 @@ export class TasksPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.snackBar.open('Task reassigned successfully.', 'Close', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('tasks.message.task-reassigned-successfully'),
+            this.translate.instant('common.close'),
+            { duration: 4000 },
+          );
           this.closeReassignPanel();
           this.refreshCurrentTask();
           this.loadTasks();
@@ -642,8 +688,9 @@ export class TasksPageComponent implements OnInit {
         },
         error: (err) => {
           this.submitting.set(false);
-          const msg = err?.error?.message || 'Failed to reassign task.';
-          this.snackBar.open(msg, 'Close', { duration: 6000 });
+          const msg =
+            err?.error?.message || this.translate.instant('tasks.message.failed-to-reassign-task');
+          this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 6000 });
         },
       });
   }
@@ -867,7 +914,7 @@ export class TasksPageComponent implements OnInit {
 
   dueDateFormatted(task: NuxeoTask): string {
     if (!task.dueDate) return '';
-    return new Date(task.dueDate).toLocaleDateString('en-US', {
+    return new Date(task.dueDate).toLocaleDateString(this.locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -905,14 +952,17 @@ export class TasksPageComponent implements OnInit {
 
   dueLabel(task: NuxeoTask): string {
     if (!task.dueDate) return '';
-    const diff = new Date(task.dueDate).getTime() - Date.now();
-    const absDiff = Math.abs(diff);
-    const days = Math.floor(absDiff / 86_400_000);
-    const hours = Math.floor(absDiff / 3_600_000);
-    let label: string;
-    if (days >= 1) label = days === 1 ? '1 day' : `${days} days`;
-    else label = hours <= 1 ? 'less than an hour' : `${hours} hours`;
-    return diff > 0 ? `Due in ${label}` : `${label} overdue`;
+    const { due, unit, count } = taskDueDistance(task.dueDate);
+    const keys = due ? DUE_LABEL_KEYS.due : DUE_LABEL_KEYS.overdue;
+    const key =
+      unit === 'days'
+        ? count === 1
+          ? keys.one
+          : keys.many
+        : unit === 'hours'
+          ? keys.hours
+          : keys.underTwoHours;
+    return this.translate.instant(key, { count });
   }
 
   docProp(key: string): unknown {

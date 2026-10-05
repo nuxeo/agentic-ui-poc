@@ -12,6 +12,7 @@ import {
 } from '@nuxeo-satori/platform/extensions';
 
 import { SelectionTopbarComponent } from './selection-topbar.component';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 /**
  * The bulk-action surface, which moved from six fixed buttons wired to six named
@@ -37,7 +38,10 @@ describe('SelectionTopbarComponent — bulk-actions slot', () => {
   function render(selectionCount = 3) {
     manifest.set(manifest());
     TestBed.configureTestingModule({
-      imports: [SelectionTopbarComponent, NoopAnimationsModule],
+      // `testTranslateModule()` is repeated here because this spec calls
+      // `TestBed.resetTestingModule()` mid-test, which discards what the project's test setup
+      // configured. Without it the second render fails with NG0201.
+      imports: [SelectionTopbarComponent, NoopAnimationsModule, testTranslateModule()],
       providers: [{ provide: AppConfigService, useValue: { manifest } }],
     });
     TestBed.inject(AppExtensionsService).register(

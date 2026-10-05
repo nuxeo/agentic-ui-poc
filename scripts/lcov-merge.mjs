@@ -55,6 +55,9 @@ function findReports(dir) {
 
 const reports = findReports(coverageRoot);
 
+const nuxeoUiLcov = resolve(coverageRoot, 'apps/nuxeo-ui/lcov.info');
+const hasNuxeoUiReport = reports.some((report) => resolve(report) === nuxeoUiLcov);
+
 if (reports.length === 0) {
   console.error(
     'lcov-merge: no per-project lcov.info found under `coverage/`.\n' +
@@ -68,13 +71,26 @@ if (reports.length === 0) {
   process.exit(1);
 }
 
+if (!hasNuxeoUiReport) {
+  console.error(
+    'lcov-merge: FAIL — missing `coverage/apps/nuxeo-ui/lcov.info`.\n' +
+      '  The Sonar workflow expects Karma coverage for the app shell. Run:\n' +
+      '    npx ng test nuxeo-ui --no-watch --browsers=ChromeHeadless --code-coverage',
+  );
+  process.exit(1);
+}
+
 const merged = [];
 let rebased = 0;
 let alreadyRooted = 0;
 
 for (const report of reports) {
   // `coverage/libs/shared/ui/lcov.info` -> `libs/shared/ui`
-  const projectRoot = relative(coverageRoot, resolve(report, '..'));
+  let projectRoot = relative(coverageRoot, resolve(report, '..'));
+  // Legacy Karma output used `coverage/web/` before apps/nuxeo-ui was namespaced.
+  if (projectRoot === 'web') {
+    projectRoot = 'apps/nuxeo-ui';
+  }
   const text = readFileSync(report, 'utf8');
 
   for (const line of text.split('\n')) {

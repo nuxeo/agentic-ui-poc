@@ -1,5 +1,6 @@
 import { Component, inject, input, output } from '@angular/core';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
+import { TranslateService } from '@ngx-translate/core';
 
 import { SelectionService } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -33,6 +34,7 @@ import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';
 })
 export class HxpDocumentCardsComponent {
   private readonly selectionService = inject(SelectionService);
+  private readonly translate = inject(TranslateService);
 
   readonly documents = input<Document[]>([]);
   /** Object URLs keyed by `sys_id`, fetched by the host. */
@@ -67,7 +69,7 @@ export class HxpDocumentCardsComponent {
   }
 
   protected selectionLabel(doc: Document): string {
-    return `Select ${this.docTitle(doc)}`;
+    return this.translate.instant('common.select-item', { name: this.docTitle(doc) });
   }
 
   protected toggleSelection(doc: Document, event: Event): void {

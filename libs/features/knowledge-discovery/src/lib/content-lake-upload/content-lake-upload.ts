@@ -26,6 +26,7 @@ import {
   type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 type UploadPhase = 'idle' | 'uploading' | 'ingesting' | 'complete' | 'error';
 
@@ -80,6 +81,7 @@ function getPathCompletionContext(path: string): { parentPath: string; partial: 
   selector: 'lib-content-lake-upload',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatButtonModule,
@@ -95,6 +97,7 @@ function getPathCompletionContext(path: string): { parentPath: string; partial: 
 })
 export class ContentLakeUploadComponent {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
   private readonly dialogRef = inject(MatDialogRef<ContentLakeUploadComponent>);
   private readonly importService = inject(DocumentImportService);
   private readonly ingestService = inject(ContentLakeIngestService);
@@ -189,7 +192,14 @@ export class ContentLakeUploadComponent {
     this.duplicateMatches.set([]);
     if (files.length > 0) {
       this.statusMessage.set(
-        files.length === 1 ? `Selected "${files[0].name}".` : `Selected ${files.length} files.`,
+        files.length === 1
+          ? `Selected "${files[0].name}".`
+          : this.translate.instant(
+              files.length === 1
+                ? 'kd.content-lake-upload.selected-one'
+                : 'kd.content-lake-upload.selected-many',
+              { count: files.length },
+            ),
       );
       this.refreshDuplicateCheck();
     }
@@ -223,7 +233,7 @@ export class ContentLakeUploadComponent {
     this.errorMessage.set(null);
     this.uploadedDocuments.set([]);
     this.ingestProcessedCount.set(0);
-    this.statusMessage.set('Uploading to Nuxeo...');
+    this.statusMessage.set(this.translate.instant('kd.message.uploading-to-nuxeo'));
 
     this.importService
       .importFiles(parentPath, files)
@@ -233,7 +243,9 @@ export class ContentLakeUploadComponent {
           const uploads = documents.map((doc) => this.toUploadedDocument(doc));
           this.uploadedDocuments.set(uploads);
           this.phase.set('ingesting');
-          this.statusMessage.set('Sending documents to Content Lake...');
+          this.statusMessage.set(
+            this.translate.instant('kd.message.sending-documents-to-content-lake'),
+          );
           return this.ingestService.startIngest(uploads.map((doc) => doc.uid));
         }),
         switchMap((command) => this.ingestService.waitUntilComplete(command.commandId)),
@@ -246,9 +258,10 @@ export class ContentLakeUploadComponent {
         next: (status) => {
           this.ingestProcessedCount.set(status.processed);
           if (status.error || status.errorCount > 0) {
-            const message =
-              `Content Lake ingest finished with errors (${status.errorCount} failed). ` +
-              'Check that the HxAI connector and ingest credentials are configured on Nuxeo.';
+            const message = this.translate.instant(
+              'kd.content-lake-upload.ingest-finished-with-errors',
+              { count: status.errorCount },
+            );
             this.phase.set('error');
             this.errorMessage.set(message);
             this.statusMessage.set(null);
@@ -256,14 +269,20 @@ export class ContentLakeUploadComponent {
             return;
           }
           const count = status.processed || this.uploadedDocuments().length;
-          const message = `Uploaded and ingested ${count} document(s) to Content Lake.`;
+          const message = this.translate.instant(
+            count === 1
+              ? 'kd.content-lake-upload.ingested-one'
+              : 'kd.content-lake-upload.ingested-many',
+            { count },
+          );
           this.phase.set('complete');
           this.statusMessage.set(message);
           this.showSuccessToast(message);
           this.dialogRef.close({ uploadedDocuments: this.uploadedDocuments() });
         },
         error: (err: Error) => {
-          const message = err.message || 'Upload or Content Lake ingest failed.';
+          const message =
+            err.message || this.translate.instant('kd.content-lake-upload.upload-or-ingest-failed');
           this.phase.set('error');
           this.errorMessage.set(message);
           this.statusMessage.set(null);
@@ -302,11 +321,11 @@ export class ContentLakeUploadComponent {
   }
 
   private showSuccessToast(message: string): void {
-    this.snackBar.open(message, 'OK', { duration: 5000 });
+    this.snackBar.open(message, this.translate.instant('common.ok'), { duration: 5000 });
   }
 
   private showFailureToast(message: string): void {
-    this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+    this.snackBar.open(message, this.translate.instant('common.dismiss'), { duration: 7000 });
   }
 
   private refreshFolderSuggestions(path: string): void {
@@ -332,7 +351,7 @@ export class ContentLakeUploadComponent {
     const normalized = normalizeFolderPath(parentPath);
     if (!normalized) {
       this.filteredFolderOptions.set([]);
-      this.folderBrowseError.set('Enter a Nuxeo folder path.');
+      this.folderBrowseError.set(this.translate.instant('kd.message.enter-a-nuxeo-folder-path'));
       return;
     }
 
@@ -362,7 +381,7 @@ export class ContentLakeUploadComponent {
           if (!list) {
             this.filteredFolderOptions.set([]);
             this.folderBrowseError.set(
-              'Could not load subfolders for this path. Check the path or your permissions.',
+              this.translate.instant('kd.message.could-not-load-subfolders-for-this-path'),
             );
             return;
           }
@@ -381,7 +400,7 @@ export class ContentLakeUploadComponent {
           this.filteredFolderOptions.set(filtered);
           if (options.length === 0) {
             this.folderBrowseError.set(
-              'No subfolders here. Upload into this folder or go up one level.',
+              this.translate.instant('kd.message.no-subfolders-here-upload-into-this-folder'),
             );
           } else if (filtered.length > 0) {
             queueMicrotask(() => {

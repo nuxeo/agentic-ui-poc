@@ -4,21 +4,25 @@
     <button
       type="button"
       class="hxp-details-panel__close"
-      aria-label="Close panel"
+      [attr.aria-label]="'hxp.hxp-browse-details-panel.close-panel' | translate"
       (click)="close.emit()"
     >
       <hxp-icon name="close" size="md" [decorative]="true" />
     </button>
   </div>
 
-  <div class="hxp-details-panel__sub-tabs" role="tablist" aria-label="Document details">
+  <div
+    class="hxp-details-panel__sub-tabs"
+    role="tablist"
+    [attr.aria-label]="'hxp.hxp-browse-details-panel.document-details' | translate"
+  >
     <button
       type="button"
       class="hxp-details-panel__sub-tab"
       [class.hxp-details-panel__sub-tab--active]="subTab() === 'info'"
       (click)="subTabChange.emit('info')"
     >
-      Info
+      {{ 'hxp.hxp-browse-details-panel.info' | translate }}
     </button>
     <button
       type="button"
@@ -26,7 +30,7 @@
       [class.hxp-details-panel__sub-tab--active]="subTab() === 'tags'"
       (click)="subTabChange.emit('tags')"
     >
-      Tags
+      {{ 'hxp.hxp-browse-details-panel.tags' | translate }}
     </button>
     <button
       type="button"
@@ -34,47 +38,65 @@
       [class.hxp-details-panel__sub-tab--active]="subTab() === 'activity'"
       (click)="subTabChange.emit('activity')"
     >
-      Activity
+      {{ 'hxp.hxp-browse-details-panel.activity' | translate }}
     </button>
   </div>
 
   @if (subTab() === 'info') {
     <div class="hxp-details-panel__body">
       <section class="hxp-details-panel__section">
-        <h4 class="hxp-details-panel__section-title">Info</h4>
+        <h4 class="hxp-details-panel__section-title">
+          {{ 'hxp.hxp-browse-details-panel.info' | translate }}
+        </h4>
         <div class="hxp-details-panel__row">
-          <span class="hxp-details-panel__label">State</span>
+          <span class="hxp-details-panel__label">{{
+            'hxp.hxp-browse-details-panel.state' | translate
+          }}</span>
           <span class="hxp-details-panel__value">{{ docState() || '—' }}</span>
         </div>
         <div class="hxp-details-panel__row">
-          <span class="hxp-details-panel__label">Last Modified</span>
+          <span class="hxp-details-panel__label">{{
+            'hxp.hxp-browse-details-panel.last-modified' | translate
+          }}</span>
           <span class="hxp-details-panel__value">{{
             document().sys_modified | date: 'mediumDate'
           }}</span>
         </div>
         <div class="hxp-details-panel__row">
-          <span class="hxp-details-panel__label">Created</span>
+          <span class="hxp-details-panel__label">{{
+            'hxp.hxp-browse-details-panel.created' | translate
+          }}</span>
           <span class="hxp-details-panel__value">{{
             document().sys_created | date: 'mediumDate'
           }}</span>
         </div>
         <div class="hxp-details-panel__row">
-          <span class="hxp-details-panel__label">By</span>
+          <span class="hxp-details-panel__label">{{
+            'hxp.hxp-browse-details-panel.by' | translate
+          }}</span>
           <span class="hxp-details-panel__value">{{ creator(document()) }}</span>
         </div>
         <div class="hxp-details-panel__row">
-          <span class="hxp-details-panel__label">Contributors</span>
+          <span class="hxp-details-panel__label">{{
+            'hxp.hxp-browse-details-panel.contributors' | translate
+          }}</span>
           <span class="hxp-details-panel__value">{{ lastContributor(document()) }}</span>
         </div>
       </section>
       <section class="hxp-details-panel__section">
-        <h4 class="hxp-details-panel__section-title">Properties</h4>
+        <h4 class="hxp-details-panel__section-title">
+          {{ 'hxp.hxp-browse-details-panel.properties' | translate }}
+        </h4>
         <div class="hxp-details-panel__row">
-          <span class="hxp-details-panel__label">Title</span>
+          <span class="hxp-details-panel__label">{{
+            'hxp.hxp-browse-details-panel.title' | translate
+          }}</span>
           <span class="hxp-details-panel__value">{{ docTitle(document()) }}</span>
         </div>
         <div class="hxp-details-panel__row">
-          <span class="hxp-details-panel__label">Type</span>
+          <span class="hxp-details-panel__label">{{
+            'hxp.hxp-browse-details-panel.type' | translate
+          }}</span>
           <span class="hxp-details-panel__value">{{ docType(document()) }}</span>
         </div>
       </section>
@@ -83,7 +105,9 @@
 
   @if (subTab() === 'tags') {
     <div class="hxp-details-panel__body">
-      <h4 class="hxp-details-panel__section-title">Tags</h4>
+      <h4 class="hxp-details-panel__section-title">
+        {{ 'hxp.hxp-browse-details-panel.tags' | translate }}
+      </h4>
       <div class="hxp-details-panel__tags">
         @for (tag of tags(); track tag) {
           <span class="hxp-details-panel__tag">
@@ -91,7 +115,7 @@
             <button
               type="button"
               class="hxp-details-panel__tag-remove"
-              [attr.aria-label]="'Remove tag ' + tag"
+              [attr.aria-label]="'shared.remove-tag' | translate: { name: tag }"
               (click)="tagRemove.emit(tag)"
             >
               <hxp-icon name="close" size="sm" [decorative]="true" />
@@ -99,14 +123,16 @@
           </span>
         }
         @if (tags().length === 0) {
-          <span class="hxp-details-panel__no-data">No tags yet</span>
+          <span class="hxp-details-panel__no-data">{{
+            'hxp.hxp-browse-details-panel.no-tags-yet' | translate
+          }}</span>
         }
       </div>
       <label class="hxp-details-panel__tag-field">
         <input
           type="text"
           class="hxp-details-panel__tag-input"
-          placeholder="Search or create a tag"
+          [placeholder]="'hxp.hxp-browse-details-panel.search-or-create-a-tag' | translate"
           [value]="tagInput()"
           (input)="tagInputChange.emit($any($event.target).value)"
         />
@@ -147,7 +173,9 @@
           <hxp-spinner diameter="20" />
         </div>
       } @else if (activityEntries().length === 0) {
-        <span class="hxp-details-panel__no-data">No recent activity</span>
+        <span class="hxp-details-panel__no-data">{{
+          'hxp.hxp-browse-details-panel.no-recent-activity' | translate
+        }}</span>
       } @else {
         @for (entry of activityEntries(); track entry.id) {
           <div class="hxp-details-panel__activity">

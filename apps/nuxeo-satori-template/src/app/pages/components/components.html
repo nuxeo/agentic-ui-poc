@@ -59,6 +59,7 @@
 
     <lib-widget-grid [columns]="3">
       <lib-widget-container
+        [headingLevel]="3"
         title="Documents"
         icon="folder"
         iconColor="var(--mat-sys-primary, #1976d2)"
@@ -70,6 +71,7 @@
       </lib-widget-container>
 
       <lib-widget-container
+        [headingLevel]="3"
         title="Storage"
         icon="storage"
         iconColor="var(--mat-sys-tertiary, #388e3c)"
@@ -80,7 +82,12 @@
         </div>
       </lib-widget-container>
 
-      <lib-widget-container title="Users" icon="people" iconColor="var(--mat-sys-error, #f57c00)">
+      <lib-widget-container
+        [headingLevel]="3"
+        title="Users"
+        icon="people"
+        iconColor="var(--mat-sys-error, #f57c00)"
+      >
         <div class="widget-content">
           <div class="stat-value">42</div>
           <div class="stat-label">Active users</div>
@@ -96,7 +103,7 @@
       Widget Container Example
     </h2>
 
-    <lib-widget-container title="Recent Activity" icon="notifications">
+    <lib-widget-container [headingLevel]="3" title="Recent Activity" icon="notifications">
       <div class="activity-list">
         <div class="activity-item">
           <mat-icon class="activity-icon success">check_circle</mat-icon>
@@ -131,7 +138,7 @@
     </h2>
 
     <lib-widget-grid [columns]="2">
-      <lib-widget-container title="Dialog Components">
+      <lib-widget-container [headingLevel]="3" title="Dialog Components">
         <div class="component-list">
           <div class="component-item">
             <code>ConfirmDialogComponent</code>
@@ -161,7 +168,7 @@
         </div>
       </lib-widget-container>
 
-      <lib-widget-container title="Display Components">
+      <lib-widget-container [headingLevel]="3" title="Display Components">
         <div class="component-list">
           <div class="component-item">
             <code>SelectionTopbarComponent</code>

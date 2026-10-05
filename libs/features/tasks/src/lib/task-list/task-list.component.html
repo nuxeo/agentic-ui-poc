@@ -1,26 +1,30 @@
 <div class="task-list-page">
   <div class="task-list-header">
-    <div class="task-list-title" role="heading" aria-level="2">My Tasks</div>
-    <button mat-icon-button (click)="loadTasks()" title="Refresh">
+    <div class="task-list-title" role="heading" aria-level="2">
+      {{ 'tasks.task-list.my-tasks' | translate }}
+    </div>
+    <button mat-icon-button (click)="loadTasks()" [title]="'tasks.task-list.refresh' | translate">
       <mat-icon>refresh</mat-icon>
     </button>
   </div>
 
   @if (loading()) {
     <div class="task-loading">
-      <mat-spinner diameter="36" aria-label="Loading" />
-      <span>Loading tasks…</span>
+      <mat-spinner diameter="36" [attr.aria-label]="'tasks.task-list.loading' | translate" />
+      <span>{{ 'tasks.task-list.loading-tasks' | translate }}</span>
     </div>
   } @else if (error()) {
     <div class="task-error">
       <mat-icon>error_outline</mat-icon>
       <span>{{ error() }}</span>
-      <button mat-stroked-button (click)="loadTasks()">Retry</button>
+      <button mat-stroked-button (click)="loadTasks()">
+        {{ 'tasks.task-list.retry' | translate }}
+      </button>
     </div>
   } @else if (tasks().length === 0) {
     <div class="task-empty">
       <mat-icon class="task-empty-icon">task_alt</mat-icon>
-      <p>You have no pending tasks.</p>
+      <p>{{ 'tasks.task-list.you-have-no-pending-tasks' | translate }}</p>
     </div>
   } @else {
     <div class="task-cards">
@@ -48,7 +52,7 @@
               <span class="task-workflow-badge">{{ taskWorkflow(task) }}</span>
               <span class="task-due" [class.overdue]="isOverdue(task)">
                 <mat-icon class="inline-icon">schedule</mat-icon>
-                Due {{ dueLabel(task) }}
+                {{ 'tasks.due-on' | translate: { date: dueLabel(task) } }}
               </span>
             </div>
           </div>
@@ -58,7 +62,7 @@
               color="primary"
               (click)="processTask(task); $event.stopPropagation()"
             >
-              Process
+              {{ 'tasks.task-list.process' | translate }}
             </button>
           </div>
         </div>

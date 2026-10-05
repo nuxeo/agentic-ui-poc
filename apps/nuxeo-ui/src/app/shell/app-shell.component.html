@@ -9,6 +9,10 @@
 }
 
 <sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
+  <!-- NXENG-927 (product): icon-only rail expand/collapse — Satori aria-label + matTooltip only.
+       Host visible-label workaround from PR 246 removed per product request. IBM input_label_visible
+       (4056183850) is expected to recur; track closure via documented a11y exception or upstream
+       Satori fix, not by re-adding persistent visible text here. -->
   <sat-platform-nav>
     @for (item of navItems(); track item.id) {
       <sat-platform-nav-list-item
@@ -22,12 +26,16 @@
         [attr.aria-label]="clipboardNavAriaLabel(item)"
       >
         <sat-platform-nav-avatar [item]="item" />
-        {{ item.label }}
+        {{ navText(item) }}
       </sat-platform-nav-list-item>
     }
 
     <sat-platform-nav-user>
       <sat-platform-nav-user-profile (click)="toggleSettingsDrawer()">
+        <!-- NXENG-894: projected mat-icon/img skips vendor avatar initials. Empty mat-icon +
+             codepoint glyph (not ligature text) — IBM label_name_visible counted "account_circle"
+             as visible label text outside aria-label; fontIcon needs a class-based icon set. -->
+        <mat-icon aria-hidden="true" class="app-shell-user-profile-icon"></mat-icon>
         {{ displayName() }}
       </sat-platform-nav-user-profile>
     </sat-platform-nav-user>
@@ -45,7 +53,7 @@
         <mat-icon>menu</mat-icon>
       </button>
 
-      <div satAppHeaderTitle role="heading" aria-level="1">{{ pageTitle() }}</div>
+      <h1 satAppHeaderTitle>{{ pageTitle() }}</h1>
 
       <div
         #globalSearchContainer
@@ -54,16 +62,27 @@
         (click)="$event.stopPropagation()"
         (focusout)="onGlobalSearchFocusOut($event)"
       >
-        <div class="header-search-input-wrap">
-          <mat-icon class="header-search-icon">search</mat-icon>
+        <div
+          class="header-search-input-wrap"
+          [class.header-search-filled]="globalSearchTerm().trim().length > 0"
+        >
+          <mat-icon class="header-search-icon" aria-hidden="true">search</mat-icon>
           <input
+            id="global-header-search-input"
             type="text"
             class="header-search-input"
-            [placeholder]="'shell.search.placeholder' | translate"
+            placeholder=" "
             [value]="globalSearchTerm()"
             (focus)="onGlobalSearchFocus()"
             (input)="onGlobalSearchInput($any($event.target).value)"
           />
+          <label
+            class="header-search-label"
+            [class.header-search-label--caption]="globalSearchTerm().trim().length > 0"
+            for="global-header-search-input"
+          >
+            {{ 'shell.search.placeholder' | translate }}
+          </label>
         </div>
 
         @if (globalSearchOpen()) {
@@ -151,6 +170,7 @@
         <button
           type="button"
           mat-icon-button
+          class="header-settings-menu-button"
           [attr.aria-label]="'shell.settings.menu' | translate"
           [matMenuTriggerFor]="headerSettingsMenu"
         >
@@ -292,6 +312,13 @@
                           matTooltipPosition="above"
                           (click)="openAiSource(source.uid, source.type, source.path)"
                         >
+                          <!--
+                            `'File'` is a Nuxeo SCHEMA TYPE, not display text: `docTypeIcon` keys
+                            its map on `File`, `Folder`, `Workspace`. The extraction codemod keyed
+                            this fallback, so in French it became `Fichier`, the lookup missed and
+                            every untyped AI source fell back to the generic icon. Domain values
+                            must not be translated.
+                          -->
                           <mat-icon class="ai-source-card-icon">{{
                             docTypeIcon(source.type ?? 'File')
                           }}</mat-icon>

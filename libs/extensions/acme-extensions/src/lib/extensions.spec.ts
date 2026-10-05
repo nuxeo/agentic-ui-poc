@@ -86,4 +86,28 @@ describe('provideAcmeExtensions', () => {
     );
     expect(resolved.map((entry) => entry.id)).toEqual([...ACME_EXTENSIONS_EXTENSION_IDS.navbar]);
   });
+
+  it('lazily loads the acme panel component when requested', async () => {
+    // Lines 106: dynamic import for acme-panel component - tests the lazy loader function
+    const components = TestBed.inject(ExtensionComponentRegistry);
+    expect(components.has(ACME_EXTENSIONS_EXTENSION_IDS.components[0])).toBe(true);
+
+    // Resolve the component by ID - this triggers the dynamic import at line 106
+    const componentType = await components.resolve(ACME_EXTENSIONS_EXTENSION_IDS.components[0]);
+    expect(componentType).toBeDefined();
+    // Angular may append numbers during compilation, so just check it starts with the expected name
+    expect(componentType?.name).toMatch(/^AcmePanelComponent/);
+  });
+
+  it('lazily loads the policy summary component when requested', async () => {
+    // Lines 108: dynamic import for policy-summary component
+    const components = TestBed.inject(ExtensionComponentRegistry);
+    expect(components.has('acme.panel.policySummary')).toBe(true);
+
+    // Resolve the component by ID - this triggers the dynamic import at line 108
+    const componentType = await components.resolve('acme.panel.policySummary');
+    expect(componentType).toBeDefined();
+    // Angular may append numbers during compilation, so just check it starts with the expected name
+    expect(componentType?.name).toMatch(/^PolicySummaryComponent/);
+  });
 });

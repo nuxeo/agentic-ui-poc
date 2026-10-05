@@ -110,6 +110,17 @@ describe('NuxeoDownloadApi', () => {
     await expect(pending).resolves.toBeDefined();
   });
 
+  it("serves upstream's default sysfile_blob from Nuxeo's file:content", async () => {
+    // `BlobDownloadService.downloadBlob(id)` defaults the property to `sysfile_blob`, which is
+    // how the document viewer and the Download action ask for the main file.
+    const pending = api.downloadByIdAndXPath('doc-1', 'sysfile_blob');
+
+    const req = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1/@blob/file:content');
+    req.flush(new Blob(['png'], { type: 'image/png' }));
+
+    expect((await pending).data.type).toBe('image/png');
+  });
+
   it('refuses inline=true rather than ignoring it and serving an attachment', async () => {
     // The parameter is in upstream's signature. Silently ignoring it would render a preview
     // request as a file download, which looks like a UI bug several layers away.

@@ -701,9 +701,7 @@ describe('KdClientService', () => {
     req.flush(envelope(null));
 
     const submission = await submission$;
-    expect(submission.questionId).toMatch(
-      /^kd-agent-7-\d+-123e4567-e89b-12d3-a456-426614174000$/,
-    );
+    expect(submission.questionId).toMatch(/^kd-agent-7-\d+-123e4567-e89b-12d3-a456-426614174000$/);
     expect(submission.status).toBe('Complete');
 
     const answer = await firstValueFrom(service.getAnswer(submission.questionId));

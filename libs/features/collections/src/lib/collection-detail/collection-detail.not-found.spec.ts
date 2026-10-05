@@ -21,6 +21,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { CollectionDetailComponent } from './collection-detail';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 /**
  * These render the REAL template, unlike `collection-detail.spec.ts`, which replaces it with
@@ -85,7 +86,7 @@ describe('CollectionDetailComponent — unresolved collection', () => {
     await TestBed.configureTestingModule({
       // The app bootstraps translation, not the feature; the real template reaches it through
       // child components, so the test has to supply it.
-      imports: [CollectionDetailComponent, TranslateModule.forRoot()],
+      imports: [CollectionDetailComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),

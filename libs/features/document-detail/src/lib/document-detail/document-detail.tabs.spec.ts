@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
@@ -332,7 +333,7 @@ describe('DocumentDetailComponent — tab surfaces', () => {
     installDefaults();
 
     await TestBed.configureTestingModule({
-      imports: [DocumentDetailComponent],
+      imports: [testTranslateModule(), testTranslateModule(), DocumentDetailComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -385,6 +386,29 @@ describe('DocumentDetailComponent — tab surfaces', () => {
         set: { imports: [], template: '<div></div>' },
       })
       .compileComponents();
+  });
+
+  afterEach(() => {
+    // Resolved here, not read out of the `http` variable `build()` assigns.
+    //
+    // Every one of the 123 tests below happens to call `build()` today, so the guard does work
+    // — but a test that returned before it would have verified the *previous* test's
+    // controller, and the first such test in the file would have verified `undefined`:
+    // `TypeError: Cannot read properties of undefined (reading 'verify')`, reproduced by adding
+    // exactly that test and watching it happen. `TestBed.inject` here always yields this test's
+    // controller, whether or not the test built anything.
+    //
+    // It is not hoisted into `beforeEach` — the obvious fix — because seven tests call
+    // `TestBed.overrideProvider` in their own bodies, and injecting anything in `beforeEach`
+    // instantiates the module: "Cannot override provider when the test module has already been
+    // instantiated." Measured; that variant turned seven tests red.
+    //
+    // On what the guard found: it was added as Stage 2.4 (QW7 from the audit) expecting to fail
+    // and expose untested HTTP surface in a 15-provider component making only two `expectOne`
+    // calls. It did not. The project is green with it in place, so that surface is not there —
+    // the component's other collaborators are all injected as mocks. The guard stays because it
+    // is cheap and capable of failing, not because it found anything.
+    TestBed.inject(HttpTestingController).verify();
   });
 
   describe('tab switching', () => {
@@ -1229,7 +1253,9 @@ describe('DocumentDetailComponent — tab surfaces', () => {
         ],
       });
 
-      expect(component.lastReplyTime('c1')).toBe('a few seconds ago');
+      // `Intl.RelativeTimeFormat` says "now" below a minute, where the hand-rolled
+      // formatter said "a few seconds ago". See `formatRelativeTime`.
+      expect(component.lastReplyTime('c1')).toBe('now');
       expect(component.lastReplyTime('none')).toBe('');
       expect(component.replyCount('none')).toBe(0);
     });
@@ -1255,15 +1281,18 @@ describe('DocumentDetailComponent — tab surfaces', () => {
       const ago = (ms: number): string =>
         component.relativeTime(new Date(Date.now() - ms).toISOString());
 
-      expect(ago(5_000)).toBe('a few seconds ago');
+      expect(ago(5_000)).toBe('now');
       expect(ago(60_000)).toBe('1 minute ago');
       expect(ago(120_000)).toBe('2 minutes ago');
       expect(ago(3_600_000)).toBe('1 hour ago');
       expect(ago(7_200_000)).toBe('2 hours ago');
-      expect(ago(86_400_000)).toBe('1 day ago');
+      expect(ago(86_400_000)).toBe('yesterday');
       expect(ago(2 * 86_400_000)).toBe('2 days ago');
-      // Past a month it becomes a date rather than an ever-growing day count.
-      expect(ago(60 * 86_400_000)).not.toContain('ago');
+      // The old formatter switched to an absolute date past a month, to avoid "60 days ago".
+      // `Intl.RelativeTimeFormat` serves that intent by coarsening the unit instead, which
+      // stays relative and stays translatable.
+      expect(ago(60 * 86_400_000)).toBe('2 months ago');
+      expect(ago(400 * 86_400_000)).toBe('last year');
     });
   });
 

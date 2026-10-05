@@ -76,6 +76,15 @@ export class NuxeoDownloadApi {
 }
 
 /**
+ * HxPR property names for which Nuxeo uses a different xpath. `sysfile_blob` is the main file,
+ * which is what upstream's `BlobDownloadService` asks for by default — the viewer and the
+ * Download action both — and which the document mapper fills from `file:content`.
+ */
+const HX_BLOB_PROPERTY_TO_NUXEO_XPATH: Readonly<Record<string, string>> = {
+  sysfile_blob: 'file:content',
+};
+
+/**
  * Take the xpath from `<xpath>` or `<xpath>/<filename>`. Nuxeo xpaths contain a colon
  * and no slash — `file:content`, `blobholder:0` — so the first segment is the xpath.
  */
@@ -83,5 +92,6 @@ function parseXPath(propertyXPathAndFilename: string): string {
   if (!propertyXPathAndFilename) {
     throw new Error('downloadByIdAndXPath requires a property xpath');
   }
-  return propertyXPathAndFilename.split('/')[0];
+  const xpath = propertyXPathAndFilename.split('/')[0];
+  return HX_BLOB_PROPERTY_TO_NUXEO_XPATH[xpath] ?? xpath;
 }

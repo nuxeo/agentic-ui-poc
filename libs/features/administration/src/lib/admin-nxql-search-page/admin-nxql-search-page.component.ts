@@ -9,12 +9,17 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 
-import { AdministrationService, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  AdministrationService,
+  NuxeoDocument,
+  DocTypeLabelPipe,
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   AiGatewayService,
   AiFeatureFlagService,
   aiErrorMessage,
 } from '@agentic-ui/shared/ai-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 const DEFAULT_NXQL =
   "SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 " +
@@ -24,6 +29,8 @@ const DEFAULT_NXQL =
   selector: 'lib-admin-nxql-search-page',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
+    TranslatePipe,
     DatePipe,
     FormsModule,
     MatButtonModule,
@@ -39,6 +46,7 @@ const DEFAULT_NXQL =
 })
 export class AdminNxqlSearchPageComponent {
   private readonly adminService = inject(AdministrationService);
+  private readonly translate = inject(TranslateService);
   private readonly aiGateway = inject(AiGatewayService);
   readonly featureFlags = inject(AiFeatureFlagService);
 
@@ -63,7 +71,7 @@ export class AdminNxqlSearchPageComponent {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err?.message ?? 'Query failed.');
+        this.error.set(err?.message ?? this.translate.instant('admin.message.query-failed'));
         this.results.set([]);
         this.totalSize.set(0);
         this.loading.set(false);
@@ -108,7 +116,9 @@ export class AdminNxqlSearchPageComponent {
         this.aiGenerating.set(false);
       },
       error: (err) => {
-        this.aiGenError.set(aiErrorMessage(err, 'AI generation failed'));
+        this.aiGenError.set(
+          aiErrorMessage(err, this.translate.instant('admin.message.ai-generation-failed')),
+        );
         this.aiGenerating.set(false);
       },
     });

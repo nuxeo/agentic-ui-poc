@@ -22,6 +22,7 @@ import {
   vocabularyParentRequired,
   vocabularySupportsParent,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface VocabularyEntryFormDialogData {
   mode: 'create' | 'edit';
@@ -45,6 +46,7 @@ export interface VocabularyEntryFormDialogResult {
   selector: 'lib-vocabulary-entry-form-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatButtonModule,

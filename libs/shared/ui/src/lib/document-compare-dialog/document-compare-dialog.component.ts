@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, LOCALE_ID, computed, effect, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -17,6 +17,7 @@ import {
   type CompareRow,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { CompareIconImageComponent } from './compare-icon-image.component';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface DocumentCompareDialogData {
   items: Array<{ id: string; name: string }>;
@@ -26,6 +27,7 @@ export interface DocumentCompareDialogData {
   selector: 'lib-document-compare-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatCheckboxModule,
@@ -41,6 +43,8 @@ export interface DocumentCompareDialogData {
 })
 export class DocumentCompareDialogComponent {
   private readonly detailService = inject(DocumentDetailService);
+  private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   readonly data = inject<DocumentCompareDialogData>(MAT_DIALOG_DATA);
 
   readonly leftId = signal(this.data.items[0]?.id ?? '');
@@ -56,7 +60,7 @@ export class DocumentCompareDialogComponent {
     const left = this.leftDoc();
     const right = this.rightDoc();
     if (!left || !right) return [];
-    return buildDocumentCompareSections(left, right, this.viewAllData());
+    return buildDocumentCompareSections(left, right, this.viewAllData(), this.locale);
   });
 
   isIconRow(row: CompareRow): boolean {
@@ -70,7 +74,9 @@ export class DocumentCompareDialogComponent {
       if (!leftId || !rightId || leftId === rightId) {
         this.leftDoc.set(null);
         this.rightDoc.set(null);
-        this.error.set('Select two different documents to compare.');
+        this.error.set(
+          this.translate.instant('shared-ui.message.select-two-different-documents-to-compare'),
+        );
         this.loading.set(false);
         return;
       }
@@ -86,7 +92,9 @@ export class DocumentCompareDialogComponent {
         .pipe(
           catchError(() => {
             if (!cancelled) {
-              this.error.set('Failed to load documents for comparison.');
+              this.error.set(
+                this.translate.instant('shared-ui.message.failed-to-load-documents-for-comparison'),
+              );
             }
             return of(null);
           }),

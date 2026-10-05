@@ -1,35 +1,47 @@
-<h2 mat-dialog-title>Share With External User</h2>
+<h2 mat-dialog-title>
+  {{ 'shared-ui.share-saved-search-external-dialog.share-with-external-user' | translate }}
+</h2>
 
 <mat-dialog-content>
   @if (isEditMode) {
-    <div class="field-label">Email</div>
+    <div class="field-label">
+      {{ 'shared-ui.share-saved-search-external-dialog.email' | translate }}
+    </div>
     <div class="readonly-value">{{ email }}</div>
   } @else {
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Email *</mat-label>
-      <input matInput type="email" placeholder="name@company.com" [(ngModel)]="email" required />
+      <mat-label>{{
+        'shared-ui.share-saved-search-external-dialog.email-2' | translate
+      }}</mat-label>
+      <input
+        matInput
+        type="email"
+        [placeholder]="'common.email-example' | translate"
+        [(ngModel)]="email"
+        required
+      />
     </mat-form-field>
   }
 
   <mat-form-field appearance="outline" class="full-width">
-    <mat-label>Right</mat-label>
+    <mat-label>{{ 'shared-ui.share-saved-search-external-dialog.right' | translate }}</mat-label>
     <mat-select [(ngModel)]="right">
       @for (opt of rightOptions; track opt.value) {
-        <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        <mat-option [value]="opt.value">{{ opt | descriptorLabel }}</mat-option>
       }
     </mat-select>
   </mat-form-field>
 
   <div class="date-fields">
     <mat-form-field appearance="outline">
-      <mat-label>From</mat-label>
+      <mat-label>{{ 'shared-ui.share-saved-search-external-dialog.from' | translate }}</mat-label>
       <input matInput [matDatepicker]="fromPicker" [(ngModel)]="beginDate" />
       <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
       <mat-datepicker #fromPicker />
     </mat-form-field>
 
     <mat-form-field appearance="outline">
-      <mat-label>To *</mat-label>
+      <mat-label>{{ 'shared-ui.share-saved-search-external-dialog.to' | translate }}</mat-label>
       <input matInput [matDatepicker]="toPicker" [(ngModel)]="endDate" required />
       <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
       <mat-datepicker #toPicker />
@@ -37,21 +49,27 @@
   </div>
 
   <div class="notify-section">
-    <label class="field-label" for="notify">Notification email</label>
+    <label class="field-label" for="notify">{{
+      'shared-ui.share-saved-search-external-dialog.notification-email' | translate
+    }}</label>
     <mat-form-field appearance="outline" class="full-width">
       <textarea
         id="notify"
         matInput
         rows="2"
         [(ngModel)]="notifyComment"
-        placeholder="Hi! Could you comment on this document and..."
+        [placeholder]="
+          'shared-ui.share-saved-search-external-dialog.hi-could-you-comment-on-this' | translate
+        "
       ></textarea>
     </mat-form-field>
   </div>
 </mat-dialog-content>
 
 <mat-dialog-actions>
-  <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
+  <button mat-stroked-button type="button" (click)="cancel()">
+    {{ 'shared-ui.share-saved-search-external-dialog.cancel' | translate }}
+  </button>
   <span class="spacer"></span>
   @if (!isEditMode) {
     <button
@@ -60,7 +78,7 @@
       [disabled]="!isValid() || saving()"
       (click)="create(true)"
     >
-      Create And Add Another
+      {{ 'shared-ui.share-saved-search-external-dialog.create-and-add-another' | translate }}
     </button>
   }
   <button
@@ -69,6 +87,6 @@
     [disabled]="!isValid() || saving()"
     (click)="create(false)"
   >
-    {{ isEditMode ? 'Update' : 'Create' }}
+    {{ isEditMode ? ('ui.update' | translate) : ('ui.create' | translate) }}
   </button>
 </mat-dialog-actions>

@@ -3,13 +3,14 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  LOCALE_ID,
   afterNextRender,
   computed,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -28,17 +29,31 @@ import {
 import { AuthService } from '../../auth/auth.service';
 import { ChangePasswordDialogComponent } from './change-password-dialog/change-password-dialog.component';
 import { GroupPermLazyLoadDirective } from './group-perm-lazy-load.directive';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 const GROUP_PERM_PAGE_SIZE = 25;
 
 @Component({
   standalone: true,
-  imports: [NgTemplateOutlet, MatIconModule, MatButtonModule, GroupPermLazyLoadDirective],
+  imports: [
+    TranslatePipe,
+    NgTemplateOutlet,
+    MatIconModule,
+    MatButtonModule,
+    GroupPermLazyLoadDirective,
+  ],
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.scss',
 })
 export class ProfilePageComponent {
   private readonly auth = inject(AuthService);
+  private readonly translate = inject(TranslateService);
+  /** The active language as a signal, so a `computed` that calls `instant()` recomputes on a switch. */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.getCurrentLang() },
+  );
+  private readonly locale = inject(LOCALE_ID);
   private readonly destroyRef = inject(DestroyRef);
   private readonly userService = inject(UserService);
   private readonly settingsService = inject(SettingsService);
@@ -47,7 +62,10 @@ export class ProfilePageComponent {
   private readonly changePasswordButton =
     viewChild.required<ElementRef<HTMLButtonElement>>('changePasswordButton');
 
-  readonly username = computed(() => this.auth.username() ?? 'Unknown user');
+  readonly username = computed(() => {
+    this.currentLang();
+    return this.auth.username() ?? this.translate.instant('settings.profile.unknown-user');
+  });
   readonly email = signal('—');
   readonly company = signal('—');
   readonly groups = signal<Array<{ identifier: string; label: string }>>([]);
@@ -164,7 +182,9 @@ export class ProfilePageComponent {
     if (!page) {
       return [];
     }
-    return page.rows.map((row) => principalPermissionToLocalRow(row));
+    return page.rows.map((row) =>
+      principalPermissionToLocalRow(row, (key) => this.translate.instant(key), this.locale),
+    );
   }
 
   groupPermTotalPages(groupId: string): number {

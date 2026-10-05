@@ -40,9 +40,17 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   // and that guard is kept rather than expressed here: a manifest may legitimately
   // relabel or reorder it, so `disabled` would be the wrong tool and there is no
   // "required" flag on the descriptor.
-  { id: 'app.documentList.title', label: 'Title', field: 'title', order: 10, sortable: true },
+  {
+    id: 'app.documentList.title',
+    labelKey: 'column.document-list-title',
+    label: 'Title',
+    field: 'title',
+    order: 10,
+    sortable: true,
+  },
   {
     id: 'app.documentList.type',
+    labelKey: 'column.document-list-type',
     label: 'Type',
     field: 'type',
     order: 20,
@@ -51,6 +59,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.modified',
+    labelKey: 'column.document-list-modified',
     label: 'Modified',
     field: 'modified',
     order: 30,
@@ -58,6 +67,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.lastContributor',
+    labelKey: 'column.document-list-last-contributor',
     label: 'Last Contributor',
     field: 'lastContributor',
     order: 40,
@@ -65,6 +75,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.state',
+    labelKey: 'column.document-list-state',
     label: 'State',
     field: 'state',
     order: 50,
@@ -73,6 +84,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.version',
+    labelKey: 'column.document-list-version',
     label: 'Version',
     field: 'version',
     order: 60,
@@ -80,6 +92,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.created',
+    labelKey: 'column.document-list-created',
     label: 'Created',
     field: 'created',
     order: 70,
@@ -88,6 +101,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.author',
+    labelKey: 'column.document-list-author',
     label: 'Author',
     field: 'author',
     order: 80,
@@ -96,6 +110,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.nature',
+    labelKey: 'column.document-list-nature',
     label: 'Nature',
     field: 'nature',
     order: 90,
@@ -103,6 +118,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.coverage',
+    labelKey: 'column.document-list-coverage',
     label: 'Coverage',
     field: 'coverage',
     order: 100,
@@ -110,6 +126,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.subjects',
+    labelKey: 'column.document-list-subjects',
     label: 'Subjects',
     field: 'subjects',
     order: 110,
@@ -117,6 +134,7 @@ export const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[] = [
   },
   {
     id: 'app.documentList.flags',
+    labelKey: 'column.document-list-flags',
     label: 'Flags',
     field: 'flags',
     order: 120,

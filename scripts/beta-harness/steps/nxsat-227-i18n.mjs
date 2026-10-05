@@ -82,8 +82,37 @@ const ENVIRONMENTAL_ERRORS = [
   `/i18n/${UNSHIPPED_LOCALE}.json`,
 ];
 
-/** The global search box in the header, by class — see `app-shell.component.html`. */
-const HEADER_SEARCH_INPUT = 'input.header-search-input';
+/** Visible label naming the global search (NXENG-798); placeholder is no longer the accessible name. */
+const HEADER_SEARCH_LABEL = 'label.header-search-label[for="global-header-search-input"]';
+
+async function headerSearchVisibleLabel(page, h) {
+  const locator = page.locator(HEADER_SEARCH_LABEL);
+  const painted = await locator.evaluate((el) => {
+    const style = getComputedStyle(el);
+    const { width, height } = el.getBoundingClientRect();
+    return {
+      text: (el.textContent ?? '').trim(),
+      display: style.display,
+      visibility: style.visibility,
+      opacity: Number.parseFloat(style.opacity),
+      width,
+      height,
+    };
+  });
+
+  h.check(
+    'the global search label is visibly painted, not merely present in the DOM',
+    painted.display !== 'none' &&
+      painted.visibility !== 'hidden' &&
+      painted.opacity > 0 &&
+      painted.width > 0 &&
+      painted.height > 0,
+    `display=${painted.display} visibility=${painted.visibility} opacity=${painted.opacity} ` +
+      `box=${painted.width}x${painted.height} text=${JSON.stringify(painted.text.slice(0, 40))}`,
+  );
+
+  return painted.text;
+}
 
 /** The file the marketplace package installs. Served verbatim for the English pass. */
 const PACKAGED_BOOTSTRAP = readFileSync(
@@ -192,12 +221,11 @@ async function rawKeysOnPage(page) {
 
       // `placeholder` and `alt` as well as `aria-label` and `title`.
       //
-      // For the two shell text inputs the placeholder is the ONLY thing naming them, so a raw key
-      // there is a raw key announced as a control's name — and this sweep did not read placeholders,
-      // while the unnamed-control check below deliberately accepts a placeholder AS a name. Between
-      // them, `shell.search.placeholder` rendering into the global search box would have been
-      // invisible to the whole capture. `alt` is included for the same reason: it is the accessible
-      // name of an image.
+      // The AI assistant input is still placeholder-named; global header search (NXENG-798) uses a
+      // visible `<label>` instead. A raw key in either naming path is a raw key announced as the
+      // control's name — and this attribute sweep still does not read `<label>` text, while the
+      // unnamed-control check below deliberately accepts a placeholder AS a name. `alt` is included
+      // for the same reason: it is the accessible name of an image.
       for (const element of document.querySelectorAll('[aria-label], [title], [placeholder], [alt]')) {
         for (const attribute of ['aria-label', 'title', 'placeholder', 'alt']) {
           const value = element.getAttribute(attribute);
@@ -598,11 +626,11 @@ export default async function run(page, h) {
     `served so far: ${JSON.stringify(servedLanguages)}`,
   );
 
-  const frenchPlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
+  const frenchSearchLabel = await headerSearchVisibleLabel(page, h);
   h.check(
-    'the global search placeholder is French',
-    frenchPlaceholder === 'Rechercher des documents, des utilisateurs ou des groupes',
-    `placeholder was "${frenchPlaceholder}"`,
+    'the global search visible label is French',
+    frenchSearchLabel === 'Rechercher des documents, des utilisateurs ou des groupes',
+    `label was "${frenchSearchLabel}"`,
   );
 
   const frenchAssistant = await page
@@ -702,11 +730,11 @@ export default async function run(page, h) {
   await page.waitForTimeout(3000);
   await h.expectVisible('the adf-hx POC route rendered', 'lib-browse-adf-hx-poc');
 
-  const adfHxRoutePlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
+  const adfHxRouteSearchLabel = await headerSearchVisibleLabel(page, h);
   h.check(
     'the adf-hx route keeps the configured language',
-    adfHxRoutePlaceholder === frenchPlaceholder,
-    `shell was "${frenchPlaceholder}", adf-hx route is "${adfHxRoutePlaceholder}"`,
+    adfHxRouteSearchLabel === frenchSearchLabel,
+    `shell was "${frenchSearchLabel}", adf-hx route is "${adfHxRouteSearchLabel}"`,
   );
 
   // Upstream's own catalogue should now resolve in French too — it ships `fr`, and before the
@@ -729,16 +757,16 @@ export default async function run(page, h) {
   await reloadApp(page);
   await h.expectVisible('app shell rendered in German pass', 'app-shell');
 
-  const germanPlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
+  const germanSearchLabel = await headerSearchVisibleLabel(page, h);
   h.check(
-    'the global search placeholder is German',
-    germanPlaceholder === 'Dokumente, Benutzer oder Gruppen suchen',
-    `placeholder was "${germanPlaceholder}"`,
+    'the global search visible label is German',
+    germanSearchLabel === 'Dokumente, Benutzer oder Gruppen suchen',
+    `label was "${germanSearchLabel}"`,
   );
   h.check(
-    'the German and French placeholders differ, so the catalogue is really being chosen',
-    germanPlaceholder !== frenchPlaceholder,
-    `fr="${frenchPlaceholder}" de="${germanPlaceholder}"`,
+    'the German and French visible labels differ, so the catalogue is really being chosen',
+    germanSearchLabel !== frenchSearchLabel,
+    `fr="${frenchSearchLabel}" de="${germanSearchLabel}"`,
   );
   await h.screenshot('de-shell-german-chrome');
 
@@ -763,11 +791,11 @@ export default async function run(page, h) {
     fallbackKeys.length === 0,
     fallbackKeys.join('\n      '),
   );
-  const fallbackPlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
+  const fallbackSearchLabel = await headerSearchVisibleLabel(page, h);
   h.check(
     'an unshipped locale falls back to the English string',
-    fallbackPlaceholder === 'Search documents, users or groups',
-    `placeholder was "${fallbackPlaceholder}"`,
+    fallbackSearchLabel === 'Search documents, users or groups',
+    `label was "${fallbackSearchLabel}"`,
   );
 
   // Strings degrading is only half of tolerant. Angular's date, number and currency pipes throw

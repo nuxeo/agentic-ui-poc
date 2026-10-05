@@ -28,9 +28,11 @@ import {
   isExpiresFieldValid,
   shouldShowExpiresFieldError,
   l10nEntryLabel,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   isPermissionDeniedError,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '../datepicker-intl/translated-datepicker-intl';
 
 export interface EditCollectionDialogData {
   document: NuxeoDocument;
@@ -40,6 +42,7 @@ export interface EditCollectionDialogData {
   selector: 'lib-edit-collection-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -52,12 +55,13 @@ export interface EditCollectionDialogData {
     MatIconModule,
     MatSnackBarModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideNativeDateAdapter(), provideTranslatedDatepickerIntl()],
   templateUrl: './edit-collection-dialog.html',
   styleUrl: './edit-collection-dialog.scss',
 })
 export class EditCollectionDialogComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<EditCollectionDialogComponent>);
+  private readonly translate = inject(TranslateService);
   private readonly data = inject<EditCollectionDialogData>(MAT_DIALOG_DATA);
   private readonly collectionService = inject(CollectionService);
   private readonly directoryService = inject(DirectoryService);
@@ -124,7 +128,11 @@ export class EditCollectionDialogComponent implements OnInit {
           this.coverageEntries.set(coverage);
         },
         error: () => {
-          this.snackBar.open('Failed to load vocabulary options', 'OK', { duration: 4000 });
+          this.snackBar.open(
+            this.translate.instant('shared-ui.message.failed-to-load-vocabulary-options'),
+            this.translate.instant('common.ok'),
+            { duration: 4000 },
+          );
         },
       });
   }
@@ -250,9 +258,9 @@ export class EditCollectionDialogComponent implements OnInit {
           this.saving.set(false);
           this.snackBar.open(
             isPermissionDeniedError(err)
-              ? PERMISSION_DENIED_MESSAGE
-              : 'Failed to update collection',
-            'OK',
+              ? this.translate.instant(PERMISSION_DENIED_KEY)
+              : this.translate.instant('shared-ui.message.failed-to-update-collection'),
+            this.translate.instant('common.ok'),
             { duration: 4000 },
           );
         },

@@ -314,7 +314,7 @@ describe('SelectionTopbarComponent — selection popup', () => {
   it('announces the selected count in the label', async () => {
     await render([item(), item({ id: 'doc-2' }), item({ id: 'doc-3' })]);
 
-    expect(query('.selected-label')?.textContent?.trim()).toBe('All 3 item(s) selected');
+    expect(query('.selected-label')?.textContent?.trim()).toBe('All 3 items selected');
   });
 
   it('resolves no bulk actions when nothing is registered in the slot', async () => {

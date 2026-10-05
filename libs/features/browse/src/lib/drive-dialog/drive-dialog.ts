@@ -3,6 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { NuxeoDriveService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface BrowseDriveDialogData {
   docUid: string;
@@ -36,42 +37,8 @@ const DRIVE_PACKAGES: DrivePackage[] = [
 @Component({
   selector: 'lib-browse-drive-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatProgressSpinnerModule],
-  template: `
-    <div class="drive-dialog">
-      @if (checking()) {
-        <div class="launching-state">
-          <mat-spinner diameter="32" />
-          <p class="launching-text">Checking Nuxeo Drive...</p>
-        </div>
-      } @else {
-        <h2>Download Nuxeo Drive Client</h2>
-        <table class="drive-table">
-          <thead>
-            <tr>
-              <th>Platform</th>
-              <th>Package to Install</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (pkg of packages; track pkg.platform) {
-              <tr>
-                <td>
-                  <span class="platform-badge">{{ pkg.platform }}</span>
-                </td>
-                <td>
-                  <a class="package-link" [href]="pkg.url" target="_blank" rel="noopener">{{
-                    pkg.name
-                  }}</a>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-        <button class="close-link" (click)="close()">Close</button>
-      }
-    </div>
-  `,
+  imports: [TranslatePipe, MatDialogModule, MatProgressSpinnerModule],
+  templateUrl: './drive-dialog.html',
   styles: [
     `
       .drive-dialog {

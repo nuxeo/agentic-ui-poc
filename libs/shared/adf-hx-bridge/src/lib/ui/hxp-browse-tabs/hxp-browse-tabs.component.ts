@@ -1,8 +1,11 @@
 import { Component, input, output } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { HXP_BROWSE_TABS, type HxpBrowseTabId } from '../../utils/hxp-browse-tabs.utils';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'hxp-browse-tabs',
+  imports: [DescriptorLabelPipe, TranslatePipe],
   standalone: true,
   templateUrl: './hxp-browse-tabs.component.html',
   styleUrl: './hxp-browse-tabs.component.scss',

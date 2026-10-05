@@ -1,0 +1,13 @@
+<div class="remove-dialog">
+  <h2>{{ 'document-detail.remove-attachment-dialog.remove-file' | translate }}</h2>
+  <p>{{ 'document-detail.remove-attachment-dialog.do-you-really-want-to-remove' | translate }}</p>
+
+  <div class="dialog-actions">
+    <button class="btn-no" (click)="cancel()">
+      {{ 'document-detail.remove-attachment-dialog.no' | translate }}
+    </button>
+    <button class="btn-yes" (click)="confirm()">
+      {{ 'document-detail.remove-attachment-dialog.yes' | translate }}
+    </button>
+  </div>
+</div>

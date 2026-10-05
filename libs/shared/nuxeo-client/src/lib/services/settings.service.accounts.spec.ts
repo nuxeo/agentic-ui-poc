@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
 import { SettingsService } from './settings.service';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 const PROVIDERS_URL = '/nuxeo/api/v1/oauth2/provider/';
 const PROVIDER_TOKENS_URL = '/nuxeo/api/v1/oauth2/token/provider';
@@ -19,6 +20,7 @@ describe('SettingsService accounts, drive roots and password', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
+      imports: [testTranslateModule()],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),

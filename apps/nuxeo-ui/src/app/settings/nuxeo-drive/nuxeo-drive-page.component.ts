@@ -2,9 +2,11 @@ import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { SettingsService, type SynchronizationRootRow } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   standalone: true,
+  imports: [TranslatePipe],
   templateUrl: './nuxeo-drive-page.component.html',
   styleUrl: './nuxeo-drive-page.component.scss',
 })

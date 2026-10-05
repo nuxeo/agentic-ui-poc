@@ -6,6 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { SafeResourceUrl } from '@angular/platform-browser';
 // Shared rather than local: see the note on the helper — one normalisation for three checks.
 import { mediaTypeEssence } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface AttachmentPreviewData {
   name: string;
@@ -82,7 +83,7 @@ const PREVIEWABLE_TEXT_TYPES = new Set(['text/plain', 'text/csv', 'application/j
 @Component({
   selector: 'lib-attachment-preview-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [TranslatePipe, MatDialogModule, MatIconModule, MatButtonModule, MatTooltipModule],
   templateUrl: './attachment-preview-dialog.html',
   styles: [
     `

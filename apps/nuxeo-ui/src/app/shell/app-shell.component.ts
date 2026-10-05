@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import {
   Subject,
@@ -20,6 +20,7 @@ import {
   distinctUntilChanged,
   filter,
   finalize,
+  map,
   of,
   switchMap,
   Subscription,
@@ -100,6 +101,7 @@ export class AppShellComponent implements OnDestroy {
 
   private readonly settingsDrawerItem: AppNavItem = {
     id: 'app.navbar.settings',
+    labelKey: 'nav.item.settings',
     label: 'Settings',
     path: '/settings',
     icon: 'settings',
@@ -120,6 +122,17 @@ export class AppShellComponent implements OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly appConfig = inject(AppConfigService);
   private readonly translate = inject(TranslateService);
+  /**
+   * The active language, as a signal.
+   *
+   * `TranslateService.currentLang` is a plain getter and `instant()` is not reactive, so a
+   * `computed()` that reads either would never recompute on a language change. `onLangChange`
+   * is the only reactive surface ngx-translate offers for this.
+   */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.currentLang },
+  );
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
   readonly themingFlags = inject(ThemingFeatureFlagService);
@@ -167,23 +180,31 @@ export class AppShellComponent implements OnDestroy {
   readonly pageTitle = computed(() => {
     const url = this.currentUrl();
     const parts = url.split('/').filter(Boolean);
+    // Administration returns BEFORE the descriptor lookup below, so none of these titles ever
+    // reached `navText` and all of them stayed English in every locale. The route is guarded by
+    // `adminGuard`, so the pseudo-locale audit was redirected away from it and could not see them
+    // either — which is how they survived being reported as fixed. Keyed here, at the only place
+    // they are produced.
     if (parts[0] === 'administration') {
       const seg = parts[1] ?? 'analytics';
       if (seg === 'users-groups' && parts[2] === 'user' && parts[3]) {
-        return `User: ${parts[3]}`;
+        return this.translate.instant('admin.page-title.user-named', { name: parts[3] });
       }
       if (seg === 'users-groups' && parts[2] === 'group' && parts[3]) {
-        return `Group: ${parts[3]}`;
+        return this.translate.instant('admin.page-title.group-named', { name: parts[3] });
       }
+      // The drawer already owns a key for each of these pages, so they are reused rather than
+      // duplicated: the same concept in the same product, which INFO-144 permits. Only the two
+      // titles with no drawer entry need keys of their own.
       const titles: Record<string, string> = {
-        analytics: 'Analytics',
-        'users-groups': 'Users & Groups',
-        vocabularies: 'Vocabularies',
-        audit: 'Audit',
-        'cloud-services': 'Cloud Services',
-        'nxql-search': 'NXQL Search',
+        analytics: 'drawer.administration-analytics',
+        'users-groups': 'drawer.administration-users-groups',
+        vocabularies: 'drawer.administration-vocabularies',
+        audit: 'drawer.administration-audit',
+        'cloud-services': 'admin.page-title.cloud-services',
+        'nxql-search': 'drawer.administration-nxql-search',
       };
-      return titles[seg] ?? 'Administration';
+      return this.translate.instant(titles[seg] ?? 'admin.page-title.administration');
     }
     // Resolved entries first so a manifest relabel wins, then the packaged list
     // as a fallback. Matching only against `navItems()` — which is filtered —
@@ -201,8 +222,38 @@ export class AppShellComponent implements OnDestroy {
     ];
     const match = candidates.find((item) => url === item.path || url.startsWith(item.path + '/'));
     // Layer 0: the product name on an unmatched route is branding, not a literal.
-    return match?.label ?? this.appConfig.bootstrap().branding.applicationTitle;
+    return match ? this.navText(match) : this.appConfig.bootstrap().branding.applicationTitle;
   });
+
+  /**
+   * The text of a nav entry, preferring its translation key over its literal label.
+   *
+   * ## Why this exists instead of a pipe
+   *
+   * The nav descriptor's text reaches the user through three paths, and only one of them is a
+   * template binding. This heading is built in TypeScript, so is the clipboard entry's composed
+   * accessible name below, and so is the adf-core `DataColumn.title` in the browse feature —
+   * that last one is rendered by upstream's own DataTable, where we have no template at all.
+   * "Apply the pipe at the render site" has no render site in any of the three.
+   *
+   * `instant()` is a synchronous read of the already-loaded catalogue, which is correct here
+   * because `APP_INITIALIZER` awaits `translate.use(...)` before the shell renders.
+   *
+   * ## Why it depends on `currentLang`
+   *
+   * `instant()` is not reactive. Read inside a `computed()` with nothing else changing, the
+   * heading would keep the language it was first evaluated in. Touching the language signal
+   * makes the dependency explicit, so a language change recomputes the heading rather than
+   * leaving one stale string in the middle of a translated page.
+   */
+  protected navText(item: { readonly label: string; readonly labelKey?: string }): string {
+    this.currentLang();
+    if (!item.labelKey) return item.label;
+    const translated = this.translate.instant(item.labelKey);
+    // ngx-translate passes an unresolved key straight through. Rendering `nav.browse` as a
+    // page heading would be worse than the English it replaced, so fall back deliberately.
+    return translated === item.labelKey ? item.label : translated;
+  }
 
   private storageListener = (e: StorageEvent) => {
     if (e.key === 'nuxeo_clipboard') {
@@ -311,8 +362,26 @@ export class AppShellComponent implements OnDestroy {
       return null;
     }
     const count = this.clipboardCount();
-    const noun = count === 1 ? 'item' : 'items';
-    return `${item.label}, ${count} ${noun}`;
+    // The catalogue's established two-key pluralisation, as used by every `common.count.*` pair.
+    //
+    // This maps `1` to the singular and EVERY other count to the plural. That is not the same
+    // thing as "these locales have two plural forms", which an earlier version of this comment
+    // claimed. Measured with `Intl.PluralRules`:
+    //
+    //   en -> one, other          (0 -> other)
+    //   de -> one, other          (0 -> other)
+    //   fr -> one, many, other    (0 -> ONE, 1_000_000 -> many)
+    //
+    // So French has three categories and treats zero as singular. This call site is unaffected on
+    // both counts: it returns `null` above when the count is not positive, so zero never reaches a
+    // key, and a clipboard cannot hold a million items. The narrowing is what makes two keys
+    // correct HERE, not a property of the languages.
+    //
+    // `docs/i18n-status.md` records the ICU decision and the same measurement, including the
+    // `common.count.*` pairs where the zero case is NOT narrowed away and French is therefore
+    // wrong today.
+    const key = count === 1 ? 'nav.clipboard.aria-label-one' : 'nav.clipboard.aria-label-many';
+    return this.translate.instant(key, { name: this.navText(item), count });
   }
 
   isActive(path: string): boolean {

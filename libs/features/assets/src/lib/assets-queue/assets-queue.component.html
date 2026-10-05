@@ -2,7 +2,7 @@
   @if (items().length === 0) {
     <div class="queue-empty">
       <mat-icon>search_off</mat-icon>
-      <p>No asset results</p>
+      <p>{{ 'assets.assets-queue.no-asset-results' | translate }}</p>
     </div>
   } @else {
     @for (item of items(); track item.id) {

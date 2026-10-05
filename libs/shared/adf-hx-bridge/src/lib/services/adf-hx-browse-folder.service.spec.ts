@@ -3,6 +3,7 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { firstValueFrom } from 'rxjs';
 import type { AuditEntry, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import { nuxeoDocument } from '@agentic-ui/shared/testing';
 
 import { AdfHxBrowseFolderService } from './adf-hx-browse-folder.service';
 
@@ -25,17 +26,23 @@ function auditEntry(overrides: Partial<AuditEntry> = {}): AuditEntry {
   };
 }
 
+/**
+ * Migrated to `@agentic-ui/shared/testing` — the fifth duplicate document builder, and the
+ * one Stage 3's "migrated all duplicate builders" claim was wrong about. Reported on PR #226.
+ *
+ * `state` and `lastModified` are overrides rather than the fixture's defaults because this
+ * file's cases were written around them: `state` is an optional field the factory
+ * deliberately leaves absent, and several specs here read the lifecycle.
+ *
+ * The `as NuxeoDocument` cast is gone with the literal. It was what let the local builder
+ * drift from the model, which is the coupling this library exists to provide.
+ */
 function nuxeoDoc(overrides: Partial<NuxeoDocument> = {}): NuxeoDocument {
-  return {
-    uid: 'doc-1',
-    title: 'Invoice',
-    type: 'File',
-    path: '/default-domain/workspaces/ws/Invoice',
+  return nuxeoDocument({
     state: 'project',
     lastModified: '2026-02-01T00:00:00.000Z',
-    properties: {},
     ...overrides,
-  } as NuxeoDocument;
+  });
 }
 
 describe('AdfHxBrowseFolderService', () => {
@@ -323,6 +330,58 @@ describe('AdfHxBrowseFolderService', () => {
         .expectOne((r) => r.url.includes('Document.Untrash'))
         .flush(nuxeoDoc({ uid: 'gone-1', state: 'project' }));
       expect((await restored).state).toBe('project');
+    });
+
+    it('reads the real repository root, with its permissions', async () => {
+      const pending = firstValueFrom(service.getRepositoryRoot());
+      const req = httpMock.expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'));
+      expect(req.request.headers.get('enrichers.document')).toContain('permissions');
+      req.flush(nuxeoDoc({ uid: 'root-uid', type: 'Root', path: '/' }));
+      expect((await pending).uid).toBe('root-uid');
+    });
+
+    it('falls back to resolving the root from a readable domain when /path/ is refused', async () => {
+      // Domain-only users get 403 on the root; production browse resolves it through NXQL.
+      const pending = firstValueFrom(service.getRepositoryRoot());
+      httpMock
+        .expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'))
+        .flush({}, { status: 403, statusText: 'Forbidden' });
+      httpMock
+        .expectOne((r) => r.url.includes('/search/lang/NXQL/execute'))
+        .flush({
+          entries: [nuxeoDoc({ uid: 'd1', type: 'Domain', path: '/d1', parentRef: 'root-uid' })],
+        });
+      const root = await pending;
+      expect(root.uid).toBe('root-uid');
+    });
+
+    it("lists the real repository root's trash, not the synthetic root's", async () => {
+      // The bridge's root has an all-zero id that Nuxeo does not know, so querying its children
+      // returned nothing and the Trash tab at the root reported empty without asking.
+      const pending = firstValueFrom(service.getTrashedChildrenOfRepositoryRoot(10));
+      httpMock
+        .expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'))
+        .flush(nuxeoDoc({ uid: 'root-uid', type: 'Root', path: '/' }));
+
+      const req = httpMock.expectOne((r) => r.url.includes('/search/lang/NXQL/execute'));
+      expect(req.request.params.get('query')).toContain("ecm:parentId = 'root-uid'");
+      expect(req.request.params.get('query')).toContain('ecm:isTrashed = 1');
+      expect(req.request.params.get('pageSize')).toBe('10');
+      req.flush({ entries: [nuxeoDoc({ uid: 'gone-domain', type: 'Domain' })], resultsCount: 1 });
+
+      expect((await pending).entries?.map((d) => d.uid)).toEqual(['gone-domain']);
+    });
+
+    it('propagates a failed root trash query rather than emitting an empty trash', async () => {
+      const pending = firstValueFrom(service.getTrashedChildrenOfRepositoryRoot());
+      httpMock
+        .expectOne((r) => r.url.endsWith('/nuxeo/api/v1/path/'))
+        .flush(nuxeoDoc({ uid: 'root-uid', type: 'Root', path: '/' }));
+      httpMock
+        .expectOne((r) => r.url.includes('/search/lang/NXQL/execute'))
+        .flush({}, { status: 500, statusText: 'Server Error' });
+
+      await expect(pending).rejects.toBeDefined();
     });
 
     it('searches tags and narrows the vocabulary to the typed term', async () => {

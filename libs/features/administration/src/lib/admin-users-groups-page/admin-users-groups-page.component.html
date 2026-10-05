@@ -1,34 +1,44 @@
 <div class="ug-page">
   <header class="ug-page__header">
-    <div class="ug-page__title" role="heading" aria-level="1">Users &amp; Groups</div>
+    <div class="ug-page__title" role="heading" aria-level="1">
+      {{ 'admin.admin-users-groups-page.users-amp-groups' | translate }}
+    </div>
   </header>
 
   <div class="ug-toolbar">
     <mat-form-field appearance="outline" class="ug-search" subscriptSizing="dynamic">
-      <mat-label>Search for users and groups</mat-label>
+      <mat-label>{{
+        'admin.admin-users-groups-page.search-for-users-and-groups' | translate
+      }}</mat-label>
       <input
         matInput
         name="combinedQ"
         [(ngModel)]="combinedSearchQuery"
         (keyup.enter)="runSearch()"
       />
-      <button type="button" mat-icon-button matSuffix (click)="runSearch()" aria-label="Run search">
+      <button
+        type="button"
+        mat-icon-button
+        matSuffix
+        (click)="runSearch()"
+        [attr.aria-label]="'admin.admin-users-groups-page.run-search' | translate"
+      >
         <mat-icon>search</mat-icon>
       </button>
     </mat-form-field>
 
     <button type="button" mat-flat-button color="primary" [matMenuTriggerFor]="newMenu">
       <mat-icon>add</mat-icon>
-      New
+      {{ 'admin.admin-users-groups-page.new' | translate }}
     </button>
     <mat-menu #newMenu="matMenu">
       <button type="button" mat-menu-item (click)="openCreateUser()">
         <mat-icon>person_add</mat-icon>
-        New user
+        {{ 'admin.admin-users-groups-page.new-user' | translate }}
       </button>
       <button type="button" mat-menu-item (click)="openCreateGroup()">
         <mat-icon>group_add</mat-icon>
-        New group
+        {{ 'admin.admin-users-groups-page.new-group' | translate }}
       </button>
     </mat-menu>
   </div>
@@ -37,25 +47,32 @@
     <div class="ug-recent__head">
       <mat-icon class="ug-recent__ico">history</mat-icon>
       <div class="ug-recent__title" role="heading" aria-level="2">
-        Recently Created Users and Groups
+        {{ 'admin.admin-users-groups-page.recently-created-users-and-groups' | translate }}
       </div>
       <button
         type="button"
         mat-icon-button
         (click)="loadRecent()"
-        aria-label="Refresh recent"
-        matTooltip="Refresh"
+        [attr.aria-label]="'admin.admin-users-groups-page.refresh-recent' | translate"
+        [matTooltip]="'admin.admin-users-groups-page.refresh' | translate"
       >
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
     @if (recentLoading()) {
-      <div class="ug-center"><mat-spinner diameter="32" aria-label="Loading" /></div>
+      <div class="ug-center">
+        <mat-spinner
+          diameter="32"
+          [attr.aria-label]="'admin.admin-users-groups-page.loading' | translate"
+        />
+      </div>
     } @else {
       <div class="ug-table-wrap mat-elevation-z0">
         <table mat-table [dataSource]="recentRowsPage()" class="ug-table">
           <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Name</th>
+            <th mat-header-cell *matHeaderCellDef>
+              {{ 'admin.admin-users-groups-page.name' | translate }}
+            </th>
             <td mat-cell *matCellDef="let row">
               <button type="button" class="ug-link-btn" (click)="openRecentRow(row)">
                 {{ row.name }}
@@ -63,11 +80,15 @@
             </td>
           </ng-container>
           <ng-container matColumnDef="identifier">
-            <th mat-header-cell *matHeaderCellDef>Identifier</th>
+            <th mat-header-cell *matHeaderCellDef>
+              {{ 'admin.admin-users-groups-page.identifier' | translate }}
+            </th>
             <td mat-cell *matCellDef="let row">{{ row.identifier }}</td>
           </ng-container>
           <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <th mat-header-cell *matHeaderCellDef>
+              {{ 'admin.admin-users-groups-page.email' | translate }}
+            </th>
             <td mat-cell *matCellDef="let row">{{ row.email || '—' }}</td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="recentColumns"></tr>
@@ -85,7 +106,9 @@
           />
         }
         @if (recentRows().length === 0) {
-          <p class="ug-empty">No recent user or group.</p>
+          <p class="ug-empty">
+            {{ 'admin.admin-users-groups-page.no-recent-user-or-group' | translate }}
+          </p>
         }
       </div>
     }
@@ -101,14 +124,21 @@
     <mat-tab [label]="usersTabLabel()">
       <div class="ug-tab-pad">
         @if (usersLoading()) {
-          <div class="ug-center"><mat-spinner diameter="40" aria-label="Loading" /></div>
+          <div class="ug-center">
+            <mat-spinner
+              diameter="40"
+              [attr.aria-label]="'admin.admin-users-groups-page.loading' | translate"
+            />
+          </div>
         } @else if (usersError()) {
           <p class="ug-error">{{ usersError() }}</p>
         } @else {
           <div class="ug-table-wrap mat-elevation-z1">
             <table mat-table [dataSource]="users()" class="ug-table">
               <ng-container matColumnDef="username">
-                <th mat-header-cell *matHeaderCellDef>Username</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-users-groups-page.username' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let u">
                   <button type="button" class="ug-link-btn" (click)="selectUser(u)">
                     {{ u.id }}
@@ -116,7 +146,9 @@
                 </td>
               </ng-container>
               <ng-container matColumnDef="name">
-                <th mat-header-cell *matHeaderCellDef>Name</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-users-groups-page.name' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let u">
                   <button type="button" class="ug-link-btn" (click)="selectUser(u)">
                     {{ displayName(u) }}
@@ -124,15 +156,21 @@
                 </td>
               </ng-container>
               <ng-container matColumnDef="email">
-                <th mat-header-cell *matHeaderCellDef>Email</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-users-groups-page.email' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let u">{{ u.properties.email }}</td>
               </ng-container>
               <ng-container matColumnDef="groups">
-                <th mat-header-cell *matHeaderCellDef>Groups</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-users-groups-page.groups' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let u" class="cell-muted">{{ groupsLabel(u) }}</td>
               </ng-container>
               <ng-container matColumnDef="admin">
-                <th mat-header-cell *matHeaderCellDef>Admin</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-users-groups-page.admin' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let u">
                   @if (u.isAdministrator) {
                     <mat-icon class="ok" aria-hidden="true">verified</mat-icon>
@@ -146,8 +184,8 @@
                     type="button"
                     mat-icon-button
                     (click)="openEditUser(u)"
-                    aria-label="Edit user"
-                    matTooltip="Edit"
+                    [attr.aria-label]="'admin.admin-users-groups-page.edit-user' | translate"
+                    [matTooltip]="'admin.admin-users-groups-page.edit' | translate"
                   >
                     <mat-icon>edit</mat-icon>
                   </button>
@@ -155,8 +193,8 @@
                     type="button"
                     mat-icon-button
                     (click)="confirmDeleteUser(u)"
-                    aria-label="Delete user"
-                    matTooltip="Delete"
+                    [attr.aria-label]="'admin.admin-users-groups-page.delete-user' | translate"
+                    [matTooltip]="'admin.admin-users-groups-page.delete' | translate"
                   >
                     <mat-icon>delete_outline</mat-icon>
                   </button>
@@ -185,14 +223,21 @@
     <mat-tab [label]="groupsTabLabel()">
       <div class="ug-tab-pad">
         @if (groupsLoading()) {
-          <div class="ug-center"><mat-spinner diameter="40" aria-label="Loading" /></div>
+          <div class="ug-center">
+            <mat-spinner
+              diameter="40"
+              [attr.aria-label]="'admin.admin-users-groups-page.loading' | translate"
+            />
+          </div>
         } @else if (groupsError()) {
           <p class="ug-error">{{ groupsError() }}</p>
         } @else {
           <div class="ug-table-wrap mat-elevation-z1">
             <table mat-table [dataSource]="groups()" class="ug-table">
               <ng-container matColumnDef="groupname">
-                <th mat-header-cell *matHeaderCellDef>Name</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-users-groups-page.name' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let g">
                   <button type="button" class="ug-link-btn" (click)="selectGroup(g)">
                     {{ g.groupname }}
@@ -200,11 +245,15 @@
                 </td>
               </ng-container>
               <ng-container matColumnDef="label">
-                <th mat-header-cell *matHeaderCellDef>Label</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-users-groups-page.label' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let g">{{ g.grouplabel }}</td>
               </ng-container>
               <ng-container matColumnDef="members">
-                <th mat-header-cell *matHeaderCellDef>Members</th>
+                <th mat-header-cell *matHeaderCellDef>
+                  {{ 'admin.admin-users-groups-page.members' | translate }}
+                </th>
                 <td mat-cell *matCellDef="let g" class="cell-muted">
                   @if (membersOverflowCount(g) > 0) {
                     <span class="ug-members-inline">
@@ -259,8 +308,8 @@
                     type="button"
                     mat-icon-button
                     (click)="openEditGroup(g)"
-                    aria-label="Edit group"
-                    matTooltip="Edit"
+                    [attr.aria-label]="'admin.admin-users-groups-page.edit-group' | translate"
+                    [matTooltip]="'admin.admin-users-groups-page.edit' | translate"
                   >
                     <mat-icon>edit</mat-icon>
                   </button>
@@ -268,8 +317,8 @@
                     type="button"
                     mat-icon-button
                     (click)="confirmDeleteGroup(g)"
-                    aria-label="Delete group"
-                    matTooltip="Delete"
+                    [attr.aria-label]="'admin.admin-users-groups-page.delete-group' | translate"
+                    [matTooltip]="'admin.admin-users-groups-page.delete' | translate"
                   >
                     <mat-icon>delete_outline</mat-icon>
                   </button>

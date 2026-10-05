@@ -5,20 +5,24 @@ import { hxpDocIconName } from '../../utils/hxp-doc-icon.utils';
 import { hxpDocTitle, hxpDocTypeLabel } from '../../utils/hxp-browse-cell.utils';
 import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';
 import { HxpSpinnerComponent } from '../hxp-spinner/hxp-spinner.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'hxp-browse-trash',
   standalone: true,
   templateUrl: './hxp-browse-trash.component.html',
   styleUrl: './hxp-browse-trash.component.scss',
-  imports: [DatePipe, HxpIconComponent, HxpSpinnerComponent],
+  imports: [TranslatePipe, DatePipe, HxpIconComponent, HxpSpinnerComponent],
 })
 export class HxpBrowseTrashComponent {
   readonly loading = input(false);
   readonly documents = input<Document[]>([]);
   readonly thumbnails = input<Record<string, string>>({});
+  /** Set when the trash could not be read, so a failure is not shown as an empty trash. */
+  readonly error = input(false);
 
   readonly restore = output<Document>();
+  readonly retry = output<void>();
 
   protected docTitle(doc: Document): string {
     return hxpDocTitle(doc);

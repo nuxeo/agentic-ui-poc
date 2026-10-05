@@ -4,7 +4,9 @@ export interface CompareFieldDef {
   key: string;
   label: string;
   read: (doc: NuxeoDocument) => unknown;
-  format?: (value: unknown) => string;
+  // `locale` is passed to every formatter, not just the date ones, because a formatter that
+  // ignores it stays type-compatible while one that needs it cannot silently forget to ask.
+  format?: (value: unknown, locale: string) => string;
 }
 
 export interface CompareSectionDef {
@@ -169,11 +171,11 @@ const FULL_COMPARE_SECTIONS: CompareSectionDef[] = [
   },
 ];
 
-export function formatCompareDate(value: unknown): string {
+export function formatCompareDate(value: unknown, locale: string): string {
   if (value === null || value === undefined || value === '') return '';
   const date = new Date(String(value));
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(locale, {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
@@ -266,9 +268,9 @@ export function formatCompareValue(value: unknown): string {
   return String(value);
 }
 
-function formatFieldValue(field: CompareFieldDef, doc: NuxeoDocument): string {
+function formatFieldValue(field: CompareFieldDef, doc: NuxeoDocument, locale: string): string {
   const raw = field.read(doc);
-  return field.format ? field.format(raw) : formatCompareValue(raw);
+  return field.format ? field.format(raw, locale) : formatCompareValue(raw);
 }
 
 function buildSectionsFromDefs(
@@ -276,6 +278,7 @@ function buildSectionsFromDefs(
   left: NuxeoDocument,
   right: NuxeoDocument,
   viewAll: boolean,
+  locale: string,
 ): CompareSection[] {
   return sectionDefs
     .map((section) => ({
@@ -283,8 +286,8 @@ function buildSectionsFromDefs(
       label: section.label,
       fields: section.fields
         .map((field) => {
-          const leftValue = formatFieldValue(field, left);
-          const rightValue = formatFieldValue(field, right);
+          const leftValue = formatFieldValue(field, left, locale);
+          const rightValue = formatFieldValue(field, right, locale);
           const differs = leftValue !== rightValue;
           return {
             key: field.key,
@@ -305,16 +308,8 @@ export function buildDocumentCompareSections(
   left: NuxeoDocument,
   right: NuxeoDocument,
   viewAll: boolean,
+  locale: string,
 ): CompareSection[] {
   const sectionDefs = viewAll ? FULL_COMPARE_SECTIONS : DIFF_COMPARE_SECTIONS;
-  return buildSectionsFromDefs(sectionDefs, left, right, viewAll);
-}
-
-/** @deprecated Use buildDocumentCompareSections */
-export function buildDocumentCompareRows(
-  left: NuxeoDocument,
-  right: NuxeoDocument,
-  viewAll: boolean,
-): CompareRow[] {
-  return buildDocumentCompareSections(left, right, viewAll).flatMap((section) => section.fields);
+  return buildSectionsFromDefs(sectionDefs, left, right, viewAll, locale);
 }

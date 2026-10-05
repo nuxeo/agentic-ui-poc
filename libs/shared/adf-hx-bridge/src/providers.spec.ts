@@ -1,3 +1,4 @@
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -19,6 +20,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   ADF_HX_NUXEO_BRIDGE_PROVIDERS,
+  HxpBrowseNavDrawerComponent,
   NuxeoCheckInApi,
   NuxeoCopyApi,
   NuxeoDownloadApi,
@@ -157,6 +159,7 @@ describe('adf-hx-bridge providers entry point', () => {
     // real entry point. A drift between the two would work in tests and fail in the app.
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
+      imports: [testTranslateModule()],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideAdfHxNuxeoBridge()],
     });
 
@@ -170,6 +173,8 @@ describe('adf-hx-bridge providers entry point', () => {
     // the main barrel would pull adf-core into the initial bundle again — the +0.95 MB
     // regression this entry point exists to prevent. The `no-test-libs-in-bundle` and
     // `api-surface` gates guard the bundle itself; this guards the export list they measure.
+    // `HxpBrowseNavDrawerComponent` is also exported here because the eagerly loaded shell nav
+    // drawer renders adf-hx's document tree — an intentional exception, not a barrel accident.
     for (const exported of [
       NuxeoVersionApi,
       NuxeoCopyApi,
@@ -183,6 +188,7 @@ describe('adf-hx-bridge providers entry point', () => {
       NuxeoUploadApi,
       provideAdfHxNuxeoBridge,
       ADF_HX_NUXEO_BRIDGE_PROVIDERS,
+      HxpBrowseNavDrawerComponent,
     ]) {
       expect(exported).toBeDefined();
     }
@@ -214,6 +220,7 @@ describe('adf-hx-bridge providers entry point', () => {
       'NuxeoUploadApi',
       'provideAdfHxNuxeoBridge',
       'ADF_HX_NUXEO_BRIDGE_PROVIDERS',
+      'HxpBrowseNavDrawerComponent',
       // Not exported from the main barrel either: it imports upstream's API tokens.
       'AdfHxDocumentService',
     ]) {

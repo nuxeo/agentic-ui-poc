@@ -1,12 +1,12 @@
 import { Component, DestroyRef, OnDestroy, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { catchError, of, switchMap } from 'rxjs';
+import { catchError, of, switchMap, map } from 'rxjs';
 
 import {
   buildIndexedReferences,
@@ -27,6 +27,7 @@ import {
   mediaTypeEssence,
   type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface KdCitationDialogData {
   answer: KdAnswerResponse;
@@ -39,6 +40,7 @@ type PreviewMode = 'pdf' | 'image' | 'text' | 'unsupported';
   selector: 'lib-kd-citation-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatButtonModule,
     MatDialogModule,
     MatIconModule,
@@ -50,6 +52,12 @@ type PreviewMode = 'pdf' | 'image' | 'text' | 'unsupported';
 })
 export class KdCitationDialogComponent implements OnDestroy {
   private readonly dialogRef = inject(MatDialogRef<KdCitationDialogComponent>);
+  private readonly translate = inject(TranslateService);
+  /** The active language as a signal, so a `computed` that calls `instant()` recomputes on a switch. */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.getCurrentLang() },
+  );
   private readonly data = inject<KdCitationDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -77,9 +85,10 @@ export class KdCitationDialogComponent implements OnDestroy {
   });
 
   readonly headerLabel = computed(() => {
+    this.currentLang();
     const reference = this.activeReference();
     if (!reference) {
-      return 'Reference document';
+      return this.translate.instant('kd.kd-citation-dialog.reference-document');
     }
     return reference.title || this.documentTitle() || reference.objectId;
   });
@@ -126,7 +135,10 @@ export class KdCitationDialogComponent implements OnDestroy {
   }
 
   formatExcerpt(content?: string): string {
-    return formatReferenceExcerpt(content) || 'No excerpt was returned for this reference.';
+    return (
+      formatReferenceExcerpt(content) ||
+      this.translate.instant('kd.kd-citation-dialog.no-excerpt-returned')
+    );
   }
 
   close(): void {
@@ -152,14 +164,16 @@ export class KdCitationDialogComponent implements OnDestroy {
     const reference = this.activeReference();
     if (!reference) {
       this.loadingDocument.set(false);
-      this.documentError.set('No reference is available for this citation.');
+      this.documentError.set(
+        this.translate.instant('kd.message.no-reference-is-available-for-this-citation'),
+      );
       return;
     }
 
     const documentId = extractNuxeoDocumentId(reference.objectId);
     if (!documentId) {
       this.loadingDocument.set(false);
-      this.documentError.set('This citation does not map to a Nuxeo document.');
+      this.documentError.set(this.translate.instant('kd.message.this-citation-does-not-map-to-a'));
       return;
     }
 
@@ -174,7 +188,9 @@ export class KdCitationDialogComponent implements OnDestroy {
         switchMap((document) => this.loadPreview(document, reference)),
         catchError(() => {
           this.loadingDocument.set(false);
-          this.documentError.set('Failed to load the source document from Nuxeo.');
+          this.documentError.set(
+            this.translate.instant('kd.message.failed-to-load-the-source-document-from'),
+          );
           return of(null);
         }),
       )

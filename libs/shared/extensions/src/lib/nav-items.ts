@@ -14,7 +14,44 @@ import { EXTENSION_SLOTS, type ExtensionElement } from './extension-slots';
  * happen to use this quarter.
  */
 export interface NavItemDescriptor extends ExtensionElement {
+  /**
+   * The entry's text, as a literal.
+   *
+   * Still required, still a literal, and still what a manifest's
+   * `overrides[id].label` replaces. Nothing about this field changed when `labelKey` arrived,
+   * which is the point: it is documented in `docs/extension-reference.md` with worked examples
+   * a customer has copied, and reinterpreting it as a translation key would have turned every
+   * one of those literals into a lookup that misses.
+   *
+   * When `labelKey` is present this is the **fallback**, used only if the key does not resolve.
+   */
   readonly label: string;
+  /**
+   * A translation key for the entry's text, preferred over `label` when it resolves.
+   *
+   * ## Why a second field rather than treating `label` as a key
+   *
+   * `label` is published API — it is on eight interfaces in `docs/api/platform.api.md` and
+   * documented as customer-settable. A customer writing `"label": "Repository"` expects that
+   * string on screen. Piping it would make it a catalogue lookup that survives only by
+   * ngx-translate's key passthrough, and a label containing a dot — `"v2.0 Archive"` — would
+   * attempt a *nested* lookup and could resolve to something else entirely.
+   *
+   * So the packaged entries carry both: `labelKey` for translation, `label` for the English
+   * text and for any consumer that has not been taught the key. A customer who only knows
+   * about `label` keeps working unchanged.
+   *
+   * ## Which mechanism a customer should reach for
+   *
+   * | Want | Use | Scope |
+   * | --- | --- | --- |
+   * | One label, every language | `overrides[id].label` | Wins outright; bypasses translation |
+   * | Per-language text | `labels['nav.browse']` in the manifest | Applies wherever the key resolves |
+   *
+   * Setting **both** means the override wins and the `labels` entry is silently inert. That is
+   * the documented precedence, not an accident, and `docs/extension-reference.md` says so.
+   */
+  readonly labelKey?: string;
   /** Router path, e.g. `/browse`. */
   readonly path: string;
   /** Icon name understood by the shell's icon set. */
@@ -28,12 +65,17 @@ export interface NavItemDescriptor extends ExtensionElement {
 /**
  * The navigation the product ships with.
  *
- * This is the same list, in the same order, with the same labels, paths and
- * icons that `apps/nuxeo-ui/src/app/platform-nav-items.ts` held as a compiled
- * `const` before Phase 2 — reproducing today's behaviour exactly is the whole
- * requirement. What changed is that it is now **registered into a slot** rather
- * than imported, so a manifest can reorder it, relabel it, hide entries, gate
- * them behind a rule, or add its own.
+ * Phase 2 took the compiled `const` that `apps/nuxeo-ui/src/app/platform-nav-items.ts`
+ * held and **registered it into a slot** instead, so a manifest can reorder it, relabel
+ * it, hide entries, gate them behind a rule, or add its own. Reproducing the pre-Phase-2
+ * navigation exactly was that phase's requirement, and it did.
+ *
+ * **Two entries have deliberately diverged from it since.** `app.navbar.browse` carries
+ * `disabled: true` and `app.navbar.browseAdfHx` now reads "Browse", so the product offers
+ * one browse surface: fifteen descriptors are registered here and fourteen render by
+ * default. Both are commented where they are declared. Anything reading this list as
+ * "what the user sees" must filter it — `resolve()` does, `pageTitle` deliberately does
+ * not.
  *
  * `order` is explicit and spaced by ten so a customer can insert between two
  * packaged entries without restating the list.
@@ -41,6 +83,7 @@ export interface NavItemDescriptor extends ExtensionElement {
 export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   {
     id: 'app.navbar.knowledgeDiscovery',
+    labelKey: 'nav.item.knowledge-discovery',
     label: 'Knowledge Discovery',
     path: '/knowledge-discovery',
     icon: 'star',
@@ -48,6 +91,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.dashboard',
+    labelKey: 'nav.item.dashboard',
     label: 'Dashboard',
     path: '/dashboard',
     icon: 'dashboard',
@@ -55,15 +99,25 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.browse',
+    labelKey: 'nav.item.browse',
     label: 'Browse',
     path: '/browse',
     icon: 'folder',
     order: 30,
     hasDrawer: true,
+    // The adf-hx entry below is the browse experience we ship, so this one is
+    // dropped from the navigation. The descriptor stays registered: `/browse`
+    // is still a live route, still linked from the dashboard and still needs
+    // this entry for its page title.
+    disabled: true,
   },
   {
     id: 'app.navbar.browseAdfHx',
-    label: 'Browse (adf-hx POC)',
+    // The key keeps its `-adf-hx` slug: it is the published label contract a
+    // customer's `labels` map already targets, and renaming it would silently
+    // drop their text. Only the text it resolves to changed.
+    labelKey: 'nav.item.browse-adf-hx',
+    label: 'Browse',
     path: '/browse-adf-hx',
     icon: 'folder_open',
     order: 40,
@@ -71,6 +125,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.recentlyViewed',
+    labelKey: 'nav.item.recently-viewed',
     label: 'Recently viewed',
     path: '/recently-viewed',
     icon: 'clock',
@@ -79,6 +134,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.search',
+    labelKey: 'nav.item.search-filters',
     label: 'Search filters',
     path: '/search',
     icon: 'search',
@@ -87,6 +143,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.expiredQueue',
+    labelKey: 'nav.item.expired-queue',
     label: 'Expired Queue',
     path: '/expired-queue',
     icon: 'timer',
@@ -95,6 +152,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.assets',
+    labelKey: 'nav.item.assets',
     label: 'Assets',
     path: '/documents',
     icon: 'document',
@@ -103,6 +161,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.tasks',
+    labelKey: 'nav.item.tasks',
     label: 'Tasks',
     path: '/tasks',
     icon: 'tasks',
@@ -111,6 +170,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.favorites',
+    labelKey: 'nav.item.favorites',
     label: 'Favorites',
     path: '/favorites',
     icon: 'star',
@@ -119,6 +179,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.collections',
+    labelKey: 'nav.item.collections',
     label: 'Collections',
     path: '/collections',
     icon: 'bookmark',
@@ -127,6 +188,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.personalSpace',
+    labelKey: 'nav.item.personal-space',
     label: 'Personal Space',
     path: '/personal-space',
     icon: 'grid_view',
@@ -135,6 +197,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.clipboard',
+    labelKey: 'nav.item.clipboard',
     label: 'Clipboard',
     path: '/clipboard',
     icon: 'notepad',
@@ -143,6 +206,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.trash',
+    labelKey: 'nav.item.trash',
     label: 'Trash',
     path: '/trash',
     icon: 'trash',
@@ -151,6 +215,7 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
   },
   {
     id: 'app.navbar.administration',
+    labelKey: 'nav.item.administration',
     label: 'Administration',
     path: '/administration',
     icon: 'settings',

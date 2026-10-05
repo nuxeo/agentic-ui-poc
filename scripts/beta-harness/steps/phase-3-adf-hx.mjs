@@ -53,6 +53,8 @@ const ENVIRONMENTAL_ERRORS = [
 const FIXTURE_FOLDER_PATH = '/default-domain/workspaces/kd-versions-evidence';
 const FIXTURE_DOC_NAME = 'versioned-file';
 const FIXTURE_DOC_TITLE = 'KD Versions Evidence';
+/** The fixture's main file. The viewer check asserts this exact text is on screen. */
+const FIXTURE_FILE_TEXT = 'phase-3 evidence: this text is rendered by the adf-hx document viewer';
 
 /**
  * A document carrying exactly two Nuxeo versions, 0.1 and 0.2.
@@ -82,11 +84,38 @@ async function createVersionedFixture(page, h) {
   await page.request.delete(`${api}/path${FIXTURE_FOLDER_PATH}/${FIXTURE_DOC_NAME}`, {
     failOnStatusCode: false,
   });
+
+  // A real main file, so the viewer check has content to render. A File with no blob is what let
+  // that check pass while every preview showed "Couldn't load preview".
+  const batch = await page.request.post(`${api}/upload/`, { failOnStatusCode: false });
+  const batchId = (await batch.json().catch(() => null))?.batchId;
+  const uploaded = batchId
+    ? await page.request.post(`${api}/upload/${batchId}/0`, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'X-File-Name': 'evidence.txt',
+          'X-File-Type': 'text/plain',
+        },
+        data: FIXTURE_FILE_TEXT,
+        failOnStatusCode: false,
+      })
+    : null;
+  h.requirePrecondition(
+    'the fixture file could be uploaded to Nuxeo',
+    Boolean(uploaded?.ok()),
+    `batch ${batch.status()}, upload ${uploaded?.status() ?? 'not attempted'} — without a file ` +
+      'the viewer has nothing to render, and an empty viewer proves nothing.',
+  );
+
   const created = await post(`/path${FIXTURE_FOLDER_PATH}`, {
     'entity-type': 'document',
     name: FIXTURE_DOC_NAME,
     type: 'File',
-    properties: { 'dc:title': FIXTURE_DOC_TITLE, 'dc:description': 'created by phase-3 evidence' },
+    properties: {
+      'dc:title': FIXTURE_DOC_TITLE,
+      'dc:description': 'created by phase-3 evidence',
+      'file:content': { 'upload-batch': batchId, 'upload-fileId': '0' },
+    },
   });
   const uid = (await created.json())?.uid;
   h.requirePrecondition(
@@ -129,7 +158,7 @@ export default async function run(page, h) {
     if (/\/nuxeo\/api\/v1\/(group|user)\/[^/?]+$/.test(url)) principalLookups.push(url);
   });
 
-  h.step('Precondition: the dev server serves adf-core\'s translation catalogue');
+  h.step("Precondition: the dev server serves adf-core's translation catalogue");
   // adf-hx components fetch `assets/adf-core/i18n/<lang>.json` at runtime, copied in by an
   // asset glob in `angular.json`. Without it one accessibility label renders as a raw key and
   // the console fills with 404s — asserted as a precondition so the run says so instead of
@@ -233,9 +262,8 @@ export default async function run(page, h) {
   // rows — measured at 37 before and after with no refetch — and the fetch took a hardcoded
   // `limit: 50` with no pager.
   const listRowTitles = () =>
-    page.$$eval(
-      'hxp-document-list adf-datatable-row:not(.adf-datatable-header)',
-      (rows) => rows.map((r) => (r.textContent ?? '').trim().slice(0, 24)).filter(Boolean),
+    page.$$eval('hxp-document-list adf-datatable-row:not(.adf-datatable-header)', (rows) =>
+      rows.map((r) => (r.textContent ?? '').trim().slice(0, 24)).filter(Boolean),
     );
 
   // Every `@children` request this step causes, so the sort can be proved at the wire rather than
@@ -254,7 +282,11 @@ export default async function run(page, h) {
   await page.waitForTimeout(2500);
 
   const pagerRange = () =>
-    page.locator('hxp-browse-pager .hxp-pager__range').first().innerText().catch(() => '');
+    page
+      .locator('hxp-browse-pager .hxp-pager__range')
+      .first()
+      .innerText()
+      .catch(() => '');
 
   h.check('a pager is present', (await page.locator('hxp-browse-pager').count()) > 0);
   const firstPage = await listRowTitles();
@@ -319,23 +351,33 @@ export default async function run(page, h) {
   // this step screenshotted the untouched list, so `row-selection.png` was byte-identical to
   // `document-list.png` — the screenshot audit caught it. A picture of an unselected list is
   // not evidence that selection works.
-  await rowCheckboxes.nth(1).click().catch(() => {});
+  await rowCheckboxes
+    .nth(1)
+    .click()
+    .catch(() => {}); // a click that cannot land fails the checked-count assertion below
   await page.waitForTimeout(500);
   const selectedCount = await page
     .locator('hxp-document-list adf-datatable-row mat-checkbox.mat-mdc-checkbox-checked')
     .count();
-  h.check('clicking a row checkbox selects that row', selectedCount === 1, `${selectedCount} checked`);
+  h.check(
+    'clicking a row checkbox selects that row',
+    selectedCount === 1,
+    `${selectedCount} checked`,
+  );
   await h.screenshot('row-selection');
-  // Cleared again, so the versions step below starts from a known empty selection rather than
+  // Cleared again, so the steps below start from a known empty selection rather than
   // inheriting this one.
-  await rowCheckboxes.nth(1).click().catch(() => {});
+  await rowCheckboxes
+    .nth(1)
+    .click()
+    .catch(() => {}); // best-effort reset; the later steps select their own rows
   await page.waitForTimeout(300);
 
   h.step('adf-core strings are translated, not raw keys');
   // adf-core ships its own catalogue and this app has to serve it. Without the asset glob
   // the DataTable renders `ADF-DATATABLE.ACCESSIBILITY.SELECT_ALL` to screen readers.
   const rawKeys = await page.$$eval('hxp-document-list', (roots) =>
-    roots.flatMap((r) => ((r.textContent ?? '').match(/ADF-[A-Z-]+\.[A-Z_.]+/g) ?? [])),
+    roots.flatMap((r) => (r.textContent ?? '').match(/ADF-[A-Z-]+\.[A-Z_.]+/g) ?? []),
   );
   h.check(
     'no untranslated adf-core keys are rendered',
@@ -348,25 +390,38 @@ export default async function run(page, h) {
   // `/{repository}/documents/{id}`, which this app has no route for, and the breadcrumb feeds
   // that straight into `[routerLink]`. `NuxeoDocumentRouterService` is bound against it, so
   // the assertion is on the hrefs the crumbs actually carry.
-  // Two levels deep, deliberately. Upstream's breadcrumb renders **ancestors only** — never
-  // the current document — and only links a crumb that is not the last. At the root there is
-  // one crumb and at a top-level folder still only one, so neither state has a link and the
-  // assertion below would fail for the wrong reason. Two earlier runs of this step did
-  // exactly that. `/default-domain/workspaces` gives root + default-domain, so the first is
-  // linked.
+  // Since 2026-09-23 the page feeds upstream's inner `hxp-ui-breadcrumb` the ancestors **plus the
+  // folder itself**, as production browse shows: `hxp-breadcrumb` alone never rendered the current
+  // folder and left its parent unlinked. `/default-domain/workspaces` therefore gives
+  // Home › Domain › Workspaces, with the first two linked and the last marked as the location.
   await h.goTo('/#/browse-adf-hx?path=%2Fdefault-domain%2Fworkspaces');
   await page.waitForTimeout(2000);
   await h.expectVisible('upstream breadcrumb rendered', 'hxp-ui-breadcrumb');
-  const crumbHrefs = await page.$$eval('hxp-breadcrumb a[href]', (as) =>
+  const crumbHrefs = await page.$$eval('hxp-ui-breadcrumb a[href]', (as) =>
     as.map((a) => a.getAttribute('href') ?? ''),
   );
+  // This check used to accept any href containing `browse-adf-hx`, and so passed while every
+  // crumb but Home pointed at `browse-adf-hx%3Fpath%3D…` — a route that does not exist, because a
+  // string bound to `[routerLink]` has its `?` escaped. It now requires the query to survive.
   h.check(
-    'breadcrumb links target the adf-hx browse route',
-    crumbHrefs.length > 0 && crumbHrefs.every((href) => href.includes('browse-adf-hx')),
-    `hrefs were ${JSON.stringify(crumbHrefs.slice(0, 4))}`,
+    'every breadcrumb link carries the path as a real query parameter',
+    crumbHrefs.length === 2 &&
+      crumbHrefs.every((href) => href.includes('browse-adf-hx') && !/%3F/i.test(href)) &&
+      crumbHrefs.some((href) => href.includes('?path=')),
+    `hrefs were ${JSON.stringify(crumbHrefs)}`,
+  );
+  const lastCrumb = await page
+    .locator('hxp-ui-breadcrumb a[aria-current="location"]')
+    .first()
+    .evaluate((a) => ({ text: (a.textContent ?? '').trim(), href: a.getAttribute('href') }))
+    .catch(() => null); // no current-location crumb fails the check below, with this in its detail
+  h.check(
+    'the folder on screen is the last crumb, marked as the location and not linked',
+    lastCrumb !== null && /workspaces/i.test(lastCrumb.text) && !lastCrumb.href,
+    `last crumb was ${JSON.stringify(lastCrumb)}`,
   );
   h.check(
-    'no link points at upstream\'s /{repository}/documents/ shape',
+    "no link points at upstream's /{repository}/documents/ shape",
     !crumbHrefs.some((href) => href.includes('/documents/')),
     `hrefs were ${JSON.stringify(crumbHrefs.slice(0, 4))}`,
   );
@@ -416,7 +471,10 @@ export default async function run(page, h) {
   // a direct `goTo` renders the page without one. Section 3 records that.
   await h.goTo('/#/browse');
   await page.waitForTimeout(1200);
-  const navEntry = page.locator('a,button').filter({ hasText: /adf-hx/i }).first();
+  const navEntry = page
+    .locator('a,button')
+    .filter({ hasText: /adf-hx/i })
+    .first();
   h.check('platform nav offers the adf-hx entry', (await navEntry.count()) > 0);
   await navEntry.click().catch(() => {});
   await page.waitForTimeout(3000);
@@ -448,50 +506,34 @@ export default async function run(page, h) {
     `Document.GetVersions reported ${fixture.versionCount} version(s) for ${fixture.uid}`,
   );
 
-  h.step('Adopted: upstream versions panel over real Nuxeo versions');
+  h.step('Folder tabs match production browse');
   await h.goTo(`/#/browse-adf-hx?path=${encodeURIComponent(FIXTURE_FOLDER_PATH)}`);
   await page.waitForTimeout(2000);
 
-  // The guard first, because it is the difference between a feature and a decoration.
-  // Versions belong to a document; the folder being browsed is not one, so with nothing
-  // selected the tab must say so rather than render the folder's own "current version".
+  // Properties and Versions were tabs here until 2026-09-23, hosting upstream's properties and
+  // versions panels. Both belong to one document, and production browse keeps them on the
+  // document page, so the folder tab strip is asserted as an ordered equality against its four.
   //
-  // The labels are read and reported rather than matched by an anchored regex. The first
-  // draft used `/^Versions$/`, which never matches: Playwright tests a regex against the raw
-  // `textContent`, and the template puts the label on its own line. The failure said "a
-  // Versions tab exists — false", which reads as a missing tab rather than a bad selector.
+  // Labels are read and compared rather than matched by an anchored regex: Playwright tests a
+  // regex against the raw `textContent`, and the template puts each label on its own line.
   const tabLabels = await page.$$eval('hxp-browse-tabs [role="tab"]', (els) =>
     els.map((el) => (el.textContent ?? '').trim()),
   );
+  const EXPECTED_TABS = ['View', 'Permissions', 'History', 'Trash'];
   h.check(
-    'a Versions tab exists',
-    tabLabels.includes('Versions'),
+    "the tab strip is exactly production browse's four folder tabs",
+    JSON.stringify(tabLabels) === JSON.stringify(EXPECTED_TABS),
     `tab strip rendered ${JSON.stringify(tabLabels)}`,
   );
-  const tab = (label) =>
-    page.locator('hxp-browse-tabs [role="tab"]').filter({ hasText: label }).first();
-  const versionsTab = tab('Versions');
-  await versionsTab.click();
-  await page.waitForTimeout(800);
-  const unselectedHint = await page
-    .locator('lib-browse-adf-hx-poc .hxp-poc-empty')
-    .first()
-    .innerText()
-    .catch(() => '');
+  // Negative, so conjoined with a non-empty strip: an unrendered strip has no Versions tab either.
   h.check(
-    'with no row selected the tab asks for a selection instead of showing the folder',
-    /select a single document/i.test(unselectedHint),
-    `tab body read ${JSON.stringify(unselectedHint.slice(0, 120))}`,
+    'no per-document panel is rendered on the folder page',
+    tabLabels.length > 0 &&
+      (await page.locator('hxp-manage-versions-sidebar, hxp-properties-sidebar').count()) === 0,
   );
-  h.check(
-    'no versions panel is rendered without a selection',
-    (await page.locator('hxp-manage-versions-sidebar').count()) === 0,
-  );
-  await h.screenshot('versions-no-selection');
+  await h.screenshot('folder-tabs');
 
-  // Now select the fixture row and come back.
-  await tab('View').click();
-  await page.waitForTimeout(1200);
+  // The viewer step below acts on a selected document, so select the fixture row here.
   const fixtureRow = page
     .locator('hxp-document-list adf-datatable-row')
     .filter({ hasText: FIXTURE_DOC_TITLE })
@@ -499,221 +541,62 @@ export default async function run(page, h) {
   h.check('the fixture document is listed', (await fixtureRow.count()) > 0, FIXTURE_DOC_TITLE);
   await fixtureRow.locator('mat-checkbox').first().click();
   await page.waitForTimeout(600);
-  await versionsTab.click();
-  await page.waitForTimeout(2500);
-
-  await h.expectVisible('upstream versions panel rendered', 'hxp-manage-versions-sidebar');
-
-  const versionTitles = await page.$$eval(
-    'hxp-manage-versions-sidebar .hxp-version-item .hxp-version-title',
-    (els) => els.map((el) => (el.textContent ?? '').trim()).filter(Boolean),
-  );
-  // Three entries: upstream prepends the live document as "current version", then the two
-  // Nuxeo versions. Asserting only "the element rendered" would pass on an empty list, which
-  // is exactly how the panel fails when the `QUERY` port cannot answer the HXQL statement.
-  h.check(
-    'the panel lists the live document plus both Nuxeo versions',
-    versionTitles.length === 3,
-    `rendered ${versionTitles.length}: ${JSON.stringify(versionTitles)}`,
-  );
-  h.check(
-    'version labels are composed from Nuxeo major/minor, newest first',
-    versionTitles.includes('0.2') &&
-      versionTitles.includes('0.1') &&
-      versionTitles.indexOf('0.2') < versionTitles.indexOf('0.1'),
-    `rendered ${JSON.stringify(versionTitles)} — Nuxeo sends no versionLabel and ` +
-      'Document.GetVersions answers oldest-first, so both the composition and the order are ' +
-      "the bridge's work",
-  );
-
-  const panelText = await page
-    .locator('hxp-manage-versions-sidebar')
-    .first()
-    .innerText()
-    .catch(() => '');
-  h.check(
-    'the version creator resolves to a name, not a blank or "undefined"',
-    panelText.includes('Administrator') && !panelText.includes('undefined'),
-    `panel text was ${JSON.stringify(panelText.slice(0, 240))}`,
-  );
-  h.check(
-    'no untranslated MANAGE_VERSIONS keys are rendered',
-    !panelText.includes('MANAGE_VERSIONS.'),
-    `panel text was ${JSON.stringify(panelText.slice(0, 240))}`,
-  );
-  await h.screenshot('versions-panel');
-
-  h.step("Adopted: upstream properties sidebar over the document's real Nuxeo metadata");
-  
-  // The same fixture and the same selection, so this step asserts the *panel*, not the setup.
-  // The row is still selected from the Versions step above.
-  await tab('Properties').click();
-  await page.waitForTimeout(2500);
-  await h.expectVisible('upstream properties sidebar rendered', 'hxp-properties-sidebar');
-
-  const propertyLabels = await page.$$eval(
-    'hxp-properties-sidebar adf-card-view-item .adf-property-label, ' +
-      'hxp-properties-sidebar .adf-property-label',
-    (els) => els.map((el) => (el.textContent ?? '').trim()).filter(Boolean),
-  );
-  h.check(
-    'the panel renders property labels, not raw translation keys',
-    propertyLabels.length > 0 && !propertyLabels.some((l) => l.includes('DOCUMENT.PROPERTIES.')),
-    `rendered ${propertyLabels.length}: ${JSON.stringify(propertyLabels.slice(0, 12))}`,
-  );
-
-  // Upstream renders the *other* properties section with `[expanded]="false"`, so its labels are
-  // not in `innerText` until it is opened. The first run of this step read a collapsed panel and
-  // reported that Nuxeo's metadata was missing when it was there all along — and the section only
-  // renders at all under `*ngIf="otherProperties.length > 0"`, so its mere presence already says
-  // the list is non-empty. Both facts are asserted: the header exists, and expanding it shows the
-  // values.
-  const otherHeader = page
-    .locator('hxp-properties-sidebar mat-expansion-panel-header')
-    .filter({ hasText: /Other Properties/i })
-    .first();
-  const otherSectionRendered = (await otherHeader.count()) > 0;
-  h.check(
-    "the panel renders an 'Other Properties' section, which upstream omits when it is empty",
-    otherSectionRendered,
-    'no Other Properties header — `*ngIf="otherProperties.length > 0"` means the document ' +
-      'contributed no non-sys_ properties at all',
-  );
-  if (otherSectionRendered) {
-    await otherHeader.click().catch(() => {});
-    await page.waitForTimeout(1200);
-  }
-
-  // `innerText` **plus** every input value, and that distinction cost a round of false greens.
-  // adf-core renders each property card as a Material form field, so the *values* live in
-  // `input.value` and never appear in `innerText`. Two assertions below read only the text and
-  // reported green while the screenshot showed `Created` as `2026-08-22T14:23:05.687Z` and
-  // `Creator` as `[object Object]`. Both were real defects in the `sys_*` half of the model.
-  const propertiesInputs = await page.$$eval(
-    'hxp-properties-sidebar input, hxp-properties-sidebar textarea',
-    (els) => els.map((el) => el.value ?? '').filter(Boolean),
-  );
-  const propertiesText = [
-    await page
-      .locator('hxp-properties-sidebar')
-      .first()
-      .innerText()
-      .catch(() => ''),
-    ...propertiesInputs,
-  ].join('\n');
-
-  // The load-bearing one. `Object.keys(document)` drives this list, so a document carrying only
-  // `sys_*` would render the default section and nothing else. Seeing the fixture's Nuxeo
-  // description proves the `prefix_field` property surface reached the panel.
-  h.check(
-    "the document's real Nuxeo metadata is shown, not just the sys_* set",
-    propertiesText.includes('second evidence version'),
-    'expected the fixture\'s dc:description — panel text was ' +
-      JSON.stringify(propertiesText.slice(0, 400)),
-  );
-
-  // Both remaining checks are **negative** — they assert the absence of something — so each is
-  // conjoined with `propertiesText.length > 0`. Without that they pass on an empty string, which
-  // is exactly what happened on the first run: the panel failed to construct, `propertiesText`
-  // was `''`, and two assertions reported green against nothing.
-  const panelRendered = propertiesText.length > 0;
-
-  // A date typed as a date rather than defaulting to string. This is what fails if the MODEL
-  // port's schema field keys are not prefixed: `getFieldDefinition` finds nothing, every field
-  // becomes FieldType.String, and a date renders as a raw ISO timestamp.
-  h.check(
-    'dates are typed through the MODEL port, not rendered as raw ISO strings',
-    panelRendered && !/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(propertiesText),
-    panelRendered
-      ? `an ISO timestamp is visible, so the model did not type the field — ${JSON.stringify(
-          propertiesText.slice(0, 500),
-        )}`
-      : 'the panel rendered nothing, so this proves nothing',
-  );
-
-  // The other half of the same defect. `sys_creator` is a `User` object, so a field typed as
-  // `string` stringifies it. This is what the `sys` pseudo-schema in the MODEL mapper exists to
-  // prevent, and it is worth its own check because it fails independently of the date typing.
-  h.check(
-    'user fields resolve to a name, not "[object Object]"',
-    panelRendered && !propertiesText.includes('[object Object]'),
-    panelRendered
-      ? `a User was stringified — ${JSON.stringify(propertiesText.slice(0, 500))}`
-      : 'the panel rendered nothing, so this proves nothing',
-  );
-
-  // Read-only by construction: `[editable]="false"` is upstream's own mode, so there should be
-  // no edit affordance at all rather than one that refuses.
-  const editControls = await page
-    .locator('hxp-properties-sidebar button')
-    .filter({ hasText: /edit|save/i })
-    .count();
-  h.check(
-    'no edit affordance is offered, because Scope A does not write',
-    panelRendered && editControls === 0,
-    panelRendered
-      ? `found ${editControls} edit/save control(s)`
-      : 'the panel rendered nothing, so this proves nothing',
-  );
-
-  // The Category field, which was empty until `sys_primaryType` started carrying the Nuxeo
-  // doctype name. Upstream renders it as a select whose options come from `Model.primaryTypes`, so
-  // a synthetic `SysFile` matched nothing and the field showed blank.
-  //
-  // Read from the select's own trigger rather than from `propertiesText`, because an empty select
-  // and a populated one differ only in that element — the surrounding label is present either way,
-  // which is exactly how this went unnoticed the first time.
-  const categoryValue = await page
-    .locator('hxp-properties-sidebar mat-select .mat-mdc-select-value')
-    .first()
-    .innerText()
-    .catch(() => '');
-  h.check(
-    'the Category select shows the document’s real Nuxeo doctype',
-    categoryValue.trim() === 'File',
-    `Category read ${JSON.stringify(categoryValue)} — expected the fixture's Nuxeo type "File". ` +
-      'Blank means `sys_primaryType` is not a key in `Model.primaryTypes`.',
-  );
-  await h.screenshot('properties-panel');
-  
-
 
   h.step('Adopted: upstream document viewer');
-  // The viewer opens in an overlay for the selected document. Testing just the open/close cycle
-  // and that it renders without error — full PDF rendering is adf-core's ViewerComponent and
-  // testing pdfjs-dist is not this phase's job.
+  // Load-bearing: the fixture's own text on screen. Opening the overlay and finding the component
+  // were the only checks here once, and both passed while the viewer said "Couldn't load preview"
+  // for every file, because nothing mapped the main file to `sysfile_blob`.
   const previewBtn = page.locator('.hxp-browse-page__preview-btn');
   h.check('a Preview button appears for the selected document', (await previewBtn.count()) > 0);
-  
+
   if ((await previewBtn.count()) > 0) {
     await previewBtn.click();
-    await page.waitForTimeout(3000);
-    
-    const viewerOverlay = page.locator('.hxp-viewer-overlay');
+    await page.waitForTimeout(4000);
+
+    const viewerOverlay = page.locator('mat-dialog-container .hxp-viewer-overlay');
     h.check(
-      'clicking Preview opens the viewer overlay',
+      'clicking Preview opens the viewer in a dialog',
       (await viewerOverlay.isVisible()) === true,
     );
-    
-    const viewerComponent = page.locator('hxp-ui-document-viewer');
+
+    const renderedText = await viewerOverlay.innerText().catch(() => '');
     h.check(
-      'the upstream viewer component renders',
-      (await viewerComponent.count()) > 0,
+      "the viewer renders the fixture file's own text",
+      renderedText.includes(FIXTURE_FILE_TEXT),
+      `viewer read ${JSON.stringify(renderedText.replace(/\s+/g, ' ').slice(0, 160))}`,
     );
-    
+    h.check(
+      'the viewer does not report an unsupported file',
+      (await viewerOverlay.locator('adf-viewer-unknown-format').count()) === 0,
+    );
+
+    // The shell's selection bar is on screen, because previewing needs a ticked row. The viewer
+    // must be above it, or the bar covers the viewer's close button.
+    const closeButton = viewerOverlay.getByRole('button', { name: 'Close', exact: true });
+    const closeOnTop = await closeButton
+      .evaluate((button) => {
+        const box = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return box.width > 0 && button.contains(hit);
+      })
+      .catch(() => false);
+    h.check("the viewer's close button is visible and not covered", closeOnTop);
+
     await h.screenshot('document-viewer');
-    
-    // Close via escape or button
+
     await page.keyboard.press('Escape');
     await page.waitForTimeout(1500);
-    h.check(
-      'pressing Escape closes the viewer',
-      (await viewerOverlay.isVisible()) === false,
-    );
+    h.check('pressing Escape closes the viewer', (await viewerOverlay.count()) === 0);
+
+    await previewBtn.click();
+    await page.waitForTimeout(3000);
+    await closeButton.click();
+    await page.waitForTimeout(1500);
+    h.check("the viewer's close button closes it", (await viewerOverlay.count()) === 0);
   }
 
   h.step('Health');
-  // sys_acl assertions - principal lookups are async and complete after the properties panel renders
+  // sys_acl assertions - principal lookups are async and complete after the folder reads above
   h.check(
     'the bridge probes the directory to classify ACL principals',
     principalLookups.some((url) => /\/group\//.test(url)),
@@ -725,8 +608,8 @@ export default async function run(page, h) {
   // loaded and whether they share principals.
   h.note(
     `${principalLookups.length} principal lookup(s) for ${distinctPrincipals.size} distinct principal(s) — ` +
-    `ratio ${(principalLookups.length / distinctPrincipals.size).toFixed(1)}:1 ` +
-    `(2.0:1 means perfect caching with group-then-user probes)`,
+      `ratio ${(principalLookups.length / distinctPrincipals.size).toFixed(1)}:1 ` +
+      `(2.0:1 means perfect caching with group-then-user probes)`,
   );
   h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);
   h.note(

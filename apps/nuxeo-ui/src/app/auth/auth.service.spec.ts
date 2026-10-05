@@ -8,6 +8,7 @@ import {
   ClipboardTargetService,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { AuthService } from './auth.service';
+import { testTranslateModule } from '../i18n/translate-testing';
 
 describe('AuthService poweruser access', () => {
   let service: AuthService;
@@ -17,7 +18,7 @@ describe('AuthService poweruser access', () => {
     sessionStorage.clear();
     localStorage.clear();
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
+      imports: [testTranslateModule(), HttpClientTestingModule],
       providers: [{ provide: NUXEO_API_ORIGIN, useValue: '' }],
     });
     service = TestBed.inject(AuthService);

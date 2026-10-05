@@ -1,9 +1,9 @@
-<h2 mat-dialog-title>Compare documents</h2>
+<h2 mat-dialog-title>{{ 'shared-ui.document-compare-dialog.compare-documents' | translate }}</h2>
 
 <mat-dialog-content class="compare-content">
   <div class="compare-selectors">
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compare-select">
-      <mat-label>Document 1</mat-label>
+      <mat-label>{{ 'shared-ui.document-compare-dialog.document-1' | translate }}</mat-label>
       <mat-select [value]="leftId()" (selectionChange)="leftId.set($event.value)">
         @for (item of data.items; track item.id) {
           <mat-option [value]="item.id">{{ item.name }}</mat-option>
@@ -14,7 +14,7 @@
     <mat-icon class="compare-swap-icon" aria-hidden="true">swap_horiz</mat-icon>
 
     <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compare-select">
-      <mat-label>Document 2</mat-label>
+      <mat-label>{{ 'shared-ui.document-compare-dialog.document-2' | translate }}</mat-label>
       <mat-select [value]="rightId()" (selectionChange)="rightId.set($event.value)">
         @for (item of data.items; track item.id) {
           <mat-option [value]="item.id">{{ item.name }}</mat-option>
@@ -24,26 +24,29 @@
 
     <div class="compare-view-controls">
       <mat-checkbox [checked]="viewAllData()" (change)="viewAllData.set($event.checked)">
-        View all data
+        {{ 'shared-ui.document-compare-dialog.view-all-data' | translate }}
       </mat-checkbox>
       <mat-slide-toggle [checked]="unifiedView()" (change)="unifiedView.set($event.checked)">
-        Unified view
+        {{ 'shared-ui.document-compare-dialog.unified-view' | translate }}
       </mat-slide-toggle>
     </div>
   </div>
 
   @if (loading()) {
     <div class="compare-loading">
-      <mat-spinner diameter="32" aria-label="Loading" />
+      <mat-spinner
+        diameter="32"
+        [attr.aria-label]="'shared-ui.document-compare-dialog.loading' | translate"
+      />
     </div>
   } @else if (error()) {
     <p class="compare-error">{{ error() }}</p>
   } @else if (sections().length === 0) {
     <p class="compare-empty">
       @if (viewAllData()) {
-        No document data available to compare.
+        {{ 'ui.document-compare-dialog.no-document-data-available-to-compare' | translate }}
       } @else {
-        No differences found between the selected documents.
+        {{ 'ui.document-compare-dialog.no-differences-found-between-the-selected' | translate }}
       }
     </p>
   } @else {
@@ -125,5 +128,7 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button type="button" mat-stroked-button mat-dialog-close>Close</button>
+  <button type="button" mat-stroked-button mat-dialog-close>
+    {{ 'shared-ui.document-compare-dialog.close' | translate }}
+  </button>
 </mat-dialog-actions>

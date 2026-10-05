@@ -1,4 +1,6 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 /**
  * MISSING(adf-hx): M7 — upstream's document list has no pager, so a folder larger than one page
@@ -17,11 +19,15 @@ import { Component, computed, input, output } from '@angular/core';
  */
 @Component({
   selector: 'hxp-browse-pager',
+  imports: [TranslatePipe],
   standalone: true,
   templateUrl: './hxp-browse-pager.component.html',
   styleUrl: './hxp-browse-pager.component.scss',
 })
 export class HxpBrowsePagerComponent {
+  private readonly translate = inject(TranslateService);
+  /** ngx-translate's only reactive surface, so a language change recomputes the label. */
+  private readonly currentLang = toSignal(this.translate.onLangChange, { initialValue: null });
   readonly pageIndex = input<number>(0);
   readonly pageSize = input<number>(50);
   /** Rows on the current page. */
@@ -47,13 +53,18 @@ export class HxpBrowsePagerComponent {
    * `1–50 of 137` when counted, `1–50` when not. Never `1–50 of 50`, which is what showing the page
    * length as the total produced and why a paged folder looked complete.
    */
-  protected readonly rangeLabel = computed(() =>
-    this.loaded() === 0
-      ? 'No documents'
-      : this.hasTotal()
-        ? `${this.firstRow()}–${this.lastRow()} of ${this.totalCount()}`
-        : `${this.firstRow()}–${this.lastRow()}`,
-  );
+  protected readonly rangeLabel = computed(() => {
+    // `currentLang()` is read so a language change recomputes this. `translate.instant` is not
+    // reactive, so without that dependency the pager would keep whichever language it first
+    // evaluated in — the same trap the shell heading documents.
+    this.currentLang();
+    if (this.loaded() === 0) return this.translate.instant('adf-hx-bridge.pager.no-documents');
+    const params = { first: this.firstRow(), last: this.lastRow(), total: this.totalCount() };
+    return this.translate.instant(
+      this.hasTotal() ? 'adf-hx-bridge.pager.range-of-total' : 'adf-hx-bridge.pager.range',
+      params,
+    );
+  });
 
   protected previous(): void {
     if (this.canPrevious()) this.pageChange.emit(this.pageIndex() - 1);

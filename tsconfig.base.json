@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@agentic-ui/testing/i18n": ["tools/i18n/test-translate-setup.ts"],
       "@agentic-ui/acme-extensions": ["libs/extensions/acme-extensions/src/index.ts"],
       "@agentic-ui/core": ["libs/core/src/index.ts"],
       "@agentic-ui/feature-administration": ["libs/features/administration/src/index.ts"],
@@ -41,7 +42,9 @@
       "@nuxeo-satori/platform/app-config": ["libs/shared/app-config/src/index.ts"],
       "@nuxeo-satori/platform/extensions": ["libs/shared/extensions/src/index.ts"],
       "@nuxeo-satori/platform/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
-      "@nuxeo-satori/platform/ui": ["libs/shared/ui/src/index.ts"]
+      "@nuxeo-satori/platform/ui": ["libs/shared/ui/src/index.ts"],
+      "@agentic-ui/shared/testing": ["./libs/shared/testing/src/index.ts"],
+      "@agentic-ui/integration-tests": ["./libs/integration-tests/src/index.ts"]
     }
   }
 }

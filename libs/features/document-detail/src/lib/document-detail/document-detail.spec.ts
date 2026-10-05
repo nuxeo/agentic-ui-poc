@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateService } from '@ngx-translate/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
@@ -19,9 +20,8 @@ import {
   CURRENT_USERNAME,
   DirectoryService,
   DocumentDetailService,
-  mailSendFailureMessage,
   NuxeoApiBase,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   type NuxeoComment,
   type NuxeoDocument,
   TagService,
@@ -33,7 +33,12 @@ import {
   AiFeatureFlagService,
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
-import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
+import {
+  KeClientService,
+  KeEnrichmentError,
+  type KeEnrichmentResult,
+} from '@agentic-ui/shared/ke-client';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 const STUB_DOC: NuxeoDocument = {
   uid: 'doc-uid-1',
@@ -230,11 +235,15 @@ describe('DocumentDetailComponent', () => {
 
       component.sendPermissionNotification(ace);
 
-      expect(snackBarOpenSpy).toHaveBeenCalledWith(mailSendFailureMessage('send'), 'OK', {
-        duration: 3000,
-        horizontalPosition: 'center',
-        verticalPosition: 'bottom',
-      });
+      expect(snackBarOpenSpy).toHaveBeenCalledWith(
+        'Notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
+        'OK',
+        {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        },
+      );
     });
   });
 
@@ -383,6 +392,39 @@ describe('DocumentDetailComponent', () => {
       expect(component.keError()).toMatch(/"Hallucinated".*not one of the \d+ document categories/);
     });
 
+    it('shows the Knowledge Enrichment client error through its catalogue key', async () => {
+      const keClient = TestBed.inject(KeClientService);
+      vi.spyOn(keClient, 'enrich').mockReturnValue(
+        throwError(
+          () =>
+            new KeEnrichmentError(
+              'Knowledge Enrichment returned HTTP 502.',
+              502,
+              null,
+              'ke-client.message.http-status',
+              { code: 502 },
+            ),
+        ),
+      );
+
+      component.runTextClassification();
+      await fixture.whenStable();
+
+      expect(component.keError()).toBe('Knowledge Enrichment returned HTTP 502.');
+    });
+
+    it('shows a server-supplied Knowledge Enrichment message as it came', async () => {
+      const keClient = TestBed.inject(KeClientService);
+      vi.spyOn(keClient, 'enrich').mockReturnValue(
+        throwError(() => new KeEnrichmentError('Quota exceeded for tenant', 429)),
+      );
+
+      component.runTextClassification();
+      await fixture.whenStable();
+
+      expect(component.keError()).toBe('Quota exceeded for tenant');
+    });
+
     it('writes the vocabulary id when KE returns a valid display label', async () => {
       const keClient = TestBed.inject(KeClientService);
       const browse = TestBed.inject(BrowseService);
@@ -429,7 +471,7 @@ describe('DocumentDetailComponent', () => {
 
       expect(updateSpy).not.toHaveBeenCalled();
       expect(snackBarOpenSpy).toHaveBeenCalledWith(
-        PERMISSION_DENIED_MESSAGE,
+        TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
         'OK',
         expect.objectContaining({ duration: 3000 }),
       );
@@ -443,7 +485,7 @@ describe('DocumentDetailComponent', () => {
 
       expect(dialogSpy).not.toHaveBeenCalled();
       expect(snackBarOpenSpy).toHaveBeenCalledWith(
-        PERMISSION_DENIED_MESSAGE,
+        TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
         'OK',
         expect.objectContaining({ duration: 3000 }),
       );
@@ -456,7 +498,7 @@ describe('DocumentDetailComponent', () => {
       component.submitComment();
 
       expect(snackBarOpenSpy).toHaveBeenCalledWith(
-        PERMISSION_DENIED_MESSAGE,
+        TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
         'OK',
         expect.objectContaining({ duration: 3000 }),
       );
@@ -622,7 +664,8 @@ describe('DocumentDetailComponent', () => {
       await TestBed.resetTestingModule();
       snackBarOpenSpy = vi.fn();
       await TestBed.configureTestingModule({
-        imports: [DocumentDetailComponent],
+        // The reset above discards what test-setup.ts provides globally.
+        imports: [DocumentDetailComponent, testTranslateModule()],
         providers: [
           provideZonelessChangeDetection(),
           provideRouter([], withDisabledInitialNavigation()),

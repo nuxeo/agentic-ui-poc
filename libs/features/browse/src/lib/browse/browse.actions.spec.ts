@@ -1,4 +1,6 @@
 import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -17,10 +19,9 @@ import {
   BrowseContextService,
   BrowseService,
   CURRENT_USERNAME,
-  DOMAIN_CONTAINER_GUIDANCE,
   DirectoryService,
   DocumentDetailService,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   TagService,
   type AuditEntry,
   type DirectoryEntry,
@@ -191,7 +192,7 @@ describe('BrowseComponent — actions', () => {
 
     manifest.set({});
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent],
+      imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
@@ -257,7 +258,7 @@ describe('BrowseComponent — actions', () => {
 
     expect(component.csvExporting()).toBe(false);
     expect(anchorClicks).toEqual([]);
-    expect(snackBar).toHaveBeenCalledWith('CSV export failed', 'OK', { duration: 3000 });
+    expect(snackBar).toHaveBeenCalledWith('CSV export failed.', 'OK', { duration: 3000 });
   });
 
   it('exportCsv clears the exporting flag when polling for the result fails', () => {
@@ -268,7 +269,7 @@ describe('BrowseComponent — actions', () => {
     component.exportCsv();
 
     expect(component.csvExporting()).toBe(false);
-    expect(snackBar).toHaveBeenCalledWith('CSV export failed', 'OK', { duration: 3000 });
+    expect(snackBar).toHaveBeenCalledWith('CSV export failed.', 'OK', { duration: 3000 });
   });
 
   it('exportCsv does nothing without a browsed document', () => {
@@ -309,7 +310,7 @@ describe('BrowseComponent — actions', () => {
     component.downloadAll();
 
     expect(anchorClicks).toEqual([]);
-    expect(snackBar).toHaveBeenCalledWith('Download failed', 'OK', { duration: 3000 });
+    expect(snackBar).toHaveBeenCalledWith('Download failed.', 'OK', { duration: 3000 });
   });
 
   it('downloadAll does nothing without a browsed document', () => {
@@ -451,7 +452,11 @@ describe('BrowseComponent — actions', () => {
     component.openCreateImportDialog();
 
     expect(dialogOpen).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('openCreateImportDialog redirects the user out of a Domain container', () => {
@@ -468,7 +473,11 @@ describe('BrowseComponent — actions', () => {
     component.openCreateImportDialog();
 
     expect(dialogOpen).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(DOMAIN_CONTAINER_GUIDANCE, 'OK', { duration: 6000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      'Open Sections, Templates, or Workspaces, then create content inside those folders.',
+      'OK',
+      { duration: 6000 },
+    );
   });
 
   it('openCreateImportDialog navigates to a freshly created document', () => {
@@ -625,7 +634,11 @@ describe('BrowseComponent — actions', () => {
     component.openEditDialog();
 
     expect(dialogOpen).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('openEditDialog does nothing without a browsed document', () => {
@@ -693,7 +706,7 @@ describe('BrowseComponent — actions', () => {
 
     expect(load).not.toHaveBeenCalled();
     expect(browse.getTrashedChildren).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith('Failed to restore document', 'OK', { duration: 3000 });
+    expect(snackBar).toHaveBeenCalledWith('Failed to restore document.', 'OK', { duration: 3000 });
   });
 
   // ── Tags ──

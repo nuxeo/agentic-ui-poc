@@ -1,7 +1,11 @@
 <div class="preview-viewer">
   <div class="viewer-header">
     <span class="viewer-filename">{{ data.name }}</span>
-    <button class="viewer-close" (click)="close()" matTooltip="Close">
+    <button
+      class="viewer-close"
+      (click)="close()"
+      [matTooltip]="'document-detail.attachment-preview-dialog.close' | translate"
+    >
       <mat-icon>close</mat-icon>
     </button>
   </div>
@@ -36,7 +40,12 @@
     } @else {
       <div class="viewer-unsupported">
         <mat-icon class="unsupported-icon">insert_drive_file</mat-icon>
-        <p>Preview not available for this file type</p>
+        <p>
+          {{
+            'document-detail.attachment-preview-dialog.preview-not-available-for-this-file'
+              | translate
+          }}
+        </p>
         <p class="mime-label">{{ data.mimeType }}</p>
       </div>
     }
@@ -44,19 +53,39 @@
 
   @if (isImage) {
     <div class="viewer-toolbar">
-      <button mat-icon-button matTooltip="Zoom in" (click)="zoomIn()">
+      <button
+        mat-icon-button
+        [matTooltip]="'document-detail.attachment-preview-dialog.zoom-in' | translate"
+        (click)="zoomIn()"
+      >
         <mat-icon>zoom_in</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Fit to screen" (click)="zoomReset()">
+      <button
+        mat-icon-button
+        [matTooltip]="'document-detail.attachment-preview-dialog.fit-to-screen' | translate"
+        (click)="zoomReset()"
+      >
         <mat-icon>crop_free</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Zoom out" (click)="zoomOut()">
+      <button
+        mat-icon-button
+        [matTooltip]="'document-detail.attachment-preview-dialog.zoom-out' | translate"
+        (click)="zoomOut()"
+      >
         <mat-icon>zoom_out</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Rotate left" (click)="rotateLeft()">
+      <button
+        mat-icon-button
+        [matTooltip]="'document-detail.attachment-preview-dialog.rotate-left' | translate"
+        (click)="rotateLeft()"
+      >
         <mat-icon>rotate_left</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Rotate right" (click)="rotateRight()">
+      <button
+        mat-icon-button
+        [matTooltip]="'document-detail.attachment-preview-dialog.rotate-right' | translate"
+        (click)="rotateRight()"
+      >
         <mat-icon>rotate_right</mat-icon>
       </button>
     </div>

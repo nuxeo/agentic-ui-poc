@@ -12,6 +12,7 @@ import {
 
 import { AuthService } from '../../auth/auth.service';
 import { ProfilePageComponent } from './profile-page.component';
+import { testTranslateModule } from '../../i18n/translate-testing';
 
 describe('ProfilePageComponent', () => {
   const mockUser: NuxeoUser = {
@@ -88,7 +89,13 @@ describe('ProfilePageComponent', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [ProfilePageComponent],
+      imports: [
+        // `permissions.time-frame.permanent` is supplied here rather than widened into the
+        // deliberately partial fallback map, so the assertion below reads the English a user sees
+        // and would fail if the component stopped passing its resolver through.
+        testTranslateModule({ 'permissions.time-frame.permanent': 'Permanent' }),
+        ProfilePageComponent,
+      ],
       providers: [
         { provide: AuthService, useValue: { username: signal('poweruser02') } },
         { provide: UserService, useValue: userService },

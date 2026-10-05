@@ -48,17 +48,26 @@ describe('NuxeoDocumentRouterService', () => {
     it('returns a router path for a folder, with the Nuxeo path as a query parameter', () => {
       // A router path, not an href: the adopted breadcrumb feeds this straight into
       // `[routerLink]`, which would treat a leading `#` as a path segment.
-      expect(service.urlFor(folder)).toBe(
+      expect(String(service.urlFor(folder))).toBe(
         '/browse-adf-hx?path=%2Fdefault-domain%2Fworkspaces%2Fws',
       );
     });
 
+    it('keeps the path a query parameter when bound to [routerLink]', () => {
+      // A string handed to `[routerLink]` is split into path segments and its `?` escaped, which
+      // is how every crumb but Home linked to `/browse-adf-hx%3Fpath%3D…`. A UrlTree is not.
+      const tree = service.urlFor(folder);
+      expect(tree.root.children['primary']?.segments.map((s) => s.path)).toEqual(['browse-adf-hx']);
+      expect(tree.queryParams['path']).toBe('/default-domain/workspaces/ws');
+      expect(router.serializeUrl(tree)).not.toContain('%3F');
+    });
+
     it('returns the bare browse route for the repository root', () => {
-      expect(service.urlFor(hxDoc({ ...ROOT_DOCUMENT }))).toBe('/browse-adf-hx');
+      expect(String(service.urlFor(hxDoc({ ...ROOT_DOCUMENT })))).toBe('/browse-adf-hx');
     });
 
     it('recognises the root by primary type as well as by id', () => {
-      expect(service.urlFor(hxDoc({ sys_id: 'real-uid', sys_primaryType: SYS_ROOT }))).toBe(
+      expect(String(service.urlFor(hxDoc({ sys_id: 'real-uid', sys_primaryType: SYS_ROOT })))).toBe(
         '/browse-adf-hx',
       );
     });
@@ -66,17 +75,21 @@ describe('NuxeoDocumentRouterService', () => {
     it('routes a non-folder to the document detail page, tagged to return to adf-hx browse', () => {
       // Without the return mode the back navigation lands on production browse, which is a
       // different page than the one the user came from.
-      expect(service.urlFor(file)).toBe('/doc/doc-9?browseReturn=adf-hx');
+      expect(String(service.urlFor(file))).toBe('/doc/doc-9?browseReturn=adf-hx');
     });
 
     it('falls back to the root path for a folder the mapper gave no path', () => {
-      expect(service.urlFor(hxDoc({ sys_id: 'x', sys_isFolderish: true }))).toBe('/browse-adf-hx');
+      expect(String(service.urlFor(hxDoc({ sys_id: 'x', sys_isFolderish: true })))).toBe(
+        '/browse-adf-hx',
+      );
     });
 
     it('produces an empty id rather than the string undefined for a document with no id', () => {
       // `/doc/undefined` would resolve to a route and then 404 against Nuxeo; an empty
       // segment fails at the router instead.
-      expect(service.urlFor(hxDoc({ sys_isFolderish: false }))).toBe('/doc/?browseReturn=adf-hx');
+      expect(String(service.urlFor(hxDoc({ sys_isFolderish: false })))).toBe(
+        '/doc/?browseReturn=adf-hx',
+      );
     });
 
     it('prefixes the hash when asked for an absolute URL', () => {
@@ -85,7 +98,9 @@ describe('NuxeoDocumentRouterService', () => {
       const absolute = service.urlFor(folder, { absolute: true });
       expect(absolute).toContain('#');
       expect(absolute).toContain('/browse-adf-hx?path=');
-      expect(absolute).toBe(TestBed.inject(Location).prepareExternalUrl(service.urlFor(folder)));
+      expect(absolute).toBe(
+        TestBed.inject(Location).prepareExternalUrl(String(service.urlFor(folder))),
+      );
     });
   });
 

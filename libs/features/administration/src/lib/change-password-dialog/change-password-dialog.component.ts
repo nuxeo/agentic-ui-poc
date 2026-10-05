@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ChangePasswordDialogData {
   username: string;
@@ -12,34 +13,15 @@ export interface ChangePasswordDialogData {
 @Component({
   selector: 'lib-change-password-dialog',
   standalone: true,
-  imports: [FormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule],
-  template: `
-    <h2 mat-dialog-title>Change password</h2>
-    <mat-dialog-content class="pwd-form">
-      <p class="pwd-hint">User: <strong>{{ data.username }}</strong></p>
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>New password</mat-label>
-        <input matInput type="password" name="pw1" [(ngModel)]="password" required autocomplete="new-password" />
-      </mat-form-field>
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>Confirm password</mat-label>
-        <input
-          matInput
-          type="password"
-          name="pw2"
-          [(ngModel)]="confirm"
-          required
-          autocomplete="new-password"
-        />
-      </mat-form-field>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end" class="pwd-actions">
-      <button type="button" mat-button mat-dialog-close>Cancel</button>
-      <button type="button" mat-flat-button color="primary" [disabled]="!canSave()" (click)="save()">
-        Save
-      </button>
-    </mat-dialog-actions>
-  `,
+  imports: [
+    TranslatePipe,
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+  ],
+  templateUrl: './change-password-dialog.component.html',
   styles: [
     `
       .pwd-form {
@@ -65,7 +47,9 @@ export interface ChangePasswordDialogData {
   ],
 })
 export class ChangePasswordDialogComponent {
-  private readonly dialogRef = inject(MatDialogRef<ChangePasswordDialogComponent, string | undefined>);
+  private readonly dialogRef = inject(
+    MatDialogRef<ChangePasswordDialogComponent, string | undefined>,
+  );
   readonly data = inject<ChangePasswordDialogData>(MAT_DIALOG_DATA);
 
   password = '';

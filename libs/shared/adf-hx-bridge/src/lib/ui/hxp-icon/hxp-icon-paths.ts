@@ -71,7 +71,7 @@ export const HXP_ICON_PATHS: Record<HxpIconName, string | readonly string[]> = {
   'insert-drive-file': 'M8 3h6l4 4v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z',
   'view-list': 'M4 6h16M4 12h16M4 18h16',
   'grid-view': 'M4 4h7v7H4V4zM13 4h7v7h-7V4zM4 13h7v7H4v-7zM13 13h7v7h-7v-7z',
-  tune: 'M4 6h16M8 12h8M10 18h4',
+  tune: 'M4 6h9M17 6h3M15 4v4M4 12h3M11 12h9M9 10v4M4 18h11M19 18h1M17 16v4',
   download: 'M12 4v10M8 10l4 4 4-4M4 20h16',
   add: 'M12 5v14M5 12h14',
   'cloud-upload': 'M7 14l5-5 5 5M12 9v10M4 20h16',

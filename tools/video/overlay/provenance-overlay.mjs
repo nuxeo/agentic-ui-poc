@@ -45,27 +45,18 @@ export const ORANGE = '#d95926';
  *                  adf-core datatable be read as an adf-hx component
  *   - `ours`     — declared in `libs/shared/adf-hx-bridge`, orange
  *
- * `headline: true` marks the six upstream components the Beta actually adopted, as
- * distinct from upstream internals those six happen to render.
+ * `headline: true` marks the upstream components this route adopts, as distinct from upstream
+ * internals they happen to render. {@link ADOPTED_COUNT} is derived from it, so a caption cannot
+ * state a different number from the outlines.
  */
 export const REGISTRY = {
-  // ---- the six adopted upstream components -------------------------------------
+  // ---- the adopted upstream components ------------------------------------------
   'hxp-document-list': { origin: 'adf-hx', name: 'HxpDocumentListComponent', headline: true },
   'hxp-document-tree': { origin: 'adf-hx', name: 'HxpDocumentTreeComponent', headline: true },
-  'hxp-breadcrumb': { origin: 'adf-hx', name: 'HxpBreadcrumbComponent', headline: true },
-  'hxp-properties-sidebar': {
-    origin: 'adf-hx',
-    name: 'HxpPropertiesSidebarComponent',
-    headline: true,
-  },
+  'hxp-ui-breadcrumb': { origin: 'adf-hx', name: 'HxpUiBreadcrumbComponent', headline: true },
   'hxp-ui-document-viewer': {
     origin: 'adf-hx',
     name: 'HxpUiDocumentViewerComponent',
-    headline: true,
-  },
-  'hxp-manage-versions-sidebar': {
-    origin: 'adf-hx',
-    name: 'ManageVersionsSidebarComponent',
     headline: true,
   },
   'hxp-permissions-management-panel': {
@@ -73,9 +64,14 @@ export const REGISTRY = {
     name: 'PermissionsManagementPanelComponent',
     headline: true,
   },
+  // No longer rendered on this route: the Properties and Versions tabs were removed so the folder
+  // tabs match production browse, and `hxp-ui-breadcrumb` replaced `hxp-breadcrumb`. Kept so an
+  // older recording's outlines still resolve, but not counted as adopted.
+  'hxp-breadcrumb': { origin: 'adf-hx', name: 'HxpBreadcrumbComponent' },
+  'hxp-properties-sidebar': { origin: 'adf-hx', name: 'HxpPropertiesSidebarComponent' },
+  'hxp-manage-versions-sidebar': { origin: 'adf-hx', name: 'ManageVersionsSidebarComponent' },
 
-  // ---- upstream internals the seven render ------------------------------------
-  'hxp-ui-breadcrumb': { origin: 'adf-hx', name: 'HxpUiBreadcrumbComponent' },
+  // ---- upstream internals the adopted components render --------------------------
   'hxp-permission-management-container': {
     origin: 'adf-hx',
     name: 'PermissionManagementContainerComponent',
@@ -534,10 +530,9 @@ function pageSide(registry, colours) {
 
     /**
      * Breakdown of what is currently outlined, so a caption can quote numbers it measured
-     * rather than numbers someone typed. The counter's "upstream" total mixes the six adopted
-     * adf-hx components with upstream internals and adf-core, and a caption saying "six
-     * upstream components" beside a counter reading 8 invites the reader to think one of them
-     * is wrong.
+     * rather than numbers someone typed. The counter's "upstream" total mixes the adopted
+     * adf-hx components with upstream internals and adf-core, and a caption quoting the adopted
+     * count beside a counter reading more invites the reader to think one of them is wrong.
      */
     summary() {
       const out = { adopted: 0, internals: 0, core: 0, ours: 0 };
@@ -624,6 +619,11 @@ export async function revealAndHold(page, tags, ms, { label = '' } = {}) {
   await page.waitForTimeout(ms);
   return result;
 }
+
+/** How many upstream components the route adopts, counted from {@link REGISTRY}. */
+export const ADOPTED_COUNT = Object.values(REGISTRY).filter((spec) => spec.headline).length;
+/** How many of the route's components are ours, counted from {@link REGISTRY}. */
+export const OURS_COUNT = Object.values(REGISTRY).filter((spec) => spec.origin === 'ours').length;
 
 export const clearOverlay = (page, tags) =>
   page.evaluate((t) => window.__prov.clear(t), tags ?? null);

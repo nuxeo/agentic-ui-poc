@@ -23,12 +23,15 @@ module.exports = function (config) {
       suppressAll: true // removes the duplicated traces
     },
     coverageReporter: {
-      dir: require('path').join(__dirname, '../../coverage/web'),
+      // Must sit under `coverage/apps/nuxeo-ui/` so `lcov-merge.mjs` rebases SF: paths to
+      // `apps/nuxeo-ui/src/...` for SonarCloud (Vitest-only lcov left app shell at 0%).
+      dir: require('path').join(__dirname, '../../coverage/apps/nuxeo-ui'),
       subdir: '.',
       reporters: [
         { type: 'html' },
-        { type: 'text-summary' }
-      ]
+        { type: 'text-summary' },
+        { type: 'lcov', file: 'lcov.info' },
+      ],
     },
     reporters: ['progress', 'kjhtml'],
     browsers: ['Chrome'],

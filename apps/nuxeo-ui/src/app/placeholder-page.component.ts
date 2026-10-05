@@ -1,13 +1,11 @@
 import { Component } from '@angular/core';
+import { TranslatePipe } from '@ngx-translate/core';
 
 /** PoC placeholder for routes not yet backed by feature libraries. */
 @Component({
   standalone: true,
-  template: `
-    <div class="placeholder">
-      <p>Coming soon</p>
-    </div>
-  `,
+  imports: [TranslatePipe],
+  templateUrl: './placeholder-page.component.html',
   styles: [
     `
       .placeholder {

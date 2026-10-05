@@ -2,6 +2,7 @@ import { Component, input, model, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';
 import { HxpSpinnerComponent } from '../hxp-spinner/hxp-spinner.component';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export type HxpBrowseViewMode = 'list' | 'card';
 
@@ -14,7 +15,7 @@ export type HxpBrowseViewMode = 'list' | 'card';
   standalone: true,
   templateUrl: './hxp-browse-toolbar.component.html',
   styleUrl: './hxp-browse-toolbar.component.scss',
-  imports: [FormsModule, HxpIconComponent, HxpSpinnerComponent],
+  imports: [TranslatePipe, FormsModule, HxpIconComponent, HxpSpinnerComponent],
 })
 export class HxpBrowseToolbarComponent {
   readonly resultCount = input(0);

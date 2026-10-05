@@ -18,6 +18,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged, finalize, Subject, switchMap } from 'rxjs';
 
 import { NuxeoUser, UserService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface UserFormDialogData {
   mode: 'create' | 'edit';
@@ -43,6 +44,7 @@ export interface UserFormDialogResult {
   selector: 'lib-user-form-dialog',
   standalone: true,
   imports: [
+    TranslatePipe,
     FormsModule,
     MatDialogModule,
     MatButtonModule,
@@ -122,6 +124,7 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
   private readonly dialogRef = inject(
     MatDialogRef<UserFormDialogComponent, UserFormDialogResult | undefined>,
   );
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   readonly data = inject<UserFormDialogData>(MAT_DIALOG_DATA);
   private readonly userService = inject(UserService);
@@ -403,9 +406,13 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
           this.dialogRef.close(closeResult);
         },
         error: (err) => {
-          this.snackBar.open(this.createUserErrorMessage(err, invited), 'Dismiss', {
-            duration: 7000,
-          });
+          this.snackBar.open(
+            this.createUserErrorMessage(err, invited),
+            this.translate.instant('common.dismiss'),
+            {
+              duration: 7000,
+            },
+          );
         },
       });
   }
@@ -415,17 +422,19 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
     const lower = raw.toLowerCase();
 
     if (lower.includes('user already exists')) {
-      return 'A user or pending invitation with this username already exists.';
+      return this.translate.instant('admin.message.user-already-exists');
     }
     if (lower.includes('must have a password')) {
-      return 'Password is required for this server. Enable "Set user password" or configure User.Invite.';
+      return this.translate.instant('admin.message.password-required-for-server');
     }
 
     const simplified = this.simplifyNuxeoAutomationMessage(raw);
     if (simplified) {
       return simplified;
     }
-    return invited ? 'Invitation failed' : 'Create failed';
+    return this.translate.instant(
+      invited ? 'admin.message.invitation-failed' : 'admin.message.create-failed',
+    );
   }
 
   private extractApiErrorMessage(err: unknown): string {

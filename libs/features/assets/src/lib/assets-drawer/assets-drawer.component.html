@@ -5,32 +5,40 @@
         class="saved-filters-trigger"
         type="button"
         [attr.aria-expanded]="filterSearchOpen()"
-        [attr.aria-label]="filterSearchInput() || 'Saved Searches'"
+        [attr.aria-label]="filterSearchInput() || ('assets.saved-searches' | translate)"
         (click)="onFilterSearchFocus()"
         (focus)="onFilterSearchFocus()"
       >
-        <span class="saved-filters-label">{{ filterSearchInput() || 'Search Filters' }}</span>
+        <span class="saved-filters-label">{{
+          filterSearchInput() || ('assets.search-filters' | translate)
+        }}</span>
         <mat-icon class="saved-filters-arrow">arrow_drop_down</mat-icon>
       </button>
 
       @if (filterSearchOpen()) {
         <div class="saved-filters-panel">
           @if (savedSearchesLoading()) {
-            <div class="saved-filters-empty">Loading saved searches...</div>
+            <div class="saved-filters-empty">
+              {{ 'assets.assets-drawer.loading-saved-searches' | translate }}
+            </div>
           } @else if (availableSavedSearches().length === 0) {
-            <div class="saved-filters-empty">No saved searches</div>
+            <div class="saved-filters-empty">
+              {{ 'assets.assets-drawer.no-saved-searches' | translate }}
+            </div>
           } @else {
             <div class="saved-filters-search">
               <input
                 class="saved-filters-search-input"
                 type="text"
-                placeholder="Search..."
+                [placeholder]="'assets.assets-drawer.search' | translate"
                 [value]="savedSearchFilter()"
                 (input)="savedSearchFilter.set($any($event.target).value)"
               />
             </div>
             @if (filteredSavedSearches().length === 0) {
-              <div class="saved-filters-empty">No matching saved searches</div>
+              <div class="saved-filters-empty">
+                {{ 'assets.assets-drawer.no-matching-saved-searches' | translate }}
+              </div>
             } @else {
               @for (option of filteredSavedSearches(); track option.key) {
                 <button
@@ -50,8 +58,16 @@
 
     <button
       mat-icon-button
-      [matTooltip]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
-      [attr.aria-label]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
+      [matTooltip]="
+        viewMode() === 'filter'
+          ? ('assets.switch-to-queue-view' | translate)
+          : ('assets.switch-to-filter-view' | translate)
+      "
+      [attr.aria-label]="
+        viewMode() === 'filter'
+          ? ('assets.switch-to-queue-view' | translate)
+          : ('assets.switch-to-filter-view' | translate)
+      "
       (click)="viewMode() === 'filter' ? switchToQueueView() : switchToFilterView()"
       type="button"
       class="queue-toggle-btn"
@@ -66,15 +82,15 @@
 
 @if (viewMode() === 'filter') {
   <div class="filters-section">
-    <p class="filters-heading">Filters</p>
+    <p class="filters-heading">{{ 'assets.assets-drawer.filters' | translate }}</p>
 
     <div class="filter-group">
-      <p class="filter-title">Full Text</p>
+      <p class="filter-title">{{ 'assets.assets-drawer.full-text' | translate }}</p>
       <div class="filter-input-wrap">
         <input
           class="filter-input"
           type="text"
-          placeholder="Search for something..."
+          [placeholder]="'assets.assets-drawer.search-for-something' | translate"
           [value]="secondarySearchInput()"
           (input)="onSecondarySearchInput($any($event.target).value)"
           (keydown.enter)="onSecondarySearchEnter()"
@@ -90,7 +106,7 @@
     @for (group of filterGroups(); track group.id) {
       <div class="filter-group">
         <button class="filter-btn" type="button" (click)="toggleFilter(group.id)">
-          <span class="filter-btn-label">{{ group.label }}</span>
+          <span class="filter-btn-label">{{ group | descriptorLabel }}</span>
           <mat-icon class="filter-btn-icon">
             {{ isExpanded(group.id) ? 'expand_less' : 'expand_more' }}
           </mat-icon>
@@ -99,7 +115,9 @@
         @if (isExpanded(group.id)) {
           <div class="filter-options">
             @if (dynamicGroups.has(group.id) && group.options.length === 0) {
-              <span class="filter-no-results">No available results</span>
+              <span class="filter-no-results">{{
+                'assets.assets-drawer.no-available-results' | translate
+              }}</span>
             } @else {
               @for (option of group.options; track option.value) {
                 <mat-checkbox
@@ -107,7 +125,7 @@
                   (change)="toggleOption(group.id, option.value)"
                   class="filter-checkbox"
                 >
-                  {{ option.label }}{{ getCountText(group.id, option.aggKey) }}
+                  {{ option | descriptorLabel }}{{ getCountText(group.id, option.aggKey) }}
                 </mat-checkbox>
               }
             }
@@ -121,7 +139,7 @@
 
   <div class="drawer-footer">
     <div class="footer-toggle-row">
-      <span class="footer-toggle-label">Auto search</span>
+      <span class="footer-toggle-label">{{ 'assets.assets-drawer.auto-search' | translate }}</span>
       <mat-slide-toggle
         [checked]="autoSearch()"
         (change)="autoSearch.set($event.checked)"
@@ -136,7 +154,7 @@
         type="button"
         (click)="resetFilters()"
       >
-        Reset
+        {{ 'assets.assets-drawer.reset' | translate }}
       </button>
       <button
         mat-flat-button
@@ -146,7 +164,7 @@
         [disabled]="!hasActiveFilters()"
         (click)="openSaveAsDialog()"
       >
-        Save As
+        {{ 'assets.assets-drawer.save-as' | translate }}
       </button>
       @if (!autoSearch()) {
         <button
@@ -156,7 +174,7 @@
           type="button"
           (click)="applySearch()"
         >
-          Search
+          {{ 'assets.assets-drawer.search-2' | translate }}
         </button>
       }
     </div>

@@ -11,8 +11,8 @@ import {
   BrowseService,
   DirectoryService,
   DocumentImportService,
-  DOMAIN_CONTAINER_GUIDANCE,
-  RESTRICTED_IMPORT_LOCATION_MESSAGE,
+  DOMAIN_CONTAINER_GUIDANCE_KEY,
+  RESTRICTED_IMPORT_LOCATION_MESSAGE_KEY,
   type DirectoryEntry,
   type ImportProgress,
   type L10nDirectoryEntry,
@@ -20,6 +20,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { CreateImportDialogComponent } from './create-import-dialog.component';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 const PARENT_PATH = '/default-domain/workspaces/ws';
 
@@ -105,7 +106,7 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent],
+      imports: [CreateImportDialogComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -407,7 +408,7 @@ describe('CreateImportDialogComponent import with properties (NXSAT-185)', () =>
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent],
+      imports: [CreateImportDialogComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -619,7 +620,7 @@ describe('CreateImportDialogComponent CSV', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent, NoopAnimationsModule],
+      imports: [CreateImportDialogComponent, testTranslateModule(), NoopAnimationsModule],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: data },
@@ -832,7 +833,7 @@ describe('CreateImportDialogComponent domain create (NXSAT-199)', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent, NoopAnimationsModule],
+      imports: [CreateImportDialogComponent, testTranslateModule(), NoopAnimationsModule],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: {} },
@@ -1048,7 +1049,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
     tweak(m);
 
     await TestBed.configureTestingModule({
-      imports: [CreateImportDialogComponent],
+      imports: [CreateImportDialogComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: data },
@@ -1485,14 +1486,14 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
         );
       });
 
-      expect(component.importLocationHint()).toBe(DOMAIN_CONTAINER_GUIDANCE);
+      expect(component.importLocationHint()).toBe(DOMAIN_CONTAINER_GUIDANCE_KEY);
       expect(component.locationRestricted()).toBe(true);
     });
 
     it('gives the generic hint for a non-domain restricted location', async () => {
       await createDialog({ parentPath: '/default-domain' });
 
-      expect(component.importLocationHint()).toBe(RESTRICTED_IMPORT_LOCATION_MESSAGE);
+      expect(component.importLocationHint()).toBe(RESTRICTED_IMPORT_LOCATION_MESSAGE_KEY);
     });
   });
 
@@ -2174,7 +2175,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
         component.uploadFiles(),
         expect.objectContaining({ onProgress: expect.any(Function) }),
       );
-      expect(m.snackOpen).toHaveBeenCalledWith('Created 1 file(s).', 'Close', { duration: 4000 });
+      expect(m.snackOpen).toHaveBeenCalledWith('Created 1 file.', 'Close', { duration: 4000 });
       expect(m.close).toHaveBeenCalledWith({
         refreshed: true,
         path: WS_PATH,

@@ -40,10 +40,20 @@ benefit claim in the product documentation is mechanical rather than observed.
 
 **Mitigation:** a design partner, framed as the Beta ask.
 
-### C3 · Accessibility — closed 2026-08-24, with a stated scope
+### C3 · Accessibility — REOPENED 2026-09-23
 
-**WCAG 2.1 AA is met on the fifteen cases scanned.** Seven rule classes and 77 nodes fixed, and
-`KNOWN_VIOLATIONS` is empty, so the capture's verdict is unconditional rather than ratcheted.
+**It was closed on 2026-08-24 and is open again.** Five consecutive `phase-6-a11y` captures from 2026-09-15 to 2026-09-16 fail 3 `button-name` checks (browse, browse cards, column panel). The last passing capture is `2026-08-24T14-40-16` (27/27). Undiagnosed, so
+this is unverified rather than known false.
+
+**A likely place to start, from the paragraph below:** the original `button-name` was caused by a
+translation key resolving to the empty string, and the current failures are the same rule class.
+`apps/nuxeo-ui/src/app/i18n/en-fallback.ts` documents that trap and the invariant it enforces —
+every key bound to an accessible name must be present there. Worth checking whether a key reaching
+browse, the card view or the column panel now resolves to empty or to a raw key.
+
+What was true of the August capture: **WCAG 2.1 AA was met on the fifteen cases scanned.** Seven
+rule classes and 77 nodes fixed, and `KNOWN_VIOLATIONS` empty, so that verdict was unconditional
+rather than ratcheted.
 
 The finding worth carrying forward is how the worst one arose. `button-name` (critical) fired on the
 nav toggle on **every** screen because our own catalogue set the upstream translation key to the
@@ -163,20 +173,20 @@ devDependency (types-only import), but the adf-core surface remains.
 
 ## 3. Medium
 
-| ID  | Risk                                     | Detail                                                                                                                                                                                      |
-| --- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M1  | **Coverage in the highest-traffic code** | 3 of 15 measurable projects ≥90% substantively. `search` 22.8%, `document-detail` 29.8% — the two surfaces users touch most                                                                 |
-| M2  | **Coverage numbers overstate**           | `tasks`, `assets`, `core` report **100% with zero spec files** (0/0 statements). Any "N of 17 meet the bar" figure is inflated until fixed                                                  |
-| M3  | **Knowledge-base decay**                 | 13 `AGENTS/` files, ~3.1k lines. Exactly **one** has an automated staleness check                                                                                                           |
-| M4  | **Gates rot**                            | Seven were found asserting less than they claimed. Gates are software                                                                                                                       |
-| M5  | **RFC and reality diverge**              | RFC plans 5+ npm packages and 3 repositories; reality is 1 package and 1 monorepo. Both simplifications, but the RFC has not been revised                                                   |
-| M6  | **Component render fidelity**            | RFC **R4** — adf-hx component inputs are typed on the HxPR SDK and upstream's neutral-type work has not started                                                                             |
-| M7  | **Eager adf-core**                       | Initial bundle 1.71 → 2.86 MB. The real fix (lazy adf-core) is explicitly deferred; the ceiling note says do not raise it again without attempting that first                               |
-| M8  | **Two unused production dependencies**   | `openai` and `express` are in `package.json` and imported nowhere. Dead weight in the shipped lockfile and an SCA surface                                                                   |
-| M9  | **Anonymous auth behaviour**             | With anonymous auth enabled server-side, the app signs unauthenticated visitors in as `Anonymous`. Correct behaviour, invisible from the UI, and it makes a class of auth test unobservable |
-| M10 | **E2E does not run in PR CI**            | Needs Docker Nuxeo plus a served app. A check that only runs when someone remembers                                                                                                         |
-| M11 | **Reserved slots read as capability**    | 4 of 8. Easy to over-promise from the slot list                                                                                                                                             |
-| M12 | **`selection` rule context empty**       | Permission-gated bulk actions are not manifest-gateable                                                                                                                                     |
+| ID  | Risk                                                      | Detail                                                                                                                                                                                                                                                                                                      |
+| --- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M1  | **Coverage in the highest-traffic code** — largely closed | **10 of 11 in-scope projects ≥90%** as of 2026-09-22 (`shared-ai-client` short at 15.98%). Supersedes "3 of 15": `search` is now 93.41% and `document-detail` 92.56%, which were the two surfaces users touch most. What remains is `shared-ai-client`, and 6,137 in-scope lines imported by no test at all |
+| M2  | **Coverage numbers overstate**                            | `tasks`, `assets`, `core` report **100% with zero spec files** (0/0 statements). Any "N of 17 meet the bar" figure is inflated until fixed                                                                                                                                                                  |
+| M3  | **Knowledge-base decay**                                  | 13 `AGENTS/` files, ~3.1k lines. Exactly **one** has an automated staleness check                                                                                                                                                                                                                           |
+| M4  | **Gates rot**                                             | Seven were found asserting less than they claimed. Gates are software                                                                                                                                                                                                                                       |
+| M5  | **RFC and reality diverge**                               | RFC plans 5+ npm packages and 3 repositories; reality is 1 package and 1 monorepo. Both simplifications, but the RFC has not been revised                                                                                                                                                                   |
+| M6  | **Component render fidelity**                             | RFC **R4** — adf-hx component inputs are typed on the HxPR SDK and upstream's neutral-type work has not started                                                                                                                                                                                             |
+| M7  | **Eager adf-core**                                        | Initial bundle 1.71 → 2.86 MB. The real fix (lazy adf-core) is explicitly deferred; the ceiling note says do not raise it again without attempting that first                                                                                                                                               |
+| M8  | **Two unused production dependencies**                    | `openai` and `express` are in `package.json` and imported nowhere. Dead weight in the shipped lockfile and an SCA surface                                                                                                                                                                                   |
+| M9  | **Anonymous auth behaviour**                              | With anonymous auth enabled server-side, the app signs unauthenticated visitors in as `Anonymous`. Correct behaviour, invisible from the UI, and it makes a class of auth test unobservable                                                                                                                 |
+| M10 | **E2E does not run in PR CI**                             | Needs Docker Nuxeo plus a served app. A check that only runs when someone remembers                                                                                                                                                                                                                         |
+| M11 | **Reserved slots read as capability**                     | 4 of 8. Easy to over-promise from the slot list                                                                                                                                                                                                                                                             |
+| M12 | **`selection` rule context empty**                        | Permission-gated bulk actions are not manifest-gateable                                                                                                                                                                                                                                                     |
 
 ---
 

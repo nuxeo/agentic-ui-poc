@@ -1,8 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface ExportDialogData {
   documentUid: string;
@@ -16,32 +18,23 @@ export type ExportType = 'thumbnail' | 'pdf' | 'zip' | 'xml';
 interface ExportOption {
   type: ExportType;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   icon: string;
 }
 
 @Component({
   selector: 'lib-export-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
-  template: `
-    <h2 mat-dialog-title>Export</h2>
-
-    <mat-dialog-content>
-      @for (option of options; track option.type) {
-        <button class="export-option" [disabled]="exporting()" (click)="onExport(option.type)">
-          <mat-icon class="export-option-icon">{{ option.icon }}</mat-icon>
-          <span class="export-option-label">{{ option.label }}</span>
-          @if (exporting() === option.type) {
-            <mat-spinner diameter="18" class="export-spinner" />
-          }
-        </button>
-      }
-    </mat-dialog-content>
-
-    <mat-dialog-actions>
-      <button mat-stroked-button mat-dialog-close [disabled]="!!exporting()">Cancel</button>
-    </mat-dialog-actions>
-  `,
+  imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+  ],
+  templateUrl: './export-dialog.component.html',
   styles: [
     `
       :host {
@@ -109,10 +102,10 @@ export class ExportDialogComponent {
   readonly exporting = signal<ExportType | null>(null);
 
   readonly options: ExportOption[] = [
-    { type: 'thumbnail', label: 'Thumbnail', icon: 'image' },
-    { type: 'pdf', label: 'PDF', icon: 'picture_as_pdf' },
-    { type: 'zip', label: 'ZIP Export', icon: 'folder_zip' },
-    { type: 'xml', label: 'XML Export', icon: 'code' },
+    { type: 'thumbnail', labelKey: 'rendition.thumbnail', label: 'Thumbnail', icon: 'image' },
+    { type: 'pdf', labelKey: 'rendition.pdf', label: 'PDF', icon: 'picture_as_pdf' },
+    { type: 'zip', labelKey: 'rendition.zip', label: 'ZIP Export', icon: 'folder_zip' },
+    { type: 'xml', labelKey: 'rendition.xml', label: 'XML Export', icon: 'code' },
   ];
 
   onExport(type: ExportType): void {

@@ -31,7 +31,7 @@
           </div>
         </div>
         <div class="theme-card__footer">
-          <span class="theme-card__name">{{ t.label }}</span>
+          <span class="theme-card__name">{{ t | descriptorLabel }}</span>
           @if (theme.themeId() === t.id) {
             <button type="button" mat-stroked-button disabled class="theme-card__btn">
               {{ 'settings.themes.current' | translate }}

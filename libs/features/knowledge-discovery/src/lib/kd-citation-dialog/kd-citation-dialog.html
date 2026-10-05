@@ -9,17 +9,28 @@
         }
       </div>
     </div>
-    <button type="button" mat-icon-button (click)="close()" aria-label="Close citation viewer">
+    <button
+      type="button"
+      mat-icon-button
+      (click)="close()"
+      [attr.aria-label]="'kd.kd-citation-dialog.close-citation-viewer' | translate"
+    >
       <mat-icon>close</mat-icon>
     </button>
   </header>
 
   <div class="kd-citation-dialog__body">
-    <section class="kd-citation-dialog__viewer" aria-label="Source document preview">
+    <section
+      class="kd-citation-dialog__viewer"
+      [attr.aria-label]="'kd.kd-citation-dialog.source-document-preview' | translate"
+    >
       @if (loadingDocument()) {
         <div class="kd-citation-dialog__state">
-          <mat-spinner diameter="32" aria-label="Loading" />
-          <p>Loading source document…</p>
+          <mat-spinner
+            diameter="32"
+            [attr.aria-label]="'kd.kd-citation-dialog.loading' | translate"
+          />
+          <p>{{ 'kd.kd-citation-dialog.loading-source-document' | translate }}</p>
         </div>
       } @else if (documentError()) {
         <div class="kd-citation-dialog__state kd-citation-dialog__state--error">
@@ -33,7 +44,7 @@
               <iframe
                 [src]="url"
                 class="kd-citation-dialog__frame"
-                title="Document preview"
+                [title]="'kd.kd-citation-dialog.document-preview' | translate"
               ></iframe>
             }
           }
@@ -50,7 +61,7 @@
           @default {
             <div class="kd-citation-dialog__state">
               <mat-icon>description</mat-icon>
-              <p>Preview is not available for this file type.</p>
+              <p>{{ 'kd.kd-citation-dialog.preview-is-not-available-for-this' | translate }}</p>
               @if (mimeType()) {
                 <span class="kd-citation-dialog__mime">{{ mimeType() }}</span>
               }
@@ -60,7 +71,10 @@
       }
     </section>
 
-    <aside class="kd-citation-dialog__references" aria-label="Citation references">
+    <aside
+      class="kd-citation-dialog__references"
+      [attr.aria-label]="'kd.kd-citation-dialog.citation-references' | translate"
+    >
       @if (activeReference(); as reference) {
         <article class="kd-citation-dialog__reference kd-citation-dialog__reference--active">
           <header class="kd-citation-dialog__reference-header">
@@ -70,7 +84,7 @@
                 <span>[{{ reference.index }}]</span>
               }
               @if (reference.pageNumber !== undefined) {
-                <span>Page {{ reference.pageNumber }}</span>
+                <span>{{ 'common.page-number' | translate: { page: reference.pageNumber } }}</span>
               }
             </span>
           </header>
@@ -95,7 +109,9 @@
                         <span>[{{ item.index }}]</span>
                       }
                       @if (item.pageNumber !== undefined) {
-                        <span>Page {{ item.pageNumber }}</span>
+                        <span>{{
+                          'common.page-number' | translate: { page: item.pageNumber }
+                        }}</span>
                       }
                     </span>
                   </header>

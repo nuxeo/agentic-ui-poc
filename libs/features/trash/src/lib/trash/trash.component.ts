@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, signal, untracked, DestroyRef } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
@@ -17,8 +18,8 @@ import { catchError } from 'rxjs/operators';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import {
   ConfirmDialogComponent,
-  SavedSearchDialogComponent,
   SAVED_SEARCH_DIALOG_OPTIONS,
+  SavedSearchDialogComponent,
   ShareSavedSearchDialogComponent,
   type ConfirmDialogData,
 } from '@nuxeo-satori/platform/ui';
@@ -32,7 +33,9 @@ import {
   docTypeIcon,
   type NuxeoDocument,
   type NuxeoDocumentList,
+  DocTypeLabelPipe,
 } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export type ViewMode = 'grid' | 'table' | 'list';
 type SortDirection = 'asc' | 'desc';
@@ -40,17 +43,24 @@ type SortDirection = 'asc' | 'desc';
 interface ColumnDef {
   key: string;
   label: string;
+  /** Translation key for `label`, preferred by the template when it resolves. */
+  labelKey?: string;
   width: string;
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'title', label: 'Title', width: '2fr' },
-  { key: 'type', label: 'Type', width: '1fr' },
-  { key: 'modified', label: 'Modified', width: '1fr' },
-  { key: 'contributor', label: 'Last contributor', width: '1.2fr' },
-  { key: 'created', label: 'Created', width: '1fr' },
-  { key: 'author', label: 'Author', width: '1fr' },
-  { key: 'state', label: 'State', width: '1fr' },
+  { key: 'title', labelKey: 'trash.column.title', label: 'Title', width: '2fr' },
+  { key: 'type', labelKey: 'trash.column.type', label: 'Type', width: '1fr' },
+  { key: 'modified', labelKey: 'trash.column.modified', label: 'Modified', width: '1fr' },
+  {
+    key: 'contributor',
+    labelKey: 'trash.column.contributor',
+    label: 'Last contributor',
+    width: '1.2fr',
+  },
+  { key: 'created', labelKey: 'trash.column.created', label: 'Created', width: '1fr' },
+  { key: 'author', labelKey: 'trash.column.author', label: 'Author', width: '1fr' },
+  { key: 'state', labelKey: 'trash.column.state', label: 'State', width: '1fr' },
 ];
 
 const SORT_FIELD_MAP: Record<string, string> = {
@@ -69,6 +79,9 @@ const SORTABLE_COLUMNS = new Set(['title', 'modified', 'contributor', 'created',
   selector: 'lib-trash',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
+    DescriptorLabelPipe,
+    TranslatePipe,
     DatePipe,
     MatButtonModule,
     MatIconModule,
@@ -85,6 +98,7 @@ const SORTABLE_COLUMNS = new Set(['title', 'modified', 'contributor', 'created',
   styleUrl: './trash.component.scss',
 })
 export class TrashComponent {
+  private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly snackBar = inject(MatSnackBar);
@@ -196,7 +210,7 @@ export class TrashComponent {
           // Guarded too: a stale failure would otherwise show an error over a newer search's
           // successful results and clear its loading state.
           if (generation !== this.searchGeneration) return;
-          this.error.set('Failed to load trashed documents.');
+          this.error.set(this.translate.instant('trash.message.failed-to-load-trashed-documents'));
           this.loading.set(false);
           this.trashFilterService.resultsLoading.set(false);
         },
@@ -211,8 +225,8 @@ export class TrashComponent {
     const dialogRef = this.dialog.open(SavedSearchDialogComponent, {
       ...SAVED_SEARCH_DIALOG_OPTIONS,
       data: {
-        title: 'Saved Search',
-        placeholder: 'Enter a name for your saved search',
+        title: this.translate.instant('ui.saved-search'),
+        placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
       },
     });
 
@@ -225,7 +239,11 @@ export class TrashComponent {
           return this.trashService.saveSearch(name.trim(), this.buildFilterParams()).pipe(
             finalize(() => this.saving.set(false)),
             catchError(() => {
-              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-save-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
               return of(null);
             }),
           );
@@ -237,7 +255,11 @@ export class TrashComponent {
         this.trashFilterService.activeSavedFilterUid.set(result.uid);
         this.trashFilterService.activeSavedFilterTitle.set(result.title);
         this.trashFilterService.markSavedSearchDirty();
-        this.snackBar.open(`Search "${result.title}" saved.`, 'OK', { duration: 3000 });
+        this.snackBar.open(
+          this.translate.instant('common.search-saved', { name: result.title }),
+          this.translate.instant('common.ok'),
+          { duration: 3000 },
+        );
       });
   }
 
@@ -252,7 +274,11 @@ export class TrashComponent {
       .pipe(
         finalize(() => this.saving.set(false)),
         catchError(() => {
-          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+          this.snackBar.open(
+            this.translate.instant('assets.message.failed-to-save-search'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          );
           return of(null);
         }),
         takeUntilDestroyed(this.destroyRef),
@@ -260,7 +286,11 @@ export class TrashComponent {
       .subscribe((result) => {
         if (!result) return;
         this.trashFilterService.markSavedSearchDirty();
-        this.snackBar.open(`Search "${title}" updated.`, 'OK', { duration: 3000 });
+        this.snackBar.open(
+          this.translate.instant('common.search-updated', { name: title }),
+          this.translate.instant('common.ok'),
+          { duration: 3000 },
+        );
       });
   }
 
@@ -273,8 +303,8 @@ export class TrashComponent {
       .open(SavedSearchDialogComponent, {
         ...SAVED_SEARCH_DIALOG_OPTIONS,
         data: {
-          title: 'Edit Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          title: this.translate.instant('ui.edit-saved-search'),
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
           initialValue: title.trim(),
         },
       })
@@ -293,10 +323,18 @@ export class TrashComponent {
         next: (trimmedTitle) => {
           this.trashFilterService.activeSavedFilterTitle.set(trimmedTitle);
           this.trashFilterService.markSavedSearchDirty();
-          this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('common.search-updated', { name: trimmedTitle }),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
         },
         error: () => {
-          this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
+          this.snackBar.open(
+            this.translate.instant('assets.message.failed-to-update-search'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          );
         },
       });
   }
@@ -309,7 +347,9 @@ export class TrashComponent {
       width: '95vw',
       maxWidth: '1080px',
       data: {
-        title: this.trashFilterService.activeSavedFilterTitle()?.trim() || 'Saved Search',
+        title:
+          this.trashFilterService.activeSavedFilterTitle()?.trim() ||
+          this.translate.instant('ui.saved-search'),
         id,
       },
     });
@@ -322,9 +362,11 @@ export class TrashComponent {
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Saved Search',
-        message: `Delete saved search "${title.trim()}"?`,
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.delete-saved-search'),
+        message: this.translate.instant('confirm.delete-saved-search-named', {
+          name: title.trim(),
+        }),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -345,10 +387,18 @@ export class TrashComponent {
             next: () => {
               this.trashFilterService.reset();
               this.trashFilterService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${title}" deleted.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('common.search-deleted', { name: title }),
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to delete search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('trash.message.failed-to-delete-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });
@@ -461,7 +511,11 @@ export class TrashComponent {
             completed++;
             if (completed === ids.length) {
               this.selectionService.clear();
-              this.snackBar.open(`${ids.length} document(s) restored.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                `${ids.length} document(s) restored.`,
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             }
           }),
           takeUntilDestroyed(this.destroyRef),
@@ -469,7 +523,11 @@ export class TrashComponent {
         .subscribe({
           next: () => this.documents.update((docs) => docs.filter((d) => d.uid !== uid)),
           error: () =>
-            this.snackBar.open('Failed to restore a document.', 'Dismiss', { duration: 3000 }),
+            this.snackBar.open(
+              this.translate.instant('trash.message.failed-to-restore-a-document'),
+              this.translate.instant('common.dismiss'),
+              { duration: 3000 },
+            ),
         });
     }
   }
@@ -480,9 +538,14 @@ export class TrashComponent {
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Permanently Delete Documents',
-        message: `Permanently delete ${ids.length} document(s)? This cannot be undone.`,
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.permanently-delete-documents'),
+        message:
+          ids.length === 1
+            ? this.translate.instant('confirm.permanently-delete-warning')
+            : this.translate.instant('confirm.permanently-delete-documents-count', {
+                count: ids.length,
+              }),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -503,9 +566,13 @@ export class TrashComponent {
               completed++;
               if (completed === ids.length) {
                 this.selectionService.clear();
-                this.snackBar.open(`${ids.length} document(s) permanently deleted.`, 'OK', {
-                  duration: 3000,
-                });
+                this.snackBar.open(
+                  `${ids.length} document(s) permanently deleted.`,
+                  this.translate.instant('common.ok'),
+                  {
+                    duration: 3000,
+                  },
+                );
               }
             }),
             takeUntilDestroyed(this.destroyRef),
@@ -513,7 +580,11 @@ export class TrashComponent {
           .subscribe({
             next: () => this.documents.update((docs) => docs.filter((d) => d.uid !== uid)),
             error: () =>
-              this.snackBar.open('Failed to delete a document.', 'Dismiss', { duration: 3000 }),
+              this.snackBar.open(
+                this.translate.instant('trash.message.failed-to-delete-a-document'),
+                this.translate.instant('common.dismiss'),
+                { duration: 3000 },
+              ),
           });
       }
     });
@@ -531,11 +602,19 @@ export class TrashComponent {
       )
       .subscribe({
         next: () => {
-          this.snackBar.open('Document restored.', 'OK', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('trash.message.document-restored'),
+            this.translate.instant('common.ok'),
+            { duration: 3000 },
+          );
           this.documents.update((docs) => docs.filter((d) => d.uid !== uid));
         },
         error: () =>
-          this.snackBar.open('Failed to restore document.', 'Dismiss', { duration: 5000 }),
+          this.snackBar.open(
+            this.translate.instant('trash.message.failed-to-restore-document'),
+            this.translate.instant('common.dismiss'),
+            { duration: 5000 },
+          ),
       });
   }
 
@@ -545,9 +624,9 @@ export class TrashComponent {
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Permanently Delete Document',
-        message: 'Permanently delete this document? This cannot be undone.',
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.permanently-delete-document'),
+        message: this.translate.instant('confirm.permanently-delete-warning'),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -562,11 +641,19 @@ export class TrashComponent {
         )
         .subscribe({
           next: () => {
-            this.snackBar.open('Document permanently deleted.', 'OK', { duration: 3000 });
+            this.snackBar.open(
+              this.translate.instant('trash.message.document-permanently-deleted'),
+              this.translate.instant('common.ok'),
+              { duration: 3000 },
+            );
             this.documents.update((docs) => docs.filter((d) => d.uid !== uid));
           },
           error: () =>
-            this.snackBar.open('Failed to delete document.', 'Dismiss', { duration: 5000 }),
+            this.snackBar.open(
+              this.translate.instant('trash.message.failed-to-delete-document'),
+              this.translate.instant('common.dismiss'),
+              { duration: 5000 },
+            ),
         });
     });
   }

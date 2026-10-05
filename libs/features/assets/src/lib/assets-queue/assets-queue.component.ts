@@ -18,11 +18,12 @@ import {
   type AssetQueueItem,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { catchError, of } from 'rxjs';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-assets-queue',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [TranslatePipe, CommonModule, MatIconModule],
   templateUrl: './assets-queue.component.html',
   styleUrl: './assets-queue.component.scss',
 })

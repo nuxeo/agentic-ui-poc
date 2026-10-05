@@ -3,7 +3,9 @@
     @if (icon()) {
       <mat-icon class="widget-header-icon" [style.color]="iconColor()">{{ icon() }}</mat-icon>
     }
-    <div class="widget-header-title" role="heading" aria-level="3">{{ title() }}</div>
+    <div class="widget-header-title" role="heading" [attr.aria-level]="headingLevel()">
+      {{ title() }}
+    </div>
     <ng-content select="[widgetActions]" />
   </div>
 

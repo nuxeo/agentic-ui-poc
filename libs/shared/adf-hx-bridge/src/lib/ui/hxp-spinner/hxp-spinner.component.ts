@@ -1,4 +1,5 @@
-import { Component, input } from '@angular/core';
+import { Component, inject, input } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'hxp-spinner',
@@ -8,9 +9,11 @@ import { Component, input } from '@angular/core';
   host: {
     class: 'hxp-spinner-host',
     role: 'status',
-    'aria-label': 'Loading',
+    // Bound rather than literal: a screen reader announces this, so it is user-facing text.
+    '[attr.aria-label]': "translate.instant('adf-hx-bridge.loading')",
   },
 })
 export class HxpSpinnerComponent {
+  protected readonly translate = inject(TranslateService);
   readonly size = input(24);
 }

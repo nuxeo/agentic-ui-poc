@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
+import { TranslateService } from '@ngx-translate/core';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
@@ -76,7 +78,13 @@ describe('NoteEditorComponent toolbar actions (NXSAT-193)', () => {
     }));
 
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      imports: [
+        testTranslateModule(),
+        testTranslateModule(),
+        NoteEditorComponent,
+        NoopAnimationsModule,
+        HttpClientTestingModule,
+      ],
       providers: [provideZonelessChangeDetection()],
     })
       .overrideProvider(MatDialog, {
@@ -106,7 +114,9 @@ describe('NoteEditorComponent toolbar actions (NXSAT-193)', () => {
         el.getAttribute('aria-label') ??
         el.getAttribute('title') ??
         (el instanceof HTMLSelectElement ? el.getAttribute('aria-label') : null);
-      expect(label, control.selector).toBeTruthy();
+      expect(label, control.selector).toBe(
+        TestBed.inject(TranslateService).instant(control.labelKey),
+      );
     }
   });
 

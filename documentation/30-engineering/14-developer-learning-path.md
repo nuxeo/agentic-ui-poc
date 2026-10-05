@@ -827,7 +827,10 @@ Everything else under `libs/shared/adf-hx-bridge/src/lib/ui/` — thirteen compo
 ports from the main barrel dragged adf-core into the _initial_ bundle: measured 1.70 MB baseline →
 2.65 MB with ports → 2.86 MB with the document-list swap, against a 2.00 MB `maximumError` at the
 time. Anything importing `@alfresco/adf-hx-*` is exported only from
-`@agentic-ui/shared/adf-hx-bridge/providers`, imported solely by the lazy POC route.
+`@agentic-ui/shared/adf-hx-bridge/providers`. The lazy POC route is the intended consumer for
+most of that surface; `app.config.ts` and the shell nav drawer also import it on purpose for
+`provideAdfHxNuxeoBridge()` and `HxpBrowseNavDrawerComponent` (documented in
+`providers.ts` and the guardrail allowlist in `scripts/review-guardrails.mjs`).
 
 - [ADF documentation](https://alfresco-ng2-components.netlify.app/)
 - [ADF source](https://github.com/Alfresco/alfresco-ng2-components)

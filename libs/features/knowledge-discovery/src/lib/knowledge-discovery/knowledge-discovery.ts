@@ -28,6 +28,7 @@ import {
   type KdModelInfo,
   type KdQuestionHistoryItem,
 } from '@agentic-ui/shared/kd-client';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 /**
  * Structured snapshot of a failed KD HTTP call, surfaced inline on the page
@@ -58,6 +59,7 @@ export interface KdDebugError {
   selector: 'lib-knowledge-discovery',
   standalone: true,
   imports: [
+    TranslatePipe,
     DatePipe,
     FormsModule,
     JsonPipe,
@@ -73,6 +75,7 @@ export interface KdDebugError {
 })
 export class KnowledgeDiscoveryComponent {
   private readonly kdClient = inject(KdClientService);
+  private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
@@ -128,13 +131,15 @@ export class KnowledgeDiscoveryComponent {
 
   readonly hasSelection = computed(() => this.selectedAgentId() !== null);
   readonly isAwaitingResponse = computed(() => this.submittingQuestion() || this.pollingAnswer());
-  readonly loadingTitle = computed(() =>
-    this.submittingQuestion() ? 'Submitting your question' : 'Generating answer',
-  );
-  readonly loadingMessage = computed(() =>
+  readonly loadingTitleKey = computed(() =>
     this.submittingQuestion()
-      ? 'Sending the request to Knowledge Discovery.'
-      : 'Searching the selected agent and gathering grounded citations.',
+      ? 'kd.knowledge-discovery.submitting-your-question'
+      : 'kd.knowledge-discovery.generating-answer',
+  );
+  readonly loadingMessageKey = computed(() =>
+    this.submittingQuestion()
+      ? 'kd.knowledge-discovery.sending-the-request'
+      : 'kd.knowledge-discovery.searching-the-selected-agent',
   );
   readonly canClear = computed(
     () => this.questionText().trim().length > 0 && !this.isAwaitingResponse(),
@@ -179,7 +184,9 @@ export class KnowledgeDiscoveryComponent {
           this.loadingReferenceData.set(false);
         },
         error: (err) => {
-          this.referenceDataError.set('Failed to load Knowledge Discovery models and guardrails.');
+          this.referenceDataError.set(
+            this.translate.instant('kd.message.failed-to-load-knowledge-discovery-models-and'),
+          );
           if (this.debugMode()) {
             this.referenceDataErrorDetail.set(
               this.captureError('listModels + listGuardrails (forkJoin)', err),
@@ -209,7 +216,10 @@ export class KnowledgeDiscoveryComponent {
           }
         },
         error: (err) => {
-          this.agentsError.set(err?.error?.detail ?? 'Failed to load Knowledge Discovery agents.');
+          this.agentsError.set(
+            err?.error?.detail ??
+              this.translate.instant('kd.message.failed-to-load-knowledge-discovery-agents'),
+          );
           if (this.debugMode()) {
             this.agentsErrorDetail.set(
               this.captureError('HylandKnowledgeDiscovery.getAllAgents', err),
@@ -237,7 +247,9 @@ export class KnowledgeDiscoveryComponent {
           this.loadHistory(agent.id);
         },
         error: (err) => {
-          this.agentDetailsError.set(err?.error?.detail ?? 'Failed to load agent details.');
+          this.agentDetailsError.set(
+            err?.error?.detail ?? this.translate.instant('kd.message.failed-to-load-agent-details'),
+          );
           if (this.debugMode()) {
             this.agentDetailsErrorDetail.set(
               this.captureError(`HylandKnowledgeDiscovery.Invoke /agent/agents/${agentId}`, err),
@@ -256,9 +268,12 @@ export class KnowledgeDiscoveryComponent {
     let dynamicFilter: Record<string, unknown> | null = null;
     if (this.agentSupportsDynamicFilter()) {
       try {
-        dynamicFilter = this.parseJsonText(this.dynamicFilterText(), 'dynamic filter');
+        dynamicFilter = this.parseDynamicFilter(this.dynamicFilterText());
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Dynamic filter JSON is invalid.';
+        const message =
+          error instanceof Error
+            ? error.message
+            : this.translate.instant('kd.message.dynamic-filter-invalid');
         this.questionError.set(message);
         return;
       }
@@ -293,7 +308,9 @@ export class KnowledgeDiscoveryComponent {
                   this.questionError.set(
                     this.resolveQuestionError(
                       err,
-                      'Failed to retrieve the Knowledge Discovery answer.',
+                      this.translate.instant(
+                        'kd.message.failed-to-retrieve-the-knowledge-discovery-answer',
+                      ),
                     ),
                   );
                 },
@@ -314,7 +331,12 @@ export class KnowledgeDiscoveryComponent {
         },
         error: (err) => {
           this.questionError.set(
-            this.resolveQuestionError(err, 'Failed to submit the Knowledge Discovery question.'),
+            this.resolveQuestionError(
+              err,
+              this.translate.instant(
+                'kd.message.failed-to-submit-the-knowledge-discovery-question',
+              ),
+            ),
           );
           this.submittingQuestion.set(false);
         },
@@ -331,27 +353,28 @@ export class KnowledgeDiscoveryComponent {
     if (err instanceof KdDiscoveryError) {
       if (err.responseCode === 400) {
         if (this.dynamicFilterText().trim().length > 0) {
-          return (
-            'The Discovery service rejected the dynamic filter (HTTP 400). ' +
-            "Make sure the selected agent has a compatible 'dynamicFilterTemplate' " +
-            'configured in Hyland Insight — or clear the filter to ask without it.'
-          );
+          return this.translate.instant('kd.message.dynamic-filter-rejected');
         }
         const agent = this.selectedAgent();
         const model = this.models().find((entry) => entry.modelName === agent?.modelName);
         if (model && model.status && model.status !== 'Active') {
-          const replacement = model.replacementModelName
-            ? ` Replacement suggested by the catalogue: ${model.replacementModelName}.`
-            : '';
-          return (
-            `The Discovery service rejected the question (HTTP 400). The agent's model ` +
-            `'${agent?.modelName}' is marked '${model.status}' on this tenant.` +
-            replacement +
-            ' Update the agent in Hyland Insight and pick an Active model.'
+          const params = {
+            model: agent?.modelName,
+            status: model.status,
+            replacement: model.replacementModelName,
+          };
+          return this.translate.instant(
+            model.replacementModelName
+              ? 'kd.message.model-inactive-with-replacement'
+              : 'kd.message.model-inactive',
+            params,
           );
         }
       }
-      return err.message;
+      return this.translate.instant(
+        err.responseMessage ? 'kd.message.discovery-error' : 'kd.message.discovery-http-error',
+        { code: err.responseCode, message: err.responseMessage },
+      );
     }
     const maybeDetail = (err as { error?: { detail?: string }; message?: string } | null)?.error
       ?.detail;
@@ -377,7 +400,9 @@ export class KnowledgeDiscoveryComponent {
         },
         error: () => {
           this.feedbackInFlight.set(null);
-          this.questionError.set('Failed to submit Knowledge Discovery feedback.');
+          this.questionError.set(
+            this.translate.instant('kd.message.failed-to-submit-knowledge-discovery-feedback'),
+          );
         },
       });
   }
@@ -410,7 +435,10 @@ export class KnowledgeDiscoveryComponent {
           this.kdClient.getAnswer(questionId).pipe(
             catchError((err) => {
               this.questionError.set(
-                err?.error?.detail ?? 'Failed to retrieve the Knowledge Discovery answer.',
+                err?.error?.detail ??
+                  this.translate.instant(
+                    'kd.message.failed-to-retrieve-the-knowledge-discovery-answer',
+                  ),
               );
               this.pollingAnswer.set(false);
               return of(null);
@@ -490,7 +518,7 @@ export class KnowledgeDiscoveryComponent {
     const cleaned = answer.replace(/^#{1,6}\s*/gm, '').trim();
     if (!cleaned) return '';
     if (cleaned.toLowerCase() === this.insufficientAnswerText.toLowerCase()) {
-      return "I couldn't find enough relevant information in this agent's knowledge base to answer that yet.";
+      return this.translate.instant('kd.knowledge-discovery.insufficient-answer');
     }
     return cleaned;
   }
@@ -558,7 +586,7 @@ export class KnowledgeDiscoveryComponent {
     console.error('KD debug payload', payload);
   }
 
-  private parseJsonText(value: string, label: string): Record<string, unknown> | null {
+  private parseDynamicFilter(value: string): Record<string, unknown> | null {
     const trimmed = value.trim();
     if (!trimmed) return null;
 
@@ -566,12 +594,12 @@ export class KnowledgeDiscoveryComponent {
     try {
       parsed = JSON.parse(trimmed);
     } catch {
-      throw new Error(`The ${label} must be valid JSON.`);
+      throw new Error(this.translate.instant('kd.message.dynamic-filter-not-json'));
     }
 
     if (parsed === null) return null;
     if (typeof parsed !== 'object' || Array.isArray(parsed)) {
-      throw new Error(`The ${label} must be a JSON object.`);
+      throw new Error(this.translate.instant('kd.message.dynamic-filter-not-object'));
     }
     return parsed as Record<string, unknown>;
   }

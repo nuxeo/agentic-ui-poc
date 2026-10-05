@@ -19,6 +19,7 @@ import {
   type SearchResultItem,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { catchError, of } from 'rxjs';
+import { TranslatePipe } from '@ngx-translate/core';
 
 interface ActiveFilter {
   label: string;
@@ -29,7 +30,7 @@ interface ActiveFilter {
 @Component({
   selector: 'lib-search-queue',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [TranslatePipe, CommonModule, MatButtonModule, MatIconModule],
   templateUrl: './search-queue.component.html',
   styleUrl: './search-queue.component.scss',
 })

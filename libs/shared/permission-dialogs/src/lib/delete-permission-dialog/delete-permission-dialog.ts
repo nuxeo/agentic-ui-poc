@@ -4,6 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { NuxeoAce, DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface DeletePermissionDialogData {
   documentUid: string;
@@ -15,43 +16,8 @@ export interface DeletePermissionDialogData {
 @Component({
   selector: 'lib-delete-permission-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatProgressSpinnerModule],
-  template: `
-    <h2 mat-dialog-title>The following permission will be deleted.</h2>
-
-    <mat-dialog-content>
-      <table class="confirm-table">
-        <thead>
-          <tr>
-            <th>User / Group</th>
-            <th>Right</th>
-            <th>Time Frame</th>
-            <th>Granted by</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{{ data.ace.username }}</td>
-            <td>{{ data.permissionLabel }}</td>
-            <td>{{ data.timeFrameLabel }}</td>
-            <td>{{ data.ace.creator ?? '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </mat-dialog-content>
-
-    <mat-dialog-actions>
-      <button mat-stroked-button mat-dialog-close>Cancel</button>
-      <span class="spacer"></span>
-      <button mat-stroked-button color="warn" [disabled]="deleting()" (click)="confirmDelete()">
-        @if (deleting()) {
-          <mat-spinner diameter="18" />
-        } @else {
-          Delete
-        }
-      </button>
-    </mat-dialog-actions>
-  `,
+  imports: [TranslatePipe, MatDialogModule, MatButtonModule, MatProgressSpinnerModule],
+  templateUrl: './delete-permission-dialog.html',
   styles: [
     `
       :host {

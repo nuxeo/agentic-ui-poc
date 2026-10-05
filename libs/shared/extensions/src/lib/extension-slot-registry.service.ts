@@ -135,7 +135,20 @@ export class ExtensionSlotRegistry {
 
     const patch: Record<string, unknown> = {};
     if (typeof override.order === 'number') patch['order'] = override.order;
-    if (typeof override.label === 'string') patch['label'] = override.label;
+    if (typeof override.label === 'string') {
+      patch['label'] = override.label;
+      // A manifest `label` is a literal the customer wants on screen, and it must beat the
+      // packaged `labelKey` — otherwise the key would still win at the render site and the
+      // override would appear to do nothing, which is the single most confusing way this
+      // could fail. Clearing the key here puts that precedence in one place rather than
+      // asking every render site to remember it.
+      //
+      // The customer who wants per-language text uses the manifest's `labels` map against the
+      // packaged key instead, and does not set `label`. Both routes are documented in
+      // `docs/extension-reference.md`; setting both is defined, not undefined — the override
+      // wins and the `labels` entry is inert.
+      patch['labelKey'] = undefined;
+    }
     // `rule: null` in a manifest is an explicit "ungate this", so it must clear
     // the packaged rule rather than be treated as "no opinion".
     if (override.rule !== undefined) patch['rule'] = override.rule;

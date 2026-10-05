@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, signal, untracked, DestroyRef } from '@angular/core';
+import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
@@ -21,10 +22,13 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { SearchQueueComponent } from '../search-queue/search-queue.component';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 interface CountOption {
   key: string;
   label: string;
+  /** Set only when the label came from a static definition in this file, never from an aggregation. */
+  labelKey?: string;
   value: string;
   count: number;
 }
@@ -42,6 +46,8 @@ type DrawerViewMode = 'filter' | 'queue';
   selector: 'lib-search-filters-drawer',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
     MatIconModule,
     MatButtonModule,
     MatCheckboxModule,
@@ -54,6 +60,7 @@ type DrawerViewMode = 'filter' | 'queue';
   styleUrl: './search-filters-drawer.component.scss',
 })
 export class SearchFiltersDrawerComponent {
+  private readonly translate = inject(TranslateService);
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly searchService = inject(SearchService);
   private readonly router = inject(Router);
@@ -434,8 +441,8 @@ export class SearchFiltersDrawerComponent {
     this.dialog
       .open(SavedSearchDialogComponent, {
         data: {
-          title: 'Saved Search',
-          placeholder: 'Enter a name for your saved search',
+          title: this.translate.instant('ui.saved-search'),
+          placeholder: this.translate.instant('saved-search.dialog.name-placeholder'),
         },
       })
       .afterClosed()
@@ -452,10 +459,18 @@ export class SearchFiltersDrawerComponent {
           .subscribe({
             next: () => {
               this.searchAggregationService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+              this.snackBar.open(
+                this.translate.instant('common.search-saved', { name: trimmedTitle }),
+                this.translate.instant('common.ok'),
+                { duration: 3000 },
+              );
             },
             error: () => {
-              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+              this.snackBar.open(
+                this.translate.instant('assets.message.failed-to-save-search'),
+                this.translate.instant('common.dismiss'),
+                { duration: 5000 },
+              );
             },
           });
       });
@@ -943,6 +958,7 @@ export class SearchFiltersDrawerComponent {
     return MODIFIED_DATE_OPTION_DEFS.map((option) => ({
       key: option.id,
       value: option.id,
+      labelKey: option.labelKey,
       label: option.label,
       count: counts[option.id],
     }));
@@ -1138,6 +1154,7 @@ export class SearchFiltersDrawerComponent {
     return SIZE_OPTION_DEFS.map((def) => ({
       key: def.value,
       value: def.value,
+      labelKey: def.labelKey,
       label: def.label,
       count: counts[def.value],
     }));
@@ -1265,39 +1282,48 @@ export class SearchFiltersDrawerComponent {
 type ModifiedDateId = 'last24h' | 'lastWeek' | 'lastMonth' | 'lastYear' | 'moreThan1YearAgo';
 type SizeBucketId = 'tiny' | 'small' | 'medium' | 'big' | 'huge';
 
-const MODIFIED_DATE_OPTION_DEFS: Array<{ id: ModifiedDateId; label: string }> = [
-  { id: 'last24h', label: 'Last 24h' },
-  { id: 'lastWeek', label: 'Last week' },
-  { id: 'lastMonth', label: 'Last month' },
-  { id: 'lastYear', label: 'Last year' },
-  { id: 'moreThan1YearAgo', label: 'More than a year ago' },
+const MODIFIED_DATE_OPTION_DEFS: Array<{ id: ModifiedDateId; labelKey: string; label: string }> = [
+  { id: 'last24h', labelKey: 'search.filter.last24h', label: 'Last 24h' },
+  { id: 'lastWeek', labelKey: 'search.filter.last-week', label: 'Last week' },
+  { id: 'lastMonth', labelKey: 'search.filter.last-month', label: 'Last month' },
+  { id: 'lastYear', labelKey: 'search.filter.last-year', label: 'Last year' },
+  {
+    id: 'moreThan1YearAgo',
+    labelKey: 'search.filter.more-than1-year-ago',
+    label: 'More than a year ago',
+  },
 ];
 
-const SIZE_OPTION_DEFS: Array<{ value: SizeBucketId; label: string }> = [
+const SIZE_OPTION_DEFS: Array<{ value: SizeBucketId; labelKey: string; label: string }> = [
   {
     value: 'tiny',
+    labelKey: 'search.filter.option.less-than-100-kb',
     label: 'Less than 100 KB',
   },
   {
     value: 'small',
+    labelKey: 'search.filter.option.between-100-kb-and-1-mb',
     label: 'Between 100 KB and 1 MB',
   },
   {
     value: 'medium',
+    labelKey: 'search.filter.option.between-1-mb-and-10-mb',
     label: 'Between 1 MB and 10 MB',
   },
   {
     value: 'big',
+    labelKey: 'search.filter.option.between-10-mb-and-100-mb',
     label: 'Between 10 MB and 100 MB',
   },
   {
     value: 'huge',
+    labelKey: 'search.filter.option.more-than-100-mb',
     label: 'More than 100 MB',
   },
 ];
 
 const QUEUE_QUICK_FILTER_OPTIONS = [
-  { label: 'No Containers', value: 'noFolder' },
-  { label: 'Most Recent', value: 'mostRecent' },
-  { label: 'Validated', value: 'onlyValidated' },
+  { labelKey: 'search.filter.option.no-containers', label: 'No Containers', value: 'noFolder' },
+  { labelKey: 'search.filter.option.most-recent', label: 'Most Recent', value: 'mostRecent' },
+  { labelKey: 'search.filter.option.validated', label: 'Validated', value: 'onlyValidated' },
 ] as const;

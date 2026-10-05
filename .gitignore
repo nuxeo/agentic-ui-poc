@@ -47,8 +47,6 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 
-
-
 .nx/cache
 .nx/workspace-data
 .angular
@@ -104,6 +102,19 @@ playwright-report/
 /.claude/settings.json
 /.claude/settings.local.json
 
+# Nested git worktrees created by the agent tooling. These are full checkouts of this
+# repository living inside it, so every project they contain is a SECOND definition of a
+# project Nx already knows — and Nx refuses the whole graph rather than guessing:
+#
+#   NX  Failed to process project graph.
+#   The following projects are defined in multiple locations: nuxeo-satori-template, browse, …
+#
+# That takes out lint, test, build, typecheck and api-surface together, locally only, in a way
+# that reads like a broken branch. `nx reset` does not help, because the duplication is real
+# rather than cached. Ignored here rather than in `.nxignore` because Nx reads this file too and
+# a nested checkout must never be committable in the first place.
+/.claude/worktrees/
+
 # Ad-hoc debugging scratch files. Kept out of the tree rather than deleted, because
 # they are useful locally while the Nuxeo tree API and drawer are being worked on —
 # but they are not part of the product and two of them bypass the app entirely
@@ -131,3 +142,12 @@ playwright-report/
 # for summaries that go stale silently and are believed anyway. Ignored rather than merely
 # untracked so a stray `git add -A` cannot put it back.
 /docs/security-next-steps.md
+apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json
+apps/nuxeo-ui/public/i18n/zz.json
+
+# Local planning scratch. Two stray files were swept into a translation PR by `git add -A`, and
+# both had to be caught by a reviewer: a plan under `.cursor/plans/` and a 368-line prompt saved as
+# `scripts/Untitled`. Ignoring the first did not generalise, so extensionless scratch under
+# `scripts/` is ignored too — everything real in that directory has an extension.
+.cursor/plans/
+scripts/Untitled*

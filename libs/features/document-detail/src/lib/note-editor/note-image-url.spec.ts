@@ -7,9 +7,7 @@ import {
 } from './note-image-url';
 
 /** A complete `NuxeoDocument`, so a fixture states only the fields its test is about. */
-function pictureDoc(
-  overrides: Partial<NuxeoDocument> & Pick<NuxeoDocument, 'uid'>,
-): NuxeoDocument {
+function pictureDoc(overrides: Partial<NuxeoDocument> & Pick<NuxeoDocument, 'uid'>): NuxeoDocument {
   return {
     title: 'Document',
     type: 'File',

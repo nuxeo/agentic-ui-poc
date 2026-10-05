@@ -24,37 +24,31 @@ export class TaskService {
   };
 
   getUserTasks(userId: string, pageSize = 10): Observable<NuxeoTask[]> {
-    const params = new HttpParams()
-      .set('userId', userId)
-      .set('pageSize', pageSize);
+    const params = new HttpParams().set('userId', userId).set('pageSize', pageSize);
 
-    return this.api
-      .get<NuxeoTaskList>('/nuxeo/api/v1/task', params, this.taskFetchHeaders)
-      .pipe(
-        map((res) => res.entries),
-        switchMap((tasks) => {
-          if (tasks.length === 0) return of([] as NuxeoTask[]);
+    return this.api.get<NuxeoTaskList>('/nuxeo/api/v1/task', params, this.taskFetchHeaders).pipe(
+      map((res) => res.entries),
+      switchMap((tasks) => {
+        if (tasks.length === 0) return of([] as NuxeoTask[]);
 
-          const enriched$ = tasks.map((task) => {
-            const targetRef = task.targetDocumentIds?.[0];
-            // Enriched response has uid+title, plain response has id
-            if (targetRef?.title) {
-              return of({ ...task, targetDocTitle: targetRef.title });
-            }
-            const docId = targetRef?.uid || targetRef?.id;
-            if (!docId) return of(task);
+        const enriched$ = tasks.map((task) => {
+          const targetRef = task.targetDocumentIds?.[0];
+          // Enriched response has uid+title, plain response has id
+          if (targetRef?.title) {
+            return of({ ...task, targetDocTitle: targetRef.title });
+          }
+          const docId = targetRef?.uid || targetRef?.id;
+          if (!docId) return of(task);
 
-            return this.api
-              .get<NuxeoDocument>(`/nuxeo/api/v1/id/${docId}`)
-              .pipe(
-                map((doc) => ({ ...task, targetDocTitle: doc.title })),
-                catchError(() => of(task)),
-              );
-          });
+          return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${docId}`).pipe(
+            map((doc) => ({ ...task, targetDocTitle: doc.title })),
+            catchError(() => of(task)),
+          );
+        });
 
-          return forkJoin(enriched$);
-        }),
-      );
+        return forkJoin(enriched$);
+      }),
+    );
   }
 
   /** Get a specific task by ID (with enriched targets & actors). */
@@ -71,11 +65,7 @@ export class TaskService {
     let params = new HttpParams();
     if (userId) params = params.set('userId', userId);
     return this.api
-      .get<NuxeoTaskList>(
-        `/nuxeo/api/v1/id/${docId}/@task`,
-        params,
-        this.taskFetchHeaders,
-      )
+      .get<NuxeoTaskList>(`/nuxeo/api/v1/id/${docId}/@task`, params, this.taskFetchHeaders)
       .pipe(map((res) => res.entries));
   }
 
@@ -97,45 +87,28 @@ export class TaskService {
     if (comment !== undefined) {
       body['comment'] = comment;
     }
-    return this.api.put<NuxeoTask>(
-      `/nuxeo/api/v1/task/${taskId}/${action}`,
-      body,
-    );
+    return this.api.put<NuxeoTask>(`/nuxeo/api/v1/task/${taskId}/${action}`, body);
   }
 
   /** Reassign a task to other actors (replaces current actors). */
-  reassignTask(
-    taskId: string,
-    actors: string[],
-    comment?: string,
-  ): Observable<void> {
+  reassignTask(taskId: string, actors: string[], comment?: string): Observable<void> {
     const body: Record<string, unknown> = {
       'entity-type': 'task',
       id: taskId,
       actors,
     };
     if (comment) body['comment'] = comment;
-    return this.api.put<void>(
-      `/nuxeo/api/v1/task/${taskId}/reassign`,
-      body,
-    );
+    return this.api.put<void>(`/nuxeo/api/v1/task/${taskId}/reassign`, body);
   }
 
   /** Delegate a task to additional actors (keeps original actors). */
-  delegateTask(
-    taskId: string,
-    delegatedActors: string[],
-    comment?: string,
-  ): Observable<void> {
+  delegateTask(taskId: string, delegatedActors: string[], comment?: string): Observable<void> {
     const body: Record<string, unknown> = {
       'entity-type': 'task',
       id: taskId,
       delegatedActors,
     };
     if (comment) body['comment'] = comment;
-    return this.api.put<void>(
-      `/nuxeo/api/v1/task/${taskId}/delegate`,
-      body,
-    );
+    return this.api.put<void>(`/nuxeo/api/v1/task/${taskId}/delegate`, body);
   }
 }

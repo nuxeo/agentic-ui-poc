@@ -1,6 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogConfig, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogConfig,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
+import { TranslatePipe } from '@ngx-translate/core';
 
 export interface SavedSearchDialogData {
   title?: string;
@@ -15,27 +21,8 @@ export const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig> = {
 @Component({
   selector: 'lib-saved-search-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule],
-  template: `
-    <h2 mat-dialog-title>{{ data.title || 'Saved Search' }}</h2>
-
-    <mat-dialog-content>
-      <input
-        class="saved-search-input"
-        type="text"
-        [attr.aria-label]="data.title || 'Saved Search'"
-        [value]="name()"
-        [placeholder]="data.placeholder || 'Enter a name for your saved search'"
-        (input)="onInput(($any($event.target).value))"
-        (keydown.enter)="save()"
-      />
-    </mat-dialog-content>
-
-    <mat-dialog-actions align="end">
-      <button mat-stroked-button type="button" (click)="dialogRef.close()">Cancel</button>
-      <button mat-flat-button color="primary" type="button" [disabled]="!canSave()" (click)="save()">Save</button>
-    </mat-dialog-actions>
-  `,
+  imports: [TranslatePipe, MatDialogModule, MatButtonModule],
+  templateUrl: './saved-search-dialog.component.html',
   styles: [
     `
       :host {

@@ -1,4 +1,8 @@
-<div class="hxp-browse-tabs" role="tablist" aria-label="Browse folder tabs">
+<div
+  class="hxp-browse-tabs"
+  role="tablist"
+  [attr.aria-label]="'hxp.hxp-browse-tabs.browse-folder-tabs' | translate"
+>
   @for (tab of tabs; track tab.id) {
     <button
       type="button"
@@ -8,7 +12,7 @@
       [attr.aria-selected]="activeTab() === tab.id"
       (click)="selectTab(tab.id)"
     >
-      {{ tab.label }}
+      {{ tab | descriptorLabel }}
     </button>
   }
 </div>

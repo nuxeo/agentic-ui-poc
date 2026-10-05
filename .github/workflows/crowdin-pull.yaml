@@ -1,10 +1,16 @@
 # Opens a pull request with whatever has been translated and approved.
 #
-# The second of D8's two workflows. Daily, because a translation finished on Tuesday should
-# not wait for someone to remember.
+# The download half of the two-workflow model in the Hyland Crowdin standard, whose shape this
+# follows: a daily scheduled pull opening a pull request is RECOMMENDED, and an on-demand
+# `workflow_dispatch` is a SHOULD. Conformance is tracked in `D8-standard` of
+# `docs/i18n-localization-plan.md`. Daily, because a translation finished on Tuesday should not
+# wait for someone to remember.
 #
-# Daily is a POLL, not a publish. On a day with nothing approved this opens nothing. Measured on
-# nuxeo/nuxeo-web-ui, which has run the same schedule since 2022: 99 pull requests, 39 of them
+# Daily is a POLL, not a publish. It opens or refreshes a pull request only when the download
+# differs from `main`; unapproved strings export as English, so that includes any translation held
+# in `main` that is not yet approved in Crowdin. Measured on
+# nuxeo/nuxeo-web-ui — a comparison, not an authority; it predates the standard and is not
+# compliant with it — which has run the same schedule since 2022: 99 pull requests, 39 of them
 # merged at a median lag of one day, none currently open. Thirty-nine merges across fifty-one
 # months is roughly one a month — the release cadence, reached by the mechanism rather than by
 # scheduling it. The numbers and the query behind them are in D8b; do not restate them from here.
@@ -26,7 +32,9 @@ concurrency:
 
 jobs:
   pull-translations:
-    # See the note in crowdin-push.yaml: off until the project exists.
+    # The off switch, not a "not yet" — see the note in crowdin-push.yaml. The project exists
+    # and both halves have run; what this still guards is a fork or clone, which has none of
+    # these secrets and would otherwise run this job on every push.
     if: vars.CROWDIN_SYNC_ENABLED == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -56,7 +64,7 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-          CROWDIN_BOT_GITHUB_TOKEN: ${{ secrets.CROWDIN_BOT_GITHUB_TOKEN }}
+          BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
         run: |
           missing=()
           [ "$SIGNING_ENABLED" = "true" ] || missing+=("vars.GPG_BOT_SIGNING_ENABLED must be 'true' — this job commits to main and every bot commit here is signed")
@@ -64,7 +72,7 @@ jobs:
           [ -n "$GPG_PASSPHRASE" ] || missing+=("secrets.GPG_PASSPHRASE")
           [ -n "$CROWDIN_PROJECT_ID" ] || missing+=("secrets.CROWDIN_PROJECT_ID")
           [ -n "$CROWDIN_PERSONAL_TOKEN" ] || missing+=("secrets.CROWDIN_PERSONAL_TOKEN")
-          [ -n "$CROWDIN_BOT_GITHUB_TOKEN" ] || missing+=("secrets.CROWDIN_BOT_GITHUB_TOKEN — the default GITHUB_TOKEN pushes a branch without starting a workflow, so the translation PR would have no CI")
+          [ -n "$BOT_GITHUB_TOKEN" ] || missing+=("secrets.BOT_GITHUB_TOKEN — the default GITHUB_TOKEN pushes a branch without starting a workflow, so the translation PR would arrive with no CI while its own body promises the catalogue gate has run on it")
           if [ ${#missing[@]} -gt 0 ]; then
             echo "::error::CROWDIN_SYNC_ENABLED is on but the activation is incomplete."
             for item in "${missing[@]}"; do echo "  - $item"; done
@@ -74,7 +82,7 @@ jobs:
           echo "Activation complete: signing on, Crowdin credentials and bot token present."
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: main
 
@@ -108,17 +116,55 @@ jobs:
           upload_sources: false
           download_translations: true
 
+          # The standard's only pull setting is approved-only export (`export_only_approved`, in
+          # crowdin-conf.yml). A string not yet approved is filled with its English source, so
+          # every catalogue arrives at full key parity. Neither skip option is set, and
+          # `checkCrowdinConfig` fails the workflow if either appears:
+          #
+          #   - `skip_untranslated_strings` was set here and removed. For our nested JSON it does
+          #     not omit an unapproved key, it exports the key with a BLANK value — the nightly
+          #     pull of 29 September 2026 (#293) blanked every unapproved value in nine
+          #     catalogues. The Technical Usage Guide warns of exactly this: "the former can lead
+          #     to empty translations being exported".
+          #   - `skip_untranslated_files` withholds a language entirely until it is 100% approved.
+          #
+          # See D8d and D8h in docs/i18n-localization-plan.md.
+
+          # Only the languages the app ships. A catalogue for a locale with no Angular locale data
+          # fails `checkLocaleDataRegistered`, and Crowdin has nine target languages while the app
+          # registers two. Adding a language to the app means adding it here, in the same pull
+          # request as its `register-locale-data.ts` entry and its `availableLanguages` entry.
+          # These are Crowdin language IDs, which for French and German are `fr` and `de`.
+          download_translations_args: '--language=fr --language=de'
+
           create_pull_request: true
           localization_branch_name: crowdin-translations-update
           pull_request_base_branch_name: main
           pull_request_title: 'chore(i18n): new Crowdin translations'
+          # Used only when the action CREATES the pull request. If one is already open on the
+          # localization branch, the action pushes to it and leaves its body as it was.
           pull_request_body: |
             Opened by the Crowdin Pull workflow. Contains only catalogue files.
 
-            Only **approved** translations are exported, so anything here has been through
-            review on the Crowdin side. `checkTranslationCatalogues` runs on this pull request
-            and fails a catalogue that is malformed, blank-valued, or out of key parity with
-            English — which is what a half-finished sync produces.
+            This pull request **requests** approved-only export (`export_only_approved: 'true'`),
+            so the intent is that everything here has been through review on the Crowdin side.
+            Treat that as the intent rather than a guarantee until the project's own export
+            settings are confirmed: the Crowdin Guidelines say project-level export settings take
+            precedence over the settings a pipeline sends. Tracked as an owner action in
+            `D8-standard`.
+
+            **Every catalogue arrives at full key parity with `en.json`.** A string not yet
+            approved in Crowdin appears in English. A catalogue that is still ENTIRELY English
+            means nothing has been approved for that language yet, and
+            `checkCataloguesAreTranslated` fails it on purpose, so this pull request stays red
+            until approvals exist. That is expected, not a fault. A catalogue that is mostly
+            English gets a warning from the same check and does not fail.
+
+            **Check the diff for real translations turning back into English.** The export
+            replaces the whole file, so a translation that exists in this repository but has not
+            been approved in Crowdin comes back as its English source, and no check fails on it.
+            Do not merge a pull that does this; get the translation approved in Crowdin first
+            (D8f in `docs/i18n-localization-plan.md`).
 
             Do not hand-edit a non-English catalogue to fix something here. Crowdin is the
             source of truth and overwrites it on the next pull; fix it in Crowdin.
@@ -129,6 +175,21 @@ jobs:
 
           # Signing, configured on the action rather than on the host, because this action runs in
           # its own Docker container and the commit is made there. See the note above the checkout.
+          #
+          # KNOWN GAP — the signature is produced but GitHub does not verify it. The first real
+          # run committed with `verification.verified: false`, `reason: unknown_key`, and that is
+          # not a missing upload that can be fixed by adding a key somewhere: GitHub verifies a
+          # signature by matching the key to an account holding that public key with a **verified
+          # email matching the signature identity**, and the identity above is
+          # `github-actions[bot]@users.noreply.github.com` — GitHub's own App, on which nobody can
+          # register a GPG key. The author and the key belong to different parties, so no upload
+          # makes this combination verify.
+          #
+          # Fixing it means choosing an identity that can own the key — a Nuxeo bot account with
+          # the public key added and that email verified — and setting both fields to it. That is
+          # account-level work and a decision about which account, so it is recorded rather than
+          # guessed at here. Until then `GPG_BOT_SIGNING_ENABLED` buys a signature nobody checks,
+          # and if `main` ever requires signed commits these pull requests will not merge.
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
         env:
@@ -141,4 +202,16 @@ jobs:
           # No `|| secrets.GITHUB_TOKEN` fallback. That fallback is what made the weaker outcome
           # the silent default: the job stayed green and delivered a pull request with no checks.
           # The preflight step requires this secret, so reaching here means it is set.
-          GITHUB_TOKEN: ${{ secrets.CROWDIN_BOT_GITHUB_TOKEN }}
+          #
+          # `BOT_GITHUB_TOKEN` rather than a Crowdin-specific secret, because this repository
+          # already had that one and a second copy of the same credential is a second thing to
+          # rotate — and the one that goes stale is always the one nothing reads often.
+          #
+          # It has NEVER BEEN EXERCISED, though. Until this, `BOT_GITHUB_TOKEN` appeared only in
+          # comments in `changelog.yml` and `release.yml`, offered as an option nobody took;
+          # both use the default token. Its ability to push a branch and create a pull request is
+          # therefore unverified; missing either permission makes the action fail. Separately, a
+          # successful push made with the repository `GITHUB_TOKEN` would suppress follow-on
+          # workflows and leave the pull request with no checks. Confirm on the first real run that
+          # this token completes both operations and that checks start on the resulting pull request.
+          GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}

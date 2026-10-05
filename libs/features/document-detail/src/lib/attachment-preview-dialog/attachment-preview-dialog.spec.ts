@@ -9,6 +9,7 @@ import {
   AttachmentPreviewDialogComponent,
   type AttachmentPreviewData,
 } from './attachment-preview-dialog';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 const mockDialogRef = {
   close: vi.fn(),
@@ -54,7 +55,7 @@ async function createDialog(
   const rawUrl = URL.createObjectURL(new Blob(['payload']));
 
   const builder = TestBed.configureTestingModule({
-    imports: [AttachmentPreviewDialogComponent, NoopAnimationsModule],
+    imports: [AttachmentPreviewDialogComponent, NoopAnimationsModule, testTranslateModule()],
     providers: [
       provideZonelessChangeDetection(),
       { provide: MatDialogRef, useValue: mockDialogRef },

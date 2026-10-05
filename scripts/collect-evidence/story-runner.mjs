@@ -66,6 +66,9 @@ await mkdir(outDir, { recursive: true });
 
 const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
 
+const scenesUrl = pathToFileURL(resolve(process.cwd(), scenesFile)).href;
+const scenesMod = await import(scenesUrl);
+
 const ACT_NAMES = {
   1: 'Setup — where we are and what the user is trying to do',
   2:
@@ -93,16 +96,18 @@ const browser = await chromium.launch({
 // Credentials come from the environment, with no fallback. Defaulting to Administrator
 // meant a capture silently ran with privileged credentials whenever the variables were
 // unset — and produced evidence of what an administrator sees, which is rarely the claim.
+const skipHttpCredentials = scenesMod.skipHttpCredentials === true;
 const nuxeoUser = process.env['NUXEO_USER'];
 const nuxeoPass = process.env['NUXEO_PASS'];
-if (!nuxeoUser || !nuxeoPass) {
+if (!skipHttpCredentials && (!nuxeoUser || !nuxeoPass)) {
   // Placeholders, not a worked example. Spelling the local dev value out as an assignment
   // reads as a hardcoded credential to both a reviewer and the secret scanner, and this
   // repository gates merges on the latter.
   console.error(
     '\nNUXEO_USER and NUXEO_PASS must be set — there is deliberately no default.\n\n' +
       '  export NUXEO_USER=<user> NUXEO_PASS=<password>\n\n' +
-      'A local Nuxeo dev container uses its documented default administrator account.\n',
+      'A local Nuxeo dev container uses its documented default administrator account.\n' +
+      'Public routes (e.g. /#/login) may export skipHttpCredentials = true and run without them.\n',
   );
   await browser.close();
   process.exit(2);
@@ -111,10 +116,23 @@ if (!nuxeoUser || !nuxeoPass) {
 const context = await browser.newContext({
   viewport: { width: 1440, height: 900 },
   recordVideo: { dir: outDir, size: { width: 1440, height: 900 } },
-  // Both auth mechanisms are required: the injected session satisfies the route guard so
-  // pages render, httpCredentials authenticates the XHRs behind them.
-  httpCredentials: { username: nuxeoUser, password: nuxeoPass, origin: baseUrl },
+  // Both auth mechanisms are required on authenticated surfaces: the injected session satisfies
+  // the route guard so pages render, httpCredentials authenticates the XHRs behind them. Login
+  // and other public routes set `skipHttpCredentials: true` on the scenes file so /me hydration
+  // does not sign the browser in before the login form renders.
+  ...(skipHttpCredentials
+    ? {}
+    : {
+        httpCredentials: { username: nuxeoUser, password: nuxeoPass, origin: baseUrl },
+      }),
 });
+
+if (skipHttpCredentials) {
+  // Anonymous /me hydration still satisfies loginGuard unless the signed-out flag is set.
+  await context.addInitScript(() => {
+    sessionStorage.setItem('agentic_ui_signed_out', '1');
+  });
+}
 
 // Chapter offsets are measured from here. Recording actually begins inside newContext, a few
 // tens of milliseconds earlier, so offsets are approximate — stated in chapters.json rather
@@ -506,8 +524,7 @@ async function shot(name, opts = {}) {
 
 // ---------------------------------------------------------------- run
 
-const scenesUrl = pathToFileURL(resolve(process.cwd(), scenesFile)).href;
-const mod = await import(scenesUrl);
+const mod = scenesMod;
 const declarative = Array.isArray(mod.scenes) ? mod.scenes : null;
 
 /** @type {{index:number,act:number,title:string,criterion?:string,offsetMs:number}[]} */

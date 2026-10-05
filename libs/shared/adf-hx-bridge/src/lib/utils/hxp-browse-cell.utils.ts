@@ -26,14 +26,14 @@ function text(doc: Document, key: string): string {
  * `text()` rather than `?? ''`: the mapper omits a property Nuxeo holds no value for, so an
  * absent key is the normal case rather than an error.
  */
-export function hxpBrowseCellValue(doc: Document, key: string): string {
+export function hxpBrowseCellValue(doc: Document, key: string, locale: string): string {
   switch (key) {
     case 'title':
       return hxpDocTitle(doc);
     case 'type':
       return hxpDocTypeLabel(doc);
     case 'modified':
-      return doc.sys_modified ? new Date(doc.sys_modified).toLocaleDateString() : '';
+      return doc.sys_modified ? new Date(doc.sys_modified).toLocaleDateString(locale) : '';
     case 'lastContributor':
       return text(doc, 'dc_lastContributor');
     case 'state':
@@ -46,7 +46,7 @@ export function hxpBrowseCellValue(doc: Document, key: string): string {
       return `${major}.${doc['uid_minor_version'] ?? 0}`;
     }
     case 'created':
-      return doc.sys_created ? new Date(doc.sys_created).toLocaleDateString() : '';
+      return doc.sys_created ? new Date(doc.sys_created).toLocaleDateString(locale) : '';
     case 'author':
       return text(doc, 'dc_creator');
     case 'nature':

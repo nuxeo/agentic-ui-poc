@@ -6,11 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { AdministrationService, NuxeoOAuth2Provider } from '@nuxeo-satori/platform/nuxeo-client';
+import { TranslatePipe } from '@ngx-translate/core';
 
 @Component({
   selector: 'lib-admin-cloud-services-page',
   standalone: true,
   imports: [
+    TranslatePipe,
     MatTabsModule,
     MatTableModule,
     MatButtonModule,

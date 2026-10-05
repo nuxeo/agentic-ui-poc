@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  LOCALE_ID,
   OnInit,
   OnDestroy,
   inject,
@@ -13,6 +14,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AppExtensionsService,
+  DescriptorLabelPipe,
   EXTENSION_SLOTS,
   ExtensionActionRegistry,
   ExtensionOutletComponent,
@@ -90,7 +92,7 @@ import {
   mergeDocumentPermissionsContext,
   auditActivityLabel,
   resolveAcePrincipal,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   isPermissionDeniedError,
   isBlobHoldingDocType,
   isFolderishDocument,
@@ -113,6 +115,9 @@ import {
   trustObjectUrl,
   type BrowseReturnMode,
   type ClipboardDoc,
+  formatRelativeTime,
+  formatAceDateRange,
+  permissionRightLabel,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -131,6 +136,7 @@ import {
 } from '@agentic-ui/shared/ai-client';
 import {
   KeClientService,
+  KeEnrichmentError,
   type KeEnrichRequest,
   type KeEnrichmentResult,
 } from '@agentic-ui/shared/ke-client';
@@ -150,21 +156,22 @@ import {
   timer,
 } from 'rxjs';
 import {
-  ShareDialogComponent,
-  ShareDialogData,
+  ConfirmDialogComponent,
+  ConfirmDialogData,
   DocumentViewerComponent,
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-  type VideoSource,
-  type StoryboardItem,
-  type PictureInfo,
-  type PictureView,
+  ShareDialogComponent,
+  ShareDialogData,
   type ExifData,
   type IptcData,
+  type PictureInfo,
+  type PictureView,
+  type StoryboardItem,
   type VideoInfo,
+  type VideoSource,
+  provideTranslatedDatepickerIntl,
 } from '@nuxeo-satori/platform/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 import {
@@ -188,6 +195,7 @@ import {
   UpdatePermissionDialogComponent,
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -221,6 +229,30 @@ type KeUiAction =
   | 'text-summarization'
   | 'image-enrichment';
 
+/** Catalogue keys for the progress, success and failure message of each enrichment action. */
+const KE_MESSAGE_KEYS: Record<KeUiAction, { start: string; success: string; failed: string }> = {
+  'text-classification': {
+    start: 'document-detail.message.ke-start-classification',
+    success: 'document-detail.message.ke-success-classification',
+    failed: 'document-detail.message.ke-failed-classification',
+  },
+  'named-entity-recognition-text': {
+    start: 'document-detail.message.ke-start-entity-extraction',
+    success: 'document-detail.message.ke-success-entity-extraction',
+    failed: 'document-detail.message.ke-failed-entity-extraction',
+  },
+  'text-summarization': {
+    start: 'document-detail.message.ke-start-summarization',
+    success: 'document-detail.message.ke-success-summarization',
+    failed: 'document-detail.message.ke-failed-summarization',
+  },
+  'image-enrichment': {
+    start: 'document-detail.message.ke-start-image-enrichment',
+    success: 'document-detail.message.ke-success-image-enrichment',
+    failed: 'document-detail.message.ke-failed-image-enrichment',
+  },
+};
+
 const MIME_BY_EXTENSION: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
@@ -250,6 +282,8 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   selector: 'lib-document-detail',
   standalone: true,
   imports: [
+    DescriptorLabelPipe,
+    TranslatePipe,
     DatePipe,
     NgTemplateOutlet,
     FormsModule,
@@ -278,11 +312,13 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     SatBreadcrumbsComponent,
     SatTagModule,
   ],
-  providers: [provideNativeDateAdapter()],
+  providers: [provideTranslatedDatepickerIntl(), provideNativeDateAdapter()],
   templateUrl: './document-detail.html',
   styleUrl: './document-detail.scss',
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
+  private readonly translate = inject(TranslateService);
+  private readonly locale = inject(LOCALE_ID);
   private readonly destroyRef = inject(DestroyRef);
   private readonly extensionRuleContext = inject(ExtensionRuleContextService);
   private readonly extensions = inject(AppExtensionsService);
@@ -479,7 +515,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   /** Set after a successful ingest or CheckDigest probe when the marker cannot be persisted. */
   readonly contentLakePresenceVerified = signal(false);
   readonly contentLakePresenceChecking = signal(false);
-  readonly contentLakeIngestedTooltip = 'Indexed in Content Lake';
 
   // Loaded from the Nuxeo `nature` directory and supplied as candidate classes to the
   // KE text-classification model. Sourcing live ids guarantees the value we write back
@@ -860,26 +895,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly canRemoveDoc = computed(() => canRemoveDocument(this.doc()));
 
   permissionLabel(permission: string): string {
-    const labels: Record<string, string> = {
-      Everything: 'Manage everything',
-      ReadWrite: 'Edit',
-      Read: 'Read',
-      Write: 'Write',
-      ReadRemove: 'Read & Remove',
-      AddChildren: 'Add Children',
-      Remove: 'Remove',
-      ManageWorkflows: 'Manage Workflows',
-      ReadCanCollect: 'Can collect',
-    };
-    return labels[permission] ?? permission;
+    return permissionRightLabel(permission, (key) => this.translate.instant(key));
   }
 
   aceTimeFrame(ace: NuxeoAce): string {
-    if (!ace.begin && !ace.end) return 'Permanent';
-    const parts: string[] = [];
-    if (ace.begin) parts.push(`from ${new Date(ace.begin).toLocaleDateString()}`);
-    if (ace.end) parts.push(`to ${new Date(ace.end).toLocaleDateString()}`);
-    return parts.join(' ');
+    return formatAceDateRange(
+      ace.begin,
+      ace.end,
+      (key, params) => this.translate.instant(key, params),
+      this.locale,
+    );
   }
 
   displayUsername(ace: NuxeoAce): string {
@@ -1007,7 +1032,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const uid = params.get('uid');
       if (!uid) {
-        this.error.set('No document ID provided.');
+        this.error.set(this.translate.instant('document-detail.message.no-document-id-provided'));
         this.loading.set(false);
         return;
       }
@@ -1114,7 +1139,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiSummaryLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(aiErrorMessage(err, 'Summary generation failed'));
+        this.aiError.set(
+          aiErrorMessage(
+            err,
+            this.translate.instant('document-detail.message.summary-generation-failed'),
+          ),
+        );
         this.aiSummaryLoading.set(false);
       },
     });
@@ -1130,7 +1160,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiTagsLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(aiErrorMessage(err, 'Tag suggestion failed'));
+        this.aiError.set(
+          aiErrorMessage(
+            err,
+            this.translate.instant('document-detail.message.tag-suggestion-failed'),
+          ),
+        );
         this.aiTagsLoading.set(false);
       },
     });
@@ -1141,9 +1176,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.tagService.addTag(this.docUid, tagLabel).subscribe({
       next: () => {
         this.aiSuggestedTags.update((tags) => tags.filter((t) => t.label !== tagLabel));
-        this.snackBar.open(`Tag "${tagLabel}" applied`, 'OK', { duration: 3000 });
+        this.snackBar.open(
+          this.translate.instant('common.tag-applied', { name: tagLabel }),
+          this.translate.instant('common.ok'),
+          { duration: 3000 },
+        );
       },
-      error: () => this.snackBar.open('Failed to apply tag', 'Dismiss', { duration: 3000 }),
+      error: () =>
+        this.snackBar.open(
+          this.translate.instant('document-detail.message.failed-to-apply-tag'),
+          this.translate.instant('common.dismiss'),
+          { duration: 3000 },
+        ),
     });
   }
 
@@ -1207,7 +1251,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.tagAdding.set(false);
         },
         error: () => {
-          this.snackBar.open('Failed to add tag', 'Dismiss', { duration: 3000 });
+          this.snackBar.open(
+            this.translate.instant('browse.message.failed-to-add-tag'),
+            this.translate.instant('common.dismiss'),
+            { duration: 3000 },
+          );
           this.tagAdding.set(false);
         },
       });
@@ -1235,7 +1283,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             };
           });
         },
-        error: () => this.snackBar.open('Failed to remove tag', 'Dismiss', { duration: 3000 }),
+        error: () =>
+          this.snackBar.open(
+            this.translate.instant('browse.message.failed-to-remove-tag'),
+            this.translate.instant('common.dismiss'),
+            { duration: 3000 },
+          ),
       });
   }
 
@@ -1249,7 +1302,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiClassifyLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(aiErrorMessage(err, 'Classification failed'));
+        this.aiError.set(
+          aiErrorMessage(
+            err,
+            this.translate.instant('document-detail.message.classification-failed'),
+          ),
+        );
         this.aiClassifyLoading.set(false);
       },
     });
@@ -1265,7 +1323,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiSimilarLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(aiErrorMessage(err, 'Similar doc search failed'));
+        this.aiError.set(
+          aiErrorMessage(
+            err,
+            this.translate.instant('document-detail.message.similar-doc-search-failed'),
+          ),
+        );
         this.aiSimilarLoading.set(false);
       },
     });
@@ -1274,9 +1337,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   runTextClassification(): void {
     const candidates = this.natureVocabulary().map((entry) => entry.id);
     if (candidates.length === 0) {
-      const message =
-        'Document classification is unavailable: the "nature" vocabulary failed to load. ' +
-        'Refresh the page and try again.';
+      const message = this.translate.instant(
+        'document-detail.message.classification-unavailable-vocabulary',
+      );
       this.keError.set(message);
       this.toast(message);
       return;
@@ -1332,17 +1395,19 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: ({ status, updatedDoc }) => {
           if (status.error || status.errorCount > 0) {
-            const message =
-              `Content Lake ingest finished with errors (${status.errorCount} failed). ` +
-              'Check that the HxAI connector and ingest credentials are configured on Nuxeo.';
+            const message = this.translate.instant(
+              'document-detail.message.content-lake-ingest-finished-with-errors',
+              { count: status.errorCount },
+            );
             this.contentLakeIngestError.set(message);
             this.contentLakeIngestStatus.set(null);
             this.toast(message);
             return;
           }
 
-          const message =
-            'Ingested to Content Lake. Knowledge Discovery agents can search this document once indexing completes.';
+          const message = this.translate.instant(
+            'document-detail.message.ingested-to-content-lake',
+          );
           this.contentLakeIngestStatus.set(message);
           this.contentLakePresenceVerified.set(true);
           if (updatedDoc) {
@@ -1353,7 +1418,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.toast(message);
         },
         error: (err: Error) => {
-          const message = err.message || 'Content Lake ingest failed.';
+          const message =
+            err.message ||
+            this.translate.instant('document-detail.message.content-lake-ingest-failed');
           this.contentLakeIngestError.set(message);
           this.contentLakeIngestStatus.set(null);
           this.toast(message);
@@ -1445,13 +1512,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       case 'text-classification': {
         const category = result.textClassification?.result?.trim();
         const vocabularySize = this.natureVocabulary().length;
-        const manualHint =
-          'To set it manually, click the Edit button and pick a value for Document Category.';
 
         if (!category) {
           console.warn('[KE] text-classification returned no category', result);
           return this.throwKeResultError(
-            `Knowledge Enrichment did not return a document category. ${manualHint}`,
+            this.translate.instant('document-detail.message.ke-no-category'),
           );
         }
         if (category === KE_NO_MATCH_SENTINEL) {
@@ -1460,8 +1525,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             { candidates: this.natureVocabulary().map((entry) => entry.id), result },
           );
           return this.throwKeResultError(
-            `Knowledge Enrichment could not match this document to any of the ${vocabularySize} ` +
-              `available document categories. ${manualHint}`,
+            this.translate.instant('document-detail.message.ke-no-category-match', {
+              count: vocabularySize,
+            }),
           );
         }
         // Map back to a vocabulary id. Accept either the id or the display label
@@ -1473,8 +1539,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             result,
           });
           return this.throwKeResultError(
-            `Knowledge Enrichment returned "${category}", which is not one of the ` +
-              `${vocabularySize} document categories. ${manualHint}`,
+            this.translate.instant('document-detail.message.ke-category-not-in-vocabulary', {
+              category,
+              count: vocabularySize,
+            }),
           );
         }
         propertyUpdates['dc:nature'] = resolvedId;
@@ -1484,7 +1552,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       case 'text-summarization': {
         const summary = result.textSummary?.result?.trim();
         if (!summary) {
-          return this.throwKeResultError('Knowledge Enrichment did not return a summary.');
+          return this.throwKeResultError(
+            this.translate.instant('document-detail.message.ke-no-summary'),
+          );
         }
         propertyUpdates['dc:description'] = summary;
         break;
@@ -1493,7 +1563,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       case 'named-entity-recognition-text': {
         tagsToApply = this.collectNamedEntityTags(result.namedEntityText?.result);
         if (tagsToApply.length === 0) {
-          return this.throwKeResultError('Knowledge Enrichment did not return any text entities.');
+          return this.throwKeResultError(
+            this.translate.instant('document-detail.message.ke-no-text-entities'),
+          );
         }
         break;
       }
@@ -1507,7 +1579,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         }
         if (Object.keys(propertyUpdates).length === 0 && tagsToApply.length === 0) {
           return this.throwKeResultError(
-            'Knowledge Enrichment did not return an image description or image entities.',
+            this.translate.instant('document-detail.message.ke-no-image-result'),
           );
         }
         break;
@@ -1554,64 +1626,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private keStartMessage(action: KeUiAction): string {
-    switch (action) {
-      case 'text-classification':
-        return 'Running document classification...';
-      case 'named-entity-recognition-text':
-        return 'Extracting named entities from the PDF...';
-      case 'text-summarization':
-        return 'Generating document summary...';
-      case 'image-enrichment':
-        return 'Generating image description and tags...';
-    }
+    return this.translate.instant(KE_MESSAGE_KEYS[action].start);
   }
 
   private keSuccessMessage(action: KeUiAction): string {
-    switch (action) {
-      case 'text-classification':
-        return 'Document category updated from Knowledge Enrichment.';
-      case 'named-entity-recognition-text':
-        return 'Document tags updated from Knowledge Enrichment.';
-      case 'text-summarization':
-        return 'Document description updated from Knowledge Enrichment.';
-      case 'image-enrichment':
-        return 'Image description and tags updated from Knowledge Enrichment.';
-    }
+    return this.translate.instant(KE_MESSAGE_KEYS[action].success);
   }
 
   private resolveKnowledgeEnrichmentError(error: unknown, action: KeUiAction): string {
-    const fallback = `Failed to run ${this.keActionLabel(action)}.`;
+    const fallback = this.translate.instant(KE_MESSAGE_KEYS[action].failed);
+    if (error instanceof KeEnrichmentError && error.messageKey) {
+      return this.translate.instant(error.messageKey, error.messageParams);
+    }
     if (error instanceof Error && error.message) {
       if (error.message.includes('No authentication info for calling the Enrichment service')) {
-        return (
-          'Knowledge Enrichment is not configured on this Nuxeo server yet. ' +
-          'Add the CIC contextEnrichment/enrichment credentials to Nuxeo, then retry.'
-        );
+        return this.translate.instant('document-detail.message.ke-not-configured');
       }
       return error.message;
     }
     const maybeMessage = (error as { error?: { message?: string }; message?: string } | null)?.error
       ?.message;
     if (maybeMessage?.includes('No authentication info for calling the Enrichment service')) {
-      return (
-        'Knowledge Enrichment is not configured on this Nuxeo server yet. ' +
-        'Add the CIC contextEnrichment/enrichment credentials to Nuxeo, then retry.'
-      );
+      return this.translate.instant('document-detail.message.ke-not-configured');
     }
     return maybeMessage ?? (error as { message?: string } | null)?.message ?? fallback;
-  }
-
-  private keActionLabel(action: KeUiAction): string {
-    switch (action) {
-      case 'text-classification':
-        return 'document classification';
-      case 'named-entity-recognition-text':
-        return 'entity extraction';
-      case 'text-summarization':
-        return 'document summarization';
-      case 'image-enrichment':
-        return 'image enrichment';
-    }
   }
 
   private throwKeResultError(message: string): Observable<never> {
@@ -1727,7 +1765,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.maybeBackfillContentLakeMarker(doc);
         },
         error: () => {
-          this.error.set('Failed to load document.');
+          this.error.set(this.translate.instant('document-detail.message.failed-to-load-document'));
           this.loading.set(false);
         },
       });
@@ -1759,13 +1797,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.workflowService.cancelWorkflow(wf.id).subscribe({
       next: () => {
         this.abandoningWorkflow.set(false);
-        this.toast('Workflow abandoned');
+        this.toast(this.translate.instant('document-detail.message.workflow-abandoned'));
         this.loadDocumentWorkflows(this.docUid);
         this.loadDocumentTasks(this.docUid);
       },
       error: () => {
         this.abandoningWorkflow.set(false);
-        this.toast('Failed to abandon workflow');
+        this.toast(this.translate.instant('document-detail.message.failed-to-abandon-workflow'));
       },
     });
   }
@@ -1773,7 +1811,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   taskDueLabel(task: NuxeoTask): string {
     if (!task.dueDate) return '';
     const d = new Date(task.dueDate);
-    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString(this.locale, { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
   openStartProcess(): void {
@@ -1805,13 +1843,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.startingWorkflow.set(false);
         this.closeStartProcess();
-        this.toast('Workflow started successfully');
+        this.toast(this.translate.instant('document-detail.message.workflow-started-successfully'));
         this.loadDocumentTasks(this.docUid);
         this.loadDocumentWorkflows(this.docUid);
       },
       error: () => {
         this.startingWorkflow.set(false);
-        this.toast('Failed to start workflow');
+        this.toast(this.translate.instant('document-detail.message.failed-to-start-workflow'));
       },
     });
   }
@@ -2785,7 +2823,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.permissionsLoading.set(false);
-          this.toast('Failed to refresh permissions');
+          this.toast(
+            this.translate.instant('document-detail.message.failed-to-refresh-permissions'),
+          );
         },
       });
   }
@@ -2953,12 +2993,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.publishing.set(false);
         this.selectedSectionId.set(null);
-        this.toast('Document published');
+        this.toast(this.translate.instant('document-detail.message.document-published'));
         this.refreshPublishedDocs();
       },
       error: () => {
         this.publishing.set(false);
-        this.toast('Failed to publish');
+        this.toast(this.translate.instant('document-detail.message.failed-to-publish'));
       },
     });
   }
@@ -3026,11 +3066,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.actionInProgress.set(null);
         this.publishedDocs.update((docs) => docs.filter((d) => d.uid !== proxyDoc.uid));
-        this.toast('Publication removed');
+        this.toast(this.translate.instant('document-detail.message.publication-removed'));
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Failed to unpublish');
+        this.toast(this.translate.instant('document-detail.message.failed-to-unpublish'));
       },
     });
   }
@@ -3063,12 +3103,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             this.doRepublish(res.entries[0].uid);
           } else {
             this.actionInProgress.set(null);
-            this.toast('Section not found');
+            this.toast(this.translate.instant('document-detail.message.section-not-found'));
           }
         },
         error: () => {
           this.actionInProgress.set(null);
-          this.toast('Failed to republish');
+          this.toast(this.translate.instant('document-detail.message.failed-to-republish'));
         },
       });
     }
@@ -3080,12 +3120,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.actionInProgress.set(null);
-          this.toast('Document republished');
+          this.toast(this.translate.instant('document-detail.message.document-republished'));
           this.refreshPublishedDocs();
         },
         error: () => {
           this.actionInProgress.set(null);
-          this.toast('Failed to republish');
+          this.toast(this.translate.instant('document-detail.message.failed-to-republish'));
         },
       });
   }
@@ -3100,11 +3140,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.actionInProgress.set(null);
         this.publishedDocs.set([]);
-        this.toast('All publications removed');
+        this.toast(this.translate.instant('document-detail.message.all-publications-removed'));
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Failed to remove some publications');
+        this.toast(
+          this.translate.instant('document-detail.message.failed-to-remove-some-publications'),
+        );
         this.refreshPublishedDocs();
       },
     });
@@ -3133,11 +3175,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         // told every user someone else held their own lock.
         this.lockOwner.set(wasLocked ? null : (this.currentUsername() ?? null));
         this.actionInProgress.set(null);
-        this.toast(wasLocked ? 'Document unlocked' : 'Document locked');
+        this.toast(
+          this.translate.instant(
+            wasLocked
+              ? 'document-detail.message.document-unlocked'
+              : 'document-detail.message.document-locked',
+          ),
+        );
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Failed to toggle lock');
+        this.toast(this.translate.instant('document-detail.message.failed-to-toggle-lock'));
       },
     });
   }
@@ -3154,12 +3202,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         const wasFav = this.isFavorite();
         this.isFavorite.set(!wasFav);
         this.actionInProgress.set(null);
-        this.toast(wasFav ? 'Removed from favorites' : 'Added to favorites');
+        this.toast(
+          this.translate.instant(
+            wasFav
+              ? 'document-detail.message.removed-from-favorites'
+              : 'document-detail.message.added-to-favorites',
+          ),
+        );
         window.dispatchEvent(new Event('favorites-changed'));
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Failed to update favorites');
+        this.toast(this.translate.instant('document-detail.message.failed-to-update-favorites'));
       },
     });
   }
@@ -3176,11 +3230,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         const wasSub = this.isSubscribed();
         this.isSubscribed.set(!wasSub);
         this.actionInProgress.set(null);
-        this.toast(wasSub ? 'Notifications disabled' : 'Notifications enabled');
+        this.toast(
+          this.translate.instant(
+            wasSub
+              ? 'document-detail.message.notifications-disabled'
+              : 'document-detail.message.notifications-enabled',
+          ),
+        );
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Failed to update notifications');
+        this.toast(this.translate.instant('browse.message.failed-to-update-notifications'));
       },
     });
   }
@@ -3194,9 +3254,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (this.actionInProgress() || !this.requireRemovePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Document',
-        message: 'Are you sure you want to delete this document?',
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.delete-document'),
+        message: this.translate.instant('confirm.delete-document-question'),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -3213,12 +3273,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           .subscribe({
             next: () => {
               this.actionInProgress.set(null);
-              this.toast('Document moved to trash');
+              this.toast(this.translate.instant('document-detail.message.document-moved-to-trash'));
               this.goBack();
             },
             error: () => {
               this.actionInProgress.set(null);
-              this.toast('Failed to delete document');
+              this.toast(
+                this.translate.instant('document-detail.message.failed-to-delete-document'),
+              );
             },
           });
       });
@@ -3233,12 +3295,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.actionInProgress.set(null);
-          this.toast('Document restored');
+          this.toast(this.translate.instant('document-detail.message.document-restored'));
           this.loadDocument(this.docUid);
         },
         error: () => {
           this.actionInProgress.set(null);
-          this.toast('Failed to restore document');
+          this.toast(this.translate.instant('browse.message.failed-to-restore-document'));
         },
       });
   }
@@ -3247,9 +3309,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (this.actionInProgress() || !this.requireRemovePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Permanently Delete Document',
-        message: 'Permanently delete this document? This cannot be undone.',
-        confirmLabel: 'Delete',
+        title: this.translate.instant('confirm.permanently-delete-document'),
+        message: this.translate.instant('confirm.permanently-delete-warning'),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -3265,12 +3327,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           .subscribe({
             next: () => {
               this.actionInProgress.set(null);
-              this.toast('Document permanently deleted');
+              this.toast(
+                this.translate.instant('document-detail.message.document-permanently-deleted'),
+              );
               this.goBack();
             },
             error: () => {
               this.actionInProgress.set(null);
-              this.toast('Failed to permanently delete document');
+              this.toast(
+                this.translate.instant(
+                  'document-detail.message.failed-to-permanently-delete-document',
+                ),
+              );
             },
           });
       });
@@ -3285,12 +3353,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       const updated = current.filter((c) => c.uid !== this.docUid);
       this.clipboardDocs.set(updated);
       writeClipboardDocs(updated);
-      this.toast('Removed from clipboard');
+      this.toast(this.translate.instant('collections.message.removed-from-clipboard'));
     } else {
       const updated = [...current, { uid: d.uid, title: d.title, type: d.type }];
       this.clipboardDocs.set(updated);
       writeClipboardDocs(updated);
-      this.toast('Added to clipboard');
+      this.toast(this.translate.instant('collections.message.added-to-clipboard'));
     }
     window.dispatchEvent(new Event('clipboard-changed'));
   }
@@ -3329,11 +3397,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.detailService.addToCollection(this.docUid, collectionId).subscribe({
         next: () => {
           this.actionInProgress.set(null);
-          this.toast('Added to collection');
+          this.toast(this.translate.instant('document-detail.message.added-to-collection'));
         },
         error: () => {
           this.actionInProgress.set(null);
-          this.toast('Failed to add to collection');
+          this.toast(this.translate.instant('document-detail.message.failed-to-add-to-collection'));
         },
       });
     });
@@ -3358,7 +3426,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.doc.set(updatedDoc);
         this.syncActionStates(updatedDoc);
         this.loadVocabularies();
-        this.toast('Document updated');
+        this.toast(this.translate.instant('browse.message.document-updated'));
         this.loadDocument(this.docUid);
       });
   }
@@ -3395,12 +3463,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           } else {
             this.noteHtml.set(null);
           }
-          this.toast('Note saved');
+          this.toast(this.translate.instant('document-detail.message.note-saved'));
         },
         error: (err) => {
           this.noteSaving.set(false);
           this.toast(
-            isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to save note',
+            isPermissionDeniedError(err)
+              ? this.translate.instant(PERMISSION_DENIED_KEY)
+              : this.translate.instant('document-detail.message.failed-to-save-note'),
           );
         },
       });
@@ -3409,7 +3479,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   shareDocument(): void {
     this.dialog.open(ShareDialogComponent, {
       data: {
-        title: this.doc()?.title ?? 'Document',
+        title: this.doc()?.title ?? this.translate.instant('document-detail.share-fallback-title'),
         url: window.location.href,
       } satisfies ShareDialogData,
       width: '520px',
@@ -3417,7 +3487,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private toast(message: string): void {
-    this.snackBar.open(message, 'OK', {
+    this.snackBar.open(message, this.translate.instant('common.ok'), {
       duration: 3000,
       horizontalPosition: 'center',
       verticalPosition: 'bottom',
@@ -3442,13 +3512,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private requireWritePermission(): boolean {
     if (canWriteDocument(this.doc())) return true;
-    this.toast(PERMISSION_DENIED_MESSAGE);
+    this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
     return false;
   }
 
   private requireRemovePermission(): boolean {
     if (canRemoveDocument(this.doc())) return true;
-    this.toast(PERMISSION_DENIED_MESSAGE);
+    this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
     return false;
   }
 
@@ -3476,7 +3546,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           URL.revokeObjectURL(objectUrl);
           this.refreshPanelActivityIfVisible();
         },
-        error: () => this.toast('Failed to download document'),
+        error: () =>
+          this.toast(this.translate.instant('document-detail.message.failed-to-download-document')),
       });
   }
 
@@ -3632,7 +3703,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.commentSaving.set(false);
-        this.toast('Failed to add comment');
+        this.toast(this.translate.instant('document-detail.message.failed-to-add-comment'));
       },
     });
   }
@@ -3683,7 +3754,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.commentSaving.set(false);
-          this.toast('Failed to update comment');
+          this.toast(this.translate.instant('document-detail.message.failed-to-update-comment'));
         },
       });
   }
@@ -3693,9 +3764,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const isReply = !!parentCommentId;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: isReply ? 'Delete Reply' : 'Delete Comment',
-        message: isReply ? 'Delete this reply?' : 'Delete this comment?',
-        confirmLabel: 'Delete',
+        title: this.translate.instant(isReply ? 'confirm.delete-reply' : 'confirm.delete-comment'),
+        message: this.translate.instant(
+          isReply ? 'confirm.delete-reply-question' : 'confirm.delete-comment-question',
+        ),
+        confirmLabel: this.translate.instant('confirm.delete'),
       } as ConfirmDialogData,
     });
 
@@ -3716,18 +3789,24 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
                     (r) => r.id !== comment.id,
                   ),
                 }));
-                this.toast('Reply deleted');
+                this.toast(this.translate.instant('document-detail.message.reply-deleted'));
               } else {
                 this.comments.update((list) => list.filter((c) => c.id !== comment.id));
                 this.repliesMap.update((map) => {
                   const { [comment.id]: _removed, ...rest } = map;
                   return rest;
                 });
-                this.toast('Comment deleted');
+                this.toast(this.translate.instant('document-detail.message.comment-deleted'));
               }
             },
             error: () =>
-              this.toast(isReply ? 'Failed to delete reply' : 'Failed to delete comment'),
+              this.toast(
+                this.translate.instant(
+                  isReply
+                    ? 'document-detail.message.failed-to-delete-reply'
+                    : 'document-detail.message.failed-to-delete-comment',
+                ),
+              ),
           });
       });
   }
@@ -3760,7 +3839,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.commentSaving.set(false);
-        this.toast('Failed to add reply');
+        this.toast(this.translate.instant('document-detail.message.failed-to-add-reply'));
       },
     });
   }
@@ -3779,17 +3858,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return !!comment.modificationDate && comment.modificationDate !== comment.creationDate;
   }
 
+  /**
+   * Localised by `Intl.RelativeTimeFormat` rather than by a catalogue — see
+   * `formatRelativeTime` for why a key per unit cannot express Polish or Arabic plurals.
+   */
   relativeTime(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const seconds = Math.floor(diff / 1000);
-    if (seconds < 60) return 'a few seconds ago';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
-    return new Date(dateStr).toLocaleDateString();
+    return formatRelativeTime(dateStr, this.translate.currentLang);
   }
 
   // ── Panel Activity ──
@@ -3886,13 +3960,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.detailService.restoreVersion(version.uid).subscribe({
       next: () => {
         this.actionInProgress.set(null);
-        this.toast(`Restored to version ${this.versionString(version)}`);
+        this.toast(
+          this.translate.instant('document-detail.restored-to-version', {
+            version: this.versionString(version),
+          }),
+        );
         this.loadDocument(this.docUid);
         this.versionsLoaded = false;
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Failed to restore version');
+        this.toast(this.translate.instant('document-detail.message.failed-to-restore-version'));
       },
     });
   }
@@ -3941,10 +4019,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const d = this.doc();
     const rends = d?.contextParameters?.['renditions'] as Array<{ name: string }> | undefined;
     const labelMap: Record<string, string> = {
-      thumbnail: 'Thumbnail',
-      pdf: 'PDF',
-      zipExport: 'ZIP Export',
-      xmlExport: 'XML Export',
+      thumbnail: this.translate.instant('rendition.thumbnail'),
+      pdf: this.translate.instant('rendition.pdf'),
+      zipExport: this.translate.instant('rendition.zip-export'),
+      xmlExport: this.translate.instant('rendition.xml-export'),
     };
     if (!rends) return Object.entries(labelMap).map(([name, label]) => ({ name, label }));
     return rends.map((r) => ({ name: r.name, label: labelMap[r.name] ?? r.name }));
@@ -3978,7 +4056,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             },
           });
         },
-        error: () => this.toast('Failed to load preview'),
+        error: () =>
+          this.toast(this.translate.instant('document-detail.message.failed-to-load-preview')),
       });
   }
 
@@ -4026,7 +4105,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((updated: boolean | undefined) => {
         if (updated) {
-          this.toast('Permission updated');
+          this.toast(this.translate.instant('browse.message.permission-updated'));
           this.reloadDocumentPermissions();
         }
       });
@@ -4048,7 +4127,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((deleted: boolean | undefined) => {
         if (deleted) {
-          this.toast('Permission deleted');
+          this.toast(this.translate.instant('browse.message.permission-deleted'));
           this.reloadDocumentPermissions();
         }
       });
@@ -4069,7 +4148,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((updated: boolean | undefined) => {
         if (updated) {
-          this.toast('Permission updated');
+          this.toast(this.translate.instant('browse.message.permission-updated'));
           this.reloadDocumentPermissions();
         }
       });
@@ -4084,12 +4163,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.actionInProgress.set(null);
-          this.toast('Notification email sent');
+          this.toast(this.translate.instant('browse.message.notification-email-sent'));
         },
         error: (err) => {
           this.actionInProgress.set(null);
           this.toast(
-            isMailSendError(err) ? mailSendFailureMessage('send') : 'Failed to send notification',
+            isMailSendError(err)
+              ? mailSendFailureMessage('send', (key) => this.translate.instant(key))
+              : this.translate.instant('document-detail.message.failed-to-send-notification'),
           );
         },
       });
@@ -4105,12 +4186,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.actionInProgress.set(null);
-        this.toast(blocked ? 'Permission inheritance unblocked' : 'Permission inheritance blocked');
+        this.toast(
+          this.translate.instant(
+            blocked
+              ? 'document-detail.message.permission-inheritance-unblocked'
+              : 'document-detail.message.permission-inheritance-blocked',
+          ),
+        );
         this.reloadDocumentPermissions();
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Failed to update permission inheritance');
+        this.toast(
+          this.translate.instant('document-detail.message.failed-to-update-permission-inheritance'),
+        );
       },
     });
   }
@@ -4129,7 +4218,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe((saved: boolean | undefined) => {
         if (saved) {
           this.reloadDocumentPermissions();
-          this.toast('Shared with external user');
+          this.toast(this.translate.instant('browse.message.shared-with-external-user'));
         }
       });
   }
@@ -4152,7 +4241,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.actionInProgress.set(null);
-        this.toast('Failed to upload attachment');
+        this.toast(this.translate.instant('document-detail.message.failed-to-upload-attachment'));
       },
     });
     input.value = '';
@@ -4196,7 +4285,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             },
             error: () => {
               this.actionInProgress.set(null);
-              this.toast('Failed to replace attachment');
+              this.toast(
+                this.translate.instant('document-detail.message.failed-to-replace-attachment'),
+              );
             },
           });
       });
@@ -4222,7 +4313,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             },
             error: () => {
               this.actionInProgress.set(null);
-              this.toast('Failed to remove attachment');
+              this.toast(
+                this.translate.instant('document-detail.message.failed-to-remove-attachment'),
+              );
             },
           });
       });
@@ -4246,12 +4339,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           .subscribe({
             next: () => {
               this.actionInProgress.set(null);
-              this.toast('Main file replaced');
+              this.toast(this.translate.instant('document-detail.message.main-file-replaced'));
               this.loadDocument(this.docUid);
             },
             error: () => {
               this.actionInProgress.set(null);
-              this.toast('Failed to replace main file');
+              this.toast(
+                this.translate.instant('document-detail.message.failed-to-replace-main-file'),
+              );
             },
           });
       });
@@ -4272,12 +4367,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           .subscribe({
             next: () => {
               this.actionInProgress.set(null);
-              this.toast('Main file removed');
+              this.toast(this.translate.instant('document-detail.message.main-file-removed'));
               this.loadDocument(this.docUid);
             },
             error: () => {
               this.actionInProgress.set(null);
-              this.toast('Failed to remove main file');
+              this.toast(
+                this.translate.instant('document-detail.message.failed-to-remove-main-file'),
+              );
             },
           });
       });

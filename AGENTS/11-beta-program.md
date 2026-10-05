@@ -308,9 +308,11 @@ DocumentService`. The chain, read from the published bundle:
     awaiting one. It must survive every adf-hx bump; the `bundle` gate goes red if the
     real library returns, and a future release importing a _different_ test helper shows
     up as a new fingerprint rather than as a silent regression.
-  - **`angular-oauth2-oidc` and `cropperjs` are kept**, unused, on the basis that they
-    cause no issue today — `pdfjs-dist` tree-shakes out entirely, these two do not. Not
-    a blocker; revisit only if something breaks or the SCA position changes.
+  - **`angular-oauth2-oidc` is kept**, unused, on the basis that it causes no issue
+    today — `pdfjs-dist` tree-shakes out entirely, this does not. Not a blocker; revisit
+    only if something breaks or the SCA position changes. `cropperjs` was kept on the same
+    basis until NXSAT-290, which made it used: its stylesheet is a global style, because
+    adf-core's image viewer renders every image twice without it.
   - **The initial-bundle cost of adf-hx is accepted.** It stopped being a deferrable
     question the moment the ports had to go in the root injector, so the budget was
     raised deliberately: `maximumWarning` 1.5 → 2.5 MB, `maximumError` 2.0 → 3.5 MB.
@@ -348,18 +350,23 @@ DocumentService`. The chain, read from the published bundle:
   a secondary entry point in the bridge library, or the shell must stop importing the
   bridge barrel.** The entry point was built and the initial bundle returned to 1.71 MB with
   the ports bound; it is now 3.24 MB for a different and accepted reason — see the
-  root-injector fact above. **Nothing eagerly loaded may import from `providers.ts`.**
+  root-injector fact above. **Do not add new eager imports from `providers.ts`.** The lazy POC
+  route remains the intended consumer for most of this surface; two product decisions already
+  pull adf-hx into the initial bundle on purpose — `provideAdfHxNuxeoBridge()` in
+  `app.config.ts` and `HxpBrowseNavDrawerComponent` in the shell nav drawer (see the guardrail
+  allowlist in `scripts/review-guardrails.mjs`).
 - **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
   A second `install.xml` copy step with `overwrite="false"` puts customer
   configuration in a _sibling_ of the bundle, outside the destructive copy's
-  source tree, so it survives an upgrade. **The destination must be under
+  source tree, so the installer does not replace it (intended effect of the copy layout; no marketplace install or upgrade has been run — R7). **The destination must be under
   `nxserver/nuxeo.war`** — that is the Tomcat docBase for the `/nuxeo` context
   (`docBase="../nxserver/nuxeo.war"`). `nxserver/web` holds only `root.war`, is
   not a docBase, and anything installed there is never served. Phase 1 shipped the
   `nxserver/web/…` variant and it would have 404'd in every deployment; the
   corrected path is verified served on the local container. **Risk R7 is still
-  Medium:** no package has been built, installed and upgraded on a real server.
-  That is the Phase 6 upgrade rehearsal.
+  Medium:** since 2026-09-26 the package is built and published — `2026.0.1-20260926071953-BUILD-1109`, live on the preprod listing — but never installed or upgraded on a real server.
+  The outstanding exercise is a **marketplace install rehearsal**, distinct from the
+  `upgrade-rehearsal` gate, which is done and crosses a version boundary for the npm tarball.
 - **Configuration is loaded, not compiled.** `libs/shared/app-config` reads a
   static bootstrap file pre-auth and a runtime manifest from the Nuxeo document
   at `/default-domain/config/agentic-ui` post-auth. Eleven `InjectionToken`
@@ -537,7 +544,7 @@ completion is not completion; see section 6.
 | Phase              | Deliverable                                                                      | Evidence steps file          |
 | ------------------ | -------------------------------------------------------------------------------- | ---------------------------- |
 | `phase-0-baseline` | Dependencies install, gates run, CI validates the branch                         | `steps/phase-0-baseline.mjs` |
-| `phase-1-config`   | Runtime configuration that survives upgrade, runtime theming, i18n for the slice | `steps/phase-1-config.mjs`   |
+| `phase-1-config`   | Runtime configuration held outside the installed app tree, runtime theming, i18n | `steps/phase-1-config.mjs`   |
 | `phase-2-registry` | Extension registry, rules, nav and routes from manifest, action registry         | `steps/phase-2-registry.mjs` |
 | `phase-3-adf-hx`   | ~10 of 12 Nuxeo-backed API ports, component swap, encapsulation gate             | to be added                  |
 | `phase-4-platform` | Publishable libraries, public API, semver, template and starter                  | to be added                  |

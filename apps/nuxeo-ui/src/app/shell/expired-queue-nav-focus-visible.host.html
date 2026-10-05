@@ -1,0 +1,9 @@
+<!--
+  IBM Equal Access Issue 3416250941 (NXENG-912) flagged this nav entry:
+  `sat-platform-nav-list-item[7]/a` with aria-label="Expired Queue".
+-->
+<sat-platform-nav>
+  <sat-platform-nav-list-item [active]="active()" data-nav-id="app.navbar.expiredQueue">{{
+    'shell.test.expired-queue-nav-item' | translate
+  }}</sat-platform-nav-list-item>
+</sat-platform-nav>

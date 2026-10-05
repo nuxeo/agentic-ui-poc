@@ -4,13 +4,18 @@
   "scripts": {
     "beta:api": "node scripts/beta-harness/api-surface.mjs",
     "beta:audit": "node scripts/beta-harness/assertion-audit.mjs",
+    "beta:audit-selftest": "node scripts/beta-harness/assertion-audit.selftest.mjs",
     "beta:backend": "node scripts/beta-harness/backend-preflight.mjs",
     "beta:bundle": "node scripts/beta-harness/no-test-libs-in-bundle.mjs",
     "beta:coverage": "node scripts/beta-harness/coverage-gate.mjs",
     "beta:sanitizers": "node scripts/beta-harness/sanitizer-audit.mjs",
     "beta:sanitizers-selftest": "node scripts/beta-harness/sanitizer-audit.selftest.mjs",
-    "beta:e2e": "node scripts/beta-harness/e2e-preflight.mjs && npx playwright test -c apps/nuxeo-ui-e2e/playwright.config.ts",
-    "beta:e2e-preflight": "node scripts/beta-harness/e2e-preflight.mjs",
+    "beta:e2e": "npx tsx scripts/beta-harness/e2e-preflight.mjs && npx playwright test -c apps/nuxeo-ui-e2e/playwright.config.ts",
+    "beta:e2e-preflight": "npx tsx scripts/beta-harness/e2e-preflight.mjs",
+    "beta:e2e-negative-control": "./scripts/e2e-negative-control.sh",
+    "beta:e2e-negative-control-selftest": "node scripts/beta-harness/assertion-reporter.selftest.mjs",
+    "beta:integration": "npx tsx libs/integration-tests/src/preflight-cli.ts && npx vitest run --config libs/integration-tests/vitest.config.mts",
+    "beta:integration-preflight": "npx tsx libs/integration-tests/src/preflight-cli.ts",
     "beta:customer-guardrails": "node libs/platform/guardrails/check-extension-library.mjs libs/extensions/acme-extensions",
     "beta:evidence": "node scripts/beta-harness/phase-runner.mjs",
     "beta:fork": "node scripts/beta-harness/fork-simulation.mjs",
@@ -50,7 +55,9 @@
     "review:analysis": "node scripts/pr-review-analysis.mjs",
     "mirror:agents": "node scripts/mirror-agent-config.mjs sync",
     "beta:mirror": "node scripts/mirror-agent-config.mjs check",
-    "review:crowdin-selftest": "node tools/i18n/crowdin-push-context.selftest.mjs"
+    "i18n:pseudo": "node tools/i18n/pseudo-locale.mjs",
+    "i18n:audit": "node tools/i18n/pseudo-locale.mjs && node tools/i18n/pseudo-locale-audit.mjs && node tools/i18n/pseudo-locale-deep.mjs",
+    "review:crowdin-selftest": "node tools/i18n/crowdin-push-context.selftest.mjs && node tools/i18n/crowdin-status.selftest.mjs"
   },
   "lint-staged": {
     "*.ts": [

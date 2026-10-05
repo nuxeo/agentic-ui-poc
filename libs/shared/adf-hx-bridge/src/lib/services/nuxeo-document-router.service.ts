@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { Location } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, type UrlTree } from '@angular/router';
 
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 
@@ -24,7 +24,7 @@ import { toAdfHxBrowseRouterUrl } from '../utils/adf-hx-browse-path.utils';
  * `providedIn`, which makes it an intended substitution point: `provide-adf-hx-nuxeo-bridge.ts`
  * binds this class against it.
  *
- * `urlFor` returns a **router path**, not an `href`. The hand-written breadcrumb used the
+ * `urlFor` returns a **router URL**, not an `href`. The hand-written breadcrumb used the
  * `#`-prefixed form because it rendered plain anchors; `[routerLink]` would treat a leading
  * `#` as a path segment. `absolute` goes through `Location.prepareExternalUrl`, which adds
  * the `#` itself under `withHashLocation()`.
@@ -63,9 +63,16 @@ export class NuxeoDocumentRouterService {
     });
   }
 
-  urlFor(document: Document, options: { absolute?: boolean } = {}): string {
+  /**
+   * A parsed `UrlTree` for in-app links, because upstream's breadcrumb binds this to
+   * `[routerLink]`, which treats a string as path segments: `?path=` was escaped to `%3Fpath%3D`,
+   * so every crumb except the query-less root pointed at a route that does not exist.
+   */
+  urlFor(document: Document, options?: { absolute?: false }): UrlTree;
+  urlFor(document: Document, options: { absolute: true }): string;
+  urlFor(document: Document, options: { absolute?: boolean } = {}): UrlTree | string {
     const path = this.routerPathFor(document);
-    return options.absolute ? this.location.prepareExternalUrl(path) : path;
+    return options.absolute ? this.location.prepareExternalUrl(path) : this.router.parseUrl(path);
   }
 
   /**

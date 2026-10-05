@@ -2,18 +2,20 @@
   <div class="nuxeo-drive-card__title" role="heading" aria-level="2">{{ title }}</div>
 
   <article class="nuxeo-drive-card">
-    <div class="nuxeo-drive-card__section-title" role="heading" aria-level="3">Packages</div>
+    <div class="nuxeo-drive-card__section-title" role="heading" aria-level="3">
+      {{ 'app.nuxeo-drive-page.packages' | translate }}
+    </div>
     <div class="nuxeo-drive-card__table-wrapper">
       <table class="nuxeo-drive-card__table">
         <thead>
           <tr>
-            <th>Platform</th>
-            <th>Packages to Install</th>
+            <th>{{ 'app.nuxeo-drive-page.platform' | translate }}</th>
+            <th>{{ 'app.nuxeo-drive-page.packages-to-install' | translate }}</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Linux</td>
+            <td>{{ 'app.nuxeo-drive-page.linux' | translate }}</td>
             <td>
               <a
                 class="nuxeo-drive-card__download-link"
@@ -34,12 +36,12 @@
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Nuxeo-Drive.DMG
+                <code>Nuxeo-Drive.DMG</code>
               </a>
             </td>
           </tr>
           <tr>
-            <td>Windows</td>
+            <td>{{ 'app.nuxeo-drive-page.windows' | translate }}</td>
             <td>
               <a
                 class="nuxeo-drive-card__download-link"
@@ -47,7 +49,7 @@
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Nuxeo-Drive.EXE
+                <code>Nuxeo-Drive.EXE</code>
               </a>
             </td>
           </tr>
@@ -58,14 +60,14 @@
 
   <article class="nuxeo-drive-card">
     <div class="nuxeo-drive-card__section-title" role="heading" aria-level="3">
-      Synchronization Roots
+      {{ 'app.nuxeo-drive-page.synchronization-roots' | translate }}
     </div>
     <div class="nuxeo-drive-card__table-wrapper">
       <table class="nuxeo-drive-card__table">
         <thead>
           <tr>
-            <th>Title</th>
-            <th>Path</th>
+            <th>{{ 'app.nuxeo-drive-page.title' | translate }}</th>
+            <th>{{ 'app.nuxeo-drive-page.path' | translate }}</th>
             <th class="nuxeo-drive-card__action-header"></th>
           </tr>
         </thead>
@@ -74,7 +76,7 @@
             <tr>
               <td colspan="3" class="nuxeo-drive-card__table-empty">
                 <div class="nuxeo-drive-card__table-empty-content">
-                  Loading synchronization roots…
+                  {{ 'app.nuxeo-drive-page.loading-synchronization-roots' | translate }}
                 </div>
               </td>
             </tr>
@@ -82,7 +84,9 @@
             <tr>
               <td colspan="3" class="nuxeo-drive-card__table-empty">
                 <div class="nuxeo-drive-card__table-empty-content">
-                  You currently don't have any synchronization roots
+                  {{
+                    'app.nuxeo-drive-page.you-currently-dont-have-any-synchronization' | translate
+                  }}
                 </div>
               </td>
             </tr>
@@ -97,7 +101,9 @@
                     class="nuxeo-drive-card__remove-root-button"
                     [disabled]="isRootActionPending(root.id)"
                     (click)="removeSynchronizationRoot(root)"
-                    aria-label="Remove synchronization root"
+                    [attr.aria-label]="
+                      'app.nuxeo-drive-page.remove-synchronization-root' | translate
+                    "
                   >
                     ×
                   </button>
@@ -111,24 +117,26 @@
   </article>
 
   <article class="nuxeo-drive-card">
-    <div class="nuxeo-drive-card__section-title" role="heading" aria-level="3">Tokens</div>
+    <div class="nuxeo-drive-card__section-title" role="heading" aria-level="3">
+      {{ 'app.nuxeo-drive-page.tokens' | translate }}
+    </div>
     <div class="nuxeo-drive-card__table-wrapper">
       <table class="nuxeo-drive-card__table">
         <thead>
           <tr>
-            <th>Token</th>
-            <th>Application</th>
-            <th>Device Identifier</th>
-            <th>Device Description</th>
-            <th>Permission</th>
-            <th>Created</th>
+            <th>{{ 'app.nuxeo-drive-page.token' | translate }}</th>
+            <th>{{ 'app.nuxeo-drive-page.application' | translate }}</th>
+            <th>{{ 'app.nuxeo-drive-page.device-identifier' | translate }}</th>
+            <th>{{ 'app.nuxeo-drive-page.device-description' | translate }}</th>
+            <th>{{ 'app.nuxeo-drive-page.permission' | translate }}</th>
+            <th>{{ 'app.nuxeo-drive-page.created' | translate }}</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td colspan="6" class="nuxeo-drive-card__table-empty">
               <div class="nuxeo-drive-card__table-empty-content">
-                You currently don't have any tokens
+                {{ 'app.nuxeo-drive-page.you-currently-dont-have-any-tokens' | translate }}
               </div>
             </td>
           </tr>

@@ -1,0 +1,13 @@
+<!--
+  IBM issue 548995131 flags the Knowledge Discovery sidebar link. On /#/dashboard the
+  Dashboard item is current and sits directly under Knowledge Discovery with no gap,
+  reproducing the same inset-ring adjacency NXENG-761 fixed for other nav entries.
+-->
+<sat-platform-nav>
+  <sat-platform-nav-list-item data-nav-id="app.navbar.knowledgeDiscovery">{{
+    'shell.test.knowledge-discovery-nav-item' | translate
+  }}</sat-platform-nav-list-item>
+  <sat-platform-nav-list-item [active]="true" data-nav-id="app.navbar.dashboard">{{
+    'shell.test.dashboard-nav-item' | translate
+  }}</sat-platform-nav-list-item>
+</sat-platform-nav>

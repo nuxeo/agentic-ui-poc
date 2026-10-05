@@ -41,6 +41,7 @@ import {
 import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
 
 import { DocumentDetailComponent } from './document-detail';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
 /**
  * The `toolbar` and `tabs` slots, asserted **against the rendered template**.
@@ -138,7 +139,7 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
     await TestBed.configureTestingModule({
       // `TranslateModule` is bootstrapped by the app, not the feature: the
       // adf-hx components inside the detail template inject `TranslateService`.
-      imports: [DocumentDetailComponent, TranslateModule.forRoot()],
+      imports: [DocumentDetailComponent, testTranslateModule()],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),

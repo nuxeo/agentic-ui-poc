@@ -1,4 +1,6 @@
-import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { LOCALE_ID, Provider, provideZonelessChangeDetection, signal } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -14,7 +16,7 @@ import {
   CURRENT_USERNAME,
   DirectoryService,
   DocumentDetailService,
-  PERMISSION_DENIED_MESSAGE,
+  PERMISSION_DENIED_KEY,
   SelectionService,
   TagService,
   type AuditEntry,
@@ -114,8 +116,22 @@ describe('BrowseComponent — listing state', () => {
     URL.revokeObjectURL = vi.fn((url: string) => revoked.push(url));
 
     manifest.set({});
+    await buildComponent();
+    selection = TestBed.inject(SelectionService);
+    selection.clear();
+  });
+
+  /**
+   * Configures the TestBed and creates the component.
+   *
+   * Extracted so a test can rebuild with an overridden `LOCALE_ID` without restating fifteen
+   * providers. `extra` is appended last, and Angular's injector takes the final provider for a
+   * token, so a caller can override any of these.
+   */
+  async function buildComponent(extra: Provider[] = []): Promise<void> {
+    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent],
+      imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [
         provideZonelessChangeDetection(),
         provideRouter([{ path: '**', children: [] }], withDisabledInitialNavigation()),
@@ -138,6 +154,7 @@ describe('BrowseComponent — listing state', () => {
         { provide: MatSnackBar, useValue: { open: snackBar } },
         { provide: MatDialog, useValue: { open: dialogOpen } },
         { provide: AppConfigService, useValue: { manifest } },
+        ...extra,
       ],
     })
       .overrideComponent(BrowseComponent, { set: { imports: [], template: '<div></div>' } })
@@ -145,9 +162,7 @@ describe('BrowseComponent — listing state', () => {
 
     fixture = TestBed.createComponent(BrowseComponent);
     component = fixture.componentInstance;
-    selection = TestBed.inject(SelectionService);
-    selection.clear();
-  });
+  }
 
   afterEach(() => {
     fixture.destroy();
@@ -303,20 +318,56 @@ describe('BrowseComponent — listing state', () => {
 
     expect(component.getCellValue(entry, 'title')).toBe('Alpha');
     expect(component.getCellValue(entry, 'type')).toBe('Note');
+    // Explicit `'en-US'` rather than a bare `toLocaleDateString()`. The bare form reads the
+    // machine's locale, so it agreed with the old hardcoded implementation on any host — on a
+    // day-first host it expected `1/3/2026` where the column must render `3/1/2026`.
+    //
+    // This alone does NOT prove the locale is forwarded: the default `LOCALE_ID` in a TestBed is
+    // `en-US`, so a hardcoded `'en-US'` would still pass. The proof is
+    // `getCellValue formats dates in the injected LOCALE_ID` below.
     expect(component.getCellValue(entry, 'modified')).toBe(
-      new Date('2026-03-01T00:00:00.000Z').toLocaleDateString(),
+      new Date('2026-03-01T00:00:00.000Z').toLocaleDateString('en-US'),
     );
     expect(component.getCellValue(entry, 'lastContributor')).toBe('jdoe');
     expect(component.getCellValue(entry, 'state')).toBe('contract');
     expect(component.getCellValue(entry, 'version')).toBe('2.3');
     expect(component.getCellValue(entry, 'created')).toBe(
-      new Date('2026-02-01T00:00:00.000Z').toLocaleDateString(),
+      new Date('2026-02-01T00:00:00.000Z').toLocaleDateString('en-US'),
     );
     expect(component.getCellValue(entry, 'author')).toBe('asmith');
     expect(component.getCellValue(entry, 'nature')).toBe('contract');
     expect(component.getCellValue(entry, 'coverage')).toBe('europe');
     expect(component.getCellValue(entry, 'subjects')).toBe('legal, finance');
     expect(component.getCellValue(entry, 'flags')).toBe('');
+  });
+
+  it('getCellValue formats dates in the injected LOCALE_ID, not a hardcoded one', async () => {
+    // The differential assertion. Every other date expectation in this file runs under the
+    // TestBed's default `LOCALE_ID` of `en-US`, which the previous hardcoded `'en-US'`
+    // implementation also produced — so none of them could distinguish a forwarded locale from an
+    // ignored one. Rebuilding with `de` and asserting the German literal can only pass if
+    // `getCellValue` reads the injected token.
+    // LOCAL-time fixtures, with no `Z` and a midday clock, so the calendar day is the same in
+    // every host time zone. `getCellValue` renders browse columns as instants in the host zone —
+    // correct for a modification timestamp — so a UTC-midnight fixture would render as the
+    // PREVIOUS day anywhere west of UTC. An earlier version of this test used
+    // `2026-03-01T00:00:00.000Z` and asserted `1.3.2026`, which passes in Europe and fails in
+    // `America/Los_Angeles` as `28.2.2026` — a host-time-zone assertion wearing a locale label.
+    const entry = doc({
+      uid: 'a',
+      lastModified: '2026-03-01T12:00:00',
+      properties: { 'dc:created': '2026-02-01T12:00:00' },
+    });
+
+    expect(component.getCellValue(entry, 'modified')).toBe('3/1/2026');
+
+    await buildComponent([{ provide: LOCALE_ID, useValue: 'de' }]);
+
+    // German orders the parts day-first and uses dots. Written as literals rather than computed
+    // from the same API the implementation calls, so the assertion states the expected output
+    // instead of re-deriving it.
+    expect(component.getCellValue(entry, 'modified')).toBe('1.3.2026');
+    expect(component.getCellValue(entry, 'created')).toBe('1.2.2026');
   });
 
   it('getCellValue blanks every optional column for a document with no properties', () => {
@@ -343,15 +394,19 @@ describe('BrowseComponent — listing state', () => {
     expect(component.getCellValue(entry, 'version')).toBe('1.0');
   });
 
+  // The wording moved when this switched to `Intl.RelativeTimeFormat`: "now" rather than
+  // "just now", "yesterday" rather than "a day ago". Both are what English actually says, and
+  // the reason for the change is that the old phrasing was built by concatenation and so could
+  // not be translated at all. See `formatRelativeTime`.
   it('relativeTime describes minutes, hours and days, and blanks an absent date', () => {
     const now = Date.now();
 
     expect(component.relativeTime('')).toBe('');
-    expect(component.relativeTime(new Date(now - 30_000).toISOString())).toBe('just now');
+    expect(component.relativeTime(new Date(now - 30_000).toISOString())).toBe('now');
     expect(component.relativeTime(new Date(now - 5 * 60_000).toISOString())).toBe('5 minutes ago');
-    expect(component.relativeTime(new Date(now - 3_600_000).toISOString())).toBe('an hour ago');
+    expect(component.relativeTime(new Date(now - 3_600_000).toISOString())).toBe('1 hour ago');
     expect(component.relativeTime(new Date(now - 5 * 3_600_000).toISOString())).toBe('5 hours ago');
-    expect(component.relativeTime(new Date(now - 86_400_000).toISOString())).toBe('a day ago');
+    expect(component.relativeTime(new Date(now - 86_400_000).toISOString())).toBe('yesterday');
     expect(component.relativeTime(new Date(now - 3 * 86_400_000).toISOString())).toBe('3 days ago');
   });
 
@@ -739,7 +794,7 @@ describe('BrowseComponent — listing state', () => {
 
     component.deleteDocument();
 
-    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item(s) without delete permission', 'OK', {
+    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item without delete permission', 'OK', {
       duration: 5000,
     });
     expect(detail.trashDocument).toHaveBeenCalledTimes(1);
@@ -754,7 +809,11 @@ describe('BrowseComponent — listing state', () => {
     component.deleteDocument();
 
     expect(detail.trashDocument).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('reports the count that failed when a bulk delete only partly succeeds', () => {
@@ -771,7 +830,7 @@ describe('BrowseComponent — listing state', () => {
     component.deleteDocument();
 
     expect(snackBar).toHaveBeenCalledWith('Moved to trash', 'OK', { duration: 3000 });
-    expect(snackBar).toHaveBeenCalledWith('Failed to delete 1 item(s)', 'OK', { duration: 5000 });
+    expect(snackBar).toHaveBeenCalledWith('Failed to delete 1 item', 'OK', { duration: 5000 });
   });
 
   it('reports a wholly failed bulk delete and keeps the selection', () => {
@@ -836,7 +895,11 @@ describe('BrowseComponent — listing state', () => {
 
     expect(dialogOpen).not.toHaveBeenCalled();
     expect(detail.trashDocument).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('reports a failed check for child collections instead of deleting the folder', () => {
@@ -874,10 +937,14 @@ describe('BrowseComponent — listing state', () => {
 
     component.deleteDocument();
 
-    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item(s) that could not be loaded', 'OK', {
+    expect(snackBar).toHaveBeenCalledWith('Skipped 1 item that could not be loaded', 'OK', {
       duration: 5000,
     });
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
     expect(detail.trashDocument).not.toHaveBeenCalled();
   });
 
@@ -897,7 +964,11 @@ describe('BrowseComponent — listing state', () => {
     component.openEditCollectionDialog(collection);
 
     expect(dialogOpen).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('openEditCollectionDialog reloads the listing after a confirmed edit', () => {
@@ -934,7 +1005,11 @@ describe('BrowseComponent — listing state', () => {
 
     expect(dialogOpen).not.toHaveBeenCalled();
     expect(detail.trashDocument).not.toHaveBeenCalled();
-    expect(snackBar).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+    expect(snackBar).toHaveBeenCalledWith(
+      TestBed.inject(TranslateService).instant(PERMISSION_DENIED_KEY),
+      'OK',
+      { duration: 4000 },
+    );
   });
 
   it('deleteCollectionEntry reports a non-permission trash failure distinctly', () => {
