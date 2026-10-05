@@ -63,8 +63,18 @@ describe('DocumentDetailComponent — no-publications text contrast (NXENG-917)'
   const scss = readFileSync(scssPath, 'utf8');
   const emptyBlock = stripScssComments(scssBlock(scss, 'no-publications'));
 
+  it('selector rule assertions ignore token use on non-text properties', () => {
+    const brokenEmpty = `.no-publications {
+  background: var(--document-detail-properties-label-muted);
+  color: #bbb;
+}`;
+    const block = stripScssComments(brokenEmpty);
+    expect(block).not.toMatch(/color:\s*var\(--document-detail-properties-label-muted\)/);
+    expect(block).toMatch(/color:\s*#bbb/i);
+  });
+
   it('themes empty publications through the light-panel host token, not #aaa', () => {
-    expect(emptyBlock).toMatch(/var\(--document-detail-properties-label-muted\)/);
+    expect(emptyBlock).toMatch(/color:\s*var\(--document-detail-properties-label-muted\)/);
     expect(emptyBlock).not.toMatch(/#aaa/i);
     expect(hostCustomProperty(scss, 'document-detail-properties-label-muted')).toBe('#5c5f6b');
     expect(hostCustomProperty(scss, 'document-detail-properties-panel-surface')).toBe('#ffffff');
