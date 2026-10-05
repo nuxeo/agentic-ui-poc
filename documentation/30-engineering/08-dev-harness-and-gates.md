@@ -3,14 +3,14 @@ title: Dev Harness & Gates
 parent: Engineering
 order: 8
 last_reviewed: 2026-10-05
-repo_commit: d1374b2
+repo_commit: 65b53f4
 audience: engineering
 ---
 
 # The Development Harness and its Gates
 
-> **Last reviewed:** 2026-10-05 · **Repository:** `d1374b2` — the revision that implements the
-> 24-gate set and the 18-control lockfile suite described below
+> **Last reviewed:** 2026-10-05 · **Repository:** `65b53f4` — the revision that implements the
+> 24-gate set and the 19-control lockfile suite described below
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).
 
@@ -61,7 +61,7 @@ running the full set on a known-broken tree wastes minutes per iteration.
 | --- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | `node`                | The runtime is one whose results mean anything                                                                                                                      | An agent on the wrong Node major gets a red indistinguishable from a code defect, and the obvious response — edit the failing spec — damages working code. That happened                                          |
 | 2   | `lockfile`            | Every non-optional dependency edge resolves **within the lock**                                                                                                     | The failure the other gates structurally cannot see. `npm ci --dry-run` only demands what the current platform resolves, so on macOS it never looks at the pruned Linux subtree                                   |
-| 3   | `lockfile-selftest`   | The lockfile gate's own 18 controls — 11 negative, 7 positive                                                                                                       | That gate has been wrong in both directions — names-not-versions, then waiving every `brace-expansion` major off a `^5.0.0`-scoped override — and both were found by a human reading it, not by anything that ran |
+| 3   | `lockfile-selftest`   | The lockfile gate's own 19 controls — 12 negative, 7 positive                                                                                                       | That gate has been wrong in both directions — names-not-versions, then waiving every `brace-expansion` major off a `^5.0.0`-scoped override — and both were found by a human reading it, not by anything that ran |
 | 4   | `supply-chain`        | No production `high`/`critical`; every acceptance is dated and unexpired; no unimported production dependency                                                       | SCA was a human running `npm audit` and writing the number into a document. It also found `cors` and `dotenv` — two unused production dependencies nobody had recorded                                            |
 | 5   | `code-scanning`       | The ref **was analysed**, and no CodeQL alert is unaccounted for                                                                                                    | SAST was already running and finding 21 alerts, 6 high, that nobody read. The gap was never the tool — it was that no process consumed the output                                                                 |
 | 6   | `guardrails`          | 11 repo invariants — see §3                                                                                                                                         |                                                                                                                                                                                                                   |
@@ -101,7 +101,7 @@ running the full set on a known-broken tree wastes minutes per iteration.
 | `bundle`              | `ng-mocks` + 2 `eval()` in the shipped bundle                          | i18n catalogue check asserted existence, not content                                                                                                                                                                  |
 | `reference-drift`     | Reference wrong in both directions                                     | Treated a **comment** as code                                                                                                                                                                                         |
 | `customer-guardrails` | —                                                                      | 3 of 5 checks satisfiable without doing the work                                                                                                                                                                      |
-| `lockfile`            | CI red for a phase                                                     | Skipped 52 devDependency edges; then waived every `brace-expansion` major off a `^5.0.0`-scoped override — same defect class, opposite direction, which is why it now has 18 executable controls, 11 of them negative |
+| `lockfile`            | CI red for a phase                                                     | Skipped 52 devDependency edges; then waived every `brace-expansion` major off a `^5.0.0`-scoped override — same defect class, opposite direction, which is why it now has 19 executable controls, 12 of them negative |
 | `state-check`         | 6 phases citing an insufficient re-gate                                | Read `verdict` and not `totals.failed`                                                                                                                                                                                |
 
 ---
