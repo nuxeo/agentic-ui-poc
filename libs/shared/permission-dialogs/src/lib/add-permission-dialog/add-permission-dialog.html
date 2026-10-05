@@ -86,7 +86,7 @@
   </mat-checkbox>
 
   @if (sendNotify) {
-    <p class="mail-hint">{{ mailHint }}</p>
+    <p class="mail-hint">{{ mailHintKey | translate }}</p>
     <div class="notify-section">
       <label class="field-label" for="notify-email">{{
         'permissions.add-permission-dialog.notification-email' | translate

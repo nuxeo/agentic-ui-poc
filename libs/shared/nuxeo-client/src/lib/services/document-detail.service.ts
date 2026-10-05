@@ -7,8 +7,8 @@ import { CURRENT_USERNAME } from '../current-user.token';
 import {
   findLocalAceForPrincipal,
   isMailSendError,
-  mailSendFailureMessage,
-  permissionNotificationAceNotFoundMessage,
+  mailSendFailureKey,
+  permissionNotificationAceNotFoundKey,
   type PermissionWithNotificationResult,
 } from '../utils/permission-notification';
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
@@ -591,7 +591,7 @@ export class DocumentDetailService {
           return of({
             document,
             notificationSent: false,
-            notificationError: permissionNotificationAceNotFoundMessage(context),
+            notificationErrorKey: permissionNotificationAceNotFoundKey(context),
           });
         }
         const resolvedAce = findLocalAceForPrincipal(permDoc, principalId);
@@ -599,7 +599,7 @@ export class DocumentDetailService {
           return of({
             document,
             notificationSent: false,
-            notificationError: permissionNotificationAceNotFoundMessage(context),
+            notificationErrorKey: permissionNotificationAceNotFoundKey(context),
           });
         }
         return this.sendPermissionNotificationResult(uid, resolvedAce.id, document, context);
@@ -620,7 +620,7 @@ export class DocumentDetailService {
           return of({
             document,
             notificationSent: false,
-            notificationError: mailSendFailureMessage(context),
+            notificationErrorKey: mailSendFailureKey(context),
           });
         }
         return throwError(() => err);

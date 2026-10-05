@@ -1,5 +1,6 @@
 import { provideZonelessChangeDetection } from '@angular/core';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
+import { TranslateService } from '@ngx-translate/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -8,8 +9,7 @@ import { vi } from 'vitest';
 
 import {
   DocumentDetailService,
-  PERMISSION_NOTIFICATION_MAIL_HINT,
-  permissionCreateMailFailureMessage,
+  PERMISSION_NOTIFICATION_MAIL_HINT_KEY,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AddPermissionDialogComponent } from './add-permission-dialog';
@@ -64,8 +64,8 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
   });
 
   it('exposes SMTP mail hint constant', () => {
-    expect(component.mailHint).toBe(PERMISSION_NOTIFICATION_MAIL_HINT);
-    expect(component.mailHint).toContain('SMTP');
+    expect(component.mailHintKey).toBe(PERMISSION_NOTIFICATION_MAIL_HINT_KEY);
+    expect(TestBed.inject(TranslateService).instant(component.mailHintKey)).toContain('SMTP');
   });
 
   it('creates permission with notification via addPermissionWithNotification', () => {
@@ -109,14 +109,14 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
       of({
         document: { uid: 'doc-1' },
         notificationSent: false,
-        notificationError: 'Permission was added, but the notification email could not be sent.',
+        notificationErrorKey: 'permissions.notification.mail-send-failed-add',
       }),
     );
 
     component.create(false);
 
     expect(snackBarOpenSpy).toHaveBeenCalledWith(
-      expect.stringContaining('notification email could not be sent'),
+      'Permission was added, but the notification email could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.',
       'Dismiss',
       { duration: 7000 },
     );
@@ -145,9 +145,13 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
 
     component.create(false);
 
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(permissionCreateMailFailureMessage(), 'Dismiss', {
-      duration: 7000,
-    });
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Permission could not be created. Configure outbound mail (SMTP) on the Nuxeo server.',
+      'Dismiss',
+      {
+        duration: 7000,
+      },
+    );
     expect(closeSpy).not.toHaveBeenCalled();
   });
 

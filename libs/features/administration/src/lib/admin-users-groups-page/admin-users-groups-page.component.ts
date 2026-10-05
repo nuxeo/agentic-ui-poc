@@ -1,5 +1,5 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -71,6 +71,11 @@ export interface RecentUserGroupRow {
 export class AdminUsersGroupsPageComponent implements OnInit {
   private readonly userService = inject(UserService);
   private readonly translate = inject(TranslateService);
+  /** The active language as a signal, so a `computed` that calls `instant()` recomputes on a switch. */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.getCurrentLang() },
+  );
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
@@ -111,8 +116,18 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   });
 
   readonly selectedTabIndex = signal(0);
-  readonly usersTabLabel = computed(() => `Users (${this.usersTotal()})`);
-  readonly groupsTabLabel = computed(() => `Groups (${this.groupsTotal()})`);
+  readonly usersTabLabel = computed(() => {
+    this.currentLang();
+    return this.translate.instant('admin.admin-users-groups-page.users-tab', {
+      count: this.usersTotal(),
+    });
+  });
+  readonly groupsTabLabel = computed(() => {
+    this.currentLang();
+    return this.translate.instant('admin.admin-users-groups-page.groups-tab', {
+      count: this.groupsTotal(),
+    });
+  });
   private readonly tabGroup = viewChild<MatTabGroup>('ugTabGroup');
 
   ngOnInit(): void {
@@ -541,16 +556,16 @@ export class AdminUsersGroupsPageComponent implements OnInit {
 
   usersEmptyMessage(): string {
     if (this.combinedSearchQuery.trim() && this.users().length === 0 && this.groupsTotal() > 0) {
-      return 'No users match this search. Matching groups are on the Groups tab.';
+      return this.translate.instant('admin.admin-users-groups-page.no-users-match-see-groups');
     }
-    return 'No users match this search.';
+    return this.translate.instant('admin.admin-users-groups-page.no-users-match');
   }
 
   groupsEmptyMessage(): string {
     if (this.combinedSearchQuery.trim() && this.groups().length === 0 && this.usersTotal() > 0) {
-      return 'No groups match this search. Matching users are on the Users tab.';
+      return this.translate.instant('admin.admin-users-groups-page.no-groups-match-see-users');
     }
-    return 'No groups match this search.';
+    return this.translate.instant('admin.admin-users-groups-page.no-groups-match');
   }
 
   /** Switch tabs after a combined search based on which result set has matches. */
@@ -664,7 +679,12 @@ export class AdminUsersGroupsPageComponent implements OnInit {
 
   membersMoreAriaLabel(group: NuxeoGroup): string {
     const count = this.membersOverflowCount(group);
-    return `Show ${count} more member${count === 1 ? '' : 's'}`;
+    return this.translate.instant(
+      count === 1
+        ? 'admin.admin-users-groups-page.show-more-members-one'
+        : 'admin.admin-users-groups-page.show-more-members-many',
+      { count },
+    );
   }
 
   membersPreview(group: NuxeoGroup): string {

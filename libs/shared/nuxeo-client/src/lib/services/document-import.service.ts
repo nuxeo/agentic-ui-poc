@@ -172,8 +172,8 @@ export const DEFAULT_IMPORT_PARENT_PATH = '/';
 /** Auto-provisioned domain container — not a user content-creation target. */
 export const DOMAIN_CONTAINER_PATH = '/default-domain';
 
-export const RESTRICTED_IMPORT_LOCATION_MESSAGE =
-  'Select a different container to create your content.';
+/** Catalogue key for the hint shown when the chosen location cannot hold new content. */
+export const RESTRICTED_IMPORT_LOCATION_MESSAGE_KEY = 'browse.message.restricted-import-location';
 
 export function normalizeImportParentPath(path: string): string {
   const trimmed = path.trim();
@@ -949,7 +949,10 @@ export class DocumentImportService {
   }
 }
 
-/** Strip HTML from Nuxeo CSV import report for plain-text display. */
+/**
+ * Strip HTML from Nuxeo CSV import report for plain-text display. Empty when the report carries
+ * no text, so the caller can supply its own translated fallback.
+ */
 export function summarizeCsvImportReport(report: string): string {
   const text = report
     .replace(/<br\s*\/?>/gi, '\n')
@@ -961,7 +964,7 @@ export function summarizeCsvImportReport(report: string): string {
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  return text || 'CSV import completed.';
+  return text;
 }
 
 /** Strip control characters unsafe for HTTP header values (e.g. CR/LF injection). */
