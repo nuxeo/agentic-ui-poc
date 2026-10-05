@@ -2025,6 +2025,8 @@ sat-breadcrumbs {
   flex-direction: column;
   gap: 16px;
   overflow-y: auto;
+  /* NXENG-944 — prefer dynamic viewport height so portrait/landscape reflow is not clipped. */
+  max-height: calc(100dvh - 350px);
   max-height: calc(100vh - 350px);
 }
 
@@ -2553,5 +2555,20 @@ sat-breadcrumbs {
     font-size: 18px;
     width: 18px;
     height: 18px;
+  }
+}
+
+// NXENG-944 — WCAG 2.1 SC 1.3.4 Orientation: reflow on narrow viewports (max-width only).
+@media (max-width: 900px) {
+  .detail-body {
+    flex-direction: column;
+  }
+
+  .properties-panel {
+    width: 100%;
+    flex: 0 0 auto;
+    max-height: min(50dvh, 50vh);
+    border-left: none;
+    border-top: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
   }
 }
