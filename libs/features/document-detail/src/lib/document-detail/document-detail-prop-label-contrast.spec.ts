@@ -1,6 +1,7 @@
 /**
- * NXENG-858 — `.prop-label` on the fixed light properties panel must meet WCAG 2.1 SC 1.4.3 (IBM 1792790291).
- * Per-theme computed contrast is covered in `apps/nuxeo-ui/.../prop-label-contrast.spec.ts`.
+ * NXENG-858 / NXENG-891 — `.prop-label` on the fixed light properties panel must meet WCAG 2.1 SC 1.4.3
+ * (IBM 1792790291, IBM 2951482449). Per-theme computed contrast is covered in
+ * `apps/nuxeo-ui/.../prop-label-contrast.spec.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -58,7 +59,7 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-describe('DocumentDetailComponent — prop-label text contrast (NXENG-858)', () => {
+describe('DocumentDetailComponent — prop-label text contrast (NXENG-858 / NXENG-891)', () => {
   const scssPath = join(import.meta.dirname, 'document-detail.scss');
   const scss = readFileSync(scssPath, 'utf8');
   const labelBlock = stripScssComments(scssBlock(scss, 'prop-label'));
@@ -112,7 +113,7 @@ describe('DocumentDetailComponent — prop-label text contrast (NXENG-858)', () 
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
   });
 
-  it('legacy #888 on white fails WCAG AA (documents the reported defect)', () => {
+  it('legacy #888 on white fails WCAG AA (NXENG-891 / IBM 2951482449 reported 3.54:1)', () => {
     const fg = parseHex('#888888');
     const bg = parseHex('#ffffff');
     expect(fg).not.toBeNull();
