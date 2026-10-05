@@ -28,7 +28,8 @@ import {
  *
  * ## Mock mode is the default, and it is not vacuous — but it is partial
  *
- * With no `HAIP_API_KEY` and no AWS profile, `a11y-scout doctor` reports `Active: mock`. In
+ * With no LLM provider configured (see `docs/a11y-scout.md` for how one is selected — an AWS
+ * profile alone selects Bedrock), `a11y-scout doctor` reports `Active: mock`. In
  * that mode axe, keyboard and reflow still run and produce real deterministic findings, so
  * the checks listed above minus the AI ones are genuine. The **AI content-quality findings
  * are skipped entirely**, so an empty semantic result here means "not measured", not "clean".

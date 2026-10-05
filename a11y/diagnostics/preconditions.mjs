@@ -21,6 +21,7 @@
  */
 
 import { hasAdministrationAccess, requireNuxeoCredentials } from '../env.mjs';
+import { sessionAdoptionProblem } from '../session.mjs';
 
 /**
  * @param {string} tool   the diagnostic's name, so the message says who could not measure
@@ -122,6 +123,20 @@ export function requireAdministrationAccess(me, username, tool) {
       'Use an administrator or powerusers account.',
     );
   }
+}
+
+/**
+ * Exit 2 unless the app adopted the session this diagnostic injected — see `../session.mjs`.
+ * Call it once the page has loaded an app route. Without it a drifted session copy is
+ * invisible: the app signs in through `httpCredentials` instead and everything still renders.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} username
+ * @param {string} tool
+ */
+export async function requireSessionAdopted(page, username, tool) {
+  const problem = await sessionAdoptionProblem(page, username);
+  if (problem) cannotMeasure(tool, `not signed in by the injected session: ${problem}`);
 }
 
 /**

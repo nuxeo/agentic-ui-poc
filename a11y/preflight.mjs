@@ -16,6 +16,7 @@
  * fix the environment, do not iterate on the code.
  */
 
+import { parseCliOrExit } from './cli.mjs';
 import {
   hasAdministrationAccess,
   isFullAdministrator,
@@ -35,8 +36,12 @@ const BASE = resolveBaseUrl();
  * powerusers member passes the broader check, is sent to `users-groups` by
  * `administrationLandingGuard`, and would fail that screen after "the stack is ready".
  */
-const NEEDS_FULL_ADMIN = process.argv.includes('--needs-full-admin');
-const NEEDS_ADMIN = NEEDS_FULL_ADMIN || process.argv.includes('--needs-admin');
+const cli = parseCliOrExit('a11y preflight', {
+  'needs-admin': { type: 'boolean' },
+  'needs-full-admin': { type: 'boolean' },
+});
+const NEEDS_FULL_ADMIN = cli['needs-full-admin'] === true;
+const NEEDS_ADMIN = NEEDS_FULL_ADMIN || cli['needs-admin'] === true;
 
 const problems = [];
 const ok = [];
@@ -64,10 +69,12 @@ const INSTALL = [
 
 /** 1. Playwright and the two hand-distributed a11y-scout packages. */
 let playwright = null;
+let scout = null;
 for (const pkg of ['@playwright/test', '@a11y-scout/playwright', 'a11y-scout']) {
   try {
     const mod = await import(pkg);
     if (pkg === '@playwright/test') playwright = mod;
+    if (pkg === 'a11y-scout') scout = mod;
     ok.push(`${pkg} is importable`);
   } catch {
     problems.push(
@@ -245,22 +252,52 @@ if (appStatus !== null && auth) {
 /**
  * 4. The LLM provider — reported, never enforced.
  *
- * Without `HAIP_API_KEY` a11y-scout runs in mock mode, where axe, the keyboard walk and reflow
- * all still produce real findings but the AI content-quality checks are **skipped entirely**.
- * That covers eleven WCAG criteria (1.1.1, 1.3.3, 2.4.2, 2.4.4, 2.5.3, 3.3.1, 3.3.2 at A;
- * 1.3.5, 2.4.6, 3.1.2, 3.3.3 at AA), so an empty semantic result means "not measured", not
- * "clean". Saying so up front is the difference between a partial scan and a misread one.
+ * In mock mode axe, the keyboard walk and reflow all still produce real findings but the AI
+ * content-quality checks are **skipped entirely**. That covers eleven WCAG criteria (1.1.1,
+ * 1.3.3, 2.4.2, 2.4.4, 2.5.3, 3.3.1, 3.3.2 at A; 1.3.5, 2.4.6, 3.1.2, 3.3.3 at AA), so an empty
+ * semantic result means "not measured", not "clean". Saying so up front is the difference
+ * between a partial scan and a misread one.
+ *
+ * The provider is a11y-scout's own answer, not ours. This used to test `HAIP_API_KEY` alone,
+ * which is one of several inputs to a11y-scout's `detectProvider()`: `A11Y_LLM_PROVIDER` wins
+ * outright, `CLAUDE_CODE_USE_BEDROCK=1` selects Bedrock even when a HAIP key is set, and
+ * `AWS_PROFILE` selects it when no HAIP key is. A Bedrock setup was told its AI checks were
+ * skipped, and a HAIP key under `CLAUDE_CODE_USE_BEDROCK` was reported as HAIP. Flagged in
+ * review on PR #225. `createLlmProvider()` with no options is the call the
+ * `@a11y-scout/playwright` fixture makes, so the two cannot disagree; constructing one only
+ * builds a client and sends nothing.
  */
-ok.push(
-  process.env['HAIP_API_KEY']
-    ? 'HAIP_API_KEY is set — AI content-quality checks will be ATTEMPTED. A key is not proof ' +
-        'they ran: on 2026-09-22 the provider reported READY, billed 15 calls, and every ' +
-        'content-quality call still returned 403. `aiGenerated: 0` alone cannot tell a clean ' +
-        'result from a failed one; a "content-quality: LLM call failed" line on stderr means ' +
-        'the criteria were not measured.'
-    : 'HAIP_API_KEY is NOT set — scan runs in mock mode, AI content-quality checks skipped ' +
-        '(11 WCAG criteria unmeasured, not clean)',
-);
+const NOT_PROOF =
+  'Selected is not proof they ran: on 2026-09-22 HAIP reported READY, billed 15 calls, and ' +
+  'every content-quality call still returned 403. `aiGenerated: 0` alone cannot tell a clean ' +
+  'result from a failed one; a "content-quality: LLM call failed" line on stderr means the ' +
+  'criteria were not measured.';
+if (scout) {
+  try {
+    const llm = scout.createLlmProvider();
+    const { provider } = llm.describe();
+    if (llm.isMock) {
+      ok.push(
+        'a11y-scout is in mock mode — AI content-quality checks skipped (11 WCAG criteria ' +
+          'unmeasured, not clean). `npx a11y-scout doctor` says why.',
+      );
+    } else if (provider === 'bedrock') {
+      ok.push(
+        'a11y-scout selected Bedrock — AI content-quality checks will be ATTEMPTED with the AWS ' +
+          'credential chain, which this preflight does not test. ' +
+          NOT_PROOF,
+      );
+    } else {
+      ok.push(`a11y-scout selected ${provider} — AI content-quality checks will be ATTEMPTED. ${NOT_PROOF}`);
+    }
+  } catch (err) {
+    ok.push(
+      'Could not ask a11y-scout which LLM provider it will use ' +
+        `(${err instanceof Error ? err.message : String(err)}), so whether the AI ` +
+        'content-quality checks run is unknown — read the report header.',
+    );
+  }
+}
 
 if (problems.length) {
   console.error(`\na11y preflight: PRECONDITION NOT MET — ${problems.length} problem(s)\n`);

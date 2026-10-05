@@ -27,8 +27,10 @@ a11y/
   playwright.config.ts              testDir: './specs'
   fixtures.ts                       test object, installSession, expectSurfaceUsable,
                                     waitForScreenSettled, aiFindingsNote, REPORT_DIR
+  cli.mjs                           strict argument parsing; bad arguments exit 2
   env.mjs                           resolveBaseUrl + required Nuxeo credentials, shared by the
                                     config, the preflight and every diagnostic
+  session.mjs                       the injected app session, and the proof the app adopted it
   surface.mjs                       the Node-side twin of expectSurfaceUsable, the one list
                                     of this app's error-state classes, and the settle wait
   package.json  tsconfig.json  .gitignore
@@ -169,29 +171,30 @@ await page.evaluate(
     sessionStorage.setItem(key, value);
     sessionStorage.removeItem(signedOutKey);
   },
-  {
-    key: 'agentic_ui_nuxeo_session',
-    signedOutKey: 'agentic_ui_signed_out',
-    value: JSON.stringify({
-      kind: 'basic',
-      username: user,
-      basic: Buffer.from(`${user}:${pass}`).toString('base64'),
-      isAdministrator: user.toLowerCase() === 'administrator',
-      groups: [],
-    }),
-  },
+  { key: SESSION_KEY, signedOutKey: SIGNED_OUT_KEY, value: injectedSession(user, pass) },
 );
 await page.reload({ waitUntil: 'networkidle' });
+await requireSessionAdopted(page, user, TOOL);
 ```
 
-In a **spec**, do not hand-roll this — the `signedIn` fixture already does it, and
-`fixtures.ts` rebases it onto a11y-scout's `test` so both are available in one spec:
+The session shape and key come from `../session.mjs`; do not write the JSON inline. And do not
+drop `requireSessionAdopted`. If the app rejects the injected session, it signs in through
+`/me` instead, because `httpCredentials` answers that request. Every route then renders
+normally, so without the check nothing shows that the session copy has drifted from
+`AuthService`. `session.mjs` explains how adoption is proved.
 
-```235:240:a11y/fixtures.ts
+In a **spec**, do not hand-roll this — the `signedIn` fixture already does it, including the
+adoption check at teardown, and `fixtures.ts` rebases it onto a11y-scout's `test` so both are
+available in one spec:
+
+```ts
 export const test = a11yBase.extend<{ signedIn: Page }>({
-  signedIn: async ({ page }, use) => {
+  signedIn: async ({ page }, use, testInfo) => {
     await installSession(page);
     await use(page);
+    if (testInfo.status !== testInfo.expectedStatus) return;
+    const problem = await sessionAdoptionProblem(page, requireNuxeoCredentials().username);
+    if (problem) throw new Error(/* … */);
   },
 });
 ```
@@ -331,16 +334,21 @@ For targeted questions. Copy this skeleton into `a11y/diagnostics/<question>.mjs
 ```js
 #!/usr/bin/env node
 /** One paragraph: the question this answers, and why it needed its own script. */
+import { parseCliOrExit } from '../cli.mjs';
 import { resolveBaseUrl } from '../env.mjs';
+import { injectedSession, SESSION_KEY, SIGNED_OUT_KEY } from '../session.mjs';
 import {
   cannotMeasure,
   credentialsOrExit,
   gotoOrExit,
   launchChromium,
   requireBackend,
+  requireSessionAdopted,
 } from './preconditions.mjs';
 
 const TOOL = '<question>';
+// Every option it accepts, declared; anything else exits 2 before a browser is launched.
+parseCliOrExit(TOOL, {});
 
 // `resolveBaseUrl()`, never `process.env['APP_URL']` directly. It is the one resolver the
 // config, the preflight and every diagnostic share; reading the variable yourself

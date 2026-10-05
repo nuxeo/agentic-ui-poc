@@ -3,7 +3,7 @@
 Playwright driving the real application through **a11y-scout**, which does what no static rule
 and no axe run can: presses keys. Tab and Shift+Tab walks looking for traps and focus leaks,
 viewport resizes to 320px for reflow geometry, focus-indicator comparison, and — with an LLM
-key — content-quality judgement on alt text, link purpose and headings.
+provider configured — content-quality judgement on alt text, link purpose and headings.
 
 This is **development tooling with an expected end date**, and the folder is laid out to be
 removed cleanly. See [Removing this](#removing-this).
@@ -21,8 +21,12 @@ a11y/
   playwright.config.ts self-contained; does not extend the critical-path config
   fixtures.ts          the a11y-scout test object, installSession, expectSurfaceUsable,
                        waitForScreenSettled, aiFindingsNote, REPORT_DIR
+  cli.mjs              strict argument parsing for every Node script here; an unknown option,
+                       a stray value or a missing one exits 2 before anything runs
   env.mjs              resolveBaseUrl + required Nuxeo credentials — one definition, shared
                        by the config, the preflight and all three diagnostics
+  session.mjs          the app session injected into every signed-in page, and the check
+                       that the app adopted it rather than falling back to a cookie session
   surface.mjs          the Node-side twin of expectSurfaceUsable, the single list of this
                        application's error-state classes, and the settle wait every scan
                        makes before measuring
@@ -98,13 +102,16 @@ exits 2 if the account falls short.
 Because everything is `--no-save`, **`package-lock.json` is untouched by this folder** — there
 is no dependency to unwind when it is removed.
 
-### The LLM key is optional, and its absence is not neutral
+### The LLM provider is optional, and its absence is not neutral
 
-Without `HAIP_API_KEY`, a11y-scout runs in mock mode. Axe, the keyboard walk and reflow all
-still produce real findings, but the AI content-quality checks are **skipped entirely** —
-eleven WCAG criteria (1.1.1, 1.3.3, 2.4.2, 2.4.4, 2.5.3, 3.3.1, 3.3.2 at A; 1.3.5, 2.4.6,
-3.1.2, 3.3.3 at AA). An empty semantic result means _not measured_, not _clean_. The preflight
-prints which mode you are in for exactly that reason.
+With no LLM provider configured, a11y-scout runs in mock mode. Axe, the keyboard walk and
+reflow all still produce real findings, but the AI content-quality checks are **skipped
+entirely** — eleven WCAG criteria (1.1.1, 1.3.3, 2.4.2, 2.4.4, 2.5.3, 3.3.1, 3.3.2 at A; 1.3.5,
+2.4.6, 3.1.2, 3.3.3 at AA). An empty semantic result means _not measured_, not _clean_. The
+preflight prints which provider a11y-scout selected, and whether it is mock, for exactly that
+reason — it asks a11y-scout rather than guessing from one variable, because a `HAIP_API_KEY` is
+not the only way in: see [docs/a11y-scout.md](docs/a11y-scout.md#llm-configuration-is-optional)
+for how Bedrock is selected.
 
 **A key that connects is not yet a key that works.** Measured on 2026-09-22 with a real key:
 `a11y-scout doctor` reported `Active: haip, Mode: READY`, every report recorded
@@ -222,5 +229,7 @@ CI.
 
 One deliberate duplication to know about if you are unpicking it: `installSession()` in
 `fixtures.ts` is a copy of the same function in `apps/nuxeo-ui-e2e/src/fixtures.ts`. Sharing it
-would have meant one definition but also one more thread to cut. The copy cannot fail quietly
-— a changed session shape breaks authentication and every assertion goes red.
+would have meant one definition but also one more thread to cut. A drifted copy would not
+break authentication on its own: the app would sign in through `httpCredentials` and a cookie
+session instead, and every scan would pass. So the `signedIn` fixture and the diagnostics
+check that the app adopted the injected session (`session.mjs`), and fail if it did not.

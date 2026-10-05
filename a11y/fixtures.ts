@@ -5,6 +5,12 @@ import { expect as expectFn, type Page } from '@playwright/test';
 // copy and a `.mjs` copy of the same list and the same eight-line credential check, which is
 // exactly the drift this folder keeps being reviewed for.
 import { requireNuxeoCredentials } from './env.mjs';
+import {
+  injectedSession,
+  sessionAdoptionProblem,
+  SESSION_KEY,
+  SIGNED_OUT_KEY,
+} from './session.mjs';
 import { ERROR_STATE_SELECTOR, screenUnsettledReason } from './surface.mjs';
 
 export { requireNuxeoCredentials };
@@ -24,10 +30,11 @@ export { requireNuxeoCredentials };
  * folder: `a11y/` is development tooling with an expected end date, and every import reaching
  * out of it is another thing to unpick when it is removed. See `./README.md`.
  *
- * The duplication is safe in the way that matters — it cannot fail quietly. If the session
- * shape in `AuthService` changes, authentication stops working and every `expect` in every
- * spec fails on the first assertion. A silent drift would be unacceptable; a loud one is the
- * price of a folder that deletes cleanly.
+ * A drifted copy does not fail on its own. When `AuthService` rejects the stored session it
+ * signs in through `/me` instead, which `httpCredentials` answers, so every spec would still
+ * pass. This file used to claim the opposite. Instead, `signedIn` proves at teardown that the
+ * app adopted the injected session; `./session.mjs` explains how, and fails the test if it did
+ * not. That check is what makes the copy safe to keep.
  */
 
 /**
@@ -39,21 +46,6 @@ export { requireNuxeoCredentials };
  * stable regardless of where the command was typed.
  */
 export const REPORT_DIR = 'a11y/reports';
-
-/** Mirrors `STORAGE_KEY` in `apps/nuxeo-ui/src/app/auth/auth.service.ts`. */
-const SESSION_KEY = 'agentic_ui_nuxeo_session';
-/** Mirrors `SIGNED_OUT_KEY` in the same file. Set by `AuthService.markSignedOut()`. */
-const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
-
-function sessionFor(username: string, password: string) {
-  return {
-    kind: 'basic',
-    username,
-    basic: Buffer.from(`${username}:${password}`).toString('base64'),
-    isAdministrator: username.toLowerCase() === 'administrator',
-    groups: [] as string[],
-  };
-}
 
 /**
  * Put the app's session into a page so it is past the route guard.
@@ -77,7 +69,7 @@ export async function installSession(page: Page): Promise<void> {
     {
       key: SESSION_KEY,
       signedOutKey: SIGNED_OUT_KEY,
-      value: JSON.stringify(sessionFor(username, password)),
+      value: injectedSession(username, password),
     },
   );
 }
@@ -220,7 +212,7 @@ export function aiFindingsNote(state: {
   const count = state.findings.filter((f) => f.aiGenerated).length;
   if (count > 0) return `${count} (provider ${state.meta.llmProvider})`;
   if (state.meta.llmMockMode) {
-    return '0 — the 11 AI-judged criteria are UNMEASURED, not clean (mock mode — no key)';
+    return '0 — the 11 AI-judged criteria are UNMEASURED, not clean (mock mode — no LLM provider)';
   }
   const calls = state.cost?.entries?.length ?? 0;
   return (
@@ -231,11 +223,25 @@ export function aiFindingsNote(state: {
   );
 }
 
-/** A page that is already past the route guard. */
+/**
+ * A page that is already past the route guard — and, checked at teardown, past it because of
+ * the injected session rather than a fallback. Checked after the test rather than before it
+ * because a setup navigation would turn each spec's first `goto` into a same-document one, and
+ * the journey specs capture the requests that first navigation makes. Skipped when the test has
+ * already failed, so it does not bury the real error.
+ */
 export const test = a11yBase.extend<{ signedIn: Page }>({
-  signedIn: async ({ page }, use) => {
+  signedIn: async ({ page }, use, testInfo) => {
     await installSession(page);
     await use(page);
+    if (testInfo.status !== testInfo.expectedStatus) return;
+    const problem = await sessionAdoptionProblem(page, requireNuxeoCredentials().username);
+    if (problem) {
+      throw new Error(
+        `This test passed, but not under the session this suite injects: ${problem}. ` +
+          'What it measured belongs to whatever identity the fallback produced.',
+      );
+    }
   },
 });
 

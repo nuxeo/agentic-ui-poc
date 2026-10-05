@@ -273,14 +273,39 @@ async function nxqlEntries(
   pageSize: number,
   label: string,
 ): Promise<RepoEntry[]> {
+  return (await nxqlPage(page, query, pageSize, 0, label)).entries;
+}
+
+/**
+ * One page of an NXQL query, and whether Nuxeo says there is another.
+ *
+ * `isNextPageAvailable` is required rather than defaulted to `false`: a body without it would
+ * end the caller's paging after the first page and report the rest of the repository as absent.
+ */
+async function nxqlPage(
+  page: Page,
+  query: string,
+  pageSize: number,
+  currentPageIndex: number,
+  label: string,
+): Promise<{ entries: RepoEntry[]; isNextPageAvailable: boolean }> {
   const response = await page.request.get('/nuxeo/api/v1/search/lang/NXQL/execute', {
-    params: { query, pageSize },
+    params: { query, pageSize, currentPageIndex },
   });
   expect(
     response.ok(),
     `repository query failed with ${response.status()} — ${label} cannot be scanned`,
   ).toBeTruthy();
-  return entriesOf(await response.json());
+  const body: unknown = await response.json();
+  const isNextPageAvailable = (body as { isNextPageAvailable?: unknown } | null)
+    ?.isNextPageAvailable;
+  if (typeof isNextPageAvailable !== 'boolean') {
+    throw new Error(
+      `${label}: page ${currentPageIndex} of the repository query has no boolean ` +
+        '`isNextPageAvailable`, so there is no telling whether the rest was searched',
+    );
+  }
+  return { entries: entriesOf(body), isNextPageAvailable };
 }
 
 /**
@@ -716,32 +741,56 @@ journeyTest('documents', async ({ signedIn: page, a11y }) => {
  * the only way in. The collection is chosen by the same query the app's own collections panel
  * runs, and must have a member: an empty collection renders a one-line placeholder.
  *
+ * Every page of that query is searched, not just the first. Looking at the 20 most recently
+ * modified only meant a repository whose populated collections were older failed this screen
+ * as "none has a member" while one existed. Flagged in review on PR #225. A failed members
+ * request fails the screen with its status, rather than counting as an empty collection.
+ *
  * `.collection-unavailable` is asserted absent here because it is not an error class — it is
  * the not-found/unavailable panel, rendered instead of the page rather than inside it.
  */
 journeyTest('collection', async ({ signedIn: page, a11y }) => {
   await page.goto('/#/dashboard', { waitUntil: 'networkidle' });
-  const collections = await nxqlEntries(
-    page,
+  const query =
     "SELECT * FROM Collection WHERE ecm:isTrashed = 0 AND ecm:currentLifeCycleState != 'deleted' " +
-      'ORDER BY dc:modified DESC',
-    20,
-    'collection',
-  );
+    'ORDER BY dc:modified DESC';
   let chosen: RepoEntry | undefined;
-  for (const candidate of collections) {
-    const members = await page.request.get(
-      '/nuxeo/api/v1/search/pp/default_content_collection/execute',
-      { params: { queryParams: candidate.uid, pageSize: 1 } },
+  let examined = 0;
+  for (let pageIndex = 0; !chosen; pageIndex++) {
+    const { entries, isNextPageAvailable } = await nxqlPage(
+      page,
+      query,
+      20,
+      pageIndex,
+      'collection',
     );
-    if (members.ok() && entriesOf(await members.json()).length > 0) {
-      chosen = candidate;
-      break;
+    if (entries.length === 0 && isNextPageAvailable) {
+      throw new Error(
+        `collection: page ${pageIndex} of the collection query is empty but claims another ` +
+          'follows, so paging it would never end',
+      );
     }
+    for (const candidate of entries) {
+      examined++;
+      const members = await page.request.get(
+        '/nuxeo/api/v1/search/pp/default_content_collection/execute',
+        { params: { queryParams: candidate.uid, pageSize: 1 } },
+      );
+      expect(
+        members.ok(),
+        `collection: the members of "${candidate.title}" could not be listed ` +
+          `(${members.status()}), so whether it is empty is unknown`,
+      ).toBeTruthy();
+      if (entriesOf(await members.json()).length > 0) {
+        chosen = candidate;
+        break;
+      }
+    }
+    if (!isNextPageAvailable) break;
   }
   const collection = requireEntry(
     chosen ? [chosen] : [],
-    `collection: none of the ${collections.length} collection(s) in the repository has a ` +
+    `collection: none of the ${examined} collection(s) in the repository has a ` +
       'member — add a document to one before running this screen',
   );
 

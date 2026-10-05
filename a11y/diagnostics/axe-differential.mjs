@@ -50,7 +50,9 @@
  */
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
+import { parseCliOrExit } from '../cli.mjs';
 import { resolveBaseUrl } from '../env.mjs';
+import { injectedSession, SESSION_KEY, SIGNED_OUT_KEY } from '../session.mjs';
 import { screenUnsettledReason, surfaceUnusableReason } from '../surface.mjs';
 import {
   credentialsOrExit,
@@ -58,6 +60,7 @@ import {
   launchChromium,
   requireAdministrationAccess,
   requireBackend,
+  requireSessionAdopted,
 } from './preconditions.mjs';
 
 /**
@@ -73,16 +76,21 @@ const repoRoot = resolve(import.meta.dirname, '..', '..');
 
 /** Where the suites write their consolidated reports. Mirrors `REPORT_DIR` in `../fixtures.ts`. */
 const REPORTS_DIR = resolve(repoRoot, 'a11y', 'reports');
-const args = process.argv.slice(2);
-const jsonAt = args.includes('--json') ? args[args.indexOf('--json') + 1] : null;
-const only = args.reduce((acc, a, i) => (a === '--surface' ? [...acc, args[i + 1]] : acc), []);
+const cli = parseCliOrExit('axe-differential', {
+  json: { type: 'string' },
+  surface: { type: 'string', multiple: true },
+});
+if (cli.json !== undefined && cli.json.trim() === '') {
+  console.error('axe-differential: --json needs a file path; an empty one would write nothing. Nothing was run.');
+  process.exit(2);
+}
+const jsonAt = cli.json ?? null;
+/** @type {string[]} */
+const only = cli.surface ?? [];
 
 const baseUrl = resolveBaseUrl();
 // Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
 const { username: user, password: pass } = credentialsOrExit('axe-differential');
-
-const SESSION_KEY = 'agentic_ui_nuxeo_session';
-const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
 
 /** The surfaces a11y-scout scanned, with the host each one must render before it is scanned. */
 const ALL_SURFACES = [
@@ -301,16 +309,11 @@ try {
     {
       key: SESSION_KEY,
       signedOutKey: SIGNED_OUT_KEY,
-      value: JSON.stringify({
-        kind: 'basic',
-        username: user,
-        basic: Buffer.from(`${user}:${pass}`).toString('base64'),
-        isAdministrator: user.toLowerCase() === 'administrator',
-        groups: [],
-      }),
+      value: injectedSession(user, pass),
     },
   );
   await page.reload({ waitUntil: 'networkidle' });
+  await requireSessionAdopted(page, user, 'axe-differential');
 
   for (const [surface, route, host] of SURFACES) {
     process.stdout.write(`scanning ${surface} `);

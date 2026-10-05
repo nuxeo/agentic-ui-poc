@@ -27,14 +27,18 @@
  * the naming convention this codebase actually follows; it does not close it.
  *
  * Exits 1, not 2: a drifted list is a code change in this repository, not an environment
- * problem, so the caller should fix the list rather than the machine.
+ * problem, so the caller should fix the list rather than the machine. It takes no arguments,
+ * and an invocation with any exits 2 before checking anything (see `../cli.mjs`).
  */
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { parseCliOrExit } from '../cli.mjs';
 import { ERROR_STATE_CLASSES, NOT_A_SURFACE_ERROR } from '../surface.mjs';
+
+parseCliOrExit('error-class-drift', {});
 
 const repoRoot = resolve(import.meta.dirname, '..', '..');
 

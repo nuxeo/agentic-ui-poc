@@ -65,9 +65,23 @@ not _clean_. `state.meta.llmMockMode` records which it was, and the report says 
 Level is pinned to **AA**. At AAA the semantic agent emits stub findings tagged `__mock__`,
 which would put noise in the report and prove nothing.
 
-To enable the AI checks, put `HAIP_API_KEY=…` in a local `.env` (never committed). Note that
-provider auto-detection picks Bedrock whenever `AWS_PROFILE` is merely _set_, so pin the
-provider explicitly rather than relying on the default.
+To enable the AI checks, set `HAIP_API_KEY` in the environment of the shell that runs the scan.
+Nothing in this folder, and nothing in a11y-scout, reads a `.env` file, so a key placed in one
+is never seen. Never commit it.
+
+a11y-scout picks the provider itself, in this order (`detectProvider()` in
+`a11y-scout/src/llm/provider.ts`):
+
+1. `A11Y_LLM_PROVIDER=bedrock|haip|mock`, if set, decides outright.
+2. `CLAUDE_CODE_USE_BEDROCK=1` selects **Bedrock — even when `HAIP_API_KEY` is set**.
+3. `AWS_PROFILE` selects **Bedrock**, but only when `HAIP_API_KEY` is not set.
+4. `A11Y_HAIP_MOCK=1` selects mock.
+5. Otherwise HAIP, which falls back to mock when there is no `HAIP_API_KEY`.
+
+So an AWS profile alone does enable the AI checks, through Bedrock and the AWS credential
+chain, and a HAIP key can be silently bypassed. Pin `A11Y_LLM_PROVIDER` rather than relying on
+the order. `npm run a11y:scan -- preflight` prints the provider a11y-scout actually selected —
+it asks a11y-scout rather than repeating these rules.
 
 ## Why it is a separate Playwright config
 

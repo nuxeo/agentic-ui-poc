@@ -36,17 +36,24 @@
  * 2026-10-02 opened with the drawer filling the screen and the content 0px wide; see
  * `revealContentBehindDrawer`.
  *
- * Run:  node a11y/diagnostics/reflow-probe.mjs
+ * Run:  node a11y/diagnostics/reflow-probe.mjs [--negative-control]
  */
 
+import { parseCliOrExit } from '../cli.mjs';
 import { nuxeoBasicAuthHeader, resolveBaseUrl } from '../env.mjs';
+import { injectedSession, SESSION_KEY, SIGNED_OUT_KEY } from '../session.mjs';
 import { screenUnsettledReason, surfaceUnusableReason } from '../surface.mjs';
 import {
   credentialsOrExit,
   gotoOrExit,
   launchChromium,
   requireAdministrationAccess,
+  requireSessionAdopted,
 } from './preconditions.mjs';
+
+const NEGATIVE_CONTROL = parseCliOrExit('reflow-probe', {
+  'negative-control': { type: 'boolean' },
+})['negative-control'] === true;
 
 const REFLOW_WIDTH = 320;
 const REFLOW_HEIGHT = 256;
@@ -149,20 +156,11 @@ async function newSignedInContext(width, height) {
     httpCredentials: { username: user, password: pass, origin: baseUrl },
   });
   await ctx.addInitScript(
-    ({ key, value }) => {
+    ({ key, signedOutKey, value }) => {
       sessionStorage.setItem(key, value);
-      sessionStorage.removeItem('agentic_ui_signed_out');
+      sessionStorage.removeItem(signedOutKey);
     },
-    {
-      key: 'agentic_ui_nuxeo_session',
-      value: JSON.stringify({
-        kind: 'basic',
-        username: user,
-        basic: Buffer.from(`${user}:${pass}`).toString('base64'),
-        isAdministrator: user.toLowerCase() === 'administrator',
-        groups: [],
-      }),
-    },
+    { key: SESSION_KEY, signedOutKey: SIGNED_OUT_KEY, value: injectedSession(user, pass) },
   );
   return ctx;
 }
@@ -407,6 +405,9 @@ const page = await context.newPage();
 const rows = [];
 let couldNotMeasure = 0;
 
+await gotoOrExit(page, baseUrl, 'reflow-probe', { waitUntil: 'networkidle', timeout: 45_000 });
+await requireSessionAdopted(page, user, 'reflow-probe');
+
 for (const [label, route, host] of ROUTES) {
   try {
     await unfreezeMotion(page);
@@ -555,7 +556,7 @@ console.log(
         : '  Consistent with a11y-scout reporting zero — but a zero that was never seen to be a',
     measured.length === 0 || violations.length > 0
       ? ''
-      : process.argv.includes('--negative-control')
+      : NEGATIVE_CONTROL
         ? '  non-zero proves nothing. The negative control below is that non-zero.'
         : '  non-zero proves nothing. Re-run with --negative-control.',
     '',
@@ -573,7 +574,7 @@ console.log(
  * own binary, so it validates the logic this probe reproduces rather than the package. That is
  * the honest limit of a control written outside the tool.
  */
-if (process.argv.includes('--negative-control')) {
+if (NEGATIVE_CONTROL) {
   // The SAME signed-in context helper the measurement loop uses. Previously this built its
   // own context with `httpCredentials` only, so it was never past the route guard.
   //
@@ -591,6 +592,7 @@ if (process.argv.includes('--negative-control')) {
     waitUntil: 'networkidle',
     timeout: 45_000,
   });
+  await requireSessionAdopted(p2, user, 'reflow-probe (negative control)');
 
   // Same check as the measurement loop. A control run against an error panel would still
   // "prove" the detection path works, but it would prove it on a page nobody is measuring.

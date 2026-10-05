@@ -32,7 +32,9 @@
  * 2 could not measure (a precondition failed, or any route could not be loaded and none rendered
  * nothing).
  */
+import { parseCliOrExit } from '../cli.mjs';
 import { resolveBaseUrl } from '../env.mjs';
+import { injectedSession, SESSION_KEY, SIGNED_OUT_KEY } from '../session.mjs';
 import { ERROR_STATE_SELECTOR, screenUnsettledReason } from '../surface.mjs';
 import {
   credentialsOrExit,
@@ -40,14 +42,14 @@ import {
   launchChromium,
   requireAdministrationAccess,
   requireBackend,
+  requireSessionAdopted,
 } from './preconditions.mjs';
+
+parseCliOrExit('route-render-check', {});
 
 const baseUrl = resolveBaseUrl();
 // Required, never defaulted - see ../env.mjs for why a default is worse than an error here.
 const { username: user, password: pass } = credentialsOrExit('route-render-check');
-
-const SESSION_KEY = 'agentic_ui_nuxeo_session';
-const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
 
 /**
  * Every route `phase-6-a11y.mjs` scans, with the feature host it must render.
@@ -109,16 +111,11 @@ try {
     {
       key: SESSION_KEY,
       signedOutKey: SIGNED_OUT_KEY,
-      value: JSON.stringify({
-        kind: 'basic',
-        username: user,
-        basic: Buffer.from(`${user}:${pass}`).toString('base64'),
-        isAdministrator: user.toLowerCase() === 'administrator',
-        groups: [],
-      }),
+      value: injectedSession(user, pass),
     },
   );
   await page.reload({ waitUntil: 'networkidle' });
+  await requireSessionAdopted(page, user, 'route-render-check');
 
   for (const [label, route, host] of ROUTES) {
     // A navigation failure is "could not measure" for this route, not a crash that discards
