@@ -151,3 +151,9 @@ apps/nuxeo-ui/public/i18n/zz.json
 # `scripts/` is ignored too — everything real in that directory has an extension.
 .cursor/plans/
 scripts/Untitled*
+
+# a11y-scout's per-scan output, which lands at the repository root and cannot be moved: its
+# ScanPageOptions has no outDir, only generateReport() does. So 11y/.gitignore covers
+# the consolidated reports but never these, and a 12-minute 11y:scan -- modes leaves a dozen
+# untracked directories here that a git add -A would commit.
+/a11y-reports/

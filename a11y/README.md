@@ -242,13 +242,18 @@ Nothing under `apps/` or `libs/` was modified to support this folder, and the lo
 untouched. Removal is:
 
 ```bash
-rm -rf a11y/
+rm -rf a11y/ a11y-reports/
 ```
+
+`a11y-reports/` is the second directory because a11y-scout writes its per-scan output to the
+repository root and offers no way to redirect it: `generateReport()` takes an `outDir`,
+`scanPage()` does not. That is also why removal touches one file more than `package.json`.
 
 then:
 
 1. delete the `"a11y:scan"` line from the root `package.json`;
-2. in `docs/accessibility.md`, remove the a11y-scout layer from the ownership table and the
+2. delete the `/a11y-reports/` entry from the root `.gitignore`;
+3. in `docs/accessibility.md`, remove the a11y-scout layer from the ownership table and the
    sections describing its findings — **edit, do not delete**: that file also documents the
    two layers that remain.
 

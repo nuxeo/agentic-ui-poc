@@ -1,7 +1,9 @@
 # a11y-scout consolidated reports and Playwright trace/video artifacts.
 #
-# Kept inside this folder rather than at the repository root on purpose: everything this
-# suite produces should disappear with `rm -rf a11y/`, and a root-level ignore entry would
-# be one more thing to remember to remove. See README.md.
+# Kept inside this folder rather than at the repository root so that most of what the suite
+# produces disappears with `rm -rf a11y/`. It is not all of it: a11y-scout writes its per-scan
+# output to `./a11y-reports` at the root and offers no way to redirect it — `ScanPageOptions`
+# has no `outDir`, only `generateReport()` does — so the root `.gitignore` carries that one
+# entry and deleting this folder leaves it behind. See README.md.
 reports/
 artifacts/

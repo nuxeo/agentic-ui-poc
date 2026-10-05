@@ -14,11 +14,13 @@ not a contribution.
 
 The implementation lives entirely under `a11y/`, and nothing under `apps/` or `libs/` is
 modified. That is not tidiness — it is what keeps the folder removable. Its **integration**
-with the repository root is three small edits, and they are the whole list: the `a11y:scan`
-line in `package.json`, a Definition-of-Done line in `AGENTS.md`, and the a11y-scout layer in
-`docs/accessibility.md`. See `../README.md` for which of those to undo on removal. (This
-section used to say nothing outside the folder was modified, which the PR's own diff
-contradicted.)
+with the repository root is four small edits, and they are the whole list: the `a11y:scan`
+line in `package.json`, a Definition-of-Done line in `AGENTS.md`, the a11y-scout layer in
+`docs/accessibility.md`, and a `/a11y-reports/` entry in the root `.gitignore` — that last one
+because a11y-scout writes its per-scan output to the repository root and `scanPage()`, unlike
+`generateReport()`, takes no `outDir`. See `../README.md` for which of those to undo on removal.
+(This section used to say nothing outside the folder was modified, which the PR's own diff
+contradicted; it then said three edits, while the suite was quietly leaving a fourth.)
 
 ```
 a11y/

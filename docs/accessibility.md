@@ -332,10 +332,12 @@ routes in two modes no layer had ever set — the application's dark theme (seed
 one route change under `reducedMotion`. Neither `forcedColors` nor `reducedMotion` appeared in
 any config or spec before this. **17 checks, 19.5 minutes, 81 findings.**
 
-> Take the suite runtime from the runner's own wall clock, not from `report.json`. The
-> `summary.durationMs` in `a11y-reports/latest/` is the duration of the **last scan alone** — a
-> re-measurement on 2026-10-05 recorded 0.9 minutes there while the suite took 12.4, and that
-> gap is how this line once read "1.5 minutes".
+> Take the suite runtime from the runner's own wall clock, not from any `report.json`. Every
+> `summary.durationMs` a11y-scout writes covers a **single scan**, never the suite — including
+> the consolidated `nuxeo-satori-*` reports under `a11y/reports/` (`REPORT_DIR` in
+> `a11y/fixtures.ts`) and the rolling `latest/` pointer beside them. On 2026-10-05 a
+> re-measurement read 0.9 minutes from one while the suite took 12.4, and that gap is how this
+> line once read "1.5 minutes".
 
 | Mode                                  | Findings | Blockers | Notes                                              |
 | ------------------------------------- | -------- | -------- | -------------------------------------------------- |

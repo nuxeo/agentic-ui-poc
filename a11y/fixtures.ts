@@ -40,10 +40,12 @@ export { requireNuxeoCredentials };
 /**
  * Where consolidated reports are written, relative to the repository root.
  *
- * Inside this folder rather than a11y-scout's default `./a11y-reports` at the root, so that
- * everything the suite produces disappears with `rm -rf a11y/` and `a11y/.gitignore` is the
- * only ignore rule needed. `run.mjs` always spawns from the root, so the relative path is
- * stable regardless of where the command was typed.
+ * Inside this folder rather than a11y-scout's default `./a11y-reports` at the root, so that the
+ * reports anyone reads disappear with `rm -rf a11y/`. This covers the consolidated reports only:
+ * `generateReport()` takes an `outDir`, `scanPage()` does not, so a11y-scout still writes its
+ * per-scan output to `./a11y-reports` at the root and the root `.gitignore` has to cover it.
+ * `run.mjs` always spawns from the root, so the relative path is stable regardless of where the
+ * command was typed.
  */
 export const REPORT_DIR = 'a11y/reports';
 
