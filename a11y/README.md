@@ -23,6 +23,10 @@ a11y/
                        waitForScreenSettled, aiFindingsNote, REPORT_DIR
   cli.mjs              strict argument parsing for every Node script here; an unknown option,
                        a stray value or a missing one exits 2 before anything runs
+  cli-args.mjs         what run.mjs decides about an argv before it spawns anything —
+                       --project scope, the grep forms, --no-report. Split out so it can be
+                       imported and asserted; run.mjs owns the messages and the exit codes
+  cli-args.selftest.mjs  controls over that contract — `run.mjs selftest`
   env.mjs              resolveBaseUrl + required Nuxeo credentials — one definition, shared
                        by the config, the preflight and all three diagnostics
   session.mjs          the app session injected into every signed-in page, and the check
@@ -163,12 +167,13 @@ npm run a11y:scan -- routes
 npm run a11y:scan -- diff
 npm run a11y:scan -- drift       # runs automatically before every scan above
 npm run a11y:scan -- typecheck   # local only — see below
+npm run a11y:scan -- selftest    # local only — see below
 ```
 
-### No CI job type-checks this folder
+### No CI job type-checks this folder, or runs its selftest
 
-`typecheck` is a subcommand you have to remember, and that is a real limitation rather than
-an oversight, so it is stated here rather than left implied.
+`typecheck` and `selftest` are subcommands you have to remember, and that is a real
+limitation rather than an oversight, so it is stated here rather than left implied.
 
 The TypeScript in here imports `@playwright/test` and the two a11y-scout packages. All three
 are installed `--no-save` and are absent in CI, so `tsc` there would fail on missing modules
@@ -179,6 +184,14 @@ without checking them — a green suite run is not type safety.
 The consequence: the compile-time guarantees this folder relies on — a mistyped journey
 screen id or interaction state being a build error — hold **only when someone runs this
 command**. Run it before pushing. Flagged in review on PR #225.
+
+`selftest` is local-only for a different reason: it needs nothing installed and would run
+anywhere, but `review:preflight` lists each `*.selftest.mjs` by name and this folder is
+deliberately absent from every CI job, so wiring it in would couple a folder designed to be
+deleted in two edits to a gate outside it. It covers `cli-args.mjs` — the `--project` scope
+check, every grep form, `--no-report` — because every defect review found in that code was
+silent: a narrowed scan that wrote no report, a `--project` that ran another suite past the
+wrong preflight. Run it with `typecheck` before pushing.
 
 Extra arguments pass through, so a single screen with a visible browser is:
 

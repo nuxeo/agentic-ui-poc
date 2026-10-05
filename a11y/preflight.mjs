@@ -286,19 +286,26 @@ if (appStatus !== null && auth) {
             '/#/administration; surfaces, modes, journey and the diagnostics will refuse it',
         );
       }
-    } else if (NEEDS_ADMIN) {
-      // Not "already reported by the document query": that is a different endpoint, and it
-      // can return 200 while this one fails, which let `--needs-admin` pass with the access it
-      // exists to establish never checked. Flagged in review on PR #225.
-      problems.push(
-        `/nuxeo/api/v1/me returned HTTP ${res.status}, so administration access could not be\n` +
-          '  established, and this suite scans /#/administration. Check the backend and the\n' +
-          '  NUXEO_USER / NUXEO_PASS account.',
-      );
     } else {
-      ok.push(
-        `/nuxeo/api/v1/me returned HTTP ${res.status} — administration access not checked. ` +
-          'states does not need it; the suites that do will refuse to start until /me answers',
+      // A problem for EVERY suite, not only the ones that scan /#/administration.
+      //
+      // This used to be an `ok` line for the rest, reading "states does not need it". States
+      // needs it as much as any of them: the session this harness injects is a `basic` one,
+      // and `AuthService.runHydration` validates it by calling /me. On a non-200 the app
+      // never adopts the injected session — `applyBasicSessionFromMe` does not run, so the
+      // marker it would clear stays — and `signedIn`'s teardown then fails the test after it
+      // has otherwise passed. Confirmed by stubbing /me to 500 while building that check.
+      //
+      // Not "already reported by the document query" either: that is a different endpoint and
+      // can return 200 while this one fails. Both flagged in review on PR #225.
+      problems.push(
+        `/nuxeo/api/v1/me returned HTTP ${res.status}.\n` +
+          '  Every suite needs it: the injected session is a basic one and the app validates it\n' +
+          '  through /me while hydrating, so without it no scan runs as the signed-in user.' +
+          (NEEDS_ADMIN
+            ? '\n  It is also how administration access is established, which this suite scans.'
+            : '') +
+          '\n  Check the backend and the NUXEO_USER / NUXEO_PASS account.',
       );
     }
   } catch (error) {
