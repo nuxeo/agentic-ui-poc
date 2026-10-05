@@ -174,16 +174,12 @@ describe('mergeBootstrapConfig', () => {
     });
   });
 
-  // The comment beside `mergeIntegrations` has always said both endpoints are required, but the
-  // merge used to fill a missing half from `base.arender?.… ?? ''` — and `base.arender` is `null`,
-  // so a one-sided manifest produced an object with a blank endpoint: exactly the state the comment
-  // claimed was impossible. That is worse than `null`, because `fetch('')` resolves against the
-  // application's own origin, so an availability probe reports a viewer that is not deployed.
+  // Only `viewerOrigin` is required. A blank one is worse than `null`, because `fetch('')` resolves
+  // against the application's own origin, so an availability probe reports a viewer that is not
+  // deployed and that origin lands on the allow-list the server-supplied URL is checked against.
   it.each([
-    ['only viewerOrigin', { viewerOrigin: 'https://arender.example' }],
     ['only nuxeoInternalUrl', { nuxeoInternalUrl: 'http://nuxeo/nuxeo' }],
     ['a blank viewerOrigin', { viewerOrigin: '   ', nuxeoInternalUrl: 'http://nuxeo/nuxeo' }],
-    ['a blank nuxeoInternalUrl', { viewerOrigin: 'https://arender.example', nuxeoInternalUrl: '' }],
     ['neither endpoint', {}],
   ])('yields null for a manifest naming %s', (_label, arender) => {
     const merged = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
@@ -191,6 +187,20 @@ describe('mergeBootstrapConfig', () => {
     });
 
     expect(merged.integrations.arender).toBeNull();
+  });
+
+  // `nuxeoInternalUrl` is vestigial under NEV 2026 — the connector resolves blobs itself from
+  // `documentId` over OAuth2, so nothing reads it. Requiring it would force a deployment that
+  // retired the nginx sidecar to invent a dummy value, or be silently left without a viewer.
+  it.each([
+    ['only viewerOrigin', { viewerOrigin: 'https://arender.example' }],
+    ['a blank nuxeoInternalUrl', { viewerOrigin: 'https://arender.example', nuxeoInternalUrl: '' }],
+  ])('configures the integration from %s alone', (_label, arender) => {
+    const merged = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      integrations: { arender },
+    });
+
+    expect(merged.integrations.arender?.viewerOrigin).toBe('https://arender.example');
   });
 
   it('lets an explicit null turn a configured integration off', () => {

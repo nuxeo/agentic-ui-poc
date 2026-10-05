@@ -39,27 +39,18 @@ export class ARenderService {
   private readonly api = inject(NuxeoApiBase);
 
   /**
-   * The configuration, or `null` if it is absent, **incomplete**, or **not safe to navigate**.
+   * The configuration, or `null` if `viewerOrigin` is absent, blank, or **not safe to navigate**.
    *
-   * This is the single choke point for ARender's trust decision, and it fails closed. Three things
-   * disqualify a configuration:
+   * This is the single choke point for ARender's trust decision, and it fails closed. Under NEV
+   * 2026 only one field is load-bearing, so only one is checked. Three things disqualify a
+   * configuration:
    *
    * **1. Absent.** `integrations.arender` defaults to `null`.
    *
-   * **2. A blank endpoint** — worse than `null`, because `fetch('')` resolves against the
+   * **2. A blank `viewerOrigin`** — worse than `null`, because `fetch('')` resolves against the
    * *application's own* origin, so `isAvailable()` would report a viewer as present. It would also
    * allow-list this application's own origin in `framableOrNull`, which is the more dangerous half:
    * a same-origin URL in the response body would then be framed and trusted.
-   *
-   * This check is now **defence in depth for direct providers**, not a patch over the layer below.
-   * It was written when `bootstrap-config.ts`'s `mergeIntegrations` carried the comment "Both
-   * endpoints are required: half an ARender configuration is worse than none" without enforcing it,
-   * so a bootstrap file naming only `viewerOrigin` produced `nuxeoInternalUrl: ''`. That was fixed
-   * in this same change: `completeARenderConfig` returns `null` unless the merged result has both
-   * endpoints non-blank, so the bootstrap path can no longer deliver this state. Anything providing
-   * `ARENDER_CONFIG` directly — a test, or a custom provider in an app config — still can, which is
-   * why the guard stays. Describing it as compensating for the bootstrap layer would be describing
-   * code that no longer runs.
    *
    * **3. A `viewerOrigin` that is not an http(s) origin.** This is the one that matters most.
    * `viewerOrigin` is the allow-list deciding which origin may be bypassed and loaded into an
@@ -69,9 +60,10 @@ export class ARenderService {
    * execution in this application's origin from a configuration value. `https:` is required unless
    * `isDevMode()`, because a plaintext document in an iframe is a downgrade.
    *
-   * Enforcing all three here means no caller can build a dangerous URL in the first place; the
-   * bypass in `document-detail` validates again before trusting, because defence for a privilege
-   * boundary should not rest on one function.
+   * Enforcing these here means no caller can reach a dangerous origin in the first place;
+   * `framableOrNull` then checks the URL the server returns against this same origin, and the
+   * bypass in `document-detail` validates once more before trusting, because defence for a
+   * privilege boundary should not rest on one function.
    */
   private get cfg(): ARenderConfig | null {
     const cfg = this.rawCfg;
@@ -89,16 +81,16 @@ export class ARenderService {
     // policy and implemented another.
     if (!isNavigableBaseUrl(cfg.viewerOrigin, insecureAllowedForHost(isDevMode()))) return null;
 
-    // `nuxeoInternalUrl` is **vestigial under NEV 2026** and nothing below reads it. It addressed
-    // the ARender 2023 stack, where the client encoded an nxfile URL for the nginx sidecar to fetch
-    // with a shared Basic credential; NEV's connector resolves blobs itself from `documentId` over
-    // OAuth2, so there is no such URL to build.
+    // `nuxeoInternalUrl` is deliberately **not** checked. It is vestigial under NEV 2026: it
+    // addressed the ARender 2023 stack, where the client encoded an nxfile URL for the nginx
+    // sidecar to fetch with a shared Basic credential. NEV's connector resolves blobs itself from
+    // `documentId` over OAuth2, so nothing here reads it.
     //
-    // Still validated, and still required non-blank by `completeARenderConfig`, because removing the
-    // field is a breaking change to `AppARenderConfig` — a published type, frozen in
-    // `docs/api/platform.api.md`. Retiring it belongs with that API change, not here, and leaving it
-    // unvalidated in the meantime would mean a value this file accepts but never checks.
-    if (!isNavigableBaseUrl(cfg.nuxeoInternalUrl, true)) return null;
+    // An earlier version of this change kept validating it, which review correctly called out as a
+    // trap: a deployment that had retired the sidecar would have to keep a dummy valid URL or the
+    // whole integration silently disabled itself. Validating a field nothing consumes can only
+    // reject configurations that would have worked. The field itself stays because removing it is a
+    // breaking change to the published `AppARenderConfig`.
 
     return cfg;
   }

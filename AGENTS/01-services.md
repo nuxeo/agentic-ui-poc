@@ -453,8 +453,16 @@ isAvailable(): Observable<boolean>
 
 **`null` is a real return value, not an error.** All three depend on `ARENDER_CONFIG`, which is
 `InjectionToken<ARenderConfig | null>` — a customer need not configure ARender, and the config is
-also rejected outright if `viewerOrigin` or `nuxeoInternalUrl` fails `isNavigableBaseUrl`. Callers
-must handle `null` rather than treating it as a failed request.
+also rejected outright if `viewerOrigin` fails `isNavigableBaseUrl`. `nuxeoInternalUrl` is vestigial
+under NEV 2026 and is deliberately **not** checked. Callers must handle `null` rather than treating
+it as a failed request.
+
+**The URL comes from the server, not from this service.** `getPreviewerUrl` and `getDiffUrl` POST to
+`Document.ARenderGetPreviewerUrl` / `Document.ARenderGetDiffUrl` (from the `nuxeo-arender` addon) and
+return `previewerUrl` from the response, after checking it against `viewerOrigin` as an origin
+allow-list. The client cannot build the URL itself: NEV requires a `documentId` parameter carrying
+the blob digest. So `null` additionally covers a missing addon (404), a caller without `Read` on the
+document (403), and a returned URL that is not framable. See `docs/api-integrations.md`.
 
 This block previously documented `getViewerUrl(blobUrl: string): string` and
 `isAvailable(): Promise<boolean>`, neither of which existed — a signature the code had never had.

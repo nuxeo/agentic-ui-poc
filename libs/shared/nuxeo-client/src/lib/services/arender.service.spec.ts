@@ -90,23 +90,41 @@ describe('ARenderService', () => {
     });
   });
 
-  describe('when only half configured', () => {
-    // `completeARenderConfig` in bootstrap-config.ts collapses these to `null` before they ever
-    // reach the token. These cases defend against a direct provider — a test, or a custom app
-    // config — which can still produce them.
-    const halves = [
-      { viewerOrigin: 'https://arender.example.com', nuxeoInternalUrl: '' },
+  describe('when viewerOrigin is missing', () => {
+    // `completeARenderConfig` collapses these to `null` before they reach the token. These cases
+    // defend against a direct provider — a test, or a custom app config — which can still produce
+    // them.
+    const blanks = [
       { viewerOrigin: '', nuxeoInternalUrl: 'https://nuxeo-auth-proxy.internal/nuxeo' },
       { viewerOrigin: '   ', nuxeoInternalUrl: 'https://nuxeo-auth-proxy.internal/nuxeo' },
     ];
 
-    for (const cfg of halves) {
-      it(`treats viewerOrigin="${cfg.viewerOrigin}" nuxeoInternalUrl="${cfg.nuxeoInternalUrl}" as unconfigured`, async () => {
+    for (const cfg of blanks) {
+      it(`treats viewerOrigin="${cfg.viewerOrigin}" as unconfigured`, async () => {
         const service = setup(cfg);
 
         await expect(firstValueFrom(service.isAvailable())).resolves.toBe(false);
         await expect(firstValueFrom(service.getPreviewerUrl('doc-1'))).resolves.toBeNull();
         http.expectNone(PREVIEW_OP);
+      });
+    }
+  });
+
+  describe('when nuxeoInternalUrl is absent or malformed', () => {
+    // The load-bearing test for review feedback on this change. `nuxeoInternalUrl` is vestigial
+    // under NEV 2026 and nothing reads it, so it must not gate availability: an earlier version of
+    // this change still validated it, which meant a deployment that had retired the nginx sidecar
+    // had to keep a dummy valid URL or lose the viewer entirely, with no error to explain why.
+    const vestigial = ['', '   ', 'not-a-url', 'javascript:alert(1)'];
+
+    for (const nuxeoInternalUrl of vestigial) {
+      it(`still works with nuxeoInternalUrl="${nuxeoInternalUrl}"`, async () => {
+        const service = setup({ ...CONFIGURED, nuxeoInternalUrl });
+        const pending = firstValueFrom(service.getPreviewerUrl('doc-1'));
+
+        http.expectOne(PREVIEW_OP).flush({ previewerUrl: SERVER_URL });
+
+        await expect(pending).resolves.toBe(SERVER_URL);
       });
     }
   });

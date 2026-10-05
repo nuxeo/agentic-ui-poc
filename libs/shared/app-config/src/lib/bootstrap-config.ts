@@ -380,7 +380,15 @@ function completeARenderConfig(
     'nuxeoInternalUrl',
     base?.nuxeoInternalUrl ?? '',
   ).trim();
-  if (!viewerOrigin || !nuxeoInternalUrl) return null;
+  // Only `viewerOrigin` is required. It names the viewer and, since the server now supplies the
+  // previewer URL, doubles as the origin allow-list that URL is checked against.
+  //
+  // `nuxeoInternalUrl` used to be required too, on the reasoning that "half an ARender
+  // configuration is worse than none". That stopped being true when the client stopped building
+  // nxfile URLs: NEV's connector fetches blobs itself over OAuth2. Requiring it now would force a
+  // deployment that retired the sidecar to invent a dummy value, and omitting it would silently
+  // disable the integration.
+  if (!viewerOrigin) return null;
   return { viewerOrigin, nuxeoInternalUrl };
 }
 
@@ -388,16 +396,14 @@ function mergeIntegrations(base: AppIntegrationsConfig, value: unknown): AppInte
   if (!isRecord(value)) return base;
   const arender = value['arender'];
   return {
-    // Both endpoints are required: half an ARender configuration is worse than none, because a
-    // blank endpoint is not inert. `fetch('')` resolves against the *application's own* origin, so
-    // an availability probe would report a viewer that is not deployed, and the URL built from it
-    // would be same-origin.
+    // `viewerOrigin` is required and enforced by `completeARenderConfig`, because a blank one is
+    // not inert: `fetch('')` resolves against the *application's own* origin, so an availability
+    // probe would report a viewer that is not deployed, and that origin would end up on the
+    // allow-list the server-supplied URL is checked against.
     //
-    // This used to be a comment only. The merge filled a missing half from
-    // `base.arender?.… ?? ''`, and since `base.arender` is `null` that produced an object with one
-    // blank endpoint — exactly the state the comment said was rejected. `ARenderService` guards it
-    // too, and deliberately keeps doing so, but the layer that claims to enforce the contract now
-    // actually does.
+    // `nuxeoInternalUrl` is **not** required. It was, when the client built nxfile URLs for the
+    // nginx sidecar; NEV's connector resolves blobs itself over OAuth2, so requiring it would only
+    // force deployments that retired the sidecar to invent a value.
     // `null` is handled before the record check, matching `readNullableString`'s
     // `value === null ? null : fallback`. Without it, `{ integrations: { arender: null } }` fell
     // through to `base.arender` and preserved whatever was already configured — so a

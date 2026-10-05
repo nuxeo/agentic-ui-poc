@@ -89,7 +89,15 @@ overstated completion this programme keeps producing. Every phase so far self-re
 contained at least one such claim; this was one, and it was caught in review rather than by any
 gate.
 
-### Category C — the deliberate exposure, now closed
+### Category C
+
+> **Update (NXSAT-279).** The missing origin allow-list described in this section is **closed**.
+> `ARenderService` no longer builds the viewer URL — it asks Nuxeo for it via
+> `Document.ARenderGetPreviewerUrl` — so `viewerOrigin` is no longer needed to construct anything
+> and now serves as `allowedOrigins` on the URL the server returns. Verified by negative control:
+> removing the allow-list turns two tests red. A CSP `frame-src` is still not set, so that half of
+> the residual risk stands.
+> — the deliberate exposure, now closed
 
 The Category E work removed the _accidental_ exposure (a compiled `http://localhost:8180` default)
 and left the _deliberate_ one: `document-detail.ts` bypassed and navigated the ARender URL with no
@@ -138,7 +146,7 @@ This is deliberate, and "Category C mitigated" should not be read as more than i
 ```ts
 navigableUrlOrNull(url, {
   allowInsecure: insecureAllowedForHost(isDevMode()), // host-relative, not build-relative
-}); // note: no allowedOrigins
+  allowedOrigins: [cfg.viewerOrigin],                 // CLOSED by NXSAT-279
 ```
 
 There is no origin allow-list on the ARender site, because a customer configures where _their own_

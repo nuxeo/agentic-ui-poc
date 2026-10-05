@@ -24,9 +24,17 @@ export interface ARenderConfig {
   viewerOrigin: string;
 
   /**
-   * Base URL of Nuxeo as seen by the ARender containers, used to build `nxfile` URLs. This goes
-   * through the nginx auth-proxy sidecar that adds Basic Auth, so it is an internal address and
-   * generally not reachable from the browser.
+   * **Vestigial. Nothing reads this, and it is not validated.**
+   *
+   * It was the base URL of Nuxeo as the ARender containers saw it, used to build `nxfile` URLs
+   * through an nginx auth-proxy sidecar that added a shared Basic credential. Under NEV 2026 the
+   * connector resolves blobs itself from the `documentId` parameter over OAuth2 as the signed-in
+   * user, so the client builds no such URL.
+   *
+   * Retained because removing it is a breaking change to `AppARenderConfig`, which is published
+   * and frozen in `docs/api/platform.api.md`. Deliberately **not** required by
+   * `completeARenderConfig` and **not** checked by `ARenderService`: gating a feature on a field
+   * nothing consumes can only reject configurations that would have worked.
    */
   nuxeoInternalUrl: string;
 }
