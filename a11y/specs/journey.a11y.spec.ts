@@ -283,10 +283,26 @@ async function nxqlEntries(
   return entriesOf(await response.json());
 }
 
-/** `entries` from a Nuxeo list response, or none — never a throw on an unexpected shape. */
+/**
+ * `entries` from a Nuxeo list response.
+ *
+ * Throws when there is no `entries` array rather than returning none: an empty list is a
+ * legitimate answer on tasks and the expired queue, where it selects the empty-state scan, so a
+ * malformed body read as `[]` would be reported as "0 task(s)" instead of as malformed. A list
+ * response with nothing in it still carries `entries: []`.
+ */
 function entriesOf(body: unknown): RepoEntry[] {
   const entries = (body as { entries?: unknown } | null)?.entries;
-  return Array.isArray(entries) ? (entries as RepoEntry[]) : [];
+  if (!Array.isArray(entries)) {
+    const shape =
+      body !== null && typeof body === 'object'
+        ? `keys: ${Object.keys(body).join(', ') || 'none'}`
+        : String(body);
+    throw new Error(
+      `a list response had no \`entries\` array (${shape}), so it cannot say what the screen holds`,
+    );
+  }
+  return entries as RepoEntry[];
 }
 
 /**

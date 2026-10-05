@@ -221,10 +221,33 @@ if (reportPath && existsSync(reportPath)) {
     process.exit(2);
   }
 
-  /** @type {Array<{ source?: unknown, pageUrl?: unknown, ruleId?: unknown } | null>} */
-  const findings = Array.isArray(report?.findings) ? report.findings : [];
-  for (const f of findings) {
-    if (f?.source !== 'axe') continue;
+  // A missing or non-array `findings` is a malformed report, not a claim of zero findings — the
+  // same absence-read-as-zero as the coverage check above. Read as `[]`, every axe finding
+  // measured below would report as "not claimed by a11y-scout" and the run could exit 0.
+  // Flagged in review on PR #225. An axe entry without a string `pageUrl` and `ruleId` is
+  // refused for the same reason: it would be dropped or counted under no rule.
+  if (!Array.isArray(report?.findings)) {
+    console.error(
+      `axe-differential: ${reportPath} has no \`findings\` array, so it is not a baseline — ` +
+        'a report that lists no findings still carries an empty one. Re-run the surfaces suite.',
+    );
+    process.exit(2);
+  }
+  /** @type {unknown[]} */
+  const findings = report.findings;
+  for (const [i, entry] of findings.entries()) {
+    const f =
+      entry !== null && typeof entry === 'object'
+        ? /** @type {{ source?: unknown, pageUrl?: unknown, ruleId?: unknown }} */ (entry)
+        : null;
+    if (f === null || (f.source === 'axe' && (typeof f.pageUrl !== 'string' || typeof f.ruleId !== 'string'))) {
+      console.error(
+        `axe-differential: finding ${i} in ${reportPath} is malformed (${JSON.stringify(entry)?.slice(0, 200)}), ` +
+          'so the baseline cannot be trusted to say what a11y-scout claimed. Re-run the surfaces suite.',
+      );
+      process.exit(2);
+    }
+    if (f.source !== 'axe') continue;
     const surface = SURFACES.find(([, route]) => reachedFrom(f.pageUrl, route))?.[0];
     if (!surface) continue;
     const key = `${surface}::${f.ruleId}`;
