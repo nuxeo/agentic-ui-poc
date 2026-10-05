@@ -2308,12 +2308,17 @@ function checkCataloguesAreTranslated() {
  * 813 issues on Polish while that language sat at 99% translated and 2% approved — so the
  * defect is live in the project, held back only by approval.
  *
- * Compared as a multiset of names: order may change, because word order does, and inner spacing
- * is irrelevant to ngx-translate. A key absent from the locale is skipped; it renders the English
- * fallback, placeholders and all.
+ * Compared as a multiset of names: order may change, because word order does. A key absent from
+ * the locale is skipped; it renders the English fallback, placeholders and all.
+ *
+ * The matcher is ngx-translate 17's own `templateMatcher` in `TranslateDefaultParser`, copied
+ * rather than approximated: any name without whitespace or braces, and at most ONE space inside
+ * each brace pair. `{{  count  }}` is therefore not a placeholder — the runtime leaves it on screen
+ * uninterpolated — and a looser grammar here would pass it. Re-check this line when
+ * `@ngx-translate/core` moves a major.
  */
 function checkCataloguePlaceholders() {
-  const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_.]+)\s*\}\}/g;
+  const PLACEHOLDER = /{{\s?([^{}\s]*)\s?}}/g;
   const signature = (value) =>
     [...value.matchAll(PLACEHOLDER)]
       .map((match) => match[1])

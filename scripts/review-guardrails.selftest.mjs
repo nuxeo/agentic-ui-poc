@@ -435,11 +435,27 @@ expectGreen(
 falsePositiveControls += 1;
 
 expectGreen(
-  'different inner spacing passes, because ngx-translate ignores it',
+  'zero or one space inside the braces passes, because ngx-translate accepts either',
   'checkCataloguePlaceholders',
   withFrench('{{ count }} documents supprimés de {{folder}}'),
 );
 falsePositiveControls += 1;
+
+expectRed(
+  'two spaces inside the braces fail — ngx-translate 17 accepts at most one and renders the rest raw',
+  'checkCataloguePlaceholders',
+  withFrench('{{  count  }} documents supprimés de {{ folder }}'),
+  null,
+  /placeholders are \[folder\] where .*has \[count, folder\]/,
+);
+
+expectRed(
+  'an added hyphenated placeholder is seen, because the runtime interpolates any non-space name',
+  'checkCataloguePlaceholders',
+  withFrench('{{count}} documents supprimés de {{ folder }} par {{ user-name }}'),
+  null,
+  /placeholders are \[count, folder, user-name\]/,
+);
 
 expectGreen(
   'a key absent from the locale is skipped — it renders the English fallback',
