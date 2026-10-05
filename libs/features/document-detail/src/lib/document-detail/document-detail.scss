@@ -388,7 +388,8 @@ sat-breadcrumbs {
 }
 
 .no-publications {
-  color: #aaa;
+  /* NXENG-917 — #aaa was 2.32:1 on the panel (IBM 3603735683); reuse light-panel muted token. */
+  color: var(--document-detail-properties-label-muted);
 }
 
 .creator-value {
