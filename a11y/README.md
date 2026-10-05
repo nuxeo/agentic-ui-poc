@@ -191,11 +191,12 @@ refused, because each command picks its own preflight checks and borrowing anoth
 project would skip them.
 
 `surfaces`, `states` and `modes` write their consolidated report from a test of their own, so
-a `--grep`, `-g`, `--grep-invert` or `-G` that excludes it is refused too — `states --grep
-"column picker"` used to scan one state, pass, and write nothing, which is the suite's
-deliverable missing from a run that read like a success. Add `--no-report` to say you are
-watching one state rather than measuring; it excludes that test for real rather than just
-labelling the run.
+**any** `--grep`, `-g`, `--grep-invert` or `-G` is refused — not just one calculated to exclude
+it. No narrowing of these three leaves a passing report behind: that test asserts every
+declared state recorded a scan, so a filter either removes it, giving no report silently
+(`states --grep "column picker"` used to scan one state, pass, and write nothing), or keeps it
+and fails it. Add `--no-report` to say you are watching one state rather than measuring; it
+excludes that test for real rather than just labelling the run.
 `journey` has no such trap: every screen emits its own report, so narrowing it is always safe.
 
 Reports land in `reports/<name>-<timestamp>/` as `report.html`, `.md` and `.json`. The HTML is
