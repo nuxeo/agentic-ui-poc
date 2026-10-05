@@ -72,9 +72,16 @@ none"_ — and does not enforce it. A manifest naming only `viewerOrigin` yields
 `base.arender?.nuxeoInternalUrl ?? ''` and `base.arender` is `null`. A blank endpoint is worse than
 `null`: `fetch('')` resolves against the _application's own_ origin, so `isAvailable()` would report
 a viewer as present and `getPreviewerUrl` would build a same-origin `/?url=…` that then gets
-trusted and loaded into an iframe. `ARenderService` now treats a blank endpoint as absent, which
-makes it correct regardless of that layer. **The comment/code mismatch in `bootstrap-config.ts` is
-NOT fixed** — it is Layer 0 manifest semantics and wants a deliberate decision, not a drive-by.
+trusted and loaded into an iframe. `ARenderService` then treated a blank endpoint as absent, which
+made it correct regardless of that layer. **The comment/code mismatch in `bootstrap-config.ts` was
+left unfixed** — it is Layer 0 manifest semantics and wanted a deliberate decision, not a drive-by.
+
+> **Superseded by NXSAT-279.** That decision has now been taken, and it went the other way: only
+> `viewerOrigin` is required. The client no longer builds a `?url=` from `nuxeoInternalUrl`, so the
+> field is vestigial, and requiring it would have forced deployments that retired the auth-proxy
+> sidecar to invent a dummy value. `completeARenderConfig` now returns `null` only on a blank
+> `viewerOrigin`, and its comment says so — the mismatch is resolved by changing the comment's claim
+> to match a deliberately chosen contract, not by enforcing the old one.
 
 **What the fix is now:** `ARENDER_CONFIG` is `InjectionToken<ARenderConfig | null>` with a
 `() => null` factory (both literals gone); `ARenderService` guards on absent _or incomplete_ config,
@@ -603,8 +610,9 @@ if (parsed.origin !== new URL(this.cfg.viewerOrigin).origin) return null;
 `javascript:` URLs have no origin and fail the check; a relative or malformed value throws. Only then
 call `bypassSecurityTrustResourceUrl`. **Fail closed means returning `null`**, which the template
 already handles — `@if (showARenderViewer())` degrades to "Annotations are not available", the same
-path taken when ARender is not deployed. This is validated by `bootstrap-config.ts` already refusing
-half an ARender configuration ("half … is worse than none").
+path taken when ARender is not deployed. (As planned, this leaned on `bootstrap-config.ts` refusing
+half an ARender configuration. **Superseded by NXSAT-279:** only `viewerOrigin` is required there
+now, which is also the only endpoint this check reads, so the check is unaffected.)
 
 For site 2, assert the preview URL's origin equals the Nuxeo API origin (`NUXEO_API_ORIGIN`) or is
 same-origin-relative, and drop the preview otherwise.
@@ -1131,7 +1139,8 @@ Each of these would close the Sonar issues and leave the codebase worse.
    and tooling" is not product code — is reasonable for _maintainability_ rules and wrong for
    _security_ rules, which is precisely where hardcoded endpoints and credentials live. Worth
    narrowing the exclusion to the non-security rule set, and expecting new findings when it is.
-6. **Does `mergeIntegrations` mean what its comment says?** `bootstrap-config.ts:339` claims both
-   ARender endpoints are required and does not enforce it, so a half-configured manifest produces a
-   blank endpoint rather than `null`. `ARenderService` now defends against that, but the manifest
-   layer should probably reject it outright — that is a Layer 0 semantics decision.
+6. ~~**Does `mergeIntegrations` mean what its comment says?**~~ **Answered by NXSAT-279.** It claimed
+   both ARender endpoints were required and enforced neither. Rather than enforce both, the Layer 0
+   semantics decision was to require only `viewerOrigin`: `nuxeoInternalUrl` became vestigial when
+   the client stopped building `?url=` values, so gating on it could only reject configurations that
+   would have worked. `completeARenderConfig` and its comment now agree on that contract.
