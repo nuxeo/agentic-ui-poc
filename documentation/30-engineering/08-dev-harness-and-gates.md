@@ -2,14 +2,14 @@
 title: Dev Harness & Gates
 parent: Engineering
 order: 8
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-05
+repo_commit: b15d9cf
 audience: engineering
 ---
 
-# The Development Harness and the 15 Gates
+# The Development Harness and its Gates
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-05 · **Repository:** `b15d9cf`
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).
 
@@ -43,35 +43,45 @@ described below has a recorded negative control.
 
 ---
 
-## 2. The 17 gates
+## 2. The 24 gates
 
 ```bash
-npm run beta:gate -- --phase <id>                      # all 15, cheapest first, stop at first failure
+npm run beta:gate -- --phase <id>                      # all 24, cheapest first, stop at first failure
 npm run beta:gate -- --gates lockfile,guardrails,lint  # fast inner loop
 ```
+
+The authoritative count is the verdict line `beta:gate` prints, not this heading. The table below
+listed 17 while `ALL_GATES` held 23, having been written before the self-test gates existed.
 
 Ordered deliberately: a lint error usually explains the test failure that would follow, and
 running the full set on a known-broken tree wastes minutes per iteration.
 
-| #   | Gate                  | Asserts                                                                                                       | Why it exists                                                                                                                                                                   |
-| --- | --------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `node`                | The runtime is one whose results mean anything                                                                | An agent on the wrong Node major gets a red indistinguishable from a code defect, and the obvious response — edit the failing spec — damages working code. That happened        |
-| 2   | `lockfile`            | Every non-optional dependency edge resolves **within the lock**                                               | The failure the other gates structurally cannot see. `npm ci --dry-run` only demands what the current platform resolves, so on macOS it never looks at the pruned Linux subtree |
-| 3   | `supply-chain`        | No production `high`/`critical`; every acceptance is dated and unexpired; no unimported production dependency | SCA was a human running `npm audit` and writing the number into a document. It also found `cors` and `dotenv` — two unused production dependencies nobody had recorded          |
-| 4   | `code-scanning`       | The ref **was analysed**, and no CodeQL alert is unaccounted for                                              | SAST was already running and finding 21 alerts, 6 high, that nobody read. The gap was never the tool — it was that no process consumed the output                               |
-| 5   | `guardrails`          | 11 repo invariants — see §3                                                                                   |                                                                                                                                                                                 |
-| 6   | `assertions`          | Every evidence assertion is **capable of failing**                                                            | Phase 1 shipped a defect past two checks that "certified properties they could not observe"                                                                                     |
-| 7   | `lint`                | Affected ESLint, incl. real module boundaries                                                                 |                                                                                                                                                                                 |
-| 8   | `test`                | Affected unit tests                                                                                           | **Does not typecheck** — vitest strips types through esbuild                                                                                                                    |
-| 9   | `build`               | Affected builds                                                                                               |                                                                                                                                                                                 |
-| 10  | `typecheck`           | `ngc` per library                                                                                             | Most libraries have no `build` target, so before this a type error confined to a library reached `main`                                                                         |
-| 11  | `bundle`              | Banned symbols absent; required assets present **and non-empty**                                              | Found adf-hx importing `ng-mocks` — a test library — into the shipped runtime bundle, with two `eval()` calls                                                                   |
-| 12  | `api-surface`         | The published `.d.ts` matches a 2,221-line snapshot                                                           |                                                                                                                                                                                 |
-| 13  | `publishability`      | A real `npm publish --dry-run`, generators resolve, declarations typecheck standalone                         |                                                                                                                                                                                 |
-| 14  | `fork-simulation`     | The template compiles against the **built** package                                                           |                                                                                                                                                                                 |
-| 15  | `upgrade-rehearsal`   | A Layer 0/1/2 customisation survives a version bump                                                           | The only gate that crosses a version boundary                                                                                                                                   |
-| 16  | `reference-drift`     | The customer-facing extension reference agrees with the code                                                  | The only customer-facing document nothing checked                                                                                                                               |
-| 17  | `customer-guardrails` | The guardrail we ship, run against our own reference library                                                  | A tool we hand customers and never run ourselves is one we would learn was broken from a customer's CI log                                                                      |
+| #   | Gate                  | Asserts                                                                                                                                                             | Why it exists                                                                                                                                                                                                     |
+| --- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `node`                | The runtime is one whose results mean anything                                                                                                                      | An agent on the wrong Node major gets a red indistinguishable from a code defect, and the obvious response — edit the failing spec — damages working code. That happened                                          |
+| 2   | `lockfile`            | Every non-optional dependency edge resolves **within the lock**                                                                                                     | The failure the other gates structurally cannot see. `npm ci --dry-run` only demands what the current platform resolves, so on macOS it never looks at the pruned Linux subtree                                   |
+| 3   | `lockfile-selftest`   | The lockfile gate's own 14 negative controls                                                                                                                        | That gate has been wrong in both directions — names-not-versions, then waiving every `brace-expansion` major off a `^5.0.0`-scoped override — and both were found by a human reading it, not by anything that ran |
+| 4   | `supply-chain`        | No production `high`/`critical`; every acceptance is dated and unexpired; no unimported production dependency                                                       | SCA was a human running `npm audit` and writing the number into a document. It also found `cors` and `dotenv` — two unused production dependencies nobody had recorded                                            |
+| 5   | `code-scanning`       | The ref **was analysed**, and no CodeQL alert is unaccounted for                                                                                                    | SAST was already running and finding 21 alerts, 6 high, that nobody read. The gap was never the tool — it was that no process consumed the output                                                                 |
+| 6   | `guardrails`          | 11 repo invariants — see §3                                                                                                                                         |                                                                                                                                                                                                                   |
+| 7   | `guardrails-selftest` | The i18n guardrails' negative controls                                                                                                                              | Eleven guardrails shipped with no tests at all, and the controls found a defect in two of the three they cover — an unguarded `JSON.parse` that discarded every other guardrail's diagnostics                     |
+| 8   | `crowdin-selftest`    | The Crowdin context-push and status scripts' controls                                                                                                               | Neither can be exercised end to end until a Crowdin project exists                                                                                                                                                |
+| 9   | `sanitizer-audit`     | Every `bypassSecurityTrust*` is registered with a justification, no `Safe*` value reaches a `SecurityContext.NONE` binding, trusted HTML traces back to a sanitiser | XSS-adjacent debt was tracked in prose                                                                                                                                                                            |
+| 10  | `sanitizer-selftest`  | The sanitizer audit's negative controls                                                                                                                             | Registered in ALL_GATES **and** in CI, after review pointed out that the gate guarding a shipped XSS-adjacent defect could not block a merge                                                                      |
+| 11  | `assertions`          | Every evidence assertion is **capable of failing**                                                                                                                  | Phase 1 shipped a defect past two checks that "certified properties they could not observe"                                                                                                                       |
+| 12  | `lint`                | Affected ESLint, incl. real module boundaries                                                                                                                       |                                                                                                                                                                                                                   |
+| 13  | `test`                | Affected unit tests                                                                                                                                                 | **Does not typecheck** — vitest strips types through esbuild                                                                                                                                                      |
+| 14  | `build`               | Affected builds                                                                                                                                                     |                                                                                                                                                                                                                   |
+| 15  | `typecheck`           | `ngc` per library                                                                                                                                                   | Most libraries have no `build` target, so before this a type error confined to a library reached `main`                                                                                                           |
+| 16  | `spec-types`          | Spec files typecheck — 22 projects                                                                                                                                  | `typecheck` reads `tsconfig.lib.json`, which excludes `*.spec.ts` by construction, so no gate had ever type-checked a spec and 43 errors had accumulated                                                          |
+| 17  | `bundle`              | Banned symbols absent; required assets present **and non-empty**                                                                                                    | Found adf-hx importing `ng-mocks` — a test library — into the shipped runtime bundle, with two `eval()` calls                                                                                                     |
+| 18  | `api-surface`         | The published `.d.ts` matches a 2,221-line snapshot                                                                                                                 |                                                                                                                                                                                                                   |
+| 19  | `publishability`      | A real `npm publish --dry-run`, generators resolve, declarations typecheck standalone                                                                               |                                                                                                                                                                                                                   |
+| 20  | `fork-simulation`     | The template compiles against the **built** package                                                                                                                 |                                                                                                                                                                                                                   |
+| 21  | `upgrade-rehearsal`   | A Layer 0/1/2 customisation survives a version bump                                                                                                                 | The only gate that crosses a version boundary                                                                                                                                                                     |
+| 22  | `reference-drift`     | The customer-facing extension reference agrees with the code                                                                                                        | The only customer-facing document nothing checked                                                                                                                                                                 |
+| 23  | `agent-mirror`        | `.claude/` and `.agent/` are byte-identical to `.cursor/`                                                                                                           | Three copies of every skill with nothing comparing them: a skill fixed in one tool's copy and stale in another is wrong only for whoever uses the other tool                                                      |
+| 24  | `customer-guardrails` | The guardrail we ship, run against our own reference library                                                                                                        | A tool we hand customers and never run ourselves is one we would learn was broken from a customer's CI log                                                                                                        |
 
 ### Two traps that have each cost a phase
 
@@ -90,7 +100,7 @@ running the full set on a known-broken tree wastes minutes per iteration.
 | `bundle`              | `ng-mocks` + 2 `eval()` in the shipped bundle                          | i18n catalogue check asserted existence, not content                                                                                                                                             |
 | `reference-drift`     | Reference wrong in both directions                                     | Treated a **comment** as code                                                                                                                                                                    |
 | `customer-guardrails` | —                                                                      | 3 of 5 checks satisfiable without doing the work                                                                                                                                                 |
-| `lockfile`            | CI red for a phase                                                     | Skipped 52 devDependency edges; then waived every `brace-expansion` major off a `^5.0.0`-scoped override — same defect class, opposite direction, which is why it now has 11 executable controls |
+| `lockfile`            | CI red for a phase                                                     | Skipped 52 devDependency edges; then waived every `brace-expansion` major off a `^5.0.0`-scoped override — same defect class, opposite direction, which is why it now has 14 executable controls |
 | `state-check`         | 6 phases citing an insufficient re-gate                                | Read `verdict` and not `totals.failed`                                                                                                                                                           |
 
 ---
@@ -307,8 +317,8 @@ Two consequences worth separating, from `nx graph`:
 
 Earlier on 2026-08-24, CI ran **8 of the then-15** gates, so "green locally" and "green in CI"
 made different claims and neither disclosed it. Four were added to CI that day, and
-`supply-chain` with it, taking CI to 9 of 17; `lockfile` and its controls followed on
-2026-10-05, so CI now runs 11.
+`supply-chain` with it, taking CI to 9 of the then-17; `lockfile` and its controls followed on 2026-10-05, so CI now runs
+11 of 24.
 
 ---
 
