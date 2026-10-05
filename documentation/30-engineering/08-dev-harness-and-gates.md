@@ -303,22 +303,33 @@ Two consequences worth separating, from `nx graph`:
 
 ## 7. What runs where
 
-| Check                                                           | Local gate | PR CI | Notes                                                                                                                                                             |
-| --------------------------------------------------------------- | :--------: | :---: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| node                                                            |     ✅     |   —   | `setup-node` is CI's stronger equivalent                                                                                                                          |
-| lockfile, lockfile-selftest                                     |     ✅     |  ✅   | Added to CI 2026-10-05; `npm ci` proves the lock installs on Linux but says nothing about the gate still being able to report, and that half had been wrong twice |
-| guardrails, lint, test, build, typecheck                        |     ✅     |  ✅   |                                                                                                                                                                   |
-| assertions, reference-drift, customer-guardrails                |     ✅     |  ✅   | Added to CI 2026-08-24                                                                                                                                            |
-| bundle                                                          |     ✅     |  ✅   | Needs the production build; added to CI 2026-08-24                                                                                                                |
-| api-surface, publishability, fork-simulation, upgrade-rehearsal |     ✅     |  ✅   | Run unconditionally — they catch the expensive class                                                                                                              |
-| **E2E**                                                         |     ✅     |  ❌   | Needs Docker Nuxeo + a served app. **A real limitation**                                                                                                          |
-| **Phase evidence**                                              |     ✅     |  ❌   | Needs a live backend                                                                                                                                              |
-| Bundle **size** ceiling                                         |     —      |  ✅   | 6 MiB total shipped JS+CSS                                                                                                                                        |
+| Gate                                                            | Local gate | PR CI | Notes                                                                                                                                                       |
+| --------------------------------------------------------------- | :--------: | :---: | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| node                                                            |     ✅     |   —   | `setup-node` pins the runner to `node-version: 20`, which is the stronger equivalent                                                                        |
+| lockfile, lockfile-selftest                                     |     ✅     |  ✅   | Added 2026-10-05. `npm ci` proves the lock installs on Linux but says nothing about the gate still being able to report, and that half had been wrong twice |
+| supply-chain                                                    |     ✅     |  ✅   | Added to CI 2026-08-24                                                                                                                                      |
+| code-scanning                                                   |     ✅     |   —   | CodeQL **analysis** runs as its own workflow; the gate that reads the alerts needs `gh` and a token, so it runs locally                                     |
+| guardrails, guardrails-selftest, crowdin-selftest               |     ✅     |  ✅   | The self-tests are the basis for trusting the guardrails, so running them is not optional                                                                   |
+| sanitizer-audit, sanitizer-selftest                             |     ✅     |  ✅   | Both were in ALL_GATES and in `review:preflight` while CI invoked neither — "registered as a gate" meant local-only                                         |
+| assertions, reference-drift, customer-guardrails                |     ✅     |  ✅   | Added to CI 2026-08-24                                                                                                                                      |
+| lint, test, build, typecheck                                    |     ✅     |  ✅   |                                                                                                                                                             |
+| spec-types                                                      |     ✅     |   —   | Not in `ci.yml`. A spec type error reaches `main` unless someone ran the local gate                                                                         |
+| bundle                                                          |     ✅     |  ⚠️   | **Only when `nuxeo-ui` is affected** — it needs the production build. Added to CI 2026-08-24                                                                |
+| api-surface, publishability, fork-simulation, upgrade-rehearsal |     ✅     |  ✅   | Run unconditionally — they catch the expensive class                                                                                                        |
+| agent-mirror                                                    |     ✅     |   —   | Not in `ci.yml`, so `.claude`/`.agent` drift from `.cursor/` is caught only locally                                                                         |
+| **E2E**                                                         |     ✅     |  ❌   | Needs Docker Nuxeo + a served app. **A real limitation**                                                                                                    |
+| **Phase evidence**                                              |     ✅     |  ❌   | Needs a live backend                                                                                                                                        |
+| Bundle **size** ceiling                                         |     —      |  ✅   | 6 MiB total shipped JS+CSS. CI-only, so it has no local equivalent                                                                                          |
 
-Earlier on 2026-08-24, CI ran **8 of the then-15** gates, so "green locally" and "green in CI"
-made different claims and neither disclosed it. Four were added to CI that day, and
-`supply-chain` with it, taking CI to 9 of the then-17; `lockfile` and its controls followed on 2026-10-05, so CI now runs
-11 of 24.
+**CI runs 20 of the 24**, one of them (`bundle`) conditionally. The four it does not run are
+`node`, `code-scanning`, `spec-types` and `agent-mirror`. Read that from `ci.yml` against
+`ALL_GATES` rather than from this paragraph: every count in this file has been wrong at least once.
+Earlier on 2026-08-24 CI ran **8 of the then-15**, so "green locally" and "green in CI" made
+different claims and neither disclosed it; four were added that day with `supply-chain`, the
+sanitizer pair followed, and `lockfile` with its controls on 2026-10-05.
+
+`beta:audit-selftest` also runs in CI and is **not** in `ALL_GATES`, so it is not counted above —
+CI is not a strict subset of the local gate set in either direction.
 
 ---
 
