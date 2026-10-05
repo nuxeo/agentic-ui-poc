@@ -169,6 +169,9 @@ export async function expectSurfaceUsable(page: Page, host: string, label: strin
  * for the routes that must show a tree, so an empty drawer there fails instead of passing as
  * "settled". Flagged in review on PR #225.
  *
+ * It is also the only check that sees a drawer that settled on an *error*, which on
+ * `/#/tasks` is the whole screen — the task list lives in the drawer alone.
+ *
  * Call it before `expectSurfaceUsable`, not after: an error panel can arrive at the end of a
  * load, so the error check is only meaningful once the load has finished.
  */

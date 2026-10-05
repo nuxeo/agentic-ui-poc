@@ -95,9 +95,11 @@ export const NOT_A_SURFACE_ERROR = {
   'types-error': 'Validation inside the create-import dialog, not a load failure.',
   'error-text': 'Validation inside the create-import dialog, not a load failure.',
   error:
-    'Nav-drawer tree (`.tree-empty.error`). Out of reach anyway — every check here is scoped ' +
-    'to a feature host and the drawer is a sibling of the router outlet — and a bare `.error` ' +
-    'is too broad to add safely.',
+    'Nav-drawer tree (`.tree-empty.error`). A bare `.error` is too broad to put in the ' +
+    'host-scoped selector. NOT unchecked, though: `screenUnsettledReason` refuses a screen ' +
+    'whose drawer shows a visible one, because the scan measures the drawer too. This entry ' +
+    'used to say it was "out of reach anyway", which was true of the host-scoped checks and ' +
+    'false of the scan — flagged in review on PR #225.',
 };
 
 /**
@@ -169,6 +171,51 @@ const LOADING_SELECTOR = [
 const NAV_DRAWER = 'app-nav-drawer';
 
 /**
+ * The drawer's own error panel — the one error state no host-scoped check can see.
+ *
+ * `surfaceUnusableReason` looks only inside the feature host, and the drawer is a sibling of
+ * the router outlet, so a failed drawer request never reached it. But the scan measures the
+ * whole page, drawer included, so the result was the accessibility of an error panel recorded
+ * as the screen's.
+ *
+ * `/#/tasks` is the case that makes this more than theoretical, and it is the worst one: the
+ * task list lives in the drawer *only* — "Task list lives in the shell nav drawer only (single
+ * inbox)", `tasks-page.component.html:2` — and the page renders a "select a task" prompt with
+ * no error class and plenty of text. So when the task request fails the drawer shows
+ * `.tree-empty.error`, the page looks perfectly healthy to every other check here, and the one
+ * thing the screen exists to show is an error. Flagged in review on PR #225.
+ *
+ * Matched as `.tree-empty.error` rather than by adding a bare `.error` to
+ * `ERROR_STATE_CLASSES`, which is too broad to apply inside feature hosts — see
+ * `NOT_A_SURFACE_ERROR`.
+ */
+const DRAWER_ERROR_SELECTOR = '.tree-empty.error';
+
+/**
+ * The text of a visible drawer error, or `null`.
+ *
+ * Visibility is load-bearing: a closed `mat-sidenav` is `visibility: hidden`, so a collapsed
+ * drawer holding a stale error panel is not something the scan can meet, and refusing on it
+ * would be a false refusal. Same `checkVisibility` call the loader count uses.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string|null>}
+ */
+async function visibleDrawerError(page) {
+  return page.evaluate(
+    ({ drawer, selector }) => {
+      const root = document.querySelector(drawer);
+      if (!root) return null;
+      const found = [...root.querySelectorAll(selector)].find((el) =>
+        el.checkVisibility({ visibilityProperty: true, opacityProperty: false }),
+      );
+      return found ? (found.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 120) : null;
+    },
+    { drawer: NAV_DRAWER, selector: DRAWER_ERROR_SELECTOR },
+  );
+}
+
+/**
  * Wait until a screen has stopped changing, or explain why it never did.
  *
  * ## Why a quiet window, and why it covers the drawer AND the host
@@ -198,6 +245,12 @@ const NAV_DRAWER = 'app-nav-drawer';
  *
  * Shared by the Playwright specs (through `waitForScreenSettled` in `fixtures.ts`) and the
  * Node diagnostics, so the two cannot disagree about when a screen is ready to measure.
+ *
+ * ## Settled is not the same as measurable
+ *
+ * Once the screen holds still, a visible `.tree-empty.error` in the drawer is refused — see
+ * `DRAWER_ERROR_SELECTOR`. A screen can settle perfectly on a failed drawer request, and the
+ * scan measures the drawer, so stillness alone would have certified an error panel.
  *
  * Not covered: a loading state with none of the markers in `LOADING_SELECTOR` — on
  * `/#/browse-adf-hx`, whatever upstream `hxp-document-tree` shows while it loads, if it is not
@@ -282,6 +335,19 @@ export async function screenUnsettledReason(
         previous = state.loading > 0 ? '' : state.shape;
         stableSince = Date.now();
       } else if (Date.now() - stableSince >= quietMs) {
+        // Settled — but settled on an error is still not measurable. Checked here rather
+        // than before the loop so the drawer has finished loading before it is judged, and
+        // here rather than in a function of its own because this is the one call every scan
+        // and every diagnostic already makes.
+        const drawerError = await visibleDrawerError(page);
+        if (drawerError) {
+          return (
+            `the nav drawer is showing an error state (${DRAWER_ERROR_SELECTOR}): ` +
+            `"${drawerError}". The scan measures the whole page including the drawer, so this ` +
+            "would record an error panel's accessibility as the screen's result — and on " +
+            '/#/tasks the drawer is where the task list lives, so it would be the whole screen.'
+          );
+        }
         return null;
       }
     }
