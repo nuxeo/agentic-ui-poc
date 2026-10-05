@@ -167,12 +167,36 @@ function collectOverriddenNames(overrides) {
     if (!node || typeof node !== 'object') return;
     for (const [key, value] of Object.entries(node)) {
       // A key is a package name unless it is the `.` self-reference npm allows.
-      if (key !== '.') names.add(key);
+      if (key !== '.') names.add(packageNameOf(key));
       if (value && typeof value === 'object') walk(value);
     }
   };
   walk(overrides);
   return names;
+}
+
+/**
+ * The package name an `overrides` key addresses, with any version selector stripped.
+ *
+ * npm lets an override key carry a range — `"brace-expansion@^5.0.0": "5.0.12"` — so that a pin
+ * reaches one major line of a package without touching the others. That form is the only way to
+ * patch a transitive package whose tree holds several incompatible majors: a bare
+ * `"brace-expansion"` key would drag eslint's and glob's v1 copies up to v5, whose CJS build
+ * dropped the default export, and break them.
+ *
+ * Storing the raw key recorded `"brace-expansion@^5.0.0"`, a string no package is ever called, so
+ * `isOverridden('brace-expansion')` was false and the deliberate pin was reported as an
+ * unresolvable edge — the exact "24 deliberate security pins look like corruption" failure the
+ * surrounding comment describes, just one key syntax later.
+ *
+ * Scoped names carry their own leading `@`, so the separator is the LAST `@` rather than the
+ * first, and a key with no separator is already a bare name.
+ *
+ * @param {string} key
+ */
+function packageNameOf(key) {
+  const at = key.lastIndexOf('@');
+  return at > 0 ? key.slice(0, at) : key;
 }
 
 /**
