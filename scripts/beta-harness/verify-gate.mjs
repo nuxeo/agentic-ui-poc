@@ -71,6 +71,17 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/lockfile-integrity.mjs'],
   },
+  // And the lockfile gate's own negative controls, because that gate has now been wrong in both
+  // directions: it matched dependency names but not versions (green on the very lock that kept
+  // CI red for all of Phase 2), and then its override waiver dropped the version selector off
+  // `brace-expansion@^5.0.0` and excused every major of a package whose tree holds three. Both
+  // were caught by a human reading it, which is the part this closes.
+  {
+    id: 'lockfile-selftest',
+    label: 'Lockfile integrity controls',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/lockfile-integrity.selftest.mjs'],
+  },
   // Phase 6 step 4 gate: SCA with teeth, next to `lockfile` because both read the dependency
   // tree — one asks whether it resolves, this one asks whether it is safe to ship.
   //

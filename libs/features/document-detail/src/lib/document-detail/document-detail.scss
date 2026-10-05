@@ -1,6 +1,7 @@
 :host {
   /* NXENG-774 — properties sidebar stays a fixed light panel in every theme (IBM 280073873). */
-  /* NXENG-858 — .prop-label reuses label-muted on that panel (IBM 1792790291). */
+  /* NXENG-858 / NXENG-891 — .prop-label reuses label-muted on that panel (IBM 1792790291, 2951482449). */
+  /* NXENG-925 — .section-empty uses the same muted token (IBM 3935479306). */
   --document-detail-properties-panel-surface: #ffffff;
   --document-detail-properties-label-muted: #5c5f6b;
   display: flex;
@@ -388,7 +389,8 @@ sat-breadcrumbs {
 }
 
 .no-publications {
-  color: #aaa;
+  /* NXENG-917 — #aaa was 2.32:1 on the panel (IBM 3603735683); reuse light-panel muted token. */
+  color: var(--document-detail-properties-label-muted);
 }
 
 .creator-value {
@@ -699,7 +701,7 @@ sat-breadcrumbs {
 
 .section-empty {
   font-size: 13px;
-  color: #999;
+  color: var(--document-detail-properties-label-muted);
   margin: 0;
 }
 
