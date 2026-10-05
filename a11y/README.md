@@ -177,6 +177,12 @@ npm run a11y:scan -- journey --project=journey-01-login --headed
 refused, because each command picks its own preflight checks and borrowing another suite's
 project would skip them.
 
+`surfaces`, `states` and `modes` write their consolidated report from a test of their own, so
+a `--grep` that excludes it is refused too — `states --grep "column picker"` used to scan one
+state, pass, and write nothing, which is the suite's deliverable missing from a run that read
+like a success. Add `--no-report` to say you are watching one state rather than measuring.
+`journey` has no such trap: every screen emits its own report, so narrowing it is always safe.
+
 Reports land in `reports/<name>-<timestamp>/` as `report.html`, `.md` and `.json`. The HTML is
 self-contained — screenshots inlined — so it can be sent to whoever owns the screen.
 

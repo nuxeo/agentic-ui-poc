@@ -134,7 +134,10 @@ function usage() {
   }
   console.log('\n  Extra arguments are passed through, e.g.:');
   console.log('    npm run a11y:scan -- journey --project=journey-01-login --headed');
-  console.log('    npm run a11y:scan -- states --headed --grep "column picker"\n');
+  console.log('    npm run a11y:scan -- states --headed\n');
+  console.log('  surfaces, states and modes emit one consolidated report from a test of their');
+  console.log('  own, so a --grep that excludes it is refused — it would scan and report nothing.');
+  console.log('  journey emits one report per screen, so narrowing it with --project is safe.\n');
 }
 
 /**
@@ -144,13 +147,16 @@ function usage() {
  * repeated `--project` flags as a UNION, so `journey --project=journey-01-login` ran the
  * wildcard AND the named screen — every screen, when one was asked for. A caller naming a project
  * is narrowing, never widening, so their flag replaces ours rather than joining it.
+ *
+ * `--no-report` is ours and is dropped here: Playwright would reject it as an unknown option.
  */
 function mergeArgs(own, extra) {
-  const callerPickedProject = extra.some((a) => a === '--project' || a.startsWith('--project='));
-  if (!callerPickedProject) return [...own, ...extra];
+  const theirs = extra.filter((a) => a !== NO_REPORT);
+  const callerPickedProject = theirs.some((a) => a === '--project' || a.startsWith('--project='));
+  if (!callerPickedProject) return [...own, ...theirs];
 
   const withoutOurProject = own.filter((a) => !a.startsWith('--project'));
-  return [...withoutOurProject, ...extra];
+  return [...withoutOurProject, ...theirs];
 }
 
 /** Every `--project` value in an argv, in both `--project=x` and `--project x` forms. */
@@ -186,6 +192,57 @@ function projectsOutOfScope(own, extra) {
   return projectsIn(extra).filter((value) => !matchers.some((m) => m.test(value)));
 }
 
+/**
+ * The title of the test that writes the consolidated report, in the three suites that emit
+ * one. `journey` is absent on purpose: each of its screens emits its own report inside its own
+ * test, so narrowing that suite still produces the report for what ran.
+ */
+const REPORT_TEST_TITLE = 'emits the consolidated report';
+const CONSOLIDATED_REPORT_SUITES = new Set(['surfaces', 'states', 'modes']);
+/** Ours, not Playwright's — `mergeArgs` removes it, so it must never reach the runner. */
+const NO_REPORT = '--no-report';
+
+/**
+ * Refuse a `--grep` that would filter out the report test.
+ *
+ * `--grep` applies to every test title, including the one that calls `generateReport()`. So
+ * `states --grep "column picker"` scanned one state, passed, and wrote **no report** — the
+ * suite's actual deliverable — while reading like a successful run. This was a documented
+ * example in `usage()`. Flagged in review on PR #225.
+ *
+ * Widening the pattern to include the report test is not the fix either: that test asserts
+ * every declared state recorded a scan, so it would fail a deliberately narrowed run.
+ *
+ * Refused rather than warned, and exit 1 rather than 2: it is a usage error, and a warning
+ * printed before a 25-minute scan is a warning nobody is still watching for. Watching one
+ * state is still a real need, so `--no-report` is the way to say so out loud; it is consumed
+ * here and never reaches Playwright. `--grep` with the `journey` command is untouched and
+ * remains the way to scan one screen and still get a report.
+ *
+ * @param {string} name   the command
+ * @param {string[]} extra  what the caller appended
+ * @returns {boolean}
+ */
+function grepWouldDropTheReport(name, extra) {
+  if (!CONSOLIDATED_REPORT_SUITES.has(name)) return false;
+  if (extra.includes(NO_REPORT)) return false;
+  const patterns = extra.flatMap((a, i) => {
+    if (a.startsWith('--grep=')) return [a.slice('--grep='.length)];
+    return a === '--grep' ? [extra[i + 1] ?? ''] : [];
+  });
+  // Every `--grep` must keep the report test: Playwright intersects repeated ones.
+  return patterns.some((p) => !safeMatches(p, REPORT_TEST_TITLE));
+}
+
+/** Does `pattern` match `title`? An unparseable pattern is Playwright's error to report. */
+function safeMatches(pattern, title) {
+  try {
+    return new RegExp(pattern, 'i').test(title);
+  } catch {
+    return true;
+  }
+}
+
 const [command, ...passthrough] = process.argv.slice(2);
 
 if (!command || command === '--help' || command === '-h') {
@@ -214,6 +271,23 @@ if (outOfScope.length > 0) {
       'checks chosen for that suite. Use that suite\'s own command instead.\n',
   );
   process.exit(1);
+}
+
+if (grepWouldDropTheReport(command, passthrough)) {
+  console.error(
+    `\n--grep would filter out "${REPORT_TEST_TITLE}", so "${command}" would scan and then\n` +
+      "write no report — and the report is this suite's deliverable, not a by-product.\n\n" +
+      `Run "${command}" whole, or add ${NO_REPORT} to say you are watching one state and do not\n` +
+      'want one. To scan a single screen and still get a report, use the journey command,\n' +
+      'whose screens each emit their own.\n',
+  );
+  process.exit(1);
+}
+
+if (passthrough.includes(NO_REPORT)) {
+  console.warn(
+    `\n${NO_REPORT}: this run writes no consolidated report. It is a look, not a measurement.\n`,
+  );
 }
 
 /** The package whose `bin` provides each non-`node` command above. */
