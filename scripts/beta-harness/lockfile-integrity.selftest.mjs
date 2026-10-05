@@ -86,14 +86,25 @@ function expect(name, expected, because, result) {
 }
 
 /** A minimal lock: one dependent declaring `spec` for `name`, resolved to `resolvedVersion`. */
-function lockWithEdge({ dependent = 'minimatch', dependentVersion = '3.1.2', name, spec, resolvedVersion, resolvedPath }) {
+function lockWithEdge({
+  dependent = 'minimatch',
+  dependentVersion = '3.1.2',
+  name,
+  spec,
+  resolvedVersion,
+  resolvedPath,
+}) {
   return {
     name: 'fixture',
     version: '0.0.0',
     lockfileVersion: 3,
     requires: true,
     packages: {
-      '': { name: 'fixture', version: '0.0.0', dependencies: { [dependent]: `^${dependentVersion}` } },
+      '': {
+        name: 'fixture',
+        version: '0.0.0',
+        dependencies: { [dependent]: `^${dependentVersion}` },
+      },
       [`node_modules/${dependent}`]: { version: dependentVersion, dependencies: { [name]: spec } },
       ...(resolvedVersion === null
         ? {}
@@ -166,7 +177,11 @@ expect(
   'in-scope pin stays excused (deliberate security pin, not corruption)',
   'pass',
   'lockfile-integrity: pass',
-  runGate('in-scope-pin', { name: 'fixture', version: '0.0.0', overrides: V5_OVERRIDE }, inScopeLock),
+  runGate(
+    'in-scope-pin',
+    { name: 'fixture', version: '0.0.0', overrides: V5_OVERRIDE },
+    inScopeLock,
+  ),
 );
 expect(
   'the same in-scope edge is reported once the override key is removed',
@@ -186,7 +201,13 @@ expect(
   runGate(
     'bare-key',
     { name: 'fixture', version: '0.0.0', overrides: { axios: '1.20.0' } },
-    lockWithEdge({ dependent: 'nx', dependentVersion: '22.7.8', name: 'axios', spec: '1.18.1', resolvedVersion: '1.20.0' }),
+    lockWithEdge({
+      dependent: 'nx',
+      dependentVersion: '22.7.8',
+      name: 'axios',
+      spec: '1.18.1',
+      resolvedVersion: '1.20.0',
+    }),
   ),
 );
 
@@ -286,7 +307,9 @@ rmSync(workspace, { recursive: true, force: true });
 const failed = results.filter((r) => !r.ok);
 console.log();
 if (failed.length === 0) {
-  console.log(`lockfile-integrity selftest: pass — ${results.length} control(s) behaved as specified.`);
+  console.log(
+    `lockfile-integrity selftest: pass — ${results.length} control(s) behaved as specified.`,
+  );
   process.exit(0);
 }
 console.error(

@@ -188,9 +188,7 @@ function isOverridden(name, spec, actual) {
     const requestInScope = semver.validRange(spec)
       ? semver.intersects(spec, range, { includePrerelease: true })
       : true;
-    return (
-      requestInScope && semver.satisfies(actual, range, { includePrerelease: true })
-    );
+    return requestInScope && semver.satisfies(actual, range, { includePrerelease: true });
   });
 }
 
