@@ -128,20 +128,26 @@ Two subtleties worth keeping:
 **Site 1 (ARender) is defended twice, both failing closed to `null`:**
 
 1. `ARenderService.cfg` treats a `viewerOrigin` that is not an http(s) origin as _unconfigured_, so
-   the dangerous URL is never built. `https:` is required unless `isDevMode()`.
+   no URL is ever framed. `https:` is required unless the host page is itself plaintext — see
+   `insecureAllowedForHost`.
 2. `loadARenderUrl` re-validates before `bypassSecurityTrustResourceUrl`. A privilege boundary
    defended in exactly one place is one refactor away from being undefended.
 
-`nuxeoInternalUrl` is deliberately still allowed to be plain `http:` — it is encoded into the `url=`
-parameter and fetched by ARender's _own server_ through the auth-proxy sidecar, never navigated by
-the browser. It must still be a well-formed absolute http(s) URL.
+Since NXSAT-279 the URL is no longer built here at all — `Document.ARenderGetPreviewerUrl` returns
+it — so there is a third check between the two: `framableOrNull` validates the **response body**
+against `allowedOrigins: [viewerOrigin]` before it reaches either.
+
+`nuxeoInternalUrl` is no longer validated at all. It addressed the retired auth-proxy sidecar; NEV
+2026's connector resolves blobs itself from `documentId` over OAuth2, so nothing reads the field and
+checking it could only reject configurations that would have worked.
 
 **Site 2 (Nuxeo preview)** is constrained to same-origin or the configured `NUXEO_API_ORIGIN`, and
 dropped otherwise, falling through to the viewer's "Preview not available" placeholder.
 
-#### ACCEPTED RESIDUAL RISK — site 1 validates the scheme, not the origin
+#### ACCEPTED RESIDUAL RISK — the allow-list is itself customer-configured
 
-This is deliberate, and "Category C mitigated" should not be read as more than it is.
+"Category C mitigated" should not be read as more than it is, but note what changed: site 1 now
+checks the origin as well as the scheme.
 
 ```ts
 navigableUrlOrNull(url, {
@@ -149,14 +155,18 @@ navigableUrlOrNull(url, {
   allowedOrigins: [cfg.viewerOrigin],                 // CLOSED by NXSAT-279
 ```
 
-There is no origin allow-list on the ARender site, because a customer configures where _their own_
-ARender instance lives and we cannot know it in advance. Site 2 can be origin-checked precisely
-because the answer is knowable — it must be the Nuxeo repository we are already talking to.
+There **is** an origin allow-list on the ARender site as of NXSAT-279. It was absent while the
+client built the viewer URL from configuration, because the only candidate for an allow-list was the
+same value being concatenated and checking it against itself proved nothing. Now that the URL
+arrives in a Nuxeo **response body**, `viewerOrigin` has something to constrain, and a compromised
+server cannot redirect the iframe to an origin the deployment did not configure. Site 2 is
+origin-checked against `NUXEO_API_ORIGIN` for the same reason — the answer is knowable.
 
-So what Category C closed is the **privilege escalation**: `javascript:` in the manifest becoming
-script execution in _our_ origin, with access to the session and the DOM. What remains is
-**inherent to the feature**: whoever can edit the app-config manifest can point that iframe at any
-`https:` origin they like.
+So Category C closed the **privilege escalation** (`javascript:` in the manifest becoming script
+execution in _our_ origin, with access to the session and the DOM) and, with it, the
+server-controlled redirect. What remains is **inherent to the feature**: whoever can edit the
+app-config manifest sets `viewerOrigin`, which is the allow-list, so they can still point that
+iframe at any `https:` origin they like.
 
 That residual is accepted on three grounds:
 

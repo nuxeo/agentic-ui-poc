@@ -364,8 +364,8 @@ function readStringRecord(value: unknown): Readonly<Record<string, string>> {
 }
 
 /**
- * An ARender configuration only if the manifest supplies **both** endpoints non-blank, otherwise
- * `null`.
+ * An ARender configuration only if the manifest supplies a non-blank **`viewerOrigin`**, otherwise
+ * `null`. `nuxeoInternalUrl` is carried through but not required — see the note on the check below.
  *
  * Falls back to `base` per field so a partial override still merges over an existing complete
  * configuration; it is the *result* that must be complete, not the patch.

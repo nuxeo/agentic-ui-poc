@@ -267,17 +267,22 @@ installed by a separate non-overwriting step and survives. See `resolveBootstrap
 | `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. Must be no less secure than the page framing it — see below.                                                                                                      |
 | `nuxeoInternalUrl` | no       | **Vestigial.** Addressed the retired sidecar flow; nothing reads it under NEV 2026, and it is not validated. Retained only because removing it is a breaking change to the published `AppARenderConfig`. |
 
-Both are mandatory and validated in two places, so a partial or malformed configuration disables
-ARender rather than half-enabling it:
+Only `viewerOrigin` is mandatory, and it is validated in two places, so a missing or malformed value
+disables ARender rather than half-enabling it:
 
-- `bootstrap-config.ts` yields `null` unless the merged bootstrap config has **both** endpoints
-  non-blank.
-  A blank endpoint is worse than none: `fetch('')` resolves against the application's own origin, so
-  an availability probe would report a viewer that is not deployed.
-- `ARenderService` additionally requires each endpoint to be an absolute `http(s)` base with **no
-  query string, no fragment and no userinfo**. Both values have parameters appended to them, and a
-  base carrying its own `?` or `#` absorbs the appended `url` parameter so the viewer receives no
-  document.
+- `bootstrap-config.ts` yields `null` unless the merged bootstrap config has a non-blank
+  `viewerOrigin`.
+  A blank value is worse than none: `fetch('')` resolves against the application's own origin, so an
+  availability probe would report a viewer that is not deployed — and that same origin would end up
+  on the allow-list the server-supplied previewer URL is checked against.
+- `ARenderService` additionally requires it to be an absolute `http(s)` base with **no query string,
+  no fragment and no userinfo**. The origin comparison below reads `origin`, which discards all
+  three while still reporting a match, so a base carrying one is a misconfiguration whose effect
+  would otherwise be invisible.
+
+`nuxeoInternalUrl` is **not** required and **not** validated. It is vestigial under NEV 2026, and
+requiring it would force a deployment that retired the sidecar to invent a dummy value or see the
+integration silently disable itself.
 
 ### When is `http:` accepted for `viewerOrigin`?
 
@@ -296,10 +301,11 @@ ARender does either — the previous wording would have led an operator to belie
 configuration was invalid. If your application is served over `https:`, ARender must be too.
 
 Being allowed to use `http:` does not relax anything else: the no-query/no-fragment/no-userinfo
-requirements above still apply, and there is deliberately **no origin allow-list** on
-`viewerOrigin` — a customer configures where their own ARender lives, which is recorded as an
-accepted residual risk. The structural control for that is a CSP `frame-src` header, which is not
-currently set.
+requirements above still apply. `viewerOrigin` is now itself **the origin allow-list** — the
+previewer URL Nuxeo returns is framed only if its origin matches, so a compromised server cannot
+redirect the iframe somewhere else. What it cannot bound is `viewerOrigin` itself: a customer
+configures where their own ARender lives, so whoever edits the bootstrap file chooses the allow-list.
+The structural control for that is a CSP `frame-src` header, which is not currently set.
 
 For local development the compose file above publishes the ARender UI on host port 9080, so a dev
 bootstrap file uses `"viewerOrigin": "http://localhost:9080"`.
