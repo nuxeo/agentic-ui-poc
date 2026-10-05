@@ -51,6 +51,43 @@ describe('mergeBootstrapConfig', () => {
     expect(merged.themes.find((theme) => theme.id === 'dark')?.label).toBe('Dark');
   });
 
+  it('names the packaged themes by catalogue key, with the English as fallback', () => {
+    for (const theme of DEFAULT_APP_BOOTSTRAP_CONFIG.themes) {
+      expect(theme.labelKey, theme.id).toBe(`settings.themes.name.${theme.id}`);
+    }
+  });
+
+  it('drops the packaged key when a customer relabels a theme, so their name shows as written', () => {
+    const merged = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      themes: [{ id: 'nuxeo', label: 'Acme' }],
+    });
+
+    const nuxeo = merged.themes.find((theme) => theme.id === 'nuxeo');
+    expect(nuxeo?.label).toBe('Acme');
+    expect(nuxeo?.labelKey).toBeUndefined();
+    expect(merged.themes.find((theme) => theme.id === 'dark')?.labelKey).toBe(
+      'settings.themes.name.dark',
+    );
+  });
+
+  it('keeps the packaged key when a customer restyles a theme without renaming it', () => {
+    const merged = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      themes: [{ id: 'dark', tokens: { '--mat-sys-primary': 'teal' } }],
+    });
+
+    expect(merged.themes.find((theme) => theme.id === 'dark')?.labelKey).toBe(
+      'settings.themes.name.dark',
+    );
+  });
+
+  it('accepts a customer-supplied labelKey for their own theme', () => {
+    const merged = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      themes: [{ id: 'acme', label: 'Acme', labelKey: 'acme.theme' }],
+    });
+
+    expect(merged.themes.find((theme) => theme.id === 'acme')?.labelKey).toBe('acme.theme');
+  });
+
   it('appends an entirely new theme and defaults its palette base', () => {
     const merged = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
       themes: [{ id: 'acme', label: 'Acme', tokens: { '--mat-sys-primary': 'teal' } }],

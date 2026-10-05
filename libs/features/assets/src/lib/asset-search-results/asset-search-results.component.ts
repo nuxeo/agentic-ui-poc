@@ -21,6 +21,7 @@ import {
   docTypeIcon,
   type NuxeoDocument,
   type AssetAggregations,
+  DocTypeLabelPipe,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import {
   ConfirmDialogComponent,
@@ -290,6 +291,7 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
   selector: 'lib-asset-search-results',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
     DescriptorLabelPipe,
     TranslatePipe,
     MatButtonModule,
@@ -779,7 +781,8 @@ export class AssetSearchResultsComponent {
     const id = this.selectedSavedSearchId().trim();
     if (!id) return;
 
-    const currentTitle = this.selectedSavedSearchTitle().trim() || 'Saved Search';
+    const currentTitle =
+      this.selectedSavedSearchTitle().trim() || this.translate.instant('ui.saved-search');
     this.searchService
       .updateSavedSearch(id, {
         title: currentTitle,

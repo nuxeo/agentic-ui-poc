@@ -144,7 +144,7 @@
             <div class="rv-info">
               <span class="rv-title">{{ doc.title }}</span>
               <div class="rv-meta">
-                <span class="rv-type">{{ doc.type }}</span>
+                <span class="rv-type">{{ doc.type | docTypeLabel }}</span>
                 <span class="rv-sep">&middot;</span>
                 <span class="rv-time">{{ relativeTime(doc.lastModified) }}</span>
               </div>
@@ -179,7 +179,7 @@
             <div class="expired-info">
               <span class="expired-title">{{ doc.title }}</span>
               <div class="expired-meta">
-                <span class="expired-type">{{ doc.type }}</span>
+                <span class="expired-type">{{ doc.type | docTypeLabel }}</span>
                 <span class="expired-sep">&middot;</span>
                 <span class="expired-date">{{
                   'shell.expired-on' | translate: { date: expiredDate(doc) }

@@ -26,10 +26,12 @@ import {
   AuditFilterResponse,
 } from '@agentic-ui/shared/ai-client';
 import { TranslatePipe } from '@ngx-translate/core';
+import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
 
 @Component({
   selector: 'lib-admin-audit-page',
   standalone: true,
+  providers: [provideTranslatedDatepickerIntl()],
   imports: [
     TranslatePipe,
     DatePipe,

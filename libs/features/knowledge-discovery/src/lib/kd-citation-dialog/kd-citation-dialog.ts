@@ -1,12 +1,12 @@
 import { Component, DestroyRef, OnDestroy, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { catchError, of, switchMap } from 'rxjs';
+import { catchError, of, switchMap, map } from 'rxjs';
 
 import {
   buildIndexedReferences,
@@ -53,6 +53,11 @@ type PreviewMode = 'pdf' | 'image' | 'text' | 'unsupported';
 export class KdCitationDialogComponent implements OnDestroy {
   private readonly dialogRef = inject(MatDialogRef<KdCitationDialogComponent>);
   private readonly translate = inject(TranslateService);
+  /** The active language as a signal, so a `computed` that calls `instant()` recomputes on a switch. */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.getCurrentLang() },
+  );
   private readonly data = inject<KdCitationDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -80,9 +85,10 @@ export class KdCitationDialogComponent implements OnDestroy {
   });
 
   readonly headerLabel = computed(() => {
+    this.currentLang();
     const reference = this.activeReference();
     if (!reference) {
-      return 'Reference document';
+      return this.translate.instant('kd.kd-citation-dialog.reference-document');
     }
     return reference.title || this.documentTitle() || reference.objectId;
   });
@@ -129,7 +135,10 @@ export class KdCitationDialogComponent implements OnDestroy {
   }
 
   formatExcerpt(content?: string): string {
-    return formatReferenceExcerpt(content) || 'No excerpt was returned for this reference.';
+    return (
+      formatReferenceExcerpt(content) ||
+      this.translate.instant('kd.kd-citation-dialog.no-excerpt-returned')
+    );
   }
 
   close(): void {

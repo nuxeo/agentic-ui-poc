@@ -1,4 +1,5 @@
-import { expect, expectSurfaceWithData, test } from './fixtures';
+import { aRootChild, expect, expectSurfaceWithData, newNuxeoApiContext, test } from './fixtures';
+import { type APIRequestContext } from '@playwright/test';
 
 /**
  * Cross-engine behaviour — Phase 6 step 5, "Chrome and Safari verified".
@@ -26,6 +27,17 @@ import { expect, expectSurfaceWithData, test } from './fixtures';
  * Nothing here runs on a real Safari or on iOS. That gap is recorded rather than blurred,
  * because "Chrome and Safari verified" is a checklist line a customer may read literally.
  */
+
+let api: APIRequestContext;
+
+test.beforeAll(async () => {
+  api = await newNuxeoApiContext();
+});
+
+test.afterAll(async () => {
+  await api?.dispose();
+});
+
 test.describe('cross-engine behaviour', () => {
   /**
    * The classic Safari divergence: `new Date('2026-08-24 10:00:00')` — a space instead of `T` —
@@ -84,7 +96,9 @@ test.describe('cross-engine behaviour', () => {
    */
   test('blob-URL images actually decode', async ({ signedIn: page }) => {
     await page.goto('/#/browse', { waitUntil: 'networkidle' });
-    await expectSurfaceWithData(page, 'lib-browse', 'Root');
+
+    const rootChild = await aRootChild(api);
+    await expectSurfaceWithData(page, 'lib-browse', rootChild.title);
     await page.waitForTimeout(2000);
 
     // Two assertions, because "no blob images" has two very different causes: an instance with
@@ -132,14 +146,16 @@ test.describe('cross-engine behaviour', () => {
     signedIn: page,
   }) => {
     await page.goto('/#/browse', { waitUntil: 'networkidle' });
-    await expectSurfaceWithData(page, 'lib-browse', 'Root');
+
+    const rootChild = await aRootChild(api);
+    await expectSurfaceWithData(page, 'lib-browse', rootChild.title);
 
     await page.reload({ waitUntil: 'networkidle' });
     await page.waitForTimeout(1500);
 
     // Still authenticated: the guard did not bounce us, and repository data arrived again.
     expect(page.url(), 'a reload should not redirect to sign-in').not.toMatch(/sign-?in|login/i);
-    await expectSurfaceWithData(page, 'lib-browse', 'Root');
+    await expectSurfaceWithData(page, 'lib-browse', rootChild.title);
   });
 
   /**

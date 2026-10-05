@@ -8,7 +8,7 @@
  * with an **empty** Nuxeo passes every render assertion and proves nothing, which is the
  * vacuous-pass shape this repository has been caught by repeatedly.
  *
- * So three preconditions, each with the specific fix, and **exit 2** rather than 1 — the
+ * So four preconditions, each with the specific fix, and **exit 2** rather than 1 — the
  * `precondition-not-met` convention `phase-runner.mjs` established: fix the environment,
  * do not iterate on the code.
  *
@@ -17,12 +17,79 @@
  */
 
 const BASE = process.env['E2E_BASE_URL'] ?? 'http://localhost:4200';
-const USER = process.env['NUXEO_USER'] ?? 'Administrator';
-const PASS = process.env['NUXEO_PASS'] ?? 'Administrator';
-const auth = `Basic ${Buffer.from(`${USER}:${PASS}`).toString('base64')}`;
+
+const { parseAllowedHosts, isHostAllowed, ALLOWED_HOSTS_ENV } = await import(
+  new URL('../../libs/integration-tests/src/lib/integration-preflight.ts', import.meta.url).href,
+);
+
+const E2E_ALLOWED_HOSTS_ENV = 'E2E_ALLOWED_HOSTS';
 
 const problems = [];
 const ok = [];
+
+/** 0a. The app origin is named before any Basic header is built or sent. */
+const allowedHosts = parseAllowedHosts(
+  process.env[E2E_ALLOWED_HOSTS_ENV] ?? process.env[ALLOWED_HOSTS_ENV],
+);
+if (allowedHosts.length === 0) {
+  problems.push(
+    `${E2E_ALLOWED_HOSTS_ENV} (or ${ALLOWED_HOSTS_ENV}) must name the host(s) this run may target.\n\n` +
+      '    export E2E_ALLOWED_HOSTS=localhost:4200\n\n' +
+      '  Default deny — localhost is not implicit. A mistyped E2E_BASE_URL must not receive\n' +
+      '  NUXEO_USER/NUXEO_PASS before the run refuses.',
+  );
+} else {
+  try {
+    if (!isHostAllowed(BASE, allowedHosts)) {
+      problems.push(
+        `E2E_BASE_URL (${BASE}) is not named in ${E2E_ALLOWED_HOSTS_ENV} / ${ALLOWED_HOSTS_ENV}.\n` +
+          `  Allowed: ${allowedHosts.join(', ')}\n\n` +
+          '  Fix the base URL or extend the allowlist — do not point destructive credentials at an\n' +
+          '  unintended host.',
+      );
+    } else {
+      ok.push(`E2E_BASE_URL host is named in ${E2E_ALLOWED_HOSTS_ENV} / ${ALLOWED_HOSTS_ENV}`);
+    }
+  } catch (error) {
+    problems.push(
+      `E2E_BASE_URL is not usable: ${error instanceof Error ? error.message : String(error)}\n` +
+        '  Set E2E_BASE_URL to a full http(s) URL with a host, e.g. http://localhost:4200',
+    );
+  }
+}
+
+/**
+ * 0. The credentials, from the environment, with **no** fallback — the same rule
+ * `apps/nuxeo-ui-e2e/src/nuxeo-credentials.ts` enforces for the suite this gate runs ahead of.
+ *
+ * These two lines each carried `?? 'Administrator'`, which `.cursor/rules/security.mdc`
+ * forbids outright: a working Basic-auth pair compiled into the repository. It also put the
+ * two stages of `beta:e2e` into disagreement, which is how it was reported. With the variables
+ * unset this preflight invented the pair, sent it at check 3, and could report **pass**;
+ * `playwright.config.ts` then called `nuxeoCredentials()` at config-load time, which throws,
+ * and Playwright exited **1**. So the one missing precondition in the run arrived as the code
+ * that means "a product defect" — from the stage *after* the gate whose entire job is to say
+ * "fix the environment" with exit 2.
+ *
+ * Checked before anything else, and the checks that need the header are skipped without it:
+ * there is nothing to authenticate with, and guessing is the defect.
+ */
+const USER = process.env['NUXEO_USER'];
+const PASS = process.env['NUXEO_PASS'];
+const auth = USER && PASS ? `Basic ${Buffer.from(`${USER}:${PASS}`).toString('base64')}` : null;
+
+if (auth) {
+  ok.push('NUXEO_USER and NUXEO_PASS are both set');
+} else {
+  problems.push(
+    'NUXEO_USER and NUXEO_PASS must both be set to run the e2e suite.\n\n' +
+      '    export NUXEO_USER=<user> NUXEO_PASS=<password>\n\n' +
+      '  There is deliberately no default. A default that suits one instance is wrong on every\n' +
+      '  other, and it embeds a usable credential in the repository. `playwright.config.ts`\n' +
+      '  refuses the same way at config load — this reports it as a precondition (exit 2)\n' +
+      '  rather than letting the run reach Playwright and fail as exit 1.',
+  );
+}
 
 /** 1. Playwright, which is deliberately not a tracked dependency. */
 let playwright = null;
@@ -92,7 +159,7 @@ try {
  * The document count is the load-bearing part. Every critical-path spec asserts repository
  * data, so an empty repository is not a pass, it is an untested run.
  */
-if (appStatus !== null) {
+if (appStatus !== null && auth) {
   try {
     const url = new URL('/nuxeo/api/v1/search/lang/NXQL/execute', BASE);
     url.searchParams.set(
@@ -111,14 +178,44 @@ if (appStatus !== null) {
       );
     } else {
       const body = await res.json();
-      const count = body.resultsCount ?? body.entries?.length ?? 0;
-      if (count > 0) {
-        ok.push(`Nuxeo has ${count} File document(s) the specs can assert against`);
+      // A negative `resultsCount` is UNKNOWN, not a count, and the entries decide.
+      //
+      // Nuxeo's page provider answers -1 (`UNKNOWN_SIZE`) and -2 (`UNKNOWN_SIZE_AFTER_QUERY`)
+      // when the total exceeds its count limit, and `??` passes both straight through because
+      // neither is null or undefined. A populated repository therefore scored -2, failed
+      // `count > 0`, and this preflight reported "holds no File documents" and exited 2 —
+      // inverting its answer on exactly the large repositories it is least able to doubt.
+      // Identical defect and identical fix to `libs/integration-tests/…/integration-preflight.ts`,
+      // where four unit cases cover both sentinels in both directions; it survived here because
+      // this file is a separate copy of the same logic. `scripts/e2e-negative-control.sh` runs
+      // this preflight as its first step, so the control could not start against a real
+      // repository.
+      //
+      // The entries are the evidence, and the total is only the nicer number to print.
+      //
+      // That sentence stood here while the condition was `(total ?? entries) > 0`, which
+      // trusts the total whenever there is one — the opposite of what it says. This endpoint
+      // is index-backed and a stale index answers with a count for documents it can no longer
+      // resolve, measured on this deployment at `resultsCount` 1026 with zero entries. The
+      // preflight would then let the whole E2E suite start against a repository from which
+      // no spec can retrieve a row. Same defect, same fix, as the integration-preflight copy
+      // beside it; reported on the pull request against both.
+      //
+      // `pageSize=1` is asked for, so one returned row is all the evidence there is to want.
+      const entries = Array.isArray(body.entries) ? body.entries.length : 0;
+      const total = typeof body.resultsCount === 'number' && body.resultsCount >= 0 ? body.resultsCount : null;
+      if (entries > 0) {
+        ok.push(`Nuxeo has ${total ?? `at least ${entries}`} File document(s) the specs can assert against`);
       } else {
         problems.push(
-          'Nuxeo is reachable but holds no File documents.\n' +
-            '  Every critical-path spec asserts repository data, so an empty repository is not\n' +
-            '  a pass — it is a run that tested nothing. Import a document first.',
+          'Nuxeo is reachable but returned no File documents.\n' +
+            '  Specs that assert repository rows need at least one File to exercise; chrome,\n' +
+            '  routing, and accessibility specs may still run, but data-dependent assertions\n' +
+            '  would vacuously pass against an empty index.\n' +
+            (total !== null && total > 0
+              ? `  The query reported a total of ${total} and returned nothing, which is what a\n` +
+                '  stale search index looks like. Reindex, or import a document.'
+              : '  Import a document first.'),
         );
       }
     }

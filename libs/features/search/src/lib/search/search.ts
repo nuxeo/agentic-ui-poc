@@ -42,6 +42,7 @@ import {
   type SearchResultItem,
   type SearchResponse,
   type SearchQueryParams,
+  DocTypeLabelPipe,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import {
   AiGatewayService,
@@ -160,6 +161,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
   selector: 'lib-search',
   standalone: true,
   imports: [
+    DocTypeLabelPipe,
     DescriptorLabelPipe,
     TranslatePipe,
     MatButtonModule,
@@ -870,7 +872,8 @@ export class SearchComponent {
     const id = this.selectedSavedSearchId().trim();
     if (!id) return;
 
-    const currentTitle = this.selectedSavedSearchTitle().trim() || 'Saved Search';
+    const currentTitle =
+      this.selectedSavedSearchTitle().trim() || this.translate.instant('ui.saved-search');
     this.searchService
       .updateSavedSearch(id, {
         title: currentTitle,

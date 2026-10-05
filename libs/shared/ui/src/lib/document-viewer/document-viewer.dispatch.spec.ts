@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import type { SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
+import { TranslateService } from '@ngx-translate/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -73,6 +74,14 @@ function videoInfo(overrides: Partial<VideoInfo> = {}): VideoInfo {
     frameRate: 25,
     ...overrides,
   };
+}
+
+/** Entries as the card renders them: each label key resolved against the real English catalogue. */
+function rendered(
+  entries: { labelKey: string; value: string }[],
+): { label: string; value: string }[] {
+  const translate = TestBed.inject(TranslateService);
+  return entries.map(({ labelKey, value }) => ({ label: translate.instant(labelKey), value }));
 }
 
 describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
@@ -489,7 +498,7 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
   describe('exifEntries', () => {
     it('is empty when no EXIF data was supplied', () => {
       setInputs({ exifData: null });
-      expect(component.exifEntries()).toEqual([]);
+      expect(rendered(component.exifEntries())).toEqual([]);
     });
 
     it('maps the known keys to labels, in the declared order', () => {
@@ -506,7 +515,7 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
 
       // The order is the order the labels map declares, not the order of the incoming object;
       // that is what makes the rendered card stable across documents.
-      expect(component.exifEntries()).toEqual([
+      expect(rendered(component.exifEntries())).toEqual([
         { label: 'Date', value: '2026-05-01 10:00:00' },
         { label: 'Orientation', value: 'Top-left' },
         { label: 'Aperture', value: 'f/2.8' },
@@ -529,14 +538,14 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
         },
       });
 
-      expect(component.exifEntries()).toEqual([{ label: 'Aperture', value: 'f/4' }]);
+      expect(rendered(component.exifEntries())).toEqual([{ label: 'Aperture', value: 'f/4' }]);
     });
   });
 
   describe('iptcEntries', () => {
     it('is empty when no IPTC data was supplied', () => {
       setInputs({ iptcData: null });
-      expect(component.iptcEntries()).toEqual([]);
+      expect(rendered(component.iptcEntries())).toEqual([]);
     });
 
     it('maps the known keys to labels, in the declared order', () => {
@@ -549,7 +558,7 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
         },
       });
 
-      expect(component.iptcEntries()).toEqual([
+      expect(rendered(component.iptcEntries())).toEqual([
         { label: 'Copyright', value: '(c) 2026 Acme' },
         { label: 'Rights', value: 'All rights reserved' },
         { label: 'Source', value: 'Acme Photo Desk' },
@@ -559,7 +568,7 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
 
     it('drops absent, empty and unknown keys', () => {
       setInputs({ iptcData: { source: 'Wire', description: '', credit: 'Reuters' } });
-      expect(component.iptcEntries()).toEqual([{ label: 'Source', value: 'Wire' }]);
+      expect(rendered(component.iptcEntries())).toEqual([{ label: 'Source', value: 'Wire' }]);
     });
   });
 

@@ -141,7 +141,9 @@
                 >
                   {{ asset.name }}
                 </button>
-                <span class="asset-type-pill" [title]="asset.type">{{ asset.type }}</span>
+                <span class="asset-type-pill" [title]="asset.type | docTypeLabel">{{
+                  asset.type | docTypeLabel
+                }}</span>
               </div>
             </div>
           </div>
@@ -254,6 +256,8 @@
                       {{ asset.name }}
                     </button>
                   </span>
+                } @else if (col.key === 'type') {
+                  <span>{{ asset.type | docTypeLabel }}</span>
                 } @else {
                   <span>{{ getCellValue(asset, col.key) }}</span>
                 }
