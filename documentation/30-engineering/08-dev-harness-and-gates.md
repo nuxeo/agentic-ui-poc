@@ -3,13 +3,14 @@ title: Dev Harness & Gates
 parent: Engineering
 order: 8
 last_reviewed: 2026-10-05
-repo_commit: b15d9cf
+repo_commit: d1374b2
 audience: engineering
 ---
 
 # The Development Harness and its Gates
 
-> **Last reviewed:** 2026-10-05 · **Repository:** `b15d9cf`
+> **Last reviewed:** 2026-10-05 · **Repository:** `d1374b2` — the revision that implements the
+> 24-gate set and the 18-control lockfile suite described below
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).
 
