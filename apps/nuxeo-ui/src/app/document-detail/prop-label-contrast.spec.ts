@@ -1,7 +1,8 @@
 /**
- * NXENG-858 — `.prop-label` on `.properties-panel` under every compiled palette (IBM 1792790291).
- * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
- * Host tokens come from `:host` in `document-detail.scss` (no inline overrides on the test host).
+ * NXENG-858 / NXENG-891 — `.prop-label` on `.properties-panel` under every compiled palette
+ * (IBM 1792790291, IBM 2951482449). Karma loads `apps/nuxeo-ui/src/styles.scss`, so
+ * `data-app-theme` resolves real token pairs. Host tokens come from `:host` in
+ * `document-detail.scss` (no inline overrides on the test host).
  */
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';

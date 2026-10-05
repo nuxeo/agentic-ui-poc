@@ -1,7 +1,7 @@
 /**
- * NXENG-858 / NXENG-891 — `.prop-label` on the fixed light properties panel must meet WCAG 2.1 SC 1.4.3
- * (IBM 1792790291, IBM 2951482449). Per-theme computed contrast is covered in
- * `apps/nuxeo-ui/.../prop-label-contrast.spec.ts`.
+ * NXENG-917 — `.no-publications` empty state in doc-info must meet WCAG 2.1 SC 1.4.3 (IBM 3603735683).
+ * Source-level only: asserts the SCSS rule and the `:host` token pair it resolves to. Per-theme
+ * computed contrast of that token pair is covered by `apps/nuxeo-ui/.../doc-info-label-contrast.spec.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,13 +14,12 @@ function scssBlock(source: string, className: string): string {
   return match?.[0] ?? '';
 }
 
-function hostBlock(source: string): string {
-  return source.match(/:host\s*\{[^}]+\}/s)?.[0] ?? '';
-}
-
-/** Drop SCSS comments so commented-out custom properties cannot satisfy lookups. */
 function stripScssComments(block: string): string {
   return block.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+}
+
+function hostBlock(source: string): string {
+  return source.match(/:host\s*\{[^}]+\}/s)?.[0] ?? '';
 }
 
 function hostCustomProperty(source: string, name: string): string | null {
@@ -59,47 +58,26 @@ function contrastRatio(fg: readonly number[], bg: readonly number[]): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-describe('DocumentDetailComponent — prop-label text contrast (NXENG-858 / NXENG-891)', () => {
+describe('DocumentDetailComponent — no-publications text contrast (NXENG-917)', () => {
   const scssPath = join(import.meta.dirname, 'document-detail.scss');
   const scss = readFileSync(scssPath, 'utf8');
-  const labelBlock = stripScssComments(scssBlock(scss, 'prop-label'));
-  const panelBlock = stripScssComments(scssBlock(scss, 'properties-panel'));
+  const emptyBlock = stripScssComments(scssBlock(scss, 'no-publications'));
 
-  it('selector rule assertions ignore commented-out declarations', () => {
-    const brokenLabel = `.prop-label {
-  /* color: var(--document-detail-properties-label-muted); */
-  color: #888;
+  it('selector rule assertions ignore token use on non-text properties', () => {
+    const brokenEmpty = `.no-publications {
+  background: var(--document-detail-properties-label-muted);
+  color: #bbb;
 }`;
-    const brokenPanel = `.properties-panel {
-  /* background: var(--document-detail-properties-panel-surface); */
-  background: var(--mat-sys-surface);
-}`;
-    const label = stripScssComments(brokenLabel);
-    const panel = stripScssComments(brokenPanel);
-    expect(label).not.toMatch(/var\(--document-detail-properties-label-muted\)/);
-    expect(label).toMatch(/color:\s*#888/i);
-    expect(panel).not.toMatch(/var\(--document-detail-properties-panel-surface\)/);
-    expect(panel).toMatch(/var\(--mat-sys-surface/i);
+    const block = stripScssComments(brokenEmpty);
+    expect(block).not.toMatch(/color:\s*var\(--document-detail-properties-label-muted\)/);
+    expect(block).toMatch(/color:\s*#bbb/i);
   });
 
-  it('reads host custom properties from live declarations only (ignores commented-out lines)', () => {
-    const fixture = `:host {
-  /* --document-detail-properties-label-muted: #888888; */
-  --document-detail-properties-label-muted: #5c5f6b;
-  --document-detail-properties-panel-surface: #ffffff;
-}`;
-    expect(hostCustomProperty(fixture, 'document-detail-properties-label-muted')).toBe('#5c5f6b');
-    expect(hostCustomProperty(fixture, 'document-detail-properties-panel-surface')).toBe('#ffffff');
-  });
-
-  it('themes property labels through the light-panel host token, not global surface-variant', () => {
-    expect(labelBlock).toMatch(/var\(--document-detail-properties-label-muted\)/);
-    expect(labelBlock).not.toMatch(/#888/i);
-    expect(labelBlock).not.toMatch(/--mat-sys-on-surface-variant/);
+  it('themes empty publications through the light-panel host token, not #aaa', () => {
+    expect(emptyBlock).toMatch(/color:\s*var\(--document-detail-properties-label-muted\)/);
+    expect(emptyBlock).not.toMatch(/#aaa/i);
     expect(hostCustomProperty(scss, 'document-detail-properties-label-muted')).toBe('#5c5f6b');
     expect(hostCustomProperty(scss, 'document-detail-properties-panel-surface')).toBe('#ffffff');
-    expect(panelBlock).toMatch(/var\(--document-detail-properties-panel-surface\)/);
-    expect(panelBlock).not.toMatch(/var\(--mat-sys-surface/i);
   });
 
   it(`host token pair meets ${WCAG_AA_NORMAL_TEXT}:1 on the properties panel`, () => {
@@ -113,14 +91,14 @@ describe('DocumentDetailComponent — prop-label text contrast (NXENG-858 / NXEN
     expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
   });
 
-  it('legacy #888 on white fails WCAG AA (NXENG-891 / IBM 2951482449 reported 3.54:1)', () => {
-    const fg = parseHex('#888888');
+  it('legacy #aaa on white fails WCAG AA (documents the reported defect)', () => {
+    const fg = parseHex('#aaaaaa');
     const bg = parseHex('#ffffff');
     expect(fg).not.toBeNull();
     expect(bg).not.toBeNull();
     if (!fg || !bg) return;
     const ratio = contrastRatio(fg, bg);
     expect(ratio).toBeLessThan(WCAG_AA_NORMAL_TEXT);
-    expect(ratio).toBeCloseTo(3.54, 1);
+    expect(ratio).toBeCloseTo(2.32, 1);
   });
 });
