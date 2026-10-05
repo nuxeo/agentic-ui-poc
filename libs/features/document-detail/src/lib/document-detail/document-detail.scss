@@ -2568,6 +2568,7 @@ sat-breadcrumbs {
   .properties-panel {
     width: 100%;
     flex: 0 0 auto;
+    max-height: 50vh;
     max-height: min(50dvh, 50vh);
     border-left: none;
     border-top: 1px solid var(--mat-sys-outline-variant, #e0e0e0);

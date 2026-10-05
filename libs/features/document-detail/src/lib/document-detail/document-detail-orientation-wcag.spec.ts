@@ -54,6 +54,13 @@ describe('DocumentDetailComponent — orientation (NXENG-944)', () => {
     expect(narrow.length).toBeGreaterThan(0);
     expect(narrow).toMatch(/\.detail-body\s*\{[^}]*flex-direction:\s*column/s);
     expect(narrow).toMatch(/\.properties-panel\s*\{[^}]*width:\s*100%/s);
+    const panelInNarrow = narrow.match(/\.properties-panel\s*\{[^}]+\}/s)?.[0] ?? '';
+    expect(panelInNarrow).toMatch(/max-height:\s*50vh/);
+    expect(panelInNarrow).toMatch(/max-height:\s*min\(50dvh,\s*50vh\)/);
+    const panelVhAt = panelInNarrow.indexOf('max-height: 50vh');
+    const panelDvhAt = panelInNarrow.indexOf('50dvh');
+    expect(panelVhAt).toBeGreaterThan(-1);
+    expect(panelDvhAt).toBeGreaterThan(panelVhAt);
   });
 
   it('uses dynamic viewport units for scrollable tab panels where height is viewport-bound', () => {
