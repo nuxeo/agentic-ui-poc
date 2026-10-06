@@ -3146,7 +3146,7 @@ function checkAccessibleNameFallbacks() {
   // `[attr.aria-label]="someMethod() | translate"` (and matTooltip / placeholder) — keys live in the
   // component `.ts` return union and top-level return expressions, not every string in the body.
   const METHOD_BINDING =
-    /\[(?:matTooltip|(?:attr\.)?(?:aria-label|title|placeholder))\]="\s*(\w+)\(\)\s*\|\s*translate\s*"/g;
+    /\[(?:matTooltip|(?:attr\.)?(?:aria-label|title|placeholder))\]="\s*(\w+)\(\)\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
   // NXENG-798: global search names via a visible `<label>`, not `[placeholder]`. Only this control
   // is wired here — a repo-wide `<label>{{ … | translate }}</label>` scan would surface dozens of

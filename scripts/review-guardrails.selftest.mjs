@@ -4104,6 +4104,23 @@ expectGreen(
   },
 );
 
+const METHOD_PARAM_HTML =
+  `<button type="button" [attr.aria-label]="panelLabelKey() | translate: { name: itemName() }"></button>\n`;
+expectRed(
+  'a parameterised method-bound accessible name whose keys are missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.html': METHOD_PARAM_HTML,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
 const PUSH_WORKFLOW_PATHS_AND_CONTEXT_STEP =
   "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
   "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n" +
