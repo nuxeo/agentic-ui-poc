@@ -272,6 +272,11 @@ sat-breadcrumbs {
   flex: 1;
   min-height: 0;
   overflow: auto;
+
+  // The packaged view renders beside it as the fallback; an empty flex child would share the space.
+  &--unresolved {
+    display: none;
+  }
 }
 
 // Properties panel (right sidebar, outside tabs)

@@ -132,7 +132,7 @@ Deferred to GA and deliberately absent: `content-metadata-presets`, `badges`,
 ### Slots are additive
 
 Slot IDs are plain strings. There is no enum, union or `switch` on slot identity in the registry, so
-a ninth slot needs no change to the eight and no new release of the registry —
+a tenth slot needs no change to the nine and no new release of the registry —
 `libs/shared/extensions/src/lib/extension-slot-registry.service.spec.ts` proves it by registering a
 slot the library has never heard of and showing the nine unchanged.
 

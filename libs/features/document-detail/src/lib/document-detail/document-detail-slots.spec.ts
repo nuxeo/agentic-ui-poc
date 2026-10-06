@@ -426,7 +426,8 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
     });
 
     /**
-     * The claim: a manifest alone gives one document type its own View. Seen red on purpose
+     * The claim: a manifest entry, naming a component a Layer 2 library registered, gives one
+     * document type its own View. Seen red on purpose
      * by restoring the packaged branch as the whole of `#viewTabContent`.
      */
     it('renders the contributed component for the type its rule names', async () => {
@@ -541,6 +542,11 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
       await settleLoad();
 
       expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
+      expect(
+        viewBody()
+          .querySelector('.document-view-outlet')
+          ?.classList.contains('document-view-outlet--unresolved'),
+      ).toBe(true);
     });
 
     it('passes the focused document and static inputs, and keeps the document the host’s', async () => {

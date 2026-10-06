@@ -64,7 +64,9 @@ teardown and one `<img [src]>` bypassing the HTTP interceptor.
   document-detail tab renders: `app.routes.ts` imports each feature's `Routes` array directly so
   no packaged route carries an ID, and the six packaged tab bodies are markup rather than
   addressable components. Making either addressable is a rewrite, not a refactor, and is deferred
-  to GA. Section 13 of `docs/extension-reference.md` states this to customers, and the slot-state
+  to GA. One exception, added by NXSAT-316: a `documentView` entry can outrank the View tab body
+  for the documents its rule matches, rendering a Layer 2 component in its place. The packaged
+  View is still markup and still renders whenever no entry matches. Section 13 of `docs/extension-reference.md` states this to customers, and the slot-state
   table in section 2 is gated by `npm run beta:reference` so it cannot drift.
 - **The 90% coverage bar applies to the in-scope slice only.** Projects the scope decision above
   puts out — administration, workflow tasks, KD/KE, assets, trash — plus the reference extension

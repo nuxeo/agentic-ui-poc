@@ -16,7 +16,7 @@
  *
  * The practical consequence — and the thing that turns the "addressable
  * ceiling" from an irreversible decision into ordinary backlog — is that adding
- * a ninth slot after Beta ships requires **no change to the eight**, and no
+ * a tenth slot after Beta ships requires **no change to the nine**, and no
  * change to this library at all. `extension-slot-registry.service.spec.ts`
  * proves it by registering a slot this file has never heard of.
  *

@@ -391,6 +391,7 @@
             <lib-extension-outlet
               #documentViewOutlet
               class="document-view-outlet"
+              [class.document-view-outlet--unresolved]="documentViewOutlet.unresolved()"
               [attr.data-document-view-id]="view.id"
               [componentId]="view.componentId ?? view.id"
               [componentInputs]="documentViewInputs()"
