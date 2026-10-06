@@ -5,6 +5,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom, of, Observable } from 'rxjs';
 
+import { AppConfigService, DEFAULT_APP_BOOTSTRAP_CONFIG } from '@nuxeo-satori/platform/app-config';
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService, SignInError } from '../auth/auth.service';
@@ -67,6 +68,8 @@ describe('LoginPageComponent', () => {
   let fixture: ComponentFixture<LoginPageComponent>;
   let component: LoginPageComponent;
   let auth: jasmine.SpyObj<Pick<AuthService, 'login' | 'startSamlLogin' | 'samlLoginOptions'>>;
+  const brandingLogo = signal<{ url: string; alt: string } | null>(null);
+  const bootstrap = signal(DEFAULT_APP_BOOTSTRAP_CONFIG);
   const samlEndpoint: NuxeoSamlLoginEndpoint = {
     id: 'azure',
     label: 'Azure SAML',
@@ -74,6 +77,8 @@ describe('LoginPageComponent', () => {
   };
 
   beforeEach(async () => {
+    brandingLogo.set(null);
+    bootstrap.set(DEFAULT_APP_BOOTSTRAP_CONFIG);
     auth = jasmine.createSpyObj('AuthService', ['login', 'startSamlLogin']);
     auth.login.and.returnValue(of(undefined));
     Object.defineProperty(auth, 'samlLoginOptions', {
@@ -98,6 +103,7 @@ describe('LoginPageComponent', () => {
       providers: [
         provideRouter([{ path: 'dashboard', component: LoginPageComponent }]),
         { provide: AuthService, useValue: auth },
+        { provide: AppConfigService, useValue: { brandingLogo, bootstrap } },
       ],
     }).compileComponents();
 
@@ -106,6 +112,40 @@ describe('LoginPageComponent', () => {
     fixture = TestBed.createComponent(LoginPageComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  describe('brand (branding.logo)', () => {
+    const brandLink = () => (fixture.nativeElement as HTMLElement).querySelector('a.login-brand');
+
+    it('shows the Satori lockup under the "Hyland" name when no logo is configured', () => {
+      expect(brandLink()?.querySelector('sat-logo')).toBeTruthy();
+      expect(brandLink()?.querySelector('img')).toBeNull();
+      expect(brandLink()?.getAttribute('aria-label')).toBe('Hyland');
+    });
+
+    it('replaces the lockup with the configured logo and names the link after it', () => {
+      brandingLogo.set({ url: 'https://nuxeo.example/agentic-ui-config/acme.svg', alt: 'Acme' });
+      fixture.detectChanges();
+
+      const img = brandLink()?.querySelector('img.login-brand-logo');
+      expect(img?.getAttribute('src')).toBe('https://nuxeo.example/agentic-ui-config/acme.svg');
+      expect(img?.getAttribute('alt'))
+        .withContext('the link carries the name, so the image is decorative')
+        .toBe('');
+      expect(brandLink()?.querySelector('sat-logo')).toBeNull();
+      expect(brandLink()?.getAttribute('aria-label')).toBe('Acme');
+    });
+
+    it('falls back to the application title when the logo has no alt', () => {
+      brandingLogo.set({ url: 'https://nuxeo.example/agentic-ui-config/acme.svg', alt: '' });
+      bootstrap.set({
+        ...DEFAULT_APP_BOOTSTRAP_CONFIG,
+        branding: { ...DEFAULT_APP_BOOTSTRAP_CONFIG.branding, applicationTitle: 'Acme Insurance' },
+      });
+      fixture.detectChanges();
+
+      expect(brandLink()?.getAttribute('aria-label')).toBe('Acme Insurance');
+    });
   });
 
   it('provides a skip link to the sign-in landmark (WCAG 2.4.1)', () => {

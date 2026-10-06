@@ -151,8 +151,13 @@
         which we cannot label from this template, so the graphic is hidden from assistive
         technology instead — otherwise it is announced as an unnamed image (WCAG 1.1.1,
         NXENG-767 / NXENG-759). aria-hidden is not display:none: it still renders.
+        A configured logo is decorative for the same reason, hence its empty alt.
       -->
-      <sat-word-mark-logo satAppHeaderLogo aria-hidden="true" />
+      @if (brandLogo(); as logo) {
+        <img satAppHeaderLogo class="app-brand-logo" [src]="logo.url" alt="" />
+      } @else {
+        <sat-word-mark-logo satAppHeaderLogo aria-hidden="true" />
+      }
 
       <div satAppHeaderActions>
         @if (featureFlags.aiEnabled()) {

@@ -3,8 +3,84 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_APP_BOOTSTRAP_CONFIG,
   mergeBootstrapConfig,
+  resolveBrandingLogoUrl,
   resolveTheme,
 } from './bootstrap-config';
+
+describe('branding.logo', () => {
+  const logoOf = (logo: unknown) =>
+    mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, { branding: { logo } }).branding.logo;
+
+  it('ships with no logo, so the Satori marks render', () => {
+    expect(DEFAULT_APP_BOOTSTRAP_CONFIG.branding.logo).toBeNull();
+  });
+
+  it.each([
+    ['a file beside bootstrap.json', 'acme-logo.svg'],
+    ['a relative path below it', 'brand/acme.png'],
+    ['an https URL', 'https://cdn.example.com/acme.svg'],
+    ['a data:image URI', 'data:image/png;base64,iVBORw0KGgo='],
+  ])('accepts %s', (_label, src) => {
+    expect(logoOf({ src, alt: 'Acme' })).toEqual({ src, alt: 'Acme' });
+  });
+
+  it.each([
+    ['an absolute Nuxeo REST path', '/nuxeo/api/v1/id/abc/@blob/file:content'],
+    ['a protocol-relative URL', '//evil.example/logo.svg'],
+    ['a parent-directory segment', '../agentic-ui/assets/logo.svg'],
+    ['an encoded parent-directory segment', '%2e%2e/api/v1/me'],
+    ['a mixed-case encoded parent segment', 'brand/.%2E/api/v1/me'],
+    ['a backslash path', '..\\secret.svg'],
+    ['an http URL', 'http://cdn.example.com/acme.svg'],
+    ['a javascript URL', 'javascript:alert(1)'],
+    ['a non-image data URI', 'data:text/html,<script>alert(1)</script>'],
+    ['an unparseable https URL', 'https://exa mple.com/logo.svg'],
+    ['a blank src', '   '],
+  ])('rejects %s and keeps the Satori marks', (_label, src) => {
+    expect(logoOf({ src, alt: 'Acme' })).toBeNull();
+  });
+
+  it.each([
+    ['absent', undefined],
+    ['a string instead of an object', 'acme-logo.svg'],
+    ['an object without src', { alt: 'Acme' }],
+    ['a non-string src', { src: 42 }],
+  ])('treats %s as not configured', (_label, logo) => {
+    expect(logoOf(logo)).toBeNull();
+  });
+
+  it('trims src and alt, and defaults a missing or non-string alt to empty', () => {
+    expect(logoOf({ src: '  acme.svg ', alt: ' Acme ' })).toEqual({ src: 'acme.svg', alt: 'Acme' });
+    expect(logoOf({ src: 'acme.svg' })).toEqual({ src: 'acme.svg', alt: '' });
+    expect(logoOf({ src: 'acme.svg', alt: 7 })).toEqual({ src: 'acme.svg', alt: '' });
+  });
+
+  it('keeps a logo an earlier layer set when this one omits or garbles it, and clears it on null', () => {
+    const base = {
+      ...DEFAULT_APP_BOOTSTRAP_CONFIG,
+      branding: { ...DEFAULT_APP_BOOTSTRAP_CONFIG.branding, logo: { src: 'a.svg', alt: 'A' } },
+    };
+
+    expect(
+      mergeBootstrapConfig(base, { branding: { logo: { src: '/nuxeo/api' } } }).branding.logo,
+    ).toEqual({ src: 'a.svg', alt: 'A' });
+    expect(
+      mergeBootstrapConfig(base, { branding: { applicationTitle: 'X' } }).branding.logo,
+    ).toEqual({ src: 'a.svg', alt: 'A' });
+    expect(mergeBootstrapConfig(base, { branding: { logo: null } }).branding.logo).toBeNull();
+  });
+
+  it('resolves a relative src against the configuration directory, not the bundle', () => {
+    const configUrl = 'https://nuxeo.example/nuxeo/agentic-ui-config/bootstrap.json';
+
+    expect(resolveBrandingLogoUrl('acme-logo.svg', configUrl)).toBe(
+      'https://nuxeo.example/nuxeo/agentic-ui-config/acme-logo.svg',
+    );
+    expect(resolveBrandingLogoUrl('https://cdn.example.com/a.svg', configUrl)).toBe(
+      'https://cdn.example.com/a.svg',
+    );
+  });
+});
 
 describe('mergeBootstrapConfig', () => {
   it('returns the packaged defaults when nothing is configured', () => {

@@ -44,6 +44,44 @@ describe('AppConfigService', () => {
     expect(service.diagnostics().bootstrapSource).toBe('packaged-default');
   });
 
+  describe('brandingLogo', () => {
+    it('is null until a logo is configured, so the Satori marks render', () => {
+      expect(service.brandingLogo()).toBeNull();
+    });
+
+    it('resolves a relative src beside bootstrap.json, wherever that was served from', async () => {
+      const loaded = service.loadBootstrap();
+      http.expectOne(BOOTSTRAP_URL).flush({
+        branding: { logo: { src: 'acme-logo.svg', alt: 'Acme Insurance' } },
+      });
+      await loaded;
+
+      const expected = new URL('/agentic-ui-config/acme-logo.svg', document.baseURI).href;
+      expect(service.brandingLogo()).toEqual({ url: expected, alt: 'Acme Insurance' });
+    });
+
+    it('passes an https src through unchanged', async () => {
+      const loaded = service.loadBootstrap();
+      http.expectOne(BOOTSTRAP_URL).flush({
+        branding: { logo: { src: 'https://cdn.example.com/acme.svg', alt: '' } },
+      });
+      await loaded;
+
+      expect(service.brandingLogo()).toEqual({ url: 'https://cdn.example.com/acme.svg', alt: '' });
+    });
+
+    // Error path: a rejected src must not reach an <img>.
+    it('stays null when the configured src is a Nuxeo REST path', async () => {
+      const loaded = service.loadBootstrap();
+      http.expectOne(BOOTSTRAP_URL).flush({
+        branding: { logo: { src: '/nuxeo/api/v1/id/abc/@blob/file:content', alt: 'x' } },
+      });
+      await loaded;
+
+      expect(service.brandingLogo()).toBeNull();
+    });
+  });
+
   describe('loadBootstrap', () => {
     it('overlays the deployed file and records its source', async () => {
       const loaded = service.loadBootstrap();

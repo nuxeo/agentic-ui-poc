@@ -323,8 +323,17 @@ sat-app-header h2.sat-app-header-title {
 sat-app-header .sat-app-header-trailing-container,
 sat-app-header .sat-app-header-actions,
 sat-app-header sat-word-mark-logo.sat-app-header-logo,
-sat-app-header .sat-app-header-logo sat-word-mark-logo {
+sat-app-header .sat-app-header-logo sat-word-mark-logo,
+sat-app-header img.app-brand-logo {
   flex-shrink: 0;
+}
+
+/* The word mark's 40px height, with the width capped, so a wide logo cannot push the title over. */
+sat-app-header img.app-brand-logo {
+  height: 40px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
 }
 
 /* Material typography adds `margin: 0 0 .75em` to all <p> tags via `.mat-typography p`.

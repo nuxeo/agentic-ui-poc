@@ -45,11 +45,25 @@ export interface AppThemeConfig {
   readonly tokens: AppThemeTokens;
 }
 
+/** A deployment's own logo, shown instead of the Satori marks in the header and on the login page. */
+export interface AppBrandingLogo {
+  /**
+   * As written in `bootstrap.json`: a file name or relative path, resolved against the directory
+   * `bootstrap.json` is served from; an `https:` URL; or a `data:image/` URI. Every other form is
+   * rejected when the configuration is read.
+   */
+  readonly src: string;
+  /** Accessible name for the login page's brand link. Empty falls back to `applicationTitle`. */
+  readonly alt: string;
+}
+
 export interface AppBrandingConfig {
   /** Shown in the application header. */
   readonly applicationTitle: string;
   /** Written to `document.title`. */
   readonly documentTitle: string;
+  /** `null` keeps the Satori marks. */
+  readonly logo: AppBrandingLogo | null;
 }
 
 /**
@@ -203,6 +217,7 @@ export const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig = {
     // reproduced exactly so that adopting configuration changes nothing.
     applicationTitle: 'Hyland Nuxeo',
     documentTitle: 'Nuxeo Platform',
+    logo: null,
   },
   defaultThemeId: 'nuxeo',
   themes: DEFAULT_APP_THEMES,
@@ -451,6 +466,55 @@ function readSsoEndpoints(
   return endpoints;
 }
 
+/**
+ * Whether a configured logo `src` may be handed to an `<img>`.
+ *
+ * An `<img>` request bypasses the HTTP interceptor, so the refused forms are the ones that could
+ * reach something other than a static asset: an absolute or protocol-relative path can name a
+ * Nuxeo REST endpoint, and a `..` segment — which the URL parser also recognises as `%2e%2e` —
+ * climbs out of the configuration directory to the same effect. `http:` would be blocked as mixed
+ * content on an HTTPS deployment.
+ */
+function isAcceptedLogoSrc(src: string): boolean {
+  if (/^data:image\//i.test(src)) return true;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(src)) {
+    if (!/^https:\/\/[^/]/i.test(src)) return false;
+    try {
+      return new URL(src).protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+  if (src.startsWith('/') || src.includes('\\')) return false;
+  const path = src.split(/[?#]/, 1)[0] ?? '';
+  return !path.replace(/%2e/gi, '.').split('/').includes('..');
+}
+
+/**
+ * `null` clears a logo an earlier layer set; anything unusable keeps `base`, so a malformed entry
+ * degrades to the packaged marks rather than to a broken image.
+ */
+function readLogo(value: unknown, base: AppBrandingLogo | null): AppBrandingLogo | null {
+  if (value === null) return null;
+  if (!isRecord(value)) return base;
+  const src = typeof value['src'] === 'string' ? value['src'].trim() : '';
+  if (!src || !isAcceptedLogoSrc(src)) return base;
+  const alt = value['alt'];
+  return { src, alt: typeof alt === 'string' ? alt.trim() : '' };
+}
+
+/**
+ * The URL an `<img>` loads for a configured logo, given the absolute URL `bootstrap.json` was
+ * read from.
+ *
+ * A relative `src` resolves against the configuration directory rather than the application
+ * bundle, because the installer replaces the bundle directory on every upgrade and leaves the
+ * configuration directory alone.
+ */
+export function resolveBrandingLogoUrl(src: string, configUrl: string): string {
+  return new URL(src, configUrl).href;
+}
+
 function mergeSso(base: AppSsoConfig, value: unknown): AppSsoConfig {
   if (!isRecord(value)) return base;
   return {
@@ -484,6 +548,7 @@ export function mergeBootstrapConfig(base: AppBootstrapConfig, patch: unknown): 
     branding: {
       applicationTitle: readString(branding, 'applicationTitle', base.branding.applicationTitle),
       documentTitle: readString(branding, 'documentTitle', base.branding.documentTitle),
+      logo: readLogo(branding['logo'], base.branding.logo),
     },
     defaultThemeId: readString(patch, 'defaultThemeId', base.defaultThemeId),
     themes: mergeThemes(base.themes, patch['themes']),

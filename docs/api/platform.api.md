@@ -21,7 +21,7 @@ type PlatformEntryPoint = (typeof PLATFORM_ENTRY_POINTS)[number];
 
 ## @nuxeo-satori/platform/app-config
 
-28 exported symbol(s).
+29 exported symbol(s).
 
 ```ts
 const APP_BOOTSTRAP_CONFIG_FILE = "bootstrap.json";
@@ -51,6 +51,12 @@ interface AppBootstrapConfig {
 interface AppBrandingConfig {
     readonly applicationTitle: string;
     readonly documentTitle: string;
+    readonly logo: AppBrandingLogo | null;
+    }
+}
+interface AppBrandingLogo {
+    readonly src: string;
+    readonly alt: string;
     }
 }
 interface AppConfigDiagnostics {
@@ -65,6 +71,10 @@ class AppConfigService {
     readonly manifest: _angular_core.Signal<AppRuntimeManifest>;
     readonly diagnostics: _angular_core.Signal<AppConfigDiagnostics>;
     readonly themes: _angular_core.Signal<readonly AppThemeConfig[]>;
+    readonly brandingLogo: _angular_core.Signal<{
+    readonly url: string;
+    readonly alt: string;
+    } | null>;
     load(): Promise<void>;
     loadBootstrap(): Promise<AppBootstrapConfig>;
     loadManifest(): Promise<AppRuntimeManifest>;
