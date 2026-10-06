@@ -63,8 +63,8 @@ In two places, and both are a known problem:
    install-then-upgrade has been rehearsed yet. Users see a change the next time they open the
    application.
 2. **A configuration document in the repository**: a Nuxeo Note at
-   `/default-domain/config/agentic-ui` whose text is JSON, edited by any Nuxeo user allowed to
-   write it. It holds the wording and the whole arrangement. The longer documents call it the
+   `/default-domain/config/agentic-ui` whose text is JSON, in plain-text format, edited by any
+   Nuxeo user allowed to write it. It holds the wording and the whole arrangement. The longer documents call it the
    _manifest_. Each user reads it with their own permissions, and a change applies at their next
    sign-in or page reload.
 
@@ -79,7 +79,7 @@ own Marketplace package that depends on ours**. That is planned, not built.
 | Change the product name and the browser-tab title                                                                              | settings file, `branding`                      | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
 | Change the colours, or add your own colour theme and make it the default                                                       | settings file, `themes` and `defaultThemeId`   | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
 | Choose the default language                                                                                                    | settings file, `defaultLanguage`               | [The default settings file](../../nuxeo-agentic-ui-package/src/main/config/bootstrap.json)                      |
-| Change on-screen wording, per language                                                                                         | configuration document, `labels`               | [Runbook, beat 4](../../docs/beta-demo-runbook.md#beat-4--relabel-the-product-2-min)                            |
+| Change on-screen wording — the same text in every language                                                                     | configuration document, `labels`               | [Runbook, beat 4](../../docs/beta-demo-runbook.md#beat-4--relabel-the-product-2-min)                            |
 | Hide, reorder or rename a menu entry, toolbar button, tab, list column or bulk action                                          | configuration document, `extensions.overrides` | [Extension reference, overrides](../../docs/extension-reference.md#per-id-overrides)                            |
 | Add a menu entry that opens an existing page                                                                                   | configuration document, `extensions.slots`     | [Runbook, beat 5](../../docs/beta-demo-runbook.md#beat-5--nav-hide-one-add-one-and-the-security-question-4-min) |
 | Show an entry only when a condition holds: the user can edit the document, is an administrator, has several documents selected | configuration document, a `rule` on the entry  | [Extension reference, rules](../../docs/extension-reference.md#4-rules--the-registered-predicates)              |
@@ -153,7 +153,10 @@ the package is not published yet, you build it from this repository. Publishing 
    [Developer Getting Started](../30-engineering/01-getting-started.md). You need Docker,
    Node.js 20, and a GitHub token that can read Hyland's and Alfresco's GitHub Packages.
 2. **Change something without code.** Edit the settings file, or create the configuration document
-   and paste the example above. Beats 3 to 7 of the
+   and paste the example above. Create it as a plain-text Note (`note:mime_type` `text/plain`) as
+   [Part 0.6 of the runbook](../../docs/beta-demo-runbook.md#06-create-the-manifest-document)
+   does. In any other format Nuxeo escapes the quotes in the JSON, and the application then
+   ignores the document and keeps its defaults, without an error. Beats 3 to 7 of the
    [demo runbook](../../docs/beta-demo-runbook.md#part-4--the-demo-script) give the exact JSON
    for each change and what you should see.
 3. **Customise it with an AI coding agent.** Use the
