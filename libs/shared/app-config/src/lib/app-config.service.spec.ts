@@ -70,6 +70,21 @@ describe('AppConfigService', () => {
       expect(service.brandingLogo()).toEqual({ url: 'https://cdn.example.com/acme.svg', alt: '' });
     });
 
+    // Error path: an absolute https URL passes the string checks, so this is the resolved check.
+    it('stays null for an https URL on the configured Nuxeo API origin', async () => {
+      const loaded = service.loadBootstrap();
+      http.expectOne(BOOTSTRAP_URL).flush({
+        nuxeoApiOrigin: 'https://nuxeo.example',
+        branding: {
+          logo: { src: 'https://nuxeo.example/nuxeo/api/v1/id/abc/@blob/file:content', alt: 'x' },
+        },
+      });
+      await loaded;
+
+      expect(service.bootstrap().branding.logo).not.toBeNull();
+      expect(service.brandingLogo()).toBeNull();
+    });
+
     // Error path: a rejected src must not reach an <img>.
     it('stays null when the configured src is a Nuxeo REST path', async () => {
       const loaded = service.loadBootstrap();

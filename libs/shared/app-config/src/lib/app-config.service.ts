@@ -8,6 +8,7 @@ import {
   AppThemeConfig,
   DEFAULT_APP_BOOTSTRAP_CONFIG,
   mergeBootstrapConfig,
+  nuxeoOriginsOf,
   resolveBrandingLogoUrl,
   resolveTheme,
 } from './bootstrap-config';
@@ -85,10 +86,13 @@ export class AppConfigService {
    * Satori marks. Resolved here because only this service knows where `bootstrap.json` came from.
    */
   readonly brandingLogo = computed<{ readonly url: string; readonly alt: string } | null>(() => {
-    const logo = this.bootstrapConfig().branding.logo;
+    const config = this.bootstrapConfig();
+    const logo = config.branding.logo;
     if (!logo) return null;
-    const configUrl = new URL(this.bootstrapUrl, this.document.baseURI).href;
-    return { url: resolveBrandingLogoUrl(logo.src, configUrl), alt: logo.alt };
+    const baseUri = this.document.baseURI;
+    const configUrl = new URL(this.bootstrapUrl, baseUri).href;
+    const url = resolveBrandingLogoUrl(logo.src, configUrl, nuxeoOriginsOf(config, baseUri));
+    return url === null ? null : { url, alt: logo.alt };
   });
 
   /** Load both halves. Never rejects, so it is safe as an `APP_INITIALIZER`. */
