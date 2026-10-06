@@ -3172,14 +3172,41 @@ function checkAccessibleNameFallbacks() {
 
   /** String-literal translation keys returned by `methodName()` in a component class. */
   function translationKeysReturnedByMethod(tsSource, methodName) {
-    const anchor = tsSource.indexOf(`${methodName}(`);
-    if (anchor === -1) return [];
-    const slice = tsSource.slice(anchor, anchor + 600);
-    return [
-      ...new Set(
-        [...slice.matchAll(/'((?:[a-z][a-z0-9-]*\.)+[a-z][a-z0-9-]*)'/g)].map(([, key]) => key),
-      ),
-    ];
+    const sourceFile = ts.createSourceFile(
+      'component.ts',
+      tsSource,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const keys = new Set();
+    const keyShape = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
+
+    function collectStringLiteralKeys(root) {
+      function visit(node) {
+        if (ts.isStringLiteral(node) && keyShape.test(node.text)) {
+          keys.add(node.text);
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(root);
+    }
+
+    function visit(node) {
+      const isNamedMethod =
+        (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) &&
+        node.name &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === methodName;
+      if (isNamedMethod) {
+        if (node.type) collectStringLiteralKeys(node.type);
+        if (node.body) collectStringLiteralKeys(node.body);
+      }
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+    return [...keys];
   }
 
   function recordBinding(template, attribute, key) {

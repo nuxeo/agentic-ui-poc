@@ -4012,6 +4012,57 @@ expectGreen(
   },
 );
 
+/**
+ * `[attr.aria-label]="panelLabelKey() | translate"` — keys come from the method body, not from an
+ * earlier call site. `indexOf(\`\${methodName}(\`)` used to anchor on the call in `refreshLabel()`,
+ * miss the declaration's return literals, and let a missing fallback slip through.
+ */
+const METHOD_BINDING_CATALOGUE = `{
+  "x": { "panel": { "hide": "Hide panel", "show": "Show panel" } }
+}
+`;
+const METHOD_BINDING_FALLBACK = `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'x.panel.hide': 'Hide panel',
+  'x.panel.show': 'Show panel',
+};
+`;
+const METHOD_BINDING_TS = `export class XComponent {
+  refreshLabel(): string {
+    return this.panelLabelKey();
+  }
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+const METHOD_BINDING_HTML =
+  `<button type="button" [attr.aria-label]="panelLabelKey() | translate"></button>\n`;
+const METHOD_BINDING_APP = {
+  'apps/nuxeo-ui/public/i18n/en.json': METHOD_BINDING_CATALOGUE,
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': METHOD_BINDING_FALLBACK,
+  'libs/features/x/src/lib/x.html': METHOD_BINDING_HTML,
+  'libs/features/x/src/lib/x.ts': METHOD_BINDING_TS,
+};
+
+expectRed(
+  'a method-bound accessible name whose keys are missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  METHOD_BINDING_APP,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a method-bound accessible name with an earlier call site still reads the declaration',
+  'checkAccessibleNameFallbacks',
+  METHOD_BINDING_APP,
+);
+
 /* ---------------- checkTranslatorContextPush: the push STEP ---------------- */
 
 // The gate verified which files trigger the job and never that the job runs the uploader. Deleting
