@@ -3212,15 +3212,28 @@ function checkAccessibleNameFallbacks() {
 
     function collectReturnLiteralKeys(body) {
       if (!body) return;
-      if (ts.isBlock(body)) {
-        for (const stmt of body.statements) {
-          if (ts.isReturnStatement(stmt)) {
-            collectKeysFromReturnExpression(stmt.expression);
-          }
-        }
+      if (!ts.isBlock(body)) {
+        collectKeysFromReturnExpression(body);
         return;
       }
-      collectKeysFromReturnExpression(body);
+      function visitReturns(node) {
+        if (ts.isReturnStatement(node)) {
+          collectKeysFromReturnExpression(node.expression);
+          return;
+        }
+        if (
+          ts.isFunctionDeclaration(node) ||
+          ts.isMethodDeclaration(node) ||
+          ts.isFunctionExpression(node) ||
+          ts.isArrowFunction(node) ||
+          ts.isGetAccessorDeclaration(node) ||
+          ts.isSetAccessorDeclaration(node)
+        ) {
+          return;
+        }
+        ts.forEachChild(node, visitReturns);
+      }
+      visitReturns(body);
     }
 
     function visit(node) {

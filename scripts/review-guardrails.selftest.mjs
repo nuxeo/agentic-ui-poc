@@ -4104,6 +4104,30 @@ expectGreen(
   },
 );
 
+const METHOD_IF_RETURN_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    if (this.open) {
+      return 'x.panel.hide';
+    }
+    return 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound name whose keys are returned through nested control flow',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_IF_RETURN_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
 const METHOD_PARAM_HTML =
   `<button type="button" [attr.aria-label]="panelLabelKey() | translate: { name: itemName() }"></button>\n`;
 expectRed(

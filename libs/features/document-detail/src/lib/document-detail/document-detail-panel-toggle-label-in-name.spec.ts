@@ -12,7 +12,7 @@ describe('Document detail panel toggle label in name (NXENG-766)', () => {
   it('binds matTooltip and aria-label to the same show/hide details key', () => {
     const html = readFileSync(templatePath, 'utf8');
     const toggleBlock = html.match(/class="panel-toggle-btn"[\s\S]*?<\/button>/)?.[0];
-    expect(toggleBlock).withContext('panel toggle button markup').toBeTruthy();
+    expect(toggleBlock, 'panel toggle button markup').toBeTruthy();
     expect(toggleBlock).toContain('[matTooltip]="detailsPanelToggleLabelKey() | translate"');
     expect(toggleBlock).toContain('[attr.aria-label]="detailsPanelToggleLabelKey() | translate"');
     expect(toggleBlock).not.toContain('toggle-details-panel');
