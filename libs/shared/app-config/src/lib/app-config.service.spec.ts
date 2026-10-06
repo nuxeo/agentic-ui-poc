@@ -85,6 +85,19 @@ describe('AppConfigService', () => {
       expect(service.brandingLogo()).toBeNull();
     });
 
+    // Error path: `..;` passes the string checks and the browser keeps it, but Tomcat reads it as
+    // a parent directory, so only the resolved check can refuse it.
+    it('stays null for a path-parameter segment that Tomcat reads as a parent directory', async () => {
+      const loaded = service.loadBootstrap();
+      http.expectOne(BOOTSTRAP_URL).flush({
+        branding: { logo: { src: '..;/api/v1/me', alt: 'x' } },
+      });
+      await loaded;
+
+      expect(service.bootstrap().branding.logo).not.toBeNull();
+      expect(service.brandingLogo()).toBeNull();
+    });
+
     // Error path: a rejected src must not reach an <img>.
     it('stays null when the configured src is a Nuxeo REST path', async () => {
       const loaded = service.loadBootstrap();

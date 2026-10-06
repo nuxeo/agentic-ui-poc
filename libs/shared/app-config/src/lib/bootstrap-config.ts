@@ -534,10 +534,32 @@ export function resolveBrandingLogoUrl(
 
   const config = new URL(configUrl);
   if (url.origin === config.origin) {
-    return url.pathname.startsWith(new URL('.', config).pathname) ? url.href : null;
+    return isInsideDirectory(url.pathname, new URL('.', config).pathname) ? url.href : null;
   }
   if (nuxeoOrigins.includes(url.origin)) return null;
   return url.protocol === 'https:' ? url.href : null;
+}
+
+/**
+ * Whether the server, not just the browser, reads `pathname` as lying inside `directory`.
+ *
+ * Tomcat drops `;` path parameters from each segment before it collapses dot segments, so `..;x`
+ * is an ordinary segment to the browser and a parent directory to Nuxeo. A proxy that decodes
+ * before forwarding does the same with `%3b`, and with `%2f` as a separator. A segment carrying
+ * any of those, or one that does not decode, is refused.
+ */
+function isInsideDirectory(pathname: string, directory: string): boolean {
+  if (!pathname.startsWith(directory)) return false;
+  return pathname
+    .slice(directory.length)
+    .split('/')
+    .every((segment) => {
+      try {
+        return !/[;/\\]/.test(decodeURIComponent(segment));
+      } catch {
+        return false;
+      }
+    });
 }
 
 /**

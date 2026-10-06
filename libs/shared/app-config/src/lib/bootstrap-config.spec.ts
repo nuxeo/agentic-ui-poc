@@ -133,6 +133,29 @@ describe('resolveBrandingLogoUrl — the check on the URL the browser loads', ()
     expect(resolveBrandingLogoUrl(src, configUrl)).toBeNull();
   });
 
+  // Tomcat drops `;` path parameters from each segment before it collapses dot segments, so `..;x`
+  // is an ordinary segment to the browser and a parent directory to the server.
+  it.each([
+    ['a path-parameter parent segment', '..;x/api/v1/me'],
+    ['an empty path parameter', '..;/login.jsp'],
+    ['an encoded parent with a path parameter', '%2e%2e;x/api/v1/me'],
+    [
+      'the same as an absolute https URL',
+      'https://app.example/nuxeo/agentic-ui-config/..;/api/v1/me',
+    ],
+    ['an encoded semicolon, for a proxy that decodes first', '..%3b/api/v1/me'],
+    ['an encoded slash', '..%2fapi/v1/me'],
+    ['a malformed percent escape', 'acme%e0.svg'],
+  ])('refuses %s on the configuration origin', (_label, src) => {
+    expect(resolveBrandingLogoUrl(src, configUrl)).toBeNull();
+  });
+
+  it('still allows a file name the URL parser percent-encodes', () => {
+    expect(resolveBrandingLogoUrl('Acme logo.svg', configUrl)).toBe(
+      'https://app.example/nuxeo/agentic-ui-config/Acme%20logo.svg',
+    );
+  });
+
   it('refuses an unparseable URL', () => {
     expect(resolveBrandingLogoUrl('https://exa mple.com/acme.svg', configUrl)).toBeNull();
   });
