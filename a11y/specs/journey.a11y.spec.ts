@@ -263,19 +263,41 @@ const FILE_WITH_MAIN_BLOB_NXQL =
  * only render when `fileName()` is populated (`document-detail.html`).
  */
 async function firstFileWithMainBlob(page: Page): Promise<RepoEntry> {
-  const candidates = await nxqlEntries(page, FILE_WITH_MAIN_BLOB_NXQL, 20, 'document detail blob');
-  for (const entry of candidates) {
-    const head = await page.request.head(`/nuxeo/api/v1/id/${entry.uid}/@blob/file:content`, {
-      failOnStatusCode: false,
-    });
-    if (head.ok()) {
-      return entry;
+  let chosen: RepoEntry | undefined;
+  let examined = 0;
+  for (let pageIndex = 0; !chosen; pageIndex++) {
+    const { entries, isNextPageAvailable } = await nxqlPage(
+      page,
+      FILE_WITH_MAIN_BLOB_NXQL,
+      20,
+      pageIndex,
+      'document detail blob',
+    );
+    if (entries.length === 0 && isNextPageAvailable) {
+      throw new Error(
+        `document detail blob: page ${pageIndex} of the File query is empty but claims another ` +
+          'follows, so paging it would never end',
+      );
+    }
+    for (const candidate of entries) {
+      examined++;
+      const head = await page.request.head(`/nuxeo/api/v1/id/${candidate.uid}/@blob/file:content`, {
+        failOnStatusCode: false,
+      });
+      if (head.ok()) {
+        chosen = candidate;
+        break;
+      }
+    }
+    if (!isNextPageAvailable) {
+      break;
     }
   }
   return requireEntry(
-    [],
-    'the repository holds no File with a persisted main blob — seed a document with file:content ' +
-      'before running document detail when replace-main-file must be in the scanned DOM',
+    chosen ? [chosen] : [],
+    `the repository holds no File with a persisted main blob among ${examined} candidate(s) — ` +
+      'seed a document with file:content before running document detail when replace-main-file ' +
+      'must be in the scanned DOM',
   );
 }
 
@@ -654,21 +676,29 @@ journeyTest('browse', async ({ signedIn: page, a11y }) => {
 });
 
 /**
- * Enter the Replace main file tooltip interaction state without asserting WCAG outcomes.
+ * Enter the Replace main file tooltip interaction state without an axe WCAG verdict.
  *
- * Label-in-name verdicts belong to phase-6 runtime axe (`docs/accessibility.md`); a11y-scout
- * only observes the composed DOM here. Uses the find_replace icon — not accessible name text.
+ * Label-in-name conformance is gated in phase-6 (`docs/accessibility.md`). Here we only prove
+ * the journey reached the intended DOM state: control present, tooltip visible, tooltip text
+ * matches the control's accessible name (precondition, not axe).
  */
 async function enterDocumentDetailReplaceMainFileTooltipState(page: Page): Promise<void> {
   const replaceButtons = page
     .locator('lib-document-viewer .viewer-footer-actions button')
     .filter({ has: page.locator('mat-icon', { hasText: 'find_replace' }) });
-  if ((await replaceButtons.count()) === 0) {
-    return;
-  }
   const replace = replaceButtons.first();
+  await expect(
+    replace,
+    'replace main file must render on a writable File with a main blob',
+  ).toBeVisible();
+  const accessibleName = (await replace.getAttribute('aria-label')) ?? '';
   await replace.hover();
   await replace.focus();
+  const tooltip = page.locator('.cdk-overlay-container').getByText(accessibleName, { exact: true });
+  await expect(
+    tooltip,
+    'Replace main file tooltip must be visible and match the control accessible name',
+  ).toBeVisible();
 }
 
 /**
