@@ -198,6 +198,48 @@ export default async function run(page, h) {
   );
   await h.screenshot('a11y-browse-adf-hx');
 
+  h.step(
+    'Document detail — Replace main file with tooltip open (NXENG-771 / WCAG 2.5.3 label-in-name)',
+  );
+  const docUid = await findFileWithMainBlobUid(page);
+  h.check(
+    'a File with a persisted main blob exists',
+    docUid !== null,
+    'repository query returned no File whose @blob/file:content answers — replace-main-file cannot be scanned',
+  );
+  if (docUid) {
+    await h.goToDoc(docUid);
+    await h.expectVisible('document detail rendered', 'lib-document-detail');
+    await h.expectVisible('document viewer rendered', 'lib-document-viewer');
+    const replaceBtn = page.locator('lib-document-viewer button[aria-label="Replace main file"]');
+    h.check(
+      'replace main file control is rendered for a writable File with a blob',
+      (await replaceBtn.count()) > 0,
+      'lib-document-viewer footer has no Replace main file control — file:content or permissions',
+    );
+    if ((await replaceBtn.count()) > 0) {
+      const btn = replaceBtn.first();
+      await btn.hover();
+      await btn.focus();
+      await page.waitForTimeout(600);
+      const accessibleName = (await btn.getAttribute('aria-label')) ?? '';
+      const tooltipLocator = page
+        .locator('.cdk-overlay-container')
+        .getByText(accessibleName, { exact: true });
+      const tooltipText = ((await tooltipLocator.textContent()) ?? '').trim();
+      h.check(
+        'Replace main file tooltip text matches accessible name (NXENG-771 label-in-name)',
+        accessibleName.length > 0 && tooltipText === accessibleName,
+        `aria-label=${JSON.stringify(accessibleName)} visible tooltip=${JSON.stringify(tooltipText)}`,
+      );
+    }
+    await h.expectNoA11yViolations(
+      'document detail (replace-main-file tooltip): no WCAG 2.1 AA violations',
+      { ignore: KNOWN_VIOLATIONS },
+    );
+    await h.screenshot('a11y-document-detail-replace-main-file');
+  }
+
   h.step('Keyboard reachability of the primary navigation');
   // Distinct from an axe scan: axe checks markup, this checks that a keyboard user can actually
   // get to the nav. A focusable element behind a pointer-only handler passes every static rule.
@@ -329,6 +371,53 @@ export default async function run(page, h) {
     // libs/shared/adf-hx-bridge/src/lib/services/nuxeo-principal-resolver.service.ts.
     /HTTP 404 .*\/api\/v1\/group\//,
   ]);
+}
+
+const FILE_WITH_MAIN_BLOB_NXQL =
+  "SELECT * FROM File WHERE ecm:mixinType <> 'HiddenInNavigation' " +
+  'AND ecm:isVersion = 0 AND ecm:isTrashed = 0 AND file:content/name IS NOT NULL ' +
+  'ORDER BY dc:created';
+
+/**
+ * First File uid whose main blob responds on `@blob/file:content`, paging NXQL until exhausted.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string | null>}
+ */
+async function findFileWithMainBlobUid(page) {
+  for (let pageIndex = 0; ; pageIndex++) {
+    const response = await page.request.get('/nuxeo/api/v1/search/lang/NXQL/execute', {
+      params: {
+        query: FILE_WITH_MAIN_BLOB_NXQL,
+        pageSize: '20',
+        currentPageIndex: String(pageIndex),
+      },
+    });
+    if (!response.ok()) {
+      return null;
+    }
+    const body = await response.json();
+    const entries = Array.isArray(body.entries) ? body.entries : [];
+    const isNextPageAvailable = body.isNextPageAvailable === true;
+    if (entries.length === 0 && isNextPageAvailable) {
+      return null;
+    }
+    for (const entry of entries) {
+      const uid = entry?.uid;
+      if (typeof uid !== 'string') {
+        continue;
+      }
+      const head = await page.request.head(`/nuxeo/api/v1/id/${uid}/@blob/file:content`, {
+        failOnStatusCode: false,
+      });
+      if (head.ok()) {
+        return uid;
+      }
+    }
+    if (!isNextPageAvailable) {
+      return null;
+    }
+  }
 }
 
 /**

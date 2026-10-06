@@ -188,6 +188,7 @@
     "postcss": "8.5.25",
     "qs": "6.15.3",
     "serialize-javascript": "7.0.7",
+    "source-map-js": "1.2.2",
     "shell-quote": "1.10.0",
     "smol-toml": "1.7.1",
     "tar": "7.5.22",
