@@ -628,6 +628,30 @@ journeyTest('browse', async ({ signedIn: page, a11y }) => {
 });
 
 /**
+ * Hover/focus the Replace main file control so axe sees tooltip + accessible name together.
+ *
+ * WCAG 2.5.3 / IBM label_name_visible (NXENG-771, issue 133110887) is owned by the runtime axe
+ * layer (`docs/accessibility.md`); this is the document-detail hook that exercises that control
+ * in the composed DOM rather than a duplicate Vitest verdict.
+ */
+async function enterDocumentDetailReplaceMainFileTooltipState(page: Page): Promise<void> {
+  const viewer = page.locator('lib-document-viewer').first();
+  await expect(viewer, 'lib-document-viewer must render on the View tab').toBeVisible();
+  const replace = viewer.getByRole('button', { name: 'Replace main file' });
+  await expect(
+    replace,
+    'Replace main file must be visible on a writable File — otherwise label-in-name is not measured',
+  ).toBeVisible();
+  await replace.hover();
+  await replace.focus();
+  // CDK tooltip message is attached after hover; scan below uses extraWaitMs for the overlay.
+  await expect(
+    page.locator('.cdk-overlay-container').getByText('Replace main file', { exact: true }),
+    'Replace main file tooltip must be visible after hover (label-in-name visible text)',
+  ).toBeVisible();
+}
+
+/**
  * Screen 4 — document detail, opened on a real document.
  */
 journeyTest('document-detail', async ({ signedIn: page, a11y }) => {
@@ -649,8 +673,9 @@ journeyTest('document-detail', async ({ signedIn: page, a11y }) => {
   // the screen whose findings were unstable because of it.
   await waitForScreenSettled(page, 'lib-document-detail', true);
   await expectSurfaceUsable(page, 'lib-document-detail', 'document detail');
+  await enterDocumentDetailReplaceMainFileTooltipState(page);
 
-  await a11y.scanPage(SCREEN_SCAN);
+  await a11y.scanPage({ ...SCREEN_SCAN, extraWaitMs: 600 });
   await emitScreenReport(a11y, journeyReportName('document-detail'));
 });
 
