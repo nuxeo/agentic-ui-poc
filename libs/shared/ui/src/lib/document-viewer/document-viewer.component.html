@@ -196,7 +196,7 @@
       @if (showMainFileControls()) {
         <button
           mat-icon-button
-          [matTooltip]="'shared-ui.document-viewer.replace' | translate"
+          [matTooltip]="'shared-ui.document-viewer.replace-main-file' | translate"
           [attr.aria-label]="'shared-ui.document-viewer.replace-main-file' | translate"
           [disabled]="mainFileActionInProgress() === 'replace-main'"
           (click)="replaceMainFileClicked.emit()"
