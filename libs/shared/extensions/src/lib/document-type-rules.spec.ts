@@ -34,6 +34,9 @@ const hasFacet = (...parameters: unknown[]): ExtensionRule => ({
   type: 'app.rules.hasFacet',
   parameters,
 });
+/** `"parameters": "File"`, brackets forgotten — manifest JSON reaches the registry unvalidated. */
+const notAList = (type: string, parameters: unknown): ExtensionRule =>
+  ({ type, parameters }) as unknown as ExtensionRule;
 
 describe('document type rules', () => {
   let registry: ExtensionRuleRegistry;
@@ -64,6 +67,7 @@ describe('document type rules', () => {
       expect(registry.evaluate(isType(), on(doc('File')))).toBe(false);
       expect(registry.evaluate(isType(42, null, { type: 'File' }), on(doc('File')))).toBe(false);
       expect(registry.evaluate(isType(42, 'File'), on(doc('File')))).toBe(true);
+      expect(registry.evaluate(notAList('app.rules.isType', 'File'), on(doc('File')))).toBe(false);
     });
   });
 
@@ -90,6 +94,7 @@ describe('document type rules', () => {
       const folder = on(doc('Folder', ['Folderish']));
       expect(registry.evaluate('app.rules.hasFacet', folder)).toBe(false);
       expect(registry.evaluate(hasFacet(true, ['Folderish']), folder)).toBe(false);
+      expect(registry.evaluate(notAList('app.rules.hasFacet', 'Folderish'), folder)).toBe(false);
     });
   });
 

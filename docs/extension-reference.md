@@ -273,7 +273,9 @@ supported state but not a useful one.
 ## 4. `rules` — the registered predicates
 
 Referenced as a bare string (`"app.rules.canWrite"`) or as an object with parameters
-(`{ "type": "core.every", "parameters": [...] }`).
+(`{ "type": "core.every", "parameters": [...] }`). `parameters` must be a JSON array; anything
+else — `"parameters": "File"` with the brackets forgotten — is read as an empty list rather than
+breaking the slot it sits in.
 
 ### Document rules
 
@@ -293,10 +295,10 @@ Registered by `DOCUMENT_RULE_EVALUATORS`. These wrap the existing pure predicate
 | `app.rules.isNotTrashed`         | A document is in focus and is not in the trash                    |
 
 `app.rules.isType` and `app.rules.hasFacet` take the type or facet names as `parameters`, matched
-exactly — Nuxeo names are case-sensitive. With no string parameters both answer `false`, so a
-misconfigured entry is hidden rather than shown everywhere. Nuxeo Web UI offers the same two tests
-through `nuxeo-filter`'s `type` and `facet`. Show the Publishing tab only on Case and Claim
-documents:
+exactly — Nuxeo names are case-sensitive. With no string parameters — or `parameters` that is not
+an array — both answer `false`, so a misconfigured entry is hidden rather than shown everywhere.
+Nuxeo Web UI offers the same two tests through `nuxeo-filter`'s `type` and `facet`. Show the
+Publishing tab only on Case and Claim documents:
 
 ```json
 {
