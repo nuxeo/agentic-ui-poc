@@ -38,10 +38,11 @@ import { TranslatePipe } from '@ngx-translate/core';
  * because the former accepts `bindings`/`environmentInjector` explicitly, which
  * is what makes input binding to a dynamically chosen component possible at all.
  *
- * A change to `componentInputs` alone is applied to the live instance; only a change
- * of component recreates it. The `documentView` slot feeds the focused document, which
- * is a new object on every refetch, and recreating on each one would discard whatever
- * state the rendered view holds.
+ * A change to `componentInputs` values is applied to the live instance. The `documentView`
+ * slot feeds the focused document, which is a new object on every refetch, and recreating
+ * on each one would discard whatever state the rendered view holds. A change of component,
+ * or of which declared inputs are set, recreates it: in place, an input the new inputs
+ * omit would keep its previous value. While a lazy component loads, nothing is shown.
  */
 @Component({
   selector: 'lib-extension-outlet',
@@ -79,8 +80,11 @@ export class ExtensionOutletComponent {
   private readonly injector = inject(Injector);
   private readonly environmentInjector = inject(EnvironmentInjector);
   private componentRef: ComponentRef<unknown> | null = null;
+  private renderedType: Type<unknown> | null = null;
   /** Public names of the inputs the rendered component declares. */
   private declaredInputs: ReadonlySet<string> = new Set();
+  /** The declared input names last set, from {@link declaredKeysOf}. */
+  private appliedKeys = '';
   /** Bumped on every request so a slow load cannot overwrite a newer one. */
   private generation = 0;
 
@@ -109,6 +113,7 @@ export class ExtensionOutletComponent {
         return;
       }
 
+      untracked(() => this.clear());
       this.loading.set(true);
       this.unresolved.set(false);
       void this.registry.resolve(id).then((resolvedType) => {
@@ -126,7 +131,12 @@ export class ExtensionOutletComponent {
     effect(() => {
       const inputs = this.componentInputs() ?? {};
       untracked(() => {
-        if (this.componentRef) this.applyInputs(this.componentRef, inputs);
+        if (!this.componentRef || !this.renderedType) return;
+        if (this.declaredKeysOf(inputs) === this.appliedKeys) {
+          this.applyInputs(this.componentRef, inputs);
+        } else {
+          this.render(this.renderedType, this.generation);
+        }
       });
     });
   }
@@ -146,6 +156,7 @@ export class ExtensionOutletComponent {
 
     this.outlet.insert(ref.hostView);
     this.componentRef = ref;
+    this.renderedType = type;
     this.loading.set(false);
     this.unresolved.set(false);
   }
@@ -159,6 +170,7 @@ export class ExtensionOutletComponent {
    * filter is what keeps an unused key silent rather than a `catch` that never fires.
    */
   private applyInputs(ref: ComponentRef<unknown>, inputs: Readonly<Record<string, unknown>>): void {
+    this.appliedKeys = this.declaredKeysOf(inputs);
     for (const [name, value] of Object.entries(inputs)) {
       if (!this.declaredInputs.has(name)) continue;
       // A declared input's `transform` is the component's code, run on customer data;
@@ -171,10 +183,20 @@ export class ExtensionOutletComponent {
     }
   }
 
+  /** The declared input names `inputs` sets, as one comparable key. */
+  private declaredKeysOf(inputs: Readonly<Record<string, unknown>>): string {
+    return Object.keys(inputs)
+      .filter((name) => this.declaredInputs.has(name))
+      .sort()
+      .join('\n');
+  }
+
   private clear(): void {
     this.outlet?.clear();
     this.componentRef?.destroy();
     this.componentRef = null;
+    this.renderedType = null;
     this.declaredInputs = new Set();
+    this.appliedKeys = '';
   }
 }

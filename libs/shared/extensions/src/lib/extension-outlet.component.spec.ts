@@ -151,5 +151,50 @@ describe('ExtensionOutletComponent', () => {
       expect(fixture.nativeElement.querySelectorAll('.view')).toHaveLength(1);
       expect(fixture.nativeElement.querySelector('.view')?.textContent).toBe('kept');
     });
+
+    /**
+     * Two descriptors can share a component and differ in inputs. Updating in place would
+     * leave a key the second one omits at the first one's value, so a changed key set
+     * recreates instead.
+     */
+    it('does not keep the value of an input the new inputs omit', async () => {
+      const fixture = TestBed.createComponent(ExtensionOutletComponent);
+      fixture.componentRef.setInput('componentId', 'acme.views.claim');
+      fixture.componentRef.setInput('componentInputs', { title: 'Claim summary' });
+      await settle(fixture);
+
+      fixture.componentRef.setInput('componentInputs', { document: { uid: 'y' } });
+      await settle(fixture);
+
+      expect(fixture.nativeElement.querySelector('.view')?.textContent).toBe('');
+    });
+
+    /**
+     * Switching to a component that is still loading must not leave the previous one on
+     * screen: it would be interactive, and the in-place input path would hand it the new
+     * document.
+     */
+    it('removes the previous component while the next one loads', async () => {
+      let finishLoad: (type: typeof RegisteredPanelComponent) => void = () => undefined;
+      TestBed.inject(ExtensionComponentRegistry).register({
+        'acme.views.slow': () =>
+          new Promise<typeof RegisteredPanelComponent>((resolve) => (finishLoad = resolve)),
+      });
+      const fixture = TestBed.createComponent(ExtensionOutletComponent);
+      fixture.componentRef.setInput('componentId', 'acme.views.claim');
+      fixture.componentRef.setInput('componentInputs', { title: 'Claim 42' });
+      await settle(fixture);
+
+      fixture.componentRef.setInput('componentId', 'acme.views.slow');
+      await settle(fixture);
+
+      expect(fixture.componentInstance.loading()).toBe(true);
+      expect(fixture.nativeElement.querySelector('.view')).toBeNull();
+
+      finishLoad(RegisteredPanelComponent);
+      await settle(fixture);
+
+      expect(fixture.nativeElement.querySelector('.panel')).toBeTruthy();
+    });
   });
 });
