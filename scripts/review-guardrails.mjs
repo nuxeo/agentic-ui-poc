@@ -37,9 +37,9 @@ function fileExists(path) {
 }
 
 function read(path) {
-  // Workflow files are often checked out CRLF on Windows. Line-based matchers use `$`, which does
-  // not match before a trailing `\r`, so a step's `uses:` line was invisible while `true\r` inputs
-  // still matched via `\s*`.
+  // Normalise CRLF for every guardrail read. Workflow YAML on Windows left `\r` before `$` anchors,
+  // so a step's `uses:` line was invisible while `\s*`-terminated inputs still matched — the push
+  // workflow gate could pass with no uploader step. Intentionally repository-wide, not per-check.
   return readFileSync(join(repoRoot, path), 'utf8').replace(/\r/g, '');
 }
 
@@ -3162,6 +3162,9 @@ function checkAccessibleNameFallbacks() {
   const offences = new Map();
   /** Keys in OUR shape that no catalogue defines — a typo renders as the raw key. */
   const undefinedKeys = new Map();
+  /** Method-bound names the extractor could not resolve — must not pass silently. */
+  /** @type {Map<string, { attribute: string, sites: string[] }>} */
+  const unresolvedMethodBindings = new Map();
   let bindings = 0;
 
   /**
@@ -3183,20 +3186,62 @@ function checkAccessibleNameFallbacks() {
     const keys = new Set();
     const keyShape = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
 
-    function collectKeysFromReturnExpression(expr) {
+    /** @type {Map<string, Set<string>>} */
+    let localVarKeys = new Map();
+
+    function addResolvableKeysFromExpression(expr, target) {
       if (!expr) return;
       if (ts.isParenthesizedExpression(expr)) {
-        collectKeysFromReturnExpression(expr.expression);
+        addResolvableKeysFromExpression(expr.expression, target);
         return;
       }
       if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) {
-        keys.add(expr.text);
+        target.add(expr.text);
         return;
       }
       if (ts.isConditionalExpression(expr)) {
-        collectKeysFromReturnExpression(expr.whenTrue);
-        collectKeysFromReturnExpression(expr.whenFalse);
+        addResolvableKeysFromExpression(expr.whenTrue, target);
+        addResolvableKeysFromExpression(expr.whenFalse, target);
       }
+    }
+
+    function collectKeysFromReturnExpression(expr) {
+      if (!expr) return;
+      if (ts.isIdentifier(expr)) {
+        const mapped = localVarKeys.get(expr.text);
+        if (mapped) mapped.forEach((key) => keys.add(key));
+        return;
+      }
+      addResolvableKeysFromExpression(expr, keys);
+    }
+
+    function collectLocalVarKeys(body) {
+      const out = new Map();
+      if (!ts.isBlock(body)) return out;
+      function visitVars(node) {
+        if (ts.isVariableStatement(node)) {
+          for (const decl of node.declarationList.declarations) {
+            if (ts.isIdentifier(decl.name) && decl.initializer) {
+              const found = new Set();
+              addResolvableKeysFromExpression(decl.initializer, found);
+              if (found.size) out.set(decl.name.text, found);
+            }
+          }
+        }
+        if (
+          ts.isFunctionDeclaration(node) ||
+          ts.isMethodDeclaration(node) ||
+          ts.isFunctionExpression(node) ||
+          ts.isArrowFunction(node) ||
+          ts.isGetAccessorDeclaration(node) ||
+          ts.isSetAccessorDeclaration(node)
+        ) {
+          return;
+        }
+        ts.forEachChild(node, visitVars);
+      }
+      visitVars(body);
+      return out;
     }
 
     function collectUnionLiteralKeysFromType(typeNode) {
@@ -3244,7 +3289,10 @@ function checkAccessibleNameFallbacks() {
         node.name.text === methodName;
       if (isNamedMethod) {
         if (node.type) collectUnionLiteralKeysFromType(node.type);
-        if (node.body) collectReturnLiteralKeys(node.body);
+        if (node.body) {
+          if (ts.isBlock(node.body)) localVarKeys = collectLocalVarKeys(node.body);
+          collectReturnLiteralKeys(node.body);
+        }
       }
       ts.forEachChild(node, visit);
     }
@@ -3283,7 +3331,16 @@ function checkAccessibleNameFallbacks() {
     if (!fileExists(tsPath)) continue;
     const tsSource = read(tsPath);
     for (const [, methodName] of html.matchAll(METHOD_BINDING)) {
-      for (const key of translationKeysReturnedByMethod(tsSource, methodName)) {
+      const methodKeys = translationKeysReturnedByMethod(tsSource, methodName);
+      if (methodKeys.length === 0) {
+        const attr = `${methodName}()`;
+        if (!unresolvedMethodBindings.has(attr)) {
+          unresolvedMethodBindings.set(attr, { attribute: attr, sites: [] });
+        }
+        unresolvedMethodBindings.get(attr).sites.push(template);
+        continue;
+      }
+      for (const key of methodKeys) {
         recordBinding(template, `${methodName}()`, key);
       }
     }
@@ -3306,6 +3363,19 @@ function checkAccessibleNameFallbacks() {
         '    ngx-translate renders a key it cannot resolve as the key itself, so this names the ' +
         `control \`${key}\` — the WCAG 4.1.2 failure this gate exists to stop. Either add it to ` +
         `${catalogueFile} with its fallback and context, or fix the spelling.`,
+    );
+  }
+
+  for (const [methodAttr, { sites }] of unresolvedMethodBindings) {
+    const where =
+      sites.length === 1
+        ? sites[0]
+        : `${[...new Set(sites)].join(', ')} (${sites.length} bindings)`;
+    fail(
+      `${where} binds an accessible name to \`${methodAttr}\`, but this gate could not resolve ` +
+        'any translation keys from that method declaration. A silent pass would miss missing ' +
+        'EN_FALLBACK_TRANSLATIONS entries when other templates still carry literal bindings. ' +
+        'Bind a literal key, simplify the return shape, or extend translationKeysReturnedByMethod.',
     );
   }
 

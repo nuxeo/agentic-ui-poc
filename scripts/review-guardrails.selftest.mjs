@@ -4128,6 +4128,57 @@ expectRed(
   /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
 );
 
+const METHOD_LOCAL_VAR_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    const key = this.open ? 'x.panel.hide' : 'x.panel.show';
+    return key;
+  }
+}
+`;
+falsePositiveControls += 1;
+expectGreen(
+  'a method-bound name returned through a local const still resolves its keys',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_LOCAL_VAR_TS,
+  },
+);
+
+const METHOD_UNRESOLVABLE_TS = `export class XComponent {
+  panelLabelKey(): string {
+    return this.pickKey();
+  }
+  pickKey(): string {
+    return 'x.panel.hide';
+  }
+}
+`;
+const METHOD_UNRESOLVABLE_HTML =
+  `<button type="button" [attr.aria-label]="'app.nav.toggle' | translate"></button>\n` +
+  METHOD_BINDING_HTML;
+expectRed(
+  'a method-bound name the extractor cannot resolve while other bindings exist',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': `{
+  "app": { "nav": { "toggle": "Toggle navigation menu" } },
+  "x": { "panel": { "hide": "Hide panel", "show": "Show panel" } }
+}
+`,
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'app.nav.toggle': 'Toggle navigation menu',
+  'x.panel.hide': 'Hide panel',
+  'x.panel.show': 'Show panel',
+};
+`,
+    'libs/features/x/src/lib/x.html': METHOD_UNRESOLVABLE_HTML,
+    'libs/features/x/src/lib/x.ts': METHOD_UNRESOLVABLE_TS,
+  },
+  null,
+  /panelLabelKey\(\).*could not resolve any translation keys from that method declaration/s,
+);
+
 const METHOD_PARAM_HTML =
   `<button type="button" [attr.aria-label]="panelLabelKey() | translate: { name: itemName() }"></button>\n`;
 expectRed(
