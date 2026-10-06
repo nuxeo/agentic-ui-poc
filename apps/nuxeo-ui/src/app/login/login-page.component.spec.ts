@@ -132,6 +132,9 @@ describe('LoginPageComponent', () => {
       expect(img?.getAttribute('alt'))
         .withContext('the link carries the name, so the image is decorative')
         .toBe('');
+      expect(img?.getAttribute('crossorigin'))
+        .withContext('a redirect from a remote logo must not carry the session cookie')
+        .toBe('anonymous');
       expect(brandLink()?.querySelector('sat-logo')).toBeNull();
       expect(brandLink()?.getAttribute('aria-label')).toBe('Acme');
     });

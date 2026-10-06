@@ -61,7 +61,11 @@ and the Satori lockup on the login page. `null` or absent keeps the Satori marks
 
 - **`src`** is a file name or relative path resolved against the directory `bootstrap.json` is
   served from — so a logo dropped beside it in `nxserver/nuxeo.war/agentic-ui-config/` survives
-  an upgrade exactly as the file does. An `https:` URL or a `data:image/` URI also works.
+  an upgrade exactly as the file does. An `https:` URL or a `data:image/` URI also works. Both
+  `<img>` elements carry `crossorigin="anonymous"`, so a remote logo is loaded without cookies
+  and a redirect from it to a Nuxeo URL cannot carry the session — which means an `https:` logo
+  only renders if its host sends `Access-Control-Allow-Origin`. A file beside `bootstrap.json` is
+  same-origin and unaffected.
 - **Every other form is rejected** and the Satori marks are kept. An `<img>` request bypasses the
   HTTP interceptor but still sends the session cookie, so a `src` that could name a Nuxeo REST
   endpoint is refused rather than left to fail. The deciding check runs on the **resolved** URL,
@@ -76,7 +80,8 @@ and the Satori lockup on the login page. `null` or absent keeps the Satori marks
   contain `;` or `%`. Elsewhere it must be `https:`. Refused earlier, on the string as written:
   control characters, backslashes, an absolute or protocol-relative path, a `..` segment, a query
   or fragment with no path (it would load `bootstrap.json` itself), `http:`, `javascript:`, and a
-  `data:` URI that is not an image or has no payload.
+  `data:` URI that is not an image or has no payload (a payload that starts with `#` is a
+  fragment, so it counts as none).
 - **`alt`** names the login page's brand link. Empty falls back to `applicationTitle`. The header
   logo is decorative (`alt=""`): the header is named by its heading.
 - The configuration directory is outside every `NuxeoAuthenticationFilter` URL pattern in

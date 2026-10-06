@@ -477,7 +477,8 @@ function readSsoEndpoints(
  */
 function isAcceptedLogoSrc(src: string): boolean {
   if (src.includes('\\') || [...src].some((char) => char < ' ' || char === '\u007f')) return false;
-  if (/^data:/i.test(src)) return /^data:image\/[a-z0-9.+-]+(?:;[^,]*)?,./i.test(src);
+  // `#` starts a fragment, so a payload that begins with it is empty.
+  if (/^data:/i.test(src)) return /^data:image\/[a-z0-9.+-]+(?:;[^,#]*)?,[^#]/i.test(src);
   if (/^[a-z][a-z0-9+.-]*:/i.test(src)) {
     if (!/^https:\/\/[^/]/i.test(src)) return false;
     try {

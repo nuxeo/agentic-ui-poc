@@ -50,6 +50,8 @@ describe('branding.logo', () => {
     ['an empty data:image URI', 'data:image/'],
     ['a data:image URI with no payload', 'data:image/png;base64,'],
     ['a data:image URI with no subtype', 'data:image/,iVBORw0KGgo='],
+    ['a data:image URI whose payload is only a fragment', 'data:image/png,#logo'],
+    ['a base64 data:image URI whose payload is only a fragment', 'data:image/png;base64,#logo'],
   ])('rejects %s and keeps the Satori marks', (_label, src) => {
     expect(logoOf({ src, alt: 'Acme' })).toBeNull();
   });

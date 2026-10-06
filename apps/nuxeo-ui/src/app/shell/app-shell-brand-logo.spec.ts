@@ -78,6 +78,9 @@ describe('AppShellComponent — configured logo (branding.logo)', () => {
     expect(img!.getAttribute('alt'))
       .withContext('the header is named by its heading, so the logo is decorative')
       .toBe('');
+    expect(img!.getAttribute('crossorigin'))
+      .withContext('a redirect from a remote logo must not carry the session cookie')
+      .toBe('anonymous');
     expect(header.querySelector('sat-word-mark-logo')).toBeNull();
   });
 
