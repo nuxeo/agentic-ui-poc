@@ -4063,6 +4063,62 @@ expectGreen(
   METHOD_BINDING_APP,
 );
 
+const METHOD_PLACEHOLDER_HTML =
+  `<input [placeholder]="inputLabelKey() | translate" />\n`;
+const METHOD_PLACEHOLDER_TS = `export class XComponent {
+  inputLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound placeholder whose keys are missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.html': METHOD_PLACEHOLDER_HTML,
+    'libs/features/x/src/lib/x.ts': METHOD_PLACEHOLDER_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds inputLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const METHOD_DEBUG_LITERAL_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    console.log('x.panel.debug-only');
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+falsePositiveControls += 1;
+expectGreen(
+  'a method-bound name ignores debug string literals nested in the method body',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_DEBUG_LITERAL_TS,
+  },
+);
+
+const PUSH_WORKFLOW_PATHS_AND_CONTEXT_STEP =
+  "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
+  "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n" +
+  '    steps:\n      - run: node tools/i18n/crowdin-push-context.mjs\n';
+const CRLF_CONTEXT_PUSH_WORKFLOW = PUSH_WORKFLOW_PATHS_AND_CONTEXT_STEP.replace(/\n/g, '\r\n');
+falsePositiveControls += 1;
+expectGreen(
+  'a CRLF-checked-out push workflow still finds the context uploader step',
+  'checkTranslatorContextPush',
+  {
+    ...CONTEXT_PUSH,
+    '.github/workflows/crowdin-push.yaml': CRLF_CONTEXT_PUSH_WORKFLOW,
+  },
+);
+
 /* ---------------- checkTranslatorContextPush: the push STEP ---------------- */
 
 // The gate verified which files trigger the job and never that the job runs the uploader. Deleting

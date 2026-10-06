@@ -3143,9 +3143,10 @@ function checkAccessibleNameFallbacks() {
   const BINDING =
     /\[(?:attr\.)?(aria-label|title|placeholder)\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
-  // `[attr.aria-label]="someMethod() | translate"` — keys live in the component `.ts` return.
+  // `[attr.aria-label]="someMethod() | translate"` (and matTooltip / placeholder) — keys live in the
+  // component `.ts` return union and top-level return expressions, not every string in the body.
   const METHOD_BINDING =
-    /\[(?:matTooltip|(?:attr\.)?(?:aria-label|title))\]="\s*(\w+)\(\)\s*\|\s*translate\s*"/g;
+    /\[(?:matTooltip|(?:attr\.)?(?:aria-label|title|placeholder))\]="\s*(\w+)\(\)\s*\|\s*translate\s*"/g;
 
   // NXENG-798: global search names via a visible `<label>`, not `[placeholder]`. Only this control
   // is wired here — a repo-wide `<label>{{ … | translate }}</label>` scan would surface dozens of
@@ -3182,14 +3183,44 @@ function checkAccessibleNameFallbacks() {
     const keys = new Set();
     const keyShape = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
 
-    function collectStringLiteralKeys(root) {
-      function visit(node) {
-        if (ts.isStringLiteral(node) && keyShape.test(node.text)) {
-          keys.add(node.text);
-        }
-        ts.forEachChild(node, visit);
+    function collectKeysFromReturnExpression(expr) {
+      if (!expr) return;
+      if (ts.isParenthesizedExpression(expr)) {
+        collectKeysFromReturnExpression(expr.expression);
+        return;
       }
-      visit(root);
+      if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) {
+        keys.add(expr.text);
+        return;
+      }
+      if (ts.isConditionalExpression(expr)) {
+        collectKeysFromReturnExpression(expr.whenTrue);
+        collectKeysFromReturnExpression(expr.whenFalse);
+      }
+    }
+
+    function collectUnionLiteralKeysFromType(typeNode) {
+      function visit(node) {
+        if (ts.isLiteralTypeNode(node) && ts.isStringLiteral(node.literal)) {
+          if (keyShape.test(node.literal.text)) keys.add(node.literal.text);
+        } else {
+          ts.forEachChild(node, visit);
+        }
+      }
+      if (typeNode) visit(typeNode);
+    }
+
+    function collectReturnLiteralKeys(body) {
+      if (!body) return;
+      if (ts.isBlock(body)) {
+        for (const stmt of body.statements) {
+          if (ts.isReturnStatement(stmt)) {
+            collectKeysFromReturnExpression(stmt.expression);
+          }
+        }
+        return;
+      }
+      collectKeysFromReturnExpression(body);
     }
 
     function visit(node) {
@@ -3199,8 +3230,8 @@ function checkAccessibleNameFallbacks() {
         ts.isIdentifier(node.name) &&
         node.name.text === methodName;
       if (isNamedMethod) {
-        if (node.type) collectStringLiteralKeys(node.type);
-        if (node.body) collectStringLiteralKeys(node.body);
+        if (node.type) collectUnionLiteralKeysFromType(node.type);
+        if (node.body) collectReturnLiteralKeys(node.body);
       }
       ts.forEachChild(node, visit);
     }
