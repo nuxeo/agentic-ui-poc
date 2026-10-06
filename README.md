@@ -1,6 +1,10 @@
 # agentic-ui-poc
 
-Nx + **Angular 20** monorepo for the **Agentic AI–Built Nuxeo Angular UI** PoC. PoC charter: [README.charter.md](README.charter.md). Boundaries and aliases: [docs/architecture.md](docs/architecture.md).
+**Nuxeo Agentic UI** — a modern web interface for Nuxeo, delivered as a Marketplace package, that you change by configuration or with your own code.
+
+> **Not a developer on this repository?** Read [the short version](documentation/20-product/00-the-short-version.md): five minutes on what it does, what it does not, what you can change without code, and how to start. To customise it with an AI coding agent, use the [prompt library](https://github.com/nuxeo-sandbox/nuxeo-agentic-ui-prompts).
+
+The rest of this page is for developers. Nx + **Angular 20** monorepo for Nuxeo Agentic UI, built with AI coding agents. PoC charter: [README.charter.md](README.charter.md). Boundaries and aliases: [docs/architecture.md](docs/architecture.md).
 
 The `nuxeo-ui` app uses a root [`angular.json`](angular.json) for `ng build` / `ng serve` / `ng test` (Karma); Nx targets in [`apps/nuxeo-ui/project.json`](apps/nuxeo-ui/project.json) delegate to the Angular CLI (`nx:run-commands`) to avoid an Nx 22 + Angular application-builder schema bug (`visitor is not a function`). Libraries use **Vitest 3** and **Analog 1.22** (aligned with Angular 20).
 
@@ -31,6 +35,7 @@ npx nx test <project>         # e.g. core, nuxeo-ui, browse
 
 ## Docs
 
+- [documentation/README.md](documentation/README.md) — **documentation home**: where to start, by who you are
 - [docs/ai-features.md](docs/ai-features.md) — **AI features guide** (NL search, summarization, chat, tagging, anomaly detection, etc.)
 - [docs/knowledge-discovery.md](docs/knowledge-discovery.md) — Knowledge Discovery page setup and flow (via Nuxeo CIC connector)
 - [docs/developer-guide.md](docs/developer-guide.md) — Coding conventions, project patterns, how-to guides

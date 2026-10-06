@@ -87,7 +87,7 @@ product follows from it.
 
 | Layer                      | Customer writes                 | Build?      | Example                                                                                       |
 | -------------------------- | ------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
-| **0 — Configuration**      | JSON + CSS variables            | **No**      | Rebrand: logo, colours, product name, languages                                               |
+| **0 — Configuration**      | JSON + CSS variables            | **No**      | Rebrand: colours, product name, default language — not the logo yet                           |
 | **1 — Declarative wiring** | JSON referencing registered IDs | **No**      | Hide the Reports nav entry; relabel Home to "Dashboard"; add a Contracts entry at position 35 |
 | **2 — Customer code**      | TypeScript in **their** repo    | Yes, theirs | A contract-approval action visible only to users who can write the document                   |
 | **3 — Agent harness**      | Prompts                         | Yes, theirs | The same request as a short agent session against a defined API                               |

@@ -50,7 +50,7 @@ audience: product
 
 | Feature              | Description                                                                          | Problem solved                    | Depends on                                 | Status                           |
 | -------------------- | ------------------------------------------------------------------------------------ | --------------------------------- | ------------------------------------------ | -------------------------------- |
-| Metadata view & edit | Properties panel, edit dialog, content-model-driven fields                           | See and change document data      | `content-model.service`                    | **Shipped**                      |
+| Metadata view & edit | Properties panel, edit dialog — fixed Dublin Core fields; no custom-type fields      | See and change document data      | `edit-document-dialog`                     | **Shipped, limited**             |
 | Preview / viewer     | Inline preview; ARender integration for rich formats                                 | Read without downloading          | ARender (Docker), `arender.service`        | **Shipped**                      |
 | Versions             | Create a version, restore, manage-versions dialog                                    | Audit and rollback                | adf-hx version ports                       | **Shipped**                      |
 | Permissions          | View local ACLs, add/update/delete permissions, external sharing, notification email | Control access                    | `principal-permissions.service`, 4 dialogs | **Shipped, limited** — see below |
