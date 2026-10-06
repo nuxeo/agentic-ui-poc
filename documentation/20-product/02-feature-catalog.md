@@ -162,6 +162,7 @@ HTTP 500, which is expected. Feature-flagged client-side
 | **4 Nx generators**          | Library, rule, action, component — shipped inside the package                     | Correct, registered, tested scaffolding by default                                             | **Shipped**                    |
 | **Customer guardrail**       | 5 checks a customer runs in their own CI                                          | An agent can verify its own output                                                             | **Shipped**                    |
 | **Upgrade rehearsal**        | Proves a Layer 0/1/2 customisation survives a version bump                        | The upgrade promise is tested, not asserted                                                    | **Shipped**                    |
+| Document-type rules          | `app.rules.isType`, `app.rules.hasFacet` — Web UI `nuxeo-filter` type and facet   | Different tabs and actions per Case, Claim or Member — document detail, not browse columns     | **Shipped**                    |
 | Rule composites              | `core.every`, `core.some`, `core.not`, `core.true`, `core.false` — ACA-compatible | Manifests written against ACA docs work                                                        | **Shipped**                    |
 | Fail-closed security rules   | 3 rules deny when unregistered                                                    | A registration gap cannot expose Administration                                                | **Shipped**                    |
 

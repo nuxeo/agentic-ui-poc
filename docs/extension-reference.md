@@ -69,9 +69,11 @@ installer copies that directory with `overwrite="true"` and would destroy it. Se
 of the plan for the ACL model — in short, grant Read broadly and Write narrowly, and block
 inheritance on the config folder.
 
-The document must be a Note whose `note:mime_type` is **`text/plain`**. Nuxeo's HTML sanitizer
-escapes the quotes in any other note type — `application/json` included — so the stored JSON stops
-parsing and the packaged defaults apply with no error shown.
+With the default `manifestDocumentProperty`, `note:note`, the document is a Note and its
+`note:mime_type` must be **`text/plain`**. Nuxeo's HTML sanitizer escapes the quotes in a Note of
+any other type — `application/json` included — so the stored JSON stops parsing and the packaged
+defaults apply with no error shown. A deployment that points `manifestDocumentProperty` at a
+property of its own schema is not subject to this.
 
 The Layer 1 configuration is the `extensions` key of that document:
 
