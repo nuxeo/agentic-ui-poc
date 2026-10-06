@@ -85,6 +85,19 @@ describe('AppConfigService', () => {
       expect(service.brandingLogo()).toBeNull();
     });
 
+    // Error path: a protocol-relative API origin is where API requests go, so it serves Nuxeo too.
+    it('stays null for an https URL on a protocol-relative Nuxeo API origin', async () => {
+      const loaded = service.loadBootstrap();
+      http.expectOne(BOOTSTRAP_URL).flush({
+        nuxeoApiOrigin: '//api.example',
+        branding: { logo: { src: 'https://api.example/nuxeo/api/v1/me', alt: 'x' } },
+      });
+      await loaded;
+
+      expect(service.bootstrap().branding.logo).not.toBeNull();
+      expect(service.brandingLogo()).toBeNull();
+    });
+
     // Error path: `..;` passes the string checks and the browser keeps it, but Tomcat reads it as
     // a parent directory, so only the resolved check can refuse it.
     it('stays null for a path-parameter segment that Tomcat reads as a parent directory', async () => {

@@ -22,6 +22,7 @@ describe('branding.logo', () => {
     ['an https URL', 'https://cdn.example.com/acme.svg'],
     ['a data:image URI', 'data:image/png;base64,iVBORw0KGgo='],
     ['an inline SVG data URI', 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>'],
+    ['a file name with a query and a fragment', 'acme-logo.svg?v=2#mark'],
   ])('accepts %s', (_label, src) => {
     expect(logoOf({ src, alt: 'Acme' })).toEqual({ src, alt: 'Acme' });
   });
@@ -38,6 +39,9 @@ describe('branding.logo', () => {
     ['a non-image data URI', 'data:text/html,<script>alert(1)</script>'],
     ['an unparseable https URL', 'https://exa mple.com/logo.svg'],
     ['a blank src', '   '],
+    // These resolve to bootstrap.json itself.
+    ['a query alone', '?v=1'],
+    ['a fragment alone', '#logo'],
     // The URL parser deletes tabs and newlines and strips leading control characters, so each
     // of these resolves to something the string as written does not look like.
     ['a tab hidden in a parent segment', '.\t./api/v1/me'],
@@ -115,6 +119,18 @@ describe('resolveBrandingLogoUrl — the check on the URL the browser loads', ()
     ).toBeNull();
   });
 
+  // Cookies are scoped by host, not by scheme or port, so these still carry the Nuxeo session.
+  it('refuses another scheme or port on a host that serves Nuxeo', () => {
+    expect(
+      resolveBrandingLogoUrl('https://app.example:8443/nuxeo/api/v1/me', configUrl),
+    ).toBeNull();
+    expect(
+      resolveBrandingLogoUrl('https://api.example/nuxeo/api/v1/me', configUrl, [
+        'http://api.example',
+      ]),
+    ).toBeNull();
+  });
+
   it('allows https on a third-party origin, and nothing else there', () => {
     expect(resolveBrandingLogoUrl('https://cdn.example/acme.svg', configUrl)).toBe(
       'https://cdn.example/acme.svg',
@@ -188,6 +204,26 @@ describe('nuxeoOriginsOf', () => {
         'https://a.example/',
       ),
     ).toEqual(['https://a.example']);
+    expect(
+      nuxeoOriginsOf(
+        { ...DEFAULT_APP_BOOTSTRAP_CONFIG, nuxeoServerUrl: 'https://exa mple.com' },
+        'https://a.example/',
+      ),
+    ).toEqual(['https://a.example']);
+  });
+
+  it('resolves protocol-relative origins against the application, as API requests do', () => {
+    const config = {
+      ...DEFAULT_APP_BOOTSTRAP_CONFIG,
+      nuxeoApiOrigin: '//api.example',
+      nuxeoServerUrl: '//server.example/nuxeo',
+    };
+
+    expect(nuxeoOriginsOf(config, 'https://app.example/')).toEqual([
+      'https://app.example',
+      'https://api.example',
+      'https://server.example',
+    ]);
   });
 });
 

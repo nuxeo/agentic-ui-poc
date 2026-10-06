@@ -473,7 +473,7 @@ function readSsoEndpoints(
  * browser will actually load. This only refuses what is wrong whatever it resolves to: control
  * characters and backslashes (the URL parser deletes or rewrites them, so they disguise a path),
  * a `data:` URI that is not an image or carries no payload, a scheme other than `https:`, and an
- * absolute path or `..` segment (including `%2e%2e`) in a relative one.
+ * absolute path, a `..` segment (including `%2e%2e`) or no path at all in a relative one.
  */
 function isAcceptedLogoSrc(src: string): boolean {
   if (src.includes('\\') || [...src].some((char) => char < ' ' || char === '\u007f')) return false;
@@ -488,6 +488,8 @@ function isAcceptedLogoSrc(src: string): boolean {
   }
   if (src.startsWith('/')) return false;
   const path = src.split(/[?#]/, 1)[0] ?? '';
+  // A query or fragment alone resolves to bootstrap.json itself, which no <img> can render.
+  if (!path) return false;
   return !path.replace(/%2e/gi, '.').split('/').includes('..');
 }
 
@@ -536,7 +538,10 @@ export function resolveBrandingLogoUrl(
   if (url.origin === config.origin) {
     return isInsideDirectory(url.pathname, new URL('.', config).pathname) ? url.href : null;
   }
-  if (nuxeoOrigins.includes(url.origin)) return null;
+  // Cookies are scoped by host, not by scheme or port, so any origin on a Nuxeo host carries the
+  // session.
+  const nuxeoHosts = [config.origin, ...nuxeoOrigins].map((origin) => parseUrl(origin)?.hostname);
+  if (nuxeoHosts.includes(url.hostname)) return null;
   return url.protocol === 'https:' ? url.href : null;
 }
 
@@ -565,19 +570,27 @@ function isInsideDirectory(pathname: string, directory: string): boolean {
 
 /**
  * Every origin that serves Nuxeo for this deployment: the application's own, which proxies or is
- * Nuxeo, plus a configured `nuxeoApiOrigin` and `nuxeoServerUrl`. Unparseable values are skipped.
+ * Nuxeo, plus a configured `nuxeoApiOrigin` and `nuxeoServerUrl`. Each is resolved against
+ * `baseUri`, as API requests are, so a protocol-relative `//api.example` counts; a relative value
+ * resolves to the application's own origin.
  */
 export function nuxeoOriginsOf(config: AppBootstrapConfig, baseUri: string): string[] {
   const origins = new Set<string>();
   for (const candidate of [baseUri, config.nuxeoApiOrigin, config.nuxeoServerUrl]) {
     if (!candidate) continue;
-    try {
-      origins.add(new URL(candidate).origin);
-    } catch {
-      // A relative or malformed value names no other origin.
-    }
+    const origin = parseUrl(candidate, baseUri)?.origin;
+    if (origin) origins.add(origin);
   }
   return [...origins];
+}
+
+/** `new URL` without the throw. `URL.parse` would do, but only browsers from 2024 have it. */
+function parseUrl(value: string, base?: string): URL | null {
+  try {
+    return new URL(value, base);
+  } catch {
+    return null;
+  }
 }
 
 function mergeSso(base: AppSsoConfig, value: unknown): AppSsoConfig {
