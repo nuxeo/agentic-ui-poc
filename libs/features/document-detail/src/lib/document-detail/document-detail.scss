@@ -203,6 +203,16 @@ sat-breadcrumbs {
   }
 }
 
+// NXENG-776 — IBM 298748541 / WCAG 2.4.7. Material icon buttons suppress the default ring and
+// there is no global fallback. Keep `:focus` as its own selector — IBM Equal Access reads
+// `:focus` only and does not resolve comma-grouped selector lists.
+.panel-toggle-btn.mat-mdc-icon-button:focus {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-color: var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
 // Tabs — compact, left-aligned (matching Figma)
 .detail-tabs {
   flex: 1;
@@ -313,6 +323,12 @@ sat-breadcrumbs {
       background: var(--mat-sys-primary);
     }
   }
+}
+
+// NXENG-776 — properties panel sub-tabs (plain buttons, borderless). Same IBM `:focus`-only rule.
+.sub-tab:focus {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
 }
 
 .panel-body {
