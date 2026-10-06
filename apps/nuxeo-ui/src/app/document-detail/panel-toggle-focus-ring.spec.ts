@@ -4,7 +4,8 @@
  * and there is no global `:focus-visible` fallback in `styles.scss`.
  *
  * Same IBM `style_focus_visible` constraints as NXENG-872 / NXENG-775: standalone `:focus`
- * selector on the focused control, ring colour from `--mat-sys-primary`.
+ * selector on the focused control. The ring colour is pinned to the indigo used on this control
+ * because the tab header behind it stays `#fff` in every packaged theme.
  */
 import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -14,6 +15,9 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { TranslateModule } from '@ngx-translate/core';
 
 import { testTranslateModule } from '../i18n/translate-testing';
+import { COMPILED_THEME_BASES } from '../theme/app-theme';
+
+const WCAG_1411_MIN_RATIO = 3;
 
 function relativeLuminance([r, g, b]: [number, number, number]): number {
   const channel = (v: number): number => {
@@ -38,6 +42,7 @@ function rgb(css: string): [number, number, number] {
   imports: [MatButtonModule, MatIconModule, TranslateModule],
   styleUrls: [
     '../../../../../libs/features/document-detail/src/lib/document-detail/document-detail.scss',
+    './panel-toggle-focus-ring.fixture.scss',
   ],
   templateUrl: './panel-toggle-focus-ring.spec.html',
 })
@@ -46,8 +51,11 @@ class PanelToggleFocusHostComponent {}
 describe('Document detail panel toggle — keyboard focus indicator (NXENG-773)', () => {
   let fixture: ComponentFixture<PanelToggleFocusHostComponent>;
   let button: HTMLButtonElement;
+  let originalTheme: string | null;
 
   beforeEach(async () => {
+    originalTheme = document.documentElement.getAttribute('data-app-theme');
+
     await TestBed.configureTestingModule({
       imports: [PanelToggleFocusHostComponent, testTranslateModule()],
       providers: [provideZonelessChangeDetection(), provideNoopAnimations()],
@@ -61,6 +69,7 @@ describe('Document detail panel toggle — keyboard focus indicator (NXENG-773)'
     button = fixture.nativeElement.querySelector('.panel-toggle-btn') as HTMLButtonElement;
   });
 
+  /** Nearest non-transparent ancestor — the fixed white tab header stub in this fixture. */
   function surfaceBehindTheRing(): string {
     let node: HTMLElement | null = button.parentElement;
     while (node) {
@@ -74,6 +83,11 @@ describe('Document detail panel toggle — keyboard focus indicator (NXENG-773)'
   afterEach(() => {
     button?.blur();
     fixture.nativeElement.remove();
+    if (originalTheme === null) {
+      document.documentElement.removeAttribute('data-app-theme');
+    } else {
+      document.documentElement.setAttribute('data-app-theme', originalTheme);
+    }
   });
 
   it('draws no outline while unfocused', () => {
@@ -90,18 +104,30 @@ describe('Document detail panel toggle — keyboard focus indicator (NXENG-773)'
     expect(style.outlineOffset).toBe('2px');
   });
 
-  it('meets the 3:1 non-text contrast of SC 1.4.11 against the fixture surface the ring touches', () => {
-    button.focus();
-    const style = getComputedStyle(button);
+  for (const theme of [...COMPILED_THEME_BASES, null] as const) {
+    const label = theme ?? 'no data-app-theme (first paint)';
 
-    expect(style.outlineStyle).not.toBe('none');
-    expect(parseFloat(style.outlineWidth)).toBeGreaterThan(0);
-    expect(parseFloat(style.outlineOffset)).toBeGreaterThan(0);
+    it(`meets ${WCAG_1411_MIN_RATIO}:1 on the white tab header — ${label}`, () => {
+      if (theme === null) {
+        document.documentElement.removeAttribute('data-app-theme');
+      } else {
+        document.documentElement.setAttribute('data-app-theme', theme);
+      }
 
-    expect(
-      contrastRatio(rgb(style.outlineColor), rgb(surfaceBehindTheRing())),
-    ).toBeGreaterThanOrEqual(3);
-  });
+      button.focus();
+      const style = getComputedStyle(button);
+
+      expect(style.outlineStyle).not.toBe('none');
+      expect(parseFloat(style.outlineWidth)).toBeGreaterThan(0);
+      expect(parseFloat(style.outlineOffset)).toBeGreaterThan(0);
+
+      expect(surfaceBehindTheRing()).toBe('rgb(255, 255, 255)');
+
+      expect(
+        contrastRatio(rgb(style.outlineColor), rgb(surfaceBehindTheRing())),
+      ).toBeGreaterThanOrEqual(WCAG_1411_MIN_RATIO);
+    });
+  }
 
   it('declares a standalone :focus rule that IBM style_focus_visible can read', () => {
     const focusSelectors: string[] = [];

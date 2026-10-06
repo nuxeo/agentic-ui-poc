@@ -1,0 +1,16 @@
+// Test-only layout: mirrors `.tabs-header-row` + the fixed `#fff` tab header surface the toggle
+// sits over (`document-detail.scss` → `.detail-tabs .mat-mdc-tab-header`).
+.panel-toggle-focus-ring-host {
+  --panel-toggle-focus-ring-header-bg: #fff;
+  --panel-toggle-focus-ring-header-border: #e0e0e0;
+  position: relative;
+  width: 120px;
+  height: 48px;
+  background: var(--panel-toggle-focus-ring-header-bg);
+}
+
+.panel-toggle-focus-ring-tab-header {
+  background: var(--panel-toggle-focus-ring-header-bg);
+  border-bottom: 1px solid var(--panel-toggle-focus-ring-header-border);
+  height: 48px;
+}

@@ -1,12 +1,15 @@
 <!--
-  Fixture for panel-toggle-focus-ring.spec.ts. Mirrors the details-panel toggle in
-  document-detail.html (mat-icon-button.panel-toggle-btn, aria-label toggle-details-panel).
+  Fixture for panel-toggle-focus-ring.spec.ts. Mirrors document-detail.html: toggle inside
+  `.tabs-header-row`, positioned over the tab header's fixed white background.
 -->
-<button
-  type="button"
-  mat-icon-button
-  class="panel-toggle-btn"
-  [attr.aria-label]="'document-detail.document-detail.toggle-details-panel' | translate"
->
-  <mat-icon>info_outline</mat-icon>
-</button>
+<div class="tabs-header-row panel-toggle-focus-ring-host">
+  <div class="panel-toggle-focus-ring-tab-header" aria-hidden="true"></div>
+  <button
+    type="button"
+    mat-icon-button
+    class="panel-toggle-btn"
+    [attr.aria-label]="'document-detail.document-detail.toggle-details-panel' | translate"
+  >
+    <mat-icon>info_outline</mat-icon>
+  </button>
+</div>
