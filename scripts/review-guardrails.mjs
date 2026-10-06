@@ -37,7 +37,10 @@ function fileExists(path) {
 }
 
 function read(path) {
-  return readFileSync(join(repoRoot, path), 'utf8');
+  // Workflow files are often checked out CRLF on Windows. Line-based matchers use `$`, which does
+  // not match before a trailing `\r`, so a step's `uses:` line was invisible while `true\r` inputs
+  // still matched via `\s*`.
+  return readFileSync(join(repoRoot, path), 'utf8').replace(/\r/g, '');
 }
 
 function toPosixRel(rel) {
@@ -3140,6 +3143,10 @@ function checkAccessibleNameFallbacks() {
   const BINDING =
     /\[(?:attr\.)?(aria-label|title|placeholder)\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
+  // `[attr.aria-label]="someMethod() | translate"` — keys live in the component `.ts` return.
+  const METHOD_BINDING =
+    /\[(?:matTooltip|(?:attr\.)?(?:aria-label|title))\]="\s*(\w+)\(\)\s*\|\s*translate\s*"/g;
+
   // NXENG-798: global search names via a visible `<label>`, not `[placeholder]`. Only this control
   // is wired here — a repo-wide `<label>{{ … | translate }}</label>` scan would surface dozens of
   // pre-existing catalogue keys that never passed through the attribute binding pattern.
@@ -3163,6 +3170,18 @@ function checkAccessibleNameFallbacks() {
    */
   const isUpstreamShaped = (key) => /^[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+$/.test(key);
 
+  /** String-literal translation keys returned by `methodName()` in a component class. */
+  function translationKeysReturnedByMethod(tsSource, methodName) {
+    const anchor = tsSource.indexOf(`${methodName}(`);
+    if (anchor === -1) return [];
+    const slice = tsSource.slice(anchor, anchor + 600);
+    return [
+      ...new Set(
+        [...slice.matchAll(/'((?:[a-z][a-z0-9-]*\.)+[a-z][a-z0-9-]*)'/g)].map(([, key]) => key),
+      ),
+    ];
+  }
+
   function recordBinding(template, attribute, key) {
     bindings += 1;
     if (!owned.has(key)) {
@@ -3185,8 +3204,17 @@ function checkAccessibleNameFallbacks() {
 
   for (const template of templates) {
     if (!fileExists(template)) continue;
-    for (const [, attribute, key] of read(template).matchAll(BINDING)) {
+    const html = read(template);
+    for (const [, attribute, key] of html.matchAll(BINDING)) {
       recordBinding(template, attribute, key);
+    }
+    const tsPath = template.replace(/\.html$/, '.ts');
+    if (!fileExists(tsPath)) continue;
+    const tsSource = read(tsPath);
+    for (const [, methodName] of html.matchAll(METHOD_BINDING)) {
+      for (const key of translationKeysReturnedByMethod(tsSource, methodName)) {
+        recordBinding(template, `${methodName}()`, key);
+      }
     }
   }
 
