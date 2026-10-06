@@ -145,6 +145,11 @@ describe('resolveBrandingLogoUrl — the check on the URL the browser loads', ()
     ],
     ['an encoded semicolon, for a proxy that decodes first', '..%3b/api/v1/me'],
     ['an encoded slash', '..%2fapi/v1/me'],
+    ['a double-encoded parent segment', '%252e%252e/api/v1/me'],
+    [
+      'a double-encoded parent as an absolute https URL',
+      'https://app.example/nuxeo/agentic-ui-config/%252e%252e/api/v1/me',
+    ],
     ['a malformed percent escape', 'acme%e0.svg'],
   ])('refuses %s on the configuration origin', (_label, src) => {
     expect(resolveBrandingLogoUrl(src, configUrl)).toBeNull();

@@ -67,10 +67,12 @@ and the Satori lockup on the login page. `null` or absent keeps the Satori marks
   endpoint is refused rather than left to fail. The deciding check runs on the **resolved** URL,
   after the URL parser has dropped tabs and newlines and collapsed `..` and `%2e%2e`: on the
   application's origin, the configured `nuxeoApiOrigin` or `nuxeoServerUrl`, it must lie inside the
-  configuration directory, and no path segment may carry a `;` or an encoded `;` or `/` — Tomcat
-  strips `;` path parameters before it collapses `..`, so `..;/api/v1/me` would leave the directory
-  on the server while staying inside it in the browser. A logo file name therefore cannot contain
-  `;`. Elsewhere it must be `https:`. Refused earlier, on the string as written:
+  configuration directory, and no path segment may carry a `;`, an encoded `;` or `/`, or a
+  double-encoded escape such as `%252e` — Tomcat strips `;` path parameters before it collapses
+  `..`, so `..;/api/v1/me` would leave the directory on the server while staying inside it in the
+  browser, and a proxy that decodes before forwarding turns the encoded forms into the same thing.
+  A logo file name therefore cannot contain `;` or `%`. Elsewhere it must be `https:`. Refused
+  earlier, on the string as written:
   control characters, backslashes, an absolute or protocol-relative path, a `..` segment, `http:`,
   `javascript:`, and a `data:` URI that is not an image or has no payload.
 - **`alt`** names the login page's brand link. Empty falls back to `applicationTitle`. The header

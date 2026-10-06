@@ -545,8 +545,9 @@ export function resolveBrandingLogoUrl(
  *
  * Tomcat drops `;` path parameters from each segment before it collapses dot segments, so `..;x`
  * is an ordinary segment to the browser and a parent directory to Nuxeo. A proxy that decodes
- * before forwarding does the same with `%3b`, and with `%2f` as a separator. A segment carrying
- * any of those, or one that does not decode, is refused.
+ * before forwarding does the same with `%3b`, with `%2f` as a separator, and with `%252e%252e`,
+ * which Tomcat then decodes again to `..`. A segment carrying any of those — including an escape
+ * left over after decoding once — or one that does not decode, is refused.
  */
 function isInsideDirectory(pathname: string, directory: string): boolean {
   if (!pathname.startsWith(directory)) return false;
@@ -555,7 +556,7 @@ function isInsideDirectory(pathname: string, directory: string): boolean {
     .split('/')
     .every((segment) => {
       try {
-        return !/[;/\\]/.test(decodeURIComponent(segment));
+        return !/[;/\\%]/.test(decodeURIComponent(segment));
       } catch {
         return false;
       }
