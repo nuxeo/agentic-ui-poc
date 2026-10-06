@@ -341,9 +341,11 @@ Reset: `git checkout -- nuxeo-agentic-ui-package/src/main/config/bootstrap.json`
 "Appearance", button "Use this one". The manifest layers **last** over the shipped catalogue, so
 the customer always wins.
 
-`labels` **does** relabel navigation too, per locale, through each descriptor's `labelKey` —
-`labels["nav.item.collections"]` renames Collections in that language alone. Use
-`overrides.<id>.label` when you want one literal in every locale; set both and the override wins.
+`labels` **does** relabel navigation too, through each descriptor's `labelKey` —
+`labels["nav.item.collections"]` renames Collections. The manifest's `labels` map is not keyed by
+language, so that text replaces the key in every language's catalogue; per-language wording is not
+configurable today. `overrides.<id>.label` also shows one literal in every locale, but bypasses
+the key entirely; set both and the override wins.
 This corrects F5, which was withdrawn on 2026-09-26.
 
 ### Beat 5 — Nav: hide one, add one, and the security question (4 min)

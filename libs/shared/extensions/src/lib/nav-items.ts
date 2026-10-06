@@ -46,7 +46,7 @@ export interface NavItemDescriptor extends ExtensionElement {
    * | Want | Use | Scope |
    * | --- | --- | --- |
    * | One label, every language | `overrides[id].label` | Wins outright; bypasses translation |
-   * | Per-language text | `labels['nav.browse']` in the manifest | Applies wherever the key resolves |
+   * | Replace the key's text | `labels['nav.browse']` in the manifest | Wherever the key resolves; same text in every language |
    *
    * Setting **both** means the override wins and the `labels` entry is silently inert. That is
    * the documented precedence, not an accident, and `docs/extension-reference.md` says so.

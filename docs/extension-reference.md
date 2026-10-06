@@ -173,10 +173,13 @@ Packaged entries carry both a `label` (the English literal) and a `labelKey` (a 
 The renderer prefers the key when it resolves. That gives you two ways to change the text, and
 they are not interchangeable.
 
-| You want                       | Set                                         | Result                                                                    |
-| ------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------- |
-| One wording, every language    | `overrides["app.navbar.collections"].label` | Your literal, verbatim, in all locales. Translation is bypassed entirely. |
-| Different wording per language | `labels["nav.item.collections"]` (Layer 0)  | Your text wherever that key resolves, per catalogue.                      |
+| You want                    | Set                                         | Result                                                                    |
+| --------------------------- | ------------------------------------------- | ------------------------------------------------------------------------- |
+| One wording, every language | `overrides["app.navbar.collections"].label` | Your literal, verbatim, in all locales. Translation is bypassed entirely. |
+| Replace a translation key   | `labels["nav.item.collections"]` (Layer 0)  | Your text wherever that key resolves, the same in every language.         |
+
+The manifest's `labels` map is not keyed by language: `AppTranslateLoader` layers the same map
+over every language's catalogue. Per-language wording is not configurable today.
 
 **Setting `label` disables the key for that entry**, deliberately and by design: a manifest
 literal is an instruction to show exactly that string, so it must win. If you set both, `label`
