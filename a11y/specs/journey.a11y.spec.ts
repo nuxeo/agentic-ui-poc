@@ -253,6 +253,54 @@ async function firstOpenableDocument(page: Page): Promise<RepoEntry> {
   );
 }
 
+const FILE_WITH_MAIN_BLOB_NXQL =
+  "SELECT * FROM File WHERE ecm:mixinType <> 'HiddenInNavigation' " +
+  'AND ecm:isVersion = 0 AND ecm:isTrashed = 0 AND file:content/name IS NOT NULL ' +
+  'ORDER BY dc:created';
+
+/**
+ * A File whose main blob is persisted — required when the scan must reach footer controls that
+ * only render when `fileName()` is populated (`document-detail.html`).
+ */
+async function firstFileWithMainBlob(page: Page): Promise<RepoEntry> {
+  let chosen: RepoEntry | undefined;
+  let examined = 0;
+  for (let pageIndex = 0; !chosen; pageIndex++) {
+    const { entries, isNextPageAvailable } = await nxqlPage(
+      page,
+      FILE_WITH_MAIN_BLOB_NXQL,
+      20,
+      pageIndex,
+      'document detail blob',
+    );
+    if (entries.length === 0 && isNextPageAvailable) {
+      throw new Error(
+        `document detail blob: page ${pageIndex} of the File query is empty but claims another ` +
+          'follows, so paging it would never end',
+      );
+    }
+    for (const candidate of entries) {
+      examined++;
+      const head = await page.request.head(`/nuxeo/api/v1/id/${candidate.uid}/@blob/file:content`, {
+        failOnStatusCode: false,
+      });
+      if (head.ok()) {
+        chosen = candidate;
+        break;
+      }
+    }
+    if (!isNextPageAvailable) {
+      break;
+    }
+  }
+  return requireEntry(
+    chosen ? [chosen] : [],
+    `the repository holds no File with a persisted main blob among ${examined} candidate(s) — ` +
+      'seed a document with file:content before running document detail when replace-main-file ' +
+      'must be in the scanned DOM',
+  );
+}
+
 /** The fields of a Nuxeo document entry this file reads. */
 interface RepoEntry {
   readonly uid: string;
@@ -628,12 +676,38 @@ journeyTest('browse', async ({ signedIn: page, a11y }) => {
 });
 
 /**
+ * Enter the Replace main file tooltip interaction state without an axe WCAG verdict.
+ *
+ * Label-in-name conformance is gated in phase-6 (`docs/accessibility.md`). Here we only prove
+ * the journey reached the intended DOM state: control present, tooltip visible, tooltip text
+ * matches the control's accessible name (precondition, not axe).
+ */
+async function enterDocumentDetailReplaceMainFileTooltipState(page: Page): Promise<void> {
+  const replaceButtons = page
+    .locator('lib-document-viewer .viewer-footer-actions button')
+    .filter({ has: page.locator('mat-icon', { hasText: 'find_replace' }) });
+  const replace = replaceButtons.first();
+  await expect(
+    replace,
+    'replace main file must render on a writable File with a main blob',
+  ).toBeVisible();
+  const accessibleName = (await replace.getAttribute('aria-label')) ?? '';
+  await replace.hover();
+  await replace.focus();
+  const tooltip = page.locator('.cdk-overlay-container').getByText(accessibleName, { exact: true });
+  await expect(
+    tooltip,
+    'Replace main file tooltip must be visible and match the control accessible name',
+  ).toBeVisible();
+}
+
+/**
  * Screen 4 — document detail, opened on a real document.
  */
 journeyTest('document-detail', async ({ signedIn: page, a11y }) => {
   // Navigate first so `page.request` inherits the app origin and the dev-server proxy.
   await page.goto('/#/browse', { waitUntil: 'networkidle' });
-  const { uid, title } = await firstOpenableDocument(page);
+  const { uid, title } = await firstFileWithMainBlob(page);
 
   await page.goto(`/#/doc/${uid}`, { waitUntil: 'networkidle' });
 
@@ -649,8 +723,9 @@ journeyTest('document-detail', async ({ signedIn: page, a11y }) => {
   // the screen whose findings were unstable because of it.
   await waitForScreenSettled(page, 'lib-document-detail', true);
   await expectSurfaceUsable(page, 'lib-document-detail', 'document detail');
+  await enterDocumentDetailReplaceMainFileTooltipState(page);
 
-  await a11y.scanPage(SCREEN_SCAN);
+  await a11y.scanPage({ ...SCREEN_SCAN, extraWaitMs: 600 });
   await emitScreenReport(a11y, journeyReportName('document-detail'));
 });
 
