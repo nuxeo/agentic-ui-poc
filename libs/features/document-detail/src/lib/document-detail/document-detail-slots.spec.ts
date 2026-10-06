@@ -1,4 +1,4 @@
-import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
+import { Component, input, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -79,6 +79,29 @@ const CONTRIBUTED_TAB_MARKER = 'CONTRIBUTED CLAIMS PANEL';
 })
 class ClaimsPanelComponent {}
 
+@Component({
+  standalone: true,
+  selector: 'lib-test-claim-view',
+  template: '<p class="claim-view">CLAIM VIEW {{ document()?.title }} {{ heading() }}</p>',
+})
+class ClaimViewComponent {
+  readonly document = input<NuxeoDocument | null>(null);
+  readonly heading = input('');
+}
+
+@Component({
+  standalone: true,
+  selector: 'lib-test-case-view',
+  template: '<p class="case-view">CASE VIEW</p>',
+})
+class CaseViewComponent {}
+
+/**
+ * Stands in for `app.rules.isType`, which ships separately: the slot is rule-agnostic, so
+ * these tests must not depend on which release registers the packaged type rule.
+ */
+const IS_TYPE_RULE = 'test.rules.isType';
+
 function doc(over: Partial<NuxeoDocument> = {}): NuxeoDocument {
   return {
     uid: 'doc-1',
@@ -133,8 +156,9 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
   (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:mock/1');
   (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn();
 
-  async function render(extensions: unknown): Promise<void> {
+  async function render(extensions: unknown, focused: NuxeoDocument = doc()): Promise<void> {
     manifest.set({ extensions });
+    mockDetailService.getFullDocument.mockReturnValue(of(focused));
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       // `TranslateModule` is bootstrapped by the app, not the feature: the
@@ -186,7 +210,16 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
             [EXTENSION_SLOTS.toolbar]: PACKAGED_DOCUMENT_TOOLBAR_ACTIONS,
             [EXTENSION_SLOTS.tabs]: PACKAGED_DOCUMENT_TABS,
           },
-          components: { 'acme.tabs.claims': ClaimsPanelComponent },
+          components: {
+            'acme.tabs.claims': ClaimsPanelComponent,
+            'acme.views.claim': ClaimViewComponent,
+            'acme.views.case': CaseViewComponent,
+            'acme.views.broken': () => Promise.reject(new Error('chunk failed to load')),
+          },
+          rules: {
+            [IS_TYPE_RULE]: (context, parameters) =>
+              parameters.includes(context.document?.type ?? ''),
+          },
         }),
       ],
     }).compileComponents();
@@ -347,6 +380,213 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
       });
 
       expect(tabLabels()).toEqual(['Where published', 'View', 'Annotations', 'Permissions']);
+    });
+  });
+
+  describe('documentView', () => {
+    const claim = (over: Partial<NuxeoDocument> = {}): NuxeoDocument =>
+      doc({ uid: 'claim-1', title: 'Claim CLM-42', type: 'Claim', ...over });
+
+    const forType = (id: string, componentId: string, types: string[], order?: number) => ({
+      id,
+      componentId,
+      order,
+      rule: { type: IS_TYPE_RULE, parameters: types },
+    });
+
+    function viewBody(): HTMLElement {
+      const body = fixture.nativeElement.querySelector('.mat-mdc-tab-body-active') as HTMLElement;
+      if (!body) throw new Error('no active tab body');
+      return body;
+    }
+
+    /** Lets a lazy component loader settle and the fallback it triggers render. */
+    async function settleLoad(): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('renders the packaged viewer for a File when nothing is contributed', async () => {
+      await render({});
+
+      expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
+      expect(viewBody().querySelector('.document-view-outlet')).toBeNull();
+    });
+
+    it('renders the packaged note editor for a Note when nothing is contributed', async () => {
+      await render(
+        {},
+        doc({ type: 'Note', properties: { 'note:note': 'hello', 'note:mime_type': 'text/plain' } }),
+      );
+
+      expect(viewBody().querySelector('lib-note-editor')).toBeTruthy();
+      expect(viewBody().querySelector('lib-document-viewer')).toBeNull();
+    });
+
+    /**
+     * The claim: a manifest alone gives one document type its own View. Seen red on purpose
+     * by restoring the packaged branch as the whole of `#viewTabContent`.
+     */
+    it('renders the contributed component for the type its rule names', async () => {
+      await render(
+        {
+          slots: {
+            documentView: [forType('acme.documentView.claim', 'acme.views.claim', ['Claim'])],
+          },
+        },
+        claim(),
+      );
+
+      expect(viewBody().textContent).toContain('CLAIM VIEW Claim CLM-42');
+      expect(viewBody().querySelector('lib-document-viewer')).toBeNull();
+      expect(
+        viewBody().querySelector('[data-document-view-id="acme.documentView.claim"]'),
+      ).toBeTruthy();
+    });
+
+    it('keeps the packaged viewer for a type the rule does not name', async () => {
+      await render({
+        slots: {
+          documentView: [forType('acme.documentView.claim', 'acme.views.claim', ['Claim'])],
+        },
+      });
+
+      expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
+      expect(viewBody().textContent).not.toContain('CLAIM VIEW');
+    });
+
+    it('renders the lowest-order entry when several match', async () => {
+      await render(
+        {
+          slots: {
+            documentView: [
+              forType('acme.documentView.claim', 'acme.views.claim', ['Claim'], 20),
+              forType('acme.documentView.case', 'acme.views.case', ['Claim'], 10),
+            ],
+          },
+        },
+        claim(),
+      );
+
+      expect(viewBody().textContent).toContain('CASE VIEW');
+      expect(viewBody().textContent).not.toContain('CLAIM VIEW');
+    });
+
+    it('honours manifest overrides on a documentView entry', async () => {
+      const slots = {
+        documentView: [
+          forType('acme.documentView.claim', 'acme.views.claim', ['Claim'], 20),
+          forType('acme.documentView.case', 'acme.views.case', ['Claim'], 10),
+        ],
+      };
+
+      await render({ slots, overrides: { 'acme.documentView.case': { visible: false } } }, claim());
+      expect(viewBody().textContent).toContain('CLAIM VIEW');
+
+      await render(
+        {
+          slots,
+          overrides: {
+            'acme.documentView.case': { rule: 'core.false' },
+            'acme.documentView.claim': { rule: 'core.false' },
+          },
+        },
+        claim(),
+      );
+      expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
+    });
+
+    it('skips an entry whose component is not registered', async () => {
+      await render(
+        {
+          slots: {
+            documentView: [
+              forType('acme.documentView.missing', 'acme.views.notShippedYet', ['Claim'], 10),
+              forType('acme.documentView.claim', 'acme.views.claim', ['Claim'], 20),
+            ],
+          },
+        },
+        claim(),
+      );
+
+      expect(viewBody().textContent).toContain('CLAIM VIEW');
+    });
+
+    it('falls back to the packaged viewer when no registered component matches', async () => {
+      await render(
+        {
+          slots: {
+            documentView: [
+              forType('acme.documentView.missing', 'acme.views.notShippedYet', ['Claim']),
+            ],
+          },
+        },
+        claim(),
+      );
+
+      expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
+    });
+
+    it('falls back to the packaged viewer when the component fails to load', async () => {
+      await render(
+        {
+          slots: {
+            documentView: [forType('acme.documentView.broken', 'acme.views.broken', ['Claim'])],
+          },
+        },
+        claim(),
+      );
+      await settleLoad();
+
+      expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
+    });
+
+    it('passes the focused document and static inputs, and keeps the document the host’s', async () => {
+      await render(
+        {
+          slots: {
+            documentView: [
+              {
+                ...forType('acme.documentView.claim', 'acme.views.claim', ['Claim']),
+                inputs: { heading: 'Claim summary', document: { title: 'Forged by the manifest' } },
+              },
+            ],
+          },
+        },
+        claim(),
+      );
+
+      expect(viewBody().textContent).toContain('CLAIM VIEW Claim CLM-42 Claim summary');
+      expect(viewBody().textContent).not.toContain('Forged by the manifest');
+    });
+
+    it('changes only the View tab body', async () => {
+      await render(
+        {
+          slots: {
+            documentView: [forType('acme.documentView.claim', 'acme.views.claim', ['Claim'])],
+          },
+        },
+        claim(),
+      );
+
+      expect(viewBody().textContent).toContain('CLAIM VIEW');
+      expect(tabLabels()).toEqual(['View', 'Annotations', 'Permissions', 'History', 'Publishing']);
+      expect(actionIds()).toContain('app.toolbar.edit');
+      expect(fixture.nativeElement.querySelector('aside.properties-panel')).toBeTruthy();
+
+      const annotations = [...fixture.nativeElement.querySelectorAll('.mat-mdc-tab')].find((el) =>
+        (el as HTMLElement).textContent?.includes('Annotations'),
+      ) as HTMLElement;
+      annotations.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
+      expect(viewBody().textContent).not.toContain('CLAIM VIEW');
     });
   });
 });

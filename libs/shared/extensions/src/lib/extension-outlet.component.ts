@@ -10,7 +10,9 @@ import {
   effect,
   inject,
   input,
+  reflectComponentType,
   signal,
+  untracked,
   type ComponentRef,
   type Type,
 } from '@angular/core';
@@ -35,6 +37,11 @@ import { TranslatePipe } from '@ngx-translate/core';
  * It uses `createComponent()` rather than `ViewContainerRef.createComponent()`
  * because the former accepts `bindings`/`environmentInjector` explicitly, which
  * is what makes input binding to a dynamically chosen component possible at all.
+ *
+ * A change to `componentInputs` alone is applied to the live instance; only a change
+ * of component recreates it. The `documentView` slot feeds the focused document, which
+ * is a new object on every refetch, and recreating on each one would discard whatever
+ * state the rendered view holds.
  */
 @Component({
   selector: 'lib-extension-outlet',
@@ -72,6 +79,8 @@ export class ExtensionOutletComponent {
   private readonly injector = inject(Injector);
   private readonly environmentInjector = inject(EnvironmentInjector);
   private componentRef: ComponentRef<unknown> | null = null;
+  /** Public names of the inputs the rendered component declares. */
+  private declaredInputs: ReadonlySet<string> = new Set();
   /** Bumped on every request so a slow load cannot overwrite a newer one. */
   private generation = 0;
 
@@ -81,11 +90,10 @@ export class ExtensionOutletComponent {
     effect(() => {
       const id = this.componentId();
       const type = this.componentType();
-      const inputs = this.componentInputs() ?? {};
       const generation = ++this.generation;
 
       if (type) {
-        this.render(type, inputs, generation);
+        untracked(() => this.render(type, generation));
         return;
       }
       if (!id) {
@@ -97,7 +105,7 @@ export class ExtensionOutletComponent {
 
       const immediate = this.registry.peek(id);
       if (immediate) {
-        this.render(immediate, inputs, generation);
+        untracked(() => this.render(immediate, generation));
         return;
       }
 
@@ -111,16 +119,19 @@ export class ExtensionOutletComponent {
           this.unresolved.set(true);
           return;
         }
-        this.render(resolvedType, inputs, generation);
+        this.render(resolvedType, generation);
+      });
+    });
+
+    effect(() => {
+      const inputs = this.componentInputs() ?? {};
+      untracked(() => {
+        if (this.componentRef) this.applyInputs(this.componentRef, inputs);
       });
     });
   }
 
-  private render(
-    type: Type<unknown>,
-    inputs: Readonly<Record<string, unknown>>,
-    generation: number,
-  ): void {
+  private render(type: Type<unknown>, generation: number): void {
     if (generation !== this.generation) return;
     this.clear();
 
@@ -128,17 +139,10 @@ export class ExtensionOutletComponent {
       environmentInjector: this.environmentInjector,
       elementInjector: this.injector,
     });
-
-    for (const [name, value] of Object.entries(inputs)) {
-      // `setInput` throws on a component that does not declare the input, and a
-      // descriptor's inputs are customer-authored data. A mistyped key must not
-      // blank the panel.
-      try {
-        ref.setInput(name, value);
-      } catch {
-        /* ignore an input the component does not declare */
-      }
-    }
+    this.declaredInputs = new Set(
+      reflectComponentType(type)?.inputs.map((declared) => declared.templateName) ?? [],
+    );
+    this.applyInputs(ref, this.componentInputs() ?? {});
 
     this.outlet.insert(ref.hostView);
     this.componentRef = ref;
@@ -146,9 +150,31 @@ export class ExtensionOutletComponent {
     this.unresolved.set(false);
   }
 
+  /**
+   * Set the inputs the component declares, and only those.
+   *
+   * A descriptor's inputs are customer-authored, and a host may offer an input not every
+   * component wants — `documentView` always offers `document`. `setInput` does not throw
+   * on an undeclared name; in a development build it logs NG0303 to the console, so the
+   * filter is what keeps an unused key silent rather than a `catch` that never fires.
+   */
+  private applyInputs(ref: ComponentRef<unknown>, inputs: Readonly<Record<string, unknown>>): void {
+    for (const [name, value] of Object.entries(inputs)) {
+      if (!this.declaredInputs.has(name)) continue;
+      // A declared input's `transform` is the component's code, run on customer data;
+      // a value it rejects must not blank the panel.
+      try {
+        ref.setInput(name, value);
+      } catch {
+        /* keep the rest of the inputs and the rendered component */
+      }
+    }
+  }
+
   private clear(): void {
     this.outlet?.clear();
     this.componentRef?.destroy();
     this.componentRef = null;
+    this.declaredInputs = new Set();
   }
 }

@@ -134,7 +134,7 @@ only that check goes red.
 
 ---
 
-## 4. The eight slots, and what actually reads them
+## 4. The nine slots, and what actually reads them
 
 Declared in [`libs/shared/extensions/src/lib/extension-slots.ts`](../../libs/shared/extensions/src/lib/extension-slots.ts).
 
@@ -144,14 +144,18 @@ Declared in [`libs/shared/extensions/src/lib/extension-slots.ts`](../../libs/sha
 | `bulk-actions` | **Live** — packaged descriptors + host                           |                                                                             |
 | `documentList` | **Live** — 12 packaged columns, resolved by _both_ browse routes | `provide-app-extensions.ts:93`, `browse.ts:373`, `browse-adf-hx-poc.ts:133` |
 | `sidebar`      | Resolved, **no packaged descriptor**                             | 3 documented IDs                                                            |
-| `routes`       | **Reserved — nothing reads it**                                  |                                                                             |
-| `toolbar`      | **Reserved — nothing reads it**                                  |                                                                             |
-| `contextMenu`  | **Reserved — nothing reads it**                                  |                                                                             |
-| `tabs`         | **Reserved — nothing reads it**                                  |                                                                             |
+| `routes`       | Resolved, **no packaged descriptor**                             | `extension-reference.md` section 11                                         |
+| `toolbar`      | **Live** — 16 packaged actions on document detail                | `extension-reference.md` section 8                                          |
+| `contextMenu`  | **Live** — 4 packaged actions in the browse "More actions" menu  | `extension-reference.md` section 10                                         |
+| `tabs`         | **Live** — 6 packaged document-detail tabs                       | `extension-reference.md` section 9                                          |
+| `documentView` | Resolved, **no packaged descriptor** — the View tab body         | `extension-reference.md` section 9a                                         |
 
-**Do not describe a reserved ID as an extension point.** Four of eight are reserved. The
-manifest example above places entries in `toolbar` and `sidebar`, which is legitimate as
-_forward-compatible configuration_ but renders nothing today.
+This table read "Reserved — nothing reads it" for `routes`, `toolbar`, `contextMenu` and
+`tabs` well after each gained a host. `npm run beta:reference` checks the states in
+`docs/extension-reference.md`, not this table, so the reference is authoritative.
+
+**Do not describe a reserved ID as an extension point.** No slot is reserved today; every
+one is read by a host, and `sidebar`, `routes` and `documentView` carry no packaged entries.
 
 `rules` was **removed** from `EXTENSION_SLOTS`: rules are not descriptors and live in
 `ExtensionRuleRegistry`, so `slots.rules` was silently inert.

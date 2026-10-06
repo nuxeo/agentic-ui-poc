@@ -266,6 +266,14 @@ sat-breadcrumbs {
   }
 }
 
+// A contributed View tab body brings no layout of its own; the tab body clips, so it scrolls here.
+.document-view-outlet {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 // Properties panel (right sidebar, outside tabs)
 .properties-panel {
   width: 380px;

@@ -387,6 +387,23 @@
         </mat-tab-group>
 
         <ng-template #viewTabContent>
+          @if (documentView(); as view) {
+            <lib-extension-outlet
+              #documentViewOutlet
+              class="document-view-outlet"
+              [attr.data-document-view-id]="view.id"
+              [componentId]="view.componentId ?? view.id"
+              [componentInputs]="documentViewInputs()"
+            />
+            @if (documentViewOutlet.unresolved()) {
+              <ng-container [ngTemplateOutlet]="packagedViewContent" />
+            }
+          } @else {
+            <ng-container [ngTemplateOutlet]="packagedViewContent" />
+          }
+        </ng-template>
+
+        <ng-template #packagedViewContent>
           @if (isNoteDocument()) {
             <lib-note-editor
               [content]="noteEditorBody()"

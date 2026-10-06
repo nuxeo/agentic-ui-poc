@@ -17,9 +17,11 @@ import {
   DescriptorLabelPipe,
   EXTENSION_SLOTS,
   ExtensionActionRegistry,
+  ExtensionComponentRegistry,
   ExtensionOutletComponent,
   ExtensionRuleContextService,
   type ExtensionActionDescriptor,
+  type ExtensionDocumentViewDescriptor,
   type ExtensionTabDescriptor,
 } from '@nuxeo-satori/platform/extensions';
 import { HttpClient } from '@angular/common/http';
@@ -323,6 +325,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly extensionRuleContext = inject(ExtensionRuleContextService);
   private readonly extensions = inject(AppExtensionsService);
   private readonly actionRegistry = inject(ExtensionActionRegistry);
+  private readonly componentRegistry = inject(ExtensionComponentRegistry);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
@@ -424,6 +427,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.extensionRuleContext.context(),
     ),
   );
+
+  /**
+   * The View tab body contributed for this document, or `null` for the packaged view.
+   *
+   * The first `documentView` entry, by order, whose rule admits the focused document and
+   * whose component is registered. An entry naming a component this build lacks is skipped
+   * rather than chosen, so the manifest can precede the library that backs it. The registry
+   * is not a signal; components register in environment initializers, before this page.
+   */
+  readonly documentView = computed<ExtensionDocumentViewDescriptor | null>(
+    () =>
+      this.extensions
+        .resolve<ExtensionDocumentViewDescriptor>(
+          EXTENSION_SLOTS.documentView,
+          this.extensionRuleContext.context(),
+        )
+        .find((view) => this.componentRegistry.has(view.componentId ?? view.id)) ?? null,
+  );
+
+  /** `document` last, so a manifest `inputs.document` cannot stand in for the one on screen. */
+  readonly documentViewInputs = computed<Readonly<Record<string, unknown>>>(() => ({
+    ...(this.documentView()?.inputs ?? {}),
+    document: this.doc(),
+  }));
 
   /**
    * The id of the selected tab.
