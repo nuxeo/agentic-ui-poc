@@ -198,6 +198,37 @@ export default async function run(page, h) {
   );
   await h.screenshot('a11y-browse-adf-hx');
 
+  h.step(
+    'Document detail — Replace main file with tooltip open (NXENG-771 / WCAG 2.5.3 label-in-name)',
+  );
+  const docUid = await findFileWithMainBlobUid(page);
+  h.check(
+    'a File with a persisted main blob exists',
+    docUid !== null,
+    'repository query returned no File whose @blob/file:content answers — replace-main-file cannot be scanned',
+  );
+  if (docUid) {
+    await h.goToDoc(docUid);
+    await h.expectVisible('document detail rendered', 'lib-document-detail');
+    await h.expectVisible('document viewer rendered', 'lib-document-viewer');
+    const replaceBtn = page.locator('lib-document-viewer button[aria-label="Replace main file"]');
+    h.check(
+      'replace main file control is rendered for a writable File with a blob',
+      (await replaceBtn.count()) > 0,
+      'lib-document-viewer footer has no Replace main file control — file:content or permissions',
+    );
+    if ((await replaceBtn.count()) > 0) {
+      await replaceBtn.first().hover();
+      await replaceBtn.first().focus();
+      await page.waitForTimeout(600);
+    }
+    await h.expectNoA11yViolations(
+      'document detail (replace-main-file tooltip): no WCAG 2.1 AA violations',
+      { ignore: KNOWN_VIOLATIONS },
+    );
+    await h.screenshot('a11y-document-detail-replace-main-file');
+  }
+
   h.step('Keyboard reachability of the primary navigation');
   // Distinct from an axe scan: axe checks markup, this checks that a keyboard user can actually
   // get to the nav. A focusable element behind a pointer-only handler passes every static rule.
@@ -339,6 +370,40 @@ export default async function run(page, h) {
  * @param {import('@playwright/test').Page} page
  * @param {string} selector
  */
+/**
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string | null>}
+ */
+async function findFileWithMainBlobUid(page) {
+  const response = await page.request.get('/nuxeo/api/v1/search/lang/NXQL/execute', {
+    params: {
+      query:
+        "SELECT * FROM File WHERE ecm:mixinType <> 'HiddenInNavigation' " +
+        'AND ecm:isVersion = 0 AND ecm:isTrashed = 0 AND file:content/name IS NOT NULL ' +
+        'ORDER BY dc:created',
+      pageSize: '20',
+    },
+  });
+  if (!response.ok()) {
+    return null;
+  }
+  const body = await response.json();
+  const entries = Array.isArray(body.entries) ? body.entries : [];
+  for (const entry of entries) {
+    const uid = entry?.uid;
+    if (typeof uid !== 'string') {
+      continue;
+    }
+    const head = await page.request.head(`/nuxeo/api/v1/id/${uid}/@blob/file:content`, {
+      failOnStatusCode: false,
+    });
+    if (head.ok()) {
+      return uid;
+    }
+  }
+  return null;
+}
+
 async function clickIfPresent(page, selector) {
   const el = page.locator(selector).first();
   if ((await el.count()) === 0) {
