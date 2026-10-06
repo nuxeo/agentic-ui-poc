@@ -2445,6 +2445,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         video.addEventListener('loadedmetadata', onLoaded);
         video.addEventListener('error', onError);
         video.load();
+        // Storyboard thumbnails are optional; a metadata load failure leaves the strip empty.
       }).catch(() => undefined);
 
       if (generation !== this.blobLoadGeneration || this.storyboard().length > 0) {
@@ -4378,6 +4379,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             },
           });
       });
+  }
+
+  /** Shared by matTooltip and aria-label on the details panel toggle (WCAG 2.5.3, NXENG-766). */
+  detailsPanelToggleLabelKey(): 'document-detail.hide-details' | 'document-detail.show-details' {
+    return this.propertiesPanelOpen()
+      ? 'document-detail.hide-details'
+      : 'document-detail.show-details';
   }
 
   closePropertiesPanel(): void {
