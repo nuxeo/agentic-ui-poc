@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { catchError, firstValueFrom, of } from 'rxjs';
+import { TimeoutError, catchError, firstValueFrom, of, timeout } from 'rxjs';
 
 import {
   AppBootstrapConfig,
@@ -26,6 +26,13 @@ import {
   DEFAULT_APP_RUNTIME_MANIFEST,
   mergeRuntimeManifest,
 } from './runtime-manifest';
+
+/**
+ * How long each half may take before the application starts on the packaged defaults instead.
+ * `load()` runs as an `APP_INITIALIZER` and `HttpClient` has no timeout of its own, so a server that
+ * accepts the request and never answers would otherwise hold the first render forever.
+ */
+export const CONFIG_LOAD_TIMEOUT_MS = 10_000;
 
 /** Where a loaded half of the configuration came from, so the shell can show it rather than guess. */
 export type AppConfigSource = 'packaged-default' | 'configuration-service';
@@ -59,9 +66,9 @@ export interface AppActivePreset {
  * is deliberate and confined to this service: the Nuxeo API origin is itself one of the values
  * being configured, so a loader built on the configured client would depend on its own output.
  *
- * The load is **tolerant by contract**. An unreachable service, an error status or a malformed
- * response falls back to the packaged defaults and records why. The application must start on a
- * server where nothing is configured.
+ * The load is **tolerant by contract**. An unreachable service, an error status, a malformed
+ * response or no answer within {@link CONFIG_LOAD_TIMEOUT_MS} falls back to the packaged defaults
+ * and records why. The application must start on a server where nothing is configured.
  */
 @Injectable({ providedIn: 'root' })
 export class AppConfigService {
@@ -161,9 +168,10 @@ export class AppConfigService {
 
   private async fetch(url: string, layer: AppConfigLayer): Promise<AppConfigResponse | null> {
     const raw = await firstValueFrom(
-      this.http
-        .get<unknown>(url, { responseType: 'json' })
-        .pipe(catchError((error: unknown) => of(new ConfigLoadFailure(describe(error))))),
+      this.http.get<unknown>(url, { responseType: 'json' }).pipe(
+        timeout(CONFIG_LOAD_TIMEOUT_MS),
+        catchError((error: unknown) => of(new ConfigLoadFailure(describe(error)))),
+      ),
     );
     if (raw instanceof ConfigLoadFailure) {
       this.note(`${layer} configuration not loaded from ${url}: ${raw.reason}`);
@@ -235,6 +243,7 @@ function info({ name, component, bundle, source }: AppConfigFragmentInfo): AppCo
 }
 
 function describe(error: unknown): string {
+  if (error instanceof TimeoutError) return `no response within ${CONFIG_LOAD_TIMEOUT_MS / 1000} s`;
   const status = (error as { status?: unknown } | null)?.status;
   const message = (error as { message?: unknown } | null)?.message;
   // A 2xx failure is a body that did not parse: its status says nothing, its message says why.

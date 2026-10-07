@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
-import { AppConfigService } from './app-config.service';
+import { AppConfigService, CONFIG_LOAD_TIMEOUT_MS } from './app-config.service';
 import { APP_BOOTSTRAP_CONFIG_URL } from './app-config.tokens';
 import { DEFAULT_APP_BOOTSTRAP_CONFIG } from './bootstrap-config';
 import { APP_CONFIG_FORMAT } from './config-response';
@@ -240,6 +240,29 @@ describe('AppConfigService', () => {
       expect(service.diagnostics().messages).toEqual([
         `bootstrap configuration not loaded from ${BOOTSTRAP_URL}: Http failure during parsing for ${BOOTSTRAP_URL}`,
       ]);
+    });
+
+    it('starts on the packaged defaults when a request never answers, and says so', async () => {
+      vi.useFakeTimers();
+      try {
+        let settled = false;
+        const loaded = service.load().then(() => (settled = true));
+        const bootstrap = http.expectOne(BOOTSTRAP_URL);
+        http.expectOne(MANIFEST_URL).flush(envelope('manifest', []));
+
+        await vi.advanceTimersByTimeAsync(CONFIG_LOAD_TIMEOUT_MS);
+
+        expect(settled).toBe(true);
+        await loaded;
+        expect(bootstrap.cancelled).toBe(true);
+        expect(service.diagnostics().bootstrapSource).toBe('packaged-default');
+        expect(service.diagnostics().manifestSource).toBe('configuration-service');
+        expect(service.diagnostics().messages).toEqual([
+          `bootstrap configuration not loaded from ${BOOTSTRAP_URL}: no response within 10 s`,
+        ]);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('never rejects, so it is safe as an APP_INITIALIZER', async () => {

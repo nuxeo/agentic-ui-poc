@@ -117,8 +117,8 @@ in parallel and anonymously. It folds each response's fragments over its compile
 order served, then applies a presales preset if a package enables switching and one is chosen.
 Nothing is fetched again when a user signs in, out, or switches: both halves are the same for
 everyone. Only the `nuxeo-agentic-ui-config/1` envelope is accepted; a bare JSON object, an error
-status or an unreachable server leaves the compiled defaults in force, and
-`AppConfigService.diagnostics()` records why. Every reason, and every diagnostic the server
+status, an unreachable server or one that does not answer within 10 s leaves the compiled defaults
+in force, and `AppConfigService.diagnostics()` records why. Every reason, and every diagnostic the server
 reports, is also written to the browser console as a warning prefixed `[agentic-ui-config]`. The
 template app's home page lists the package behind every fragment. "Anonymously" means neither URL
 needs credentials: once a user has signed in with a password, the auth interceptor adds them to

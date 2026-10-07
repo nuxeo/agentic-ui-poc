@@ -1441,8 +1441,9 @@ the gitignored files `npm run config:dev` writes. Not proxied to Nuxeo.
 ```
 
 `fragments` are applied in order over the compiled defaults; the bootstrap response also carries
-`assets`. A response that is not this envelope, an error status or a network failure leaves the
-compiled defaults in force and is recorded in `diagnostics().messages`. The manifest Note at
+`assets`. A response that is not this envelope, an error status, a network failure or no answer
+within 10 s (`CONFIG_LOAD_TIMEOUT_MS`) leaves the compiled defaults in force and is recorded in
+`diagnostics().messages`. The manifest Note at
 `/nuxeo/api/v1/path/default-domain/config/agentic-ui` is **no longer requested**.
 
 **Usage:** every startup, before the first render. Never re-fetched on sign-in or sign-out.
