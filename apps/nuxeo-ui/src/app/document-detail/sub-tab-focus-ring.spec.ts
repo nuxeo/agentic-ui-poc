@@ -1,6 +1,11 @@
 /**
- * NXENG-792 — keyboard focus ring on document detail sidebar `.sub-tab` buttons (IBM 321710239).
- * Karma loads global styles so theme tokens resolve; the host pulls in the real feature SCSS.
+ * Document detail properties panel sub-tabs — keyboard focus ring (NXENG-776 / NXENG-792;
+ * IBM 298748541, 321710239). Karma loads global styles so theme tokens resolve; the host
+ * pulls in the real feature SCSS.
+ *
+ * Standalone `.sub-tab:focus` selector shape is owned by
+ * `document-detail-sub-tab-focus-ring.spec.ts` (feature Vitest); this suite owns compiled
+ * contrast, inset geometry, and IBM `:focus`-only focus-visible behaviour.
  */
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -59,7 +64,7 @@ function paintedBackground(element: HTMLElement): number[] {
   return [255, 255, 255];
 }
 
-describe('Document detail sidebar sub-tabs — keyboard focus (NXENG-792)', () => {
+describe('Document detail properties sub-tabs — keyboard focus (NXENG-776, NXENG-792)', () => {
   let fixture: ComponentFixture<SubTabFocusHostComponent>;
   let originalTheme: string | null;
 
@@ -81,7 +86,9 @@ describe('Document detail sidebar sub-tabs — keyboard focus (NXENG-792)', () =
   });
 
   function subTab(index: number): HTMLButtonElement {
-    const buttons = fixture.nativeElement.querySelectorAll('.sub-tab') as NodeListOf<HTMLButtonElement>;
+    const buttons = fixture.nativeElement.querySelectorAll(
+      '.sub-tab',
+    ) as NodeListOf<HTMLButtonElement>;
     expect(buttons.length).toBeGreaterThanOrEqual(3);
     return buttons[index];
   }
@@ -154,4 +161,15 @@ describe('Document detail sidebar sub-tabs — keyboard focus (NXENG-792)', () =
       expect(btnRect.bottom).toBeLessThanOrEqual(panelRect.bottom);
     });
   }
+
+  it('draws a visible ring on :focus when :focus-visible is false (IBM style_focus_visible)', () => {
+    const button = subTab(0);
+    button.focus({ focusVisible: false } as FocusOptions);
+    expect(button.matches(':focus')).toBe(true);
+    expect(button.matches(':focus-visible')).toBe(false);
+
+    const style = getComputedStyle(button);
+    expect(style.outlineStyle).toBe('solid');
+    expect(Number.parseFloat(style.outlineWidth)).toBeGreaterThanOrEqual(2);
+  });
 });
