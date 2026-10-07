@@ -518,3 +518,10 @@
     color: var(--document-viewer-muted-on-light-surface);
   }
 }
+
+// NXENG-781 / NXENG-786 — IBM `style_focus_visible` reads `:focus` only; keep this selector
+// separate from `:focus-visible` (comma lists are not resolved by the scanner).
+.format-download-btn.mat-mdc-icon-button:focus {
+  outline: 2px solid var(--mat-sys-primary, #0073e6) !important;
+  outline-offset: 2px;
+}
