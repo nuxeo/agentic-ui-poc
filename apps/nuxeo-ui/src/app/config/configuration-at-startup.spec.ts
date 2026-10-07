@@ -50,13 +50,14 @@ describe('configuration tokens from configuration packages, at startup', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    // Signed in with a password, so the auth interceptor has a credential it could attach.
+    // A stored password session, so the auth interceptor has a header it would attach. The value
+    // is only ever compared for presence; it is not a credential.
     sessionStorage.setItem(
       SESSION_KEY,
       JSON.stringify({
         kind: 'basic',
         username: 'jdoe',
-        basic: btoa('jdoe:secret'),
+        basic: 'stored-session-placeholder',
         isAdministrator: false,
         groups: [],
       }),

@@ -66,7 +66,7 @@ describe('AppConfigService and the host application’s interceptors', () => {
           withInterceptors([
             (request, next) => {
               seen.push(request.url);
-              return next(request.clone({ setHeaders: { Authorization: 'Basic c2VjcmV0' } }));
+              return next(request.clone({ setHeaders: { 'X-Added-By-Interceptor': 'yes' } }));
             },
           ]),
         ),
@@ -80,7 +80,9 @@ describe('AppConfigService and the host application’s interceptors', () => {
     const loaded = service.load();
     const requests = [http.expectOne(BOOTSTRAP_URL), http.expectOne(MANIFEST_URL)];
     expect(seen).toEqual([]);
-    expect(requests.some((request) => request.request.headers.has('Authorization'))).toBe(false);
+    expect(requests.some((request) => request.request.headers.has('X-Added-By-Interceptor'))).toBe(
+      false,
+    );
     requests[0].flush(envelope('bootstrap', []));
     requests[1].flush(envelope('manifest', []));
     await loaded;
