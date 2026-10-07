@@ -346,6 +346,12 @@ sat-breadcrumbs {
   }
 }
 
+// NXENG-792 — sidebar sub-tab buttons (IBM `style_focus_visible`, standalone `:focus`).
+.sub-tab:focus {
+  outline: 2px solid var(--mat-sys-primary, #0073e6);
+  outline-offset: -2px;
+}
+
 .panel-body {
   flex: 1;
   overflow-y: auto;
