@@ -111,6 +111,9 @@ describe('Document detail sidebar sub-tabs — keyboard focus (NXENG-792)', () =
     expect(measured.outlineStyle).not.toBe('none');
     expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
     expect(measured.outlineOffset).toBeLessThanOrEqual(-2);
+    expect(measured.outlineWidth + measured.outlineOffset)
+      .withContext('ring must be inset so overflow:hidden on .properties-panel cannot clip it')
+      .toBeLessThanOrEqual(0);
   });
 
   for (const theme of COMPILED_THEME_BASES) {
@@ -135,24 +138,20 @@ describe('Document detail sidebar sub-tabs — keyboard focus (NXENG-792)', () =
 
       const styles = getComputedStyle(button);
       expect(styles.outlineStyle).not.toBe('none');
-      expect(Number.parseFloat(styles.outlineWidth)).toBeGreaterThanOrEqual(2);
-      expect(Number.parseFloat(styles.outlineOffset)).toBeLessThanOrEqual(-2);
+      const outlineWidth = Number.parseFloat(styles.outlineWidth);
+      const outlineOffset = Number.parseFloat(styles.outlineOffset);
+      expect(outlineWidth).toBeGreaterThanOrEqual(2);
+      expect(outlineOffset).toBeLessThanOrEqual(-2);
+      expect(outlineWidth + outlineOffset)
+        .withContext('outline must be fully inset — outlines do not participate in hit testing')
+        .toBeLessThanOrEqual(0);
 
       const panelRect = panel.getBoundingClientRect();
       const btnRect = button.getBoundingClientRect();
-      const inset = Math.max(2, Math.abs(Number.parseFloat(styles.outlineOffset)));
-      const probeX =
-        tabIndex === 0 ? btnRect.left + inset + 1 : btnRect.right - inset - 1;
-      const probeY = btnRect.top + btnRect.height / 2;
-      expect(probeX).toBeGreaterThanOrEqual(panelRect.left);
-      expect(probeX).toBeLessThanOrEqual(panelRect.right);
-      expect(probeY).toBeGreaterThanOrEqual(panelRect.top);
-      expect(probeY).toBeLessThanOrEqual(panelRect.bottom);
-
-      const hit = document.elementFromPoint(probeX, probeY);
-      expect(hit === button || button.contains(hit))
-        .withContext('focus ring probe must land on the focused sub-tab, not clipped away')
-        .toBe(true);
+      expect(btnRect.left).toBeGreaterThanOrEqual(panelRect.left);
+      expect(btnRect.right).toBeLessThanOrEqual(panelRect.right);
+      expect(btnRect.top).toBeGreaterThanOrEqual(panelRect.top);
+      expect(btnRect.bottom).toBeLessThanOrEqual(panelRect.bottom);
     });
   }
 });
