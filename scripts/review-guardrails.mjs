@@ -743,8 +743,7 @@ function checkHardcodedSecrets() {
  * label rendering as a raw key — was diagnosed as a stale dev server needing a restart, which
  * could never have fixed it.
  *
- * The `development` config is allowed *extra* entries (it has its own bootstrap.json glob);
- * it may not be missing any.
+ * The `development` config is allowed *extra* entries; it may not be missing any.
  */
 function checkAngularDevAssets() {
   const file = 'angular.json';
@@ -3271,6 +3270,17 @@ function checkAccessibleNameFallbacks() {
  */
 
 /**
+ * The Layer 0 sample the marketplace package installs, and the sources it is built from.
+ *
+ * A sample, not `bootstrap.json`: the package must not own the file a customer edits
+ * (NXSAT-317, `checkInstallerOwnsNoCustomerFile`). Shared, because three checks read it and a
+ * rename that missed one would leave it checking nothing — `checkAdvertisedLocalesShip` skips a
+ * config that does not exist rather than failing on it.
+ */
+const PACKAGED_CONFIG = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json';
+const PACKAGE_SOURCES = 'nuxeo-agentic-ui-package/src';
+
+/**
  * Every advertised locale ships a catalogue, and the default is one of them.
  *
  * `checkTranslationCatalogues` validates the files that exist. It never reads
@@ -3293,7 +3303,7 @@ function checkAdvertisedLocalesShip() {
    * could not render, and this gate did not look at it.
    */
   const configs = [
-    ['nuxeo-agentic-ui-package/src/main/config/bootstrap.json', 'apps/nuxeo-ui/public/i18n'],
+    [PACKAGED_CONFIG, 'apps/nuxeo-ui/public/i18n'],
     [
       'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json',
       'apps/nuxeo-satori-template/public/i18n',
@@ -4507,21 +4517,22 @@ function checkCrowdinConfig() {
 /**
  * The packaged marketplace config ships Nuxeo defaults, not a demo rebrand.
  *
- * `nuxeo-agentic-ui-package/src/main/config/bootstrap.json` is installed into a customer's
- * Nuxeo. The rebrand demo edits it — `docs/beta-demo-runbook.md` walks through setting
- * `applicationTitle` to "Acme Content Cloud" and adding an `acme` theme — and tells you to
+ * `PACKAGED_CONFIG` is installed into a customer's Nuxeo, and it is the sample they copy. The
+ * rebrand demo used to edit it — `docs/beta-demo-runbook.md` walked through setting
+ * `applicationTitle` to "Acme Content Cloud" and adding an `acme` theme — and told you to
  * run `git checkout --` on it afterwards.
  *
  * That was not run, and the demo branding reached a pull request inside an i18n change, where
  * nobody was looking for it. Every fresh installation would have come up rebranded. No gate
- * saw it; a reviewer did.
+ * saw it; a reviewer did. The demo now edits a gitignored local copy instead (NXSAT-317), but
+ * the packaged file is still a tracked file one stray edit away from shipping.
  *
- * So the rule is the runbook's own instruction, enforced: the packaged branding must match
- * what the application compiles in. A real branding change is a change to
- * `DEFAULT_APP_BOOTSTRAP_CONFIG` as well, which is a deliberate act rather than a leftover.
+ * So the rule is: the packaged branding must match what the application compiles in. A real
+ * branding change is a change to `DEFAULT_APP_BOOTSTRAP_CONFIG` as well, which is a deliberate
+ * act rather than a leftover.
  */
 function checkPackagedConfigIsNotADemo() {
-  const packaged = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+  const packaged = PACKAGED_CONFIG;
   const compiled = 'libs/shared/app-config/src/lib/bootstrap-config.ts';
   if (!fileExists(packaged) || !fileExists(compiled)) {
     fail(`${packaged} or ${compiled} is missing, so this gate asserted nothing.`);
@@ -4552,8 +4563,9 @@ function checkPackagedConfigIsNotADemo() {
     fail(
       `${packaged} ships \`applicationTitle: "${shippedTitle}"\`, which is not the compiled ` +
         `default "${compiledTitle}".\n` +
-        '    The rebrand demo edits this file and `docs/beta-demo-runbook.md` says to run ' +
-        '`git checkout --` on it afterwards. If this is a real branding change, change ' +
+        '    This is the sample every installation receives. Demo branding belongs in the ' +
+        'gitignored local copy `docs/beta-demo-runbook.md` describes; run `git checkout --` on ' +
+        'this file. If this is a real branding change, change ' +
         `${compiled} in the same commit.`,
     );
   }
@@ -4623,6 +4635,58 @@ function checkPackagedConfigIsNotADemo() {
           'not ship. Run the `git checkout --` it asks for.',
       );
     }
+  }
+}
+
+/**
+ * The marketplace package installs no file a customer edits.
+ *
+ * NXSAT-317. The package installed `agentic-ui-config/bootstrap.json` with `overwrite="false"`
+ * and every document said that made customer edits survive an upgrade. Rehearsed on a real
+ * server, it did the opposite: an upgrade is an uninstall of the old version, which deletes a
+ * package file only while its md5 still matches and so leaves an edited one behind, followed by
+ * an install of the new version, whose `overwrite="false"` copy then fails on that file. The
+ * install rolls back only its own commands. Result: no version installed, `/nuxeo/agentic-ui/`
+ * 404. Unedited installs upgraded fine, so nothing short of a rehearsal with an edit could see it.
+ *
+ * `overwrite="false"` has no other use — a file nobody edits is copied with `overwrite="true"` —
+ * so every such copy is this defect waiting for its first edit, whatever file it names. And the
+ * file the application reads must not be packaged at all: with `overwrite="true"` it would be
+ * the customer's edit that is destroyed instead. The packaged copy is a sample.
+ *
+ * The second half walks the filesystem rather than `git ls-files` on purpose: the Maven assembly
+ * stages `src/main/config/**` from disk, so an untracked `bootstrap.json` left there by hand
+ * would still be packaged.
+ */
+function checkInstallerOwnsNoCustomerFile() {
+  const installers = walk(PACKAGE_SOURCES, (path) => path.endsWith('/install.xml'));
+  if (installers.length === 0) {
+    fail(`No install.xml was found under ${PACKAGE_SOURCES}, so this gate asserted nothing.`);
+    return;
+  }
+
+  for (const file of installers) {
+    // Comments are stripped first: the one explaining this rule necessarily quotes the attribute.
+    const body = read(file).replace(/<!--[\s\S]*?-->/g, '');
+    for (const match of body.matchAll(/<copy\b[^>]*>/g)) {
+      if (!/\boverwrite\s*=\s*["']false["']/.test(match[0])) continue;
+      fail(
+        `${file} has a copy with overwrite="false": ${match[0].replace(/\s+/g, ' ')}\n` +
+          '    That is only ever used to protect a file someone edits, and it is what breaks the ' +
+          'upgrade: the old version is uninstalled, the edited file is left behind because its ' +
+          'md5 no longer matches, and this copy then fails on it — leaving no version installed ' +
+          '(NXSAT-317). Ship a sample with overwrite="true"; the customer owns the real file.',
+      );
+    }
+  }
+
+  for (const file of walk(PACKAGE_SOURCES, (path) => /(^|\/)bootstrap\.json$/.test(path))) {
+    fail(
+      `${file} would be installed as the bootstrap.json the application reads, which is the file ` +
+        `a customer edits.\n    Package only ${PACKAGED_CONFIG}; the customer copies it to ` +
+        'bootstrap.json. A packaged bootstrap.json either fails the upgrade or destroys their ' +
+        'edit, depending on the copy (NXSAT-317).',
+    );
   }
 }
 
@@ -4785,7 +4849,7 @@ function checkNoTemplateSyntaxInDocumentShell() {
  * entry with no catalogue behind it — advertising a language the app cannot render.
  */
 function checkShippedDefaultLanguage() {
-  const config = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+  const config = PACKAGED_CONFIG;
   if (!fileExists(config)) {
     fail(`${config} was not found, so this gate asserted nothing. Check the path.`);
     return;
@@ -5555,6 +5619,7 @@ const GUARDRAILS = [
   checkAdvertisedLocalesShip,
   checkCrowdinConfig,
   checkPackagedConfigIsNotADemo,
+  checkInstallerOwnsNoCustomerFile,
   checkTranslationContext,
   checkTranslatorNotesFlagProductsAndAcronyms,
   checkPlatformEnglishFallback,

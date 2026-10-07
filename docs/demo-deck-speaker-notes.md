@@ -75,9 +75,11 @@ The distinction to land, because it is the most common way this goes wrong:
 
 Then the upgrade point, which is a real engineering decision rather than a diagram:
 
-> "That file is installed **beside** the app bundle, with `overwrite="false"`. The bundle directory is
-> replaced on every upgrade with `overwrite="true"`. Configuration was deliberately put where the
-> installer cannot reach it."
+> "That file lives **beside** the app bundle, and our package never installs it — it ships a sample,
+> and the customer copies it to `bootstrap.json`. The bundle directory is replaced on every upgrade.
+> We rehearsed the upgrade on a real server: the customer's edited file survives it and is still
+> served. The first design, which installed the file itself, broke that upgrade — the rehearsal
+> found it and NXSAT-317 fixed it."
 
 **Volunteer the logo, then the limit.** They will ask about it, so get there first:
 
@@ -85,9 +87,10 @@ Then the upgrade point, which is a real engineering decision rather than a diagr
 > directory, `branding.logo` names it, and it replaces our mark in the header and on the login page —
 > no rebuild. The one piece that is not configurable yet is the favicon."
 
-The config directory is copied with `overwrite="false"`, so the installer is meant to leave the logo
-alone on upgrade as it does the configuration. That is the intended effect of the copy layout; no
-marketplace install or upgrade has been run (R7), so do not say it has been observed.
+The package never installs anything in the config directory except its sample,
+`bootstrap.example.json`, so a logo the customer puts there is left alone by an upgrade, as their
+`bootstrap.json` is. The upgrade was rehearsed for an edited `bootstrap.json` (NXSAT-317), not
+separately with a logo file, so say the mechanism, not that a logo upgrade was observed.
 
 **Do not say the favicon is done, planned for a release, or costed.** It has no key.
 
@@ -454,7 +457,7 @@ Have these ready. Each is verified; none needs hedging.
 | **"Is it production quality?"**                 | **Do not say "ten of ten".** Say: **ten of eleven** in-scope projects are above 90% as of 2026-09-22, and Phase 6 step 6 is reopened for the eleventh — `shared-ai-client` at 15.98%. It was ten of ten until three never-measured projects entered the denominator. **And the caveat travels with it** — those are percentages of the measured subset, and **6,137** in-scope lines are in no test at all. "The bar is met" and "the code is 90% tested" are different sentences. |
 | **"Accessibility?"**                            | **Do not say "met".** Say: it was met on 2026-08-24 across fifteen cases on eight routes, and it is being re-verified — five consecutive `phase-6-a11y` captures from 2026-09-15 to 2026-09-16 fail 3 `button-name` checks (browse, browse cards, column panel), undiagnosed as of 2026-09-23. **Dialogs, upload, dark mode and the login page were never in that scan.** One remaining violation is upstream's.                                                                   |
 | **"How big is the bundle?"**                    | 3.56 MB initial against a 4 MB budget. adf-core registers eleven root services so it is eager — every user pays it, including users who never open an adf-hx route. A known constraint, not a surprise.                                                                                                                                                                                                                                                                            |
-| **"Can I change the logo?"**                    | Yes, with no rebuild: `branding.logo` in `bootstrap.json` names an image beside the file, and it replaces the Satori marks in the header and on the login page. The config directory is copied with `overwrite="false"`, so the logo is meant to survive an upgrade with the configuration (intended effect of the copy layout; no marketplace install or upgrade has been run — R7). The favicon cannot be changed yet.                                                           |
+| **"Can I change the logo?"**                    | Yes, with no rebuild: `branding.logo` in `bootstrap.json` names an image beside the file, and it replaces the Satori marks in the header and on the login page. The package installs only a sample in that directory, so the logo, like `bootstrap.json`, is the customer's own file and an upgrade leaves it alone (rehearsed for `bootstrap.json`, NXSAT-317; not separately with a logo). The favicon cannot be changed yet.                                                    |
 | **"Can I edit metadata in the adf-hx panel?"**  | No. Upstream does not export the cache service its editable sidebar needs, so the read-only properties panel renders instead. Upstream's to fix.                                                                                                                                                                                                                                                                                                                                   |
 | **"How do I know these screenshots are real?"** | Each one asserts its own content before the run is allowed to pass, all images are hashed so no two can be duplicates, and the run aborts if it is authenticated as the wrong user. That last check exists because a whole run once came back as `Anonymous` and every other check still passed.                                                                                                                                                                                   |
 

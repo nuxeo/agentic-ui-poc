@@ -41,6 +41,7 @@
 
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { EVIDENCE_ROOT } from '../collect-evidence/evidence-path.mjs';
@@ -553,8 +554,12 @@ async function applyManifest(manifest) {
  * Layer 0 branding lives in a FILE, not the manifest document, and the harness owns the edit.
  *
  * `runtime-manifest.ts` has no `branding` or `themes` key — those come from
- * `nuxeo-agentic-ui-package/src/main/config/bootstrap.json`, which the dev server's `development`
- * asset list maps to `/agentic-ui-config/bootstrap.json`.
+ * `/agentic-ui-config/bootstrap.json`, which the dev server serves from the gitignored
+ * `apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json`. The packaged file is a sample the app
+ * never reads (NXSAT-317). The dev server serves only asset files that existed when it started — a
+ * file created afterwards stays 404 while edits to an existing one are re-served — so the local
+ * copy must be made before `nx serve`, and this refuses to run without it rather than patch a file
+ * nothing serves.
  *
  * Doing this inside the run rather than by hand matters for a reason that already bit once: with the
  * rebrand left applied, the BASELINE capture came back in Acme purple while its slide called it "the
@@ -565,11 +570,20 @@ const BOOTSTRAP = resolve(
   import.meta.dirname,
   '..',
   '..',
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+  'apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json',
 );
 let bootstrapOriginal = null;
 
 async function patchBootstrap(patch) {
+  if (!existsSync(BOOTSTRAP)) {
+    throw new Error(
+      `${BOOTSTRAP} does not exist, so the dev server is not serving one and a patch would not ` +
+        'take effect. Copy the sample, then (re)start nx serve:\n' +
+        '  mkdir -p apps/nuxeo-ui/public/agentic-ui-config && cp ' +
+        'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json ' +
+        'apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json',
+    );
+  }
   const raw = await readFile(BOOTSTRAP, 'utf8');
   if (bootstrapOriginal === null) bootstrapOriginal = raw;
   const merged = { ...JSON.parse(raw), ...patch };

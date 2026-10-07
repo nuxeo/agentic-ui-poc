@@ -57,11 +57,12 @@ On this page, layers 0 and 1 are "configuration" and layers 2 and 3 are "code".
 In two places, and both are a known problem:
 
 1. **A settings file on the Nuxeo server**,
-   `nxserver/nuxeo.war/agentic-ui-config/bootstrap.json`, edited by someone with access to the
-   server's files. It holds the name, colours and default language. The package installs a
-   default copy on first install, and its installer is set not to overwrite it on upgrade; no real
-   install-then-upgrade has been rehearsed yet. Users see a change the next time they open the
-   application.
+   `nxserver/nuxeo.war/agentic-ui-config/bootstrap.json`, created by someone with access to the
+   server's files by copying the sample the package installs beside it, `bootstrap.example.json`,
+   and editing the copy. It holds the name, colours and default language. The package never
+   installs, replaces or deletes `bootstrap.json`, so an upgrade leaves it alone; that was
+   rehearsed on a real server with `nuxeoctl` (NXSAT-317). Without the file the application uses
+   its defaults. Users see a change the next time they open the application.
 2. **A configuration document in the repository**: a Nuxeo Note at
    `/default-domain/config/agentic-ui` whose text is JSON, in plain-text format, edited by any
    Nuxeo user allowed to write it. It holds the wording and the whole arrangement. The longer documents call it the
@@ -78,7 +79,7 @@ own Marketplace package that depends on ours**. That is planned, not built.
 | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Change the product name and the browser-tab title                                                                              | settings file, `branding`                      | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
 | Change the colours, or add your own colour theme and make it the default                                                       | settings file, `themes` and `defaultThemeId`   | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
-| Choose the default language                                                                                                    | settings file, `defaultLanguage`               | [The default settings file](../../nuxeo-agentic-ui-package/src/main/config/bootstrap.json)                      |
+| Choose the default language                                                                                                    | settings file, `defaultLanguage`               | [The sample settings file](../../nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json)               |
 | Change on-screen wording — the same text in every language                                                                     | configuration document, `labels`               | [Runbook, beat 4](../../docs/beta-demo-runbook.md#beat-4--relabel-the-product-2-min)                            |
 | Hide, reorder or rename a menu entry, toolbar button, tab, list column or bulk action                                          | configuration document, `extensions.overrides` | [Extension reference, overrides](../../docs/extension-reference.md#per-id-overrides)                            |
 | Add a menu entry that opens an existing page                                                                                   | configuration document, `extensions.slots`     | [Runbook, beat 5](../../docs/beta-demo-runbook.md#beat-5--nav-hide-one-add-one-and-the-security-question-4-min) |
@@ -152,7 +153,9 @@ the package is not published yet, you build it from this repository. Publishing 
 1. **Run it.** On your own machine, against Nuxeo in Docker: follow
    [Developer Getting Started](../30-engineering/01-getting-started.md). You need Docker,
    Node.js 20, and a GitHub token that can read Hyland's and Alfresco's GitHub Packages.
-2. **Change something without code.** Edit the settings file, or create the configuration document
+2. **Change something without code.** Copy the sample settings file to `bootstrap.json` and edit
+   the copy ([beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min) shows
+   where), or create the configuration document
    and paste the example above. Create it as a plain-text Note (`note:mime_type` `text/plain`) as
    [Part 0.6 of the runbook](../../docs/beta-demo-runbook.md#06-create-the-manifest-document)
    does. In any other format Nuxeo escapes the quotes in the JSON, and the application then

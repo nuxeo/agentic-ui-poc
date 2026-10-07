@@ -21,12 +21,12 @@ promise checkable rather than aspirational.
 
 ## 1. The four layers
 
-| Layer                      | What the customer writes                                                    | Build needed           | Survives upgrade                           |
-| -------------------------- | --------------------------------------------------------------------------- | ---------------------- | ------------------------------------------ |
-| **0 — Configuration**      | JSON + CSS custom properties: theme tokens, branding, languages             | No                     | Yes — `overwrite="false"` in `install.xml` |
-| **1 — Declarative wiring** | JSON referencing components, rules, actions and routes **by registered ID** | No                     | Yes — it is a Nuxeo document               |
-| **2 — Customer code**      | A TypeScript library against `@nuxeo-satori/platform`                       | Yes, in **their** repo | Yes — npm semver                           |
-| **3 — Agent harness**      | Prompts. The generators and guardrails ship inside the package              | Yes, in their repo     | Yes                                        |
+| Layer                      | What the customer writes                                                    | Build needed           | Survives upgrade                                  |
+| -------------------------- | --------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------- |
+| **0 — Configuration**      | JSON + CSS custom properties: theme tokens, branding, languages             | No                     | Yes — the package never installs `bootstrap.json` |
+| **1 — Declarative wiring** | JSON referencing components, rules, actions and routes **by registered ID** | No                     | Yes — it is a Nuxeo document                      |
+| **2 — Customer code**      | A TypeScript library against `@nuxeo-satori/platform`                       | Yes, in **their** repo | Yes — npm semver                                  |
+| **3 — Agent harness**      | Prompts. The generators and guardrails ship inside the package              | Yes, in their repo     | Yes                                               |
 
 Layers 0 and 1 are expected to absorb most customer requests and need no build.
 
@@ -86,16 +86,20 @@ and the Satori lockup on the login page. `null` or absent keeps the Satori marks
   logo is decorative (`alt=""`): the header is named by its heading.
 - The configuration directory is outside every `NuxeoAuthenticationFilter` URL pattern in
   `nuxeo.war/WEB-INF/web.xml`, which is what lets the login page load a logo before sign-in. That
-  is read from the filter mapping; no marketplace install has been run to observe it.
+  is read from the filter mapping, and the 2026-10-07 marketplace rehearsal observed
+  `bootstrap.json` there being served without authentication; a logo file was not part of it.
 
 ### Why it lives outside the bundle
 
 The marketplace installer copies the web directory with `overwrite="true"`, so
-configuration inside the bundle is **destroyed on upgrade**. The config is therefore
-installed as a _sibling_ of that tree with `overwrite="false"` — seeded on first install,
-preserved on every upgrade after. The full reasoning, including why `nxserver/web` is the
-wrong destination (it is not a Tomcat docBase, so anything placed there is never served),
-is in [`install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml).
+configuration inside the bundle is **destroyed on upgrade**. The config therefore lives in a
+_sibling_ of that tree, and the package puts only a sample there, `bootstrap.example.json`. The
+customer copies it to `bootstrap.json`, which no install, upgrade or uninstall touches. With no
+`bootstrap.json`, the compiled defaults apply. Installing the file itself with `overwrite="false"`
+was tried, and rehearsal showed an upgrade after a customer edit leaving no version installed
+(NXSAT-317). The full reasoning, including why `nxserver/web` is the wrong destination (it is not
+a Tomcat docBase, so anything placed there is never served), is in
+[`install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml).
 
 An earlier version shipped to `nxserver/web/…` and **would have 404'd on every install**.
 It was recorded complete before that was caught.

@@ -50,7 +50,7 @@
       "blocks": [
         {
           "type": "code",
-          "code": "<span class=\"c\">// agentic-ui-config/bootstrap.json — installed BESIDE the bundle with</span>\n<span class=\"c\">// overwrite=\"false\", so a customer's edits survive every upgrade.</span>\n{\n  <b>\"branding\"</b>: {\n    <b>\"applicationTitle\"</b>: \"Acme Insurance\",\n    <b>\"documentTitle\"</b>:    \"Acme Insurance\"\n  },\n  <b>\"defaultThemeId\"</b>: \"acme\",\n  <b>\"themes\"</b>: [{\n    \"id\": \"acme\", \"label\": \"Acme Brand\", \"base\": \"light\",\n    <span class=\"c\">// CSS custom properties applied to &lt;html&gt; — no rebuild</span>\n    <b>\"tokens\"</b>: {\n      \"--mat-sys-primary\": \"rgb(123, 47, 247)\",\n      \"--agentic-pill-radius\": \"4px\"\n    }\n  }]\n}"
+          "code": "<span class=\"c\">// agentic-ui-config/bootstrap.json — BESIDE the bundle, copied from the</span>\n<span class=\"c\">// packaged sample; no upgrade touches it.</span>\n{\n  <b>\"branding\"</b>: {\n    <b>\"applicationTitle\"</b>: \"Acme Insurance\",\n    <b>\"documentTitle\"</b>:    \"Acme Insurance\"\n  },\n  <b>\"defaultThemeId\"</b>: \"acme\",\n  <b>\"themes\"</b>: [{\n    \"id\": \"acme\", \"label\": \"Acme Brand\", \"base\": \"light\",\n    <span class=\"c\">// CSS custom properties applied to &lt;html&gt; — no rebuild</span>\n    <b>\"tokens\"</b>: {\n      \"--mat-sys-primary\": \"rgb(123, 47, 247)\",\n      \"--agentic-pill-radius\": \"4px\"\n    }\n  }]\n}"
         }
       ],
       "footnote": "Every key is optional; anything omitted falls back to the compiled-in value, so an untouched file behaves exactly like no file. There is **no logo or favicon key** — product name and theme colours only. Say that plainly rather than being asked."

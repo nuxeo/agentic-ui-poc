@@ -87,9 +87,12 @@ const BOOTSTRAP_ROUTE = '**/agentic-ui-config/bootstrap.json';
 const MANIFEST_ROUTE = '**/api/v1/path/default-domain/config/agentic-ui';
 const BOOTSTRAP_PATH = '/agentic-ui-config/bootstrap.json';
 
-/** The file the marketplace package installs. Served verbatim for the default passes. */
+/**
+ * The sample the marketplace package installs, whose values are the compiled defaults. Served
+ * verbatim for the default passes.
+ */
 const PACKAGED_BOOTSTRAP = readFileSync(
-  resolve(process.cwd(), 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json'),
+  resolve(process.cwd(), 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json'),
   'utf8',
 );
 

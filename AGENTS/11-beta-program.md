@@ -356,18 +356,28 @@ DocumentService`. The chain, read from the published bundle:
   pull adf-hx into the initial bundle on purpose — `provideAdfHxNuxeoBridge()` in
   `app.config.ts` and `HxpBrowseNavDrawerComponent` in the shell nav drawer (see the guardrail
   allowlist in `scripts/review-guardrails.mjs`).
-- **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
-  A second `install.xml` copy step with `overwrite="false"` puts customer
-  configuration in a _sibling_ of the bundle, outside the destructive copy's
-  source tree, so the installer does not replace it (intended effect of the copy layout; no marketplace install or upgrade has been run — R7). **The destination must be under
+- **The package installs Layer 0 configuration as a sample, never as `bootstrap.json` —
+  `overwrite="false"` was rehearsed and it breaks the upgrade (R7, NXSAT-317).** Until
+  NXSAT-317 a second `install.xml` copy put `bootstrap.json` in
+  `nxserver/nuxeo.war/agentic-ui-config` with `overwrite="false"`, and every document said that
+  made customer edits survive an upgrade. Rehearsed on a throwaway server on 2026-10-07, it did
+  the opposite: an upgrade is `pkgUninstall(old)` then `pkgInstall(new)`; the uninstall deletes a
+  package file only while its md5 matches, so an **edited** file stays; the new version's
+  `overwrite="false"` copy then throws on it, and the install rolls back only its own commands —
+  **no version installed, `/nuxeo/agentic-ui/` 404**. Unedited installs upgraded fine. The
+  package now ships `bootstrap.example.json` (`overwrite="true"`, package-owned) and the customer
+  copies it to `bootstrap.json`, which no install, upgrade or uninstall touches; a missing
+  `bootstrap.json` means the compiled defaults, which the sample's values are. Rehearsed fixed:
+  today's package with an edit upgrades to it and keeps serving the edit
+  (`evidence/feedback-response/NXSAT-317/`, local). `checkInstallerOwnsNoCustomerFile` fails on
+  any `overwrite="false"` copy or a packaged `bootstrap.json`. **The destination must be under
   `nxserver/nuxeo.war`** — that is the Tomcat docBase for the `/nuxeo` context
   (`docBase="../nxserver/nuxeo.war"`). `nxserver/web` holds only `root.war`, is
   not a docBase, and anything installed there is never served. Phase 1 shipped the
-  `nxserver/web/…` variant and it would have 404'd in every deployment; the
-  corrected path is verified served on the local container. **Risk R7 is still
-  Medium:** since 2026-09-26 the package is built and published — `2026.0.1-20260926071953-BUILD-1109`, live on the preprod listing — but never installed or upgraded on a real server.
-  The outstanding exercise is a **marketplace install rehearsal**, distinct from the
-  `upgrade-rehearsal` gate, which is done and crosses a version boundary for the npm tarball.
+  `nxserver/web/…` variant and it would have 404'd in every deployment. Both files are served
+  **without authentication**. Workstream A (configuration served from the package by a servlet)
+  is expected to replace the file entirely; this is the interim, not the end state. Not
+  rehearsed: the Admin Center / Update Center path, which runs the same package tasks.
 - **Configuration is loaded, not compiled.** `libs/shared/app-config` reads a
   static bootstrap file pre-auth and a runtime manifest from the Nuxeo document
   at `/default-domain/config/agentic-ui` post-auth. Eleven `InjectionToken`

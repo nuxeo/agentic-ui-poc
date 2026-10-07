@@ -47,11 +47,13 @@ checked, which `release.yml` (also manual) does for a release.
   <copy dir="${package.root}/web" todir="${env.server.home}/nxserver" overwrite="true" />
   <copy dir="${package.root}/config"
         todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config"
-        overwrite="false" />
+        overwrite="true" />
 </install>
 ```
 
-Three steps, and the third is the whole Layer 0 upgrade-safety guarantee.
+Three steps. The third installs only a **sample**, `bootstrap.example.json`, and what it does
+_not_ install is the whole Layer 0 upgrade-safety guarantee: the package never owns
+`bootstrap.json`.
 
 ### Why the destination is what it is
 
@@ -63,15 +65,37 @@ The `nuxeo` context declares `docBase="../nxserver/nuxeo.war"`, so a request for
 served.** An earlier version of this shipped `nxserver/web/…` and **would have 404'd on every
 install**. It was recorded complete before that was caught, which is why `beta:state` now exists.
 
-### Why `overwrite="false"`
+### Why a sample, and not `overwrite="false"`
 
 The second copy step stages `${package.root}/web` (containing only `nuxeo.war/agentic-ui/**`) with
 `overwrite="true"` — so **configuration inside that tree would be destroyed on every upgrade**.
-`nuxeo.war/agentic-ui-config` is a _sibling_ of that tree and absent from the copy's source, and
-`overwrite="false"` leaves an existing deployed file untouched.
+`nuxeo.war/agentic-ui-config` is a _sibling_ of that tree and absent from the copy's source.
 
-Net effect: **defaults are seeded on first install, and customer edits survive every upgrade after
-it.** That is the mechanism behind the product's central promise.
+Until NXSAT-317 the third step installed `bootstrap.json` itself with `overwrite="false"`, and this
+section said that preserved customer edits. Rehearsed on a real server, it broke the upgrade
+instead. An upgrade is an uninstall of the old version, then an install of the new one:
+
+1. The uninstall deletes each package file only if its md5 still matches, so an **edited**
+   `bootstrap.json` is left on disk while every other file of the old version is removed.
+2. The new version's `overwrite="false"` copy then throws on that file, and the install rolls back
+   only its own commands. **No version is installed** and `/nuxeo/agentic-ui/` returns 404.
+
+So the package now ships `bootstrap.example.json`, replaced on every upgrade, and the customer
+copies it to `bootstrap.json`. No install, upgrade or uninstall touches `bootstrap.json`; with none
+present the app runs on its compiled defaults, which are the sample's values.
+
+**What customers do:** copy `nxserver/nuxeo.war/agentic-ui-config/bootstrap.example.json` to
+`bootstrap.json` in the same directory and edit the copy, never the sample. Both are served without
+authentication. After `mp-remove` the customer's `bootstrap.json` stays on disk, which is
+intentional; a reinstall picks it up again.
+
+**Servers already on a pre-NXSAT-317 package:** upgrade normally. An edited `bootstrap.json` is
+left in place by the old version's uninstall and keeps working. An unedited one is removed and the
+app falls back to the identical compiled defaults. Rehearsed both ways — see NXSAT-317.
+
+**A server already broken** by the old upgrade failure (both versions `downloaded`, app 404): stop
+Nuxeo, move `bootstrap.json` out of `nxserver`, `mp-install` the fixed package, move the file back,
+and start Nuxeo.
 
 > **Changing `install.xml` or marketplace packaging is a hard stop** in the phase skill — escalate
 > rather than attempt it. The reasoning above is why.
@@ -110,14 +134,15 @@ Verify with `npm run beta:backend`.
 
 ### Build and install
 
-| Symptom                                                     | Cause                                                                          | Fix                                                                      |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| `E404` on `@alfresco/*`                                     | Token missing or lacks `read:packages` on the **Alfresco** org                 | It needs both orgs, not just Hyland                                      |
-| `npm ci` fails on CI, green locally                         | A bare `npm install` on macOS pruned Linux-only optional entries               | Restore a known-good lock, merge only new entries, run the lockfile gate |
-| CI fetches from the wrong registry after an `.npmrc` change | `npm ci` installs from each entry's `resolved` URL and **ignores** the mapping | Regenerate the lock                                                      |
-| `bootstrap.json` 404s after install                         | Wrong destination — not a Tomcat docBase                                       | It must be under `nxserver/nuxeo.war/`. See §2                           |
-| Customer config lost on upgrade                             | Config inside the `overwrite="true"` tree                                      | It must be a sibling, with `overwrite="false"`                           |
-| Marketplace build fails                                     | Java/Maven version                                                             | Java 17+, Maven 3.9+                                                     |
+| Symptom                                                              | Cause                                                                          | Fix                                                                      |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `E404` on `@alfresco/*`                                              | Token missing or lacks `read:packages` on the **Alfresco** org                 | It needs both orgs, not just Hyland                                      |
+| `npm ci` fails on CI, green locally                                  | A bare `npm install` on macOS pruned Linux-only optional entries               | Restore a known-good lock, merge only new entries, run the lockfile gate |
+| CI fetches from the wrong registry after an `.npmrc` change          | `npm ci` installs from each entry's `resolved` URL and **ignores** the mapping | Regenerate the lock                                                      |
+| `bootstrap.json` 404s after install                                  | Wrong destination — not a Tomcat docBase                                       | It must be under `nxserver/nuxeo.war/`. See §2                           |
+| Customer config lost on upgrade                                      | Config inside the `overwrite="true"` tree                                      | It must be `bootstrap.json` in the sibling `agentic-ui-config/`          |
+| Upgrade fails: `overwrite flag on false but destination file exists` | A pre-NXSAT-317 package upgraded after `bootstrap.json` was edited             | Move the file out of `nxserver`, `mp-install`, move it back. See §2      |
+| Marketplace build fails                                              | Java/Maven version                                                             | Java 17+, Maven 3.9+                                                     |
 
 ### Runtime
 

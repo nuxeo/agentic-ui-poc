@@ -1021,12 +1021,14 @@ safety:
 <update file="${package.root}/install/bundles" todir="${env.bundles}" />
 <copy dir="${package.root}/web" todir="${env.server.home}/nxserver" overwrite="true" />
 <copy dir="${package.root}/config"
-      todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config" overwrite="false" />
+      todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config" overwrite="true" />
 ```
 
 The `overwrite="true"` copy destroys everything under `nuxeo.war/agentic-ui/` on every upgrade —
 which is exactly why customer Layer 0 configuration lives in the **sibling** `agentic-ui-config/`
-directory with `overwrite="false"`. The destination **must** be under `nxserver/nuxeo.war`, the
+directory. The package puts only `bootstrap.example.json` there. The customer's `bootstrap.json`
+is never packaged: an `overwrite="false"` copy of it made the upgrade fail after an edit, leaving
+no version installed (NXSAT-317), and `checkInstallerOwnsNoCustomerFile` rejects both. The destination **must** be under `nxserver/nuxeo.war`, the
 Tomcat docBase for `/nuxeo`; `nxserver/web` is not a docBase, and a build that shipped that variant
 would have 404'd in every deployment.
 

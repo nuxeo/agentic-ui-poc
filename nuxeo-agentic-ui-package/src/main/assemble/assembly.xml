@@ -37,9 +37,10 @@
     </fileSet>
 
     <!--
-      Layer 0 bootstrap configuration. Staged outside /web on purpose: install.xml
-      copies /web with overwrite="true", and copies this directory separately with
-      overwrite="false" so customer edits survive an upgrade.
+      Layer 0 bootstrap configuration: a SAMPLE only (bootstrap.example.json). Staged
+      outside /web so install.xml can put it in the sibling agentic-ui-config
+      directory, where the customer creates bootstrap.json. That file must never be
+      packaged: see the comment in install.xml (NXSAT-317).
     -->
     <fileSet>
       <directory>src/main/config</directory>
