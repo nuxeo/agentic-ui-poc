@@ -3,6 +3,8 @@
   --document-viewer-light-strip-surface: #ffffff;
   --document-viewer-on-light-strip: #333333;
   --document-viewer-muted-on-light-surface: #5c5f6b;
+  /* Focus ring on the fixed light strip — not --mat-sys-primary (pale in dark theme, ~1.7:1 on white). */
+  --document-viewer-focus-on-light-surface: #0073e6;
   /* Destructive actions on the fixed light strip — not --mat-sys-error (dark-theme token). */
   --document-viewer-error-on-light-surface: #b00020;
   display: flex;
@@ -530,6 +532,6 @@
 // NXENG-781 / NXENG-786 — IBM `style_focus_visible` reads `:focus` only; keep this selector
 // separate from `:focus-visible` (comma lists are not resolved by the scanner).
 .format-download-btn.mat-mdc-icon-button:focus {
-  outline: 2px solid var(--mat-sys-primary, #0073e6) !important;
+  outline: 2px solid var(--document-viewer-focus-on-light-surface) !important;
   outline-offset: 2px;
 }
