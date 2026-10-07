@@ -12,6 +12,14 @@
     <dd>{{ diagnostics().bootstrapSource }}</dd>
     <dt>Manifest</dt>
     <dd>{{ diagnostics().manifestSource }}</dd>
+    <dt>Bootstrap packages</dt>
+    <dd>
+      @for (fragment of diagnostics().bootstrapFragments; track $index) {
+        {{ fragment.component }}{{ $last ? '' : ', ' }}
+      } @empty {
+        none
+      }
+    </dd>
     <dt>Manifest packages</dt>
     <dd>
       @for (fragment of diagnostics().manifestFragments; track $index) {
