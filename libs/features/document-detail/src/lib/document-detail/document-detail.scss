@@ -348,9 +348,11 @@ sat-breadcrumbs {
 
 // NXENG-792 — sidebar sub-tab buttons (IBM `style_focus_visible`, standalone `:focus`).
 // Ring colour tracks the fixed light properties panel, not `--mat-sys-primary` (too pale on dark).
+// Negative offset keeps the ring inside the tab box: `.properties-panel` sets `overflow: hidden`,
+// so a ring painted outside the first/last flex tab is clipped at the panel edge.
 .sub-tab:focus {
   outline: 2px solid var(--document-detail-properties-label-muted);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .panel-body {

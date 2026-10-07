@@ -80,17 +80,17 @@ describe('Document detail sidebar sub-tabs — keyboard focus (NXENG-792)', () =
     else document.documentElement.setAttribute('data-app-theme', originalTheme);
   });
 
-  function thirdSubTab(): HTMLButtonElement {
+  function subTab(index: number): HTMLButtonElement {
     const buttons = fixture.nativeElement.querySelectorAll('.sub-tab') as NodeListOf<HTMLButtonElement>;
     expect(buttons.length).toBeGreaterThanOrEqual(3);
-    return buttons[2];
+    return buttons[index];
   }
 
-  function measure(theme: string) {
+  function measure(theme: string, tabIndex = 2) {
     document.documentElement.setAttribute('data-app-theme', theme);
     fixture.detectChanges();
 
-    const button = thirdSubTab();
+    const button = subTab(tabIndex);
     button.focus();
 
     const styles = getComputedStyle(button);
@@ -110,7 +110,7 @@ describe('Document detail sidebar sub-tabs — keyboard focus (NXENG-792)', () =
     const measured = measure('nuxeo');
     expect(measured.outlineStyle).not.toBe('none');
     expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
-    expect(measured.outlineOffset).toBeGreaterThanOrEqual(2);
+    expect(measured.outlineOffset).toBeLessThanOrEqual(-2);
   });
 
   for (const theme of COMPILED_THEME_BASES) {
@@ -121,6 +121,38 @@ describe('Document detail sidebar sub-tabs — keyboard focus (NXENG-792)', () =
       expect(measured.ratioVsBackdrop)
         .withContext(`ring on Activity sub-tab under ${theme}`)
         .toBeGreaterThanOrEqual(MINIMUM_RATIO);
+    });
+  }
+
+  for (const tabIndex of [0, 2] as const) {
+    it(`edge sub-tab ${tabIndex} keeps a full ring inside the overflow-hidden panel`, () => {
+      document.documentElement.setAttribute('data-app-theme', 'dark');
+      fixture.detectChanges();
+
+      const panel = fixture.nativeElement.querySelector('.properties-panel') as HTMLElement;
+      const button = subTab(tabIndex);
+      button.focus();
+
+      const styles = getComputedStyle(button);
+      expect(styles.outlineStyle).not.toBe('none');
+      expect(Number.parseFloat(styles.outlineWidth)).toBeGreaterThanOrEqual(2);
+      expect(Number.parseFloat(styles.outlineOffset)).toBeLessThanOrEqual(-2);
+
+      const panelRect = panel.getBoundingClientRect();
+      const btnRect = button.getBoundingClientRect();
+      const inset = Math.max(2, Math.abs(Number.parseFloat(styles.outlineOffset)));
+      const probeX =
+        tabIndex === 0 ? btnRect.left + inset + 1 : btnRect.right - inset - 1;
+      const probeY = btnRect.top + btnRect.height / 2;
+      expect(probeX).toBeGreaterThanOrEqual(panelRect.left);
+      expect(probeX).toBeLessThanOrEqual(panelRect.right);
+      expect(probeY).toBeGreaterThanOrEqual(panelRect.top);
+      expect(probeY).toBeLessThanOrEqual(panelRect.bottom);
+
+      const hit = document.elementFromPoint(probeX, probeY);
+      expect(hit === button || button.contains(hit))
+        .withContext('focus ring probe must land on the focused sub-tab, not clipped away')
+        .toBe(true);
     });
   }
 });
