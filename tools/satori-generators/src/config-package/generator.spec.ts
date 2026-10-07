@@ -1,6 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
@@ -444,6 +452,97 @@ describe('the generated build.mjs', () => {
     const { status, output } = build();
     expect(status).toBe(1);
     expect(output).toMatch(message);
+  });
+
+  it('refuses bundle/ or package metadata that is itself a symbolic link', async () => {
+    await generate();
+    renameSync(join(dir, 'bundle'), join(dir, 'reviewed-elsewhere'));
+    symlinkSync(join(dir, 'reviewed-elsewhere'), join(dir, 'bundle'));
+    renameSync(join(dir, 'package/package.xml'), join(dir, 'package.xml'));
+    symlinkSync(join(dir, 'package.xml'), join(dir, 'package/package.xml'));
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toMatch(/^\s+- bundle: is a symbolic link/m);
+    expect(output).toContain('package/package.xml: is a symbolic link');
+  });
+
+  it.each([
+    ['a name that leaves the output directory', 'name="acme-config"', 'name="../escaped"'],
+    ['a version that is a path', 'version="1.0.0"', 'version="1.0.0/../../x"'],
+  ])('refuses %s', async (_case, from, to) => {
+    await generate();
+    const file = 'package/package.xml';
+    write(file, readFileSync(join(dir, file), 'utf8').replace(from, to));
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toMatch(/must each be letters, digits, "\.", "_" and "-"/);
+  });
+
+  it.each([
+    ['outside bundle/', '../outside.xml'],
+    ['a Markdown file, which is not packaged', 'agentic-ui-config/assets/README.md'],
+  ])('refuses a Nuxeo-Component naming %s', async (_case, path) => {
+    await generate();
+    write('outside.xml', '<component name="outside"/>');
+    write('bundle/META-INF/MANIFEST.MF', `Manifest-Version: 1.0\nNuxeo-Component: ${path}\n`);
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toContain(`Nuxeo-Component names ${path}, which is not a packaged file in bundle/`);
+  });
+
+  it('reads a Nuxeo-Component line continued as a JAR manifest continues it', async () => {
+    await generate();
+    write(
+      'bundle/META-INF/MANIFEST.MF',
+      'Manifest-Version: 1.0\nNuxeo-Component: OSGI-INF/acme-config-co\n nfig.xml\n',
+    );
+    expect(build().status).toBe(0);
+  });
+
+  it.each([
+    ['an unclosed element', (xml: string) => xml.replace('</extension>', ''), /<\/component> closes <extension>/],
+    ['a truncated file', (xml: string) => xml.replace('</component>', ''), /<component> is never closed/],
+    ['an unterminated comment', (xml: string) => `${xml}\n<!-- `, /unterminated comment/],
+    [
+      'an unterminated CDATA section',
+      (xml: string) =>
+        xml.replace('</extension>', '<fragment name="x" layer="manifest"><json><![CDATA[{}</json></fragment></extension>'),
+      /unterminated CDATA section/,
+    ],
+    ['a bare "&"', (xml: string) => xml.replace('<extension', '<!-- & --><extension a="b & c"'), /"&" that starts no reference/],
+  ])('refuses component XML that is not well-formed: %s', async (_case, edit, message) => {
+    await generate();
+    write(componentXml, edit(readFileSync(join(dir, componentXml), 'utf8')));
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toContain('bundle/OSGI-INF/acme-config-config.xml: is not well-formed XML');
+    expect(output).toMatch(message);
+  });
+
+  it('reads a fragment with a byte-order mark, as the server does, and packages it without', async () => {
+    await generate();
+    write(fragment, '\uFEFF{ "branding": { "applicationTitle": "Acme" } }');
+    const { status, zip } = build();
+    expect(status).toBe(0);
+    const jar = unzip(unzip(zip as Buffer).get('install/bundles/acme-config.jar') as Buffer);
+    expect(jar.get('agentic-ui-config/bootstrap.json')?.toString('utf8')).toBe(
+      '{"branding":{"applicationTitle":"Acme"}}',
+    );
+  });
+
+  it.each([
+    ['inside bundle/, where the zip would be packaged next time', ['--out', 'bundle/out'], /is inside bundle\//],
+    ['with no directory', ['--out'], /--out needs a directory/],
+  ])('refuses --out %s', async (_case, args, message) => {
+    await generate();
+    let failure: { status: number; stderr: string } | undefined;
+    try {
+      execFileSync(process.execPath, [join(dir, 'build.mjs'), ...args], { cwd: dir, stdio: 'pipe' });
+    } catch (error) {
+      failure = error as { status: number; stderr: string };
+    }
+    expect(failure?.status).toBe(2);
+    expect(String(failure?.stderr)).toMatch(message);
   });
 
   it('refuses a symbolic link in bundle/, to a file or a directory, rather than following it', async () => {
