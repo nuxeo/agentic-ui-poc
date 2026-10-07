@@ -167,12 +167,12 @@ Every project carries `scope:` and `type:`. **An untagged project cannot depend 
 
 ## 5. Where the four layers live
 
-| Layer             | Code                                                                                                                                |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — Configuration | `libs/shared/app-config`, `apps/nuxeo-ui/src/app/config/`, `nuxeo-agentic-ui-package/src/main/config/bootstrap.json`, `install.xml` |
-| 1 — Declarative   | `libs/shared/extensions`, `apps/nuxeo-ui/src/app/extensions/`, `apps/nuxeo-satori-template/manifest.example.json`                   |
-| 2 — Customer code | `libs/platform` (published), `libs/extensions/acme-extensions` (reference)                                                          |
-| 3 — Harness       | `tools/satori-generators`, `libs/platform/guardrails/`, `libs/platform/AGENTS.md`                                                   |
+| Layer             | Code                                                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — Configuration | `libs/shared/app-config`, `apps/nuxeo-ui/src/app/config/`, `nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json`, `install.xml` |
+| 1 — Declarative   | `libs/shared/extensions`, `apps/nuxeo-ui/src/app/extensions/`, `apps/nuxeo-satori-template/manifest.example.json`                           |
+| 2 — Customer code | `libs/platform` (published), `libs/extensions/acme-extensions` (reference)                                                                  |
+| 3 — Harness       | `tools/satori-generators`, `libs/platform/guardrails/`, `libs/platform/AGENTS.md`                                                           |
 
 ---
 

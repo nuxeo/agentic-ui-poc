@@ -258,14 +258,16 @@ flowchart TD
   mvn --> pkg["nuxeo-agentic-ui-package<br/>marketplace ZIP"]
   pkg --> inst["install.xml"]
   inst -->|"overwrite=true"| app["nxserver/nuxeo.war/agentic-ui/"]
-  inst -->|"overwrite=FALSE"| cfg["nxserver/nuxeo.war/agentic-ui-config/<br/>bootstrap.json"]
+  inst -->|"sample only"| cfg["nxserver/nuxeo.war/agentic-ui-config/<br/>bootstrap.example.json"]
+  cust["customer"] -->|"copies + edits"| own["agentic-ui-config/bootstrap.json<br/>never touched by the package"]
   pkg --> core["nuxeo-agentic-core bundle<br/>URL codec, auth + login contributions"]
 ```
 
-The `overwrite="false"` on the config copy is the mechanism that makes Layer 0 survive an
-upgrade, and the reasoning is recorded in
-[`install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml): the
-destination must be inside the directory Tomcat actually serves. The `nuxeo` context
+What makes Layer 0 survive an upgrade is that the package never installs `bootstrap.json` — only a
+sample beside it. Installing the file itself with `overwrite="false"`, the earlier design, made an
+upgrade after a customer edit fail and leave no version installed (NXSAT-317). The reasoning is
+recorded in [`install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml),
+including that the destination must be inside the directory Tomcat actually serves. The `nuxeo` context
 declares `docBase="../nxserver/nuxeo.war"`, so `/nuxeo/agentic-ui-config/bootstrap.json`
 resolves under `nxserver/nuxeo.war/`. `nxserver/web` holds only `root.war` and is not a
 docBase — anything placed there is never served. An earlier version shipped

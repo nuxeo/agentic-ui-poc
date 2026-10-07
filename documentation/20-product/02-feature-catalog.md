@@ -177,7 +177,7 @@ HTTP 500, which is expected. Feature-flagged client-side
 | Runtime theming from Layer 0 tokens                                                | **Shipped**                                                                 |
 | Accessibility                                                                      | **Shipped** — WCAG 2.1 AA met on 15 scanned cases; `KNOWN_VIOLATIONS` empty |
 | Notification email on permission grant                                             | **Shipped** — Mailpit locally                                               |
-| Marketplace packaging with upgrade-safe config                                     | **Shipped**                                                                 |
+| Marketplace packaging with upgrade-safe config                                     | **Shipped** — upgrade with an edited `bootstrap.json` rehearsed (NXSAT-317) |
 
 ---
 

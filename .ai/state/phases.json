@@ -55,7 +55,7 @@
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
       ],
       "notCovered": [
-        "The marketplace package has never been installed on a real Nuxeo server, so R7 (upgrade-safe config survives install) stays Medium",
+        "The marketplace install and upgrade were rehearsed only with `nuxeoctl mp-install` on a throwaway server (2026-10-07, NXSAT-317); the Admin Center / Update Center path is not rehearsed. That rehearsal disproved the original non-overwriting design, and R7 is Low only for the sample-file installer that NXSAT-317 ships",
         "i18n extraction covers the core slice only"
       ]
     },

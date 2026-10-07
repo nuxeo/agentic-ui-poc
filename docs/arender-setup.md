@@ -247,9 +247,11 @@ operator who put this block there would see no error and no annotation viewer.
 
 The directory is a **sibling** of the application bundle, not a file inside it: the marketplace
 installer copies the packaged `web` directory over the deployed one with `overwrite="true"`, so
-anything under `.../agentic-ui/` is replaced on every upgrade, while `.../agentic-ui-config/` is
-installed by a separate non-overwriting step and survives. See `resolveBootstrapConfigUrl` in
-`app-config.tokens.ts`.
+anything under `.../agentic-ui/` is replaced on every upgrade. The package puts only a sample,
+`bootstrap.example.json`, in `.../agentic-ui-config/`; copy it to `bootstrap.json` there and edit the
+copy, which no upgrade or uninstall touches (NXSAT-317). Under `nx serve` the file is the gitignored
+`apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json`, created before the dev server starts. See
+`resolveBootstrapConfigUrl` in `app-config.tokens.ts`.
 
 ```json
 {

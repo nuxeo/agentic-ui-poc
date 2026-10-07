@@ -75,6 +75,16 @@ any other type — `application/json` included — so the stored JSON stops pars
 defaults apply with no error shown. A deployment that points `manifestDocumentProperty` at a
 property of its own schema is not subject to this.
 
+The Layer 0 file is the other store, and the package does **not** install it. The package ships a
+sample, `nxserver/nuxeo.war/agentic-ui-config/bootstrap.example.json`, and replaces it on every
+upgrade; to customise, copy it to `bootstrap.json` in the same directory and edit the copy. No
+install, upgrade or uninstall touches `bootstrap.json`, and with no `bootstrap.json` the app runs on
+its compiled defaults, which are the sample's values. Do not edit the sample itself: the change is
+lost on the next upgrade and never applied anyway. Until NXSAT-317 the package installed
+`bootstrap.json` itself, and upgrading after an edit left no version installed; if a server was
+installed from such a package, its edited `bootstrap.json` keeps working after the upgrade to a
+fixed version. Both files are served without authentication — put nothing secret in either.
+
 The Layer 1 configuration is the `extensions` key of that document:
 
 ```json

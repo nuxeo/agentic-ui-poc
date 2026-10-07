@@ -1204,7 +1204,10 @@ expectRed(
   'checkShippedDefaultLanguage',
   {
     ...CATALOGUES,
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('zz', ['en', 'fr']),
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json': BOOTSTRAP('zz', [
+      'en',
+      'fr',
+    ]),
   },
   null,
   /GENERATED pseudo-locale/,
@@ -1215,7 +1218,11 @@ expectRed(
   'checkShippedDefaultLanguage',
   {
     ...CATALOGUES,
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('de', ['en', 'fr', 'de']),
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json': BOOTSTRAP('de', [
+      'en',
+      'fr',
+      'de',
+    ]),
   },
   null,
   /no catalogue exists for it/,
@@ -1226,7 +1233,7 @@ expectRed(
   'checkShippedDefaultLanguage',
   {
     ...CATALOGUES,
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('fr', ['en']),
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json': BOOTSTRAP('fr', ['en']),
   },
   null,
   /absent from/,
@@ -1234,7 +1241,7 @@ expectRed(
 
 expectGreen('a real shipped default', 'checkShippedDefaultLanguage', {
   ...CATALOGUES,
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('en', ['en', 'fr']),
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json': BOOTSTRAP('en', ['en', 'fr']),
 });
 
 // A gate that cannot find the file it checks must say so, not pass.
@@ -1483,7 +1490,7 @@ expectRed(
   'checkAdvertisedLocalesShip',
   {
     'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
       '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "es"]\n}\n',
   },
   null,
@@ -1495,7 +1502,7 @@ expectRed(
 expectGreen('an advertised locale that ships', 'checkAdvertisedLocalesShip', {
   'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
   'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
     '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "fr"]\n}\n',
 });
 
@@ -1536,7 +1543,7 @@ expectRed(
     'libs/shared/app-config/src/lib/bootstrap-config.ts':
       'export const DEFAULT_APP_BOOTSTRAP_CONFIG = {\n' +
       "  branding: { applicationTitle: 'Hyland Nuxeo' },\n  defaultThemeId: 'nuxeo',\n};\n",
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
       '{\n  "branding": { "applicationTitle": "Acme Content Cloud" },\n' +
       '  "defaultThemeId": "acme",\n  "themes": [{ "id": "acme" }]\n}\n',
   },
@@ -1548,7 +1555,7 @@ const PACKAGED_OK = {
   'libs/shared/app-config/src/lib/bootstrap-config.ts':
     'export const DEFAULT_APP_BOOTSTRAP_CONFIG = {\n' +
     "  branding: { applicationTitle: 'Hyland Nuxeo' },\n  defaultThemeId: 'nuxeo',\n};\n",
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
     '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
     '  "defaultThemeId": "nuxeo",\n  "themes": []\n}\n',
 };
@@ -1570,7 +1577,7 @@ expectRed(
   PACKAGED_OK,
   (write) =>
     write(
-      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json',
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
         '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
         '  "integrations": { "arender": { "viewerOrigin": "http://localhost:8181" } }\n}\n',
@@ -1586,7 +1593,7 @@ expectRed(
   PACKAGED_OK,
   (write) =>
     write(
-      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json',
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
         '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
         '  "$integrations": "LOCAL DEV ONLY (NXSAT-279) - revert with git checkout.",\n' +
@@ -1616,7 +1623,7 @@ expectRed(
   PACKAGED_OK,
   (write) =>
     write(
-      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json',
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
         '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
         '  "integrations": { "arender": { "viewerOrigin": "http://127.0.0.2:8181" } }\n}\n',
@@ -1630,7 +1637,7 @@ expectRed(
   PACKAGED_OK,
   (write) =>
     write(
-      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json',
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
         '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
         '  "integrations": { "arender": { "viewerOrigin": "http://[::1]:8181" } }\n}\n',
@@ -1643,10 +1650,156 @@ expectGreen(
   'checkPackagedConfigIsNotADemo',
   {
     ...PACKAGED_OK,
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
       '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
       '  "integrations": { "arender": { "viewerOrigin": "https://arender.hyland.com" } }\n}\n',
+  },
+);
+
+/* ---------------- checkInstallerOwnsNoCustomerFile (NXSAT-317) ---------------- */
+
+const INSTALL_XML = 'nuxeo-agentic-ui-package/src/main/resources/install.xml';
+const SAMPLE = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json';
+
+/** The installer as it shipped before NXSAT-317, tags verbatim. */
+const INSTALL_XML_BEFORE = `<install>
+  <update file="\${package.root}/install/bundles" todir="\${env.bundles}" />
+  <copy dir="\${package.root}/web" todir="\${env.server.home}/nxserver" overwrite="true" />
+  <!-- overwrite="false" means an existing deployed file is left untouched -->
+  <copy dir="\${package.root}/config"
+        todir="\${env.server.home}/nxserver/nuxeo.war/agentic-ui-config"
+        overwrite="false" />
+</install>
+`;
+
+/** The fix: the config directory carries only the sample, replaced like any package file. */
+const INSTALL_XML_AFTER = INSTALL_XML_BEFORE.replace(
+  /overwrite="false" \/>/,
+  'overwrite="true" />',
+);
+
+// The defect itself. Rehearsed: an edited bootstrap.json survives the old version's md5-checked
+// uninstall, this copy then throws on it, and the upgrade ends with no version installed.
+expectRed(
+  'the pre-NXSAT-317 installer copying config with overwrite="false"',
+  'checkInstallerOwnsNoCustomerFile',
+  { [INSTALL_XML]: INSTALL_XML_BEFORE, [SAMPLE]: '{}\n' },
+  null,
+  /install\.xml has a copy with overwrite="false"[\s\S]*agentic-ui-config/,
+);
+
+// The rule is about the attribute, not about the one file that tripped it.
+expectRed(
+  "overwrite='false' on any other file, single-quoted",
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      "  <copy file='${package.root}/themes/acme.css' todir='${env.server.home}/x'\n" +
+        "        overwrite='false' />\n</install>",
+    ),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /has a copy with overwrite="false"[\s\S]*acme\.css/,
+);
+
+// Shipping the real file with overwrite="true" is not a fix: it destroys the edit instead. And the
+// assembly stages this directory from disk, so an untracked file left there is packaged too.
+expectRed(
+  'a packaged bootstrap.json, even with overwrite="true"',
+  'checkInstallerOwnsNoCustomerFile',
+  { [INSTALL_XML]: INSTALL_XML_AFTER, [SAMPLE]: '{}\n' },
+  (write) => write('nuxeo-agentic-ui-package/src/main/config/bootstrap.json', '{}\n'),
+  /src\/main\/config\/bootstrap\.json would be installed as the bootstrap\.json the app/,
+);
+
+// Nuxeo's Copy defaults `overwrite` to false and parses the attribute only when it is non-empty,
+// so leaving it out is the same defect — and so is any value parseBoolean does not read as true.
+expectRed(
+  'a copy with no overwrite attribute',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      "  <copy file='${package.root}/themes/acme.css' todir='${env.server.home}/x' />\n</install>",
+    ),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /has a copy with no overwrite attribute, which Nuxeo runs as overwrite="false"[\s\S]*acme\.css/,
+);
+
+expectRed(
+  'overwrite="yes", which parseBoolean reads as false',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_BEFORE.replace(/overwrite="false" \/>/, 'overwrite="yes" />'),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /has a copy with overwrite="yes", which Nuxeo runs as overwrite="false"/,
+);
+
+// Any other packaged file in the config directory replaces a customer's same-named one on
+// upgrade — a logo is the obvious one since branding.logo names a file beside bootstrap.json.
+expectRed(
+  'a packaged logo beside the sample',
+  'checkInstallerOwnsNoCustomerFile',
+  { [INSTALL_XML]: INSTALL_XML_AFTER, [SAMPLE]: '{}\n' },
+  (write) => write('nuxeo-agentic-ui-package/src/main/config/acme-logo.svg', '<svg/>\n'),
+  /src\/main\/config\/acme-logo\.svg would be installed into agentic-ui-config/,
+);
+
+// The config walk only proves what src/main/config holds; a second source copied into the same
+// directory would replace a customer's logo with nothing to catch it.
+expectRed(
+  'a logo copied into agentic-ui-config from another source',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      '  <copy file="${package.root}/themes/acme-logo.svg" overwrite="true"\n' +
+        '        todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config" />\n' +
+        '</install>',
+    ),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /copies into agentic-ui-config from somewhere other than \$\{package\.root\}\/config[\s\S]*acme-logo\.svg/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'overwrite="TRUE", which parseBoolean reads as true',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_BEFORE.replace(/overwrite="false" \/>/, 'overwrite="TRUE" />'),
+    [SAMPLE]: '{}\n',
+  },
+);
+
+expectRed(
+  'no installer found at all',
+  'checkInstallerOwnsNoCustomerFile',
+  { [SAMPLE]: '{}\n' },
+  null,
+  /No install\.xml was found[\s\S]*asserted nothing/,
+);
+
+// The comment explaining the rule has to quote the attribute — here as a whole commented-out copy,
+// the strongest form of it. It must not trip the rule.
+falsePositiveControls += 1;
+expectGreen(
+  'the fixed installer, with a commented-out overwrite="false" copy',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      '  <!-- was: <copy dir="${package.root}/config" todir="x" overwrite="false" /> -->\n</install>',
+    ),
+    [SAMPLE]: '{}\n',
   },
 );
 
@@ -3833,7 +3986,7 @@ expectRed(
  * languages it could not render, and the gate was looking somewhere else entirely.
  */
 const TEMPLATE_CONFIG = 'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json';
-const PACKAGED_CONFIG = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+const PACKAGED_CONFIG = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json';
 const EN_ONLY = '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en"]\n}\n';
 
 expectRed(

@@ -180,16 +180,16 @@ Full table in [Dev Harness & Gates](08-dev-harness-and-gates.md). Structure:
 
 ## 9. The Java side
 
-| Path                                                                           | Responsibility                                       |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| `nuxeo-agentic-core/src/main/java/.../AgenticNotificationDocumentIdCodec.java` | URL codec so notification links resolve into this UI |
-| `nuxeo-agentic-core/src/main/resources/OSGI-INF/auth-config-agentic.xml`       | Auth contribution                                    |
-| `nuxeo-agentic-core/.../login-startup-page-agentic-contrib.xml`                | Login start page                                     |
-| `nuxeo-agentic-core/.../agentic-notification-doc-url-contrib.xml`              | Notification URL contribution                        |
-| `nuxeo-agentic-ui-package/src/main/resources/install.xml`                      | **The upgrade-safety guarantee**                     |
-| `nuxeo-agentic-ui-package/src/main/resources/package.xml`                      | Marketplace metadata                                 |
-| `nuxeo-agentic-ui-package/src/main/assemble/assembly.xml`                      | Package assembly                                     |
-| `nuxeo-agentic-ui-package/src/main/config/bootstrap.json`                      | The **seed** Layer 0 config                          |
+| Path                                                                           | Responsibility                                         |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| `nuxeo-agentic-core/src/main/java/.../AgenticNotificationDocumentIdCodec.java` | URL codec so notification links resolve into this UI   |
+| `nuxeo-agentic-core/src/main/resources/OSGI-INF/auth-config-agentic.xml`       | Auth contribution                                      |
+| `nuxeo-agentic-core/.../login-startup-page-agentic-contrib.xml`                | Login start page                                       |
+| `nuxeo-agentic-core/.../agentic-notification-doc-url-contrib.xml`              | Notification URL contribution                          |
+| `nuxeo-agentic-ui-package/src/main/resources/install.xml`                      | **The upgrade-safety guarantee**                       |
+| `nuxeo-agentic-ui-package/src/main/resources/package.xml`                      | Marketplace metadata                                   |
+| `nuxeo-agentic-ui-package/src/main/assemble/assembly.xml`                      | Package assembly                                       |
+| `nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json`              | The **sample** Layer 0 config — never `bootstrap.json` |
 
 ---
 
