@@ -586,9 +586,9 @@ async function patchBootstrap(patch) {
     throw new Error(
       `${SERVED_BOOTSTRAP} is not being served, so a patch to ${BOOTSTRAP} would not take ` +
         'effect. The dev server only serves a file that existed when it started. Copy the ' +
-        'sample, then restart nx serve:\n' +
+        'packaged defaults, then restart nx serve:\n' +
         '  mkdir -p apps/nuxeo-ui/public/agentic-ui-config && cp ' +
-        'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json ' +
+        'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json ' +
         'apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json',
     );
   }

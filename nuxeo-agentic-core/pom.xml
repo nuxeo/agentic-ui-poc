@@ -12,7 +12,7 @@
 
   <artifactId>nuxeo-agentic-core</artifactId>
   <name>Nuxeo Agentic Core</name>
-  <description>OSGi bundle: startup page, auth config, and notification URL codec for Agentic UI</description>
+  <description>OSGi bundle: startup page, auth config, notification URL codec, and the configuration service that serves packaged UI configuration for Agentic UI</description>
 
   <dependencies>
     <dependency>
@@ -24,6 +24,44 @@
       <groupId>org.nuxeo.ecm.platform</groupId>
       <artifactId>nuxeo-platform-url</artifactId>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.nuxeo.runtime</groupId>
+      <artifactId>nuxeo-runtime</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.nuxeo.common</groupId>
+      <artifactId>nuxeo-common</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!--
+      Nuxeo LTS 2025 runs on Tomcat 10.1, so the servlet API is Jakarta, not javax. The
+      Nuxeo artifacts above are pinned to 11.5 because 2025 ones are not on the public
+      repository; nothing from them that the servlet touches carries a servlet type.
+    -->
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <version>6.0.0</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.10.2</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -38,6 +76,11 @@
             <manifestFile>src/main/resources/META-INF/MANIFEST.MF</manifestFile>
           </archive>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
       </plugin>
     </plugins>
   </build>

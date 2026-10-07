@@ -258,20 +258,21 @@ flowchart TD
   mvn --> pkg["nuxeo-agentic-ui-package<br/>marketplace ZIP"]
   pkg --> inst["install.xml"]
   inst -->|"overwrite=true"| app["nxserver/nuxeo.war/agentic-ui/"]
-  inst -->|"sample only"| cfg["nxserver/nuxeo.war/agentic-ui-config/<br/>bootstrap.example.json"]
-  cust["customer"] -->|"copies + edits"| own["agentic-ui-config/bootstrap.json<br/>never touched by the package"]
-  pkg --> core["nuxeo-agentic-core bundle<br/>URL codec, auth + login contributions"]
+  pkg --> core["nuxeo-agentic-core bundle<br/>URL codec, auth + login contributions,<br/>configuration service + our defaults"]
+  cpkg["customer configuration package<br/>depends on nuxeo-agentic-ui"] -->|"contributes fragments"| core
+  core --> srv["AgenticUiConfigServlet<br/>/nuxeo/agentic-ui-config/* (anonymous)"]
 ```
 
-What makes Layer 0 survive an upgrade is that the package never installs `bootstrap.json` — only a
-sample beside it. Installing the file itself with `overwrite="false"`, the earlier design, made an
-upgrade after a customer edit fail and leave no version installed (NXSAT-317). The reasoning is
-recorded in [`install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml),
-including that the destination must be inside the directory Tomcat actually serves. The `nuxeo` context
-declares `docBase="../nxserver/nuxeo.war"`, so `/nuxeo/agentic-ui-config/bootstrap.json`
-resolves under `nxserver/nuxeo.war/`. `nxserver/web` holds only `root.war` and is not a
-docBase — anything placed there is never served. An earlier version shipped
-`nxserver/web/…` and **would have 404'd on every install**.
+Layer 0 survives an upgrade because nobody edits a file on the server: configuration is
+contributed by a customer's own Marketplace package to the configuration service in
+`nuxeo-agentic-core`, and served by a servlet (NXSAT-312). Upgrading our package uninstalls and
+reinstalls the packages that depend on it, so their contributions come back unchanged. The
+package installs no configuration file; installing `bootstrap.json` with `overwrite="false"`, an
+earlier design, made an upgrade after a customer edit fail and leave no version installed
+(NXSAT-317). The web destination must be inside the directory Tomcat serves: the `nuxeo` context
+declares `docBase="../nxserver/nuxeo.war"`. `nxserver/web` holds only `root.war` and is not a
+docBase — anything placed there is never served. An earlier version shipped `nxserver/web/…` and
+**would have 404'd on every install**.
 
 `nuxeo-agentic-core` is a small Java/OSGi bundle (189 lines) contributing an
 `AgenticNotificationDocumentIdCodec`, an auth config fragment and a login start-page

@@ -35,10 +35,10 @@ export const SENTINEL = '\u27E6';
 
 const PACKAGED_BOOTSTRAP = join(
   process.cwd(),
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json',
+  'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json',
 );
 
-/** The packaged sample with only the language swapped, leaving branding and the rest alone. */
+/** The packaged defaults with only the language swapped, leaving branding and the rest alone. */
 const bootstrapForPseudoLocale = () => {
   const config = JSON.parse(readFileSync(PACKAGED_BOOTSTRAP, 'utf8'));
   config.defaultLanguage = 'zz';

@@ -180,31 +180,32 @@ Full table in [Dev Harness & Gates](08-dev-harness-and-gates.md). Structure:
 
 ## 9. The Java side
 
-| Path                                                                           | Responsibility                                         |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------ |
-| `nuxeo-agentic-core/src/main/java/.../AgenticNotificationDocumentIdCodec.java` | URL codec so notification links resolve into this UI   |
-| `nuxeo-agentic-core/src/main/resources/OSGI-INF/auth-config-agentic.xml`       | Auth contribution                                      |
-| `nuxeo-agentic-core/.../login-startup-page-agentic-contrib.xml`                | Login start page                                       |
-| `nuxeo-agentic-core/.../agentic-notification-doc-url-contrib.xml`              | Notification URL contribution                          |
-| `nuxeo-agentic-ui-package/src/main/resources/install.xml`                      | **The upgrade-safety guarantee**                       |
-| `nuxeo-agentic-ui-package/src/main/resources/package.xml`                      | Marketplace metadata                                   |
-| `nuxeo-agentic-ui-package/src/main/assemble/assembly.xml`                      | Package assembly                                       |
-| `nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json`              | The **sample** Layer 0 config — never `bootstrap.json` |
+| Path                                                                           | Responsibility                                                                           |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `nuxeo-agentic-core/src/main/java/.../AgenticNotificationDocumentIdCodec.java` | URL codec so notification links resolve into this UI                                     |
+| `nuxeo-agentic-core/src/main/resources/OSGI-INF/auth-config-agentic.xml`       | Auth contribution                                                                        |
+| `nuxeo-agentic-core/.../login-startup-page-agentic-contrib.xml`                | Login start page                                                                         |
+| `nuxeo-agentic-core/.../agentic-notification-doc-url-contrib.xml`              | Notification URL contribution                                                            |
+| `nuxeo-agentic-ui-package/src/main/resources/install.xml`                      | **The upgrade-safety guarantee**                                                         |
+| `nuxeo-agentic-ui-package/src/main/resources/package.xml`                      | Marketplace metadata                                                                     |
+| `nuxeo-agentic-ui-package/src/main/assemble/assembly.xml`                      | Package assembly                                                                         |
+| `nuxeo-agentic-core/src/main/java/org/nuxeo/agentic/config/`                   | The configuration service, its extension point and the anonymous servlet (NXSAT-312)     |
+| `nuxeo-agentic-core/src/main/resources/agentic-ui-config/*.defaults.json`      | Our Layer 0 and manifest defaults, contributed as `org.nuxeo.agentic.ui.config.defaults` |
 
 ---
 
 ## 10. Extension points, summarised
 
-| Extension point                           | Mechanism                                                 | Who                |
-| ----------------------------------------- | --------------------------------------------------------- | ------------------ |
-| Layer 0 config                            | `bootstrap.json`                                          | Customer, no build |
-| Layer 1 manifest                          | A Nuxeo document                                          | Customer, no build |
-| 8 slots (4 live)                          | `ExtensionSlotRegistry`                                   | Both               |
-| Rules                                     | `ExtensionRuleRegistry`, `provideSatoriExtensions`        | Both               |
-| Actions                                   | `ExtensionActionRegistry`                                 | Both               |
-| Components by ID                          | `ExtensionComponentRegistry` + `ExtensionOutletComponent` | Both               |
-| 12 adf-hx API ports                       | Injection tokens, **root injector**                       | Us                 |
-| `CURRENT_USERNAME`, `ADMIN_ACCESS_CHECKS` | Tokens the app implements                                 | Us                 |
-| `AI_BACKEND_URL`                          | Token                                                     | Deployment         |
-| Generators                                | Nx plugin in the package                                  | Customer           |
-| Guardrail                                 | Script in the package                                     | Customer           |
+| Extension point                           | Mechanism                                                                                        | Who                |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------ |
+| Layer 0 config                            | A `bootstrap` fragment in the customer's Marketplace package, served by `AgenticUiConfigServlet` | Customer, no build |
+| Layer 1 manifest                          | A Nuxeo document                                                                                 | Customer, no build |
+| 8 slots (4 live)                          | `ExtensionSlotRegistry`                                                                          | Both               |
+| Rules                                     | `ExtensionRuleRegistry`, `provideSatoriExtensions`                                               | Both               |
+| Actions                                   | `ExtensionActionRegistry`                                                                        | Both               |
+| Components by ID                          | `ExtensionComponentRegistry` + `ExtensionOutletComponent`                                        | Both               |
+| 12 adf-hx API ports                       | Injection tokens, **root injector**                                                              | Us                 |
+| `CURRENT_USERNAME`, `ADMIN_ACCESS_CHECKS` | Tokens the app implements                                                                        | Us                 |
+| `AI_BACKEND_URL`                          | Token                                                                                            | Deployment         |
+| Generators                                | Nx plugin in the package                                                                         | Customer           |
+| Guardrail                                 | Script in the package                                                                            | Customer           |

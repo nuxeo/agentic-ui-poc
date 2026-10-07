@@ -36,26 +36,13 @@
       </includes>
       <!--
         A developer's local config for nx serve (apps/nuxeo-ui/public/agentic-ui-config,
-        bootstrap.json gitignored, a demo logo beside it) is copied into the build output
-        by the public/** asset. It must not travel in the package (NXSAT-317).
+        gitignored) is copied into the build output by the public/** asset. It must not
+        travel in the package: configuration comes from packages, through the servlet.
       -->
       <excludes>
         <exclude>agentic-ui-config/**</exclude>
       </excludes>
     </fileSet>
 
-    <!--
-      Layer 0 bootstrap configuration: a SAMPLE only (bootstrap.example.json). Staged
-      outside /web so install.xml can put it in the sibling agentic-ui-config
-      directory, where the customer creates bootstrap.json. That file must never be
-      packaged: see the comment in install.xml (NXSAT-317).
-    -->
-    <fileSet>
-      <directory>src/main/config</directory>
-      <outputDirectory>/config</outputDirectory>
-      <includes>
-        <include>**/*</include>
-      </includes>
-    </fileSet>
   </fileSets>
 </assembly>
