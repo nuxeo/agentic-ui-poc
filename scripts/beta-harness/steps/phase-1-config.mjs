@@ -59,7 +59,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
@@ -86,6 +86,7 @@ const ENVIRONMENTAL_ERRORS = [
 const BOOTSTRAP_ROUTE = '**/agentic-ui-config/bootstrap.json';
 const MANIFEST_ROUTE = '**/api/v1/path/default-domain/config/agentic-ui';
 const BOOTSTRAP_PATH = '/agentic-ui-config/bootstrap.json';
+const LOCAL_BOOTSTRAP = 'apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json';
 
 /**
  * The sample the marketplace package installs, whose values are the compiled defaults. Served
@@ -287,13 +288,25 @@ export default async function run(page, h) {
   await h.expectVisible('app shell rendered', 'app-shell');
 
   // `page.request` is not subject to page routes, so this asks the dev server for
-  // the real file rather than the interception fixture.
+  // the real file rather than the interception fixture. Nothing is packaged at that
+  // path (NXSAT-317): it is served only from a developer's gitignored local copy,
+  // which the dev server sees only if it existed when `nx serve` started.
   const served = await page.request.get(`${h.baseUrl}${BOOTSTRAP_PATH}`);
-  h.check(
-    'the dev server really serves the sibling configuration path',
-    served.status() === 200,
-    `HTTP ${served.status()} for ${BOOTSTRAP_PATH}`,
-  );
+  const localCopy = existsSync(LOCAL_BOOTSTRAP) ? readFileSync(LOCAL_BOOTSTRAP, 'utf8') : null;
+  if (localCopy === null) {
+    h.check(
+      'with no local copy, the dev server serves no bootstrap.json and nothing packaged shadows it',
+      served.status() === 404,
+      `HTTP ${served.status()} for ${BOOTSTRAP_PATH}, with no ${LOCAL_BOOTSTRAP}`,
+    );
+  } else {
+    h.check(
+      'the dev server serves the local copy at the sibling configuration path',
+      served.status() === 200 && (await served.text()) === localCopy,
+      `HTTP ${served.status()} for ${BOOTSTRAP_PATH}; restart nx serve if ${LOCAL_BOOTSTRAP} ` +
+        'was created after it started',
+    );
+  }
   // The application resolves the configuration URL relative to its own base
   // href. Under production packaging that is `/nuxeo/agentic-ui/`, so the URL is
   // `/nuxeo/agentic-ui-config/bootstrap.json`. Strip the context path and what is
