@@ -293,7 +293,8 @@ Edit `nuxeo-agentic-ui-package/src/main/config/bootstrap.json`:
 {
   "branding": {
     "applicationTitle": "Acme Content Cloud",
-    "documentTitle": "Acme Content Cloud"
+    "documentTitle": "Acme Content Cloud",
+    "logo": { "src": "acme-logo.svg", "alt": "Acme Content Cloud" }
   },
   "defaultThemeId": "acme",
   "themes": [
@@ -314,16 +315,23 @@ Edit `nuxeo-agentic-ui-package/src/main/config/bootstrap.json`:
 }
 ```
 
-Hard-reload, open `/#/settings/themes`. The audience sees the **browser tab title** change, a
-fifth theme card "Acme Brand", and the purple accent applied.
+Put the prospect's logo at `apps/nuxeo-ui/public/agentic-ui-config/acme-logo.svg` — under
+`nx serve` that directory is served at `/agentic-ui-config/`, beside the packaged
+`bootstrap.json`; on a server it is `nxserver/nuxeo.war/agentic-ui-config/`. A file in a new
+directory is only picked up after restarting `nx serve`.
 
-**Demo** `documentTitle`**, not** `applicationTitle` — see F2. And say "product name and colour",
-never "logo" — see F1.
+Hard-reload, open `/#/settings/themes`. The audience sees the **logo** in the header and on the
+login page, the **browser tab title** change, a fifth theme card "Acme Brand", and the purple
+accent applied.
+
+**Demo** `documentTitle`**, not** `applicationTitle` — see F2. The logo is demoable since
+NXSAT-313; the favicon is not.
 
 The strongest version of this beat: point out that the JavaScript bundle is byte-identical before
 and after. It was verified by hashing `main-*.js` across a rebrand — `sha256` unchanged.
 
-Reset: `git checkout -- nuxeo-agentic-ui-package/src/main/config/bootstrap.json`
+Reset: `git checkout -- nuxeo-agentic-ui-package/src/main/config/bootstrap.json` and delete
+`apps/nuxeo-ui/public/agentic-ui-config/acme-logo.svg`, which is not gitignored.
 
 ### Beat 4 — Relabel the product (2 min)
 
@@ -782,7 +790,8 @@ and say what it proves: the **npm** upgrade rehearsal, eight assertions across L
 marketplace installer.
 
 **"Can I change the logo?"**
-Not today. Product name and theme colours, yes. There is no logo or favicon key. Say so plainly.
+Yes, in `bootstrap.json` with no rebuild: `branding.logo` names an image beside the file, and it
+replaces the Satori marks in the header and on the login page. The favicon cannot be changed yet.
 
 **"Is this adf-hx or your own UI?"**
 Both, deliberately. Six upstream components render real adf-hx surfaces; the surrounding chrome is
@@ -814,7 +823,7 @@ renders upstream's read-only properties panel either; metadata is on the documen
 | #       | What                                                                                                               | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **F0**  | **The customer extension on** `:4200`                                                                              | `nuxeo-ui` never registers `acme.`*. No manifest can add it — Layer 1 only addresses IDs that code registered. Layer 2 lives on `:4310`.                                                                                                                                                                                                                                                                                                                                                                                        |
-| **F1**  | **A logo change**                                                                                                  | `AppBrandingConfig` has only `applicationTitle` and `documentTitle`. No logo, favicon or image key exists. Not achievable at Layer 0 or 1.                                                                                                                                                                                                                                                                                                                                                                                      |
+| **F1**  | ~~**A logo change**~~ — **withdrawn 2026-10-06, it is demoable**                                                   | NXSAT-313 added `branding.logo` to `AppBrandingConfig`: a file beside `bootstrap.json` replaces the Satori marks in the header and on the login page, with no rebuild. See Beat 3. The **favicon** still has no key and remains out of scope.                                                                                                                                                                                                                                                                                   |
 | **F2**  | `applicationTitle` **in the header**                                                                               | The route label wins. With the brand set, `/#/browse` still reads "Browse". It only surfaces on a route no nav entry matches. Demo `documentTitle` — the browser tab — which changes everywhere.                                                                                                                                                                                                                                                                                                                                |
 | **F3**  | **Branding via the Nuxeo document**                                                                                | Two separate stores. Branding is the `bootstrap.json` file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **F4**  | `overrides` **with** `hiddenByDefault` **/** `sortable` **/** `field`                                              | Silently dropped; `overrides` honours only `order`, `label`, `rule`, `visible`. Use `slots.documentList`. The doc example was wrong and is now fixed.                                                                                                                                                                                                                                                                                                                                                                           |

@@ -45,11 +45,25 @@ export interface AppThemeConfig {
   readonly tokens: AppThemeTokens;
 }
 
+/** A deployment's own logo, shown instead of the Satori marks in the header and on the login page. */
+export interface AppBrandingLogo {
+  /**
+   * As written in `bootstrap.json`: a file name or relative path, resolved against the directory
+   * `bootstrap.json` is served from; an `https:` URL; or a `data:image/` URI. Any other form keeps
+   * the Satori marks — see `resolveBrandingLogoUrl` for the check on where it actually points.
+   */
+  readonly src: string;
+  /** Accessible name for the login page's brand link. Empty falls back to `applicationTitle`. */
+  readonly alt: string;
+}
+
 export interface AppBrandingConfig {
   /** Shown in the application header. */
   readonly applicationTitle: string;
   /** Written to `document.title`. */
   readonly documentTitle: string;
+  /** `null` keeps the Satori marks. */
+  readonly logo: AppBrandingLogo | null;
 }
 
 /**
@@ -203,6 +217,7 @@ export const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig = {
     // reproduced exactly so that adopting configuration changes nothing.
     applicationTitle: 'Hyland Nuxeo',
     documentTitle: 'Nuxeo Platform',
+    logo: null,
   },
   defaultThemeId: 'nuxeo',
   themes: DEFAULT_APP_THEMES,
@@ -451,6 +466,134 @@ function readSsoEndpoints(
   return endpoints;
 }
 
+/**
+ * Early rejection of a configured logo `src`, on the string as written.
+ *
+ * Not the security boundary — {@link resolveBrandingLogoUrl} is, because it checks the URL the
+ * browser will actually load. This only refuses what is wrong whatever it resolves to: control
+ * characters and backslashes (the URL parser deletes or rewrites them, so they disguise a path),
+ * a `data:` URI that is not an image or carries no payload, a scheme other than `https:`, and an
+ * absolute path, a `..` segment (including `%2e%2e`) or no path at all in a relative one.
+ */
+function isAcceptedLogoSrc(src: string): boolean {
+  if (src.includes('\\') || [...src].some((char) => char < ' ' || char === '\u007f')) return false;
+  // `#` starts a fragment, so a payload that begins with it is empty.
+  if (/^data:/i.test(src)) return /^data:image\/[a-z0-9.+-]+(?:;[^,#]*)?,[^#]/i.test(src);
+  if (/^[a-z][a-z0-9+.-]*:/i.test(src)) {
+    if (!/^https:\/\/[^/]/i.test(src)) return false;
+    try {
+      return new URL(src).protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+  if (src.startsWith('/')) return false;
+  const path = src.split(/[?#]/, 1)[0] ?? '';
+  // A query or fragment alone resolves to bootstrap.json itself, which no <img> can render.
+  if (!path) return false;
+  return !path.replace(/%2e/gi, '.').split('/').includes('..');
+}
+
+/**
+ * `null` clears a logo an earlier layer set; anything unusable keeps `base`, so a malformed entry
+ * degrades to the packaged marks rather than to a broken image.
+ */
+function readLogo(value: unknown, base: AppBrandingLogo | null): AppBrandingLogo | null {
+  if (value === null) return null;
+  if (!isRecord(value)) return base;
+  const src = typeof value['src'] === 'string' ? value['src'].trim() : '';
+  if (!src || !isAcceptedLogoSrc(src)) return base;
+  const alt = value['alt'];
+  return { src, alt: typeof alt === 'string' ? alt.trim() : '' };
+}
+
+/**
+ * The URL an `<img>` may load for a configured logo, or `null` when it could reach something other
+ * than a static asset.
+ *
+ * A relative `src` resolves against the directory `bootstrap.json` was read from, because the
+ * installer replaces the application bundle on every upgrade and leaves that directory alone.
+ *
+ * The check runs on the **resolved** URL, after the parser has dropped tabs and newlines and
+ * collapsed `..` and `%2e%2e` — the forms a check on the raw string can be talked past. On any
+ * origin that serves Nuxeo the URL must stay inside the configuration directory: anywhere else
+ * there may be a REST endpoint, which an `<img>` requests with the session cookie and without the
+ * HTTP interceptor. Elsewhere only `https:` is allowed, so a CDN logo still works.
+ *
+ * @param nuxeoOrigins origins that serve Nuxeo besides the one `configUrl` is on
+ */
+export function resolveBrandingLogoUrl(
+  src: string,
+  configUrl: string,
+  nuxeoOrigins: readonly string[] = [],
+): string | null {
+  let url: URL;
+  try {
+    url = new URL(src, configUrl);
+  } catch {
+    return null;
+  }
+  if (url.protocol === 'data:') return url.href;
+
+  const config = new URL(configUrl);
+  if (url.origin === config.origin) {
+    return isInsideDirectory(url.pathname, new URL('.', config).pathname) ? url.href : null;
+  }
+  // Cookies are scoped by host, not by scheme or port, so any origin on a Nuxeo host carries the
+  // session.
+  const nuxeoHosts = [config.origin, ...nuxeoOrigins].map((origin) => parseUrl(origin)?.hostname);
+  if (nuxeoHosts.includes(url.hostname)) return null;
+  return url.protocol === 'https:' ? url.href : null;
+}
+
+/**
+ * Whether the server, not just the browser, reads `pathname` as lying inside `directory`.
+ *
+ * Tomcat drops `;` path parameters from each segment before it collapses dot segments, so `..;x`
+ * is an ordinary segment to the browser and a parent directory to Nuxeo. A proxy that decodes
+ * before forwarding does the same with `%3b`, with `%2f` as a separator, and with `%252e%252e`,
+ * which Tomcat then decodes again to `..`. A segment carrying any of those — including an escape
+ * left over after decoding once — or one that does not decode, is refused.
+ */
+function isInsideDirectory(pathname: string, directory: string): boolean {
+  if (!pathname.startsWith(directory)) return false;
+  return pathname
+    .slice(directory.length)
+    .split('/')
+    .every((segment) => {
+      try {
+        return !/[;/\\%]/.test(decodeURIComponent(segment));
+      } catch {
+        return false;
+      }
+    });
+}
+
+/**
+ * Every origin that serves Nuxeo for this deployment: the application's own, which proxies or is
+ * Nuxeo, plus a configured `nuxeoApiOrigin` and `nuxeoServerUrl`. Each is resolved against
+ * `baseUri`, as API requests are, so a protocol-relative `//api.example` counts; a relative value
+ * resolves to the application's own origin.
+ */
+export function nuxeoOriginsOf(config: AppBootstrapConfig, baseUri: string): string[] {
+  const origins = new Set<string>();
+  for (const candidate of [baseUri, config.nuxeoApiOrigin, config.nuxeoServerUrl]) {
+    if (!candidate) continue;
+    const origin = parseUrl(candidate, baseUri)?.origin;
+    if (origin) origins.add(origin);
+  }
+  return [...origins];
+}
+
+/** `new URL` without the throw. `URL.parse` would do, but only browsers from 2024 have it. */
+function parseUrl(value: string, base?: string): URL | null {
+  try {
+    return new URL(value, base);
+  } catch {
+    return null;
+  }
+}
+
 function mergeSso(base: AppSsoConfig, value: unknown): AppSsoConfig {
   if (!isRecord(value)) return base;
   return {
@@ -484,6 +627,7 @@ export function mergeBootstrapConfig(base: AppBootstrapConfig, patch: unknown): 
     branding: {
       applicationTitle: readString(branding, 'applicationTitle', base.branding.applicationTitle),
       documentTitle: readString(branding, 'documentTitle', base.branding.documentTitle),
+      logo: readLogo(branding['logo'], base.branding.logo),
     },
     defaultThemeId: readString(patch, 'defaultThemeId', base.defaultThemeId),
     themes: mergeThemes(base.themes, patch['themes']),

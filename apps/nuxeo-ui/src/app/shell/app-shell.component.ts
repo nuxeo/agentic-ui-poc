@@ -121,6 +121,8 @@ export class AppShellComponent implements OnDestroy {
   private readonly adfHxBrowseContext = inject(AdfHxBrowseContextService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly appConfig = inject(AppConfigService);
+  /** Layer 0 `branding.logo`; `null` keeps the Satori word mark. */
+  protected readonly brandLogo = this.appConfig.brandingLogo;
   private readonly translate = inject(TranslateService);
   /**
    * The active language, as a signal.

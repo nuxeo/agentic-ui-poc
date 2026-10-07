@@ -50,9 +50,43 @@ Live example: [`apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.js
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `nuxeoApiOrigin`                                    | Where the Nuxeo REST API lives                                                            |
 | `manifestDocumentPath` / `manifestDocumentProperty` | Where the Layer 1 manifest document is, and which property holds it (default `note:note`) |
-| `branding`                                          | Product name, logo                                                                        |
+| `branding`                                          | Product name, browser tab title, and `logo` (below)                                       |
 | `themes` / `defaultThemeId`                         | Named token sets applied to `<html>`                                                      |
 | `defaultLanguage` / `availableLanguages`            | i18n                                                                                      |
+
+### `branding.logo`
+
+`{ "src": "acme-logo.svg", "alt": "Acme Insurance" }` replaces the Satori word mark in the header
+and the Satori lockup on the login page. `null` or absent keeps the Satori marks.
+
+- **`src`** is a file name or relative path resolved against the directory `bootstrap.json` is
+  served from — so a logo dropped beside it in `nxserver/nuxeo.war/agentic-ui-config/` survives
+  an upgrade exactly as the file does. An `https:` URL or a `data:image/` URI also works. Both
+  `<img>` elements carry `crossorigin="anonymous"`, so a remote logo is loaded without cookies
+  and a redirect from it to a Nuxeo URL cannot carry the session — which means an `https:` logo
+  only renders if its host sends `Access-Control-Allow-Origin`. A file beside `bootstrap.json` is
+  same-origin and unaffected.
+- **Every other form is rejected** and the Satori marks are kept. An `<img>` request bypasses the
+  HTTP interceptor but still sends the session cookie, so a `src` that could name a Nuxeo REST
+  endpoint is refused rather than left to fail. The deciding check runs on the **resolved** URL,
+  after the URL parser has dropped tabs and newlines and collapsed `..` and `%2e%2e`. On any host
+  that serves Nuxeo — the application's, and those of `nuxeoApiOrigin` and `nuxeoServerUrl`,
+  including protocol-relative values — it is refused whatever the scheme or port, because cookies
+  are scoped by host. The one exception is the configuration directory itself, where no path
+  segment may carry a `;`, an encoded `;` or `/`, or a double-encoded escape such as `%252e` —
+  Tomcat strips `;` path parameters before it collapses `..`, so `..;/api/v1/me` would leave the
+  directory on the server while staying inside it in the browser, and a proxy that decodes before
+  forwarding turns the encoded forms into the same thing. A logo file name therefore cannot
+  contain `;` or `%`. Elsewhere it must be `https:`. Refused earlier, on the string as written:
+  control characters, backslashes, an absolute or protocol-relative path, a `..` segment, a query
+  or fragment with no path (it would load `bootstrap.json` itself), `http:`, `javascript:`, and a
+  `data:` URI that is not an image or has no payload (a payload that starts with `#` is a
+  fragment, so it counts as none).
+- **`alt`** names the login page's brand link. Empty falls back to `applicationTitle`. The header
+  logo is decorative (`alt=""`): the header is named by its heading.
+- The configuration directory is outside every `NuxeoAuthenticationFilter` URL pattern in
+  `nuxeo.war/WEB-INF/web.xml`, which is what lets the login page load a logo before sign-in. That
+  is read from the filter mapping; no marketplace install has been run to observe it.
 
 ### Why it lives outside the bundle
 
