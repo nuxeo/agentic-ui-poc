@@ -36,10 +36,52 @@ for (let i = 0; i < args.length; i += 2) {
   extra[layer].push(resolve(args[i + 1]));
 }
 
+// The servlet leaves out a fragment over this size or with a repeated key (ConfigSnapshot.java), so
+// one that only works here would vanish on a server.
+const MAX_JSON_BYTES = 1024 * 1024;
+
+/** The first key repeated within one object of already-valid JSON, or null. */
+const duplicateKey = (text) => {
+  const objects = [];
+  const colon = /\s*:/y;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '{') objects.push(new Set());
+    else if (char === '[') objects.push(null);
+    else if (char === '}' || char === ']') objects.pop();
+    else if (char === '"') {
+      let end = i + 1;
+      while (text[end] !== '"') end += text[end] === '\\' ? 2 : 1;
+      const keys = objects.at(-1);
+      colon.lastIndex = end + 1;
+      if (keys && colon.test(text)) {
+        const key = JSON.parse(text.slice(i, end + 1));
+        if (keys.has(key)) return key;
+        keys.add(key);
+      }
+      i = end;
+    }
+  }
+  return null;
+};
+
 const read = (path) => {
-  const content = JSON.parse(readFileSync(path, 'utf8'));
+  const bytes = readFileSync(path);
+  if (bytes.length > MAX_JSON_BYTES) {
+    throw new Error(
+      `${path} is ${bytes.length} bytes; the server refuses more than ${MAX_JSON_BYTES}`,
+    );
+  }
+  const text = bytes.toString('utf8');
+  const content = JSON.parse(text);
   if (content === null || typeof content !== 'object' || Array.isArray(content)) {
     throw new Error(`${path} is not a JSON object, so it cannot be a fragment`);
+  }
+  const duplicate = duplicateKey(text);
+  if (duplicate !== null) {
+    throw new Error(
+      `${path} repeats the key "${duplicate}" in one object, which the server refuses`,
+    );
   }
   return content;
 };
