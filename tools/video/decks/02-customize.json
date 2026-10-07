@@ -17,13 +17,13 @@
           "items": [
             {
               "series": "adfhx",
-              "title": "Layer 0 — configuration. A JSON file, no rebuild.",
-              "text": "`bootstrap.json`, deployed **beside** the bundle rather than inside it. Branding, themes, the Nuxeo endpoint, session timeouts, SSO. Edit it, reload the browser, done."
+              "title": "Layer 0 — configuration. A JSON fragment, no rebuild.",
+              "text": "A `bootstrap` fragment in **your own** Marketplace package, served after our defaults before sign-in. Branding, themes, the Nuxeo endpoint, session timeouts, SSO. Install the package, reload the browser, done."
             },
             {
               "series": "ours",
-              "title": "Layer 1 — the manifest. Declarative, no rebuild, no deploy.",
-              "text": "A Nuxeo **document**, so it inherits the repository's versioning, audit trail and ACLs. Hide, reorder, relabel or rule-gate anything addressable by ID; add your own entries."
+              "title": "Layer 1 — the manifest. Declarative, no rebuild.",
+              "text": "A `manifest` fragment in the same package, versioned with it. Hide, reorder, relabel or rule-gate anything addressable by ID; add your own entries."
             },
             {
               "series": "3",
@@ -43,7 +43,7 @@
     {
       "eyebrow": "Layer 0 — configuration",
       "title": "It survives your next upgrade — rehearsed",
-      "lede": "The marketplace installer copies the bundle directory with `overwrite=\"true\"`. Anything a customer edits **inside** the bundle is destroyed on upgrade — so the config file lives one level up, where the package installs only a sample. The customer copies it to `bootstrap.json`, which no upgrade touches; a real marketplace upgrade with an edited file was rehearsed (NXSAT-317).",
+      "lede": "The marketplace installer copies our bundle directory with `overwrite=\"true\"`, and installs **no** configuration file. Your fragments live in your own package, which depends on ours, so upgrading ours cannot replace them. Rehearsed with `nuxeoctl mp-install`: upgrading ours with two customer packages installed served byte-identical configuration (NXSAT-312).",
       "blocks": [
         {
           "type": "code",
