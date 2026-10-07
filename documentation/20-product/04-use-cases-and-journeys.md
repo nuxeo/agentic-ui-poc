@@ -86,20 +86,20 @@ is exactly the one before registration happens.
 
 ```text
 Problem:        "It must look like our product, not like Nuxeo."
-Entry point:    nxserver/nuxeo.war/agentic-ui-config/bootstrap.json  (on their server),
-                copied from the bootstrap.example.json the package installs beside it
-User action:    Edits branding, defaultThemeId, themes[].tokens, availableLanguages
-System:         AppConfigService loads it BEFORE authentication;
-                TemplateThemeService writes tokens onto <html> as CSS custom properties
+Entry point:    a bootstrap fragment in their own Marketplace package (NXSAT-312)
+User action:    Sets branding, defaultThemeId, themes[].tokens, availableLanguages
+System:         the configuration servlet serves it after our defaults; AppConfigService
+                loads it BEFORE authentication; TemplateThemeService writes tokens onto
+                <html> as CSS custom properties
 Result:         Rebranded application. No build. No deployment of ours.
-On upgrade:     the package replaces only the sample; bootstrap.json is theirs → edits survive
-                (rehearsed on a real server, NXSAT-317)
+On upgrade:     our package and theirs are separate, so upgrading ours leaves their
+                fragment in force (rehearsed on a real server, NXSAT-312)
 Benefit:        Rebranding is a config change, not an engagement
 ```
 
-Evidence: `phase-1-config`, 39 checks. The upgrade-survival half is asserted by
-`npm run beta:upgrade` for the npm package, and was rehearsed for the marketplace package with
-`nuxeoctl mp-install` in NXSAT-317.
+Evidence: `phase-1-config`. The upgrade-survival half is asserted by `npm run beta:upgrade` for
+the npm package, and was rehearsed for the marketplace package with `nuxeoctl mp-install` in
+NXSAT-312 (upgrading ours with a customer configuration package installed).
 
 **Verified caveat:** an earlier version of this installed to `nxserver/web/…`, which is not a
 Tomcat docBase, so it **would have 404'd on every install** — and it was recorded complete

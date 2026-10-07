@@ -282,7 +282,8 @@ Delivered:
 
 Remaining, deliberately not attempted:
 
-- An in-app editor for the configuration document; today it is edited as a Nuxeo Note.
+- An in-app editor for the configuration document. _Superseded 2026-10-07 (NXSAT-312): there is
+  no document to edit; configuration ships in the customer's own Marketplace package._
 
 ### Configuration document ACLs — the model to apply
 

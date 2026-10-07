@@ -198,7 +198,7 @@ const CUSTOM_PAGES_MANIFEST = {
 const SHOTS = [
   // =====================================================================================
   // TRACK A — customise the shipped app. Every "after" here is produced by an edit to
-  // configuration or to the manifest document. No rebuild, no deploy.
+  // the bootstrap or manifest configuration (see `configLayer`). No rebuild, no deploy.
   // =====================================================================================
   {
     id: 'a0-browse-before',
@@ -292,7 +292,7 @@ const SHOTS = [
     waitFor: 'body',
   },
   {
-    // Layer 0 branding lives in a FILE, not the manifest document — a distinction that trips people
+    // Layer 0 branding is bootstrap configuration, not the manifest — a distinction that trips people
     // up, and the reason `runtime-manifest.ts` has no `branding` or `themes` key at all.
     id: 'a3-rebrand-after',
     slide: 'Rebrand — the result',

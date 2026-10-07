@@ -5,7 +5,7 @@
  * **nothing registered or read them**. `AGENTS/11-beta-program.md` section 3 says
  * "a slot id existing does not mean anything reads it… Do not describe a reserved
  * id as an extension point." This proves it is now one, against a real browser and
- * a real manifest document rather than a unit test's `TestBed`.
+ * a real manifest response rather than a unit test's `TestBed`.
  *
  * What each step asserts is the **rendered `<th>` text of the browse table**, in
  * order. That is the thing a customer sees. Asserting the component's `columns()`
