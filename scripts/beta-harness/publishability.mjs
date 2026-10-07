@@ -40,7 +40,7 @@
  * that name declared nowhere in the file, and every gate was green.
  *
  * Checks 5 and 6 assert that what the shipped docs tell a customer to run is actually in
- * the package: the guardrail script, and the four Nx generators.
+ * the package: the guardrail script, and the five Nx generators.
  *
  * ## Every check here has been watched failing on purpose
  *
@@ -191,7 +191,13 @@ if (declared === 0) {
  * whose declaration cannot be checked, which is not the same as an import that is fine.
  */
 function moduleSpecifiersOf(text, fileName) {
-  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const source = ts.createSourceFile(
+    fileName,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.JS,
+  );
   const specifiers = [];
   const unreadable = [];
 
@@ -268,7 +274,9 @@ function publishedBundleNames() {
 const scanned = publishedBundleNames();
 const extras = scanned.filter((name) => !fesm.includes(name));
 if (extras.length > 0) {
-  notes.push(`import scan covers ${extras.length} bundle(s) beyond the expected five: ${extras.join(', ')}`);
+  notes.push(
+    `import scan covers ${extras.length} bundle(s) beyond the expected five: ${extras.join(', ')}`,
+  );
 }
 
 const externalImports = new Map();
@@ -469,7 +477,7 @@ try {
     if (names.length === 0) {
       fail(
         `${manifestPath} declares no generators, so check 6 asserted nothing. The package is\n` +
-          '    meant to ship four: extension-library, -rule, -action and -component.',
+          '    meant to ship five: extension-library, -rule, -action, -component and config-package.',
       );
     }
     for (const [name, generator] of Object.entries(generators)) {
