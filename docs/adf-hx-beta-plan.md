@@ -233,9 +233,10 @@ remediation below.
 > nothing serves; the configuration would have 404'd in every real deployment and the tolerant
 > fallback would have hidden it. The path is corrected, and the corrected destination is confirmed
 > to be the directory the `/nuxeo` context is served from. Since 2026-09-26 the package is
-> built and published — `2026.0.1-20260926071953-BUILD-1109`, live on the preprod listing — but never installed or upgraded on a real server. That outstanding exercise is the **marketplace install rehearsal**, which is _not_ the
-> `upgrade-rehearsal` gate: that gate is done and crosses a version boundary for the npm tarball
-> (see the Phase 6 step marked Done below). See
+> built and published — `2026.0.1-20260926071953-BUILD-1109`, live on the preprod listing. The
+> **marketplace install rehearsal** ran on 2026-10-07 with `nuxeoctl mp-install` and disproved
+> the non-overwriting design — see R7 and NXSAT-317. It is _not_ the `upgrade-rehearsal` gate,
+> which crosses a version boundary for the npm tarball (see the Phase 6 step marked Done below). See
 > `PHASE-1-REMEDIATION-ADDENDUM.md` in the phase evidence directory.
 
 Delivered:
