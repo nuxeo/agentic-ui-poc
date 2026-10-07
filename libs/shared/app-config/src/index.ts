@@ -6,6 +6,7 @@ export {
   type AppARenderConfig,
   type AppBootstrapConfig,
   type AppBrandingConfig,
+  type AppBrandingLogo,
   type AppIntegrationsConfig,
   type AppSessionConfig,
   type AppSsoConfig,

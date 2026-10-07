@@ -41,6 +41,7 @@
 
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { EVIDENCE_ROOT } from '../collect-evidence/evidence-path.mjs';
@@ -553,8 +554,12 @@ async function applyManifest(manifest) {
  * Layer 0 branding lives in a FILE, not the manifest document, and the harness owns the edit.
  *
  * `runtime-manifest.ts` has no `branding` or `themes` key — those come from
- * `nuxeo-agentic-ui-package/src/main/config/bootstrap.json`, which the dev server's `development`
- * asset list maps to `/agentic-ui-config/bootstrap.json`.
+ * `/agentic-ui-config/bootstrap.json`, which the dev server serves from the gitignored
+ * `apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json`. The packaged file is a sample the app
+ * never reads (NXSAT-317). The dev server serves only asset files that existed when it started — a
+ * file created afterwards stays 404 while edits to an existing one are re-served — so the local
+ * copy must be made before `nx serve`. A file on disk does not prove the server sees it, so this
+ * asks the running server instead, and refuses rather than patch a file nothing serves.
  *
  * Doing this inside the run rather than by hand matters for a reason that already bit once: with the
  * rebrand left applied, the BASELINE capture came back in Acme purple while its slide called it "the
@@ -565,17 +570,39 @@ const BOOTSTRAP = resolve(
   import.meta.dirname,
   '..',
   '..',
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+  'apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json',
 );
+const SERVED_BOOTSTRAP = new URL('/agentic-ui-config/bootstrap.json', APP).href;
 let bootstrapOriginal = null;
 
+async function fetchServedBootstrap() {
+  const res = await fetch(SERVED_BOOTSTRAP, { cache: 'no-store' }).catch(() => null);
+  return res?.ok ? res.json().catch(() => null) : null;
+}
+
 async function patchBootstrap(patch) {
+  const served = await fetchServedBootstrap();
+  if (!existsSync(BOOTSTRAP) || served === null) {
+    throw new Error(
+      `${SERVED_BOOTSTRAP} is not being served, so a patch to ${BOOTSTRAP} would not take ` +
+        'effect. The dev server only serves a file that existed when it started. Copy the ' +
+        'sample, then restart nx serve:\n' +
+        '  mkdir -p apps/nuxeo-ui/public/agentic-ui-config && cp ' +
+        'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json ' +
+        'apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json',
+    );
+  }
   const raw = await readFile(BOOTSTRAP, 'utf8');
   if (bootstrapOriginal === null) bootstrapOriginal = raw;
   const merged = { ...JSON.parse(raw), ...patch };
   await writeFile(BOOTSTRAP, `${JSON.stringify(merged, null, 2)}\n`);
-  // The dev server watches the asset; give it time to re-serve before the page reloads.
-  await new Promise((r) => setTimeout(r, 6000));
+  const expected = JSON.stringify(merged);
+  for (let waited = 0; waited < 15000; waited += 500) {
+    if (JSON.stringify(await fetchServedBootstrap()) === expected) return;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  await restoreBootstrap();
+  throw new Error(`${SERVED_BOOTSTRAP} did not reflect the patch within 15 s; restored the original.`);
 }
 
 async function restoreBootstrap() {

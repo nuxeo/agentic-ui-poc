@@ -3,8 +3,231 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_APP_BOOTSTRAP_CONFIG,
   mergeBootstrapConfig,
+  nuxeoOriginsOf,
+  resolveBrandingLogoUrl,
   resolveTheme,
 } from './bootstrap-config';
+
+describe('branding.logo', () => {
+  const logoOf = (logo: unknown) =>
+    mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, { branding: { logo } }).branding.logo;
+
+  it('ships with no logo, so the Satori marks render', () => {
+    expect(DEFAULT_APP_BOOTSTRAP_CONFIG.branding.logo).toBeNull();
+  });
+
+  it.each([
+    ['a file beside bootstrap.json', 'acme-logo.svg'],
+    ['a relative path below it', 'brand/acme.png'],
+    ['an https URL', 'https://cdn.example.com/acme.svg'],
+    ['a data:image URI', 'data:image/png;base64,iVBORw0KGgo='],
+    ['an inline SVG data URI', 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>'],
+    ['a file name with a query and a fragment', 'acme-logo.svg?v=2#mark'],
+  ])('accepts %s', (_label, src) => {
+    expect(logoOf({ src, alt: 'Acme' })).toEqual({ src, alt: 'Acme' });
+  });
+
+  it.each([
+    ['an absolute Nuxeo REST path', '/nuxeo/api/v1/id/abc/@blob/file:content'],
+    ['a protocol-relative URL', '//evil.example/logo.svg'],
+    ['a parent-directory segment', '../agentic-ui/assets/logo.svg'],
+    ['an encoded parent-directory segment', '%2e%2e/api/v1/me'],
+    ['a mixed-case encoded parent segment', 'brand/.%2E/api/v1/me'],
+    ['a backslash path', '..\\secret.svg'],
+    ['an http URL', 'http://cdn.example.com/acme.svg'],
+    ['a javascript URL', 'javascript:alert(1)'],
+    ['a non-image data URI', 'data:text/html,<script>alert(1)</script>'],
+    ['an unparseable https URL', 'https://exa mple.com/logo.svg'],
+    ['a blank src', '   '],
+    // These resolve to bootstrap.json itself.
+    ['a query alone', '?v=1'],
+    ['a fragment alone', '#logo'],
+    // The URL parser deletes tabs and newlines and strips leading control characters, so each
+    // of these resolves to something the string as written does not look like.
+    ['a tab hidden in a parent segment', '.\t./api/v1/me'],
+    ['a newline hidden in an http scheme', 'h\nttp://cdn.example/logo.svg'],
+    ['a leading control character before an absolute path', '\u0001/nuxeo/api/v1/me'],
+    ['an empty data:image URI', 'data:image/'],
+    ['a data:image URI with no payload', 'data:image/png;base64,'],
+    ['a data:image URI with no subtype', 'data:image/,iVBORw0KGgo='],
+    ['a data:image URI whose payload is only a fragment', 'data:image/png,#logo'],
+    ['a base64 data:image URI whose payload is only a fragment', 'data:image/png;base64,#logo'],
+  ])('rejects %s and keeps the Satori marks', (_label, src) => {
+    expect(logoOf({ src, alt: 'Acme' })).toBeNull();
+  });
+
+  it.each([
+    ['absent', undefined],
+    ['a string instead of an object', 'acme-logo.svg'],
+    ['an object without src', { alt: 'Acme' }],
+    ['a non-string src', { src: 42 }],
+  ])('treats %s as not configured', (_label, logo) => {
+    expect(logoOf(logo)).toBeNull();
+  });
+
+  it('trims src and alt, and defaults a missing or non-string alt to empty', () => {
+    expect(logoOf({ src: '  acme.svg ', alt: ' Acme ' })).toEqual({ src: 'acme.svg', alt: 'Acme' });
+    expect(logoOf({ src: 'acme.svg' })).toEqual({ src: 'acme.svg', alt: '' });
+    expect(logoOf({ src: 'acme.svg', alt: 7 })).toEqual({ src: 'acme.svg', alt: '' });
+  });
+
+  it('keeps a logo an earlier layer set when this one omits or garbles it, and clears it on null', () => {
+    const base = {
+      ...DEFAULT_APP_BOOTSTRAP_CONFIG,
+      branding: { ...DEFAULT_APP_BOOTSTRAP_CONFIG.branding, logo: { src: 'a.svg', alt: 'A' } },
+    };
+
+    expect(
+      mergeBootstrapConfig(base, { branding: { logo: { src: '/nuxeo/api' } } }).branding.logo,
+    ).toEqual({ src: 'a.svg', alt: 'A' });
+    expect(
+      mergeBootstrapConfig(base, { branding: { applicationTitle: 'X' } }).branding.logo,
+    ).toEqual({ src: 'a.svg', alt: 'A' });
+    expect(mergeBootstrapConfig(base, { branding: { logo: null } }).branding.logo).toBeNull();
+  });
+
+  it('resolves a relative src against the configuration directory, not the bundle', () => {
+    const configUrl = 'https://nuxeo.example/nuxeo/agentic-ui-config/bootstrap.json';
+
+    expect(resolveBrandingLogoUrl('acme-logo.svg', configUrl)).toBe(
+      'https://nuxeo.example/nuxeo/agentic-ui-config/acme-logo.svg',
+    );
+    expect(resolveBrandingLogoUrl('https://cdn.example.com/a.svg', configUrl)).toBe(
+      'https://cdn.example.com/a.svg',
+    );
+  });
+});
+
+describe('resolveBrandingLogoUrl — the check on the URL the browser loads', () => {
+  const configUrl = 'https://app.example/nuxeo/agentic-ui-config/bootstrap.json';
+
+  it('refuses a same-origin URL outside the configuration directory', () => {
+    expect(
+      resolveBrandingLogoUrl('https://app.example/nuxeo/api/v1/id/x/@blob/file:content', configUrl),
+    ).toBeNull();
+    expect(
+      resolveBrandingLogoUrl(
+        'https://app.example/nuxeo/agentic-ui-config/brand/acme.svg',
+        configUrl,
+      ),
+    ).toBe('https://app.example/nuxeo/agentic-ui-config/brand/acme.svg');
+  });
+
+  it('refuses any URL on another origin that serves Nuxeo', () => {
+    expect(
+      resolveBrandingLogoUrl('https://api.example/static/acme.svg', configUrl, [
+        'https://api.example',
+      ]),
+    ).toBeNull();
+  });
+
+  // Cookies are scoped by host, not by scheme or port, so these still carry the Nuxeo session.
+  it('refuses another scheme or port on a host that serves Nuxeo', () => {
+    expect(
+      resolveBrandingLogoUrl('https://app.example:8443/nuxeo/api/v1/me', configUrl),
+    ).toBeNull();
+    expect(
+      resolveBrandingLogoUrl('https://api.example/nuxeo/api/v1/me', configUrl, [
+        'http://api.example',
+      ]),
+    ).toBeNull();
+  });
+
+  it('allows https on a third-party origin, and nothing else there', () => {
+    expect(resolveBrandingLogoUrl('https://cdn.example/acme.svg', configUrl)).toBe(
+      'https://cdn.example/acme.svg',
+    );
+    expect(resolveBrandingLogoUrl('http://cdn.example/acme.svg', configUrl)).toBeNull();
+  });
+
+  // Defence in depth: these are also refused when the configuration is read, but the resolved
+  // check must hold on its own.
+  it.each([
+    ['a tab hidden in a parent segment', '.\t./api/v1/me'],
+    ['an encoded parent segment', '%2e%2e/api/v1/me'],
+    ['a leading control character', '\u0001/nuxeo/api/v1/me'],
+    ['a backslash traversal', '..\\..\\api\\v1\\me'],
+  ])('refuses %s even when called directly', (_label, src) => {
+    expect(resolveBrandingLogoUrl(src, configUrl)).toBeNull();
+  });
+
+  // Tomcat drops `;` path parameters from each segment before it collapses dot segments, so `..;x`
+  // is an ordinary segment to the browser and a parent directory to the server.
+  it.each([
+    ['a path-parameter parent segment', '..;x/api/v1/me'],
+    ['an empty path parameter', '..;/login.jsp'],
+    ['an encoded parent with a path parameter', '%2e%2e;x/api/v1/me'],
+    [
+      'the same as an absolute https URL',
+      'https://app.example/nuxeo/agentic-ui-config/..;/api/v1/me',
+    ],
+    ['an encoded semicolon, for a proxy that decodes first', '..%3b/api/v1/me'],
+    ['an encoded slash', '..%2fapi/v1/me'],
+    ['a double-encoded parent segment', '%252e%252e/api/v1/me'],
+    [
+      'a double-encoded parent as an absolute https URL',
+      'https://app.example/nuxeo/agentic-ui-config/%252e%252e/api/v1/me',
+    ],
+    ['a malformed percent escape', 'acme%e0.svg'],
+  ])('refuses %s on the configuration origin', (_label, src) => {
+    expect(resolveBrandingLogoUrl(src, configUrl)).toBeNull();
+  });
+
+  it('still allows a file name the URL parser percent-encodes', () => {
+    expect(resolveBrandingLogoUrl('Acme logo.svg', configUrl)).toBe(
+      'https://app.example/nuxeo/agentic-ui-config/Acme%20logo.svg',
+    );
+  });
+
+  it('refuses an unparseable URL', () => {
+    expect(resolveBrandingLogoUrl('https://exa mple.com/acme.svg', configUrl)).toBeNull();
+  });
+});
+
+describe('nuxeoOriginsOf', () => {
+  it('collects the application, API and server origins, skipping unset and unparseable ones', () => {
+    const config = {
+      ...DEFAULT_APP_BOOTSTRAP_CONFIG,
+      nuxeoApiOrigin: 'https://api.example',
+      nuxeoServerUrl: 'https://server.example/nuxeo',
+    };
+
+    expect(nuxeoOriginsOf(config, 'https://app.example/nuxeo/agentic-ui/')).toEqual([
+      'https://app.example',
+      'https://api.example',
+      'https://server.example',
+    ]);
+    expect(nuxeoOriginsOf(DEFAULT_APP_BOOTSTRAP_CONFIG, 'https://app.example/')).toEqual([
+      'https://app.example',
+    ]);
+    expect(
+      nuxeoOriginsOf(
+        { ...DEFAULT_APP_BOOTSTRAP_CONFIG, nuxeoApiOrigin: 'not a url' },
+        'https://a.example/',
+      ),
+    ).toEqual(['https://a.example']);
+    expect(
+      nuxeoOriginsOf(
+        { ...DEFAULT_APP_BOOTSTRAP_CONFIG, nuxeoServerUrl: 'https://exa mple.com' },
+        'https://a.example/',
+      ),
+    ).toEqual(['https://a.example']);
+  });
+
+  it('resolves protocol-relative origins against the application, as API requests do', () => {
+    const config = {
+      ...DEFAULT_APP_BOOTSTRAP_CONFIG,
+      nuxeoApiOrigin: '//api.example',
+      nuxeoServerUrl: '//server.example/nuxeo',
+    };
+
+    expect(nuxeoOriginsOf(config, 'https://app.example/')).toEqual([
+      'https://app.example',
+      'https://api.example',
+      'https://server.example',
+    ]);
+  });
+});
 
 describe('mergeBootstrapConfig', () => {
   it('returns the packaged defaults when nothing is configured', () => {
@@ -174,16 +397,12 @@ describe('mergeBootstrapConfig', () => {
     });
   });
 
-  // The comment beside `mergeIntegrations` has always said both endpoints are required, but the
-  // merge used to fill a missing half from `base.arender?.… ?? ''` — and `base.arender` is `null`,
-  // so a one-sided manifest produced an object with a blank endpoint: exactly the state the comment
-  // claimed was impossible. That is worse than `null`, because `fetch('')` resolves against the
-  // application's own origin, so an availability probe reports a viewer that is not deployed.
+  // Only `viewerOrigin` is required. A blank one is worse than `null`, because `fetch('')` resolves
+  // against the application's own origin, so an availability probe reports a viewer that is not
+  // deployed and that origin lands on the allow-list the server-supplied URL is checked against.
   it.each([
-    ['only viewerOrigin', { viewerOrigin: 'https://arender.example' }],
     ['only nuxeoInternalUrl', { nuxeoInternalUrl: 'http://nuxeo/nuxeo' }],
     ['a blank viewerOrigin', { viewerOrigin: '   ', nuxeoInternalUrl: 'http://nuxeo/nuxeo' }],
-    ['a blank nuxeoInternalUrl', { viewerOrigin: 'https://arender.example', nuxeoInternalUrl: '' }],
     ['neither endpoint', {}],
   ])('yields null for a manifest naming %s', (_label, arender) => {
     const merged = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
@@ -191,6 +410,20 @@ describe('mergeBootstrapConfig', () => {
     });
 
     expect(merged.integrations.arender).toBeNull();
+  });
+
+  // `nuxeoInternalUrl` is vestigial under NEV 2026 — the connector resolves blobs itself from
+  // `documentId` over OAuth2, so nothing reads it. Requiring it would force a deployment that
+  // retired the nginx sidecar to invent a dummy value, or be silently left without a viewer.
+  it.each([
+    ['only viewerOrigin', { viewerOrigin: 'https://arender.example' }],
+    ['a blank nuxeoInternalUrl', { viewerOrigin: 'https://arender.example', nuxeoInternalUrl: '' }],
+  ])('configures the integration from %s alone', (_label, arender) => {
+    const merged = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      integrations: { arender },
+    });
+
+    expect(merged.integrations.arender?.viewerOrigin).toBe('https://arender.example');
   });
 
   it('lets an explicit null turn a configured integration off', () => {

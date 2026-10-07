@@ -132,17 +132,19 @@ Treat them as settled; if you contradict one, prove it first.
   lock and merging only the new entries in.
 - **Layer 1 slots are additive by construction.** `ExtensionSlotRegistry` keys
   slots by opaque string with no enum, union or `switch` on slot identity, so a
-  ninth slot requires no change to the eight. Do not introduce a central slot
+  tenth slot requires no change to the nine. Do not introduce a central slot
   dispatch; it would undo the property the Beta addressable-surface decision
   rests on. `rules` was removed from `EXTENSION_SLOTS`: rules are not descriptors
   and live in `ExtensionRuleRegistry`, so `slots.rules` was silently inert.
 - **A slot id existing does not mean anything reads it.** The principle stands; the
   inventory below it was **wrong about `documentList` from Phase 3 onwards** and is
   corrected here. `documentList` is registered with twelve packaged columns in
-  `provide-app-extensions.ts` and resolved by **both** browse routes. `navbar` and
-  `bulk-actions` have packaged descriptors and a host; `sidebar` is resolved but has no
-  packaged descriptor; `routes`, `toolbar`, `contextMenu` and `tabs` are reserved and
-  nothing reads them. Do not describe a reserved id as an extension point — and do not
+  `provide-app-extensions.ts` and resolved by **both** browse routes. As of NXSAT-316,
+  nine slots and none reserved: `navbar`, `bulk-actions`, `documentList`, `toolbar`,
+  `contextMenu` and `tabs` have packaged descriptors and a host; `sidebar`, `routes` and
+  `documentView` are resolved but have no packaged descriptor. The earlier "`routes`,
+  `toolbar`, `contextMenu` and `tabs` are reserved" was stale long before that — each had
+  gained a host. Do not describe a reserved id as an extension point — and do not
   trust this list either: `npm run beta:reference` checks every slot-state claim in
   `docs/extension-reference.md` against the source, which is why the drift was found. A
   hand-maintained inventory in a "do not re-litigate" section is the worst place for a
@@ -162,8 +164,9 @@ Treat them as settled; if you contradict one, prove it first.
   diverges from two upwards while the file claimed ACA parity. Corrected, with a
   multi-argument test.
 - **The rule context has three independently populated halves.** `document` is
-  written by document detail alone and cleared on destroy, so the seven document
-  rules answer `false` on every other surface. `selectionCount` is populated from
+  written by document detail alone and cleared on destroy, so the document rules —
+  including `app.rules.isType` and `app.rules.hasFacet` — answer `false` on every
+  other surface. `selectionCount` is populated from
   `SelectionService`, so the cardinality rules are live. `selection` — the
   documents — is **still empty**, because `SelectionService` tracks ids, so
   `canWriteSelection` and `canRemoveSelection` still answer `false`. Do not
@@ -355,18 +358,28 @@ DocumentService`. The chain, read from the published bundle:
   pull adf-hx into the initial bundle on purpose — `provideAdfHxNuxeoBridge()` in
   `app.config.ts` and `HxpBrowseNavDrawerComponent` in the shell nav drawer (see the guardrail
   allowlist in `scripts/review-guardrails.mjs`).
-- **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
-  A second `install.xml` copy step with `overwrite="false"` puts customer
-  configuration in a _sibling_ of the bundle, outside the destructive copy's
-  source tree, so the installer does not replace it (intended effect of the copy layout; no marketplace install or upgrade has been run — R7). **The destination must be under
+- **The package installs Layer 0 configuration as a sample, never as `bootstrap.json` —
+  `overwrite="false"` was rehearsed and it breaks the upgrade (R7, NXSAT-317).** Until
+  NXSAT-317 a second `install.xml` copy put `bootstrap.json` in
+  `nxserver/nuxeo.war/agentic-ui-config` with `overwrite="false"`, and every document said that
+  made customer edits survive an upgrade. Rehearsed on a throwaway server on 2026-10-07, it did
+  the opposite: an upgrade is `pkgUninstall(old)` then `pkgInstall(new)`; the uninstall deletes a
+  package file only while its md5 matches, so an **edited** file stays; the new version's
+  `overwrite="false"` copy then throws on it, and the install rolls back only its own commands —
+  **no version installed, `/nuxeo/agentic-ui/` 404**. Unedited installs upgraded fine. The
+  package now ships `bootstrap.example.json` (`overwrite="true"`, package-owned) and the customer
+  copies it to `bootstrap.json`, which no install, upgrade or uninstall touches; a missing
+  `bootstrap.json` means the compiled defaults, which the sample's values are. Rehearsed fixed:
+  today's package with an edit upgrades to it and keeps serving the edit
+  (`evidence/feedback-response/NXSAT-317/`, local). `checkInstallerOwnsNoCustomerFile` fails on
+  any `overwrite="false"` copy or a packaged `bootstrap.json`. **The destination must be under
   `nxserver/nuxeo.war`** — that is the Tomcat docBase for the `/nuxeo` context
   (`docBase="../nxserver/nuxeo.war"`). `nxserver/web` holds only `root.war`, is
   not a docBase, and anything installed there is never served. Phase 1 shipped the
-  `nxserver/web/…` variant and it would have 404'd in every deployment; the
-  corrected path is verified served on the local container. **Risk R7 is still
-  Medium:** since 2026-09-26 the package is built and published — `2026.0.1-20260926071953-BUILD-1109`, live on the preprod listing — but never installed or upgraded on a real server.
-  The outstanding exercise is a **marketplace install rehearsal**, distinct from the
-  `upgrade-rehearsal` gate, which is done and crosses a version boundary for the npm tarball.
+  `nxserver/web/…` variant and it would have 404'd in every deployment. Both files are served
+  **without authentication**. Workstream A (configuration served from the package by a servlet)
+  is expected to replace the file entirely; this is the interim, not the end state. Not
+  rehearsed: the Admin Center / Update Center path, which runs the same package tasks.
 - **Configuration is loaded, not compiled.** `libs/shared/app-config` reads a
   static bootstrap file pre-auth and a runtime manifest from the Nuxeo document
   at `/default-domain/config/agentic-ui` post-auth. Eleven `InjectionToken`

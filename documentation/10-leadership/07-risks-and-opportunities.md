@@ -192,16 +192,16 @@ devDependency (types-only import), but the adf-core surface remains.
 
 ## 4. Low
 
-| ID  | Risk                                                                                                                            |
-| --- | ------------------------------------------------------------------------------------------------------------------------------- |
-| L1  | Node 20 pin — Node 22+ shadows jsdom's `localStorage` and breaks specs on correct code. Worked around in the gate               |
-| L2  | Evidence lives outside the repository (`~/Desktop/agentic-ui-evidence/`) — does not travel with a clone                         |
-| L3  | Knowledge concentration — the harness and its rationale sit with very few people. **This documentation set is the mitigation**  |
-| L4  | 29 pre-existing docs, several superseded and contradictory. Partly addressed by this set                                        |
-| L5  | `@nuxeo-satori` scope ownership (RFC **R9**) — **resolved**: `@nuxeo/satori-platform` on Nuxeo Nexus                            |
-| L6  | Angular 20 monorepo upgrade (RFC **R6**) — **resolved**, landed                                                                 |
-| L7  | Package entitlement (RFC **R1**) — **resolved** by authenticated download                                                       |
-| L8  | Packaging sign-off for the non-overwriting installer (RFC **R7**) — implemented; **sign-off status not verified in repository** |
+| ID  | Risk                                                                                                                                                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| L1  | Node 20 pin — Node 22+ shadows jsdom's `localStorage` and breaks specs on correct code. Worked around in the gate                                                              |
+| L2  | Evidence lives outside the repository (`~/Desktop/agentic-ui-evidence/`) — does not travel with a clone                                                                        |
+| L3  | Knowledge concentration — the harness and its rationale sit with very few people. **This documentation set is the mitigation**                                                 |
+| L4  | 29 pre-existing docs, several superseded and contradictory. Partly addressed by this set                                                                                       |
+| L5  | `@nuxeo-satori` scope ownership (RFC **R9**) — **resolved**: `@nuxeo/satori-platform` on Nuxeo Nexus                                                                           |
+| L6  | Angular 20 monorepo upgrade (RFC **R6**) — **resolved**, landed                                                                                                                |
+| L7  | Package entitlement (RFC **R1**) — **resolved** by authenticated download                                                                                                      |
+| L8  | Packaging (RFC **R7**) — the non-overwriting installer was rehearsed 2026-10-07 and **failed** (NXSAT-317); replaced by a sample-file installer, rehearsed via `nuxeoctl` only |
 
 ---
 

@@ -1221,6 +1221,15 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       expect(component.propertiesPanelOpen()).toBe(true);
     });
 
+    it('selects show/hide details label keys from panel open state (NXENG-766)', async () => {
+      await build();
+      expect(component.detailsPanelToggleLabelKey()).toBe('document-detail.hide-details');
+      component.closePropertiesPanel();
+      expect(component.detailsPanelToggleLabelKey()).toBe('document-detail.show-details');
+      component.openPropertiesPanel();
+      expect(component.detailsPanelToggleLabelKey()).toBe('document-detail.hide-details');
+    });
+
     it('routes a breadcrumb anchor through the router instead of a full page load', async () => {
       await build();
       const spy = vi.spyOn(Router.prototype, 'navigateByUrl');

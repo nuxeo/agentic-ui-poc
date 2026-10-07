@@ -69,6 +69,22 @@ installer copies that directory with `overwrite="true"` and would destroy it. Se
 of the plan for the ACL model — in short, grant Read broadly and Write narrowly, and block
 inheritance on the config folder.
 
+With the default `manifestDocumentProperty`, `note:note`, the document is a Note and its
+`note:mime_type` must be **`text/plain`**. Nuxeo's HTML sanitizer escapes the quotes in a Note of
+any other type — `application/json` included — so the stored JSON stops parsing and the packaged
+defaults apply with no error shown. A deployment that points `manifestDocumentProperty` at a
+property of its own schema is not subject to this.
+
+The Layer 0 file is the other store, and the package does **not** install it. The package ships a
+sample, `nxserver/nuxeo.war/agentic-ui-config/bootstrap.example.json`, and replaces it on every
+upgrade; to customise, copy it to `bootstrap.json` in the same directory and edit the copy. No
+install, upgrade or uninstall touches `bootstrap.json`, and with no `bootstrap.json` the app runs on
+its compiled defaults, which are the sample's values. Do not edit the sample itself: the change is
+lost on the next upgrade and never applied anyway. Until NXSAT-317 the package installed
+`bootstrap.json` itself, and upgrading after an edit left no version installed; if a server was
+installed from such a package, its edited `bootstrap.json` keeps working after the upgrade to a
+fixed version. Both files are served without authentication — put nothing secret in either.
+
 The Layer 1 configuration is the `extensions` key of that document:
 
 ```json
@@ -96,7 +112,7 @@ The Layer 1 configuration is the `extensions` key of that document:
 
 ## 2. Slots
 
-A slot is a named, ordered list of descriptors. Eight exist for Beta, of which six
+A slot is a named, ordered list of descriptors. Nine exist for Beta, of which six
 carry packaged entries.
 
 | Slot           | What it addresses                         | Status in Beta                                     |
@@ -109,6 +125,7 @@ carry packaged entries.
 | `contextMenu`  | The browse "More actions" menu            | **Populated** — 4 packaged actions, section 10     |
 | `tabs`         | Document-detail tab children              | **Populated** — 6 packaged tabs, section 9         |
 | `documentList` | Document list columns                     | **Populated** — 12 packaged columns, section 7     |
+| `documentView` | The View tab body on document detail      | Resolves; **no packaged entries** — see section 9a |
 
 Read the three states precisely, because they are different promises:
 
@@ -131,7 +148,7 @@ Deferred to GA and deliberately absent: `content-metadata-presets`, `badges`,
 ### Slots are additive
 
 Slot IDs are plain strings. There is no enum, union or `switch` on slot identity in the registry, so
-a ninth slot needs no change to the eight and no new release of the registry —
+a tenth slot needs no change to the nine and no new release of the registry —
 `libs/shared/extensions/src/lib/extension-slot-registry.service.spec.ts` proves it by registering a
 slot the library has never heard of and showing the nine unchanged.
 
@@ -173,10 +190,13 @@ Packaged entries carry both a `label` (the English literal) and a `labelKey` (a 
 The renderer prefers the key when it resolves. That gives you two ways to change the text, and
 they are not interchangeable.
 
-| You want                       | Set                                         | Result                                                                    |
-| ------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------- |
-| One wording, every language    | `overrides["app.navbar.collections"].label` | Your literal, verbatim, in all locales. Translation is bypassed entirely. |
-| Different wording per language | `labels["nav.item.collections"]` (Layer 0)  | Your text wherever that key resolves, per catalogue.                      |
+| You want                    | Set                                         | Result                                                                    |
+| --------------------------- | ------------------------------------------- | ------------------------------------------------------------------------- |
+| One wording, every language | `overrides["app.navbar.collections"].label` | Your literal, verbatim, in all locales. Translation is bypassed entirely. |
+| Replace a translation key   | `labels["nav.item.collections"]` (Layer 0)  | Your text wherever that key resolves, the same in every language.         |
+
+The manifest's `labels` map is not keyed by language: `AppTranslateLoader` layers the same map
+over every language's catalogue. Per-language wording is not configurable today.
 
 **Setting `label` disables the key for that entry**, deliberately and by design: a manifest
 literal is an instruction to show exactly that string, so it must win. If you set both, `label`
@@ -267,7 +287,9 @@ supported state but not a useful one.
 ## 4. `rules` — the registered predicates
 
 Referenced as a bare string (`"app.rules.canWrite"`) or as an object with parameters
-(`{ "type": "core.every", "parameters": [...] }`).
+(`{ "type": "core.every", "parameters": [...] }`). `parameters` must be a JSON array; anything
+else — `"parameters": "File"` with the brackets forgotten — is read as an empty list rather than
+breaking the slot it sits in.
 
 ### Document rules
 
@@ -281,12 +303,35 @@ Registered by `DOCUMENT_RULE_EVALUATORS`. These wrap the existing pure predicate
 | `app.rules.canAddChildren`       | The user has `AddChildren`                                        |
 | `app.rules.canManagePermissions` | The user has `WriteSecurity` or `Everything`                      |
 | `app.rules.hasDocument`          | A document is in focus                                            |
+| `app.rules.isType`               | The focused document's type is one of the `parameters`            |
+| `app.rules.hasFacet`             | The focused document carries at least one facet in `parameters`   |
 | `app.rules.isTrashed`            | The focused document is in the trash                              |
 | `app.rules.isNotTrashed`         | A document is in focus and is not in the trash                    |
 
+`app.rules.isType` and `app.rules.hasFacet` take the type or facet names as `parameters`, matched
+exactly — Nuxeo names are case-sensitive. With no string parameters — or `parameters` that is not
+an array — both answer `false`, so a misconfigured entry is hidden rather than shown everywhere.
+Nuxeo Web UI offers the same two tests through `nuxeo-filter`'s `type` and `facet`. Show the
+Publishing tab only on Case and Claim documents:
+
+```json
+{
+  "overrides": {
+    "app.tabs.publishing": {
+      "rule": { "type": "app.rules.isType", "parameters": ["Case", "Claim"] }
+    }
+  }
+}
+```
+
+and negate with `core.not`, or combine with `core.every` — `hasFacet("Versionable")` alongside
+`isType("Claim")` is an ordinary composite.
+
 **Scope, stated plainly.** "The focused document" means the document open on
 `/#/doc/:uid`. That page is the only surface that publishes one, and it clears it
-when you navigate away, so all seven answer `false` everywhere else. An earlier
+when you navigate away, so all nine answer `false` everywhere else. In particular the two
+type rules gate document-detail **tabs and toolbar actions**; they cannot vary browse list
+columns by type, because a list has no single focused document. An earlier
 version of this document described the first five as functional with no caveat
 while nothing populated the context at all, so they answered `false` everywhere.
 That is fixed; the remaining limit is which surfaces have a focused document.
@@ -663,7 +708,8 @@ not addressable**, and that asymmetry is deliberate and worth stating: the six
 packaged bodies are still markup in the host template, matched by ID. Extracting
 a thousand-plus lines of tab body into separately registered components would
 have been a rewrite, and the point of this slot is to make the tab strip
-addressable without one.
+addressable without one. The one exception is the body of `app.tabs.view`, which
+a `documentView` entry can replace per document — section 9a.
 
 A tab you contribute names a registered component instead, through `componentId`,
 and is rendered by the same `ExtensionOutletComponent` the sidebar uses. The
@@ -689,6 +735,83 @@ component must already be compiled in — contributing one is Layer 2.
 the tab's own ID is enough. A contributed tab with no registered component
 renders an empty body rather than throwing, so the manifest can precede the
 library.
+
+---
+
+## 9a. `documentView` — a different View per document type
+
+Resolves, with no packaged entries. The host asks this slot for the body of the
+View tab each time the focused document changes, so a Claim can open on a claim
+summary while a File keeps the packaged viewer and a Note keeps the note editor.
+Nothing of ours is registered here: with no entries, the View tab is exactly what
+it was before the slot existed.
+
+| Field         | Meaning                                                                       |
+| ------------- | ----------------------------------------------------------------------------- |
+| `componentId` | Registered component rendering the tab body. Defaults to the descriptor `id`. |
+| `rule`        | When it denies for the focused document, the entry is skipped.                |
+| `inputs`      | Static values set on the component's declared inputs. Unknown keys ignored.   |
+
+**Which entry wins.** Entries whose rule passes are taken in ascending `order`, and the
+first whose component is registered renders. Nothing matching, or nothing registered,
+renders the packaged view. A registered component whose lazy loader fails also falls
+back to the packaged view rather than leaving the tab blank, so a broken chunk costs the
+customer their custom view, not the document. The load is retried when the document is
+refetched or another document using the same entry opens — at most twice, so a chunk that
+is permanently missing is requested three times in all. The packaged view stays on screen
+while a retry is in flight.
+
+**The document is the host's.** The component receives the focused document on its
+`document` input. A manifest `inputs.document` is overwritten, so configuration cannot
+make the tab show a different document from the one the toolbar and properties panel act
+on. Declare `document` as an `input()` to receive it; a component that does not declare
+it is still rendered, and the value is not set.
+
+The natural rule is a type check, with the packaged `app.rules.isType` (section 4). Any
+registered rule works, including one your library registers:
+
+```json
+{
+  "slots": {
+    "documentView": [
+      {
+        "id": "acme.documentView.claim",
+        "componentId": "acme.components.claimView",
+        "rule": { "type": "app.rules.isType", "parameters": ["Claim"] },
+        "order": 10,
+        "inputs": { "heading": "Claim summary" }
+      }
+    ]
+  }
+}
+```
+
+For Notes alone, the packaged `app.rules.isNote` reads the same way:
+
+```json
+{
+  "slots": {
+    "documentView": [
+      {
+        "id": "acme.documentView.notes",
+        "componentId": "acme.components.noteView",
+        "rule": "app.rules.isNote"
+      }
+    ]
+  }
+}
+```
+
+What this slot does **not** do:
+
+- **Only the View tab.** The other tabs, the toolbar and the properties panel are
+  unchanged by any `documentView` entry. A per-type metadata or edit layout is a separate
+  design and is not this slot.
+- **The packaged views are not entries.** The note editor and document viewer are still
+  host markup, so a manifest cannot hide or reorder them — only outrank them with an
+  entry of your own. Making them registered entries is a follow-up.
+- **Like every slot, it is not a security control.** Whatever your component reads is
+  still gated by Nuxeo server-side.
 
 ---
 
@@ -795,13 +918,15 @@ Stated so nobody plans around a capability that is not there.
 
 The first two are a **deliberate Beta boundary**, not an oversight: Layer 1 is additive for
 Beta. You can add surfaces and you can hide, reorder or relabel packaged ones. You cannot
-replace a shipped route or change what a packaged tab renders. Making either addressable is a
+replace a shipped route or change what a packaged tab renders, beyond outranking the View tab
+body per document through `documentView`. Making either addressable is a
 rewrite rather than a refactor, so it is deferred to GA. If you need to replace a shipped page,
 that is Layer 2 — see section 14.
 
 - **Tab and toolbar bodies.** The six packaged tab bodies and the document-specific header
   controls listed in section 8 are still markup. The tab strip and the toolbar are addressable;
-  what a packaged tab renders is not.
+  what a packaged tab renders is not, except the View tab, which a `documentView` entry can
+  replace per document (section 9a).
 
 - **The packaged routes.** `app.routes.ts` imports each feature library's `Routes` array
   directly, so no packaged route carries an ID and none can be moved, guarded or removed from a

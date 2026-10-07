@@ -21,7 +21,7 @@ type PlatformEntryPoint = (typeof PLATFORM_ENTRY_POINTS)[number];
 
 ## @nuxeo-satori/platform/app-config
 
-28 exported symbol(s).
+29 exported symbol(s).
 
 ```ts
 const APP_BOOTSTRAP_CONFIG_FILE = "bootstrap.json";
@@ -51,6 +51,12 @@ interface AppBootstrapConfig {
 interface AppBrandingConfig {
     readonly applicationTitle: string;
     readonly documentTitle: string;
+    readonly logo: AppBrandingLogo | null;
+    }
+}
+interface AppBrandingLogo {
+    readonly src: string;
+    readonly alt: string;
     }
 }
 interface AppConfigDiagnostics {
@@ -65,6 +71,10 @@ class AppConfigService {
     readonly manifest: _angular_core.Signal<AppRuntimeManifest>;
     readonly diagnostics: _angular_core.Signal<AppConfigDiagnostics>;
     readonly themes: _angular_core.Signal<readonly AppThemeConfig[]>;
+    readonly brandingLogo: _angular_core.Signal<{
+    readonly url: string;
+    readonly alt: string;
+    } | null>;
     load(): Promise<void>;
     loadBootstrap(): Promise<AppBootstrapConfig>;
     loadManifest(): Promise<AppRuntimeManifest>;
@@ -157,7 +167,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/extensions
 
-57 exported symbol(s).
+58 exported symbol(s).
 
 ```ts
 const APP_NAV_ITEMS: InjectionToken<Signal<readonly NavItemDescriptor[]>>;
@@ -193,6 +203,7 @@ const EXTENSION_SLOTS: {
     readonly 'bulk-actions': "bulk-actions";
     readonly tabs: "tabs";
     readonly documentList: "documentList";
+    readonly documentView: "documentView";
 };
 interface ExtensionActionDescriptor extends ExtensionElement {
     readonly label: string;
@@ -251,6 +262,12 @@ interface ExtensionConfig {
     readonly $version?: string;
     readonly slots?: Readonly<Record<ExtensionSlotId, readonly ExtensionElement[]>>;
     readonly overrides?: Readonly<Record<string, ExtensionOverride>>;
+    }
+}
+interface ExtensionDocumentViewDescriptor extends ExtensionElement {
+    readonly rule?: ExtensionRule;
+    readonly componentId?: string;
+    readonly inputs?: Readonly<Record<string, unknown>>;
     }
 }
 interface ExtensionElement {

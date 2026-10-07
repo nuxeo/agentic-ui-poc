@@ -162,7 +162,9 @@ gh run list --branch <branch> --limit 3 --json status,conclusion,headSha,event
 3. **A gate you have not watched fail** is not evidence. Seven were found asserting less than
    they claimed.
 4. **`eslint:lint` vs `lint`.** Inferred target names do not match `-t lint`.
-5. **Reserved extension IDs are not extension points.** Four of eight slots read by nothing.
+5. **Reserved extension IDs are not extension points.** Four of eight slots were read by
+   nothing when this was written; every slot now has a host, and there are nine
+   (`docs/extension-reference.md` section 2 is the gated inventory). The principle stands.
 6. **`withHashLocation()`** makes `goto('/#/x')` same-document — `APP_INITIALIZER` never
    re-runs.
 7. **`provideAppInitializer` callbacks run concurrently.** A one-shot config read races the

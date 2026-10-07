@@ -1521,3 +1521,54 @@ Returns users and groups sorted by creation date descending (newest first), usin
 | **POC route**              | `/#/browse-adf-hx?path=<nuxeo-path>`                                     |
 | **HxPR APIs implemented**  | `DocumentApi`, `QueryApi` (`tree_children`, `advanced_document_content`) |
 | **Nuxeo backing services** | `BrowseService`, `DocumentDetailService`                                 |
+
+## ARender / NEV 2026 — Previewer and Diff URLs
+
+| Field           | Value                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| **Service**     | `ARenderService` (`libs/shared/nuxeo-client/src/lib/services/arender.service.ts`)            |
+| **Methods**     | `getPreviewerUrl(docUid, blobXPath?)`, `getDiffUrl(leftDocUid, rightDocUid)`                 |
+| **HTTP Method** | `POST`                                                                                       |
+| **Endpoints**   | `/nuxeo/api/v1/automation/Document.ARenderGetPreviewerUrl`, `.../Document.ARenderGetDiffUrl` |
+| **Provided by** | The `nuxeo-arender` marketplace addon (`2025.0.4`), not by the platform                      |
+
+**Request body — previewer:**
+
+```json
+{ "input": "<doc-uid>", "params": { "blobXPath": "file:content" } }
+```
+
+**Request body — diff:**
+
+```json
+{ "params": { "leftDocId": "<uid>", "rightDocId": "<uid>" } }
+```
+
+**Response:**
+
+```json
+{ "previewerUrl": "https://<viewer>/?documentId=default,<uid>,file:content,<digest>" }
+```
+
+The diff variant appends a second `documentId` and `visualization.multiView.doComparison=true`.
+
+**Why the server builds this URL.** NEV's `BlobNuxeoURLParser.canParse` claims a request only when
+it carries a `documentId` parameter, whose value is `<repository>,<uid>,<xpath>,<digest>`. The blob
+digest is not computable in a browser, so the client cannot assemble it. The earlier generic-ARender
+contract — `?url=<nxfile-url>` built client-side and fetched through an nginx sidecar with a shared
+Basic credential — is left unparsed by NEV 2026.
+
+The host half comes from `arender.server.previewer.host` in `nuxeo.conf`. If the `arender` template
+is not active, that silently falls back to `http://localhost:8080/ARender` with no error.
+
+**Failure modes, all answering `null`:**
+
+| Condition                                         | Behaviour                                |
+| ------------------------------------------------- | ---------------------------------------- |
+| `integrations.arender` unset                      | no request issued                        |
+| Addon absent (`404`)                              | `null` — "Annotations are not available" |
+| Caller lacks `Read` on the document (`403`)       | `null`                                   |
+| Returned URL not on `viewerOrigin`                | `null` — origin allow-list               |
+| Returned URL has a non-http(s) scheme or userinfo | `null`                                   |
+
+**Related:** NXSAT-279 (adoption), NXSAT-301 (viewer deployment), NCO-52212 (Nuxeo config).

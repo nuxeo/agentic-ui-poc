@@ -541,12 +541,12 @@ failed fetch named that control with the raw key. Its catalogue value was also l
 
 ### Four gates, and the first controls any guardrail here has had
 
-| Guardrail                      | Enforces                                                                                        | Scope |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- | ----- |
-| `checkNoHardcodedUiText`       | a hard-coded user-facing string in any template                                                 | repo  |
-| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, no key `en.json` lacks (missing keys warn — D8d) | repo  |
-| `checkTranslationContext`      | translator context exists for every string and for no deleted one                               | repo  |
-| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title` survives a failed fetch                                 | repo  |
+| Guardrail                      | Enforces                                                                                                                                       | Scope |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `checkNoHardcodedUiText`       | a hard-coded user-facing string in any template                                                                                                | repo  |
+| `checkTranslationCatalogues`   | valid JSON, no blank values, trailing newline, no key `en.json` lacks (missing keys warn — D8d)                                                | repo  |
+| `checkTranslationContext`      | translator context exists for every string and for no deleted one                                                                              | repo  |
+| `checkAccessibleNameFallbacks` | every key bound to `aria-label`/`title`/`placeholder` or `method() \| translate` on those attributes plus `matTooltip` survives a failed fetch | repo  |
 
 Plus `checkAngularDevAssets` extended to compare the `ignore` list, which it did not before — an
 entry excluding a file in the base array and not in `development` read as identical while the two

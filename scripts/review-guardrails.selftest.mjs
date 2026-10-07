@@ -249,6 +249,27 @@ expectRed(
   /has no trailing newline/,
 );
 
+expectRed(
+  'a catalogue with a raw carriage return inside a JSON string value',
+  'checkTranslationCatalogues',
+  APP,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/public/i18n/en.json',
+      '{\n  "app": { "title": "Hyland' + '\r' + ' Nuxeo" }\n}\n',
+    ),
+  /is not valid JSON/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a catalogue with carriage return as JSON whitespace between tokens', 'checkTranslationCatalogues', {
+  'apps/nuxeo-ui/public/i18n/en.json':
+    '{\r "app": { "title": "Hyland Nuxeo", "nav": { "toggle": "Toggle navigation menu" } }, ' +
+    '"settings": { "themes": { "search": "Search themes" } } }\n',
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html': GOOD_TEMPLATE,
+});
+
 expectWarn(
   'locale missing a key the reference has — warns, because English is the fallback',
   'checkTranslationCatalogues',
@@ -1204,7 +1225,10 @@ expectRed(
   'checkShippedDefaultLanguage',
   {
     ...CATALOGUES,
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('zz', ['en', 'fr']),
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json': BOOTSTRAP('zz', [
+      'en',
+      'fr',
+    ]),
   },
   null,
   /GENERATED pseudo-locale/,
@@ -1215,7 +1239,11 @@ expectRed(
   'checkShippedDefaultLanguage',
   {
     ...CATALOGUES,
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('de', ['en', 'fr', 'de']),
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json': BOOTSTRAP('de', [
+      'en',
+      'fr',
+      'de',
+    ]),
   },
   null,
   /no catalogue exists for it/,
@@ -1226,7 +1254,7 @@ expectRed(
   'checkShippedDefaultLanguage',
   {
     ...CATALOGUES,
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('fr', ['en']),
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json': BOOTSTRAP('fr', ['en']),
   },
   null,
   /absent from/,
@@ -1234,7 +1262,7 @@ expectRed(
 
 expectGreen('a real shipped default', 'checkShippedDefaultLanguage', {
   ...CATALOGUES,
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json': BOOTSTRAP('en', ['en', 'fr']),
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json': BOOTSTRAP('en', ['en', 'fr']),
 });
 
 // A gate that cannot find the file it checks must say so, not pass.
@@ -1483,7 +1511,7 @@ expectRed(
   'checkAdvertisedLocalesShip',
   {
     'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
       '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "es"]\n}\n',
   },
   null,
@@ -1495,7 +1523,7 @@ expectRed(
 expectGreen('an advertised locale that ships', 'checkAdvertisedLocalesShip', {
   'apps/nuxeo-ui/public/i18n/en.json': '{\n  "a": "A"\n}\n',
   'apps/nuxeo-ui/public/i18n/fr.json': '{\n  "a": "A"\n}\n',
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
     '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en", "fr"]\n}\n',
 });
 
@@ -1536,7 +1564,7 @@ expectRed(
     'libs/shared/app-config/src/lib/bootstrap-config.ts':
       'export const DEFAULT_APP_BOOTSTRAP_CONFIG = {\n' +
       "  branding: { applicationTitle: 'Hyland Nuxeo' },\n  defaultThemeId: 'nuxeo',\n};\n",
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
       '{\n  "branding": { "applicationTitle": "Acme Content Cloud" },\n' +
       '  "defaultThemeId": "acme",\n  "themes": [{ "id": "acme" }]\n}\n',
   },
@@ -1548,7 +1576,7 @@ const PACKAGED_OK = {
   'libs/shared/app-config/src/lib/bootstrap-config.ts':
     'export const DEFAULT_APP_BOOTSTRAP_CONFIG = {\n' +
     "  branding: { applicationTitle: 'Hyland Nuxeo' },\n  defaultThemeId: 'nuxeo',\n};\n",
-  'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+  'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
     '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
     '  "defaultThemeId": "nuxeo",\n  "themes": []\n}\n',
 };
@@ -1570,7 +1598,7 @@ expectRed(
   PACKAGED_OK,
   (write) =>
     write(
-      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json',
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
         '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
         '  "integrations": { "arender": { "viewerOrigin": "http://localhost:8181" } }\n}\n',
@@ -1586,7 +1614,7 @@ expectRed(
   PACKAGED_OK,
   (write) =>
     write(
-      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json',
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
         '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
         '  "$integrations": "LOCAL DEV ONLY (NXSAT-279) - revert with git checkout.",\n' +
@@ -1616,7 +1644,7 @@ expectRed(
   PACKAGED_OK,
   (write) =>
     write(
-      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json',
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
         '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
         '  "integrations": { "arender": { "viewerOrigin": "http://127.0.0.2:8181" } }\n}\n',
@@ -1630,7 +1658,7 @@ expectRed(
   PACKAGED_OK,
   (write) =>
     write(
-      'nuxeo-agentic-ui-package/src/main/config/bootstrap.json',
+      'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json',
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
         '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
         '  "integrations": { "arender": { "viewerOrigin": "http://[::1]:8181" } }\n}\n',
@@ -1643,10 +1671,156 @@ expectGreen(
   'checkPackagedConfigIsNotADemo',
   {
     ...PACKAGED_OK,
-    'nuxeo-agentic-ui-package/src/main/config/bootstrap.json':
+    'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json':
       '{\n  "branding": { "applicationTitle": "Hyland Nuxeo" },\n' +
       '  "defaultThemeId": "nuxeo",\n  "themes": [],\n' +
       '  "integrations": { "arender": { "viewerOrigin": "https://arender.hyland.com" } }\n}\n',
+  },
+);
+
+/* ---------------- checkInstallerOwnsNoCustomerFile (NXSAT-317) ---------------- */
+
+const INSTALL_XML = 'nuxeo-agentic-ui-package/src/main/resources/install.xml';
+const SAMPLE = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json';
+
+/** The installer as it shipped before NXSAT-317, tags verbatim. */
+const INSTALL_XML_BEFORE = `<install>
+  <update file="\${package.root}/install/bundles" todir="\${env.bundles}" />
+  <copy dir="\${package.root}/web" todir="\${env.server.home}/nxserver" overwrite="true" />
+  <!-- overwrite="false" means an existing deployed file is left untouched -->
+  <copy dir="\${package.root}/config"
+        todir="\${env.server.home}/nxserver/nuxeo.war/agentic-ui-config"
+        overwrite="false" />
+</install>
+`;
+
+/** The fix: the config directory carries only the sample, replaced like any package file. */
+const INSTALL_XML_AFTER = INSTALL_XML_BEFORE.replace(
+  /overwrite="false" \/>/,
+  'overwrite="true" />',
+);
+
+// The defect itself. Rehearsed: an edited bootstrap.json survives the old version's md5-checked
+// uninstall, this copy then throws on it, and the upgrade ends with no version installed.
+expectRed(
+  'the pre-NXSAT-317 installer copying config with overwrite="false"',
+  'checkInstallerOwnsNoCustomerFile',
+  { [INSTALL_XML]: INSTALL_XML_BEFORE, [SAMPLE]: '{}\n' },
+  null,
+  /install\.xml has a copy with overwrite="false"[\s\S]*agentic-ui-config/,
+);
+
+// The rule is about the attribute, not about the one file that tripped it.
+expectRed(
+  "overwrite='false' on any other file, single-quoted",
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      "  <copy file='${package.root}/themes/acme.css' todir='${env.server.home}/x'\n" +
+        "        overwrite='false' />\n</install>",
+    ),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /has a copy with overwrite="false"[\s\S]*acme\.css/,
+);
+
+// Shipping the real file with overwrite="true" is not a fix: it destroys the edit instead. And the
+// assembly stages this directory from disk, so an untracked file left there is packaged too.
+expectRed(
+  'a packaged bootstrap.json, even with overwrite="true"',
+  'checkInstallerOwnsNoCustomerFile',
+  { [INSTALL_XML]: INSTALL_XML_AFTER, [SAMPLE]: '{}\n' },
+  (write) => write('nuxeo-agentic-ui-package/src/main/config/bootstrap.json', '{}\n'),
+  /src\/main\/config\/bootstrap\.json would be installed as the bootstrap\.json the app/,
+);
+
+// Nuxeo's Copy defaults `overwrite` to false and parses the attribute only when it is non-empty,
+// so leaving it out is the same defect — and so is any value parseBoolean does not read as true.
+expectRed(
+  'a copy with no overwrite attribute',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      "  <copy file='${package.root}/themes/acme.css' todir='${env.server.home}/x' />\n</install>",
+    ),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /has a copy with no overwrite attribute, which Nuxeo runs as overwrite="false"[\s\S]*acme\.css/,
+);
+
+expectRed(
+  'overwrite="yes", which parseBoolean reads as false',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_BEFORE.replace(/overwrite="false" \/>/, 'overwrite="yes" />'),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /has a copy with overwrite="yes", which Nuxeo runs as overwrite="false"/,
+);
+
+// Any other packaged file in the config directory replaces a customer's same-named one on
+// upgrade — a logo is the obvious one since branding.logo names a file beside bootstrap.json.
+expectRed(
+  'a packaged logo beside the sample',
+  'checkInstallerOwnsNoCustomerFile',
+  { [INSTALL_XML]: INSTALL_XML_AFTER, [SAMPLE]: '{}\n' },
+  (write) => write('nuxeo-agentic-ui-package/src/main/config/acme-logo.svg', '<svg/>\n'),
+  /src\/main\/config\/acme-logo\.svg would be installed into agentic-ui-config/,
+);
+
+// The config walk only proves what src/main/config holds; a second source copied into the same
+// directory would replace a customer's logo with nothing to catch it.
+expectRed(
+  'a logo copied into agentic-ui-config from another source',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      '  <copy file="${package.root}/themes/acme-logo.svg" overwrite="true"\n' +
+        '        todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config" />\n' +
+        '</install>',
+    ),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /copies into agentic-ui-config from somewhere other than \$\{package\.root\}\/config[\s\S]*acme-logo\.svg/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'overwrite="TRUE", which parseBoolean reads as true',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_BEFORE.replace(/overwrite="false" \/>/, 'overwrite="TRUE" />'),
+    [SAMPLE]: '{}\n',
+  },
+);
+
+expectRed(
+  'no installer found at all',
+  'checkInstallerOwnsNoCustomerFile',
+  { [SAMPLE]: '{}\n' },
+  null,
+  /No install\.xml was found[\s\S]*asserted nothing/,
+);
+
+// The comment explaining the rule has to quote the attribute — here as a whole commented-out copy,
+// the strongest form of it. It must not trip the rule.
+falsePositiveControls += 1;
+expectGreen(
+  'the fixed installer, with a commented-out overwrite="false" copy',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      '  <!-- was: <copy dir="${package.root}/config" todir="x" overwrite="false" /> -->\n</install>',
+    ),
+    [SAMPLE]: '{}\n',
   },
 );
 
@@ -3833,7 +4007,7 @@ expectRed(
  * languages it could not render, and the gate was looking somewhere else entirely.
  */
 const TEMPLATE_CONFIG = 'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json';
-const PACKAGED_CONFIG = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+const PACKAGED_CONFIG = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json';
 const EN_ONLY = '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en"]\n}\n';
 
 expectRed(
@@ -4009,6 +4183,361 @@ expectGreen(
   {
     ...APP,
     'apps/nuxeo-ui/src/app/shell/app-shell.component.html': `<button type="button" [attr.aria-label]="'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' | translate"></button>\n`,
+  },
+);
+
+/**
+ * `[attr.aria-label]="panelLabelKey() | translate"` — keys come from the method body, not from an
+ * earlier call site. `indexOf(\`\${methodName}(\`)` used to anchor on the call in `refreshLabel()`,
+ * miss the declaration's return literals, and let a missing fallback slip through.
+ */
+const METHOD_BINDING_CATALOGUE = `{
+  "x": { "panel": { "hide": "Hide panel", "show": "Show panel" } }
+}
+`;
+const METHOD_BINDING_FALLBACK = `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'x.panel.hide': 'Hide panel',
+  'x.panel.show': 'Show panel',
+};
+`;
+const METHOD_BINDING_TS = `export class XComponent {
+  refreshLabel(): string {
+    return this.panelLabelKey();
+  }
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+const METHOD_BINDING_HTML =
+  `<button type="button" [attr.aria-label]="panelLabelKey() | translate"></button>\n`;
+const METHOD_BINDING_APP = {
+  'apps/nuxeo-ui/public/i18n/en.json': METHOD_BINDING_CATALOGUE,
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': METHOD_BINDING_FALLBACK,
+  'libs/features/x/src/lib/x.html': METHOD_BINDING_HTML,
+  'libs/features/x/src/lib/x.ts': METHOD_BINDING_TS,
+};
+
+expectRed(
+  'a method-bound accessible name whose keys are missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  METHOD_BINDING_APP,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a method-bound accessible name with an earlier call site still reads the declaration',
+  'checkAccessibleNameFallbacks',
+  METHOD_BINDING_APP,
+);
+
+const METHOD_PLACEHOLDER_HTML =
+  `<input [placeholder]="inputLabelKey() | translate" />\n`;
+const METHOD_PLACEHOLDER_TS = `export class XComponent {
+  inputLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound placeholder whose keys are missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.html': METHOD_PLACEHOLDER_HTML,
+    'libs/features/x/src/lib/x.ts': METHOD_PLACEHOLDER_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds inputLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const METHOD_DEBUG_LITERAL_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    console.log('x.panel.debug-only');
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+falsePositiveControls += 1;
+expectGreen(
+  'a method-bound name ignores debug string literals nested in the method body',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_DEBUG_LITERAL_TS,
+  },
+);
+
+const METHOD_IF_RETURN_TS = `export class XComponent {
+  panelLabelKey(): string {
+    if (this.open) {
+      return 'x.panel.hide';
+    }
+    return 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound name whose keys are returned through nested control flow',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_IF_RETURN_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const METHOD_LOCAL_VAR_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    const key = this.open ? 'x.panel.hide' : 'x.panel.show';
+    return key;
+  }
+}
+`;
+falsePositiveControls += 1;
+expectGreen(
+  'a method-bound name returned through a local const still resolves its keys',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_LOCAL_VAR_TS,
+  },
+);
+
+const METHOD_CONST_CHAIN_TS = `export class XComponent {
+  panelLabelKey(): string {
+    const hide = 'x.panel.hide';
+    const key = this.open ? hide : 'x.panel.show';
+    return key;
+  }
+}
+`;
+expectRed(
+  'a method-bound name whose const chain omits a key from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_CONST_CHAIN_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.hide': 'Hide panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.hide`.*omits/s,
+);
+
+const METHOD_LET_REASSIGN_TS = `export class XComponent {
+  panelLabelKey(): string {
+    let key = 'x.panel.hide';
+    key = 'x.panel.show';
+    return key;
+  }
+}
+`;
+expectRed(
+  'a method-bound name that reassigns a let before returning',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_LET_REASSIGN_TS,
+  },
+  null,
+  /panelLabelKey\(\).*(control-flow path does not return a resolvable|could not resolve any translation keys from that method declaration)/s,
+);
+
+const METHOD_SHADOW_TS = `export class XComponent {
+  panelLabelKey(): string {
+    const key = 'x.panel.hide';
+    if (this.open) {
+      const key = 'x.panel.show';
+      return key;
+    }
+    return key;
+  }
+}
+`;
+expectRed(
+  'a method-bound name whose nested const shadows an outer key',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_SHADOW_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const METHOD_HOST_SPEC_TS = `import { Component } from '@angular/core';
+@Component({ standalone: true, templateUrl: './widget.host.html' })
+export class WidgetHostSpec {
+  open = false;
+  panelLabelKey(): string {
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound name on a host template resolved through templateUrl',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/widget.host.html': METHOD_BINDING_HTML,
+    'libs/features/x/src/lib/widget.spec.ts': METHOD_HOST_SPEC_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+expectRed(
+  'a method-bound name with no resolvable component TypeScript owner',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/orphan.host.html': METHOD_BINDING_HTML,
+  },
+  null,
+  /panelLabelKey\(\).*could not resolve any translation keys from that method declaration/s,
+);
+
+const METHOD_UNRESOLVABLE_TS = `export class XComponent {
+  panelLabelKey(): string {
+    return this.pickKey();
+  }
+  pickKey(): string {
+    return 'x.panel.hide';
+  }
+}
+`;
+const METHOD_UNRESOLVABLE_HTML =
+  `<button type="button" [attr.aria-label]="'app.nav.toggle' | translate"></button>\n` +
+  METHOD_BINDING_HTML;
+expectRed(
+  'a method-bound name the extractor cannot resolve while other bindings exist',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': `{
+  "app": { "nav": { "toggle": "Toggle navigation menu" } },
+  "x": { "panel": { "hide": "Hide panel", "show": "Show panel" } }
+}
+`,
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'app.nav.toggle': 'Toggle navigation menu',
+  'x.panel.hide': 'Hide panel',
+  'x.panel.show': 'Show panel',
+};
+`,
+    'libs/features/x/src/lib/x.html': METHOD_UNRESOLVABLE_HTML,
+    'libs/features/x/src/lib/x.ts': METHOD_UNRESOLVABLE_TS,
+  },
+  null,
+  /panelLabelKey\(\).*(control-flow path does not return a resolvable|could not resolve any translation keys from that method declaration)/s,
+);
+
+const METHOD_PARTIAL_RETURN_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    return this.open ? 'x.panel.hide' : this.pickKey();
+  }
+  pickKey(): string {
+    return 'x.panel.show';
+  }
+}
+`;
+const METHOD_FALLTHROUGH_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    if (this.open) return 'x.panel.hide';
+  }
+}
+`;
+expectRed(
+  'a method-bound name with an implicit fall-through after a guarded return',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_FALLTHROUGH_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /panelLabelKey\(\).*fall through/s,
+);
+
+expectRed(
+  'a method-bound name with a partially resolved return ternary',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': `{
+  "app": { "nav": { "toggle": "Toggle navigation menu" } },
+  "x": { "panel": { "hide": "Hide panel", "show": "Show panel" } }
+}
+`,
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'app.nav.toggle': 'Toggle navigation menu',
+  'x.panel.hide': 'Hide panel',
+  'x.panel.show': 'Show panel',
+};
+`,
+    'libs/features/x/src/lib/x.html': METHOD_UNRESOLVABLE_HTML,
+    'libs/features/x/src/lib/x.ts': METHOD_PARTIAL_RETURN_TS,
+  },
+  null,
+  /panelLabelKey\(\).*control-flow path does not return a resolvable/s,
+);
+
+const METHOD_PARAM_HTML =
+  `<button type="button" [attr.aria-label]="panelLabelKey() | translate: { name: itemName() }"></button>\n`;
+expectRed(
+  'a parameterised method-bound accessible name whose keys are missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.html': METHOD_PARAM_HTML,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const PUSH_WORKFLOW_PATHS_AND_CONTEXT_STEP =
+  "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
+  "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n" +
+  '    steps:\n      - run: node tools/i18n/crowdin-push-context.mjs\n';
+const CRLF_CONTEXT_PUSH_WORKFLOW = PUSH_WORKFLOW_PATHS_AND_CONTEXT_STEP.replace(/\n/g, '\r\n');
+falsePositiveControls += 1;
+expectGreen(
+  'a CRLF-checked-out push workflow still finds the context uploader step',
+  'checkTranslatorContextPush',
+  {
+    ...CONTEXT_PUSH,
+    '.github/workflows/crowdin-push.yaml': CRLF_CONTEXT_PUSH_WORKFLOW,
   },
 );
 

@@ -164,6 +164,8 @@ describe('AppTranslateLoader', () => {
     requests[SEEDED_FOLDER_COUNT].flush('', { status: 500, statusText: 'Server Error' });
 
     expect(merged?.['settings.themes.search']).toBe('Search themes');
+    expect(merged?.['document-detail.hide-details']).toBe('Hide details');
+    expect(merged?.['document-detail.show-details']).toBe('Show details');
   });
 
   it('exposes the merged folder catalogue to adf-core synchronously once loaded', () => {

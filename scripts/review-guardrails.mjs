@@ -37,7 +37,13 @@ function fileExists(path) {
 }
 
 function read(path) {
-  return readFileSync(join(repoRoot, path), 'utf8');
+  // Normalise CRLF line endings only (`\r\n` → `\n`), repository-wide, so workflow matchers see
+  // Unix line ends on Windows checkouts. Do not strip every `\r`: that can remove raw carriage
+  // returns inside JSON string values and turn a runtime `JSON.parse` failure into a pass here.
+  // Catalogues are validated in `checkTranslationCatalogues`, which reads through this helper and
+  // fails on `JSON.parse` — illegal control characters inside strings stay invalid; `\r` as JSON
+  // whitespace between tokens remains legal.
+  return readFileSync(join(repoRoot, path), 'utf8').replace(/\r\n/g, '\n');
 }
 
 function toPosixRel(rel) {
@@ -743,8 +749,7 @@ function checkHardcodedSecrets() {
  * label rendering as a raw key — was diagnosed as a stale dev server needing a restart, which
  * could never have fixed it.
  *
- * The `development` config is allowed *extra* entries (it has its own bootstrap.json glob);
- * it may not be missing any.
+ * The `development` config is allowed *extra* entries; it may not be missing any.
  */
 function checkAngularDevAssets() {
   const file = 'angular.json';
@@ -3116,6 +3121,27 @@ function checkAccessibleNameFallbacks() {
     .split('\n')
     .filter((file) => /^(libs|apps)\/.+\.html$/.test(file));
 
+  /** @type {Map<string, string> | null} */
+  let templateOwnerByHtmlPath = null;
+  function componentTsForTemplate(template) {
+    const sibling = template.replace(/\.html$/, '.ts');
+    if (fileExists(sibling)) return sibling;
+    if (!templateOwnerByHtmlPath) {
+      templateOwnerByHtmlPath = new Map();
+      const tsPredicate = (path) => path.endsWith('.ts');
+      const tsFiles = [...walk('apps', tsPredicate), ...walk('libs', tsPredicate)];
+      const templateUrlRe = /\btemplateUrl\s*:\s*['"](\.\/)?([^'"]+\.html)['"]/g;
+      for (const ownerTs of tsFiles) {
+        const dir = dirname(ownerTs).replace(/\\/g, '/');
+        for (const match of read(ownerTs).matchAll(templateUrlRe)) {
+          const htmlPath = `${dir}/${match[2]}`.replace(/\/+/g, '/');
+          templateOwnerByHtmlPath.set(htmlPath, ownerTs);
+        }
+      }
+    }
+    return templateOwnerByHtmlPath.get(template) ?? null;
+  }
+
   // `[attr.aria-label]`, `[aria-label]`, `[attr.title]`, `[title]` and `[placeholder]` bound to a
   // single translate-piped literal key, plus visible `<label>` text using the same interpolation
   // shape (NXENG-798 moved global search naming off placeholder). A ternary or a concatenation is
@@ -3140,6 +3166,11 @@ function checkAccessibleNameFallbacks() {
   const BINDING =
     /\[(?:attr\.)?(aria-label|title|placeholder)\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
+  // `[attr.aria-label]="someMethod() | translate"` (and matTooltip / placeholder) — keys live in the
+  // component `.ts` return union and top-level return expressions, not every string in the body.
+  const METHOD_BINDING =
+    /\[(?:matTooltip|(?:attr\.)?(?:aria-label|title|placeholder))\]="\s*(\w+)\(\)\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
+
   // NXENG-798: global search names via a visible `<label>`, not `[placeholder]`. Only this control
   // is wired here — a repo-wide `<label>{{ … | translate }}</label>` scan would surface dozens of
   // pre-existing catalogue keys that never passed through the attribute binding pattern.
@@ -3154,6 +3185,9 @@ function checkAccessibleNameFallbacks() {
   const offences = new Map();
   /** Keys in OUR shape that no catalogue defines — a typo renders as the raw key. */
   const undefinedKeys = new Map();
+  /** Method-bound names the extractor could not fully resolve — must not pass silently. */
+  /** @type {Map<string, { attribute: string, sites: string[], partial: boolean }>} */
+  const unresolvedMethodBindings = new Map();
   let bindings = 0;
 
   /**
@@ -3162,6 +3196,232 @@ function checkAccessibleNameFallbacks() {
    * tell "an untranslated upstream key leaked" from "one of ours is missing".
    */
   const isUpstreamShaped = (key) => /^[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+$/.test(key);
+
+  /**
+   * Translation keys a method may return, and whether every return branch was statically resolved.
+   * @returns {{ keys: string[], partial: boolean }}
+   */
+  function translationKeysReturnedByMethod(tsSource, methodName) {
+    const sourceFile = ts.createSourceFile(
+      'component.ts',
+      tsSource,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const keys = new Set();
+    let partialReturn = false;
+    const keyShape = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
+
+    /** @type {Map<string, { keys: Set<string>, fullyResolved: boolean }>} */
+    function forkScope(parent) {
+      return new Map(parent);
+    }
+
+    function addResolvableKeysFromExpression(expr, target, locals) {
+      if (!expr) return;
+      if (ts.isParenthesizedExpression(expr)) {
+        addResolvableKeysFromExpression(expr.expression, target, locals);
+        return;
+      }
+      if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) {
+        target.add(expr.text);
+        return;
+      }
+      if (ts.isIdentifier(expr)) {
+        locals.get(expr.text)?.keys.forEach((key) => target.add(key));
+        return;
+      }
+      if (ts.isConditionalExpression(expr)) {
+        addResolvableKeysFromExpression(expr.whenTrue, target, locals);
+        addResolvableKeysFromExpression(expr.whenFalse, target, locals);
+      }
+    }
+
+    function initializerFullyResolved(expr, scope) {
+      if (!expr) return false;
+      if (ts.isParenthesizedExpression(expr)) return initializerFullyResolved(expr.expression, scope);
+      if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
+      if (ts.isConditionalExpression(expr)) {
+        return (
+          initializerFullyResolved(expr.whenTrue, scope) &&
+          initializerFullyResolved(expr.whenFalse, scope)
+        );
+      }
+      if (ts.isIdentifier(expr)) {
+        return scope.get(expr.text)?.fullyResolved === true;
+      }
+      return false;
+    }
+
+    function expressionFullyResolved(expr, scope) {
+      if (!expr) return false;
+      if (ts.isParenthesizedExpression(expr)) return expressionFullyResolved(expr.expression, scope);
+      if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
+      if (ts.isConditionalExpression(expr)) {
+        return (
+          expressionFullyResolved(expr.whenTrue, scope) &&
+          expressionFullyResolved(expr.whenFalse, scope)
+        );
+      }
+      if (ts.isIdentifier(expr)) {
+        return scope.get(expr.text)?.fullyResolved === true;
+      }
+      return false;
+    }
+
+    function collectKeysFromReturnExpression(expr, scope) {
+      if (!expr) return;
+      if (ts.isIdentifier(expr)) {
+        scope.get(expr.text)?.keys.forEach((key) => keys.add(key));
+        return;
+      }
+      addResolvableKeysFromExpression(expr, keys, scope);
+    }
+
+    function bindConstDeclaration(scope, decl) {
+      if (!ts.isIdentifier(decl.name) || !decl.initializer) return;
+      const found = new Set();
+      addResolvableKeysFromExpression(decl.initializer, found, scope);
+      if (found.size) {
+        scope.set(decl.name.text, {
+          keys: found,
+          fullyResolved: initializerFullyResolved(decl.initializer, scope),
+        });
+      }
+    }
+
+    function statementsOf(node) {
+      return ts.isBlock(node) ? node.statements : [node];
+    }
+
+    function walkScopedStatements(statements, scope) {
+      for (const stmt of statements) {
+        if (ts.isVariableStatement(stmt) && (stmt.declarationList.flags & ts.NodeFlags.Const) !== 0) {
+          for (const decl of stmt.declarationList.declarations) bindConstDeclaration(scope, decl);
+        } else if (ts.isReturnStatement(stmt)) {
+          if (!expressionFullyResolved(stmt.expression, scope)) partialReturn = true;
+          collectKeysFromReturnExpression(stmt.expression, scope);
+        } else if (ts.isIfStatement(stmt)) {
+          walkScopedStatements(statementsOf(stmt.thenStatement), forkScope(scope));
+          if (stmt.elseStatement) {
+            walkScopedStatements(statementsOf(stmt.elseStatement), forkScope(scope));
+          }
+        } else if (ts.isSwitchStatement(stmt)) {
+          for (const clause of stmt.caseBlock.clauses) {
+            walkScopedStatements(clause.statements, forkScope(scope));
+          }
+        } else if (ts.isTryStatement(stmt)) {
+          walkScopedStatements(statementsOf(stmt.tryBlock), forkScope(scope));
+          if (stmt.catchClause?.block) {
+            walkScopedStatements(stmt.catchClause.block.statements, forkScope(scope));
+          }
+          if (stmt.finallyBlock) {
+            walkScopedStatements(statementsOf(stmt.finallyBlock), forkScope(scope));
+          }
+        } else if (ts.isBlock(stmt)) {
+          walkScopedStatements(stmt.statements, forkScope(scope));
+        } else {
+          visitReturnsInUnscoped(stmt, scope);
+        }
+      }
+    }
+
+    function visitReturnsInUnscoped(node, scope) {
+      if (ts.isReturnStatement(node)) {
+        if (!expressionFullyResolved(node.expression, scope)) partialReturn = true;
+        collectKeysFromReturnExpression(node.expression, scope);
+        return;
+      }
+      if (
+        ts.isFunctionDeclaration(node) ||
+        ts.isMethodDeclaration(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isArrowFunction(node) ||
+        ts.isGetAccessorDeclaration(node) ||
+        ts.isSetAccessorDeclaration(node)
+      ) {
+        return;
+      }
+      ts.forEachChild(node, (child) => visitReturnsInUnscoped(child, scope));
+    }
+
+    function collectUnionLiteralKeysFromType(typeNode) {
+      function visit(node) {
+        if (ts.isLiteralTypeNode(node) && ts.isStringLiteral(node.literal)) {
+          if (keyShape.test(node.literal.text)) keys.add(node.literal.text);
+        } else {
+          ts.forEachChild(node, visit);
+        }
+      }
+      if (typeNode) visit(typeNode);
+    }
+
+    function blockOrStatementReturns(node) {
+      if (ts.isBlock(node)) {
+        let reachable = true;
+        for (const stmt of node.statements) {
+          if (!reachable) break;
+          if (statementAlwaysReturns(stmt)) return true;
+          if (ts.isIfStatement(stmt) && !stmt.elseStatement) {
+            // A guarded return still allows fall-through after the `if`.
+            continue;
+          }
+        }
+        return false;
+      }
+      return statementAlwaysReturns(node);
+    }
+
+    function statementAlwaysReturns(stmt) {
+      if (ts.isReturnStatement(stmt) || ts.isThrowStatement(stmt)) return true;
+      if (ts.isIfStatement(stmt)) {
+        const thenReturns = blockOrStatementReturns(stmt.thenStatement);
+        const elseReturns = stmt.elseStatement
+          ? blockOrStatementReturns(stmt.elseStatement)
+          : false;
+        return thenReturns && elseReturns;
+      }
+      return false;
+    }
+
+    function methodBodyAlwaysReturns(body) {
+      if (!ts.isBlock(body)) return true;
+      return blockOrStatementReturns(body);
+    }
+
+    function collectReturnLiteralKeys(body) {
+      if (!body) return;
+      if (!ts.isBlock(body)) {
+        const scope = new Map();
+        if (!expressionFullyResolved(body, scope)) partialReturn = true;
+        collectKeysFromReturnExpression(body, scope);
+        return;
+      }
+      walkScopedStatements(body.statements, new Map());
+    }
+
+    function visit(node) {
+      const isNamedMethod =
+        (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) &&
+        node.name &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === methodName;
+      if (isNamedMethod) {
+        if (node.type) collectUnionLiteralKeysFromType(node.type);
+        if (node.body) {
+          collectReturnLiteralKeys(node.body);
+          if (ts.isBlock(node.body) && !methodBodyAlwaysReturns(node.body)) {
+            partialReturn = true;
+          }
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+    return { keys: [...keys], partial: partialReturn };
+  }
 
   function recordBinding(template, attribute, key) {
     bindings += 1;
@@ -3185,8 +3445,40 @@ function checkAccessibleNameFallbacks() {
 
   for (const template of templates) {
     if (!fileExists(template)) continue;
-    for (const [, attribute, key] of read(template).matchAll(BINDING)) {
+    const html = read(template);
+    for (const [, attribute, key] of html.matchAll(BINDING)) {
       recordBinding(template, attribute, key);
+    }
+    const methodBindings = [...html.matchAll(METHOD_BINDING)];
+    if (methodBindings.length === 0) continue;
+    const tsPath = componentTsForTemplate(template);
+    if (!tsPath) {
+      for (const [, methodName] of methodBindings) {
+        const attr = `${methodName}()`;
+        if (!unresolvedMethodBindings.has(attr)) {
+          unresolvedMethodBindings.set(attr, { attribute: attr, sites: [], partial: false });
+        }
+        unresolvedMethodBindings.get(attr).sites.push(template);
+      }
+      continue;
+    }
+    const tsSource = read(tsPath);
+    for (const [, methodName] of methodBindings) {
+      const { keys: methodKeys, partial } = translationKeysReturnedByMethod(
+        tsSource,
+        methodName,
+      );
+      if (partial || methodKeys.length === 0) {
+        const attr = `${methodName}()`;
+        if (!unresolvedMethodBindings.has(attr)) {
+          unresolvedMethodBindings.set(attr, { attribute: attr, sites: [], partial });
+        }
+        unresolvedMethodBindings.get(attr).sites.push(template);
+        continue;
+      }
+      for (const key of methodKeys) {
+        recordBinding(template, `${methodName}()`, key);
+      }
     }
   }
 
@@ -3208,6 +3500,30 @@ function checkAccessibleNameFallbacks() {
         `control \`${key}\` — the WCAG 4.1.2 failure this gate exists to stop. Either add it to ` +
         `${catalogueFile} with its fallback and context, or fix the spelling.`,
     );
+  }
+
+  for (const [methodAttr, { sites, partial }] of unresolvedMethodBindings) {
+    const where =
+      sites.length === 1
+        ? sites[0]
+        : `${[...new Set(sites)].join(', ')} (${sites.length} bindings)`;
+    if (partial) {
+      fail(
+        `${where} binds an accessible name to \`${methodAttr}\`, but at least one control-flow ` +
+          'path does not return a resolvable catalogue key (for example a call or ternary arm this ' +
+          'gate cannot read, or an `if` without a matching `else`/`return` so the method can ' +
+          'fall through). Recording only the resolved literals would miss fallbacks for other ' +
+          'paths. Bind a literal key, return only resolvable literals/ternaries on every path, or ' +
+          'extend translationKeysReturnedByMethod.',
+      );
+    } else {
+      fail(
+        `${where} binds an accessible name to \`${methodAttr}\`, but this gate could not resolve ` +
+          'any translation keys from that method declaration. A silent pass would miss missing ' +
+          'EN_FALLBACK_TRANSLATIONS entries when other templates still carry literal bindings. ' +
+          'Bind a literal key, simplify the return shape, or extend translationKeysReturnedByMethod.',
+      );
+    }
   }
 
   for (const [key, { attribute, sites }] of offences) {
@@ -3271,6 +3587,18 @@ function checkAccessibleNameFallbacks() {
  */
 
 /**
+ * The Layer 0 sample the marketplace package installs, and the sources it is built from.
+ *
+ * A sample, not `bootstrap.json`: the package must not own the file a customer edits
+ * (NXSAT-317, `checkInstallerOwnsNoCustomerFile`). Shared, because three checks read it and a
+ * rename that missed one would leave it checking nothing — `checkAdvertisedLocalesShip` skips a
+ * config that does not exist rather than failing on it.
+ */
+const PACKAGED_CONFIG = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json';
+const PACKAGE_SOURCES = 'nuxeo-agentic-ui-package/src';
+const PACKAGED_CONFIG_DIR = 'nuxeo-agentic-ui-package/src/main/config';
+
+/**
  * Every advertised locale ships a catalogue, and the default is one of them.
  *
  * `checkTranslationCatalogues` validates the files that exist. It never reads
@@ -3293,7 +3621,7 @@ function checkAdvertisedLocalesShip() {
    * could not render, and this gate did not look at it.
    */
   const configs = [
-    ['nuxeo-agentic-ui-package/src/main/config/bootstrap.json', 'apps/nuxeo-ui/public/i18n'],
+    [PACKAGED_CONFIG, 'apps/nuxeo-ui/public/i18n'],
     [
       'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json',
       'apps/nuxeo-satori-template/public/i18n',
@@ -4507,21 +4835,22 @@ function checkCrowdinConfig() {
 /**
  * The packaged marketplace config ships Nuxeo defaults, not a demo rebrand.
  *
- * `nuxeo-agentic-ui-package/src/main/config/bootstrap.json` is installed into a customer's
- * Nuxeo. The rebrand demo edits it — `docs/beta-demo-runbook.md` walks through setting
- * `applicationTitle` to "Acme Content Cloud" and adding an `acme` theme — and tells you to
+ * `PACKAGED_CONFIG` is installed into a customer's Nuxeo, and it is the sample they copy. The
+ * rebrand demo used to edit it — `docs/beta-demo-runbook.md` walked through setting
+ * `applicationTitle` to "Acme Content Cloud" and adding an `acme` theme — and told you to
  * run `git checkout --` on it afterwards.
  *
  * That was not run, and the demo branding reached a pull request inside an i18n change, where
  * nobody was looking for it. Every fresh installation would have come up rebranded. No gate
- * saw it; a reviewer did.
+ * saw it; a reviewer did. The demo now edits a gitignored local copy instead (NXSAT-317), but
+ * the packaged file is still a tracked file one stray edit away from shipping.
  *
- * So the rule is the runbook's own instruction, enforced: the packaged branding must match
- * what the application compiles in. A real branding change is a change to
- * `DEFAULT_APP_BOOTSTRAP_CONFIG` as well, which is a deliberate act rather than a leftover.
+ * So the rule is: the packaged branding must match what the application compiles in. A real
+ * branding change is a change to `DEFAULT_APP_BOOTSTRAP_CONFIG` as well, which is a deliberate
+ * act rather than a leftover.
  */
 function checkPackagedConfigIsNotADemo() {
-  const packaged = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+  const packaged = PACKAGED_CONFIG;
   const compiled = 'libs/shared/app-config/src/lib/bootstrap-config.ts';
   if (!fileExists(packaged) || !fileExists(compiled)) {
     fail(`${packaged} or ${compiled} is missing, so this gate asserted nothing.`);
@@ -4552,8 +4881,9 @@ function checkPackagedConfigIsNotADemo() {
     fail(
       `${packaged} ships \`applicationTitle: "${shippedTitle}"\`, which is not the compiled ` +
         `default "${compiledTitle}".\n` +
-        '    The rebrand demo edits this file and `docs/beta-demo-runbook.md` says to run ' +
-        '`git checkout --` on it afterwards. If this is a real branding change, change ' +
+        '    This is the sample every installation receives. Demo branding belongs in the ' +
+        'gitignored local copy `docs/beta-demo-runbook.md` describes; run `git checkout --` on ' +
+        'this file. If this is a real branding change, change ' +
         `${compiled} in the same commit.`,
     );
   }
@@ -4623,6 +4953,107 @@ function checkPackagedConfigIsNotADemo() {
           'not ship. Run the `git checkout --` it asks for.',
       );
     }
+  }
+}
+
+/**
+ * The marketplace package installs no file a customer edits.
+ *
+ * NXSAT-317. The package installed `agentic-ui-config/bootstrap.json` with `overwrite="false"`
+ * and every document said that made customer edits survive an upgrade. Rehearsed on a real
+ * server, it did the opposite: an upgrade is an uninstall of the old version, which deletes a
+ * package file only while its md5 still matches and so leaves an edited one behind, followed by
+ * an install of the new version, whose `overwrite="false"` copy then fails on that file. The
+ * install rolls back only its own commands. Result: no version installed, `/nuxeo/agentic-ui/`
+ * 404. Unedited installs upgraded fine, so nothing short of a rehearsal with an edit could see it.
+ *
+ * `overwrite="false"` has no other use — a file nobody edits is copied with `overwrite="true"` —
+ * so every such copy is this defect waiting for its first edit, whatever file it names, and an
+ * omitted attribute is the same copy because false is Nuxeo's default. And the file the
+ * application reads must not be packaged at all: with `overwrite="true"` it would be the
+ * customer's edit that is destroyed instead. The packaged copy is a sample, and it is the only
+ * file in the config directory, which is where the customer's own files, a logo among them, live.
+ *
+ * The second half walks the filesystem rather than `git ls-files` on purpose: the Maven assembly
+ * stages `src/main/config/**` from disk, so an untracked `bootstrap.json` left there by hand
+ * would still be packaged.
+ */
+function checkInstallerOwnsNoCustomerFile() {
+  const installers = walk(PACKAGE_SOURCES, (path) => path.endsWith('/install.xml'));
+  if (installers.length === 0) {
+    fail(`No install.xml was found under ${PACKAGE_SOURCES}, so this gate asserted nothing.`);
+    return;
+  }
+
+  for (const file of installers) {
+    const body = read(file);
+
+    // Copies inside a comment are skipped: the one explaining this rule necessarily quotes the
+    // attribute. Ranges rather than stripping, and an unterminated comment runs to the end of the
+    // file, as it does for an XML parser.
+    const comments = [];
+    for (let open = body.indexOf('<!--'); open !== -1;) {
+      const close = body.indexOf('-->', open + 4);
+      const end = close === -1 ? body.length : close + 3;
+      comments.push([open, end]);
+      open = body.indexOf('<!--', end);
+    }
+    const inComment = (at) => comments.some(([open, end]) => at >= open && at < end);
+
+    // Nuxeo's Copy command starts with `overwrite` false and assigns `Boolean.parseBoolean` of the
+    // attribute only when it is non-empty, so an omitted attribute, or any value but a
+    // case-insensitive "true", is `overwrite="false"` with the same failure.
+    for (const match of body.matchAll(/<copy\b[^>]*>/g)) {
+      if (inComment(match.index)) continue;
+      const attribute = (name) =>
+        new RegExp(`\\b${name}\\s*=\\s*(["'])(.*?)\\1`).exec(match[0])?.[2];
+      // The directory walk below proves what the config source holds, so nothing else may write
+      // into the customer's directory: another source would bypass it.
+      if (
+        /agentic-ui-config/.test(attribute('todir') ?? attribute('tofile') ?? '') &&
+        (attribute('dir') !== '${package.root}/config' || attribute('file') !== undefined)
+      ) {
+        fail(
+          `${file} copies into agentic-ui-config from somewhere other than ` +
+            `\${package.root}/config: ${match[0].replace(/\s+/g, ' ')}\n` +
+            "    That directory holds the customer's own files, a logo among them; only the " +
+            `config directory, which may hold nothing but ${PACKAGED_CONFIG}, may be copied ` +
+            'there (NXSAT-317).',
+        );
+      }
+      const value = attribute('overwrite');
+      const parsed = value?.toLowerCase();
+      if (parsed === 'true') continue;
+      const effect = value === undefined ? 'no overwrite attribute' : `overwrite="${value}"`;
+      const runsAs = parsed === 'false' ? '' : ', which Nuxeo runs as overwrite="false"';
+      fail(
+        `${file} has a copy with ${effect}${runsAs}: ${match[0].replace(/\s+/g, ' ')}\n` +
+          '    That is only ever used to protect a file someone edits, and it is what breaks the ' +
+          'upgrade: the old version is uninstalled, the edited file is left behind because its ' +
+          'md5 no longer matches, and this copy then fails on it — leaving no version installed ' +
+          '(NXSAT-317). Ship a sample with overwrite="true"; the customer owns the real file.',
+      );
+    }
+  }
+
+  // Everything in the config directory lands beside the customer's own files, a logo among them,
+  // and `overwrite="true"` replaces a same-named one on every upgrade.
+  for (const file of walk(PACKAGED_CONFIG_DIR, () => true)) {
+    if (file === PACKAGED_CONFIG || /(^|\/)bootstrap\.json$/.test(file)) continue;
+    fail(
+      `${file} would be installed into agentic-ui-config beside the customer's own files, ` +
+        `replacing a same-named one on every upgrade.\n    Package only ${PACKAGED_CONFIG} ` +
+        "there; a logo or stylesheet is the customer's to add (NXSAT-317).",
+    );
+  }
+
+  for (const file of walk(PACKAGE_SOURCES, (path) => /(^|\/)bootstrap\.json$/.test(path))) {
+    fail(
+      `${file} would be installed as the bootstrap.json the application reads, which is the file ` +
+        `a customer edits.\n    Package only ${PACKAGED_CONFIG}; the customer copies it to ` +
+        'bootstrap.json. A packaged bootstrap.json either fails the upgrade or destroys their ' +
+        'edit, depending on the copy (NXSAT-317).',
+    );
   }
 }
 
@@ -4702,8 +5133,9 @@ function checkNoProseInComponentInputs() {
  * The shipped Layer 0 default must be a locale that ships.
  *
  * `zz` is generated by `tools/i18n/pseudo-locale.mjs` for auditing, and selecting it means
- * pointing the packaged `bootstrap.json` at it — which is a tracked file that installs into a
- * customer's Nuxeo. It was committed that way once in this branch. Nothing else would have
+ * pointing the packaged sample, `bootstrap.example.json`, at it — a tracked file that installs
+ * into a customer's Nuxeo as the template they copy to `bootstrap.json`, so the pseudo-locale
+ * would travel into their configuration. It was committed that way once. Nothing else would have
  * caught it: the build is happy, every test is happy, and the application renders perfectly.
  * In accented gibberish.
  *
@@ -4776,8 +5208,9 @@ function checkNoTemplateSyntaxInDocumentShell() {
  * The shipped Layer 0 default must be a locale that ships.
  *
  * `zz` is generated by `tools/i18n/pseudo-locale.mjs` for auditing, and selecting it means
- * pointing the packaged `bootstrap.json` at it — which is a tracked file that installs into a
- * customer's Nuxeo. It was committed that way once in this branch. Nothing else would have
+ * pointing the packaged sample, `bootstrap.example.json`, at it — a tracked file that installs
+ * into a customer's Nuxeo as the template they copy to `bootstrap.json`, so the pseudo-locale
+ * would travel into their configuration. It was committed that way once. Nothing else would have
  * caught it: the build is happy, every test is happy, and the application renders perfectly.
  * In accented gibberish.
  *
@@ -4785,7 +5218,7 @@ function checkNoTemplateSyntaxInDocumentShell() {
  * entry with no catalogue behind it — advertising a language the app cannot render.
  */
 function checkShippedDefaultLanguage() {
-  const config = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json';
+  const config = PACKAGED_CONFIG;
   if (!fileExists(config)) {
     fail(`${config} was not found, so this gate asserted nothing. Check the path.`);
     return;
@@ -5555,6 +5988,7 @@ const GUARDRAILS = [
   checkAdvertisedLocalesShip,
   checkCrowdinConfig,
   checkPackagedConfigIsNotADemo,
+  checkInstallerOwnsNoCustomerFile,
   checkTranslationContext,
   checkTranslatorNotesFlagProductsAndAcronyms,
   checkPlatformEnglishFallback,

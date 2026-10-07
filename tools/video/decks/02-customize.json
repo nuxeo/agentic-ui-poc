@@ -42,12 +42,12 @@
     },
     {
       "eyebrow": "Layer 0 — configuration",
-      "title": "It survives your next upgrade, by construction",
-      "lede": "The marketplace installer copies the bundle directory with `overwrite=\"true\"`. Anything a customer edits **inside** the bundle is destroyed on upgrade — so the config file lives one level up, and the loader looks for it there.",
+      "title": "It survives your next upgrade — rehearsed",
+      "lede": "The marketplace installer copies the bundle directory with `overwrite=\"true\"`. Anything a customer edits **inside** the bundle is destroyed on upgrade — so the config file lives one level up, where the package installs only a sample. The customer copies it to `bootstrap.json`, which no upgrade touches; a real marketplace upgrade with an edited file was rehearsed (NXSAT-317).",
       "blocks": [
         {
           "type": "code",
-          "code": "<span class=\"c\">// nxserver/web/nuxeo.war/agentic-ui-config/bootstrap.json</span>\n<span class=\"c\">// — beside the bundle, NOT inside it</span>\n{\n  <b>\"branding\"</b>: {\n    <b>\"applicationTitle\"</b>: \"Acme Content\",\n    <b>\"documentTitle\"</b>: \"Acme Content\"\n  },\n  <b>\"defaultThemeId\"</b>: \"acme\",\n  <b>\"themes\"</b>: [{\n    \"id\": \"acme\", \"label\": \"Acme\", \"base\": \"nuxeo\",\n    <b>\"tokens\"</b>: { \"--shell-nav-bg\": \"#0f2b46\", \"--shell-nav-active\": \"#1f6feb\" }\n  }],\n  <b>\"nuxeoApiOrigin\"</b>: \"\",\n  <b>\"manifestDocumentPath\"</b>: \"/default-domain/config/agentic-ui\"\n}"
+          "code": "<span class=\"c\">// nxserver/nuxeo.war/agentic-ui-config/bootstrap.json</span>\n<span class=\"c\">// — beside the bundle, copied from bootstrap.example.json</span>\n{\n  <b>\"branding\"</b>: {\n    <b>\"applicationTitle\"</b>: \"Acme Content\",\n    <b>\"documentTitle\"</b>: \"Acme Content\"\n  },\n  <b>\"defaultThemeId\"</b>: \"acme\",\n  <b>\"themes\"</b>: [{\n    \"id\": \"acme\", \"label\": \"Acme\", \"base\": \"nuxeo\",\n    <b>\"tokens\"</b>: { \"--shell-nav-bg\": \"#0f2b46\", \"--shell-nav-active\": \"#1f6feb\" }\n  }],\n  <b>\"nuxeoApiOrigin\"</b>: \"\",\n  <b>\"manifestDocumentPath\"</b>: \"/default-domain/config/agentic-ui\"\n}"
         }
       ],
       "footnote": "Every key is optional. An absent file, or a key you leave out, falls back to the value compiled in — so an untouched deployment behaves exactly like no file at all. `AppConfigService.diagnostics()` reports which half loaded and which fell back, and why."

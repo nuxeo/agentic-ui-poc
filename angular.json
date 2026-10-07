@@ -96,11 +96,6 @@
                   "ignore": ["i18n/*.context.json"]
                 },
                 {
-                  "glob": "bootstrap.json",
-                  "input": "nuxeo-agentic-ui-package/src/main/config",
-                  "output": "agentic-ui-config"
-                },
-                {
                   "glob": "**/*",
                   "input": "node_modules/@alfresco/adf-core/bundles/assets/adf-core",
                   "output": "assets/adf-core"
