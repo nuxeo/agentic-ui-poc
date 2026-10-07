@@ -228,6 +228,13 @@ docs works unchanged.
 Fail-open, recursion bounds and the security-relevant list: see
 [Architecture §9](02-architecture.md#9-error-handling-retry-and-validation).
 
+**Varying by document type.** `app.rules.isType` and `app.rules.hasFacet` take type or facet names
+as `parameters` — the same tests as the `type` and `facet` attributes of Nuxeo Web UI's
+`nuxeo-filter` — so a manifest can show a tab or action for a Case and not a Claim with no code.
+Both answer `false` with no string parameter, and both read the focused document, so they gate
+document-detail tabs and toolbar actions but not browse columns. Reference and examples:
+`docs/extension-reference.md` §4.
+
 ### Our rule context is deliberately not upstream's
 
 `RuleContext` from `@alfresco/adf-extensions` is typed on Alfresco Content Services domain
