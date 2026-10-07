@@ -44,8 +44,7 @@ const read = (path) => {
   return content;
 };
 
-mkdirSync(TARGET, { recursive: true });
-for (const layer of ['bootstrap', 'manifest']) {
+const envelopes = ['bootstrap', 'manifest'].map((layer) => {
   const defaults = join(DEFAULTS, `${layer}.defaults.json`);
   const fragments = [
     { component: 'org.nuxeo.agentic.ui.config.defaults', path: defaults },
@@ -57,6 +56,22 @@ for (const layer of ['bootstrap', 'manifest']) {
     source: path.startsWith(ROOT) ? path.slice(ROOT.length + 1) : path,
     content: read(path),
   }));
+  // On the server a fragment with a name already contributed replaces that one, so two files
+  // with the same name would merge here and not there. Refuse rather than diverge.
+  const names = fragments.map((f) => f.name);
+  const duplicate = names.find((name, index) => names.indexOf(name) !== index);
+  if (duplicate) {
+    console.error(
+      `two ${layer} fragments would be named "${duplicate}"; rename one of the files, since the ` +
+        'server keeps only the later of two fragments with the same name',
+    );
+    process.exit(2);
+  }
+  return { layer, fragments };
+});
+
+mkdirSync(TARGET, { recursive: true });
+for (const { layer, fragments } of envelopes) {
   const file = join(TARGET, `${layer}.json`);
   writeFileSync(
     file,

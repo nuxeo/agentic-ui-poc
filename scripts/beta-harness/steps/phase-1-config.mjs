@@ -118,10 +118,24 @@ function deploymentMappings() {
     [...DEPLOYMENT_FRAGMENT.matchAll(new RegExp(`<${block}>([\\s\\S]*?)</${block}>`, 'g'))].map(
       (m) => ({
         name: /<(?:servlet|filter)-name>([^<]+)</.exec(m[1])?.[1] ?? '',
-        url: /<url-pattern>([^<]+)</.exec(m[1])?.[1] ?? '',
+        urls: [...m[1].matchAll(/<url-pattern>([^<]+)</g)].map((u) => u[1].trim()),
       }),
     );
   return { servlets: patterns('servlet-mapping'), filters: patterns('filter-mapping') };
+}
+
+/**
+ * Servlet-spec `url-pattern` matching for a path inside the context: exact, `/prefix/*`,
+ * `*.extension`, and `/` (the default servlet, which every path falls through to).
+ */
+function urlPatternMatches(pattern, path) {
+  if (pattern === '/' || pattern === '/*') return true;
+  if (pattern.endsWith('/*')) {
+    const prefix = pattern.slice(0, -2);
+    return path === prefix || path.startsWith(`${prefix}/`);
+  }
+  if (pattern.startsWith('*.')) return path.endsWith(pattern.slice(1));
+  return pattern === path;
 }
 
 /**
@@ -285,19 +299,24 @@ export default async function run(page, h) {
   // href. Under production packaging that is `/nuxeo/agentic-ui/`, so the URL is
   // `/nuxeo/agentic-ui-config/bootstrap.json`. Strip the context path and what is
   // left must fall under the servlet's mapping, with no authentication filter on it.
-  const productionUrl = new URL('../agentic-ui-config/bootstrap.json', PRODUCTION_BASE_HREF)
-    .pathname;
-  const inContext = productionUrl.slice(CONTEXT_PATH.length);
-  const under = (pattern) => pattern.endsWith('/*') && inContext.startsWith(pattern.slice(0, -1));
+  const productionPaths = ['bootstrap.json', 'manifest.json'].map(
+    (file) => new URL(`../agentic-ui-config/${file}`, PRODUCTION_BASE_HREF).pathname,
+  );
+  const inContext = productionPaths.map((path) => path.slice(CONTEXT_PATH.length));
   const { servlets, filters } = deploymentMappings();
   h.check(
-    'the URL the application fetches is mapped to the configuration servlet',
-    servlets.some((m) => m.name === 'Agentic UI Configuration' && under(m.url)),
-    `${productionUrl} -> ${inContext}; servlet mappings: ${JSON.stringify(servlets)}`,
+    'both URLs the application fetches are mapped to the configuration servlet',
+    inContext.every((path) =>
+      servlets.some(
+        (m) =>
+          m.name === 'Agentic UI Configuration' && m.urls.some((u) => urlPatternMatches(u, path)),
+      ),
+    ),
+    `${inContext.join(', ')}; servlet mappings: ${JSON.stringify(servlets)}`,
   );
   h.check(
-    'no authentication filter is mapped on it, so it answers before sign-in',
-    !filters.some((m) => under(m.url)),
+    'no filter mapping of any pattern form covers either, so both answer before sign-in',
+    !filters.some((m) => m.urls.some((u) => inContext.some((path) => urlPatternMatches(u, path)))),
     `filter mappings: ${JSON.stringify(filters)}`,
   );
   h.check(
