@@ -186,7 +186,8 @@ export class AppConfigService {
     const view = this.document.defaultView;
     const requested = view ? requestedPreset(view.location) : undefined;
     if (!presales.presetSwitching) {
-      if (requested) this.note(`preset "${requested}" ignored: preset switching is not enabled`);
+      const ignored = requested || this.stored();
+      if (ignored) this.note(`preset "${ignored}" ignored: preset switching is not enabled`);
       return null;
     }
     if (requested !== undefined) this.store(requested);

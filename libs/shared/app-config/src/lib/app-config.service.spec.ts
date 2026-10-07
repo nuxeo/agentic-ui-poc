@@ -288,6 +288,17 @@ describe('AppConfigService', () => {
       ]);
     });
 
+    it('says so when switching is off and only the stored choice names a preset', async () => {
+      localStorage.setItem(PRESET_STORAGE_KEY, 'globex');
+      await load(envelope('bootstrap', [presales(false)]));
+
+      expect(service.activePreset()).toBeNull();
+      expect(service.diagnostics().messages).toEqual([
+        'preset "globex" ignored: preset switching is not enabled',
+      ]);
+      expect(localStorage.getItem(PRESET_STORAGE_KEY)).toBe('globex');
+    });
+
     it('lets a later package turn switching off', async () => {
       window.history.replaceState({}, '', '/?preset=acme');
       await load(
