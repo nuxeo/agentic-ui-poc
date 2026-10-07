@@ -410,7 +410,7 @@ describe('the generated build.mjs', () => {
     it('keeps comment markers and markup inside CDATA as text', async () => {
       await generate();
       contribute(
-        `<fragment name="marks" layer="manifest"><json><![CDATA[{ "labels": { "a": "<!--", "b": "<asset name='x.html'/>" } }]]></json></fragment>`,
+        `<fragment name="marks" layer="manifest"><json><![CDATA[{ "labels": { "a": "<!--", "b": "<asset name='x.html'/>", "c": "-- --->" } }]]></json></fragment>`,
       );
       expect(build().status).toBe(0);
 
@@ -510,6 +510,25 @@ describe('the generated build.mjs', () => {
       /unterminated CDATA section/,
     ],
     ['a bare "&"', (xml: string) => xml.replace('<extension', '<!-- & --><extension a="b & c"'), /"&" that starts no reference/],
+    [
+      'a comment containing "--"',
+      (xml: string) => xml.replace('<extension', '<!-- generated with --presales --><extension'),
+      /a comment containing "--"/,
+    ],
+    ['a comment ending in "-"', (xml: string) => xml.replace('<extension', '<!-- a ---><extension'), /a comment containing "--"/],
+    ['an element name starting with a digit', (xml: string) => xml.replace('</extension>', '<1invalid/></extension>'), /a tag with no valid element name/],
+    [
+      'an undeclared namespace prefix',
+      (xml: string) => xml.replace('</extension>', '<x:fragment name="a" layer="manifest" src="b"/></extension>'),
+      /the undeclared prefix x on x:fragment/,
+    ],
+    ['a control character', (xml: string) => xml.replace('<extension', '<!-- \u0001 --><extension'), /a character XML does not allow, U\+0001/],
+    ['a reference to U+0000', (xml: string) => xml.replace('<extension', '<extension a="&#0;"'), /a reference to a character XML does not allow/],
+    ['a DOCTYPE', (xml: string) => xml.replace('<component', '<!DOCTYPE component>\n<component'), /a DOCTYPE/],
+    ['"]]>" in text', (xml: string) => xml.replace('</extension>', 'a ]]> b</extension>'), /a "]]>" in text/],
+    ['an encoding other than UTF-8', (xml: string) => xml.replace('<?xml version="1.0"?>', '<?xml version="1.0" encoding="ISO-8859-1"?>'), /an encoding of ISO-8859-1/],
+    ['a second XML declaration', (xml: string) => xml.replace('<component', '<?xml version="1.0"?><component'), /an XML declaration that is not at the start/],
+    ['attributes run together', (xml: string) => xml.replace('point="configuration"', 'point="configuration"a="b"'), /a malformed start tag <extension>/],
   ])('refuses component XML that is not well-formed: %s', async (_case, edit, message) => {
     await generate();
     write(componentXml, edit(readFileSync(join(dir, componentXml), 'utf8')));
@@ -517,6 +536,35 @@ describe('the generated build.mjs', () => {
     expect(status).toBe(1);
     expect(output).toContain('bundle/OSGI-INF/acme-config-config.xml: is not well-formed XML');
     expect(output).toMatch(message);
+  });
+
+  it('refuses component XML that is not valid UTF-8', async () => {
+    await generate();
+    const xml = readFileSync(join(dir, componentXml));
+    writeFileSync(
+      join(dir, componentXml),
+      Buffer.concat([xml.subarray(0, 30), Buffer.from([0xc3, 0x28]), xml.subarray(30)]),
+    );
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toContain('bundle/OSGI-INF/acme-config-config.xml: is not valid UTF-8');
+  });
+
+  it('accepts well-formed XML the extraction must read past: a ">" in a value, space in a tag', async () => {
+    await generate();
+    write(
+      componentXml,
+      readFileSync(join(dir, componentXml), 'utf8')
+        .replace(/<require>([^<]*)<\/require>/, '<require >$1</require >')
+        .replace(
+          '</extension>',
+          `<asset title="a>b" name="logo.svg" src="agentic-ui-config/assets/logo.svg" />\n  </extension>`,
+        ),
+    );
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).not.toMatch(/must <require>/);
+    expect(output).toContain('src="agentic-ui-config/assets/logo.svg" names no file in bundle/');
   });
 
   it('reads a fragment with a byte-order mark, as the server does, and packages it without', async () => {

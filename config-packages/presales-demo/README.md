@@ -37,7 +37,7 @@ nuxeoctl mp-install dist/config-packages/presales-demo/presales-demo-<version>.z
 leave out: a fragment or layout body, in a file or inline, that does not parse, is not an object,
 repeats a key, or exceeds 1 MiB; an asset over 2 MiB or not named as a plain image file; an entry
 whose name or layer the server rejects, or that has no body. It also refuses XML that is not
-well-formed, a `src` or `Nuxeo-Component` that names no packaged file, a symbolic link in `bundle/`
+well-formed UTF-8, a `src` or `Nuxeo-Component` that names no packaged file, a symbolic link in `bundle/`
 or `package/`, a package name or version that is not a plain file name, and a component that does
 not `<require>` Satori's defaults.
 

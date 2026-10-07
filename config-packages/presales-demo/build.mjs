@@ -22,7 +22,8 @@
  *   - a fragment or layout body — a `src` file whatever its name, or inline `<json>` — that does
  *     not parse, is not an object, repeats a key, or is packaged over 1 MiB; an asset over 2 MiB.
  * And around them:
- *   - XML that is not well-formed, which Nuxeo cannot load at all;
+ *   - XML that is not UTF-8, or not well-formed as Nuxeo's namespace-aware parser reads it, which
+ *     Nuxeo cannot load at all;
  *   - a `Nuxeo-Component` that names no packaged file in `bundle/`;
  *   - a component contributing configuration without
  *     `<require>org.nuxeo.agentic.ui.config.defaults</require>`, without which this package's
@@ -109,9 +110,16 @@ function readXml(file) {
     problem(file, 'is missing');
     return null;
   }
-  const xml = readFileSync(file, 'utf8')
-    .replace(/^\uFEFF/, '')
-    .replace(/\r\n?/g, '\n');
+  let xml;
+  try {
+    // Strict, so a byte that is not UTF-8 is refused rather than read as U+FFFD; the decoder also
+    // drops a byte-order mark.
+    xml = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
+  } catch {
+    problem(file, 'is not valid UTF-8');
+    return null;
+  }
+  xml = xml.replace(/\r\n?/g, '\n');
   const malformed = notWellFormed(xml);
   if (malformed) {
     problem(file, `is not well-formed XML: ${malformed}`);
@@ -120,77 +128,219 @@ function readXml(file) {
   return xml;
 }
 
+// XML 1.0 (fifth edition) and Namespaces in XML 1.0 — Nuxeo's parser is namespace-aware.
+const XML_NAME_START =
+  'A-Z_a-z\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C\\u200D' +
+  '\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD\\u{10000}-\\u{EFFFF}';
+const XML_NAME_CHAR = `${XML_NAME_START}\\-.0-9\\u00B7\\u0300-\\u036F\\u203F\\u2040`;
+/** XML's Name without ":", which Namespaces in XML calls an NCName. */
+const NC_NAME = `[${XML_NAME_START}][${XML_NAME_CHAR}]*`;
+const XML_QNAME = new RegExp(`(?:${NC_NAME}:)?${NC_NAME}`, 'uy');
+const XML_PI_TARGET = new RegExp(NC_NAME, 'uy');
+const XML_SPACE = /[ \t\r\n]*/y;
+const XML_TEXT = /[^<&\]]+/y;
+const XML_REFERENCE = /&(?:(lt|gt|amp|quot|apos)|#([0-9]+)|#x([0-9A-Fa-f]+));/y;
+const XML_ILLEGAL_CHAR = /[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u;
+const XML_DECLARATION =
+  /<\?xml[ \t\r\n]+version[ \t\r\n]*=[ \t\r\n]*(["'])1\.[0-9]+\1(?:[ \t\r\n]+encoding[ \t\r\n]*=[ \t\r\n]*(["'])([A-Za-z][A-Za-z0-9._-]*)\2)?(?:[ \t\r\n]+standalone[ \t\r\n]*=[ \t\r\n]*(["'])(?:yes|no)\4)?[ \t\r\n]*\?>/y;
+const XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace';
+const XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
+
 /**
- * Why `xml` is not well-formed, or `null`. Enough of XML 1.0 for these files — elements,
- * attributes, comments, CDATA, processing instructions and references; a DOCTYPE, which none of
- * them needs, is refused rather than interpreted.
+ * Why `xml` is not well-formed, or `null`: XML 1.0's grammar and well-formedness constraints with
+ * namespaces, as a namespace-aware parser applies them. A DOCTYPE, which none of these files
+ * needs, is refused rather than interpreted, so the only entities are the five predefined ones.
  */
 function notWellFormed(xml) {
-  const where = (offset) => `line ${xml.slice(0, offset).split('\n').length}`;
-  const REFERENCE = /&(?!(?:#x[0-9A-Fa-f]+|#[0-9]+|lt|gt|amp|quot|apos);)/;
-  const ATTRIBUTE = /^\s+([^\s=/>"'<&]+)\s*=\s*("([^"<]*)"|'([^'<]*)')/;
-  const open = [];
-  let roots = 0;
-  let at = 0;
-  for (;;) {
-    const lt = xml.indexOf('<', at);
-    const text = xml.slice(at, lt < 0 ? xml.length : lt);
-    if (open.length === 0 && text.trim()) return `text outside the root element at ${where(at)}`;
-    const bad = text.search(REFERENCE);
-    if (bad >= 0) return `"&" that starts no reference at ${where(at + bad)}`;
-    if (lt < 0) break;
-    const markup = [
-      ['<!--', '-->', 'comment'],
-      ['<![CDATA[', ']]>', 'CDATA section'],
-      ['<?', '?>', 'processing instruction'],
-    ].find(([start]) => xml.startsWith(start, lt));
-    if (markup) {
-      const [start, end, kind] = markup;
-      const close = xml.indexOf(end, lt + start.length);
-      if (close < 0) return `unterminated ${kind} at ${where(lt)}`;
-      if (kind === 'CDATA section' && open.length === 0)
-        return `CDATA outside the root element at ${where(lt)}`;
-      at = close + end.length;
-      continue;
+  let i = 0;
+  const fail = (message, at = i) => {
+    throw Object.assign(new Error(`${message} at line ${xml.slice(0, at).split('\n').length}`), {
+      malformed: true,
+    });
+  };
+  const sticky = (pattern) => {
+    pattern.lastIndex = i;
+    const match = pattern.exec(xml);
+    if (match) i = pattern.lastIndex;
+    return match;
+  };
+  const space = () => sticky(XML_SPACE)[0].length > 0;
+
+  const reference = () => {
+    const at = i;
+    const match = sticky(XML_REFERENCE);
+    if (!match) fail('an "&" that starts no reference', at);
+    if (match[1]) return ENTITIES[match[1]];
+    const code = match[2] ? Number(match[2]) : parseInt(match[3], 16);
+    if (code > 0x10ffff || XML_ILLEGAL_CHAR.test(String.fromCodePoint(code))) {
+      fail('a reference to a character XML does not allow', at);
     }
-    if (xml.startsWith('<!', lt)) return `a DOCTYPE or other declaration at ${where(lt)}`;
-    let gt = lt + 1;
-    for (let quote = null; gt < xml.length; gt++) {
-      const c = xml[gt];
-      if (quote) quote = c === quote ? null : quote;
-      else if (c === '"' || c === "'") quote = c;
-      else if (c === '>' || c === '<') break;
+    return String.fromCodePoint(code);
+  };
+  const comment = () => {
+    const at = i;
+    const end = xml.indexOf('-->', i + 4);
+    if (end < 0) fail('an unterminated comment', at);
+    const body = xml.slice(i + 4, end);
+    if (body.includes('--') || body.endsWith('-')) fail('a comment containing "--"', at);
+    i = end + 3;
+  };
+  const instruction = () => {
+    const at = i;
+    i += 2;
+    const target = sticky(XML_PI_TARGET)?.[0];
+    if (!target) fail('a processing instruction with no target', at);
+    if (target.toLowerCase() === 'xml')
+      fail('an XML declaration that is not at the start of the file', at);
+    const end = xml.indexOf('?>', i);
+    if (end < 0) fail('an unterminated processing instruction', at);
+    if (end > i && !space()) fail('a processing instruction target not followed by a space', at);
+    i = end + 2;
+  };
+  const misc = () => {
+    for (;;) {
+      space();
+      if (xml.startsWith('<!--', i)) comment();
+      else if (xml.startsWith('<?', i)) instruction();
+      else return;
     }
-    if (xml[gt] !== '>') return `unterminated tag at ${where(lt)}`;
-    const tag = xml.slice(lt + 1, gt);
-    at = gt + 1;
-    if (tag.startsWith('/')) {
-      const name = tag.slice(1).trim();
-      const expected = open.pop();
-      if (name !== expected) {
-        return expected
-          ? `</${name}> closes <${expected}> at ${where(lt)}`
-          : `</${name}> closes nothing at ${where(lt)}`;
+  };
+
+  const element = (scope) => {
+    const at = i;
+    i += 1;
+    const tag = sticky(XML_QNAME)?.[0];
+    if (!tag) fail('a tag with no valid element name', at);
+    const attributes = [];
+    for (;;) {
+      const spaced = space();
+      if (xml.startsWith('/>', i) || xml[i] === '>') break;
+      if (i >= xml.length) fail(`an unterminated <${tag}>`, at);
+      const attributeAt = i;
+      const name = spaced ? sticky(XML_QNAME)?.[0] : undefined;
+      if (!name) fail(`a malformed start tag <${tag}>`, attributeAt);
+      space();
+      if (xml[i] !== '=') fail(`a malformed attribute ${name} on <${tag}>`, attributeAt);
+      i += 1;
+      space();
+      const quote = xml[i];
+      if (quote !== '"' && quote !== "'")
+        fail(`an unquoted attribute ${name} on <${tag}>`, attributeAt);
+      i += 1;
+      let value = '';
+      while (xml[i] !== quote) {
+        if (i >= xml.length) fail(`an unterminated attribute ${name} on <${tag}>`, attributeAt);
+        if (xml[i] === '<') fail(`a "<" in the attribute ${name} on <${tag}>`);
+        if (xml[i] === '&') {
+          value += reference();
+        } else {
+          value += xml[i];
+          i += 1;
+        }
       }
-      continue;
+      i += 1;
+      if (attributes.some((other) => other.name === name)) {
+        fail(`<${tag}> repeats the attribute ${name}`, attributeAt);
+      }
+      attributes.push({ name, value, at: attributeAt });
     }
-    const selfClosing = tag.endsWith('/');
-    const name = /^[^\s/>"'<&=]+/.exec(tag)?.[0];
-    if (!name) return `a tag with no element name at ${where(lt)}`;
-    let rest = (selfClosing ? tag.slice(0, -1) : tag).slice(name.length);
-    const seen = new Set();
-    for (let match; (match = ATTRIBUTE.exec(rest)); rest = rest.slice(match[0].length)) {
-      if (seen.has(match[1])) return `<${name}> repeats the attribute ${match[1]} at ${where(lt)}`;
-      seen.add(match[1]);
-      if (REFERENCE.test(match[3] ?? match[4]))
-        return `"&" that starts no reference at ${where(lt)}`;
+    const empty = xml.startsWith('/>', i);
+    i += empty ? 2 : 1;
+
+    const declared = new Map(scope);
+    for (const { name, value, at: where } of attributes) {
+      const prefix = name === 'xmlns' ? '' : name.startsWith('xmlns:') ? name.slice(6) : null;
+      if (prefix === null) continue;
+      if (prefix === 'xmlns') fail('a declaration of the reserved prefix xmlns', where);
+      const reserved =
+        prefix === 'xml'
+          ? value !== XML_NAMESPACE
+          : value === XML_NAMESPACE || value === XMLNS_NAMESPACE;
+      if (reserved)
+        fail(`a namespace declaration of ${name} that misuses a reserved namespace`, where);
+      if (prefix && value === '') fail(`an empty namespace name for the prefix ${prefix}`, where);
+      declared.set(prefix, value);
     }
-    if (rest.trim()) return `<${name}> has a malformed attribute at ${where(lt)}`;
-    if (open.length === 0 && roots++ > 0) return `a second root element <${name}> at ${where(lt)}`;
-    if (!selfClosing) open.push(name);
+    const namespaceOf = (qname, where) => {
+      const colon = qname.indexOf(':');
+      if (colon < 0) return null;
+      const prefix = qname.slice(0, colon);
+      if (prefix === 'xmlns') fail(`the reserved prefix xmlns on ${qname}`, where);
+      if (!declared.has(prefix)) fail(`the undeclared prefix ${prefix} on ${qname}`, where);
+      return declared.get(prefix);
+    };
+    namespaceOf(tag, at);
+    const expanded = new Set();
+    for (const { name, at: where } of attributes) {
+      if (name === 'xmlns' || name.startsWith('xmlns:')) continue;
+      const namespace = namespaceOf(name, where);
+      if (namespace === null) continue;
+      const key = `${namespace} ${name.slice(name.indexOf(':') + 1)}`;
+      if (expanded.has(key))
+        fail(`<${tag}> has two attributes with the same namespace and name`, where);
+      expanded.add(key);
+    }
+    if (!empty) content(tag, at, declared);
+  };
+
+  const content = (tag, at, scope) => {
+    for (;;) {
+      if (i >= xml.length) fail(`<${tag}> is never closed`, at);
+      if (sticky(XML_TEXT)) continue;
+      if (xml.startsWith('</', i)) {
+        const endAt = i;
+        i += 2;
+        const name = sticky(XML_QNAME)?.[0];
+        space();
+        if (name !== tag || xml[i] !== '>') {
+          fail(name ? `</${name}> closes <${tag}>` : `a malformed end tag in <${tag}>`, endAt);
+        }
+        i += 1;
+        return;
+      }
+      if (xml.startsWith('<!--', i)) comment();
+      else if (xml.startsWith('<![CDATA[', i)) {
+        const end = xml.indexOf(']]>', i + 9);
+        if (end < 0) fail('an unterminated CDATA section');
+        i = end + 3;
+      } else if (xml.startsWith('<?', i)) instruction();
+      else if (xml.startsWith('<!', i)) fail('a declaration inside an element');
+      else if (xml[i] === '<') element(scope);
+      else if (xml[i] === '&') reference();
+      else if (xml.startsWith(']]>', i)) fail('a "]]>" in text');
+      else i += 1;
+    }
+  };
+
+  try {
+    const illegal = XML_ILLEGAL_CHAR.exec(xml);
+    if (illegal) {
+      const code = illegal[0].codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+      fail(`a character XML does not allow, U+${code},`, illegal.index);
+    }
+    if (/^<\?xml[ \t\r\n?]/.test(xml)) {
+      const declaration = sticky(XML_DECLARATION);
+      if (!declaration) fail('a malformed XML declaration', 0);
+      const encoding = declaration[3];
+      if (encoding && !/^utf-?8$/i.test(encoding)) {
+        fail(
+          `an encoding of ${encoding}; write the file in UTF-8, which is how it is read here`,
+          0,
+        );
+      }
+    }
+    misc();
+    if (xml.startsWith('<!', i)) fail('a DOCTYPE, which none of these files needs');
+    if (xml[i] !== '<') fail(i < xml.length ? 'text before the root element' : 'no root element');
+    element(new Map([['xml', XML_NAMESPACE]]));
+    misc();
+    if (i < xml.length)
+      fail(xml[i] === '<' ? 'markup after the root element' : 'text after the root element');
+    return null;
+  } catch (error) {
+    if (error.malformed) return error.message;
+    throw error;
   }
-  if (open.length > 0) return `<${open.at(-1)}> is never closed`;
-  return roots === 0 ? 'no root element' : null;
 }
 
 const isFile = (path) => lstatSync(path, { throwIfNoEntry: false })?.isFile() === true;
@@ -333,7 +483,7 @@ function inlineJson(xml, from, element) {
     at = gt + 1;
     if (text === undefined) {
       if (closesElement.test(tag)) return undefined;
-      if (/^json\b/.test(tag)) {
+      if (/^json(?:[ \t\n/]|$)/.test(tag)) {
         if (tag.trimEnd().endsWith('/')) return '';
         text = '';
       }
@@ -407,8 +557,9 @@ const bundleIsLink = isLink(BUNDLE);
 for (const path of [PACKAGE, packageXmlFile, installXmlFile]) isLink(path);
 readXml(installXmlFile);
 const { name: packageName, version: packageVersion } = attributes(
-  /<package\b([^>]*)>/.exec(withoutCdata(withoutComments(readXml(packageXmlFile) ?? '')))?.[1] ??
-    '',
+  /<package(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/.exec(
+    withoutCdata(withoutComments(readXml(packageXmlFile) ?? '')),
+  )?.[1] ?? '',
 );
 // Both name the files written below, so each must be a plain file name and nothing more.
 const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -453,18 +604,22 @@ for (const componentPath of componentPaths) {
   const xml = withoutComments(source);
   // Markup is looked for here; text, including inline JSON, is read from `xml` at the same offsets.
   const markup = withoutCdata(xml);
-  const contributes = [...markup.matchAll(/<extension\b([^>]*)>/g)].some(
-    ([, tag]) => attributes(tag).target === 'org.nuxeo.agentic.ui.config',
-  );
+  const contributes = [
+    ...markup.matchAll(/<extension(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/g),
+  ].some(([, tag]) => attributes(tag).target === 'org.nuxeo.agentic.ui.config');
   const requiresDefaults =
-    /<require>\s*org\.nuxeo\.agentic\.ui\.config\.defaults\s*<\/require>/.test(markup);
+    /<require[ \t\n]*>[ \t\n]*org\.nuxeo\.agentic\.ui\.config\.defaults[ \t\n]*<\/require[ \t\n]*>/.test(
+      markup,
+    );
   if (contributes && !requiresDefaults) {
     problem(
       componentFile,
       `must <require>${DEFAULTS_COMPONENT}</require>, or its fragments may apply before Satori's defaults`,
     );
   }
-  for (const match of markup.matchAll(/<(fragment|layout|asset)\b([^>]*)>/g)) {
+  for (const match of markup.matchAll(
+    /<(fragment|layout|asset)(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/g,
+  )) {
     const [startTag, element, tag] = match;
     const entry = attributes(tag);
     const invalid = invalidEntry(element, entry);
