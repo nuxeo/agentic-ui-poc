@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { TimeoutError, catchError, firstValueFrom, of, timeout } from 'rxjs';
 
@@ -62,9 +62,14 @@ export interface AppActivePreset {
  * ordered list of fragments contributed by Marketplace packages. Both are anonymous, so they are
  * fetched once, together, before sign-in, and nothing about them changes with the session.
  *
- * Injects `HttpClient` directly, which the repository otherwise reserves for `NuxeoApiBase`. That
- * is deliberate and confined to this service: the Nuxeo API origin is itself one of the values
- * being configured, so a loader built on the configured client would depend on its own output.
+ * Uses an `HttpClient` of its own, built on `HttpBackend`, which the repository otherwise reserves
+ * for `NuxeoApiBase`. That is deliberate and confined to this service: these two requests skip
+ * every interceptor. An interceptor that reads configuration — the host application's auth
+ * interceptor resolves the Nuxeo API origin and the sign-in services — would otherwise resolve it
+ * while it is still loading, and Angular keeps a token's first value for the life of the
+ * application, so every package-contributed value it read would be replaced by its default. Both
+ * halves are anonymous, so skipping the interceptor also keeps the signed-in user's
+ * `Authorization` header off them.
  *
  * The load is **tolerant by contract**. An unreachable service, an error status, a malformed
  * response or no answer within {@link CONFIG_LOAD_TIMEOUT_MS} falls back to the packaged defaults
@@ -72,7 +77,7 @@ export interface AppActivePreset {
  */
 @Injectable({ providedIn: 'root' })
 export class AppConfigService {
-  private readonly http = inject(HttpClient);
+  private readonly http = new HttpClient(inject(HttpBackend));
   private readonly bootstrapUrl = inject(APP_BOOTSTRAP_CONFIG_URL);
   private readonly manifestUrl = inject(APP_MANIFEST_CONFIG_URL);
   private readonly document = inject(DOCUMENT);
@@ -80,6 +85,7 @@ export class AppConfigService {
   private readonly bootstrapConfig = signal<AppBootstrapConfig>(DEFAULT_APP_BOOTSTRAP_CONFIG);
   private readonly runtimeManifest = signal<AppRuntimeManifest>(DEFAULT_APP_RUNTIME_MANIFEST);
   private readonly presetState = signal<AppActivePreset | null>(null);
+  private loading: Promise<void> | null = null;
   private readonly diagnosticsState = signal<AppConfigDiagnostics>({
     bootstrapSource: 'packaged-default',
     manifestSource: 'packaged-default',
@@ -115,8 +121,16 @@ export class AppConfigService {
   /**
    * Fetch both halves, choose the preset, and apply everything in order. Never rejects, so it is
    * safe as an `APP_INITIALIZER`.
+   *
+   * Runs once: a later call returns the first call's promise. That is what lets another
+   * initializer wait for the configuration instead of racing it, since Angular runs
+   * `APP_INITIALIZER` functions concurrently.
    */
-  async load(): Promise<void> {
+  load(): Promise<void> {
+    return (this.loading ??= this.fetchAndApply());
+  }
+
+  private async fetchAndApply(): Promise<void> {
     const [bootstrap, manifest] = await Promise.all([
       this.fetch(this.bootstrapUrl, 'bootstrap'),
       this.fetch(this.manifestUrl, 'manifest'),

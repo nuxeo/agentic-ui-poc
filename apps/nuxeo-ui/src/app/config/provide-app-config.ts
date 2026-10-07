@@ -45,10 +45,13 @@ function derivedNuxeoServerUrl(): string {
  * previously compiled in, which is what makes an unconfigured deployment
  * byte-for-byte equivalent to the current release.
  *
- * Ordering note: `loadAppConfig` runs as an `APP_INITIALIZER`, while these
- * factories are evaluated on first injection. The configuration loader is the
- * only consumer that runs before the load completes, and it deliberately uses
- * relative URLs so it does not depend on its own output.
+ * Ordering note: `AppConfigService.load()` runs as an `APP_INITIALIZER`, while
+ * these factories are evaluated on first injection and Angular keeps that first
+ * value. So nothing may inject one of these tokens — or a service that does,
+ * such as `AuthService` — before the load completes: not in an
+ * `APP_INITIALIZER` factory, and not in an initializer that does not first
+ * `await config.load()`. The loader's own requests skip the interceptors for the
+ * same reason.
  */
 /**
  * Loads Layer 0 configuration, then applies the language it names.

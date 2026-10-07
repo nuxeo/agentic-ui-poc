@@ -597,6 +597,45 @@ newly added mark goes unhidden. See
 
 ---
 
+## 19. A configuration token resolved before the configuration loads
+
+```typescript
+// BAD ❌ — runs in an environment initializer / APP_INITIALIZER factory, before
+// `AppConfigService.load()` has finished. Constructing AuthService resolves
+// NUXEO_API_ORIGIN and the SSO tokens; their factories read `bootstrap()` once,
+// Angular keeps that first value, and every package-contributed setting is ignored.
+provideSatoriExtensions(() => {
+  const auth = inject(AuthService);
+  return { rules: { 'app.rules.isPowerUser': () => auth.isPowerUser() } };
+});
+
+// GOOD ✅ — look the service up when the rule is evaluated, after startup.
+provideSatoriExtensions(() => {
+  const injector = inject(Injector);
+  return { rules: { 'app.rules.isPowerUser': () => injector.get(AuthService).isPowerUser() } };
+});
+
+// GOOD ✅ — or, in an initializer, wait for the configuration first.
+return async () => {
+  await config.load(); // runs once; every caller shares the first load
+  const auth = injector.get(AuthService);
+  /* … */
+};
+```
+
+The tokens provided in `apps/nuxeo-ui/src/app/config/provide-app-config.ts` are one-shot reads,
+so the hazard is anything that **constructs** a reader early: `AuthService`, `SessionTimeoutService`,
+any `NuxeoApiBase` service (`SelectionService` included), and the auth interceptor — which is why
+`AppConfigService` sends its own requests without interceptors. It fails silently: the app starts,
+signs in and works, on the packaged defaults. All three of an SSO button, an idle timeout and a
+Nuxeo origin from a configuration package were lost this way (NXSAT-312).
+
+Regression test pattern: boot the real `appConfig.providers`, answer the configuration requests
+with package values, and assert the tokens — `apps/nuxeo-ui/src/app/config/configuration-at-startup.spec.ts`.
+A spec of one service with the token provided by hand passes whatever the startup order is.
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.

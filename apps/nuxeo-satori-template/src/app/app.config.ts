@@ -37,9 +37,11 @@ export const appConfig: ApplicationConfig = {
     /**
      * Layer 0 decides where Nuxeo is.
      *
-     * A one-shot read of the loaded configuration, which is safe only because
-     * `NuxeoApiBase` — the sole consumer — is constructed on first use by a page,
-     * long after `provideAppInitializer` has awaited the load. A *reactive* reader
+     * A one-shot read of the loaded configuration, kept for the life of the
+     * application, so nothing may resolve it before the load completes. Its readers
+     * here do not: `NuxeoApiBase` is constructed on first use by a page, the
+     * interceptor never sees the configuration requests (they skip interceptors),
+     * and `TemplateSessionService` reads it at sign-in. A *reactive* reader
      * would be wrong here anyway: an API origin that changed under a live
      * `HttpClient` would leave in-flight requests pointing somewhere else.
      *

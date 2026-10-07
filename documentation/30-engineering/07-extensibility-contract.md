@@ -282,6 +282,13 @@ takes a contributor and registers slots, rules, components and actions in a
 a rule contributed by a **customer library** may `inject()` its own dependencies — a factory
 declared in a customer library has no injection context of its own.
 
+The contributor runs **before the configuration loads**. The configuration tokens —
+`NUXEO_API_ORIGIN` and the SSO and session settings among them — keep the first value they
+resolve to, so a contributor that injects a service which reads one (any `NuxeoApiBase`
+service reads `NUXEO_API_ORIGIN` when it is constructed) fixes it at the packaged default for
+the life of the application. Inject an `Injector` and look such a service up inside the rule,
+as the product's own `app.rules.hasAdministrationAccess` does.
+
 ```ts
 // The whole integration, in a customer's app config:
 providers: [/* … */ provideAcmeExtensions()];
