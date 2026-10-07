@@ -90,6 +90,8 @@ export class ExtensionOutletComponent {
   private generation = 0;
   /** Retries left for the requested id after its loader rejected — {@link retryUnresolved}. */
   private retriesLeft = 0;
+  /** A retry's load is pending; updates meanwhile ride on it rather than starting another. */
+  private retrying = false;
   private static readonly MAX_RETRIES = 2;
 
   constructor() {
@@ -118,6 +120,7 @@ export class ExtensionOutletComponent {
       }
 
       this.retriesLeft = ExtensionOutletComponent.MAX_RETRIES;
+      this.retrying = false;
       untracked(() => this.load(id, generation, false));
     });
 
@@ -152,6 +155,7 @@ export class ExtensionOutletComponent {
     }
     void this.registry.resolve(id).then((resolvedType) => {
       if (generation !== this.generation) return;
+      if (retry) this.retrying = false;
       this.loading.set(false);
       if (!resolvedType) {
         this.clear();
@@ -171,12 +175,17 @@ export class ExtensionOutletComponent {
    * {@link MAX_RETRIES} per requested id, so a loader that always fails is called three
    * times in all rather than on every refetch. An id nothing registered is not retried:
    * that is a missing library, not a transient failure.
+   *
+   * An update while a retry is still loading starts nothing and spends nothing: the
+   * registry would fold it onto the pending load, and the retry renders with whatever
+   * inputs are current when it lands.
    */
   private retryUnresolved(): void {
     const id = this.componentId();
-    if (!this.unresolved() || !id || this.componentType()) return;
+    if (this.retrying || !this.unresolved() || !id || this.componentType()) return;
     if (this.retriesLeft <= 0 || !this.registry.has(id)) return;
     this.retriesLeft -= 1;
+    this.retrying = true;
     this.load(id, ++this.generation, true);
   }
 

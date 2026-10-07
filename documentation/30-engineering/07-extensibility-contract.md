@@ -197,7 +197,7 @@ one is read by a host, and `sidebar`, `routes` and `documentView` carry no packa
 ### Slots are additive by construction
 
 `ExtensionSlotRegistry` keys slots by opaque string with **no enum, union or `switch` on
-slot identity**, so a ninth slot requires no change to the eight. Do not introduce a central
+slot identity**, so a tenth slot requires no change to the nine. Do not introduce a central
 slot dispatch — it would undo the property the addressable-surface decision rests on.
 
 ---

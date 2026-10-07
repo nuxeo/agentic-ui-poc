@@ -274,6 +274,36 @@ describe('ExtensionOutletComponent', () => {
       expect(fixture.componentInstance.unresolved()).toBe(true);
     });
 
+    /**
+     * The registry folds a resolve made while one is pending onto the same promise, so an
+     * update during an in-flight retry starts no new attempt and must not spend the budget.
+     */
+    it('spends no retry on an update made while a retry is still loading', async () => {
+      let failRetry: (error: Error) => void = () => undefined;
+      registerLoader((attempt) =>
+        attempt === 2
+          ? new Promise((_resolve, reject) => (failRetry = reject))
+          : attempt === 1
+            ? Promise.reject(new Error('chunk load failed'))
+            : Promise.resolve(DocumentViewComponent),
+      );
+      const fixture = await renderFlaky();
+
+      fixture.componentRef.setInput('componentInputs', { title: 'second' });
+      await settle(fixture);
+      fixture.componentRef.setInput('componentInputs', { title: 'third' });
+      await settle(fixture);
+      expect(attempts).toBe(2);
+
+      failRetry(new Error('chunk load failed'));
+      await settle(fixture);
+      fixture.componentRef.setInput('componentInputs', { title: 'fourth' });
+      await settle(fixture);
+
+      expect(attempts).toBe(3);
+      expect(fixture.nativeElement.querySelector('.view')?.textContent).toBe('fourth');
+    });
+
     it('gives a new id its own retries', async () => {
       registerLoader(() => Promise.reject(new Error('chunk load failed')));
       TestBed.inject(ExtensionComponentRegistry).register({

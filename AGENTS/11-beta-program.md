@@ -132,17 +132,19 @@ Treat them as settled; if you contradict one, prove it first.
   lock and merging only the new entries in.
 - **Layer 1 slots are additive by construction.** `ExtensionSlotRegistry` keys
   slots by opaque string with no enum, union or `switch` on slot identity, so a
-  ninth slot requires no change to the eight. Do not introduce a central slot
+  tenth slot requires no change to the nine. Do not introduce a central slot
   dispatch; it would undo the property the Beta addressable-surface decision
   rests on. `rules` was removed from `EXTENSION_SLOTS`: rules are not descriptors
   and live in `ExtensionRuleRegistry`, so `slots.rules` was silently inert.
 - **A slot id existing does not mean anything reads it.** The principle stands; the
   inventory below it was **wrong about `documentList` from Phase 3 onwards** and is
   corrected here. `documentList` is registered with twelve packaged columns in
-  `provide-app-extensions.ts` and resolved by **both** browse routes. `navbar` and
-  `bulk-actions` have packaged descriptors and a host; `sidebar` is resolved but has no
-  packaged descriptor; `routes`, `toolbar`, `contextMenu` and `tabs` are reserved and
-  nothing reads them. Do not describe a reserved id as an extension point — and do not
+  `provide-app-extensions.ts` and resolved by **both** browse routes. As of NXSAT-316,
+  nine slots and none reserved: `navbar`, `bulk-actions`, `documentList`, `toolbar`,
+  `contextMenu` and `tabs` have packaged descriptors and a host; `sidebar`, `routes` and
+  `documentView` are resolved but have no packaged descriptor. The earlier "`routes`,
+  `toolbar`, `contextMenu` and `tabs` are reserved" was stale long before that — each had
+  gained a host. Do not describe a reserved id as an extension point — and do not
   trust this list either: `npm run beta:reference` checks every slot-state claim in
   `docs/extension-reference.md` against the source, which is why the drift was found. A
   hand-maintained inventory in a "do not re-litigate" section is the worst place for a

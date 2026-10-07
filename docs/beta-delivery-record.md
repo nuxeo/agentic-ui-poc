@@ -586,7 +586,10 @@ Nothing here is a surprise later.
    query — and refuses every other by name. Adopting adf-hx **search** will need more.
 5. **`getRenditions` is not a discovery call** — it returns a fixed `thumbnail, pdf` pair,
    because Nuxeo exposes no rendition-enumeration endpoint through this bridge.
-6. **`routes`, `toolbar`, `contextMenu`, `tabs` slots are reserved and unread.**
+6. ~~**`routes`, `toolbar`, `contextMenu`, `tabs` slots are reserved and unread.**~~
+   **Closed** — each gained a host; `toolbar`, `contextMenu` and `tabs` carry packaged entries
+   and `routes` resolves contributions. NXSAT-316 added a ninth, `documentView`. The gated
+   inventory is section 2 of `docs/extension-reference.md`.
 7. **i18n covers three templates.** Inside a phase recorded complete.
 8. ~~**`nuxeo-ui` has no `typecheck` target.**~~ **Closed** — added and proven by
    reintroducing the exact typo that escaped twice.
