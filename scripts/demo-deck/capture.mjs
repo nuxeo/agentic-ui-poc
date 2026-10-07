@@ -720,158 +720,160 @@ console.log(`auth ok: ${whoami}\n`);
 const results = [];
 const shots = ONLY ? SHOTS.filter((s) => ONLY.includes(s.id)) : SHOTS;
 
-for (const shot of shots) {
-  currentShot = shot.id;
+try {
+  for (const shot of shots) {
+    currentShot = shot.id;
 
-  // ---- negative controls: break exactly one gate's input, leave the rest intact ----
-  let route = shot.route;
-  let expected = [...shot.expect];
-  if (NEGATIVE_CONTROL === 'route' && shot === shots[0]) route = '/#/settings/themes';
-  if (NEGATIVE_CONTROL === 'content' && shot === shots[0]) expected = ['ThisStringIsNotOnAnyPage'];
+    // ---- negative controls: break exactly one gate's input, leave the rest intact ----
+    let route = shot.route;
+    let expected = [...shot.expect];
+    if (NEGATIVE_CONTROL === 'route' && shot === shots[0]) route = '/#/settings/themes';
+    if (NEGATIVE_CONTROL === 'content' && shot === shots[0])
+      expected = ['ThisStringIsNotOnAnyPage'];
 
-  if (shot.manifest) await applyManifest(shot.manifest);
-  // Branding is a file edit, so it is applied and withdrawn per shot rather than left in place.
-  if (shot.bootstrap) await patchBootstrap(shot.bootstrap);
-  else await restoreBootstrap();
-  if (shot.signIn) await signInToTemplate(page);
+    if (shot.manifest) await applyManifest(shot.manifest);
+    // Branding is a file edit, so it is applied and withdrawn per shot rather than left in place.
+    if (shot.bootstrap) await patchBootstrap(shot.bootstrap);
+    else await restoreBootstrap();
+    if (shot.signIn) await signInToTemplate(page);
 
-  const url = `${shot.base}${route}`;
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
+    const url = `${shot.base}${route}`;
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
 
-  // Gate 4. A manifest- or bootstrap-dependent shot needs a document reload, not a hash
-  // navigation: `withHashLocation()` makes `goto('/#/x')` same-document, so `APP_INITIALIZER` —
-  // which is what reads bootstrap.json — never runs again.
-  if (shot.manifest || shot.bootstrap) {
-    await page.reload({ waitUntil: 'domcontentloaded' });
-  }
+    // Gate 4. A manifest- or bootstrap-dependent shot needs a document reload, not a hash
+    // navigation: `withHashLocation()` makes `goto('/#/x')` same-document, so `APP_INITIALIZER` —
+    // which is what reads bootstrap.json — never runs again.
+    if (shot.manifest || shot.bootstrap) {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+    }
 
-  // A swallowed wait failure is how the false pass happened: the selector never appeared, the run
-  // continued, and the shot photographed whatever was on screen. Record it instead of discarding it,
-  // so it reaches the report even when the content gate would also have caught it.
-  let waitFailed = null;
-  try {
-    await page.waitForSelector(shot.waitFor, { timeout: 30000 });
-  } catch {
-    waitFailed = shot.waitFor;
-  }
-  await page.waitForTimeout(2500);
-  if (shot.act) await shot.act(page);
+    // A swallowed wait failure is how the false pass happened: the selector never appeared, the run
+    // continued, and the shot photographed whatever was on screen. Record it instead of discarding it,
+    // so it reaches the report even when the content gate would also have caught it.
+    let waitFailed = null;
+    try {
+      await page.waitForSelector(shot.waitFor, { timeout: 30000 });
+    } catch {
+      waitFailed = shot.waitFor;
+    }
+    await page.waitForTimeout(2500);
+    if (shot.act) await shot.act(page);
 
-  // Gate 3 — route assertion, against the shot's DECLARED route (`shot.route`), never against the
-  // possibly-mutated `route` used to navigate.
-  //
-  // The first cut compared `landed` against `route`, which the negative control had just rewritten —
-  // so it asked "did I arrive where I told myself to go", was true by construction, and passed a
-  // deliberate mis-route. Only the content gate caught it. That is the tautological path check this
-  // repo has already been burned by once, reproduced exactly.
-  const landed = page.url();
-  const declared = shot.route.replace(/^\/#/, '#').split('?')[0];
-  const routeOk = landed.includes(declared);
+    // Gate 3 — route assertion, against the shot's DECLARED route (`shot.route`), never against the
+    // possibly-mutated `route` used to navigate.
+    //
+    // The first cut compared `landed` against `route`, which the negative control had just rewritten —
+    // so it asked "did I arrive where I told myself to go", was true by construction, and passed a
+    // deliberate mis-route. Only the content gate caught it. That is the tautological path check this
+    // repo has already been burned by once, reproduced exactly.
+    const landed = page.url();
+    const declared = shot.route.replace(/^\/#/, '#').split('?')[0];
+    const routeOk = landed.includes(declared);
 
-  // Gate 2 — content assertion, against the live DOM. Read input VALUES as well as text: adf-core
-  // renders property values inside <input> elements, so a text-only assertion passed while the
-  // screenshot showed a raw ISO string and [object Object].
-  const domText = await page.evaluate(() => {
-    const inputs = [...document.querySelectorAll('input')].map((i) => i.value).join(' ');
-    return `${document.body.innerText}\n${inputs}`;
-  });
-  // Structural claims are checked by predicate, not by text. The marker is swapped out of the
-  // string list so it is never searched for literally.
-  const textExpected = expected.filter((e) => e !== STRUCTURAL_MARKER);
-  const missing = textExpected.filter((e) => !domText.includes(e));
-  // `domAssert` runs whenever a shot declares one — NOT only when `expect` carries the structural
-  // marker.
-  //
-  // The first cut gated it on `expected.includes(STRUCTURAL_MARKER)`, which meant any shot with a
-  // `domAssert` and ordinary text expectations had its structural assertion **silently skipped**.
-  // Three shots were in that state, and one of them asserted that "No attachment on this document"
-  // was absent while the capture plainly showed those words. The gate reported `ok`.
-  //
-  // That is this harness's own failure mode turned inward: an assertion that does not run is worse
-  // than no assertion, because it reads as coverage. A skipped check must never be indistinguishable
-  // from a passing one.
-  if (shot.domAssert) {
-    const structureOk =
-      NEGATIVE_CONTROL === 'content' && shot === shots[0]
-        ? false
-        : await page.evaluate(shot.domAssert);
-    if (!structureOk) missing.push(`domAssert failed for ${shot.id}`);
-  }
+    // Gate 2 — content assertion, against the live DOM. Read input VALUES as well as text: adf-core
+    // renders property values inside <input> elements, so a text-only assertion passed while the
+    // screenshot showed a raw ISO string and [object Object].
+    const domText = await page.evaluate(() => {
+      const inputs = [...document.querySelectorAll('input')].map((i) => i.value).join(' ');
+      return `${document.body.innerText}\n${inputs}`;
+    });
+    // Structural claims are checked by predicate, not by text. The marker is swapped out of the
+    // string list so it is never searched for literally.
+    const textExpected = expected.filter((e) => e !== STRUCTURAL_MARKER);
+    const missing = textExpected.filter((e) => !domText.includes(e));
+    // `domAssert` runs whenever a shot declares one — NOT only when `expect` carries the structural
+    // marker.
+    //
+    // The first cut gated it on `expected.includes(STRUCTURAL_MARKER)`, which meant any shot with a
+    // `domAssert` and ordinary text expectations had its structural assertion **silently skipped**.
+    // Three shots were in that state, and one of them asserted that "No attachment on this document"
+    // was absent while the capture plainly showed those words. The gate reported `ok`.
+    //
+    // That is this harness's own failure mode turned inward: an assertion that does not run is worse
+    // than no assertion, because it reads as coverage. A skipped check must never be indistinguishable
+    // from a passing one.
+    if (shot.domAssert) {
+      const structureOk =
+        NEGATIVE_CONTROL === 'content' && shot === shots[0]
+          ? false
+          : await page.evaluate(shot.domAssert);
+      if (!structureOk) missing.push(`domAssert failed for ${shot.id}`);
+    }
 
-  // Callout geometry, read from the live DOM immediately before the screenshot so the boxes and the
-  // pixels agree. Rects are CSS px; the PNG is scaled by SCALE, so the consumer multiplies.
-  let callouts = null;
-  if (shot.callouts) {
-    callouts = await page.evaluate((defs) => {
-      return defs.map((d) => {
-        const el = document.querySelector(d.selector);
-        if (!el) return { ...d, found: false };
-        const r = el.getBoundingClientRect();
-        return {
-          ...d,
-          found: r.width > 0 && r.height > 0,
-          x: r.x,
-          y: r.y,
-          w: r.width,
-          h: r.height,
-        };
-      });
-    }, shot.callouts);
-  }
+    // Callout geometry, read from the live DOM immediately before the screenshot so the boxes and the
+    // pixels agree. Rects are CSS px; the PNG is scaled by SCALE, so the consumer multiplies.
+    let callouts = null;
+    if (shot.callouts) {
+      callouts = await page.evaluate((defs) => {
+        return defs.map((d) => {
+          const el = document.querySelector(d.selector);
+          if (!el) return { ...d, found: false };
+          const r = el.getBoundingClientRect();
+          return {
+            ...d,
+            found: r.width > 0 && r.height > 0,
+            x: r.x,
+            y: r.y,
+            w: r.width,
+            h: r.height,
+          };
+        });
+      }, shot.callouts);
+    }
 
-  const file = resolve(outDir, `${shot.id}.png`);
-  await page.screenshot({ path: file, fullPage: false });
-  const bytes = await readFile(file);
-  const sha = createHash('sha256').update(bytes).digest('hex');
+    const file = resolve(outDir, `${shot.id}.png`);
+    await page.screenshot({ path: file, fullPage: false });
+    const bytes = await readFile(file);
+    const sha = createHash('sha256').update(bytes).digest('hex');
 
-  results.push({
-    id: shot.id,
-    slide: shot.slide,
-    url: landed,
-    intendedRoute: shot.route,
-    navigatedTo: route,
-    routeOk,
-    waitFailed,
-    expected,
-    missing,
-    sha256: sha,
-    bytes: bytes.length,
-    file: `${shot.id}.png`,
-    scale: SCALE,
-    callouts,
-  });
-
-  console.log(
-    `${missing.length === 0 && routeOk ? 'ok  ' : 'FAIL'} ${shot.id}  ` +
-      `${bytes.length} B  sha=${sha.slice(0, 12)}${missing.length ? `  MISSING: ${missing}` : ''}`,
-  );
-
-  // dedup negative control: capture the same shot a second time under a different id.
-  if (NEGATIVE_CONTROL === 'dedup' && shot === shots[0]) {
-    const dupFile = resolve(outDir, `${shot.id}-DUP.png`);
-    await page.screenshot({ path: dupFile, fullPage: false });
-    const dupBytes = await readFile(dupFile);
     results.push({
-      id: `${shot.id}-DUP`,
+      id: shot.id,
       slide: shot.slide,
       url: landed,
-      intendedRoute: route,
-      routeOk: true,
+      intendedRoute: shot.route,
+      navigatedTo: route,
+      routeOk,
+      waitFailed,
       expected,
-      missing: [],
-      sha256: createHash('sha256').update(dupBytes).digest('hex'),
-      bytes: dupBytes.length,
-      file: `${shot.id}-DUP.png`,
+      missing,
+      sha256: sha,
+      bytes: bytes.length,
+      file: `${shot.id}.png`,
+      scale: SCALE,
+      callouts,
     });
+
+    console.log(
+      `${missing.length === 0 && routeOk ? 'ok  ' : 'FAIL'} ${shot.id}  ` +
+        `${bytes.length} B  sha=${sha.slice(0, 12)}${missing.length ? `  MISSING: ${missing}` : ''}`,
+    );
+
+    // dedup negative control: capture the same shot a second time under a different id.
+    if (NEGATIVE_CONTROL === 'dedup' && shot === shots[0]) {
+      const dupFile = resolve(outDir, `${shot.id}-DUP.png`);
+      await page.screenshot({ path: dupFile, fullPage: false });
+      const dupBytes = await readFile(dupFile);
+      results.push({
+        id: `${shot.id}-DUP`,
+        slide: shot.slide,
+        url: landed,
+        intendedRoute: route,
+        routeOk: true,
+        expected,
+        missing: [],
+        sha256: createHash('sha256').update(dupBytes).digest('hex'),
+        bytes: dupBytes.length,
+        file: `${shot.id}-DUP.png`,
+      });
+    }
   }
+} finally {
+  // Leave the world at baseline, whatever happened. A harness that leaves customisation applied is
+  // exactly how the dirty manifest and the purple baseline both happened.
+  await restoreManifest();
+  await restoreBootstrap();
+  await browser.close();
 }
-
-// Leave the world at baseline, whatever happened. A harness that leaves customisation applied is
-// exactly how the dirty manifest and the purple baseline both happened.
-await restoreManifest();
-await restoreBootstrap();
-
-await browser.close();
 
 // ---- Gate 1: dedup across the whole run ----
 const byHash = new Map();
