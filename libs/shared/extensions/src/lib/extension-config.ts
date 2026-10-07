@@ -17,7 +17,7 @@ export interface ExtensionConfig {
   readonly $references?: readonly string[];
   /** Layer names to drop even when `$references` lists them. */
   readonly $ignoreReferenceList?: readonly string[];
-  /** Named layers, so a single Nuxeo document can carry a whole stack. */
+  /** Named layers, so a single manifest fragment can carry a whole stack. */
   readonly $layers?: Readonly<Record<string, ExtensionConfig>>;
   /** Free-form metadata for diagnostics. */
   readonly $name?: string;
@@ -98,6 +98,22 @@ export function resolveExtensionConfig(
 
   const merged = mergeExtensionConfigs(root, ...bodies);
   return { config: merged, applied, missing };
+}
+
+/**
+ * Resolve each package's extension layer on its own, then merge them in contribution order, so
+ * a package that depends on another wins over it.
+ *
+ * Each layer's `$references` resolve against that layer's own `$layers`: one package cannot
+ * reach into another's named layers.
+ */
+export function resolveExtensionLayers(layers: readonly unknown[]): ResolvedExtensionConfig {
+  const resolved = layers.map((layer) => resolveExtensionConfig(readExtensionConfig(layer)));
+  return {
+    config: mergeExtensionConfigs(...resolved.map((entry) => entry.config)),
+    applied: resolved.flatMap((entry) => entry.applied),
+    missing: resolved.flatMap((entry) => entry.missing),
+  };
 }
 
 /**

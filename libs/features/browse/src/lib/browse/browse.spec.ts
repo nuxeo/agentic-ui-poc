@@ -112,7 +112,7 @@ const mockSelectionService = {
  * in this file. Same shape as `selection-topbar.component.spec.ts`, the other slot
  * consumer, and it doubles as the handle a test uses to drive the manifest.
  */
-const manifest = signal<{ extensions?: unknown }>({});
+const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
 describe('BrowseComponent', () => {
   let component: BrowseComponent;

@@ -21,23 +21,29 @@ type PlatformEntryPoint = (typeof PLATFORM_ENTRY_POINTS)[number];
 
 ## @nuxeo-satori/platform/app-config
 
-29 exported symbol(s).
+37 exported symbol(s).
 
 ```ts
 const APP_BOOTSTRAP_CONFIG_FILE = "bootstrap.json";
 const APP_BOOTSTRAP_CONFIG_URL: InjectionToken<string>;
 const APP_CONFIG_DIRECTORY = "agentic-ui-config";
+const APP_CONFIG_FORMAT = "nuxeo-agentic-ui-config/1";
+const APP_MANIFEST_CONFIG_FILE = "manifest.json";
+const APP_MANIFEST_CONFIG_URL: InjectionToken<string>;
 interface AppARenderConfig {
     readonly viewerOrigin: string;
     readonly nuxeoInternalUrl: string;
+    }
+}
+interface AppActivePreset {
+    readonly name: string;
+    readonly label: string;
     }
 }
 interface AppBootstrapConfig {
     readonly nuxeoApiOrigin: string;
     readonly nuxeoServerUrl: string | null;
     readonly aiBackendUrl: string;
-    readonly manifestDocumentPath: string;
-    readonly manifestDocumentProperty: string;
     readonly branding: AppBrandingConfig;
     readonly defaultThemeId: string;
     readonly themes: readonly AppThemeConfig[];
@@ -62,37 +68,51 @@ interface AppBrandingLogo {
 interface AppConfigDiagnostics {
     readonly bootstrapSource: AppConfigSource;
     readonly manifestSource: AppConfigSource;
-    readonly manifestAttempt: AppManifestAttempt;
+    readonly bootstrapFragments: readonly AppConfigFragmentInfo[];
+    readonly manifestFragments: readonly AppConfigFragmentInfo[];
+    readonly serverDiagnostics: readonly AppConfigServerDiagnostic[];
     readonly messages: readonly string[];
+    }
+}
+interface AppConfigFragmentInfo {
+    readonly name: string;
+    readonly component: string;
+    readonly bundle: string;
+    readonly source: string;
+    }
+}
+type AppConfigLayer = 'bootstrap' | 'manifest';
+interface AppConfigServerDiagnostic {
+    readonly level: string;
+    readonly code: string;
+    readonly message: string;
+    readonly component: string | null;
     }
 }
 class AppConfigService {
     readonly bootstrap: _angular_core.Signal<AppBootstrapConfig>;
     readonly manifest: _angular_core.Signal<AppRuntimeManifest>;
     readonly diagnostics: _angular_core.Signal<AppConfigDiagnostics>;
+    readonly activePreset: _angular_core.Signal<AppActivePreset | null>;
     readonly themes: _angular_core.Signal<readonly AppThemeConfig[]>;
     readonly brandingLogo: _angular_core.Signal<{
     readonly url: string;
     readonly alt: string;
     } | null>;
     load(): Promise<void>;
-    loadBootstrap(): Promise<AppBootstrapConfig>;
-    loadManifest(): Promise<AppRuntimeManifest>;
-    resetManifest(): void;
     resolveTheme(id: string | null): AppThemeConfig;
     featureToggle(id: string, fallback: boolean): boolean;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<AppConfigService, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<AppConfigService>;
     }
 }
-type AppConfigSource = 'deployed-file' | 'nuxeo-document' | 'packaged-default';
+type AppConfigSource = 'configuration-service' | 'packaged-default';
 interface AppIntegrationsConfig {
     readonly arender: AppARenderConfig | null;
     readonly knowledgeDiscoveryOperations: Readonly<Record<string, string>>;
     readonly knowledgeEnrichmentOperations: Readonly<Record<string, string>>;
     }
 }
-type AppManifestAttempt = 'applied' | 'failed' | 'not-attempted' | 'unavailable';
 interface AppRuntimeManifest {
     readonly version: number;
     readonly navItems: readonly ManifestNavItem[];
@@ -101,7 +121,7 @@ interface AppRuntimeManifest {
     readonly presets: Readonly<Record<string, unknown>>;
     readonly featureToggles: Readonly<Record<string, boolean>>;
     readonly labels: Readonly<Record<string, string>>;
-    readonly extensions: Readonly<Record<string, unknown>>;
+    readonly extensionLayers: readonly Readonly<Record<string, unknown>>[];
     }
 }
 interface AppSessionConfig {
@@ -158,10 +178,12 @@ interface ManifestNavItem {
     readonly visible: boolean;
     }
 }
+const PRESET_QUERY_PARAM = "preset";
+const PRESET_STORAGE_KEY = "agentic-ui.preset";
 function mergeBootstrapConfig(base: AppBootstrapConfig, patch: unknown): AppBootstrapConfig;
 function mergeRuntimeManifest(base: AppRuntimeManifest, patch: unknown): AppRuntimeManifest;
-function parseRuntimeManifest(raw: unknown): AppRuntimeManifest | null;
 function resolveBootstrapConfigUrl(baseUri: string): string;
+function resolveManifestConfigUrl(bootstrapUrl: string): string;
 function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeConfig;
 ```
 

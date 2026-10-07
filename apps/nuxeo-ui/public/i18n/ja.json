@@ -517,6 +517,9 @@
     "placeholder-page": {
       "coming-soon": "近日公開"
     },
+    "preset": {
+      "badge": "プリセット: {{ label }}"
+    },
     "profile-page": {
       "change-password": "パスワードの変更",
       "company": "会社",

@@ -517,6 +517,9 @@
     "placeholder-page": {
       "coming-soon": "Coming soon"
     },
+    "preset": {
+      "badge": "Preset: {{ label }}"
+    },
     "profile-page": {
       "change-password": "Change password",
       "company": "Company",

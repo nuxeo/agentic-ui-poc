@@ -1,0 +1,17 @@
+:host {
+  display: contents;
+}
+
+.preset-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-inline: 8px;
+  padding: 2px 10px;
+  border: 1px solid var(--mat-sys-tertiary);
+  border-radius: 999px;
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+  font: var(--mat-sys-label-medium);
+  white-space: nowrap;
+}

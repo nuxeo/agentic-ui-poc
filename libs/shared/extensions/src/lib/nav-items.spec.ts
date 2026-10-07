@@ -18,10 +18,10 @@ import { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS } from './nav-items';
  */
 describe('APP_NAV_ITEMS — Administration gating', () => {
   /** The manifest signal `AppExtensionsService` reads; `{}` is the packaged default. */
-  const manifest = signal<{ extensions?: unknown }>({});
+  const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
   function setUp() {
-    manifest.set({});
+    manifest.set({ extensionLayers: [] });
     TestBed.configureTestingModule({
       providers: [{ provide: AppConfigService, useValue: { manifest } }],
     });
@@ -69,7 +69,9 @@ describe('APP_NAV_ITEMS — Administration gating', () => {
   it('still lets a manifest ungate Administration deliberately, with rule: null', () => {
     // Fail-closed must not become un-overridable, or a customer who genuinely
     // wants the entry visible has no Layer 1 route to it.
-    manifest.set({ extensions: { overrides: { 'app.navbar.administration': { rule: null } } } });
+    manifest.set({
+      extensionLayers: [{ overrides: { 'app.navbar.administration': { rule: null } } }],
+    });
     expect(navIds()).toContain('app.navbar.administration');
   });
 
@@ -106,14 +108,14 @@ describe('APP_NAV_ITEMS — Administration gating', () => {
     // `docs/extension-reference.md` tells a customer who wants both browse
     // surfaces to re-state the id as a slot addition, and says an `overrides`
     // entry will not do it. Both halves of that promise are asserted here.
-    manifest.set({ extensions: { overrides: { 'app.navbar.browse': { visible: true } } } });
+    manifest.set({ extensionLayers: [{ overrides: { 'app.navbar.browse': { visible: true } } }] });
     expect(navIds()).not.toContain('app.navbar.browse');
 
-    manifest.set({ extensions: { slots: { navbar: [{ id: 'app.navbar.browse' }] } } });
+    manifest.set({ extensionLayers: [{ slots: { navbar: [{ id: 'app.navbar.browse' }] } }] });
     expect(navIds()).not.toContain('app.navbar.browse');
 
     manifest.set({
-      extensions: { slots: { navbar: [{ id: 'app.navbar.browse', disabled: false }] } },
+      extensionLayers: [{ slots: { navbar: [{ id: 'app.navbar.browse', disabled: false }] } }],
     });
     expect(navIds()).toContain('app.navbar.browse');
   });

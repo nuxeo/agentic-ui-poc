@@ -38,7 +38,7 @@ import { ALL_COLUMNS } from '../column-settings-dialog/column-settings-dialog';
  * transcribed from the const this replaced, not a count.
  */
 describe('BrowseComponent — documentList slot', () => {
-  const manifest = signal<{ extensions?: unknown }>({});
+  const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
   const stub = {
     browse: {
@@ -77,7 +77,7 @@ describe('BrowseComponent — documentList slot', () => {
     if (stored === null) localStorage.removeItem('browse_column_settings');
     else localStorage.setItem('browse_column_settings', JSON.stringify(stored));
 
-    manifest.set(extensions === undefined ? {} : { extensions });
+    manifest.set({ extensionLayers: extensions === undefined ? [] : [extensions] });
 
     TestBed.configureTestingModule({
       imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
@@ -198,7 +198,7 @@ describe('BrowseComponent — documentList slot', () => {
   it('falls back to the packaged columns when nothing is registered', () => {
     // A bare injector — no APP_INITIALIZER — must still render a usable list rather
     // than a document list with no columns at all.
-    manifest.set({});
+    manifest.set({ extensionLayers: [] });
     TestBed.configureTestingModule({
       imports: [testTranslateModule(), BrowseComponent],
       providers: [

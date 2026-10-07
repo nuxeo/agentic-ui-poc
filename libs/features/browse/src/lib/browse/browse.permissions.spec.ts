@@ -88,7 +88,7 @@ const detail = {
   ),
 };
 
-const manifest = signal<{ extensions?: unknown }>({});
+const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
 /**
  * The Permissions tab: what the three ACL lists derive from the document, and
@@ -120,7 +120,7 @@ describe('BrowseComponent — permissions tab', () => {
     detail.sendNotificationEmailForPermission.mockReturnValue(EMPTY);
     detail.getAuditLog.mockReturnValue(of(emptyAuditLog));
 
-    manifest.set({});
+    manifest.set({ extensionLayers: [] });
     await TestBed.configureTestingModule({
       imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [

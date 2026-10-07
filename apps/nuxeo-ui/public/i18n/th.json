@@ -517,6 +517,9 @@
     "placeholder-page": {
       "coming-soon": "เร็วๆ นี้"
     },
+    "preset": {
+      "badge": "พรีเซ็ต: {{ label }}"
+    },
     "profile-page": {
       "change-password": "เปลี่ยนรหัสผ่าน",
       "company": "บริษัท",

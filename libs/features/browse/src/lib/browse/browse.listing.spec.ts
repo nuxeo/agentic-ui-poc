@@ -94,7 +94,7 @@ const detail = {
   unsubscribe: vi.fn((): DetailReturn<'unsubscribe'> => EMPTY),
 };
 
-const manifest = signal<{ extensions?: unknown }>({});
+const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
 /**
  * The document list, asserted against the rendered table.
@@ -153,7 +153,7 @@ describe('BrowseComponent — rendered document list', () => {
    * this file rendering exactly as they did.
    */
   async function render(extraProviders: unknown[] = []): Promise<BrowseComponent> {
-    manifest.set({});
+    manifest.set({ extensionLayers: [] });
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [BrowseComponent, testTranslateModule()],
