@@ -214,23 +214,24 @@ contradiction.
 
 ### 2. The Nuxeo marketplace package
 
-`nuxeo-agentic-ui-package/` — a Maven module producing an addon ZIP: the OSGi bundle, the built
-Angular app into `/web/nuxeo.war/agentic-ui`, and Layer 0 config into `/config`.
+`nuxeo-agentic-ui-package/` — a Maven module producing an addon ZIP: the OSGi bundle, which carries
+our configuration defaults and the configuration servlet, and the built Angular app into
+`/web/nuxeo.war/agentic-ui`.
 
 The interesting engineering detail, and it is worth reading aloud from
 `nuxeo-agentic-ui-package/src/main/resources/install.xml`:
 
 - the app bundle is copied with `overwrite="true"` — replaced on every upgrade;
-- the config directory, a **sibling** path, receives only a **sample**, `bootstrap.example.json`.
-  The customer copies it to `bootstrap.json`, a file the package never installs, replaces or
-  deletes.
+- **no configuration file is installed at all.** Configuration is contributed by Marketplace
+  packages to the `org.nuxeo.agentic.ui.config` extension point and served at
+  `/nuxeo/agentic-ui-config/` (NXSAT-312). A customer's configuration is their own package, which
+  depends on ours, so nothing our installer copies can replace it.
 
-> **Updated 2026-10-07: rehearsed, and the earlier design failed (NXSAT-317).** Until NXSAT-317 the
-> package installed `bootstrap.json` itself with `overwrite="false"`, and this section said that
-> preserved customer edits. On a real server, upgrading after an edit **failed and left no version
-> installed** — `/nuxeo/agentic-ui/` 404. Fixed by shipping the sample instead, and rehearsed after
-> the fix: an edited `bootstrap.json` survives the upgrade from today's package and keeps being
-> served. Claim that, for `nuxeoctl mp-install`. The Admin Center path has not been rehearsed.
+> **History (NXSAT-317, superseded by NXSAT-312).** Until NXSAT-317 the package installed
+> `bootstrap.json` itself with `overwrite="false"`, and upgrading after an edit **failed and left no
+> version installed** — `/nuxeo/agentic-ui/` 404. NXSAT-317 shipped a sample instead; NXSAT-312
+> removed configuration files from the server altogether. The `review-guardrails` gate now fails on
+> any copy into `agentic-ui-config` and on any copy not declared `overwrite="true"`.
 
 ### The support boundary
 
@@ -247,12 +248,12 @@ adf-hx entirely — except `@alfresco/adf-extensions`, which they install as a p
 
 ## Part 3 — The four customer journeys
 
-| Journey                                                     | Layer                | Needs a build?   | Where it runs |
-| ----------------------------------------------------------- | -------------------- | ---------------- | ------------- |
-| Rebrand the shipped app                                     | 0 (file)             | **No**           | `:4200`       |
-| Reconfigure the shipped app — labels, nav, columns, actions | 0/1 (Nuxeo document) | **No**           | `:4200`       |
-| Add their own features to the shipped app                   | 2 (their library)    | Yes, their build | `:4310`       |
-| Build a UI from scratch on our platform                     | 2                    | Yes, their build | `:4310`       |
+| Journey                                                     | Layer                   | Needs a build?   | Where it runs |
+| ----------------------------------------------------------- | ----------------------- | ---------------- | ------------- |
+| Rebrand the shipped app                                     | 0 (bootstrap fragment)  | **No**           | `:4200`       |
+| Reconfigure the shipped app — labels, nav, columns, actions | 0/1 (manifest fragment) | **No**           | `:4200`       |
+| Add their own features to the shipped app                   | 2 (their library)       | Yes, their build | `:4310`       |
+| Build a UI from scratch on our platform                     | 2                       | Yes, their build | `:4310`       |
 
 **There are two Layer 0 stores and conflating them is the most likely thing to trip you up:**
 
@@ -290,7 +291,7 @@ package would contribute it; anything left out keeps its compiled default:
   "branding": {
     "applicationTitle": "Acme Content Cloud",
     "documentTitle": "Acme Content Cloud",
-    "logo": { "src": "acme-logo.svg", "alt": "Acme Content Cloud" }
+    "logo": { "src": "assets/acme-logo.svg", "alt": "Acme Content Cloud" }
   },
   "defaultThemeId": "acme",
   "themes": [
@@ -317,11 +318,11 @@ Then write it — gitignored, so nothing here can reach a commit:
 npm run config:dev -- --bootstrap /tmp/acme-bootstrap.json
 ```
 
-Put the prospect's logo at `apps/nuxeo-ui/public/agentic-ui-config/acme-logo.svg` — under
-`nx serve` that directory is served at `/agentic-ui-config/`. On a server the logo is an `<asset>`
-in the configuration package, served at `agentic-ui-config/assets/<name>`, and `src` names it as
-`assets/acme-logo.svg`. Like the configuration files, the logo is only picked up if it exists when
-`nx serve` starts.
+Put the prospect's logo at `apps/nuxeo-ui/public/agentic-ui-config/assets/acme-logo.svg` — under
+`nx serve` that directory is served at `/agentic-ui-config/`, so the logo is at the same path a
+server serves a package's `<asset>` at, `agentic-ui-config/assets/<name>`, and the fragment above
+goes into the configuration package unchanged. Like the configuration files, the logo is only
+picked up if it exists when `nx serve` starts.
 
 Hard-reload, open `/#/settings/themes`. The audience sees the **logo** in the header and on the
 login page, the **browser tab title** change, a fifth theme card "Acme Brand", and the purple
@@ -333,7 +334,7 @@ NXSAT-313; the favicon is not.
 The strongest version of this beat: point out that the JavaScript bundle is byte-identical before
 and after. It was verified by hashing `main-*.js` across a rebrand — `sha256` unchanged.
 
-Reset: `npm run config:dev` and delete `apps/nuxeo-ui/public/agentic-ui-config/acme-logo.svg`,
+Reset: `npm run config:dev` and delete `apps/nuxeo-ui/public/agentic-ui-config/assets/acme-logo.svg`,
 which is not gitignored. On a server, remove the configuration package.
 
 ### Beat 4 — Relabel the product (2 min)
@@ -786,17 +787,16 @@ No. Manifest visibility is presentation. Nuxeo's server-side permissions are the
 boundary, and they still apply. Demonstrate it — Beat 5.
 
 **"Does my customisation survive your upgrades?"**
-Two different deliberate mechanisms, and they are **not equally evidenced** — say which is which.
-The Nuxeo document is outside the filesystem the installer touches at all, so nothing can overwrite
-it. The branding file, `bootstrap.json`, is one the package never installs, replaces or deletes — it
-ships only a sample — and that was **rehearsed on a real server** for `nuxeoctl mp-install`: an
-edited file survives an upgrade and is still served (NXSAT-317, which also fixed the earlier design
-that broke the upgrade outright). Then show Beat 8, and say what it proves: the **npm** upgrade
-rehearsal, eight assertions across Layers 0-2, not the marketplace installer.
+Customisation lives in the customer's own Marketplace package, which depends on ours, and our
+`install.xml` replaces only the application bundle: it installs no configuration file, and the
+`review-guardrails` gate fails on any copy into `agentic-ui-config`. That is the design; say so.
+Then show Beat 8, and say what it proves: the **npm** upgrade rehearsal, eight assertions across
+Layers 0-2, not the marketplace installer.
 
 **"Can I change the logo?"**
-Yes, in `bootstrap.json` with no rebuild: `branding.logo` names an image beside the file, and it
-replaces the Satori marks in the header and on the login page. The favicon cannot be changed yet.
+Yes, in a bootstrap fragment with no rebuild: `branding.logo` names an `<asset>` the configuration
+package contributes, served at `agentic-ui-config/assets/<name>`, and it replaces the Satori marks
+in the header and on the login page. The favicon cannot be changed yet.
 
 **"Is this adf-hx or your own UI?"**
 Both, deliberately. Six upstream components render real adf-hx surfaces; the surrounding chrome is
@@ -828,9 +828,9 @@ renders upstream's read-only properties panel either; metadata is on the documen
 | #       | What                                                                                                               | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **F0**  | **The customer extension on** `:4200`                                                                              | `nuxeo-ui` never registers `acme.`*. No manifest can add it — Layer 1 only addresses IDs that code registered. Layer 2 lives on `:4310`.                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| **F1**  | ~~**A logo change**~~ — **withdrawn 2026-10-06, it is demoable**                                                   | NXSAT-313 added `branding.logo` to `AppBrandingConfig`: a file beside `bootstrap.json` replaces the Satori marks in the header and on the login page, with no rebuild. See Beat 3. The **favicon** still has no key and remains out of scope.                                                                                                                                                                                                                                                                                                                |
+| **F1**  | ~~**A logo change**~~ — **withdrawn 2026-10-06, it is demoable**                                                   | NXSAT-313 added `branding.logo` to `AppBrandingConfig`: an image the configuration package contributes replaces the Satori marks in the header and on the login page, with no rebuild. See Beat 3. The **favicon** still has no key and remains out of scope.                                                                                                                                                                                                                                                                                                |
 | **F2**  | `applicationTitle` **in the header**                                                                               | The route label wins. With the brand set, `/#/browse` still reads "Browse". It only surfaces on a route no nav entry matches. Demo `documentTitle` — the browser tab — which changes everywhere.                                                                                                                                                                                                                                                                                                                                                             |
-| **F3**  | **Branding via the Nuxeo document**                                                                                | Two separate stores. Branding is the `bootstrap.json` file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **F3**  | **Branding in a manifest fragment**                                                                                | Two separate layers. Branding is a `bootstrap` fragment; `runtime-manifest.ts` has no `branding` key.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | **F4**  | `overrides` **with** `hiddenByDefault` **/** `sortable` **/** `field`                                              | Silently dropped; `overrides` honours only `order`, `label`, `rule`, `visible`. Use `slots.documentList`. The doc example was wrong and is now fixed.                                                                                                                                                                                                                                                                                                                                                                                                        |
 | **F5**  | ~~`labels` **to rename nav entries**~~ — **withdrawn 2026-09-26, it is demoable**                                  | This entry was wrong. Descriptors carry `labelKey`, the rail (`app-shell.component.html:25`) and the drawer (`nav-drawer.component.html:10`) both resolve it, and the manifest's `labels` layer last over the catalogue (`app-translate-loader.ts:220`). So `labels["nav.item.<slug>"]` renames a nav entry, with the same text in every locale; per-language wording is not configurable. `overrides.<id>.label` bypasses the key and wins when both are set.                                                                                               |
 | **F6**  | ~~`toolbar`**,** `contextMenu`**,** `tabs`**,** `routes` **slots**~~ — **withdrawn 2026-09-26, all four are live** | This entry was wrong, and `docs/demo-deck-claims.md` recorded it as withdrawn while this row still told presenters the opposite. All four are registered (`provide-app-extensions.ts:104-106`) and consumed: `toolbar` at `document-detail.html:156`, `tabs` at `document-detail.ts:397`, `contextMenu` at `browse.ts:469-471`, and `routes` through `provideExtensionRoutes()` (`provide-app-extensions.ts:218`), which calls `router.resetConfig` at `extension-routes.ts:112`. Re-checked against those lines on 2026-09-26.                              |

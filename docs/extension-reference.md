@@ -136,7 +136,8 @@ and `manifest` are applied after every package's fragments. The choice is rememb
 the preset in force. **Nothing happens unless a package sets `presetSwitching: true`**: on any
 other server the parameter and the stored choice are both ignored, and the diagnostics and the browser console say so. A
 later fragment's `presetSwitching` wins, so a customer package can switch it off. A preset name
-is letters, digits, `.`, `_` and `-`; an unknown one is reported and forgotten.
+is up to 64 letters, digits, `.`, `_` and `-`, starting with a letter or digit; a preset whose
+name breaks that rule is skipped, and an unknown name is reported and forgotten.
 
 Presets are package content, served anonymously like every fragment. Switching chooses among them
 for one browser; it grants nothing and changes nothing on the server.
