@@ -37,7 +37,13 @@ function fileExists(path) {
 }
 
 function read(path) {
-  return readFileSync(join(repoRoot, path), 'utf8');
+  // Normalise CRLF line endings only (`\r\n` → `\n`), repository-wide, so workflow matchers see
+  // Unix line ends on Windows checkouts. Do not strip every `\r`: that can remove raw carriage
+  // returns inside JSON string values and turn a runtime `JSON.parse` failure into a pass here.
+  // Catalogues are validated in `checkTranslationCatalogues`, which reads through this helper and
+  // fails on `JSON.parse` — illegal control characters inside strings stay invalid; `\r` as JSON
+  // whitespace between tokens remains legal.
+  return readFileSync(join(repoRoot, path), 'utf8').replace(/\r\n/g, '\n');
 }
 
 function toPosixRel(rel) {
@@ -3115,6 +3121,27 @@ function checkAccessibleNameFallbacks() {
     .split('\n')
     .filter((file) => /^(libs|apps)\/.+\.html$/.test(file));
 
+  /** @type {Map<string, string> | null} */
+  let templateOwnerByHtmlPath = null;
+  function componentTsForTemplate(template) {
+    const sibling = template.replace(/\.html$/, '.ts');
+    if (fileExists(sibling)) return sibling;
+    if (!templateOwnerByHtmlPath) {
+      templateOwnerByHtmlPath = new Map();
+      const tsPredicate = (path) => path.endsWith('.ts');
+      const tsFiles = [...walk('apps', tsPredicate), ...walk('libs', tsPredicate)];
+      const templateUrlRe = /\btemplateUrl\s*:\s*['"](\.\/)?([^'"]+\.html)['"]/g;
+      for (const ownerTs of tsFiles) {
+        const dir = dirname(ownerTs).replace(/\\/g, '/');
+        for (const match of read(ownerTs).matchAll(templateUrlRe)) {
+          const htmlPath = `${dir}/${match[2]}`.replace(/\/+/g, '/');
+          templateOwnerByHtmlPath.set(htmlPath, ownerTs);
+        }
+      }
+    }
+    return templateOwnerByHtmlPath.get(template) ?? null;
+  }
+
   // `[attr.aria-label]`, `[aria-label]`, `[attr.title]`, `[title]` and `[placeholder]` bound to a
   // single translate-piped literal key, plus visible `<label>` text using the same interpolation
   // shape (NXENG-798 moved global search naming off placeholder). A ternary or a concatenation is
@@ -3139,6 +3166,11 @@ function checkAccessibleNameFallbacks() {
   const BINDING =
     /\[(?:attr\.)?(aria-label|title|placeholder)\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
+  // `[attr.aria-label]="someMethod() | translate"` (and matTooltip / placeholder) — keys live in the
+  // component `.ts` return union and top-level return expressions, not every string in the body.
+  const METHOD_BINDING =
+    /\[(?:matTooltip|(?:attr\.)?(?:aria-label|title|placeholder))\]="\s*(\w+)\(\)\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
+
   // NXENG-798: global search names via a visible `<label>`, not `[placeholder]`. Only this control
   // is wired here — a repo-wide `<label>{{ … | translate }}</label>` scan would surface dozens of
   // pre-existing catalogue keys that never passed through the attribute binding pattern.
@@ -3153,6 +3185,9 @@ function checkAccessibleNameFallbacks() {
   const offences = new Map();
   /** Keys in OUR shape that no catalogue defines — a typo renders as the raw key. */
   const undefinedKeys = new Map();
+  /** Method-bound names the extractor could not fully resolve — must not pass silently. */
+  /** @type {Map<string, { attribute: string, sites: string[], partial: boolean }>} */
+  const unresolvedMethodBindings = new Map();
   let bindings = 0;
 
   /**
@@ -3161,6 +3196,232 @@ function checkAccessibleNameFallbacks() {
    * tell "an untranslated upstream key leaked" from "one of ours is missing".
    */
   const isUpstreamShaped = (key) => /^[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+$/.test(key);
+
+  /**
+   * Translation keys a method may return, and whether every return branch was statically resolved.
+   * @returns {{ keys: string[], partial: boolean }}
+   */
+  function translationKeysReturnedByMethod(tsSource, methodName) {
+    const sourceFile = ts.createSourceFile(
+      'component.ts',
+      tsSource,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const keys = new Set();
+    let partialReturn = false;
+    const keyShape = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
+
+    /** @type {Map<string, { keys: Set<string>, fullyResolved: boolean }>} */
+    function forkScope(parent) {
+      return new Map(parent);
+    }
+
+    function addResolvableKeysFromExpression(expr, target, locals) {
+      if (!expr) return;
+      if (ts.isParenthesizedExpression(expr)) {
+        addResolvableKeysFromExpression(expr.expression, target, locals);
+        return;
+      }
+      if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) {
+        target.add(expr.text);
+        return;
+      }
+      if (ts.isIdentifier(expr)) {
+        locals.get(expr.text)?.keys.forEach((key) => target.add(key));
+        return;
+      }
+      if (ts.isConditionalExpression(expr)) {
+        addResolvableKeysFromExpression(expr.whenTrue, target, locals);
+        addResolvableKeysFromExpression(expr.whenFalse, target, locals);
+      }
+    }
+
+    function initializerFullyResolved(expr, scope) {
+      if (!expr) return false;
+      if (ts.isParenthesizedExpression(expr)) return initializerFullyResolved(expr.expression, scope);
+      if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
+      if (ts.isConditionalExpression(expr)) {
+        return (
+          initializerFullyResolved(expr.whenTrue, scope) &&
+          initializerFullyResolved(expr.whenFalse, scope)
+        );
+      }
+      if (ts.isIdentifier(expr)) {
+        return scope.get(expr.text)?.fullyResolved === true;
+      }
+      return false;
+    }
+
+    function expressionFullyResolved(expr, scope) {
+      if (!expr) return false;
+      if (ts.isParenthesizedExpression(expr)) return expressionFullyResolved(expr.expression, scope);
+      if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
+      if (ts.isConditionalExpression(expr)) {
+        return (
+          expressionFullyResolved(expr.whenTrue, scope) &&
+          expressionFullyResolved(expr.whenFalse, scope)
+        );
+      }
+      if (ts.isIdentifier(expr)) {
+        return scope.get(expr.text)?.fullyResolved === true;
+      }
+      return false;
+    }
+
+    function collectKeysFromReturnExpression(expr, scope) {
+      if (!expr) return;
+      if (ts.isIdentifier(expr)) {
+        scope.get(expr.text)?.keys.forEach((key) => keys.add(key));
+        return;
+      }
+      addResolvableKeysFromExpression(expr, keys, scope);
+    }
+
+    function bindConstDeclaration(scope, decl) {
+      if (!ts.isIdentifier(decl.name) || !decl.initializer) return;
+      const found = new Set();
+      addResolvableKeysFromExpression(decl.initializer, found, scope);
+      if (found.size) {
+        scope.set(decl.name.text, {
+          keys: found,
+          fullyResolved: initializerFullyResolved(decl.initializer, scope),
+        });
+      }
+    }
+
+    function statementsOf(node) {
+      return ts.isBlock(node) ? node.statements : [node];
+    }
+
+    function walkScopedStatements(statements, scope) {
+      for (const stmt of statements) {
+        if (ts.isVariableStatement(stmt) && (stmt.declarationList.flags & ts.NodeFlags.Const) !== 0) {
+          for (const decl of stmt.declarationList.declarations) bindConstDeclaration(scope, decl);
+        } else if (ts.isReturnStatement(stmt)) {
+          if (!expressionFullyResolved(stmt.expression, scope)) partialReturn = true;
+          collectKeysFromReturnExpression(stmt.expression, scope);
+        } else if (ts.isIfStatement(stmt)) {
+          walkScopedStatements(statementsOf(stmt.thenStatement), forkScope(scope));
+          if (stmt.elseStatement) {
+            walkScopedStatements(statementsOf(stmt.elseStatement), forkScope(scope));
+          }
+        } else if (ts.isSwitchStatement(stmt)) {
+          for (const clause of stmt.caseBlock.clauses) {
+            walkScopedStatements(clause.statements, forkScope(scope));
+          }
+        } else if (ts.isTryStatement(stmt)) {
+          walkScopedStatements(statementsOf(stmt.tryBlock), forkScope(scope));
+          if (stmt.catchClause?.block) {
+            walkScopedStatements(stmt.catchClause.block.statements, forkScope(scope));
+          }
+          if (stmt.finallyBlock) {
+            walkScopedStatements(statementsOf(stmt.finallyBlock), forkScope(scope));
+          }
+        } else if (ts.isBlock(stmt)) {
+          walkScopedStatements(stmt.statements, forkScope(scope));
+        } else {
+          visitReturnsInUnscoped(stmt, scope);
+        }
+      }
+    }
+
+    function visitReturnsInUnscoped(node, scope) {
+      if (ts.isReturnStatement(node)) {
+        if (!expressionFullyResolved(node.expression, scope)) partialReturn = true;
+        collectKeysFromReturnExpression(node.expression, scope);
+        return;
+      }
+      if (
+        ts.isFunctionDeclaration(node) ||
+        ts.isMethodDeclaration(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isArrowFunction(node) ||
+        ts.isGetAccessorDeclaration(node) ||
+        ts.isSetAccessorDeclaration(node)
+      ) {
+        return;
+      }
+      ts.forEachChild(node, (child) => visitReturnsInUnscoped(child, scope));
+    }
+
+    function collectUnionLiteralKeysFromType(typeNode) {
+      function visit(node) {
+        if (ts.isLiteralTypeNode(node) && ts.isStringLiteral(node.literal)) {
+          if (keyShape.test(node.literal.text)) keys.add(node.literal.text);
+        } else {
+          ts.forEachChild(node, visit);
+        }
+      }
+      if (typeNode) visit(typeNode);
+    }
+
+    function blockOrStatementReturns(node) {
+      if (ts.isBlock(node)) {
+        let reachable = true;
+        for (const stmt of node.statements) {
+          if (!reachable) break;
+          if (statementAlwaysReturns(stmt)) return true;
+          if (ts.isIfStatement(stmt) && !stmt.elseStatement) {
+            // A guarded return still allows fall-through after the `if`.
+            continue;
+          }
+        }
+        return false;
+      }
+      return statementAlwaysReturns(node);
+    }
+
+    function statementAlwaysReturns(stmt) {
+      if (ts.isReturnStatement(stmt) || ts.isThrowStatement(stmt)) return true;
+      if (ts.isIfStatement(stmt)) {
+        const thenReturns = blockOrStatementReturns(stmt.thenStatement);
+        const elseReturns = stmt.elseStatement
+          ? blockOrStatementReturns(stmt.elseStatement)
+          : false;
+        return thenReturns && elseReturns;
+      }
+      return false;
+    }
+
+    function methodBodyAlwaysReturns(body) {
+      if (!ts.isBlock(body)) return true;
+      return blockOrStatementReturns(body);
+    }
+
+    function collectReturnLiteralKeys(body) {
+      if (!body) return;
+      if (!ts.isBlock(body)) {
+        const scope = new Map();
+        if (!expressionFullyResolved(body, scope)) partialReturn = true;
+        collectKeysFromReturnExpression(body, scope);
+        return;
+      }
+      walkScopedStatements(body.statements, new Map());
+    }
+
+    function visit(node) {
+      const isNamedMethod =
+        (ts.isMethodDeclaration(node) || ts.isGetAccessorDeclaration(node)) &&
+        node.name &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === methodName;
+      if (isNamedMethod) {
+        if (node.type) collectUnionLiteralKeysFromType(node.type);
+        if (node.body) {
+          collectReturnLiteralKeys(node.body);
+          if (ts.isBlock(node.body) && !methodBodyAlwaysReturns(node.body)) {
+            partialReturn = true;
+          }
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+
+    visit(sourceFile);
+    return { keys: [...keys], partial: partialReturn };
+  }
 
   function recordBinding(template, attribute, key) {
     bindings += 1;
@@ -3184,8 +3445,40 @@ function checkAccessibleNameFallbacks() {
 
   for (const template of templates) {
     if (!fileExists(template)) continue;
-    for (const [, attribute, key] of read(template).matchAll(BINDING)) {
+    const html = read(template);
+    for (const [, attribute, key] of html.matchAll(BINDING)) {
       recordBinding(template, attribute, key);
+    }
+    const methodBindings = [...html.matchAll(METHOD_BINDING)];
+    if (methodBindings.length === 0) continue;
+    const tsPath = componentTsForTemplate(template);
+    if (!tsPath) {
+      for (const [, methodName] of methodBindings) {
+        const attr = `${methodName}()`;
+        if (!unresolvedMethodBindings.has(attr)) {
+          unresolvedMethodBindings.set(attr, { attribute: attr, sites: [], partial: false });
+        }
+        unresolvedMethodBindings.get(attr).sites.push(template);
+      }
+      continue;
+    }
+    const tsSource = read(tsPath);
+    for (const [, methodName] of methodBindings) {
+      const { keys: methodKeys, partial } = translationKeysReturnedByMethod(
+        tsSource,
+        methodName,
+      );
+      if (partial || methodKeys.length === 0) {
+        const attr = `${methodName}()`;
+        if (!unresolvedMethodBindings.has(attr)) {
+          unresolvedMethodBindings.set(attr, { attribute: attr, sites: [], partial });
+        }
+        unresolvedMethodBindings.get(attr).sites.push(template);
+        continue;
+      }
+      for (const key of methodKeys) {
+        recordBinding(template, `${methodName}()`, key);
+      }
     }
   }
 
@@ -3207,6 +3500,30 @@ function checkAccessibleNameFallbacks() {
         `control \`${key}\` — the WCAG 4.1.2 failure this gate exists to stop. Either add it to ` +
         `${catalogueFile} with its fallback and context, or fix the spelling.`,
     );
+  }
+
+  for (const [methodAttr, { sites, partial }] of unresolvedMethodBindings) {
+    const where =
+      sites.length === 1
+        ? sites[0]
+        : `${[...new Set(sites)].join(', ')} (${sites.length} bindings)`;
+    if (partial) {
+      fail(
+        `${where} binds an accessible name to \`${methodAttr}\`, but at least one control-flow ` +
+          'path does not return a resolvable catalogue key (for example a call or ternary arm this ' +
+          'gate cannot read, or an `if` without a matching `else`/`return` so the method can ' +
+          'fall through). Recording only the resolved literals would miss fallbacks for other ' +
+          'paths. Bind a literal key, return only resolvable literals/ternaries on every path, or ' +
+          'extend translationKeysReturnedByMethod.',
+      );
+    } else {
+      fail(
+        `${where} binds an accessible name to \`${methodAttr}\`, but this gate could not resolve ` +
+          'any translation keys from that method declaration. A silent pass would miss missing ' +
+          'EN_FALLBACK_TRANSLATIONS entries when other templates still carry literal bindings. ' +
+          'Bind a literal key, simplify the return shape, or extend translationKeysReturnedByMethod.',
+      );
+    }
   }
 
   for (const [key, { attribute, sites }] of offences) {

@@ -249,6 +249,27 @@ expectRed(
   /has no trailing newline/,
 );
 
+expectRed(
+  'a catalogue with a raw carriage return inside a JSON string value',
+  'checkTranslationCatalogues',
+  APP,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/public/i18n/en.json',
+      '{\n  "app": { "title": "Hyland' + '\r' + ' Nuxeo" }\n}\n',
+    ),
+  /is not valid JSON/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a catalogue with carriage return as JSON whitespace between tokens', 'checkTranslationCatalogues', {
+  'apps/nuxeo-ui/public/i18n/en.json':
+    '{\r "app": { "title": "Hyland Nuxeo", "nav": { "toggle": "Toggle navigation menu" } }, ' +
+    '"settings": { "themes": { "search": "Search themes" } } }\n',
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html': GOOD_TEMPLATE,
+});
+
 expectWarn(
   'locale missing a key the reference has — warns, because English is the fallback',
   'checkTranslationCatalogues',
@@ -4162,6 +4183,361 @@ expectGreen(
   {
     ...APP,
     'apps/nuxeo-ui/src/app/shell/app-shell.component.html': `<button type="button" [attr.aria-label]="'DOCUMENT_TREE.TOGGLE_ARIA-LABEL' | translate"></button>\n`,
+  },
+);
+
+/**
+ * `[attr.aria-label]="panelLabelKey() | translate"` — keys come from the method body, not from an
+ * earlier call site. `indexOf(\`\${methodName}(\`)` used to anchor on the call in `refreshLabel()`,
+ * miss the declaration's return literals, and let a missing fallback slip through.
+ */
+const METHOD_BINDING_CATALOGUE = `{
+  "x": { "panel": { "hide": "Hide panel", "show": "Show panel" } }
+}
+`;
+const METHOD_BINDING_FALLBACK = `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'x.panel.hide': 'Hide panel',
+  'x.panel.show': 'Show panel',
+};
+`;
+const METHOD_BINDING_TS = `export class XComponent {
+  refreshLabel(): string {
+    return this.panelLabelKey();
+  }
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+const METHOD_BINDING_HTML =
+  `<button type="button" [attr.aria-label]="panelLabelKey() | translate"></button>\n`;
+const METHOD_BINDING_APP = {
+  'apps/nuxeo-ui/public/i18n/en.json': METHOD_BINDING_CATALOGUE,
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': METHOD_BINDING_FALLBACK,
+  'libs/features/x/src/lib/x.html': METHOD_BINDING_HTML,
+  'libs/features/x/src/lib/x.ts': METHOD_BINDING_TS,
+};
+
+expectRed(
+  'a method-bound accessible name whose keys are missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  METHOD_BINDING_APP,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a method-bound accessible name with an earlier call site still reads the declaration',
+  'checkAccessibleNameFallbacks',
+  METHOD_BINDING_APP,
+);
+
+const METHOD_PLACEHOLDER_HTML =
+  `<input [placeholder]="inputLabelKey() | translate" />\n`;
+const METHOD_PLACEHOLDER_TS = `export class XComponent {
+  inputLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound placeholder whose keys are missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.html': METHOD_PLACEHOLDER_HTML,
+    'libs/features/x/src/lib/x.ts': METHOD_PLACEHOLDER_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds inputLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const METHOD_DEBUG_LITERAL_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    console.log('x.panel.debug-only');
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+falsePositiveControls += 1;
+expectGreen(
+  'a method-bound name ignores debug string literals nested in the method body',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_DEBUG_LITERAL_TS,
+  },
+);
+
+const METHOD_IF_RETURN_TS = `export class XComponent {
+  panelLabelKey(): string {
+    if (this.open) {
+      return 'x.panel.hide';
+    }
+    return 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound name whose keys are returned through nested control flow',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_IF_RETURN_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const METHOD_LOCAL_VAR_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    const key = this.open ? 'x.panel.hide' : 'x.panel.show';
+    return key;
+  }
+}
+`;
+falsePositiveControls += 1;
+expectGreen(
+  'a method-bound name returned through a local const still resolves its keys',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_LOCAL_VAR_TS,
+  },
+);
+
+const METHOD_CONST_CHAIN_TS = `export class XComponent {
+  panelLabelKey(): string {
+    const hide = 'x.panel.hide';
+    const key = this.open ? hide : 'x.panel.show';
+    return key;
+  }
+}
+`;
+expectRed(
+  'a method-bound name whose const chain omits a key from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_CONST_CHAIN_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.hide': 'Hide panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.hide`.*omits/s,
+);
+
+const METHOD_LET_REASSIGN_TS = `export class XComponent {
+  panelLabelKey(): string {
+    let key = 'x.panel.hide';
+    key = 'x.panel.show';
+    return key;
+  }
+}
+`;
+expectRed(
+  'a method-bound name that reassigns a let before returning',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_LET_REASSIGN_TS,
+  },
+  null,
+  /panelLabelKey\(\).*(control-flow path does not return a resolvable|could not resolve any translation keys from that method declaration)/s,
+);
+
+const METHOD_SHADOW_TS = `export class XComponent {
+  panelLabelKey(): string {
+    const key = 'x.panel.hide';
+    if (this.open) {
+      const key = 'x.panel.show';
+      return key;
+    }
+    return key;
+  }
+}
+`;
+expectRed(
+  'a method-bound name whose nested const shadows an outer key',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_SHADOW_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const METHOD_HOST_SPEC_TS = `import { Component } from '@angular/core';
+@Component({ standalone: true, templateUrl: './widget.host.html' })
+export class WidgetHostSpec {
+  open = false;
+  panelLabelKey(): string {
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound name on a host template resolved through templateUrl',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/widget.host.html': METHOD_BINDING_HTML,
+    'libs/features/x/src/lib/widget.spec.ts': METHOD_HOST_SPEC_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+expectRed(
+  'a method-bound name with no resolvable component TypeScript owner',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/orphan.host.html': METHOD_BINDING_HTML,
+  },
+  null,
+  /panelLabelKey\(\).*could not resolve any translation keys from that method declaration/s,
+);
+
+const METHOD_UNRESOLVABLE_TS = `export class XComponent {
+  panelLabelKey(): string {
+    return this.pickKey();
+  }
+  pickKey(): string {
+    return 'x.panel.hide';
+  }
+}
+`;
+const METHOD_UNRESOLVABLE_HTML =
+  `<button type="button" [attr.aria-label]="'app.nav.toggle' | translate"></button>\n` +
+  METHOD_BINDING_HTML;
+expectRed(
+  'a method-bound name the extractor cannot resolve while other bindings exist',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': `{
+  "app": { "nav": { "toggle": "Toggle navigation menu" } },
+  "x": { "panel": { "hide": "Hide panel", "show": "Show panel" } }
+}
+`,
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'app.nav.toggle': 'Toggle navigation menu',
+  'x.panel.hide': 'Hide panel',
+  'x.panel.show': 'Show panel',
+};
+`,
+    'libs/features/x/src/lib/x.html': METHOD_UNRESOLVABLE_HTML,
+    'libs/features/x/src/lib/x.ts': METHOD_UNRESOLVABLE_TS,
+  },
+  null,
+  /panelLabelKey\(\).*(control-flow path does not return a resolvable|could not resolve any translation keys from that method declaration)/s,
+);
+
+const METHOD_PARTIAL_RETURN_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    return this.open ? 'x.panel.hide' : this.pickKey();
+  }
+  pickKey(): string {
+    return 'x.panel.show';
+  }
+}
+`;
+const METHOD_FALLTHROUGH_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    if (this.open) return 'x.panel.hide';
+  }
+}
+`;
+expectRed(
+  'a method-bound name with an implicit fall-through after a guarded return',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_FALLTHROUGH_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /panelLabelKey\(\).*fall through/s,
+);
+
+expectRed(
+  'a method-bound name with a partially resolved return ternary',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': `{
+  "app": { "nav": { "toggle": "Toggle navigation menu" } },
+  "x": { "panel": { "hide": "Hide panel", "show": "Show panel" } }
+}
+`,
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'app.nav.toggle': 'Toggle navigation menu',
+  'x.panel.hide': 'Hide panel',
+  'x.panel.show': 'Show panel',
+};
+`,
+    'libs/features/x/src/lib/x.html': METHOD_UNRESOLVABLE_HTML,
+    'libs/features/x/src/lib/x.ts': METHOD_PARTIAL_RETURN_TS,
+  },
+  null,
+  /panelLabelKey\(\).*control-flow path does not return a resolvable/s,
+);
+
+const METHOD_PARAM_HTML =
+  `<button type="button" [attr.aria-label]="panelLabelKey() | translate: { name: itemName() }"></button>\n`;
+expectRed(
+  'a parameterised method-bound accessible name whose keys are missing from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.html': METHOD_PARAM_HTML,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const PUSH_WORKFLOW_PATHS_AND_CONTEXT_STEP =
+  "on:\n  push:\n    paths:\n      - 'apps/*/public/i18n/en.json'\n" +
+  "      - 'apps/*/public/i18n/en.context.json'\n      - 'libs/**/i18n/en.context.json'\n" +
+  '    steps:\n      - run: node tools/i18n/crowdin-push-context.mjs\n';
+const CRLF_CONTEXT_PUSH_WORKFLOW = PUSH_WORKFLOW_PATHS_AND_CONTEXT_STEP.replace(/\n/g, '\r\n');
+falsePositiveControls += 1;
+expectGreen(
+  'a CRLF-checked-out push workflow still finds the context uploader step',
+  'checkTranslatorContextPush',
+  {
+    ...CONTEXT_PUSH,
+    '.github/workflows/crowdin-push.yaml': CRLF_CONTEXT_PUSH_WORKFLOW,
   },
 );
 
