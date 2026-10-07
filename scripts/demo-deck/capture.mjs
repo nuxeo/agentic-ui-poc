@@ -731,8 +731,10 @@ try {
     if (NEGATIVE_CONTROL === 'content' && shot === shots[0])
       expected = ['ThisStringIsNotOnAnyPage'];
 
+    // Both layers are file edits, so each is applied and withdrawn per shot rather than left in
+    // place: with --only, a shot must not inherit whatever the previous selected shot applied.
     if (shot.manifest) await applyManifest(shot.manifest);
-    // Branding is a file edit, so it is applied and withdrawn per shot rather than left in place.
+    else await restoreManifest();
     if (shot.bootstrap) await patchBootstrap(shot.bootstrap);
     else await restoreBootstrap();
     if (shot.signIn) await signInToTemplate(page);
