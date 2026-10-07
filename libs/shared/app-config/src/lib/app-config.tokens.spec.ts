@@ -39,6 +39,15 @@ describe('resolveManifestConfigUrl', () => {
     );
   });
 
+  it('drops a query or fragment on the bootstrap URL and keeps an absolute origin', () => {
+    expect(resolveManifestConfigUrl('/nuxeo/agentic-ui-config/bootstrap.json?v=2#x')).toBe(
+      '/nuxeo/agentic-ui-config/manifest.json',
+    );
+    expect(resolveManifestConfigUrl('https://cdn.example/cfg/bootstrap.json')).toBe(
+      'https://cdn.example/cfg/manifest.json',
+    );
+  });
+
   it('never points at a Nuxeo document', () => {
     expect(resolveManifestConfigUrl('/nuxeo/agentic-ui-config/bootstrap.json')).not.toContain(
       '/api/v1/',

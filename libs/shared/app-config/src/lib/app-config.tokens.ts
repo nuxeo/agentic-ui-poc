@@ -28,8 +28,8 @@ export function resolveBootstrapConfigUrl(baseUri: string): string {
 
 /** The manifest response, served beside the bootstrap one. */
 export function resolveManifestConfigUrl(bootstrapUrl: string): string {
-  const url = new URL(APP_MANIFEST_CONFIG_FILE, new URL(bootstrapUrl, 'http://config.invalid/'));
-  return url.pathname;
+  const path = bootstrapUrl.split(/[?#]/, 1)[0] ?? '';
+  return `${path.slice(0, path.lastIndexOf('/') + 1)}${APP_MANIFEST_CONFIG_FILE}`;
 }
 
 /**
