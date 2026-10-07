@@ -3192,19 +3192,23 @@ function checkAccessibleNameFallbacks() {
     /** @type {Map<string, { keys: Set<string>, fullyResolved: boolean }>} */
     let localVarKeys = new Map();
 
-    function addResolvableKeysFromExpression(expr, target) {
+    function addResolvableKeysFromExpression(expr, target, locals = localVarKeys) {
       if (!expr) return;
       if (ts.isParenthesizedExpression(expr)) {
-        addResolvableKeysFromExpression(expr.expression, target);
+        addResolvableKeysFromExpression(expr.expression, target, locals);
         return;
       }
       if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) {
         target.add(expr.text);
         return;
       }
+      if (ts.isIdentifier(expr)) {
+        locals.get(expr.text)?.keys.forEach((key) => target.add(key));
+        return;
+      }
       if (ts.isConditionalExpression(expr)) {
-        addResolvableKeysFromExpression(expr.whenTrue, target);
-        addResolvableKeysFromExpression(expr.whenFalse, target);
+        addResolvableKeysFromExpression(expr.whenTrue, target, locals);
+        addResolvableKeysFromExpression(expr.whenFalse, target, locals);
       }
     }
 
@@ -3252,10 +3256,11 @@ function checkAccessibleNameFallbacks() {
       }
       for (const stmt of body.statements) {
         if (!ts.isVariableStatement(stmt)) continue;
+        if ((stmt.declarationList.flags & ts.NodeFlags.Const) === 0) continue;
         for (const decl of stmt.declarationList.declarations) {
           if (ts.isIdentifier(decl.name) && decl.initializer) {
             const found = new Set();
-            addResolvableKeysFromExpression(decl.initializer, found);
+            addResolvableKeysFromExpression(decl.initializer, found, out);
             if (found.size) {
               out.set(decl.name.text, {
                 keys: found,

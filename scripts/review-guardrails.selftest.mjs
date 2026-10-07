@@ -4258,7 +4258,7 @@ expectGreen(
 );
 
 const METHOD_IF_RETURN_TS = `export class XComponent {
-  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+  panelLabelKey(): string {
     if (this.open) {
       return 'x.panel.hide';
     }
@@ -4296,6 +4296,48 @@ expectGreen(
     ...METHOD_BINDING_APP,
     'libs/features/x/src/lib/x.ts': METHOD_LOCAL_VAR_TS,
   },
+);
+
+const METHOD_CONST_CHAIN_TS = `export class XComponent {
+  panelLabelKey(): string {
+    const hide = 'x.panel.hide';
+    const key = this.open ? hide : 'x.panel.show';
+    return key;
+  }
+}
+`;
+expectRed(
+  'a method-bound name whose const chain omits a key from the fallback map',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_CONST_CHAIN_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.hide': 'Hide panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.hide`.*omits/s,
+);
+
+const METHOD_LET_REASSIGN_TS = `export class XComponent {
+  panelLabelKey(): string {
+    let key = 'x.panel.hide';
+    key = 'x.panel.show';
+    return key;
+  }
+}
+`;
+expectRed(
+  'a method-bound name that reassigns a let before returning',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_LET_REASSIGN_TS,
+  },
+  null,
+  /panelLabelKey\(\).*(control-flow path does not return a resolvable|could not resolve any translation keys from that method declaration)/s,
 );
 
 const METHOD_UNRESOLVABLE_TS = `export class XComponent {
