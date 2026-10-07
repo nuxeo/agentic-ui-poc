@@ -47,10 +47,14 @@ const read = (path) => {
 const envelopes = ['bootstrap', 'manifest'].map((layer) => {
   const defaults = join(DEFAULTS, `${layer}.defaults.json`);
   const fragments = [
-    { component: 'org.nuxeo.agentic.ui.config.defaults', path: defaults },
-    ...extra[layer].map((path) => ({ component: 'local.dev', path })),
-  ].map(({ component, path }) => ({
-    name: basename(path, '.json'),
+    { name: 'defaults', component: 'org.nuxeo.agentic.ui.config.defaults', path: defaults },
+    ...extra[layer].map((path) => ({
+      name: basename(path, '.json'),
+      component: 'local.dev',
+      path,
+    })),
+  ].map(({ name, component, path }) => ({
+    name,
     component,
     bundle: component,
     source: path.startsWith(ROOT) ? path.slice(ROOT.length + 1) : path,
