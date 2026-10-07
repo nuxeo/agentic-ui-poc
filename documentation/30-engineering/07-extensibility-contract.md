@@ -56,16 +56,18 @@ Live example: [`apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.js
 
 ### `branding.logo`
 
-`{ "src": "acme-logo.svg", "alt": "Acme Insurance" }` replaces the Satori word mark in the header
+`{ "src": "assets/acme-logo.svg", "alt": "Acme Insurance" }` replaces the Satori word mark in the header
 and the Satori lockup on the login page. `null` or absent keeps the Satori marks.
 
-- **`src`** is a file name or relative path resolved against the directory `bootstrap.json` is
-  served from — so a logo dropped beside it in `nxserver/nuxeo.war/agentic-ui-config/` survives
-  an upgrade exactly as the file does. An `https:` URL or a `data:image/` URI also works. Both
-  `<img>` elements carry `crossorigin="anonymous"`, so a remote logo is loaded without cookies
-  and a redirect from it to a Nuxeo URL cannot carry the session — which means an `https:` logo
-  only renders if its host sends `Access-Control-Allow-Origin`. A file beside `bootstrap.json` is
-  same-origin and unaffected.
+- **`src`** is a relative path resolved against the directory `bootstrap.json` is served from,
+  `/nuxeo/agentic-ui-config/`. The servlet serves images only under `assets/`, so a logo is
+  `assets/<name>`, backed by an `<asset>` the configuration package contributes and the file in
+  its bundle — `<asset name="acme-logo.svg" src="agentic-ui-config/assets/acme-logo.svg" />`.
+  Nothing placed on the server's disk is served. An `https:` URL or a
+  `data:image/` URI also works. Both `<img>` elements carry `crossorigin="anonymous"`, so a remote
+  logo is loaded without cookies and a redirect from it to a Nuxeo URL cannot carry the session —
+  which means an `https:` logo only renders if its host sends `Access-Control-Allow-Origin`. A
+  contributed asset is same-origin and unaffected.
 - **Every other form is rejected** and the Satori marks are kept. An `<img>` request bypasses the
   HTTP interceptor but still sends the session cookie, so a `src` that could name a Nuxeo REST
   endpoint is refused rather than left to fail. The deciding check runs on the **resolved** URL,
@@ -84,8 +86,7 @@ and the Satori lockup on the login page. `null` or absent keeps the Satori marks
   fragment, so it counts as none).
 - **`alt`** names the login page's brand link. Empty falls back to `applicationTitle`. The header
   logo is decorative (`alt=""`): the header is named by its heading.
-- A relative `src` names an `<asset>` the same configuration package contributes, served at
-  `/nuxeo/agentic-ui-config/assets/<name>` (NXSAT-312). The servlet path is outside every
+- Contributed assets are served at `/nuxeo/agentic-ui-config/assets/<name>` (NXSAT-312). The servlet path is outside every
   `NuxeoAuthenticationFilter` URL pattern, which is what lets the login page load the logo before
   sign-in; the NXSAT-312 rehearsal fetched a contributed SVG there anonymously, as `image/svg+xml`.
 

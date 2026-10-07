@@ -99,10 +99,12 @@ fragment is public.
 ### No migration from `bootstrap.json` or the Note
 
 The old mechanism — a `bootstrap.json` edited beside the bundle, and a manifest Note at
-`/default-domain/config/agentic-ui` — is **removed with no migration**. The server does not read,
-serve or report a file left in `nxserver/nuxeo.war/agentic-ui-config`, and the application never
-fetches the Note. Anyone using either must re-create their settings in a configuration package or
-a preset.
+`/default-domain/config/agentic-ui` — is **removed with no migration**, in two steps that ship
+together. The server side (NXSAT-312 slice 1) stops serving files from disk at once: a file left
+in `nxserver/nuxeo.war/agentic-ui-config` is not read, served or reported. The client side (slice 2) removes the Note: until it lands, the application still reads the Note at the compiled path and
+does not yet merge the server's contributed fragments, so it runs on its compiled defaults plus
+any Note. Anyone using either must re-create their settings in a configuration package or a
+preset.
 
 ### Why the package installs no file a customer edits (NXSAT-317)
 
@@ -166,7 +168,7 @@ Verify with `npm run beta:backend`.
 | `/nuxeo/agentic-ui-config/bootstrap.json` 404s                                                                | The servlet is not mapped: `nuxeo-agentic-core` not deployed, or `web.xml` not regenerated       | `nuxeoctl mp-list`; `nuxeo.war/WEB-INF/web.xml` must name "Agentic UI Configuration". Restart. See §2    |
 | Nuxeo will not start after a configuration package: `requires [service:org.nuxeo.agentic.ui.config.defaults]` | Our package is missing or older than NXSAT-312; strict mode aborts on the unresolved `<require>` | Install or upgrade `nuxeo-agentic-ui` first, or `mp-remove` the configuration package                    |
 | A contributed setting does nothing                                                                            | The fragment was rejected, or applied before ours because the component lacks the `<require>`    | Read `diagnostics` in the served response; add `<require>org.nuxeo.agentic.ui.config.defaults</require>` |
-| An edited `bootstrap.json` on the server, or the Note, has no effect                                          | Removed in NXSAT-312 with no migration                                                           | Re-create the settings in a configuration package or a preset. See §2                                    |
+| An edited `bootstrap.json` on the server has no effect                                                        | Removed in NXSAT-312 with no migration                                                           | Re-create the settings in a configuration package or a preset. See §2                                    |
 | Upgrade fails: `overwrite flag on false but destination file exists`                                          | A pre-NXSAT-317 package upgraded after `bootstrap.json` was edited                               | Move the file out of `nxserver`, `mp-install`, move it back. See §2                                      |
 | Marketplace build fails                                                                                       | Java/Maven version                                                                               | Java 17+, Maven 3.9+                                                                                     |
 
