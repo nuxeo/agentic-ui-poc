@@ -53,6 +53,17 @@ function titleCase(kebab: string): string {
  */
 export default async function configPackageGenerator(tree: Tree, options: ConfigPackageSchema) {
   const parentDirectory = options.directory ?? 'config-packages';
+  // Both paths go into the `build` target's command line unquoted, which is portable across
+  // shells only while they hold nothing a shell would split or interpret.
+  const segments = parentDirectory.split('/');
+  if (!segments.every((segment) => /^[A-Za-z0-9._-]+$/.test(segment) && !/^\.\.?$/.test(segment))) {
+    throw new Error(
+      `--directory "${parentDirectory}" must be a relative path of letters, digits, ".", "_" and "-" separated by "/".`,
+    );
+  }
+  if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(options.name)) {
+    throw new Error(`"${options.name}" must be kebab-case, e.g. acme-config.`);
+  }
   const name = names(options.name);
   const projectRoot = `${parentDirectory}/${name.fileName}`;
 

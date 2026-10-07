@@ -1,6 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://nuxeo.com/satori/schema/manifest.schema.json",
   "title": "Nuxeo Satori manifest fragment (Layer 1)",
   "description": "One manifest fragment of a configuration package: what the application shows, and in what order. Served without authentication. Hiding an action is not a security control — Nuxeo permissions still decide what each user may do. An unknown key is ignored by the application, so this schema refuses it to catch the typo.",
   "type": "object",

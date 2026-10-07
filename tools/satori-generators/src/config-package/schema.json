@@ -42,8 +42,9 @@
     },
     "directory": {
       "type": "string",
-      "description": "Parent directory for the package.",
-      "default": "config-packages"
+      "description": "Parent directory for the package: a relative path of letters, digits, '.', '_' and '-'. It goes into the build command unquoted.",
+      "default": "config-packages",
+      "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
     },
     "force": {
       "type": "boolean",

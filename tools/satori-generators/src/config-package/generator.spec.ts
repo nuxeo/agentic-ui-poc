@@ -99,6 +99,26 @@ describe('config-package generator', () => {
     expect(packageXml).toContain('<vendor>Acme &#34;Insurance&#34;</vendor>');
   });
 
+  it.each(['customer configs', '../outside', 'a;b', 'a/./b'])(
+    'refuses --directory "%s", which the build command cannot carry unquoted',
+    async (directory) => {
+      await expect(
+        configPackageGenerator(tree, { name: 'acme-config', owner: 'acme', directory }),
+      ).rejects.toThrow(/must be a relative path/);
+    },
+  );
+
+  it('accepts a nested --directory', async () => {
+    await configPackageGenerator(tree, {
+      name: 'acme-config',
+      owner: 'acme',
+      directory: 'customers/acme',
+    });
+    expect(readProjectConfiguration(tree, 'acme-config').targets?.['build']?.options?.command).toBe(
+      'node customers/acme/acme-config/build.mjs --out dist/customers/acme/acme-config',
+    );
+  });
+
   it('refuses to overwrite an existing package unless forced', async () => {
     await configPackageGenerator(tree, { name: 'acme-config', owner: 'acme' });
     await expect(
@@ -218,7 +238,83 @@ describe('the generated build.mjs', () => {
     write(fragment, JSON.stringify({ padding: 'x'.repeat(1024 * 1024) }));
     const { status, output } = build();
     expect(status).toBe(1);
-    expect(output).toMatch(/the server refuses a fragment over 1048576/);
+    expect(output).toMatch(/packaged as \d+ bytes; the server refuses a fragment over 1048576/);
+  });
+
+  it('measures the limit on what is packaged, not on the source', async () => {
+    await generate();
+    // Over 1 MiB as written, well under once packaged compact — what the server reads.
+    const spaced = `{\n${' '.repeat(1024 * 1024)}"branding": { "applicationTitle": "Acme" }\n}`;
+    write(fragment, spaced);
+    expect(build().status).toBe(0);
+  });
+
+  it.each([
+    ['single quotes', `<asset name='logo.svg' src='agentic-ui-config/assets/logo.svg' />`],
+    ['spaces around =', `<asset name = "logo.svg" src = "agentic-ui-config/assets/logo.svg" />`],
+  ])('reads attributes written with %s', async (_case, element) => {
+    await generate();
+    const xml = readFileSync(join(dir, componentXml), 'utf8');
+    write(componentXml, xml.replace('</extension>', `${element}\n  </extension>`));
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toContain('src="agentic-ui-config/assets/logo.svg" names no file in bundle/');
+  });
+
+  it('finds the extension target however it is quoted', async () => {
+    await generate();
+    const xml = readFileSync(join(dir, componentXml), 'utf8')
+      .replace(/<require>[^<]*<\/require>/, '')
+      .replace('target="org.nuxeo.agentic.ui.config"', "target = 'org.nuxeo.agentic.ui.config'");
+    write(componentXml, xml);
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toMatch(/must <require>org\.nuxeo\.agentic\.ui\.config\.defaults<\/require>/);
+  });
+
+  describe('an asset', () => {
+    const withAsset = async (name: string, bytes: number) => {
+      await generate();
+      writeFileSync(join(dir, 'bundle/agentic-ui-config/assets', name), Buffer.alloc(bytes, 0x20));
+      const xml = readFileSync(join(dir, componentXml), 'utf8');
+      write(
+        componentXml,
+        xml.replace(
+          '</extension>',
+          `<asset name="${name}" src="agentic-ui-config/assets/${name}" />\n  </extension>`,
+        ),
+      );
+      return build();
+    };
+
+    it('is accepted as a plain image file name', async () => {
+      expect((await withAsset('acme-logo.svg', 100)).status).toBe(0);
+    });
+
+    it('is refused when its name is not an image file name, as the server would', async () => {
+      const { status, output } = await withAsset('logo.html', 100);
+      expect(status).toBe(1);
+      expect(output).toMatch(/asset name "logo\.html" must be a plain file name ending in \.svg/);
+    });
+
+    it('is refused over the server’s 2 MiB limit', async () => {
+      const { status, output } = await withAsset('big.png', 2 * 1024 * 1024 + 1);
+      expect(status).toBe(1);
+      expect(output).toMatch(/2097153 bytes; the server refuses an asset over 2097152/);
+    });
+
+    it('is not checked when disabled, since it has no body', async () => {
+      await generate();
+      const xml = readFileSync(join(dir, componentXml), 'utf8');
+      write(
+        componentXml,
+        xml.replace(
+          '</extension>',
+          '<asset name="old.html" src="gone" enabled="false" />\n  </extension>',
+        ),
+      );
+      expect(build().status).toBe(0);
+    });
   });
 
   it('refuses a component that does not require Satori’s defaults', async () => {

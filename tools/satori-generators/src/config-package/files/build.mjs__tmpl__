@@ -8,15 +8,17 @@
  * 20 does. The output is byte-for-byte reproducible — fixed timestamps, sorted entries — so the
  * same reviewed source always produces the same artifact.
  *
- * Refused, each with the file and the reason:
- *   - a JSON file that does not parse, is not an object, repeats a key, or exceeds 1 MiB — the
- *     server would leave that fragment out and report it, and the change would silently not apply;
+ * Refused, each with the file and the reason — every one is something the server would leave out
+ * and report, so the change would silently not apply:
+ *   - a JSON file that does not parse, is not an object, repeats a key, or is packaged over 1 MiB;
  *   - a `src` in the component XML that names no file in `bundle/`;
- *   - a component XML without `<require>org.nuxeo.agentic.ui.config.defaults</require>`, without
- *     which this package's fragments could register before Satori's own and lose to them.
+ *   - an `<asset>` whose name is not a plain image file name, or whose file exceeds 2 MiB;
+ *   - a component contributing configuration without
+ *     `<require>org.nuxeo.agentic.ui.config.defaults</require>`, without which this package's
+ *     fragments could register before Satori's own and lose to them.
  *
- * Packaged: everything under `bundle/` except Markdown files, with a top-level `"$schema"` key
- * removed from each JSON file (it is for your editor, not the server).
+ * Packaged: everything under `bundle/` except Markdown files. Each JSON file is packaged compact,
+ * with a top-level `"$schema"` key removed (it is for your editor, not the server).
  */
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -26,7 +28,12 @@ import { deflateRawSync } from 'node:zlib';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BUNDLE = join(HERE, 'bundle');
+// The server's limits and asset-name rule: `ConfigSnapshot` and `ContributionRegistry` in
+// nuxeo-agentic-core.
 const MAX_FRAGMENT_BYTES = 1024 * 1024;
+const MAX_ASSET_BYTES = 2 * 1024 * 1024;
+const ASSET_NAME =
+  /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}(?:\.[A-Za-z0-9_-]{1,32}){0,3}\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/i;
 const DEFAULTS_COMPONENT = 'org.nuxeo.agentic.ui.config.defaults';
 
 const outIndex = process.argv.indexOf('--out');
@@ -114,13 +121,17 @@ function withoutComments(xml) {
   }
 }
 
-function checkJson(file) {
-  const bytes = readFileSync(file);
-  if (bytes.length > MAX_FRAGMENT_BYTES) {
-    problem(file, `${bytes.length} bytes; the server refuses a fragment over ${MAX_FRAGMENT_BYTES}`);
-    return null;
+/** Every `name="value"` or `name='value'` attribute of one start tag. */
+function attributes(tag) {
+  const found = {};
+  for (const [, name, , double, single] of tag.matchAll(/([\w:.-]+)\s*=\s*("([^"]*)"|'([^']*)')/g)) {
+    found[name] = double ?? single;
   }
-  const text = bytes.toString('utf8');
+  return found;
+}
+
+function checkJson(file) {
+  const text = readFileSync(file, 'utf8');
   let parsed;
   try {
     parsed = JSON.parse(text);
@@ -134,17 +145,25 @@ function checkJson(file) {
     return null;
   }
   delete parsed.$schema;
-  return Buffer.from(`${JSON.stringify(parsed, null, 2)}\n`);
+  // The limit applies to what is packaged, which is what the server reads.
+  const packaged = Buffer.from(JSON.stringify(parsed));
+  if (packaged.length > MAX_FRAGMENT_BYTES) {
+    problem(
+      file,
+      `packaged as ${packaged.length} bytes; the server refuses a fragment over ${MAX_FRAGMENT_BYTES}`,
+    );
+    return null;
+  }
+  return packaged;
 }
 
 // ------------------------------------------------------------------ package.xml
 
 const packageXmlFile = join(HERE, 'package', 'package.xml');
 const packageXml = readFileSync(packageXmlFile, 'utf8');
-const packageTag = /<package\b[^>]*>/.exec(packageXml)?.[0] ?? '';
-const attribute = (tag, name) => new RegExp(`\\b${name}="([^"]*)"`).exec(tag)?.[1];
-const packageName = attribute(packageTag, 'name');
-const packageVersion = attribute(packageTag, 'version');
+const { name: packageName, version: packageVersion } = attributes(
+  /<package\b([^>]*)>/.exec(withoutComments(packageXml))?.[1] ?? '',
+);
 if (!packageName || !packageVersion) problem(packageXmlFile, '<package> needs a name and a version');
 
 // ------------------------------------------------------------------ bundle
@@ -165,7 +184,9 @@ for (const componentPath of componentPaths) {
   }
   // Comments removed first, so a commented-out example can neither satisfy nor fail a check.
   const xml = withoutComments(readFileSync(componentFile, 'utf8'));
-  const contributes = /target="org\.nuxeo\.agentic\.ui\.config"/.test(xml);
+  const contributes = [...xml.matchAll(/<extension\b([^>]*)>/g)].some(
+    ([, tag]) => attributes(tag).target === 'org.nuxeo.agentic.ui.config',
+  );
   const requiresDefaults = /<require>\s*org\.nuxeo\.agentic\.ui\.config\.defaults\s*<\/require>/.test(xml);
   if (contributes && !requiresDefaults) {
     problem(
@@ -173,10 +194,25 @@ for (const componentPath of componentPaths) {
       `must <require>${DEFAULTS_COMPONENT}</require>, or its fragments may apply before Satori's defaults`,
     );
   }
-  for (const [, src] of xml.matchAll(/\bsrc="([^"]*)"/g)) {
+  for (const [, element, tag] of xml.matchAll(/<(fragment|layout|asset)\b([^>]*)>/g)) {
+    const { name, src, enabled } = attributes(tag);
+    // A disabled entry removes an earlier contribution; it has no body to check.
+    if (enabled === 'false' || src === undefined) continue;
     const target = resolve(BUNDLE, src);
     if (!target.startsWith(BUNDLE + sep) || !existsSync(target)) {
       problem(componentFile, `src="${src}" names no file in bundle/`);
+      continue;
+    }
+    if (element !== 'asset') continue;
+    if (!ASSET_NAME.test(name ?? '')) {
+      problem(
+        componentFile,
+        `asset name "${name ?? ''}" must be a plain file name ending in .svg, .png, .jpg, .jpeg, .gif, .webp or .ico`,
+      );
+    }
+    const size = statSync(target).size;
+    if (size > MAX_ASSET_BYTES) {
+      problem(target, `${size} bytes; the server refuses an asset over ${MAX_ASSET_BYTES}`);
     }
   }
 }

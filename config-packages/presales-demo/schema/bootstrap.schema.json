@@ -1,12 +1,63 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://nuxeo.com/satori/schema/bootstrap.schema.json",
   "title": "Nuxeo Satori bootstrap fragment (Layer 0)",
-  "description": "One bootstrap fragment of a configuration package. Fragments apply in the order the server lists them, Satori's defaults first; a key a later fragment sets wins. Served without authentication: put nothing secret here. An unknown key is ignored by the application, so this schema refuses it to catch the typo.",
+  "description": "One bootstrap fragment of a configuration package. Fragments apply in the order the server lists them, Satori's defaults first; a key a later fragment sets wins, so any key may be set alone. Served without authentication: put nothing secret here. An unknown key is ignored by the application, so this schema refuses it to catch the typo.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "$schema": { "type": "string" },
+    "nuxeoApiOrigin": { "$ref": "#/definitions/nuxeoApiOrigin" },
+    "nuxeoServerUrl": { "$ref": "#/definitions/nuxeoServerUrl" },
+    "aiBackendUrl": { "$ref": "#/definitions/aiBackendUrl" },
+    "branding": { "$ref": "#/definitions/branding" },
+    "defaultThemeId": { "$ref": "#/definitions/defaultThemeId" },
+    "themes": { "$ref": "#/definitions/themes" },
+    "defaultLanguage": { "$ref": "#/definitions/defaultLanguage" },
+    "availableLanguages": { "$ref": "#/definitions/availableLanguages" },
+    "integrations": { "$ref": "#/definitions/integrations" },
+    "session": { "$ref": "#/definitions/session" },
+    "sso": { "$ref": "#/definitions/sso" },
+    "presales": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Demo presets. Honoured only when a fragment sets presetSwitching: true; a URL then selects one with ?preset=<name>, for that browser only.",
+      "properties": {
+        "presetSwitching": { "type": "boolean" },
+        "presets": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string" },
+              "bootstrap": { "$ref": "#/definitions/overlay" },
+              "manifest": { "$ref": "manifest.schema.json" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "overlay": {
+      "description": "The bootstrap keys a preset applies on top of the fragments: every key except presales.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "nuxeoApiOrigin": { "$ref": "#/definitions/nuxeoApiOrigin" },
+        "nuxeoServerUrl": { "$ref": "#/definitions/nuxeoServerUrl" },
+        "aiBackendUrl": { "$ref": "#/definitions/aiBackendUrl" },
+        "branding": { "$ref": "#/definitions/branding" },
+        "defaultThemeId": { "$ref": "#/definitions/defaultThemeId" },
+        "themes": { "$ref": "#/definitions/themes" },
+        "defaultLanguage": { "$ref": "#/definitions/defaultLanguage" },
+        "availableLanguages": { "$ref": "#/definitions/availableLanguages" },
+        "integrations": { "$ref": "#/definitions/integrations" },
+        "session": { "$ref": "#/definitions/session" },
+        "sso": { "$ref": "#/definitions/sso" }
+      }
+    },
     "nuxeoApiOrigin": {
       "type": "string",
       "description": "Origin for Nuxeo REST calls from the browser. Empty keeps requests relative, which is right when Nuxeo serves the application."
@@ -62,11 +113,12 @@
       "additionalProperties": false,
       "properties": {
         "arender": {
+          "description": "null turns the annotation viewer off. A fragment may set either key alone; the viewer needs a viewerOrigin once all fragments are merged.",
           "oneOf": [
             { "type": "null" },
             {
               "type": "object",
-              "required": ["viewerOrigin"],
+              "additionalProperties": false,
               "properties": {
                 "viewerOrigin": { "type": "string" },
                 "nuxeoInternalUrl": { "type": "string" }
@@ -111,27 +163,6 @@
         },
         "postLoginPath": { "type": ["string", "null"] },
         "returnQueryParam": { "type": ["string", "null"] }
-      }
-    },
-    "presales": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "Demo presets. Honoured only when a fragment sets presetSwitching: true; a URL then selects one with ?preset=<name>, for that browser only.",
-      "properties": {
-        "presetSwitching": { "type": "boolean" },
-        "presets": {
-          "type": "object",
-          "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
-          "additionalProperties": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "label": { "type": "string" },
-              "bootstrap": { "type": "object" },
-              "manifest": { "type": "object" }
-            }
-          }
-        }
       }
     }
   }

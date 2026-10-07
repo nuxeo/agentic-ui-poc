@@ -18,34 +18,57 @@ const SCHEMAS = resolve(
   '../../../../../tools/satori-generators/src/config-package/files/schema',
 );
 
-interface ObjectSchema {
-  properties: Record<string, ObjectSchema>;
+interface Schema {
+  $ref?: string;
+  properties?: Record<string, Schema>;
+  additionalProperties?: boolean | Schema;
+  definitions?: Record<string, Schema>;
 }
 
-function schema(name: string): ObjectSchema {
+function schema(name: string): Schema {
   return JSON.parse(readFileSync(resolve(SCHEMAS, `${name}.schema.json__tmpl__`), 'utf8'));
 }
 
-const keys = (value: object | ObjectSchema['properties'], except: string[] = []) =>
+/** Follow a local `#/definitions/…` reference, the only kind these schemas use within a file. */
+function deref(root: Schema, node: Schema): Schema {
+  const name = node.$ref?.startsWith('#/definitions/') ? node.$ref.slice(14) : undefined;
+  return name ? (root.definitions?.[name] ?? {}) : node;
+}
+
+const keys = (value: object = {}, except: string[] = []) =>
   Object.keys(value)
     .filter((key) => !except.includes(key))
     .sort();
 
 describe('the configuration package schemas', () => {
+  const bootstrap = schema('bootstrap');
+  const manifest = schema('manifest');
+
   it('list every bootstrap key the application reads, and no other', () => {
-    const bootstrap = schema('bootstrap').properties;
     // `presales` is read by `readPresales`, not merged, so it has no default.
-    expect(keys(bootstrap, ['$schema', 'presales'])).toEqual(keys(DEFAULT_APP_BOOTSTRAP_CONFIG));
+    expect(keys(bootstrap.properties, ['$schema', 'presales'])).toEqual(
+      keys(DEFAULT_APP_BOOTSTRAP_CONFIG),
+    );
     for (const section of ['branding', 'integrations', 'session', 'sso'] as const) {
-      expect(keys(bootstrap[section].properties), section).toEqual(
+      const definition = deref(bootstrap, bootstrap.properties?.[section] ?? {});
+      expect(keys(definition.properties), section).toEqual(
         keys(DEFAULT_APP_BOOTSTRAP_CONFIG[section]),
       );
     }
   });
 
+  it('hold a preset to the same keys as a fragment', () => {
+    const preset = bootstrap.properties?.['presales']?.properties?.['presets']
+      ?.additionalProperties as Schema;
+    const overlay = deref(bootstrap, preset.properties?.['bootstrap'] ?? {});
+    expect(overlay.additionalProperties).toBe(false);
+    expect(keys(overlay.properties)).toEqual(keys(DEFAULT_APP_BOOTSTRAP_CONFIG));
+    expect(preset.properties?.['manifest']?.$ref).toBe('manifest.schema.json');
+  });
+
   it('list every manifest key the application reads, and no other', () => {
     // `extensions` is the source key that becomes `extensionLayers` once merged.
-    expect(keys(schema('manifest').properties, ['$schema', 'extensions'])).toEqual(
+    expect(keys(manifest.properties, ['$schema', 'extensions'])).toEqual(
       keys(DEFAULT_APP_RUNTIME_MANIFEST, ['extensionLayers']),
     );
   });
