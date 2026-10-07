@@ -216,8 +216,8 @@ The ARender Docker images are built for `linux/amd64`. On Apple Silicon (M1/M2/M
 | Text Handler   | 8899         | Change `ports` for `document-text-handler` |
 | Converter      | 19999        | Change `ports` for `document-converter`    |
 
-If you change the ARender UI port, also update `integrations.arender` in the Layer 0 bootstrap
-file, `agentic-ui-config/bootstrap.json` (see below).
+If you change the ARender UI port, also update `integrations.arender` in your Layer 0 bootstrap
+fragment (see below).
 
 ## Angular Configuration
 
@@ -230,27 +230,25 @@ plaintext. Those defaults were removed (Sonar `S5332`), so an unconfigured deplo
 "Annotations are not available" on the document's Annotations tab — that placeholder is the expected
 state, not a bug.
 
-Configure it in the **Layer 0 bootstrap file**, not by providing the token in `app.config.ts`. It is
+Configure it in a **Layer 0 bootstrap fragment**, not by providing the token in `app.config.ts`. It is
 read before authentication, so a deployment changes it without rebuilding:
 
-| Where            | Path                                                                |
-| ---------------- | ------------------------------------------------------------------- |
-| Production URL   | `/nuxeo/agentic-ui-config/bootstrap.json`                           |
-| On disk          | `<server.home>/nxserver/nuxeo.war/agentic-ui-config/bootstrap.json` |
-| Under `nx serve` | `/agentic-ui-config/bootstrap.json`                                 |
+| Where            | Path                                                                 |
+| ---------------- | -------------------------------------------------------------------- |
+| Production URL   | `/nuxeo/agentic-ui-config/bootstrap.json`                            |
+| Contributed by   | a `bootstrap` fragment in your configuration package (NXSAT-312)     |
+| Under `nx serve` | `/agentic-ui-config/bootstrap.json`, written by `npm run config:dev` |
 
-**Not the runtime manifest.** Those are two different stores, and this document previously named the
-wrong one. The runtime manifest is a Nuxeo _document_, fetched after login, whose repository path is
-itself a bootstrap field; its schema is `AppRuntimeManifest` (`navItems`, `actions`, `rules`,
-`presets`, `featureToggles`, `labels`, `extensions`) and it has no `integrations` key at all. An
-operator who put this block there would see no error and no annotation viewer.
+**Not the runtime manifest.** Those are two different layers, and this document previously named
+the wrong one. The runtime manifest is served beside it as `manifest.json`; its schema is
+`AppRuntimeManifest` (`navItems`, `actions`, `rules`, `presets`, `featureToggles`, `labels`,
+`extensions`) and it has no `integrations` key at all. An operator who put this block there would
+see no error and no annotation viewer.
 
-The directory is a **sibling** of the application bundle, not a file inside it: the marketplace
-installer copies the packaged `web` directory over the deployed one with `overwrite="true"`, so
-anything under `.../agentic-ui/` is replaced on every upgrade. The package puts only a sample,
-`bootstrap.example.json`, in `.../agentic-ui-config/`; copy it to `bootstrap.json` there and edit the
-copy, which no upgrade or uninstall touches (NXSAT-317). Under `nx serve` the file is the gitignored
-`apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json`, created before the dev server starts. See
+The configuration servlet serves the block from your package, after our defaults; nothing is
+edited on the server, and the package installs no configuration file, so an upgrade of ours leaves
+it alone. Under `nx serve`, pass the fragment to
+`npm run config:dev -- --bootstrap <fragment.json>` before the dev server starts. See
 `resolveBootstrapConfigUrl` in `app-config.tokens.ts`.
 
 ```json
@@ -306,11 +304,11 @@ Being allowed to use `http:` does not relax anything else: the no-query/no-fragm
 requirements above still apply. `viewerOrigin` is now itself **the origin allow-list** — the
 previewer URL Nuxeo returns is framed only if its origin matches, so a compromised server cannot
 redirect the iframe somewhere else. What it cannot bound is `viewerOrigin` itself: a customer
-configures where their own ARender lives, so whoever edits the bootstrap file chooses the allow-list.
+configures where their own ARender lives, so whoever ships the bootstrap fragment chooses the allow-list.
 The structural control for that is a CSP `frame-src` header, which is not currently set.
 
 For local development the compose file above publishes the ARender UI on host port 9080, so a dev
-bootstrap file uses `"viewerOrigin": "http://localhost:9080"`.
+bootstrap fragment uses `"viewerOrigin": "http://localhost:9080"`.
 
 ## File Reference
 

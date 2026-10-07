@@ -237,6 +237,10 @@ The Layer 1 manifest is already a **Nuxeo document**. A UI over it would let a b
 reconfigure navigation and actions with versioning, audit and ACLs for free. The hard part —
 storage, governance, merge semantics — is done.
 
+> **Premise superseded by NXSAT-312.** The manifest is no longer a Nuxeo document: it is a fragment
+> in the customer's Marketplace package. Merge semantics carry over, but storage and governance no
+> longer come free, so this opportunity needs re-assessing.
+
 ### O3 · Productise the verification apparatus
 
 The 17 gates, evidence assertions and adversarial review pattern are **product-independent** and

@@ -20,7 +20,7 @@ audience: leadership
         ┌─────────────────────────────────────────────────────┐
         │  CUSTOMER OWNS                                      │
         │  ├─ Layer 0 config  (JSON — survives our upgrades)  │
-        │  ├─ Layer 1 manifest (a Nuxeo document)             │
+        │  ├─ Layer 1 manifest (JSON — in their own package)  │
         │  └─ Layer 2 library  (their repo, their build)      │
         └────────────────────────┬────────────────────────────┘
                                  │ depends on, by version
@@ -50,13 +50,13 @@ audience: leadership
 
 The line between "we own it" and "the customer owns it" is not a convention — it is enforced:
 
-| Guarantee                                   | Mechanism                                                       |
-| ------------------------------------------- | --------------------------------------------------------------- |
-| Their config survives our upgrade           | Package ships a sample, never their file; rehearsed (NXSAT-317) |
-| Their wiring survives our upgrade           | The manifest is a Nuxeo **document**, not a bundled file        |
-| Their code depends only on published API    | 4 entry points; a guardrail rejects deep imports                |
-| Our public API cannot change by accident    | A 2,221-line snapshot gate                                      |
-| Their customisation survives a version bump | An upgrade rehearsal, run on every build                        |
+| Guarantee                                   | Mechanism                                                                           |
+| ------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Their config survives our upgrade           | It is their own package; ours installs no configuration file; rehearsed (NXSAT-312) |
+| Their wiring survives our upgrade           | The manifest is a fragment in **their** package, not a bundled file                 |
+| Their code depends only on published API    | 4 entry points; a guardrail rejects deep imports                                    |
+| Our public API cannot change by accident    | A 2,221-line snapshot gate                                                          |
+| Their customisation survives a version bump | An upgrade rehearsal, run on every build                                            |
 
 **Why leadership should care:** this is what makes a support boundary defensible, an upgrade
 shippable, and a certification claim makeable. Without it, every customer is a fork.

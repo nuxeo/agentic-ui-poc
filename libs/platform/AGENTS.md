@@ -14,12 +14,12 @@ _vocabulary_.
 
 **Never fork to change something a layer already addresses.** In order of cost:
 
-| Layer | You change                                            | Rebuild?   | Who can do it                |
-| ----- | ----------------------------------------------------- | ---------- | ---------------------------- |
-| **0** | `bootstrap.json` — branding, theme, endpoints         | no         | anyone with file access      |
-| **1** | the runtime manifest — hide, reorder, relabel, gate   | no         | an administrator, from Nuxeo |
-| **2** | your own npm library — new rules, actions, components | yes, yours | a developer                  |
-| **3** | this file and the generators                          | —          | you, when extending          |
+| Layer | You change                                            | Rebuild?   | Who can do it                             |
+| ----- | ----------------------------------------------------- | ---------- | ----------------------------------------- |
+| **0** | a `bootstrap` fragment — branding, theme, endpoints   | no         | whoever ships their configuration package |
+| **1** | a `manifest` fragment — hide, reorder, relabel, gate  | no         | whoever ships their configuration package |
+| **2** | your own npm library — new rules, actions, components | yes, yours | a developer                               |
+| **3** | this file and the generators                          | —          | you, when extending                       |
 
 If a change is possible at Layer 0 or 1, doing it in code is a mistake you will pay
 for at the next upgrade. If it is not possible at any layer, that is a gap worth

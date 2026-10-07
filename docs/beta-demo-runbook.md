@@ -888,7 +888,7 @@ and demo packages.
 | Risk                                            | Mitigation                                                                              |
 | ----------------------------------------------- | --------------------------------------------------------------------------------------- |
 | Docker/Nuxeo not running                        | Part 0.1. This was the actual state found during rehearsal.                             |
-| Manifest document missing                       | Part 0.6. Also the actual state found.                                                  |
+| Dev configuration missing or written too late   | Part 0.6: `npm run config:dev`, then restart `nx serve`.                                |
 | Manifest edit appears not to work               | You did not hard-reload. Hash navigation does not re-read it.                           |
 | First adf-hx load takes ~4 s                    | Warm it — Part 0.5.                                                                     |
 | Clicking a checkbox too early selects nothing   | `/#/browse` needs ~2.5 s before the table is interactive.                               |

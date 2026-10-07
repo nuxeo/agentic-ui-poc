@@ -80,7 +80,7 @@
       "blocks": [
         {
           "type": "code",
-          "code": "<span class=\"c\">// The Nuxeo config document — no rebuild, no deploy</span>\n{\n  \"extensions\": {\n    \"overrides\": {\n      <span class=\"c\">// Rename Acme's own entry and move it to the top</span>\n      \"acme.navbar.acmeExtensions\": { <b>\"label\"</b>: \"Contracts\", <b>\"order\"</b>: 5 }\n    },\n    \"slots\": {\n      <span class=\"c\">// Or place Acme's panel in a drawer instead of on a route</span>\n      \"sidebar\": [{\n        \"id\": \"acme.sidebar.contracts\", \"label\": \"Contracts\",\n        <b>\"component\"</b>: \"acme.panel.acmeExtensions\", \"order\": 10\n      }]\n    }\n  }\n}"
+          "code": "<span class=\"c\">// Acme's manifest fragment, in their configuration package — no rebuild</span>\n{\n  \"extensions\": {\n    \"overrides\": {\n      <span class=\"c\">// Rename Acme's own entry and move it to the top</span>\n      \"acme.navbar.acmeExtensions\": { <b>\"label\"</b>: \"Contracts\", <b>\"order\"</b>: 5 }\n    },\n    \"slots\": {\n      <span class=\"c\">// Or place Acme's panel in a drawer instead of on a route</span>\n      \"sidebar\": [{\n        \"id\": \"acme.sidebar.contracts\", \"label\": \"Contracts\",\n        <b>\"component\"</b>: \"acme.panel.acmeExtensions\", \"order\": 10\n      }]\n    }\n  }\n}"
         }
       ],
       "footnote": "This is the payoff of IDs being the contract. The code says *what exists*; configuration says *where it appears and when* — and the two can be changed by different people, at different times, with different permissions."

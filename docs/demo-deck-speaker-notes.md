@@ -63,34 +63,33 @@ than quoting a number that will be wrong by the time anyone checks.
 
 ### Slide 4 — Make it their product, in a file · 1 min
 
-> "Branding is Layer 0, and it lives in a **file** — not in the manifest document. Application title,
-> logo, default theme, and a set of CSS custom properties. That is the whole rebrand surface."
+> "Branding is Layer 0, and it lives in a **bootstrap fragment** — not in the manifest. Application
+> title, logo, default theme, and a set of CSS custom properties. That is the whole rebrand surface."
 
 The distinction to land, because it is the most common way this goes wrong:
 
-> "There are **two** configuration stores and people conflate them. Branding and themes are in
-> `bootstrap.json`, a file. Navigation, labels, actions and columns are in a Nuxeo **document**.
-> `runtime-manifest.ts` has no branding key at all — if you put branding in the manifest, nothing
-> happens and nothing tells you why."
+> "There are **two** configuration layers and people conflate them. Branding and themes are in the
+> `bootstrap` fragment. Navigation, labels, actions and columns are in the `manifest` fragment. Both
+> ship in the customer's own Marketplace package. `runtime-manifest.ts` has no branding key at all —
+> if you put branding in the manifest, nothing happens and nothing tells you why."
 
 Then the upgrade point, which is a real engineering decision rather than a diagram:
 
-> "That file lives **beside** the app bundle, and our package never installs it — it ships a sample,
-> and the customer copies it to `bootstrap.json`. The bundle directory is replaced on every upgrade.
-> We rehearsed the upgrade on a real server: the customer's edited file survives it and is still
-> served. The first design, which installed the file itself, broke that upgrade — the rehearsal
-> found it and NXSAT-317 fixed it."
+> "That package is the customer's, and it depends on ours. Our package installs no configuration
+> file, so upgrading ours cannot replace theirs. We rehearsed it with `nuxeoctl mp-install`:
+> upgrading ours with two customer packages installed served byte-identical configuration. The first
+> design, which installed `bootstrap.json` itself, broke the upgrade — NXSAT-317 found that, and
+> NXSAT-312 removed configuration files from the server altogether."
 
 **Volunteer the logo, then the limit.** They will ask about it, so get there first:
 
-> "The logo is in the same file. The customer's logo sits beside `bootstrap.json` in the config
-> directory, `branding.logo` names it, and it replaces our mark in the header and on the login page —
-> no rebuild. The one piece that is not configurable yet is the favicon."
+> "The logo is in the same package. It is an asset the package contributes, `branding.logo` names
+> it, and it replaces our mark in the header and on the login page — no rebuild. The one piece that
+> is not configurable yet is the favicon."
 
-The package never installs anything in the config directory except its sample,
-`bootstrap.example.json`, so a logo the customer puts there is left alone by an upgrade, as their
-`bootstrap.json` is. The upgrade was rehearsed for an edited `bootstrap.json` (NXSAT-317), not
-separately with a logo file, so say the mechanism, not that a logo upgrade was observed.
+The logo is served from the customer's package like its fragments, so an upgrade of ours leaves it
+alone by the same mechanism. Say the mechanism; `docs/demo-deck-claims.md` records exactly what the
+NXSAT-312 rehearsal observed. The Admin Center path is unrehearsed.
 
 **Do not say the favicon is done, planned for a release, or costed.** It has no key.
 
