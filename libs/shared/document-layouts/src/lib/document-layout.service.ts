@@ -71,7 +71,10 @@ function warn(message: string): void {
 @Injectable({ providedIn: 'root' })
 export class DocumentLayoutService {
   private readonly api = inject(NuxeoApiBase);
-  /** Anonymous reads skip the interceptors: no `Authorization` header, and no reset of the idle timer. */
+  /**
+   * The layout reads skip the interceptors: no `Authorization` header, and no reset of the idle
+   * timer. They are not anonymous — same-origin, so the browser still attaches its cookies.
+   */
   private readonly http = new HttpClient(inject(HttpBackend));
   private readonly bootstrapUrl = inject(APP_BOOTSTRAP_CONFIG_URL);
 

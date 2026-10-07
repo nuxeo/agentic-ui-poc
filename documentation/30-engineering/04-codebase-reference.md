@@ -137,7 +137,7 @@ format in [`docs/extension-reference.md`](../../docs/extension-reference.md) §9
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
 | `layout-file.ts`                     | Reads the servlet's `layouts.json` and layout envelopes, and validates a layout file (version 1)                      |
 | `resolve-layout.ts`                  | Reads `/config/types/<type>`; generates the default layout from the type's schemas; applies a contributed file, whole |
-| `document-layout.service.ts`         | `layoutFor(type, mode)`: lazy, cached reads — the layout reads anonymous and without interceptors                     |
+| `document-layout.service.ts`         | `layoutFor(type, mode)`: lazy, cached reads — the layout reads skip the interceptors (no `Authorization` header)      |
 | `document-layout/document-layout.ts` | `<lib-document-layout>`: sections or tabs in the Properties panel; vocabulary labels; translation-key labels          |
 | `document-layout/field-view.ts`      | How one value is shown, chosen from its schema type                                                                   |
 
