@@ -125,6 +125,19 @@ All routes use `HashLocationStrategy` (`/#/path`). This ensures Nuxeo/Tomcat ser
 
 ---
 
+## Configuration delivery (server side)
+
+Configuration is contributed by Marketplace packages, never edited on the server (NXSAT-312).
+`nuxeo-agentic-core` declares the component `org.nuxeo.agentic.ui.config` with the extension point
+`configuration` (`<fragment layer="bootstrap|manifest">`, `<layout type mode>`, `<asset>`) and
+contributes our defaults to it. `AgenticUiConfigServlet` serves the ordered fragments, with
+provenance, at `/nuxeo/agentic-ui-config/` — **anonymously**, so nothing sensitive may be
+contributed. A customer ships their own package that depends on `nuxeo-agentic-ui` and
+`<require>`s `org.nuxeo.agentic.ui.config.defaults`. Detail:
+`documentation/30-engineering/13-deployment-and-troubleshooting.md` §2.
+
+---
+
 ## Key Conventions
 
 - Dependency injection: `inject()` function, never constructor parameters
