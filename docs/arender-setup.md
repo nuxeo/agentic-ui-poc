@@ -2,6 +2,22 @@
 
 This guide walks through setting up the ARender document viewer for the Annotations tab in the Nuxeo Angular UI.
 
+> **This guide describes the generic ARender 2023 stack, which the client no longer supports.**
+>
+> `ARenderService` now asks Nuxeo for the previewer URL via the `nuxeo-arender` addon's
+> `Document.ARenderGetPreviewerUrl` operation, and NEV 2026's connector only accepts a
+> `documentId` parameter. The `?url=<nxfile-url>` form the stack below is built around is left
+> unparsed, so following these steps end to end yields a viewer that loads but cannot open a
+> document.
+>
+> The Docker Compose stack, the nginx auth-proxy sidecar and the `NUXEO_BASIC_AUTH` credential are
+> all part of that retired setup. Removing them is tracked separately; the protocol and
+> configuration sections below have been corrected so nothing here contradicts the code, but the
+> step-by-step stack instructions have not been rewritten for NEV 2026.
+>
+> For NEV 2026 — local and cloud — see the Confluence page _Nuxeo Enhanced Viewer (NEV) 2026_ and
+> NXSAT-301.
+
 ## Architecture Overview
 
 ```
@@ -41,12 +57,25 @@ This guide walks through setting up the ARender document viewer for the Annotati
 
 **How it works:**
 
-1. The Angular app constructs an ARender URL: `http://localhost:9080/?url=<nxfile-url>`
-2. The `nxfile-url` points to the nginx auth-proxy inside Docker: `http://nuxeo-auth-proxy/nuxeo/nxfile/default/{docUid}/file:content`
-3. ARender's `DefaultURLParser` picks up the `url` parameter and asks the service broker to fetch it
-4. The service broker downloads the blob through the nginx proxy, which injects Basic Auth credentials
-5. The service broker hands the blob to the rendition microservices for processing
-6. ARender renders the document with full annotation support
+**Retired (ARender 2023, what the stack below implements):**
+
+1. The Angular app constructed an ARender URL: `http://localhost:9080/?url=<nxfile-url>`
+2. The `nxfile-url` pointed to the nginx auth-proxy inside Docker
+3. ARender's `DefaultURLParser` picked up the `url` parameter and asked the broker to fetch it
+4. The broker downloaded the blob through the nginx proxy, which injected **one shared** Basic Auth
+   credential — so every user's blob fetch reached Nuxeo as the same principal, and Nuxeo's
+   per-user permissions never applied to the viewer
+5. The broker handed the blob to the rendition microservices
+
+**Current (NEV 2026):**
+
+1. The Angular app calls `Document.ARenderGetPreviewerUrl` on Nuxeo, which returns
+   `https://<viewer>/?documentId=<repository>,<uid>,<xpath>,<digest>`. The client cannot build this
+   itself — the blob digest is not computable in a browser.
+2. The app validates that URL against `viewerOrigin` as an origin allow-list, then frames it
+3. NEV's connector parses `documentId` and fetches the blob from Nuxeo **itself**, over OAuth2 as
+   the signed-in user, so per-user ACLs apply
+4. Annotations are stored as Nuxeo Annotation objects, not in a container volume
 
 ## Prerequisites
 
@@ -233,22 +262,27 @@ installed by a separate non-overwriting step and survives. See `resolveBootstrap
 }
 ```
 
-| Property           | Required | Constraints                                                                                                                               |
-| ------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. Must be no less secure than the page framing it — see below.                                       |
-| `nuxeoInternalUrl` | yes      | Nuxeo as the **ARender containers** see it, through the auth-proxy sidecar. Plain `http:` is fine — it is never navigated by the browser. |
+| Property           | Required | Constraints                                                                                                                                                                                              |
+| ------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. Must be no less secure than the page framing it — see below.                                                                                                      |
+| `nuxeoInternalUrl` | no       | **Vestigial.** Addressed the retired sidecar flow; nothing reads it under NEV 2026, and it is not validated. Retained only because removing it is a breaking change to the published `AppARenderConfig`. |
 
-Both are mandatory and validated in two places, so a partial or malformed configuration disables
-ARender rather than half-enabling it:
+Only `viewerOrigin` is mandatory, and it is validated in two places, so a missing or malformed value
+disables ARender rather than half-enabling it:
 
-- `bootstrap-config.ts` yields `null` unless the merged bootstrap config has **both** endpoints
-  non-blank.
-  A blank endpoint is worse than none: `fetch('')` resolves against the application's own origin, so
-  an availability probe would report a viewer that is not deployed.
-- `ARenderService` additionally requires each endpoint to be an absolute `http(s)` base with **no
-  query string, no fragment and no userinfo**. Both values have parameters appended to them, and a
-  base carrying its own `?` or `#` absorbs the appended `url` parameter so the viewer receives no
-  document.
+- `bootstrap-config.ts` yields `null` unless the merged bootstrap config has a non-blank
+  `viewerOrigin`.
+  A blank value is worse than none: `fetch('')` resolves against the application's own origin, so an
+  availability probe would report a viewer that is not deployed — and that same origin would end up
+  on the allow-list the server-supplied previewer URL is checked against.
+- `ARenderService` additionally requires it to be an absolute `http(s)` base with **no query string,
+  no fragment and no userinfo**. The origin comparison below reads `origin`, which discards all
+  three while still reporting a match, so a base carrying one is a misconfiguration whose effect
+  would otherwise be invisible.
+
+`nuxeoInternalUrl` is **not** required and **not** validated. It is vestigial under NEV 2026, and
+requiring it would force a deployment that retired the sidecar to invent a dummy value or see the
+integration silently disable itself.
 
 ### When is `http:` accepted for `viewerOrigin`?
 
@@ -267,10 +301,11 @@ ARender does either — the previous wording would have led an operator to belie
 configuration was invalid. If your application is served over `https:`, ARender must be too.
 
 Being allowed to use `http:` does not relax anything else: the no-query/no-fragment/no-userinfo
-requirements above still apply, and there is deliberately **no origin allow-list** on
-`viewerOrigin` — a customer configures where their own ARender lives, which is recorded as an
-accepted residual risk. The structural control for that is a CSP `frame-src` header, which is not
-currently set.
+requirements above still apply. `viewerOrigin` is now itself **the origin allow-list** — the
+previewer URL Nuxeo returns is framed only if its origin matches, so a compromised server cannot
+redirect the iframe somewhere else. What it cannot bound is `viewerOrigin` itself: a customer
+configures where their own ARender lives, so whoever edits the bootstrap file chooses the allow-list.
+The structural control for that is a CSP `frame-src` header, which is not currently set.
 
 For local development the compose file above publishes the ARender UI on host port 9080, so a dev
 bootstrap file uses `"viewerOrigin": "http://localhost:9080"`.

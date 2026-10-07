@@ -5,8 +5,11 @@ export interface ARenderConfig {
    * Base URL of the ARender UI as seen by the browser. Per-deployment, and a privilege boundary rather
    * than a cosmetic setting: it is navigated in an `iframe`.
    *
-   * Must be an absolute `http(s)` origin with **no query string, no fragment and no userinfo** — both
-   * URL builders append parameters to it, and a base carrying its own `?` or `#` absorbs them.
+   * Must be an absolute `http(s)` origin with **no query string, no fragment and no userinfo**. The
+   * client no longer appends anything to it: under NEV 2026 this value is the origin allow-list the
+   * server-supplied previewer URL is checked against, and that comparison reads `origin`, which
+   * discards a query, fragment and userinfo while still reporting a match. A base carrying any of
+   * the three is a misconfiguration whose effect would otherwise be invisible.
    *
    * **The scheme rule is host-relative, not build-relative.** `http:` is rejected only where it would
    * downgrade the page framing it:
@@ -24,9 +27,17 @@ export interface ARenderConfig {
   viewerOrigin: string;
 
   /**
-   * Base URL of Nuxeo as seen by the ARender containers, used to build `nxfile` URLs. This goes
-   * through the nginx auth-proxy sidecar that adds Basic Auth, so it is an internal address and
-   * generally not reachable from the browser.
+   * **Vestigial. Nothing reads this, and it is not validated.**
+   *
+   * It was the base URL of Nuxeo as the ARender containers saw it, used to build `nxfile` URLs
+   * through an nginx auth-proxy sidecar that added a shared Basic credential. Under NEV 2026 the
+   * connector resolves blobs itself from the `documentId` parameter over OAuth2 as the signed-in
+   * user, so the client builds no such URL.
+   *
+   * Retained because removing it is a breaking change to `AppARenderConfig`, which is published
+   * and frozen in `docs/api/platform.api.md`. Deliberately **not** required by
+   * `completeARenderConfig` and **not** checked by `ARenderService`: gating a feature on a field
+   * nothing consumes can only reject configurations that would have worked.
    */
   nuxeoInternalUrl: string;
 }
@@ -52,15 +63,20 @@ export interface ARenderConfig {
  *     `sonar-project.properties` excludes every `*.config.ts` file — so the scanner is blind to
  *     the very filename pattern where hardcoded configuration is most likely to live.
  *
- * There is deliberately no fallback now. A deployment that wants ARender supplies both values in
+ * There is deliberately no fallback now. A deployment that wants ARender supplies `viewerOrigin` in
  * its manifest; anything less is `null`.
  *
- * Completeness is enforced **twice, in different layers**, and neither is redundant:
+ * **`viewerOrigin` is the only required value.** `nuxeoInternalUrl` is vestigial (see above) and is
+ * neither required nor validated — gating on a field nothing consumes can only reject
+ * configurations that would have worked.
  *
- *   - `bootstrap-config.ts`'s `completeARenderConfig` returns `null` unless the merged result has
- *     both endpoints non-blank, so a half-configured manifest never reaches the token.
- *   - `ARenderService` re-checks, and additionally requires each endpoint to be an absolute http(s)
- *     base with no query, fragment or userinfo — because it builds parameters onto them.
+ * `viewerOrigin` is enforced **twice, in different layers**, and neither is redundant:
+ *
+ *   - `bootstrap-config.ts`'s `completeARenderConfig` returns `null` unless the merged result has a
+ *     non-blank `viewerOrigin`, so a manifest without one never reaches the token.
+ *   - `ARenderService` re-checks, and additionally requires it to be an absolute http(s) base with
+ *     no query, fragment or userinfo — because it is navigated in an iframe and serves as the
+ *     origin allow-list for the URL Nuxeo returns.
  *
  * An earlier version of this comment claimed `bootstrap-config.ts` already refused half a
  * configuration when it did not: the merge filled the missing half with `''`, producing precisely
