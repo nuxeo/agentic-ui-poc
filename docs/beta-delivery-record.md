@@ -56,11 +56,14 @@ reopened rather than quietly carried.
 
 ### Layer 0: configuration without a rebuild
 
-- Bootstrap config on a **non-overwriting** install path. The marketplace installer copies
-  the web directory with `overwrite="true"`, so anything inside it is destroyed on upgrade.
-  The path is `nxserver/nuxeo.war/agentic-ui-config` — a sibling of the bundle, outside the
-  destructive copy. Phase 1 originally shipped `nxserver/web/…`, which **would have 404'd
-  in every deployment**; corrected after independent review.
+- Bootstrap config **outside the bundle, never installed by the package**. The marketplace
+  installer copies the web directory with `overwrite="true"`, so anything inside it is destroyed
+  on upgrade. The path is `nxserver/nuxeo.war/agentic-ui-config` — a sibling of the bundle,
+  outside the destructive copy. Phase 1 originally shipped `nxserver/web/…`, which **would have
+  404'd in every deployment**; corrected after independent review. Phase 1 also installed
+  `bootstrap.json` there with `overwrite="false"`, which a 2026-10-07 rehearsal showed failing
+  the upgrade after an edit; since NXSAT-317 the package installs only `bootstrap.example.json`,
+  and the customer copies it to `bootstrap.json`.
 - Runtime manifest as a **Nuxeo document** at `/default-domain/config/agentic-ui`, so it
   inherits Nuxeo versioning, ACLs and per-tenant scoping. Eleven `InjectionToken` factories
   resolve from it. Every load path is tolerant: a missing file, absent document, 403 or

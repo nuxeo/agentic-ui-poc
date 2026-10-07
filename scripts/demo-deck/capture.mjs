@@ -601,7 +601,8 @@ async function patchBootstrap(patch) {
     if (JSON.stringify(await fetchServedBootstrap()) === expected) return;
     await new Promise((r) => setTimeout(r, 500));
   }
-  throw new Error(`${SERVED_BOOTSTRAP} did not reflect the patch within 15 s.`);
+  await restoreBootstrap();
+  throw new Error(`${SERVED_BOOTSTRAP} did not reflect the patch within 15 s; restored the original.`);
 }
 
 async function restoreBootstrap() {

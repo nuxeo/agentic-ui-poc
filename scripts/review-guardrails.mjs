@@ -3279,6 +3279,7 @@ function checkAccessibleNameFallbacks() {
  */
 const PACKAGED_CONFIG = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json';
 const PACKAGE_SOURCES = 'nuxeo-agentic-ui-package/src';
+const PACKAGED_CONFIG_DIR = 'nuxeo-agentic-ui-package/src/main/config';
 
 /**
  * Every advertised locale ships a catalogue, and the default is one of them.
@@ -4650,9 +4651,11 @@ function checkPackagedConfigIsNotADemo() {
  * 404. Unedited installs upgraded fine, so nothing short of a rehearsal with an edit could see it.
  *
  * `overwrite="false"` has no other use — a file nobody edits is copied with `overwrite="true"` —
- * so every such copy is this defect waiting for its first edit, whatever file it names. And the
- * file the application reads must not be packaged at all: with `overwrite="true"` it would be
- * the customer's edit that is destroyed instead. The packaged copy is a sample.
+ * so every such copy is this defect waiting for its first edit, whatever file it names, and an
+ * omitted attribute is the same copy because false is Nuxeo's default. And the file the
+ * application reads must not be packaged at all: with `overwrite="true"` it would be the
+ * customer's edit that is destroyed instead. The packaged copy is a sample, and it is the only
+ * file in the config directory, which is where the customer's own files, a logo among them, live.
  *
  * The second half walks the filesystem rather than `git ls-files` on purpose: the Maven assembly
  * stages `src/main/config/**` from disk, so an untracked `bootstrap.json` left there by hand
@@ -4672,7 +4675,7 @@ function checkInstallerOwnsNoCustomerFile() {
     // attribute. Ranges rather than stripping, and an unterminated comment runs to the end of the
     // file, as it does for an XML parser.
     const comments = [];
-    for (let open = body.indexOf('<!--'); open !== -1; ) {
+    for (let open = body.indexOf('<!--'); open !== -1;) {
       const close = body.indexOf('-->', open + 4);
       const end = close === -1 ? body.length : close + 3;
       comments.push([open, end]);
@@ -4680,17 +4683,35 @@ function checkInstallerOwnsNoCustomerFile() {
     }
     const inComment = (at) => comments.some(([open, end]) => at >= open && at < end);
 
+    // Nuxeo's Copy command starts with `overwrite` false and assigns `Boolean.parseBoolean` of the
+    // attribute only when it is non-empty, so an omitted attribute, or any value but a
+    // case-insensitive "true", is `overwrite="false"` with the same failure.
     for (const match of body.matchAll(/<copy\b[^>]*>/g)) {
       if (inComment(match.index)) continue;
-      if (!/\boverwrite\s*=\s*["']false["']/.test(match[0])) continue;
+      const value = /\boverwrite\s*=\s*(["'])(.*?)\1/.exec(match[0])?.[2];
+      const parsed = value?.toLowerCase();
+      if (parsed === 'true') continue;
+      const effect = value === undefined ? 'no overwrite attribute' : `overwrite="${value}"`;
+      const runsAs = parsed === 'false' ? '' : ', which Nuxeo runs as overwrite="false"';
       fail(
-        `${file} has a copy with overwrite="false": ${match[0].replace(/\s+/g, ' ')}\n` +
+        `${file} has a copy with ${effect}${runsAs}: ${match[0].replace(/\s+/g, ' ')}\n` +
           '    That is only ever used to protect a file someone edits, and it is what breaks the ' +
           'upgrade: the old version is uninstalled, the edited file is left behind because its ' +
           'md5 no longer matches, and this copy then fails on it — leaving no version installed ' +
           '(NXSAT-317). Ship a sample with overwrite="true"; the customer owns the real file.',
       );
     }
+  }
+
+  // Everything in the config directory lands beside the customer's own files, a logo among them,
+  // and `overwrite="true"` replaces a same-named one on every upgrade.
+  for (const file of walk(PACKAGED_CONFIG_DIR, () => true)) {
+    if (file === PACKAGED_CONFIG || /(^|\/)bootstrap\.json$/.test(file)) continue;
+    fail(
+      `${file} would be installed into agentic-ui-config beside the customer's own files, ` +
+        `replacing a same-named one on every upgrade.\n    Package only ${PACKAGED_CONFIG} ` +
+        "there; a logo or stylesheet is the customer's to add (NXSAT-317).",
+    );
   }
 
   for (const file of walk(PACKAGE_SOURCES, (path) => /(^|\/)bootstrap\.json$/.test(path))) {

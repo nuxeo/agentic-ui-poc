@@ -1715,6 +1715,53 @@ expectRed(
   /src\/main\/config\/bootstrap\.json would be installed as the bootstrap\.json the app/,
 );
 
+// Nuxeo's Copy defaults `overwrite` to false and parses the attribute only when it is non-empty,
+// so leaving it out is the same defect — and so is any value parseBoolean does not read as true.
+expectRed(
+  'a copy with no overwrite attribute',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      "  <copy file='${package.root}/themes/acme.css' todir='${env.server.home}/x' />\n</install>",
+    ),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /has a copy with no overwrite attribute, which Nuxeo runs as overwrite="false"[\s\S]*acme\.css/,
+);
+
+expectRed(
+  'overwrite="yes", which parseBoolean reads as false',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_BEFORE.replace(/overwrite="false" \/>/, 'overwrite="yes" />'),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /has a copy with overwrite="yes", which Nuxeo runs as overwrite="false"/,
+);
+
+// Any other packaged file in the config directory replaces a customer's same-named one on
+// upgrade — a logo is the obvious one since branding.logo names a file beside bootstrap.json.
+expectRed(
+  'a packaged logo beside the sample',
+  'checkInstallerOwnsNoCustomerFile',
+  { [INSTALL_XML]: INSTALL_XML_AFTER, [SAMPLE]: '{}\n' },
+  (write) => write('nuxeo-agentic-ui-package/src/main/config/acme-logo.svg', '<svg/>\n'),
+  /src\/main\/config\/acme-logo\.svg would be installed into agentic-ui-config/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'overwrite="TRUE", which parseBoolean reads as true',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_BEFORE.replace(/overwrite="false" \/>/, 'overwrite="TRUE" />'),
+    [SAMPLE]: '{}\n',
+  },
+);
+
 expectRed(
   'no installer found at all',
   'checkInstallerOwnsNoCustomerFile',

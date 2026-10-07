@@ -186,7 +186,8 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
 
 ## Already done
 
-- Phase 1 core: `libs/shared/app-config`, the non-overwriting installer path, eleven tokens
+- Phase 1 core: `libs/shared/app-config`, the config directory beside the bundle (since NXSAT-317
+  holding only a packaged sample; the customer's `bootstrap.json` is never installed), eleven tokens
   repointed, config-driven theming and activated i18n. Quality gate 4/4, evidence 38/38.
 - Phase 0 verification: dependencies install, gates run, build passes (1.66 MB initial bundle;
   1.69 MB after Phase 1).
@@ -243,10 +244,12 @@ Delivered:
 
 - `libs/shared/app-config` loads a **bootstrap file** pre-auth and a **runtime manifest** from the
   Nuxeo document at `/default-domain/config/agentic-ui` post-auth, both tolerant of absence, denial
-  and malformed JSON. Installed by a second `install.xml` copy with `overwrite="false"` into
-  `nxserver/nuxeo.war/agentic-ui-config`, a **sibling** of the bundle and therefore outside the
-  destructive copy — which is what the installer relied on to leave customer edits in place on
-  upgrade. _Disproved by rehearsal on 2026-10-07 and replaced by a packaged sample (NXSAT-317, R7)._ `nuxeo.war` is the
+  and malformed JSON. The bootstrap file is read from `nxserver/nuxeo.war/agentic-ui-config`, a
+  **sibling** of the bundle and therefore outside its destructive copy. A second `install.xml`
+  copy puts only a sample there, `bootstrap.example.json`, with `overwrite="true"`; the customer
+  copies it to `bootstrap.json`, which no install, upgrade or uninstall touches (NXSAT-317, R7).
+  The copy first shipped with `overwrite="false"` on `bootstrap.json` itself, and the 2026-10-07
+  rehearsal showed that design leaving no version installed after an edit. `nuxeo.war` is the
   Tomcat docBase for the `/nuxeo` context; `nxserver/web` holds only `root.war` and is not served.
 - **Eleven `InjectionToken` factories** repointed at the loaded configuration: the Nuxeo API origin
   and server URL, the AI backend prefix, the ARender endpoints, both Content Intelligence operation

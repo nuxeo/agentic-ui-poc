@@ -24,8 +24,10 @@
 
     The application treats a missing `bootstrap.json` as "use the compiled
     defaults", which the sample's values are, so a fresh install needs no copy.
-    `review-guardrails.mjs` (checkInstallerOwnsNoCustomerFile) fails the build if
-    an overwrite="false" copy, or a packaged `bootstrap.json`, comes back.
+    `review-guardrails.mjs` (checkInstallerOwnsNoCustomerFile) fails the build on
+    any copy not declared overwrite="true" (Nuxeo's default is false), a packaged
+    `bootstrap.json`, or any other file in the config directory, where it would
+    replace a customer's same-named file, a logo for instance, on upgrade.
   -->
   <copy dir="${package.root}/config"
         todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config"
