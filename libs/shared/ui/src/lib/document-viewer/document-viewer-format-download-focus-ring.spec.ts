@@ -1,22 +1,19 @@
 /**
- * NXENG-781 / NXENG-786 — additional-format download icon buttons must show a keyboard focus
- * indicator (IBM `style_focus_visible`, WCAG 2.4.7). Material suppresses the default ring.
- *
- * Vitest/jsdom does not paint outlines reliably; pin the stylesheet contract (standalone
- * `:focus` selector, 2px ring) the same way as `document-viewer-format-type-contrast.spec.ts`.
+ * NXENG-786 / NXENG-781 — SCSS contract for Additional-formats download focus rings.
+ * Rendered cascade is covered in `apps/nuxeo-ui/.../document-viewer-format-download-focus-ring.spec.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-describe('DocumentViewerComponent — format download focus ring (NXENG-781 / NXENG-786)', () => {
-  it('declares a standalone :focus ring on .format-download-btn.mat-mdc-icon-button', () => {
+describe('DocumentViewer format download — focus SCSS (NXENG-786)', () => {
+  it('declares a standalone :focus rule for IBM style_focus_visible (not a comma list)', () => {
     const scss = readFileSync(join(import.meta.dirname, 'document-viewer.component.scss'), 'utf8');
     expect(scss).toMatch(/\.format-download-btn\.mat-mdc-icon-button:focus\s*\{/);
-    expect(scss).not.toMatch(/\.format-download-btn\.mat-mdc-icon-button:focus,\s/);
-    expect(scss).toMatch(
-      /\.format-download-btn\.mat-mdc-icon-button:focus[\s\S]*outline:\s*2px\s+solid/,
-    );
-    expect(scss).toMatch(/\.format-download-btn\.mat-mdc-icon-button:focus[\s\S]*outline-offset:\s*2px/);
+    const block = scss.match(/\.format-download-btn\.mat-mdc-icon-button:focus\s*\{[^}]+\}/s)?.[0] ?? '';
+    expect(block).toMatch(/outline-style:\s*solid/);
+    expect(block).toMatch(/outline-width:\s*2px/);
+    expect(block).toMatch(/outline-color:\s*var\(--mat-sys-primary/);
+    expect(scss).not.toMatch(/\.format-download-btn[^}]*&:focus,\s*&/);
   });
 });
