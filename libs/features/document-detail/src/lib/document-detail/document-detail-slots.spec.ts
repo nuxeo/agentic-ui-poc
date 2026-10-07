@@ -96,11 +96,11 @@ class ClaimViewComponent {
 })
 class CaseViewComponent {}
 
-/**
- * Stands in for `app.rules.isType`, which ships separately: the slot is rule-agnostic, so
- * these tests must not depend on which release registers the packaged type rule.
- */
-const IS_TYPE_RULE = 'test.rules.isType';
+/** The packaged type rule, so these tests exercise the rule a customer is told to write. */
+const IS_TYPE_RULE = 'app.rules.isType';
+
+/** Rejects its first load and succeeds after, like a chunk request that failed once. */
+let flakyLoads = 0;
 
 function doc(over: Partial<NuxeoDocument> = {}): NuxeoDocument {
   return {
@@ -215,10 +215,10 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
             'acme.views.claim': ClaimViewComponent,
             'acme.views.case': CaseViewComponent,
             'acme.views.broken': () => Promise.reject(new Error('chunk failed to load')),
-          },
-          rules: {
-            [IS_TYPE_RULE]: (context, parameters) =>
-              parameters.includes(context.document?.type ?? ''),
+            'acme.views.flaky': () =>
+              ++flakyLoads === 1
+                ? Promise.reject(new Error('chunk failed to load'))
+                : Promise.resolve(ClaimViewComponent),
           },
         }),
       ],
@@ -547,6 +547,32 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
           .querySelector('.document-view-outlet')
           ?.classList.contains('document-view-outlet--unresolved'),
       ).toBe(true);
+    });
+
+    it('recovers the contributed view on a refetch after its loader failed once', async () => {
+      flakyLoads = 0;
+      await render(
+        {
+          slots: {
+            documentView: [forType('acme.documentView.flaky', 'acme.views.flaky', ['Claim'])],
+          },
+        },
+        claim(),
+      );
+      await settleLoad();
+      expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
+
+      fixture.componentInstance.doc.set(claim({ title: 'Claim CLM-42 refetched' }));
+      await settleLoad();
+
+      expect(flakyLoads).toBe(2);
+      expect(viewBody().textContent).toContain('CLAIM VIEW Claim CLM-42 refetched');
+      expect(viewBody().querySelector('lib-document-viewer')).toBeNull();
+      expect(
+        viewBody()
+          .querySelector('.document-view-outlet')
+          ?.classList.contains('document-view-outlet--unresolved'),
+      ).toBe(false);
     });
 
     it('passes the focused document and static inputs, and keeps the document the host’s', async () => {

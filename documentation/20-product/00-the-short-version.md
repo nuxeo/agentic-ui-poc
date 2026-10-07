@@ -119,11 +119,10 @@ shows Administration to administrators only:
 
 - **Change the logo.** Name and colours, yes; logo, no. A configurable logo is in review:
   [pull request #307](https://github.com/nuxeo/agentic-ui-poc/pull/307).
-- **Vary by document type.** Every type opens in the same document page, apart from built-in
-  handling for notes, pictures and videos. The page shows and edits a fixed set of standard
-  fields, so the fields of your own document types are not shown or editable. Conditions based on
-  a document's type are in review:
-  [pull request #308](https://github.com/nuxeo/agentic-ui-poc/pull/308).
+- **Vary the fields by document type.** The page shows and edits a fixed set of standard
+  fields, so the fields of your own document types are not shown or editable. Conditions on a
+  document's type exist (`app.rules.isType`), and a type can have its own View tab through the
+  `documentView` slot, but the properties and edit form are the same for every type.
 - **Deploy configuration from your own package.** Planned, not built; see above.
 - **Install from a public registry.** The Marketplace package has only been published to Nuxeo's
   pre-production Marketplace. The developer package your own code builds against,

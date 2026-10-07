@@ -122,8 +122,8 @@ export interface ExtensionTabDescriptor extends ExtensionElement {
  * first entry, by `order`, whose component is registered. Nothing resolving leaves the
  * packaged view in place, so a manifest that contributes nothing changes nothing.
  *
- * `rule` is what makes it per type. Any registered rule works; the packaged type rule,
- * `app.rules.isType`, is not in this build. An entry with no rule matches every document.
+ * `rule` is what makes it per type: `{ "type": "app.rules.isType", "parameters": ["Claim"] }`.
+ * Any registered rule works. An entry with no rule matches every document.
  *
  * The rendered component receives the focused document as a `document` input when it
  * declares one, plus `inputs`. `document` is the host's: an `inputs.document` is overwritten,

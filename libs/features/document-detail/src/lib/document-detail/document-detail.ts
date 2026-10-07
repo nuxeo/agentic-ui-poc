@@ -448,7 +448,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   /** `document` last, so a manifest `inputs.document` cannot stand in for the one on screen. */
   readonly documentViewInputs = computed<Readonly<Record<string, unknown>>>(() => ({
-    ...(this.documentView()?.inputs ?? {}),
+    ...this.documentView()?.inputs,
     document: this.doc(),
   }));
 

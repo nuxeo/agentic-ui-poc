@@ -746,7 +746,10 @@ it was before the slot existed.
 first whose component is registered renders. Nothing matching, or nothing registered,
 renders the packaged view. A registered component whose lazy loader fails also falls
 back to the packaged view rather than leaving the tab blank, so a broken chunk costs the
-customer their custom view, not the document.
+customer their custom view, not the document. The load is retried when the document is
+refetched or another document using the same entry opens — at most twice, so a chunk that
+is permanently missing is requested three times in all. The packaged view stays on screen
+while a retry is in flight.
 
 **The document is the host's.** The component receives the focused document on its
 `document` input. A manifest `inputs.document` is overwritten, so configuration cannot
@@ -754,10 +757,8 @@ make the tab show a different document from the one the toolbar and properties p
 on. Declare `document` as an `input()` to receive it; a component that does not declare
 it is still rendered, and the value is not set.
 
-The natural rule is a type check. The packaged type rule, app.rules.isType, is **not in
-this build**: it lands separately with
-[PR #308](https://github.com/nuxeo/agentic-ui-poc/pull/308). Until it does, any registered
-rule works, including one your library registers. Once it lands:
+The natural rule is a type check, with the packaged `app.rules.isType` (section 4). Any
+registered rule works, including one your library registers:
 
 ```json
 {
@@ -775,7 +776,7 @@ rule works, including one your library registers. Once it lands:
 }
 ```
 
-Available today, a Note-only view using the packaged `app.rules.isNote`:
+For Notes alone, the packaged `app.rules.isNote` reads the same way:
 
 ```json
 {

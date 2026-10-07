@@ -197,4 +197,117 @@ describe('ExtensionOutletComponent', () => {
       expect(fixture.nativeElement.querySelector('.panel')).toBeTruthy();
     });
   });
+
+  /**
+   * The registry retries a loader that rejected (its spec pins that), so the outlet must ask
+   * again rather than staying unresolved for as long as it lives. A transient chunk failure
+   * would otherwise pin a `documentView` to the packaged fallback across every refetch.
+   */
+  describe('after a failed load', () => {
+    let attempts = 0;
+
+    function registerLoader(load: (attempt: number) => Promise<typeof DocumentViewComponent>) {
+      attempts = 0;
+      TestBed.inject(ExtensionComponentRegistry).register({
+        'acme.views.flaky': () => load(++attempts),
+      });
+    }
+
+    async function renderFlaky() {
+      const fixture = TestBed.createComponent(ExtensionOutletComponent);
+      fixture.componentRef.setInput('componentId', 'acme.views.flaky');
+      fixture.componentRef.setInput('componentInputs', { title: 'first' });
+      await settle(fixture);
+      return fixture;
+    }
+
+    it('retries on the next inputs change and renders once the loader recovers', async () => {
+      registerLoader((attempt) =>
+        attempt === 1
+          ? Promise.reject(new Error('chunk load failed'))
+          : Promise.resolve(DocumentViewComponent),
+      );
+      const fixture = await renderFlaky();
+      expect(fixture.componentInstance.unresolved()).toBe(true);
+
+      fixture.componentRef.setInput('componentInputs', { title: 'second' });
+      await settle(fixture);
+
+      expect(attempts).toBe(2);
+      expect(fixture.componentInstance.unresolved()).toBe(false);
+      expect(fixture.nativeElement.querySelector('.view')?.textContent).toBe('second');
+    });
+
+    it('stays unresolved while the retry is in flight, so the host fallback stays up', async () => {
+      let finishRetry: (type: typeof DocumentViewComponent) => void = () => undefined;
+      registerLoader((attempt) =>
+        attempt === 1
+          ? Promise.reject(new Error('chunk load failed'))
+          : new Promise((resolve) => (finishRetry = resolve)),
+      );
+      const fixture = await renderFlaky();
+
+      fixture.componentRef.setInput('componentInputs', { title: 'second' });
+      await settle(fixture);
+
+      expect(attempts).toBe(2);
+      expect(fixture.componentInstance.unresolved()).toBe(true);
+      expect(fixture.componentInstance.loading()).toBe(false);
+
+      finishRetry(DocumentViewComponent);
+      await settle(fixture);
+
+      expect(fixture.componentInstance.unresolved()).toBe(false);
+      expect(fixture.nativeElement.querySelector('.view')?.textContent).toBe('second');
+    });
+
+    it('stops retrying a loader that keeps failing', async () => {
+      registerLoader(() => Promise.reject(new Error('chunk load failed')));
+      const fixture = await renderFlaky();
+
+      for (let change = 0; change < 5; change += 1) {
+        fixture.componentRef.setInput('componentInputs', { title: `change ${change}` });
+        await settle(fixture);
+      }
+
+      expect(attempts).toBe(3);
+      expect(fixture.componentInstance.unresolved()).toBe(true);
+    });
+
+    it('gives a new id its own retries', async () => {
+      registerLoader(() => Promise.reject(new Error('chunk load failed')));
+      TestBed.inject(ExtensionComponentRegistry).register({
+        'acme.views.alsoFlaky': () => {
+          attempts += 1;
+          return Promise.reject(new Error('chunk load failed'));
+        },
+      });
+      const fixture = await renderFlaky();
+      for (let change = 0; change < 3; change += 1) {
+        fixture.componentRef.setInput('componentInputs', { title: `change ${change}` });
+        await settle(fixture);
+      }
+      expect(attempts).toBe(3);
+
+      fixture.componentRef.setInput('componentId', 'acme.views.alsoFlaky');
+      await settle(fixture);
+      fixture.componentRef.setInput('componentInputs', { title: 'after switch' });
+      await settle(fixture);
+
+      expect(attempts).toBe(5);
+    });
+
+    it('does not retry an id nothing registered', async () => {
+      const resolve = vi.spyOn(TestBed.inject(ExtensionComponentRegistry), 'resolve');
+      const fixture = TestBed.createComponent(ExtensionOutletComponent);
+      fixture.componentRef.setInput('componentId', 'acme.views.notShipped');
+      await settle(fixture);
+
+      fixture.componentRef.setInput('componentInputs', { title: 'again' });
+      await settle(fixture);
+
+      expect(resolve).toHaveBeenCalledTimes(1);
+      expect(fixture.componentInstance.unresolved()).toBe(true);
+    });
+  });
 });
