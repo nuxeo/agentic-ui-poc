@@ -4688,7 +4688,23 @@ function checkInstallerOwnsNoCustomerFile() {
     // case-insensitive "true", is `overwrite="false"` with the same failure.
     for (const match of body.matchAll(/<copy\b[^>]*>/g)) {
       if (inComment(match.index)) continue;
-      const value = /\boverwrite\s*=\s*(["'])(.*?)\1/.exec(match[0])?.[2];
+      const attribute = (name) =>
+        new RegExp(`\\b${name}\\s*=\\s*(["'])(.*?)\\1`).exec(match[0])?.[2];
+      // The directory walk below proves what the config source holds, so nothing else may write
+      // into the customer's directory: another source would bypass it.
+      if (
+        /agentic-ui-config/.test(attribute('todir') ?? attribute('tofile') ?? '') &&
+        (attribute('dir') !== '${package.root}/config' || attribute('file') !== undefined)
+      ) {
+        fail(
+          `${file} copies into agentic-ui-config from somewhere other than ` +
+            `\${package.root}/config: ${match[0].replace(/\s+/g, ' ')}\n` +
+            "    That directory holds the customer's own files, a logo among them; only the " +
+            `config directory, which may hold nothing but ${PACKAGED_CONFIG}, may be copied ` +
+            'there (NXSAT-317).',
+        );
+      }
+      const value = attribute('overwrite');
       const parsed = value?.toLowerCase();
       if (parsed === 'true') continue;
       const effect = value === undefined ? 'no overwrite attribute' : `overwrite="${value}"`;

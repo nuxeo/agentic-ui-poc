@@ -1752,6 +1752,24 @@ expectRed(
   /src\/main\/config\/acme-logo\.svg would be installed into agentic-ui-config/,
 );
 
+// The config walk only proves what src/main/config holds; a second source copied into the same
+// directory would replace a customer's logo with nothing to catch it.
+expectRed(
+  'a logo copied into agentic-ui-config from another source',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      '  <copy file="${package.root}/themes/acme-logo.svg" overwrite="true"\n' +
+        '        todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config" />\n' +
+        '</install>',
+    ),
+    [SAMPLE]: '{}\n',
+  },
+  null,
+  /copies into agentic-ui-config from somewhere other than \$\{package\.root\}\/config[\s\S]*acme-logo\.svg/,
+);
+
 falsePositiveControls += 1;
 expectGreen(
   'overwrite="TRUE", which parseBoolean reads as true',
