@@ -250,7 +250,7 @@ expectRed(
 );
 
 expectRed(
-  'a catalogue with a bare carriage return inside a JSON string',
+  'a catalogue with a raw carriage return inside a JSON string value',
   'checkTranslationCatalogues',
   APP,
   (write) =>
@@ -258,8 +258,17 @@ expectRed(
       'apps/nuxeo-ui/public/i18n/en.json',
       '{\n  "app": { "title": "Hyland' + '\r' + ' Nuxeo" }\n}\n',
     ),
-  /bare carriage return/,
+  /is not valid JSON/,
 );
+
+falsePositiveControls += 1;
+expectGreen('a catalogue with carriage return as JSON whitespace between tokens', 'checkTranslationCatalogues', {
+  'apps/nuxeo-ui/public/i18n/en.json':
+    '{\r "app": { "title": "Hyland Nuxeo", "nav": { "toggle": "Toggle navigation menu" } }, ' +
+    '"settings": { "themes": { "search": "Search themes" } } }\n',
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
+  'apps/nuxeo-ui/src/app/shell/app-shell.component.html': GOOD_TEMPLATE,
+});
 
 expectWarn(
   'locale missing a key the reference has — warns, because English is the fallback',

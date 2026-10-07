@@ -2015,16 +2015,7 @@ function checkTranslationCatalogues() {
   const parsed = new Map();
 
   for (const catalogue of catalogues) {
-    const raw = readFileSync(join(repoRoot, catalogue), 'utf8');
-    if (/\r(?!\n)/.test(raw)) {
-      fail(
-        `${catalogue} contains a bare carriage return (U+000D not part of CRLF).\n` +
-          '    Normalising every `\\r` away would let this file pass `JSON.parse` here while the ' +
-          'runtime loader still rejects it. Fix the bytes or escape the character inside JSON strings.',
-      );
-      continue;
-    }
-    const body = raw.replace(/\r\n/g, '\n');
+    const body = read(catalogue);
 
     if (!body.endsWith('\n')) {
       fail(
