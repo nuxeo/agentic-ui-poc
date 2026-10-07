@@ -1474,14 +1474,12 @@
           mat-icon-button
           class="panel-toggle-btn"
           (click)="propertiesPanelOpen.set(!propertiesPanelOpen())"
-          [matTooltip]="
-            propertiesPanelOpen()
-              ? ('document-detail.hide-details' | translate)
-              : ('document-detail.show-details' | translate)
-          "
-          [attr.aria-label]="'document-detail.document-detail.toggle-details-panel' | translate"
+          [matTooltip]="detailsPanelToggleLabelKey() | translate"
+          [attr.aria-label]="detailsPanelToggleLabelKey() | translate"
         >
-          <mat-icon>{{ propertiesPanelOpen() ? 'info' : 'info_outline' }}</mat-icon>
+          <mat-icon aria-hidden="true">{{
+            propertiesPanelOpen() ? 'info' : 'info_outline'
+          }}</mat-icon>
         </button>
       </div>
     </div>

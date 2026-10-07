@@ -219,6 +219,8 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'document-detail.edit-document-dialog.search-coverage': 'Search Coverage',
   'document-detail.edit-document-dialog.search-nature': 'Search Nature',
   'document-detail.edit-document-dialog.search-subjects': 'Search Subjects',
+  'document-detail.hide-details': 'Hide details',
+  'document-detail.show-details': 'Show details',
   'document-detail.note-editor.align-center': 'Align center',
   'document-detail.note-editor.align-left': 'Align left',
   'document-detail.note-editor.align-right': 'Align right',
