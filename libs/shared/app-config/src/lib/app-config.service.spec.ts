@@ -229,6 +229,19 @@ describe('AppConfigService', () => {
       ]);
     });
 
+    it('reports why a 200 response did not parse, not its status', async () => {
+      const loaded = service.load();
+      http
+        .expectOne(BOOTSTRAP_URL)
+        .error(new ProgressEvent('error'), { status: 200, statusText: 'OK' });
+      http.expectOne(MANIFEST_URL).flush(envelope('manifest', []));
+      await loaded;
+
+      expect(service.diagnostics().messages).toEqual([
+        `bootstrap configuration not loaded from ${BOOTSTRAP_URL}: Http failure during parsing for ${BOOTSTRAP_URL}`,
+      ]);
+    });
+
     it('never rejects, so it is safe as an APP_INITIALIZER', async () => {
       const loaded = service.load();
       http.expectOne(BOOTSTRAP_URL).error(new ProgressEvent('error'));

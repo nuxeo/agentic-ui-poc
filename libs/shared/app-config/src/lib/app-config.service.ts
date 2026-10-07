@@ -237,7 +237,9 @@ function info({ name, component, bundle, source }: AppConfigFragmentInfo): AppCo
 function describe(error: unknown): string {
   const status = (error as { status?: unknown } | null)?.status;
   const message = (error as { message?: unknown } | null)?.message;
-  if (typeof status === 'number' && status !== 0) return `HTTP ${status}`;
+  // A 2xx failure is a body that did not parse: its status says nothing, its message says why.
+  const ok = typeof status === 'number' && status >= 200 && status < 300;
+  if (typeof status === 'number' && status !== 0 && !ok) return `HTTP ${status}`;
   return typeof message === 'string' ? message : 'request failed';
 }
 
