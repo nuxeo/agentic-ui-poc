@@ -675,9 +675,14 @@ export default async function run(page, h) {
   await h.screenshot('manifest-customised-bulk-actions');
 
   h.step('A malformed extensions block leaves a working application');
-  manifestBody =
-    '{"format":"nuxeo-agentic-ui-config/1","layer":"manifest","fragments":[{"content":' +
-    '{"version":1,"extensions":{"slots":"not an object"';
+  // A valid envelope, so the response is applied and only the extensions reader is under test.
+  manifestBody = manifestDocument({
+    $references: 'not a list',
+    $ignoreReferenceList: 1,
+    $layers: [],
+    slots: 'not an object',
+    overrides: { 'app.navbar.trash': 'not an object' },
+  });
   await reloadApp(page);
   const afterMalformed = await readNav(page);
   h.check(
