@@ -54,7 +54,6 @@
       </button>
 
       <h1 satAppHeaderTitle>{{ pageTitle() }}</h1>
-      <app-preset-badge />
 
       <div
         #globalSearchContainer
@@ -168,6 +167,7 @@
         <sat-word-mark-logo satAppHeaderLogo aria-hidden="true" />
       }
 
+      <app-preset-badge satAppHeaderActions />
       <div satAppHeaderActions>
         @if (featureFlags.aiEnabled()) {
           <button

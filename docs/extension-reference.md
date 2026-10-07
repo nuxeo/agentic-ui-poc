@@ -123,7 +123,7 @@ reinstalling anything. A bootstrap fragment declares them:
       "acme": {
         "label": "Acme Insurance",
         "bootstrap": { "branding": { "applicationTitle": "Acme Insurance" } },
-        "manifest": { "labels": { "nav.item.browse": "Claims" } }
+        "manifest": { "labels": { "nav.item.browse-adf-hx": "Claims" } }
       }
     }
   }
