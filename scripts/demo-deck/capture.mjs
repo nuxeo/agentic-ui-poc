@@ -63,7 +63,6 @@ const arg = (name) =>
 
 const APP = process.env['APP_URL'] ?? 'http://localhost:4200';
 const TEMPLATE = process.env['TEMPLATE_URL'] ?? 'http://localhost:4310';
-const NUXEO = process.env['NUXEO_URL'] ?? 'http://localhost:8080';
 const USER = process.env['NUXEO_USER'] ?? 'Administrator';
 const PASS = process.env['NUXEO_PASS'] ?? 'Administrator';
 
@@ -89,18 +88,11 @@ const outDir = resolve(arg('out') ?? resolve(EVIDENCE_ROOT, 'demo', `capture-${s
  * as substrings of the console text, each tied to a stated cause:
  *
  *   - AI.Insights 500      — the AI marketplace package is not installed. Expected, not a defect.
- *   - anonymous 403        — the pre-auth manifest fetch, before a session exists.
  *   - group/Administrator  — Administrator is a user, not a group; the permissions panel probes both.
  */
 const CONSOLE_ALLOW = [
   'automation/AI.Insights',
-  'config/agentic-ui',
   'api/v1/group/Administrator',
-  // The template app's own manifest fetch, while signed out. Same class as the product's
-  // `config/agentic-ui` 403 above: a pre-auth read of a document the anonymous user cannot see.
-  // Nuxeo answers 404 rather than 403 for this one. Established that the proxy is fine —
-  // `:4310/nuxeo/api/v1/me` answers 200 through it — so this is authorisation, not routing.
-  'config/satori-template',
   // A FOURTH expected failure, found by this gate on its first honest run and documented in no
   // runbook. `AuthService.clearStaleNuxeoCookieSession()` GETs /nuxeo/logout to drop a stale
   // JSESSIONID before login, and swallows the result with `catchError(() => of(undefined))` — so the
@@ -531,86 +523,87 @@ async function signInToTemplate(page) {
 const STRUCTURAL_MARKER = 'adf-datatable-marker';
 
 // ---------------------------------------------------------------------------------------------
-// Manifest application. `note:note` holds a JSON *string*, not nested JSON — writing an object
-// there makes the parser return null and the packaged UI renders silently.
+// Configuration. Both halves are files the dev server serves from the gitignored
+// `apps/nuxeo-ui/public/agentic-ui-config/`, each the configuration servlet's envelope of
+// fragments, written by `npm run config:dev`. A shot's branding or manifest is applied as one more
+// fragment — `demo-deck`, after ours, as a customer package's would be — and withdrawn after it.
+//
+// The dev server serves only asset files that existed when it started — a file created afterwards
+// stays 404 while edits to an existing one are re-served — so the files must exist before
+// `nx serve`. A file on disk does not prove the server sees it, so this asks the running server
+// instead, and refuses rather than patch a file nothing serves.
+//
+// Doing this inside the run rather than by hand matters for a reason that already bit once: with the
+// rebrand left applied, the BASELINE capture came back in Acme purple while its slide called it "the
+// product as shipped". Patch it for the shots that need it, restore it immediately after, and the
+// mismatch cannot happen.
 // ---------------------------------------------------------------------------------------------
-async function applyManifest(manifest) {
-  const body = JSON.stringify({
-    'entity-type': 'document',
-    properties: { 'note:note': JSON.stringify(manifest) },
-  });
-  const res = await fetch(`${NUXEO}/nuxeo/api/v1/path/default-domain/config/agentic-ui`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Basic ${Buffer.from(`${USER}:${PASS}`).toString('base64')}`,
-    },
-    body,
-  });
-  if (!res.ok) throw new Error(`manifest PUT failed: HTTP ${res.status}`);
-}
-
-/**
- * Layer 0 branding lives in a FILE, not the manifest document, and the harness owns the edit.
- *
- * `runtime-manifest.ts` has no `branding` or `themes` key — those come from
- * `/agentic-ui-config/bootstrap.json`, which the dev server serves from the gitignored
- * `apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json`. The packaged file is a sample the app
- * never reads (NXSAT-317). The dev server serves only asset files that existed when it started — a
- * file created afterwards stays 404 while edits to an existing one are re-served — so the local
- * copy must be made before `nx serve`. A file on disk does not prove the server sees it, so this
- * asks the running server instead, and refuses rather than patch a file nothing serves.
- *
- * Doing this inside the run rather than by hand matters for a reason that already bit once: with the
- * rebrand left applied, the BASELINE capture came back in Acme purple while its slide called it "the
- * product as shipped". Patch it for the shots that need it, restore it immediately after, and the
- * mismatch cannot happen.
- */
-const BOOTSTRAP = resolve(
+const CONFIG_DIR = resolve(
   import.meta.dirname,
   '..',
   '..',
-  'apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json',
+  'apps/nuxeo-ui/public/agentic-ui-config',
 );
-const SERVED_BOOTSTRAP = new URL('/agentic-ui-config/bootstrap.json', APP).href;
-let bootstrapOriginal = null;
+const DEMO_FRAGMENT = 'demo-deck';
 
-async function fetchServedBootstrap() {
-  const res = await fetch(SERVED_BOOTSTRAP, { cache: 'no-store' }).catch(() => null);
-  return res?.ok ? res.json().catch(() => null) : null;
+function configLayer(layer) {
+  const file = resolve(CONFIG_DIR, `${layer}.json`);
+  const servedUrl = new URL(`/agentic-ui-config/${layer}.json`, APP).href;
+  let original = null;
+
+  const fetchServed = async () => {
+    const res = await fetch(servedUrl, { cache: 'no-store' }).catch(() => null);
+    return res?.ok ? res.json().catch(() => null) : null;
+  };
+
+  const write = async (content) => {
+    const served = await fetchServed();
+    if (!existsSync(file) || served?.format !== 'nuxeo-agentic-ui-config/1') {
+      throw new Error(
+        `${servedUrl} is not serving a configuration response, so a patch to ${file} would not ` +
+          'take effect. The dev server only serves a file that existed when it started. Write ' +
+          'both files, then restart nx serve:\n  npm run config:dev',
+      );
+    }
+    const raw = await readFile(file, 'utf8');
+    if (original === null) original = raw;
+    const envelope = JSON.parse(original);
+    envelope.fragments = [
+      ...envelope.fragments.filter((fragment) => fragment.name !== DEMO_FRAGMENT),
+      {
+        name: DEMO_FRAGMENT,
+        component: 'local.demo-deck',
+        bundle: 'local.demo-deck',
+        source: 'scripts/demo-deck/capture.mjs',
+        content,
+      },
+    ];
+    await writeFile(file, `${JSON.stringify(envelope, null, 2)}\n`);
+    const expected = JSON.stringify(envelope);
+    for (let waited = 0; waited < 15000; waited += 500) {
+      if (JSON.stringify(await fetchServed()) === expected) return;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    await restore();
+    throw new Error(`${servedUrl} did not reflect the patch within 15 s; restored the original.`);
+  };
+
+  const restore = async () => {
+    if (original === null) return;
+    await writeFile(file, original);
+    original = null;
+    await new Promise((r) => setTimeout(r, 6000));
+  };
+
+  return { write, restore };
 }
 
-async function patchBootstrap(patch) {
-  const served = await fetchServedBootstrap();
-  if (!existsSync(BOOTSTRAP) || served === null) {
-    throw new Error(
-      `${SERVED_BOOTSTRAP} is not being served, so a patch to ${BOOTSTRAP} would not take ` +
-        'effect. The dev server only serves a file that existed when it started. Copy the ' +
-        'packaged defaults, then restart nx serve:\n' +
-        '  mkdir -p apps/nuxeo-ui/public/agentic-ui-config && cp ' +
-        'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json ' +
-        'apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json',
-    );
-  }
-  const raw = await readFile(BOOTSTRAP, 'utf8');
-  if (bootstrapOriginal === null) bootstrapOriginal = raw;
-  const merged = { ...JSON.parse(raw), ...patch };
-  await writeFile(BOOTSTRAP, `${JSON.stringify(merged, null, 2)}\n`);
-  const expected = JSON.stringify(merged);
-  for (let waited = 0; waited < 15000; waited += 500) {
-    if (JSON.stringify(await fetchServedBootstrap()) === expected) return;
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  await restoreBootstrap();
-  throw new Error(`${SERVED_BOOTSTRAP} did not reflect the patch within 15 s; restored the original.`);
-}
-
-async function restoreBootstrap() {
-  if (bootstrapOriginal === null) return;
-  await writeFile(BOOTSTRAP, bootstrapOriginal);
-  bootstrapOriginal = null;
-  await new Promise((r) => setTimeout(r, 6000));
-}
+const bootstrapConfig = configLayer('bootstrap');
+const manifestConfig = configLayer('manifest');
+const patchBootstrap = bootstrapConfig.write;
+const restoreBootstrap = bootstrapConfig.restore;
+const applyManifest = manifestConfig.write;
+const restoreManifest = manifestConfig.restore;
 
 // ---------------------------------------------------------------------------------------------
 
@@ -875,7 +868,7 @@ for (const shot of shots) {
 
 // Leave the world at baseline, whatever happened. A harness that leaves customisation applied is
 // exactly how the dirty manifest and the purple baseline both happened.
-await applyManifest({ version: 1 });
+await restoreManifest();
 await restoreBootstrap();
 
 await browser.close();

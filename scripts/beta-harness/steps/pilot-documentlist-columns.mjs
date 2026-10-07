@@ -20,7 +20,9 @@
  *   npm run beta:evidence -- pilot-documentlist-columns
  */
 
-const MANIFEST_ROUTE = '**/api/v1/path/default-domain/config/agentic-ui';
+import { configResponse } from '../config-response.mjs';
+
+const MANIFEST_ROUTE = '**/agentic-ui-config/manifest.json';
 
 /**
  * The columns browse rendered by default before this change, transcribed from
@@ -33,17 +35,13 @@ const PACKAGED_VISIBLE = ['Title', 'Modified', 'Last Contributor'];
 const ENVIRONMENTAL_ERRORS = [
   /automation\/AI\./,
   '/nuxeo/logout',
-  '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
   '/agentic-ui-config/bootstrap.json',
+  '/agentic-ui-config/manifest.json',
 ];
 
-/** Wrap a Layer 1 config in the Nuxeo document envelope the loader expects. */
+/** The configuration servlet's manifest response, with one customer package contributing `extensions`. */
 function manifestDocument(extensions) {
-  return {
-    'entity-type': 'document',
-    path: '/default-domain/config/agentic-ui',
-    properties: { 'note:note': JSON.stringify({ version: 1, extensions }) },
-  };
+  return configResponse('manifest', { customer: [{ version: 1, extensions }] });
 }
 
 /**
@@ -52,7 +50,9 @@ function manifestDocument(extensions) {
  */
 export default async function run(page, h) {
   h.step('Precondition: a backend is reachable, so browse renders real rows');
-  const probe = await page.request.get(`${h.baseUrl}/nuxeo/api/v1/me`, { failOnStatusCode: false }).catch(() => null);
+  const probe = await page.request
+    .get(`${h.baseUrl}/nuxeo/api/v1/me`, { failOnStatusCode: false })
+    .catch(() => null);
   h.requirePrecondition(
     'Nuxeo API answers through the dev proxy',
     probe?.status() === 200,
@@ -60,19 +60,17 @@ export default async function run(page, h) {
       'to assert. Run `npm run beta:backend` first.',
   );
 
-  /** `null` lets the real Nuxeo answer, which is a 404 on an unconfigured instance. */
+  /** `null` answers 404, as a server with no configuration service does. */
   let manifestBody = null;
   await page.route(MANIFEST_ROUTE, (route) =>
-    manifestBody === null
-      ? route.fallback()
-      : route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          // Without `no-store` the browser answers the second load from cache and
-          // the interception is never seen — section 3 records this trap.
-          headers: { 'cache-control': 'no-store' },
-          body: JSON.stringify(manifestBody),
-        }),
+    route.fulfill({
+      status: manifestBody === null ? 404 : 200,
+      contentType: 'application/json',
+      // Without `no-store` the browser answers the second load from cache and
+      // the interception is never seen — section 3 records this trap.
+      headers: { 'cache-control': 'no-store' },
+      body: manifestBody ?? 'Not Found',
+    }),
   );
 
   /**

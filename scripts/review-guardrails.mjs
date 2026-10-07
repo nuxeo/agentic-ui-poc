@@ -1327,7 +1327,13 @@ function checkNoHardcodedUiText() {
      */
     const htmlRefs = (path, body) => {
       const refs = new Set();
-      const source = ts.createSourceFile(path, body, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+      const source = ts.createSourceFile(
+        path,
+        body,
+        ts.ScriptTarget.Latest,
+        false,
+        ts.ScriptKind.TS,
+      );
 
       /**
        * The local names this file binds to `Component` from `@angular/core`.
@@ -3278,7 +3284,18 @@ function checkAccessibleNameFallbacks() {
  * on it. `PACKAGED_CONFIG_DIR` is where the package used to stage files for the server's disk; it
  * must not exist any more (`checkInstallerOwnsNoCustomerFile`).
  */
-const PACKAGED_CONFIG = 'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json';
+const PACKAGED_CONFIG =
+  'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json';
+
+/**
+ * The top-level Layer 0 values a file describes. A fragment is read as is; a served response —
+ * the `nuxeo-agentic-ui-config/1` envelope a dev server answers with — is folded fragment by
+ * fragment, later winning, which is what the application does for the keys checked here.
+ */
+function layer0Values(parsed) {
+  if (parsed?.format !== 'nuxeo-agentic-ui-config/1') return parsed;
+  return Object.assign({}, ...(parsed.fragments ?? []).map((fragment) => fragment?.content ?? {}));
+}
 const PACKAGE_SOURCES = 'nuxeo-agentic-ui-package/src';
 const PACKAGED_CONFIG_DIR = 'nuxeo-agentic-ui-package/src/main/config';
 
@@ -3323,7 +3340,7 @@ function checkAdvertisedLocalesShip() {
   for (const [config, catalogueDir] of configs) {
     let parsed;
     try {
-      parsed = JSON.parse(read(config));
+      parsed = layer0Values(JSON.parse(read(config)));
     } catch (error) {
       fail(`${config} is not valid JSON: ${error.message}`);
       continue;

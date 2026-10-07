@@ -38,13 +38,29 @@ const PACKAGED_BOOTSTRAP = join(
   'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json',
 );
 
-/** The packaged defaults with only the language swapped, leaving branding and the rest alone. */
+/**
+ * The configuration servlet's bootstrap response — the envelope the application accepts, and
+ * nothing else — with our defaults and the language swapped, leaving branding and the rest alone.
+ */
 const bootstrapForPseudoLocale = () => {
   const config = JSON.parse(readFileSync(PACKAGED_BOOTSTRAP, 'utf8'));
   config.defaultLanguage = 'zz';
   // The default must also be advertised, or it is not selectable and the loader may refuse it.
   config.availableLanguages = [...new Set([...(config.availableLanguages ?? []), 'zz'])];
-  return JSON.stringify(config, null, 2);
+  return JSON.stringify({
+    format: 'nuxeo-agentic-ui-config/1',
+    layer: 'bootstrap',
+    fragments: [
+      {
+        name: 'defaults',
+        component: 'org.nuxeo.agentic.ui.config.defaults',
+        bundle: 'org.nuxeo.agentic.ui.config.defaults',
+        source: 'agentic-ui-config/bootstrap.defaults.json',
+        content: config,
+      },
+    ],
+    diagnostics: [],
+  });
 };
 
 /** Serves `defaultLanguage: 'zz'` for every bootstrap request this page makes. */

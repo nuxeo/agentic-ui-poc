@@ -10,15 +10,17 @@
  */
 
 /**
- * The last entry is Phase 1's tolerant path working as designed: an
- * unconfigured instance has no configuration document, and the browser logs the
- * 404 regardless of the application handling it. `phase-1-config.mjs` asserts the
+ * The last two are the tolerant configuration load working as designed: under
+ * `nx serve` nothing answers `agentic-ui-config/*` unless a developer has put a
+ * file there, and the browser logs the 404 regardless of the application handling
+ * it. `phase-1-config.mjs` asserts the
  * present and absent cases separately.
  */
 const ENVIRONMENTAL_ERRORS = [
   /automation\/AI\./,
   '/nuxeo/logout',
-  '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
+  '/agentic-ui-config/bootstrap.json',
+  '/agentic-ui-config/manifest.json',
 ];
 
 /**
@@ -27,7 +29,10 @@ const ENVIRONMENTAL_ERRORS = [
  * @param {string} label
  */
 async function openTab(page, label) {
-  const tab = page.locator('hxp-browse-tabs button').filter({ hasText: new RegExp(label, 'i') }).first();
+  const tab = page
+    .locator('hxp-browse-tabs button')
+    .filter({ hasText: new RegExp(label, 'i') })
+    .first();
   if ((await tab.count()) === 0) return false;
   await tab.click();
   await page.waitForTimeout(2500);
@@ -50,7 +55,11 @@ async function openTab(page, label) {
 async function openTabAndAssert(page, h, label, name, panel) {
   const opened = await openTab(page, label);
   h.check(`${name} tab opened`, opened);
-  const rendered = await page.locator(panel).first().isVisible().catch(() => false);
+  const rendered = await page
+    .locator(panel)
+    .first()
+    .isVisible()
+    .catch(() => false);
   h.check(`${name} panel rendered`, rendered, `${panel} was not visible`);
   if (rendered) {
     await h.screenshot(`adf-hx-${name}`);
@@ -62,7 +71,7 @@ async function openTabAndAssert(page, h, label, name, panel) {
  * @param {ReturnType<import('../helpers.mjs').createHelpers>} h
  */
 export default async function run(page, h) {
-  h.step('Precondition: the dev server serves adf-core\'s translation catalogue');
+  h.step("Precondition: the dev server serves adf-core's translation catalogue");
   // adf-hx components fetch `assets/adf-core/i18n/<lang>.json` at runtime, copied in by an
   // asset glob in `angular.json`. Without it one accessibility label renders as a raw key and
   // the console fills with 404s — asserted as a precondition so the run says so instead of
@@ -108,7 +117,10 @@ export default async function run(page, h) {
   // the hand-written markup and went red the moment that component was deleted — a stale
   // assertion, not a regression.
   const dataRows = () =>
-    page.locator('hxp-document-list adf-datatable-row').count().then((n) => Math.max(0, n - 1));
+    page
+      .locator('hxp-document-list adf-datatable-row')
+      .count()
+      .then((n) => Math.max(0, n - 1));
   const rowsBefore = await dataRows();
   await cardToggle.click();
   await page.waitForTimeout(2000);
@@ -134,7 +146,10 @@ export default async function run(page, h) {
 
   h.step('adf-hx navigation drawer and folder tree');
   await h.goTo('/#/browse');
-  const navEntry = page.locator('a,button').filter({ hasText: /adf-hx/i }).first();
+  const navEntry = page
+    .locator('a,button')
+    .filter({ hasText: /adf-hx/i })
+    .first();
   h.check('platform nav entry present', (await navEntry.count()) > 0);
   await navEntry.click();
   await page.waitForTimeout(3500);
