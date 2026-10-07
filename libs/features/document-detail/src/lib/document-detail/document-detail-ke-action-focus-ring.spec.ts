@@ -11,7 +11,8 @@ describe('DocumentDetailComponent — ke-action focus ring (NXENG-789)', () => {
     expect(scss).toMatch(/\.ke-action-btn\.mat-mdc-outlined-button:focus\s*\{/);
     expect(scss).not.toMatch(/\.ke-action-btn\.mat-mdc-outlined-button:focus,\s/);
     expect(scss).toMatch(
-      /\.ke-action-btn\.mat-mdc-outlined-button:focus[\s\S]*outline:\s*2px\s+solid/,
+      /\.ke-action-btn\.mat-mdc-outlined-button:focus[\s\S]*outline-width:\s*2px/,
     );
+    expect(scss).toMatch(/\.ke-action-btn\.mat-mdc-outlined-button:focus-visible\s*\{/);
   });
 });

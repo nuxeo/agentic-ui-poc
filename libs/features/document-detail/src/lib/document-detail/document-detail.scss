@@ -126,9 +126,19 @@ sat-breadcrumbs {
   animation: ke-spin 1s linear infinite;
 }
 
-// NXENG-789 — IBM `style_focus_visible` reads `:focus` only (not comma-grouped lists).
+// NXENG-789 / IBM issue 299839583 — Material stroked buttons suppress the default focus ring.
+// IBM Equal Access `style_focus_visible` reads `:focus` only; keep this selector standalone.
 .ke-action-btn.mat-mdc-outlined-button:focus {
-  outline: 2px solid var(--mat-sys-primary, #0073e6) !important;
+  outline-style: solid;
+  outline-width: 2px;
+  outline-color: var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+.ke-action-btn.mat-mdc-outlined-button:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-color: var(--mat-sys-primary);
   outline-offset: 2px;
 }
 
