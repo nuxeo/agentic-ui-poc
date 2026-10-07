@@ -1723,12 +1723,19 @@ expectRed(
   /No install\.xml was found[\s\S]*asserted nothing/,
 );
 
-// The comment explaining the rule has to quote the attribute; it must not trip the rule.
+// The comment explaining the rule has to quote the attribute — here as a whole commented-out copy,
+// the strongest form of it. It must not trip the rule.
 falsePositiveControls += 1;
 expectGreen(
-  'the fixed installer, whose comment quotes overwrite="false"',
+  'the fixed installer, with a commented-out overwrite="false" copy',
   'checkInstallerOwnsNoCustomerFile',
-  { [INSTALL_XML]: INSTALL_XML_AFTER, [SAMPLE]: '{}\n' },
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(
+      '</install>',
+      '  <!-- was: <copy dir="${package.root}/config" todir="x" overwrite="false" /> -->\n</install>',
+    ),
+    [SAMPLE]: '{}\n',
+  },
 );
 
 // ── controls for round three of the Copilot review ───────────────────────────────────────

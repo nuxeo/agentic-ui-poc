@@ -4666,9 +4666,22 @@ function checkInstallerOwnsNoCustomerFile() {
   }
 
   for (const file of installers) {
-    // Comments are stripped first: the one explaining this rule necessarily quotes the attribute.
-    const body = read(file).replace(/<!--[\s\S]*?-->/g, '');
+    const body = read(file);
+
+    // Copies inside a comment are skipped: the one explaining this rule necessarily quotes the
+    // attribute. Ranges rather than stripping, and an unterminated comment runs to the end of the
+    // file, as it does for an XML parser.
+    const comments = [];
+    for (let open = body.indexOf('<!--'); open !== -1; ) {
+      const close = body.indexOf('-->', open + 4);
+      const end = close === -1 ? body.length : close + 3;
+      comments.push([open, end]);
+      open = body.indexOf('<!--', end);
+    }
+    const inComment = (at) => comments.some(([open, end]) => at >= open && at < end);
+
     for (const match of body.matchAll(/<copy\b[^>]*>/g)) {
+      if (inComment(match.index)) continue;
       if (!/\boverwrite\s*=\s*["']false["']/.test(match[0])) continue;
       fail(
         `${file} has a copy with overwrite="false": ${match[0].replace(/\s+/g, ' ')}\n` +
