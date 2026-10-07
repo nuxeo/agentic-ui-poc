@@ -128,6 +128,21 @@ If you read six files, read these.
 
 ---
 
+## 5a. `libs/shared/document-layouts` — per-type layouts
+
+Internal: no `@nuxeo-satori/platform` entry point re-exports it. Its contract is the layout-file
+format in [`docs/extension-reference.md`](../../docs/extension-reference.md) §9b.
+
+| File                                 | Responsibility                                                                                                        |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `layout-file.ts`                     | Reads the servlet's `layouts.json` and layout envelopes, and validates a layout file (version 1)                      |
+| `resolve-layout.ts`                  | Reads `/config/types/<type>`; generates the default layout from the type's schemas; applies a contributed file, whole |
+| `document-layout.service.ts`         | `layoutFor(type, mode)`: lazy, cached reads — the layout reads anonymous and without interceptors                     |
+| `document-layout/document-layout.ts` | `<lib-document-layout>`: sections or tabs in the Properties panel; vocabulary labels; translation-key labels          |
+| `document-layout/field-view.ts`      | How one value is shown, chosen from its schema type                                                                   |
+
+---
+
 ## 6. `libs/platform` — the publishable package
 
 Owns no logic. Wraps four shared libraries as entry points and ships the customer-facing assets.
@@ -200,6 +215,7 @@ Full table in [Dev Harness & Gates](08-dev-harness-and-gates.md). Structure:
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------ |
 | Layer 0 config                            | A `bootstrap` fragment in the customer's Marketplace package, served by `AgenticUiConfigServlet` | Customer, no build |
 | Layer 1 manifest                          | A `manifest` fragment in the customer's Marketplace package, served by the same servlet          | Customer, no build |
+| Per-type layouts                          | A `<layout type mode>` file in the customer's Marketplace package, served by the same servlet    | Customer, no build |
 | 8 slots (4 live)                          | `ExtensionSlotRegistry`                                                                          | Both               |
 | Rules                                     | `ExtensionRuleRegistry`, `provideSatoriExtensions`                                               | Both               |
 | Actions                                   | `ExtensionActionRegistry`                                                                        | Both               |

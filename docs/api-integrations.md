@@ -4,7 +4,7 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Base URL:** `/nuxeo` (proxied to `http://localhost:8080` in development via `apps/nuxeo-ui/proxy.conf.json`)
 
-**Authentication:** All `/nuxeo/**` requests are automatically decorated with `Authorization: Basic <credentials>` by the `nuxeoAuthInterceptor` (see `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`), except the two anonymous configuration requests of §28, which `AppConfigService` sends without the interceptors.
+**Authentication:** All `/nuxeo/**` requests are automatically decorated with `Authorization: Basic <credentials>` by the `nuxeoAuthInterceptor` (see `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`), except the anonymous configuration requests, which skip the interceptors: the two of §28, sent by `AppConfigService`, and the layout index and files of §29, sent by `DocumentLayoutService`.
 
 ---
 
