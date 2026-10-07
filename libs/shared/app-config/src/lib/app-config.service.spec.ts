@@ -1,4 +1,4 @@
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
@@ -56,6 +56,39 @@ function presales(presetSwitching: boolean) {
     },
   };
 }
+
+describe('AppConfigService and the host application’s interceptors', () => {
+  it('sends the configuration requests without them', async () => {
+    const seen: string[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(
+          withInterceptors([
+            (request, next) => {
+              seen.push(request.url);
+              return next(request.clone({ setHeaders: { 'X-Added-By-Interceptor': 'yes' } }));
+            },
+          ]),
+        ),
+        provideHttpClientTesting(),
+        { provide: APP_BOOTSTRAP_CONFIG_URL, useValue: BOOTSTRAP_URL },
+      ],
+    });
+    const service = TestBed.inject(AppConfigService);
+    const http = TestBed.inject(HttpTestingController);
+
+    const loaded = service.load();
+    const requests = [http.expectOne(BOOTSTRAP_URL), http.expectOne(MANIFEST_URL)];
+    expect(seen).toEqual([]);
+    expect(requests.some((request) => request.request.headers.has('X-Added-By-Interceptor'))).toBe(
+      false,
+    );
+    requests[0].flush(envelope('bootstrap', []));
+    requests[1].flush(envelope('manifest', []));
+    await loaded;
+    http.verify();
+  });
+});
 
 describe('AppConfigService', () => {
   let service: AppConfigService;
@@ -117,6 +150,25 @@ describe('AppConfigService', () => {
       requests[0].flush(envelope('bootstrap', []));
       requests[1].flush(envelope('manifest', []));
       await loaded;
+      http.expectNone(() => true);
+    });
+
+    it('loads once: a second call shares the first load rather than fetching again', async () => {
+      const first = service.load();
+      const second = service.load();
+      expect(second).toBe(first);
+      http
+        .expectOne(BOOTSTRAP_URL)
+        .flush(
+          envelope('bootstrap', [
+            { name: 'acme', content: { branding: { applicationTitle: 'Acme' } } },
+          ]),
+        );
+      http.expectOne(MANIFEST_URL).flush(envelope('manifest', []));
+      await second;
+
+      expect(service.bootstrap().branding.applicationTitle).toBe('Acme');
+      await service.load();
       http.expectNone(() => true);
     });
 

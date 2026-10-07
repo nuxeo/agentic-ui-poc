@@ -4,7 +4,7 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Base URL:** `/nuxeo` (proxied to `http://localhost:8080` in development via `apps/nuxeo-ui/proxy.conf.json`)
 
-**Authentication:** All `/nuxeo/**` requests are automatically decorated with `Authorization: Basic <credentials>` by the `nuxeoAuthInterceptor` (see `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`).
+**Authentication:** All `/nuxeo/**` requests are automatically decorated with `Authorization: Basic <credentials>` by the `nuxeoAuthInterceptor` (see `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`), except the two anonymous configuration requests of §28, which `AppConfigService` sends without the interceptors.
 
 ---
 
@@ -1409,13 +1409,13 @@ prefers `dc:source` (rarely auto-filled) and falls back to `dc:rights` when
 
 ## 28. Application Configuration — Bootstrap and Manifest (NXSAT-312)
 
-| Field           | Value                                                                                                               |
-| --------------- | ------------------------------------------------------------------------------------------------------------------- |
-| **Service**     | `AppConfigService` (`libs/shared/app-config/src/lib/app-config.service.ts`)                                         |
-| **Method**      | `load()`, once, from an `APP_INITIALIZER`                                                                           |
-| **HTTP Method** | `GET`, both in parallel, at startup; **anonymous**: no credentials needed (a stored session's are sent and ignored) |
-| **Endpoints**   | `/nuxeo/agentic-ui-config/bootstrap.json`, `/nuxeo/agentic-ui-config/manifest.json`                                 |
-| **Server side** | `AgenticUiConfigServlet` in `nuxeo-agentic-core`, from `org.nuxeo.agentic.ui.config` contributions                  |
+| Field           | Value                                                                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Service**     | `AppConfigService` (`libs/shared/app-config/src/lib/app-config.service.ts`)                                                |
+| **Method**      | `load()`, once, from an `APP_INITIALIZER`                                                                                  |
+| **HTTP Method** | `GET`, both in parallel, at startup; **anonymous**: sent without the interceptors, so never with an `Authorization` header |
+| **Endpoints**   | `/nuxeo/agentic-ui-config/bootstrap.json`, `/nuxeo/agentic-ui-config/manifest.json`                                        |
+| **Server side** | `AgenticUiConfigServlet` in `nuxeo-agentic-core`, from `org.nuxeo.agentic.ui.config` contributions                         |
 
 Both URLs are resolved from the application's base href (`resolveBootstrapConfigUrl`,
 `resolveManifestConfigUrl`), so under `nx serve` they are `/agentic-ui-config/*.json`, served from

@@ -25,6 +25,7 @@ import {
   provideSatoriExtensions,
   type ExtensionActionHandler,
 } from '@nuxeo-satori/platform/extensions';
+import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { SelectionService } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
@@ -65,13 +66,18 @@ function bulkHandler(injector: Injector, name: keyof BulkActionModule): Extensio
  * it cannot rot into a surface nothing exercises — and the shape here is exactly
  * what `docs/extension-reference.md` tells a customer to write.
  *
- * The factory form is required, not stylistic: two of the rules close over
+ * The factory form is required, not stylistic: two of the rules read
  * `AuthService` and all six action handlers close over an `Injector`.
+ *
+ * `AuthService` is looked up when a rule is evaluated, not here. This factory
+ * runs in an environment initializer, before the configuration loads, and
+ * constructing `AuthService` resolves configuration tokens that keep their first
+ * value — the Nuxeo API origin and the SSO settings would stay at their defaults.
  */
 function provideAppContributions(): EnvironmentProviders {
   return provideSatoriExtensions(() => {
-    const auth = inject(AuthService);
     const injector = inject(Injector);
+    const auth = () => injector.get(AuthService);
 
     return {
       // Rules that need shell-owned state. These are exactly the shape a
@@ -81,8 +87,8 @@ function provideAppContributions(): EnvironmentProviders {
       // `SECURITY_RELEVANT_RULE_IDS`, which the registry seeds itself. Declaring
       // them again here would read as if the protection came from this call.
       rules: {
-        'app.rules.hasAdministrationAccess': () => auth.hasAdministrationAccess(),
-        'app.rules.isPowerUser': () => auth.isPowerUser(),
+        'app.rules.hasAdministrationAccess': () => auth().hasAdministrationAccess(),
+        'app.rules.isPowerUser': () => auth().isPowerUser(),
       },
 
       slots: {
@@ -170,6 +176,11 @@ function provideAppContributions(): EnvironmentProviders {
  *
  * `.document` is populated by whichever surface owns a focused document —
  * `DocumentDetailComponent` — rather than here, and cleared when it is destroyed.
+ *
+ * `AuthService` and `SelectionService` are resolved only once the configuration
+ * has loaded. Constructing either resolves configuration tokens whose factories
+ * read the configuration once — the Nuxeo API origin, through `NuxeoApiBase`, and
+ * the SSO settings — so resolved in this factory they would keep their defaults.
  */
 function provideRuleContextWiring(): Provider {
   return {
@@ -182,14 +193,16 @@ function provideRuleContextWiring(): Provider {
       // id fails open, so a lazy construction would leave that window open.
       inject(AppExtensionsService);
 
+      const config = inject(AppConfigService);
       const ruleContext = inject(ExtensionRuleContextService);
-      const selection = inject(SelectionService);
-      const auth = inject(AuthService);
       const router = inject(Router);
       const injector = inject(Injector);
       const destroyRef = inject(DestroyRef);
 
-      return () => {
+      return async () => {
+        await config.load();
+        const auth = injector.get(AuthService);
+        const selection = injector.get(SelectionService);
         effect(
           () => {
             ruleContext.username.set(auth.username());

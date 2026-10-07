@@ -26,7 +26,7 @@ import { TemplateSessionService } from '../template-session.service';
  *
  * The **factory form** is used rather than a plain object because the rule needs
  * `inject()`. That is not a contrived example: two of the product's own rules
- * close over `AuthService` and all six of its bulk handlers close over an
+ * read `AuthService` and all six of its bulk handlers close over an
  * `Injector`, so a real customer hits this on the first non-trivial rule.
  */
 /**
