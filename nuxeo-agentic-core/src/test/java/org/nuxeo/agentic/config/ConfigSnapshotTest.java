@@ -9,8 +9,12 @@ import static org.nuxeo.agentic.config.TestContributions.layout;
 
 import java.io.FileNotFoundException;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class ConfigSnapshotTest {
 
@@ -82,6 +86,48 @@ class ConfigSnapshotTest {
 
         assertTrue(snapshot.fragments("bootstrap").isEmpty());
         assertEquals(List.of("too-large"), codes(snapshot));
+    }
+
+    static Stream<Arguments> rejectedReplacements() {
+        String big = "{\"a\":\"" + "x".repeat(ConfigSnapshot.MAX_JSON_BYTES) + "\"}";
+        return Stream.of(Arguments.of("unreadable", Contribution.fragment("manifest", "acme", true, from("regional"),
+                () -> {
+                    throw new FileNotFoundException("agentic-ui-config/regional.json");
+                }, new Object())), Arguments.of("too-large", fragment("regional", "manifest", "acme", big)),
+                Arguments.of("invalid-json", fragment("regional", "manifest", "acme", "{ \"a\": ")),
+                Arguments.of("not-an-object", fragment("regional", "manifest", "acme", "[]")));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("rejectedReplacements")
+    void aRejectedReplacementKeepsTheFragmentItNamedInPlace(String code, Contribution replacement) {
+        ConfigSnapshot snapshot = build(fragment("acme", "manifest", "acme", "{\"a\":1}"),
+                fragment("ours", "manifest", "later", "{}"), replacement);
+
+        assertEquals(List.of("acme", "later"),
+                snapshot.fragments("manifest").stream().map(ConfigSnapshot.Fragment::name).toList());
+        assertEquals("acme", snapshot.fragments("manifest").get(0).provenance().component());
+        assertEquals(1, snapshot.fragments("manifest").get(0).content().get("a").asInt());
+        assertEquals(List.of(code, "kept"), codes(snapshot));
+        Diagnostic kept = snapshot.diagnostics().get(1);
+        assertEquals(Diagnostic.Level.WARNING, kept.level());
+        assertEquals(ConfigScope.MANIFEST, kept.scope());
+        assertTrue(kept.message().contains("replacement from regional"), kept.message());
+    }
+
+    @Test
+    void aRejectedLayoutOrAssetReplacementKeepsTheWorkingVersion() {
+        byte[] svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"/>".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        ConfigSnapshot snapshot = build(layout("acme", "Contract", "view", "{\"rows\":[]}"),
+                TestContributions.asset("acme", "acme-logo.svg", svg),
+                layout("regional", "Contract", "view", "not json"),
+                Contribution.asset("acme-logo.svg", true, from("regional"), () -> {
+                    throw new FileNotFoundException("agentic-ui-config/assets/acme-logo.svg");
+                }, new Object()));
+
+        assertEquals("acme", snapshot.layouts().get(0).provenance().component());
+        assertEquals("acme", snapshot.assets().get(0).provenance().component());
+        assertEquals(List.of("invalid-json", "kept", "unreadable", "kept"), codes(snapshot));
     }
 
     @Test

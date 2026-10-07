@@ -69,44 +69,52 @@ public final class ConfigSnapshot {
         return diagnostics;
     }
 
+    /** A contribution whose body was read and checked: {@code json} for a fragment or layout. */
+    record Loaded(Contribution contribution, byte[] bytes, JsonNode json) {
+    }
+
     static ConfigSnapshot build(ContributionRegistry.Resolution resolution) {
         List<Fragment> fragments = new ArrayList<>();
         List<Layout> layouts = new ArrayList<>();
         List<Asset> assets = new ArrayList<>();
-        List<Diagnostic> diagnostics = new ArrayList<>(resolution.diagnostics());
 
-        for (Contribution contribution : resolution.inForce()) {
+        for (Loaded loaded : resolution.inForce()) {
+            Contribution contribution = loaded.contribution();
             Provenance provenance = contribution.provenance();
-            int limit = contribution.kind() == Contribution.Kind.ASSET ? MAX_ASSET_BYTES : MAX_JSON_BYTES;
-            byte[] bytes;
-            try {
-                bytes = contribution.content().read();
-            } catch (IOException | RuntimeException e) {
-                diagnostics.add(Diagnostic.error("unreadable", contribution.scope(), provenance,
-                        String.format("%s could not be read from %s: %s", contribution.key(), provenance.source(),
-                                e.getMessage())));
-                continue;
+            switch (contribution.kind()) {
+            case ASSET -> assets.add(
+                    new Asset(contribution.name(), provenance, loaded.bytes(), contentType(contribution.name())));
+            case LAYOUT -> layouts.add(new Layout(contribution.type(), contribution.mode(), provenance, loaded.json()));
+            case FRAGMENT -> fragments.add(
+                    new Fragment(contribution.layer(), contribution.name(), provenance, loaded.json()));
             }
-            if (bytes.length > limit) {
-                diagnostics.add(Diagnostic.error("too-large", contribution.scope(), provenance,
-                        String.format("%s is %d bytes; the limit is %d.", contribution.key(), bytes.length, limit)));
-                continue;
-            }
-            if (contribution.kind() == Contribution.Kind.ASSET) {
-                assets.add(new Asset(contribution.name(), provenance, bytes, contentType(contribution.name())));
-                continue;
-            }
-            JsonNode content = parseObject(contribution, bytes, diagnostics);
-            if (content == null) {
-                continue;
-            }
-            if (contribution.kind() == Contribution.Kind.LAYOUT) {
-                layouts.add(new Layout(contribution.type(), contribution.mode(), provenance, content));
-                continue;
-            }
-            fragments.add(new Fragment(contribution.layer(), contribution.name(), provenance, content));
         }
-        return new ConfigSnapshot(fragments, layouts, assets, diagnostics);
+        return new ConfigSnapshot(fragments, layouts, assets, resolution.diagnostics());
+    }
+
+    /** Reads and checks a contribution's body, or reports why it cannot be used and returns {@code null}. */
+    static Loaded load(Contribution contribution, List<Diagnostic> diagnostics) {
+        Provenance provenance = contribution.provenance();
+        int limit = contribution.kind() == Contribution.Kind.ASSET ? MAX_ASSET_BYTES : MAX_JSON_BYTES;
+        byte[] bytes;
+        try {
+            bytes = contribution.content().read();
+        } catch (IOException | RuntimeException e) {
+            diagnostics.add(Diagnostic.error("unreadable", contribution.scope(), provenance,
+                    String.format("%s could not be read from %s: %s", contribution.key(), provenance.source(),
+                            e.getMessage())));
+            return null;
+        }
+        if (bytes.length > limit) {
+            diagnostics.add(Diagnostic.error("too-large", contribution.scope(), provenance,
+                    String.format("%s is %d bytes; the limit is %d.", contribution.key(), bytes.length, limit)));
+            return null;
+        }
+        if (contribution.kind() == Contribution.Kind.ASSET) {
+            return new Loaded(contribution, bytes, null);
+        }
+        JsonNode content = parseObject(contribution, bytes, diagnostics);
+        return content == null ? null : new Loaded(contribution, bytes, content);
     }
 
     private static JsonNode parseObject(Contribution contribution, byte[] bytes, List<Diagnostic> diagnostics) {

@@ -90,7 +90,9 @@ Every fragment and asset carries its provenance — contributing component, bund
 configuration built at startup stands, plus `Cache-Control: no-cache`,
 `X-Content-Type-Options: nosniff` and a `sandbox` CSP. `If-None-Match` answers 304. GET and HEAD
 only. A fragment that is not a JSON object, is larger than 1 MiB, or
-cannot be read is left out and reported in `diagnostics`; the server still starts.
+cannot be read is left out and reported in `diagnostics`; the server still starts. When such a
+fragment, layout or asset was meant to replace an earlier one, the earlier one stays in force where
+it was, and a `kept` warning says so.
 
 **Anonymous by design.** The application reads its configuration before sign-in, so no
 authentication filter is mapped on the path. **Nothing sensitive may be contributed** — every

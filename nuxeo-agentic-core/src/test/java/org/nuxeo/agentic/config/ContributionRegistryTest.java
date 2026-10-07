@@ -14,7 +14,11 @@ import org.junit.jupiter.api.Test;
 class ContributionRegistryTest {
 
     private static List<String> owners(ContributionRegistry.Resolution resolution) {
-        return resolution.inForce().stream().map(c -> c.provenance().component() + ":" + c.key()).toList();
+        return resolution.inForce()
+                         .stream()
+                         .map(ConfigSnapshot.Loaded::contribution)
+                         .map(c -> c.provenance().component() + ":" + c.key())
+                         .toList();
     }
 
     private static List<String> codes(ContributionRegistry.Resolution resolution) {

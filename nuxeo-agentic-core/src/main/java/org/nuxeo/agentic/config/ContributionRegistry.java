@@ -17,6 +17,10 @@ import java.util.regex.Pattern;
  *
  * Every contribution is kept, and the set in force is recomputed from scratch, so withdrawing one
  * (a hot reload in dev mode) gives the same result as never having registered it.
+ *
+ * A contribution's body is read and checked before it may replace anything: a replacement that
+ * cannot be read, is too large or does not parse is rejected, and the one it named stays in force
+ * where it was.
  */
 final class ContributionRegistry {
 
@@ -43,7 +47,7 @@ final class ContributionRegistry {
 
     /** The contributions in force, in order, and what happened to the others. */
     synchronized Resolution resolve() {
-        Map<String, Contribution> inForce = new LinkedHashMap<>();
+        Map<String, ConfigSnapshot.Loaded> inForce = new LinkedHashMap<>();
         List<Diagnostic> diagnostics = new ArrayList<>();
         for (Contribution contribution : contributions) {
             String invalid = validate(contribution);
@@ -53,7 +57,8 @@ final class ContributionRegistry {
                 continue;
             }
             String key = contribution.key();
-            Contribution previous = inForce.get(key);
+            ConfigSnapshot.Loaded loadedPrevious = inForce.get(key);
+            Contribution previous = loadedPrevious == null ? null : loadedPrevious.contribution();
             if (!contribution.enabled()) {
                 if (previous == null) {
                     diagnostics.add(Diagnostic.warning("disabled-nothing", contribution.scope(),
@@ -68,6 +73,15 @@ final class ContributionRegistry {
                 }
                 continue;
             }
+            ConfigSnapshot.Loaded loaded = ConfigSnapshot.load(contribution, diagnostics);
+            if (loaded == null) {
+                if (previous != null) {
+                    diagnostics.add(Diagnostic.warning("kept", contribution.scope(), previous.provenance(),
+                            String.format("%s from %s stays in force: its replacement from %s was rejected.", key,
+                                    describe(previous.provenance()), describe(contribution.provenance()))));
+                }
+                continue;
+            }
             if (previous != null) {
                 // `put` on an existing key keeps its position: a replacement takes the place of the
                 // fragment it replaces rather than jumping over everything registered in between.
@@ -75,7 +89,7 @@ final class ContributionRegistry {
                         String.format("%s from %s is replaced by %s.", key, describe(previous.provenance()),
                                 describe(contribution.provenance()))));
             }
-            inForce.put(key, contribution);
+            inForce.put(key, loaded);
         }
         return new Resolution(List.copyOf(inForce.values()), List.copyOf(diagnostics));
     }
@@ -122,6 +136,6 @@ final class ContributionRegistry {
         return String.format("%s (bundle %s)", provenance.component(), provenance.bundle());
     }
 
-    record Resolution(List<Contribution> inForce, List<Diagnostic> diagnostics) {
+    record Resolution(List<ConfigSnapshot.Loaded> inForce, List<Diagnostic> diagnostics) {
     }
 }

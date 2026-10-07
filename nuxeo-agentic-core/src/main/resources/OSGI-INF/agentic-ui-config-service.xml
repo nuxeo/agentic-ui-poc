@@ -34,7 +34,8 @@
 
       src is read from the contributing bundle; the json child is the inline form. A later
       fragment with the same name and layer replaces an earlier one in place, a later layout with
-      the same type and mode replaces it whole, and enabled="false" removes either.
+      the same type and mode replaces it whole, and enabled="false" removes either. A replacement
+      that cannot be read, is too large or does not parse is rejected and the earlier one stays.
     </documentation>
     <object class="org.nuxeo.agentic.config.FragmentDescriptor" />
     <object class="org.nuxeo.agentic.config.LayoutDescriptor" />
