@@ -10,6 +10,8 @@ describe('DocumentDetailComponent — sub-tab focus ring (NXENG-792)', () => {
     const scss = readFileSync(join(import.meta.dirname, 'document-detail.scss'), 'utf8');
     expect(scss).toMatch(/\.sub-tab:focus\s*\{/);
     expect(scss).not.toMatch(/\.sub-tab:focus,\s/);
-    expect(scss).toMatch(/\.sub-tab:focus[\s\S]*outline:\s*2px\s+solid/);
+    expect(scss).toMatch(
+      /\.sub-tab:focus[\s\S]*outline:\s*2px\s+solid\s+var\(--document-detail-properties-label-muted\)/,
+    );
   });
 });
