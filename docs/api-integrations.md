@@ -1409,13 +1409,13 @@ prefers `dc:source` (rarely auto-filled) and falls back to `dc:rights` when
 
 ## 28. Application Configuration — Bootstrap and Manifest (NXSAT-312)
 
-| Field           | Value                                                                                              |
-| --------------- | -------------------------------------------------------------------------------------------------- |
-| **Service**     | `AppConfigService` (`libs/shared/app-config/src/lib/app-config.service.ts`)                        |
-| **Method**      | `load()`, once, from an `APP_INITIALIZER`                                                          |
-| **HTTP Method** | `GET`, both in parallel, **anonymous** (sent before sign-in, no `Authorization`)                   |
-| **Endpoints**   | `/nuxeo/agentic-ui-config/bootstrap.json`, `/nuxeo/agentic-ui-config/manifest.json`                |
-| **Server side** | `AgenticUiConfigServlet` in `nuxeo-agentic-core`, from `org.nuxeo.agentic.ui.config` contributions |
+| Field           | Value                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Service**     | `AppConfigService` (`libs/shared/app-config/src/lib/app-config.service.ts`)                                         |
+| **Method**      | `load()`, once, from an `APP_INITIALIZER`                                                                           |
+| **HTTP Method** | `GET`, both in parallel, at startup; **anonymous**: no credentials needed (a stored session's are sent and ignored) |
+| **Endpoints**   | `/nuxeo/agentic-ui-config/bootstrap.json`, `/nuxeo/agentic-ui-config/manifest.json`                                 |
+| **Server side** | `AgenticUiConfigServlet` in `nuxeo-agentic-core`, from `org.nuxeo.agentic.ui.config` contributions                  |
 
 Both URLs are resolved from the application's base href (`resolveBootstrapConfigUrl`,
 `resolveManifestConfigUrl`), so under `nx serve` they are `/agentic-ui-config/*.json`, served from

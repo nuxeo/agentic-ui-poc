@@ -141,6 +141,11 @@ export class AppConfigService {
       manifestFragments: (manifest?.fragments ?? []).map(info),
       serverDiagnostics: [...(bootstrap?.diagnostics ?? []), ...(manifest?.diagnostics ?? [])],
     }));
+    for (const { level, code, message, component } of this.diagnosticsState().serverDiagnostics) {
+      console.warn(
+        `[agentic-ui-config] server ${level} ${code}${component ? ` (${component})` : ''}: ${message}`,
+      );
+    }
   }
 
   /** The active theme definition for a stored or configured theme id. */
@@ -214,7 +219,9 @@ export class AppConfigService {
     }
   }
 
+  /** Recorded and logged: the product app has no page showing diagnostics, so the console is where support finds them. */
   private note(message: string): void {
+    console.warn(`[agentic-ui-config] ${message}`);
     this.diagnosticsState.update((current) => ({
       ...current,
       messages: [...current.messages, message],

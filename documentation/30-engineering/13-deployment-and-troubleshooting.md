@@ -118,8 +118,11 @@ order served, then applies a presales preset if a package enables switching and 
 Nothing is fetched again when a user signs in, out, or switches: both halves are the same for
 everyone. Only the `nuxeo-agentic-ui-config/1` envelope is accepted; a bare JSON object, an error
 status or an unreachable server leaves the compiled defaults in force, and
-`AppConfigService.diagnostics()` records why. The Diagnostics page lists the package behind every
-fragment and the server's diagnostics.
+`AppConfigService.diagnostics()` records why. Every reason, and every diagnostic the server
+reports, is also written to the browser console as a warning prefixed `[agentic-ui-config]`. The
+template app's home page lists the package behind every fragment. "Anonymously" means neither URL
+needs credentials: once a user has signed in with a password, the auth interceptor adds them to
+these requests as it does to every `/nuxeo/` request, and the servlet ignores them.
 
 Under `nx serve` there is no servlet: `npm run config:dev` writes both files, as envelopes, into
 the gitignored `apps/nuxeo-ui/public/agentic-ui-config/`, from our defaults plus any fragment
@@ -199,7 +202,7 @@ Verify with `npm run beta:backend`.
 | `NG0201: No provider for …`                                | An upstream `providedIn: 'root'` service resolving a port from the root injector                              | Provide the port in the **root** injector. See the comment at `app.config.ts:37`                     |
 | Raw i18n keys — `MANAGE_VERSIONS.DIALOG.TITLE`             | A seeded catalogue folder whose file is not shipped. The loader catches the 404 and returns `{}` **silently** | `npm run beta:bundle` — asserts required assets present **and non-empty**                            |
 | An edited manifest Note has no effect                      | The application no longer reads it (NXSAT-312), with no migration                                             | Re-create its content as a `manifest` fragment in a configuration package                            |
-| `?preset=` does nothing and no badge appears               | No package sets `presales.presetSwitching: true`, or the preset name is not defined                           | Diagnostics page lists the reason; enable it in the demo package only                                |
+| `?preset=` does nothing and no badge appears               | No package sets `presales.presetSwitching: true`, or the preset name is not defined                           | The console shows `[agentic-ui-config] preset … ignored: …`; enable it in the demo package only      |
 | Under `nx serve`, configuration falls back to the defaults | `public/agentic-ui-config/*.json` missing, created after the server started, or not an envelope               | `npm run config:dev`, then restart `nx serve`                                                        |
 | Empty lists; intermittent 403 on `/nuxeo/api`              | XHRs unauthenticated                                                                                          | Session satisfies the _guard_; `httpCredentials` authenticates _requests_. Both needed               |
 | HTTP 500 from `AI.*`                                       | The AI backend is a **separate package not in this repo**                                                     | Expected. Install it, or accept the 500                                                              |

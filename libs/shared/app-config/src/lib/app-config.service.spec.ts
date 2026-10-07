@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { AppConfigService } from './app-config.service';
 import { APP_BOOTSTRAP_CONFIG_URL } from './app-config.tokens';
@@ -60,8 +60,10 @@ function presales(presetSwitching: boolean) {
 describe('AppConfigService', () => {
   let service: AppConfigService;
   let http: HttpTestingController;
+  let warn: MockInstance<typeof console.warn>;
 
   beforeEach(() => {
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     window.history.replaceState({}, '', '/');
     localStorage.removeItem(PRESET_STORAGE_KEY);
     TestBed.configureTestingModule({
@@ -77,6 +79,7 @@ describe('AppConfigService', () => {
 
   afterEach(() => {
     http.verify();
+    warn.mockRestore();
     window.history.replaceState({}, '', '/');
     localStorage.removeItem(PRESET_STORAGE_KEY);
   });
@@ -176,6 +179,9 @@ describe('AppConfigService', () => {
       await load(envelope('bootstrap', [], [kept]));
 
       expect(service.diagnostics().serverDiagnostics).toEqual([kept]);
+      expect(warn).toHaveBeenCalledWith(
+        '[agentic-ui-config] server warning kept (com.acme.config): acme stays',
+      );
     });
 
     it('falls back to the packaged defaults when the service is absent, and says so', async () => {
@@ -188,6 +194,9 @@ describe('AppConfigService', () => {
         `bootstrap configuration not loaded from ${BOOTSTRAP_URL}: HTTP 404`,
         `manifest configuration not loaded from ${MANIFEST_URL}: HTTP 404`,
       ]);
+      expect(warn.mock.calls.map(([line]) => line)).toEqual(
+        service.diagnostics().messages.map((message) => `[agentic-ui-config] ${message}`),
+      );
     });
 
     it('refuses a bare configuration object, which nothing on the server serves', async () => {

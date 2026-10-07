@@ -134,7 +134,7 @@ Open the application with `?preset=acme` — before or after the `#` — and tha
 and `manifest` are applied after every package's fragments. The choice is remembered in
 `localStorage` (`agentic-ui.preset`) until `?preset=` clears it, and a badge in the header names
 the preset in force. **Nothing happens unless a package sets `presetSwitching: true`**: on any
-other server the parameter and the stored choice are both ignored, and the diagnostics say so. A
+other server the parameter and the stored choice are both ignored, and the diagnostics and the browser console say so. A
 later fragment's `presetSwitching` wins, so a customer package can switch it off. A preset name
 is letters, digits, `.`, `_` and `-`; an unknown one is reported and forgotten.
 
