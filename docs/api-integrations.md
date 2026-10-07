@@ -4,7 +4,7 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Base URL:** `/nuxeo` (proxied to `http://localhost:8080` in development via `apps/nuxeo-ui/proxy.conf.json`)
 
-**Authentication:** `nuxeoAuthInterceptor` (see `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`) authenticates `/nuxeo/**` requests from the session in force: it adds `Authorization: Basic <credentials>` after a password sign-in, while an SSO session — and a share link, once its token has been exchanged for one — travels as the browser's cookies. The share token's own header is added only while that exchange is in progress. With no session in force it adds no header, but still sends the request with credentials, so the browser attaches any cookies it holds. The sign-in request is the one that arrives already authenticated: `AuthService.login()` sets the typed credentials as its own Basic header, and the interceptor keeps that header and sends the request without cookies. The two anonymous configuration requests of §28 never reach it — `AppConfigService` sends them without the interceptors.
+**Authentication:** `nuxeoAuthInterceptor` (see `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`) authenticates `/nuxeo/**` requests from the session in force: it adds `Authorization: Basic <credentials>` after a password sign-in, while an SSO session — and a share link, once its token has been exchanged for one — travels as the browser's cookies. The share token's own header is added only while that exchange is in progress. With no session in force it adds no header, but still sends the request with credentials, so the browser attaches any cookies it holds. The sign-in request is the one that arrives already authenticated: `AuthService.login()` sets the typed credentials as its own Basic header, and the interceptor keeps that header and sends the request without cookies. The configuration requests never reach it: the two of §28, which `AppConfigService` sends, and the layout index and files of §29, which `DocumentLayoutService` sends, both skip the interceptors. They carry no `Authorization` header, but they are not anonymous: being same-origin, they still carry the browser's cookies.
 
 ---
 
@@ -1447,6 +1447,51 @@ within 10 s (`CONFIG_LOAD_TIMEOUT_MS`) leaves the compiled defaults in force and
 `/nuxeo/api/v1/path/default-domain/config/agentic-ui` is **no longer requested**.
 
 **Usage:** every startup, before the first render. Never re-fetched on sign-in or sign-out.
+
+---
+
+## 29. Per-Type Layouts — Layout Files and Document Type Schemas (NXSAT-311)
+
+| Field           | Value                                                                                                                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Service**     | `DocumentLayoutService` (`libs/shared/document-layouts/src/lib/document-layout.service.ts`)                                                                                               |
+| **Method**      | `layoutFor(type, mode)`, the first time a document of that type needs its layout; `vocabularyLabel(directory, id)`, per vocabulary value shown; each read below is cached for the session |
+| **HTTP Method** | `GET`                                                                                                                                                                                     |
+| **Endpoints**   | `/nuxeo/agentic-ui-config/layouts.json` and `/nuxeo/agentic-ui-config/layouts/<type>/<mode>.layout.json` — without interceptors, no `Authorization` header                                |
+|                 | `/nuxeo/api/v1/config/types/<type>` with header `fetch-schema: fields` — authenticated, through `NuxeoApiBase`                                                                            |
+|                 | `/nuxeo/api/v1/directory/<directory>/<id>` with headers `translate-directoryEntry: label` and `Accept-Language: en` — authenticated, through `NuxeoApiBase`                               |
+| **Server side** | `AgenticUiConfigServlet` (from `<layout>` contributions to `org.nuxeo.agentic.ui.config`); Nuxeo's type registry and directories                                                          |
+
+The layout URLs sit beside `bootstrap.json` (from `APP_BOOTSTRAP_CONFIG_URL`), so under `nx serve`
+they are `/agentic-ui-config/layouts.json` and `/agentic-ui-config/layouts/…`, written by
+`npm run config:dev -- --layout <Type>/<mode>=<file>`. Like the bootstrap reads, they skip the
+interceptors: no `Authorization` header, and they do not count as activity for the idle timer.
+They are not anonymous, though: being same-origin, they carry the browser's cookies, a signed-in
+session's included. The server answers every user with the same files either way.
+
+`layouts.json` lists `{ type, mode, url, component, bundle, source }` per layout in force, plus the
+server's `diagnostics`. A layout file is fetched only when the index lists its type and mode, and
+answers `{ format, layer: "layout", type, mode, component, bundle, source, content }`, where
+`content` is the layout file itself — format in `docs/extension-reference.md` §9b. A missing or
+malformed index or file, or no answer within 10 s (`LAYOUT_LOAD_TIMEOUT_MS`), falls back to the
+layout generated from the type, with the reason in the console under `[agentic-ui-layouts]`.
+
+`/config/types/<type>` is the per-type read, not the `/config/types` list: asked for
+`fetch-schema: fields` it returns each of the type's schemas nested, with `@prefix` when it has
+one, and per-field `constraints` — a `directoryResolver` names the vocabulary a value is bound to
+(`itemConstraints` for a list). The list endpoint and `/config/schemas` ignore that header. A
+failed read is not cached, so the next document of the type asks again.
+
+A vocabulary-bound value is labelled from its own entry, read by id: one request per value the
+document shows, plus one for its parent in an `l10n…` vocabulary, which is labelled
+`Parent/Child`. The whole vocabulary is never read — `Directory.SuggestEntries` with an empty
+term, which the pickers use, returns every entry, and a customer vocabulary can be of any size.
+`translate-directoryEntry: label` makes the server translate a label that is a message key, as
+`SuggestEntries` with `localize` does, and `Accept-Language: en` keeps it in English, as the
+panel's own vocabulary rows are. An entry that cannot be read shows the stored id, and is asked
+for again by the next document that shows it.
+
+**Usage:** the Properties panel on document detail (`metadata` mode).
 
 ---
 

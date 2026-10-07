@@ -1513,6 +1513,11 @@
     "visual-editor": "Visueller Editor",
     "workflow-started-on-document": "Sie haben für dieses Dokument einen Workflow „{{ workflow }}“ gestartet."
   },
+  "document-layouts": {
+    "no": "Nein",
+    "sections": "Eigenschaftsbereiche",
+    "yes": "Ja"
+  },
   "drawer": {
     "administration-analytics": "Analysen",
     "administration-audit": "Prüfung",

@@ -460,6 +460,19 @@ Removed in NXSAT-312, with no replacement: `loadBootstrap()`, `loadManifest()`, 
 
 ---
 
+## DocumentLayoutService (`libs/shared/document-layouts/src/lib/document-layout.service.ts`)
+
+Per-type layouts (NXSAT-311). Internal: `@agentic-ui/shared/document-layouts` exports only the
+`<lib-document-layout [document] mode>` component that uses it, and no `@nuxeo-satori/platform`
+entry point re-exports the library.
+
+| Member                                                                          | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `layoutFor(type: string, mode: LayoutMode): Observable<ResolvedLayout \| null>` | The contributed file for `type`/`mode` if `agentic-ui-config/layouts.json` lists one, else the layout generated from `GET /config/types/<type>` (`fetch-schema: fields`). The index and files are read without the interceptors, so with no `Authorization` header — though, being same-origin, with the browser's cookies; index, files and types are each read once per session, except that a failed type read is retried. `null` when the type cannot be read. Never errors; every fallback is logged under `[agentic-ui-layouts]`. |
+| `vocabularyLabel(directory: string, id: string): Observable<string \| null>`    | The label of one vocabulary entry, from `GET /directory/<directory>/<id>` (`translate-directoryEntry: label`, in English) — one read per value a document shows, and one for its parent in an `l10n…` vocabulary, labelled `Parent/Child`; never the whole vocabulary. Each entry is read once per session; a failed read is retried. `null` when the entry cannot be read. Never errors.                                                                                                                                               |
+
+---
+
 ## ArenderService (`arender.service.ts`)
 
 ```typescript

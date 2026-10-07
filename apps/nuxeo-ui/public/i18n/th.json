@@ -1513,6 +1513,11 @@
     "visual-editor": "ตัวแก้ไขแบบภาพ",
     "workflow-started-on-document": "คุณได้เริ่มเวิร์กโฟลว์ {{ workflow }} ในเอกสารนี้แล้ว"
   },
+  "document-layouts": {
+    "no": "ไม่ใช่",
+    "sections": "ส่วนของคุณสมบัติ",
+    "yes": "ใช่"
+  },
   "drawer": {
     "administration-analytics": "การวิเคราะห์",
     "administration-audit": "การตรวจสอบ",

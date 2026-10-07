@@ -142,6 +142,7 @@ import {
   type KeEnrichRequest,
   type KeEnrichmentResult,
 } from '@agentic-ui/shared/ke-client';
+import { DocumentLayoutComponent } from '@agentic-ui/shared/document-layouts';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
 import {
   catchError,
@@ -307,6 +308,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     MatPaginatorModule,
     MatChipsModule,
     MatAutocompleteModule,
+    DocumentLayoutComponent,
     DocumentViewerComponent,
     ExtensionOutletComponent,
     NoteEditorComponent,

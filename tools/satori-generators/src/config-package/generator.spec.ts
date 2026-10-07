@@ -135,7 +135,10 @@ describe('config-package generator', () => {
       configPackageGenerator(tree, { name: longest, owner: 'acme' }),
     ).resolves.toBeDefined();
     await expect(
-      configPackageGenerator(createTreeWithEmptyWorkspace(), { name: `${longest}x`, owner: 'acme' }),
+      configPackageGenerator(createTreeWithEmptyWorkspace(), {
+        name: `${longest}x`,
+        owner: 'acme',
+      }),
     ).rejects.toThrow(/129 characters; a fragment name may have at most 128/);
   });
 
@@ -143,9 +146,9 @@ describe('config-package generator', () => {
     [{ owner: 'Acme Corp' }, /--owner "Acme Corp" must be/],
     [{ owner: 'acme', version: '1.0' }, /--version "1\.0" must be/],
   ])('refuses %j when called directly, as the CLI schema would', async (options, message) => {
-    await expect(
-      configPackageGenerator(tree, { name: 'acme-config', ...options }),
-    ).rejects.toThrow(message);
+    await expect(configPackageGenerator(tree, { name: 'acme-config', ...options })).rejects.toThrow(
+      message,
+    );
   });
 
   it('refuses to overwrite an existing package unless forced', async () => {
@@ -382,8 +385,16 @@ describe('the generated build.mjs', () => {
   });
 
   it.each([
-    ['a fragment layer', '<fragment name="x" layer="bootstap" src="a.json" />', /has layer "bootstap"/],
-    ['a fragment name', '<fragment name="a b" layer="bootstrap" src="a.json" />', /fragment name "a b"/],
+    [
+      'a fragment layer',
+      '<fragment name="x" layer="bootstap" src="a.json" />',
+      /has layer "bootstap"/,
+    ],
+    [
+      'a fragment name',
+      '<fragment name="a b" layer="bootstrap" src="a.json" />',
+      /fragment name "a b"/,
+    ],
     ['a layout type', '<layout type="1File" mode="view" src="a.json" />', /layout type "1File"/],
     ['a layout mode', '<layout type="File" mode="View" src="a.json" />', /layout mode "View"/],
   ])('refuses %s the server rejects', async (_case, element, message) => {
@@ -510,7 +521,9 @@ describe('the generated build.mjs', () => {
     write('bundle/META-INF/MANIFEST.MF', `Manifest-Version: 1.0\nNuxeo-Component: ${path}\n`);
     const { status, output } = build();
     expect(status).toBe(1);
-    expect(output).toContain(`Nuxeo-Component names ${path}, which is not a packaged file in bundle/`);
+    expect(output).toContain(
+      `Nuxeo-Component names ${path}, which is not a packaged file in bundle/`,
+    );
   });
 
   it('reads a Nuxeo-Component line continued as a JAR manifest continues it', async () => {
@@ -523,35 +536,88 @@ describe('the generated build.mjs', () => {
   });
 
   it.each([
-    ['an unclosed element', (xml: string) => xml.replace('</extension>', ''), /<\/component> closes <extension>/],
-    ['a truncated file', (xml: string) => xml.replace('</component>', ''), /<component> is never closed/],
+    [
+      'an unclosed element',
+      (xml: string) => xml.replace('</extension>', ''),
+      /<\/component> closes <extension>/,
+    ],
+    [
+      'a truncated file',
+      (xml: string) => xml.replace('</component>', ''),
+      /<component> is never closed/,
+    ],
     ['an unterminated comment', (xml: string) => `${xml}\n<!-- `, /unterminated comment/],
     [
       'an unterminated CDATA section',
       (xml: string) =>
-        xml.replace('</extension>', '<fragment name="x" layer="manifest"><json><![CDATA[{}</json></fragment></extension>'),
+        xml.replace(
+          '</extension>',
+          '<fragment name="x" layer="manifest"><json><![CDATA[{}</json></fragment></extension>',
+        ),
       /unterminated CDATA section/,
     ],
-    ['a bare "&"', (xml: string) => xml.replace('<extension', '<!-- & --><extension a="b & c"'), /"&" that starts no reference/],
+    [
+      'a bare "&"',
+      (xml: string) => xml.replace('<extension', '<!-- & --><extension a="b & c"'),
+      /"&" that starts no reference/,
+    ],
     [
       'a comment containing "--"',
       (xml: string) => xml.replace('<extension', '<!-- generated with --presales --><extension'),
       /a comment containing "--"/,
     ],
-    ['a comment ending in "-"', (xml: string) => xml.replace('<extension', '<!-- a ---><extension'), /a comment containing "--"/],
-    ['an element name starting with a digit', (xml: string) => xml.replace('</extension>', '<1invalid/></extension>'), /a tag with no valid element name/],
+    [
+      'a comment ending in "-"',
+      (xml: string) => xml.replace('<extension', '<!-- a ---><extension'),
+      /a comment containing "--"/,
+    ],
+    [
+      'an element name starting with a digit',
+      (xml: string) => xml.replace('</extension>', '<1invalid/></extension>'),
+      /a tag with no valid element name/,
+    ],
     [
       'an undeclared namespace prefix',
-      (xml: string) => xml.replace('</extension>', '<x:fragment name="a" layer="manifest" src="b"/></extension>'),
+      (xml: string) =>
+        xml.replace('</extension>', '<x:fragment name="a" layer="manifest" src="b"/></extension>'),
       /the undeclared prefix x on x:fragment/,
     ],
-    ['a control character', (xml: string) => xml.replace('<extension', '<!-- \u0001 --><extension'), /a character XML does not allow, U\+0001/],
-    ['a reference to U+0000', (xml: string) => xml.replace('<extension', '<extension a="&#0;"'), /a reference to a character XML does not allow/],
-    ['a DOCTYPE', (xml: string) => xml.replace('<component', '<!DOCTYPE component>\n<component'), /a DOCTYPE/],
-    ['"]]>" in text', (xml: string) => xml.replace('</extension>', 'a ]]> b</extension>'), /a "]]>" in text/],
-    ['an encoding other than UTF-8', (xml: string) => xml.replace('<?xml version="1.0"?>', '<?xml version="1.0" encoding="ISO-8859-1"?>'), /an encoding of ISO-8859-1/],
-    ['a second XML declaration', (xml: string) => xml.replace('<component', '<?xml version="1.0"?><component'), /an XML declaration that is not at the start/],
-    ['attributes run together', (xml: string) => xml.replace('point="configuration"', 'point="configuration"a="b"'), /a malformed start tag <extension>/],
+    [
+      'a control character',
+      (xml: string) => xml.replace('<extension', '<!-- \u0001 --><extension'),
+      /a character XML does not allow, U\+0001/,
+    ],
+    [
+      'a reference to U+0000',
+      (xml: string) => xml.replace('<extension', '<extension a="&#0;"'),
+      /a reference to a character XML does not allow/,
+    ],
+    [
+      'a DOCTYPE',
+      (xml: string) => xml.replace('<component', '<!DOCTYPE component>\n<component'),
+      /a DOCTYPE/,
+    ],
+    [
+      '"]]>" in text',
+      (xml: string) => xml.replace('</extension>', 'a ]]> b</extension>'),
+      /a "]]>" in text/,
+    ],
+    [
+      'an encoding other than UTF-8',
+      (xml: string) =>
+        xml.replace('<?xml version="1.0"?>', '<?xml version="1.0" encoding="ISO-8859-1"?>'),
+      /an encoding of ISO-8859-1/,
+    ],
+    [
+      'a second XML declaration',
+      (xml: string) => xml.replace('<component', '<?xml version="1.0"?><component'),
+      /an XML declaration that is not at the start/,
+    ],
+    [
+      'attributes run together',
+      (xml: string) => xml.replace('point="configuration"', 'point="configuration"a="b"'),
+      /a malformed start tag <extension>/,
+    ],
   ])('refuses component XML that is not well-formed: %s', async (_case, edit, message) => {
     await generate();
     write(componentXml, edit(readFileSync(join(dir, componentXml), 'utf8')));
@@ -584,16 +650,32 @@ describe('the generated build.mjs', () => {
   });
 
   it.each([
-    ['a fragment', 'bundle/agentic-ui-config/bootstrap.json', '{ "branding": { "applicationTitle": "Caf', '" } }'],
-    ['the manifest', 'bundle/META-INF/MANIFEST.MF', 'Manifest-Version: 1.0\nNuxeo-Component: OSGI-INF/acme-config-config.xml\nBundle-Name: Caf', '\n'],
-  ])('refuses %s that is not valid UTF-8, rather than packaging it changed', async (_case, path, before, after) => {
-    await generate();
-    // "Café" as Windows-1252 writes it: 0xE9 is not UTF-8 on its own.
-    writeFileSync(join(dir, path), Buffer.concat([Buffer.from(before), Buffer.from([0xe9]), Buffer.from(after)]));
-    const { status, output } = build();
-    expect(status).toBe(1);
-    expect(output).toContain(`${path}: is not valid UTF-8`);
-  });
+    [
+      'a fragment',
+      'bundle/agentic-ui-config/bootstrap.json',
+      '{ "branding": { "applicationTitle": "Caf',
+      '" } }',
+    ],
+    [
+      'the manifest',
+      'bundle/META-INF/MANIFEST.MF',
+      'Manifest-Version: 1.0\nNuxeo-Component: OSGI-INF/acme-config-config.xml\nBundle-Name: Caf',
+      '\n',
+    ],
+  ])(
+    'refuses %s that is not valid UTF-8, rather than packaging it changed',
+    async (_case, path, before, after) => {
+      await generate();
+      // "Café" as Windows-1252 writes it: 0xE9 is not UTF-8 on its own.
+      writeFileSync(
+        join(dir, path),
+        Buffer.concat([Buffer.from(before), Buffer.from([0xe9]), Buffer.from(after)]),
+      );
+      const { status, output } = build();
+      expect(status).toBe(1);
+      expect(output).toContain(`${path}: is not valid UTF-8`);
+    },
+  );
 
   it('refuses component XML that is not valid UTF-8', async () => {
     await generate();
@@ -636,13 +718,20 @@ describe('the generated build.mjs', () => {
   });
 
   it.each([
-    ['inside bundle/, where the zip would be packaged next time', ['--out', 'bundle/out'], /is inside bundle\//],
+    [
+      'inside bundle/, where the zip would be packaged next time',
+      ['--out', 'bundle/out'],
+      /is inside bundle\//,
+    ],
     ['with no directory', ['--out'], /--out needs a directory/],
   ])('refuses --out %s', async (_case, args, message) => {
     await generate();
     let failure: { status: number; stderr: string } | undefined;
     try {
-      execFileSync(process.execPath, [join(dir, 'build.mjs'), ...args], { cwd: dir, stdio: 'pipe' });
+      execFileSync(process.execPath, [join(dir, 'build.mjs'), ...args], {
+        cwd: dir,
+        stdio: 'pipe',
+      });
     } catch (error) {
       failure = error as { status: number; stderr: string };
     }

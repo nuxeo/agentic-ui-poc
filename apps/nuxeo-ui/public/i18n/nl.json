@@ -1513,6 +1513,11 @@
     "visual-editor": "Visuele editor",
     "workflow-started-on-document": "U hebt een werkstroom {{ workflow }} gestart voor dit document."
   },
+  "document-layouts": {
+    "no": "Nee",
+    "sections": "Eigenschapssecties",
+    "yes": "Ja"
+  },
   "drawer": {
     "administration-analytics": "Analyses",
     "administration-audit": "Controle",

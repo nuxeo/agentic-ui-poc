@@ -115,20 +115,21 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 > their coverage reports contain 0 total statements, so the summariser computes 0/0 as 100%.
 > `core` has the same shape. Of 17 measured projects, 6 read as ≥90% and **3 genuinely are**.
 
-### Shared libraries — 10, 37,618 lines
+### Shared libraries — 11, 39,880 lines
 
-| Library              |  Lines | Specs | Responsibility                                                                         |
-| -------------------- | -----: | ----: | -------------------------------------------------------------------------------------- |
-| `nuxeo-client`       | 14,483 |    29 | **The integration layer.** 25 services, models, utils. Everything that talks to Nuxeo  |
-| `adf-hx-bridge`      |  8,380 |    12 | **The only place adf-hx types may appear.** 12 API port implementations, HXQL escaping |
-| `ui`                 |  4,741 |     4 | Shared presentational components. **Published** as `@nuxeo-satori/platform/ui`         |
-| `extensions`         |  3,101 |     9 | The 4 registries, rules, `provideSatoriExtensions`. **Published**                      |
-| `kd-client`          |  2,172 |     3 | Knowledge Discovery client                                                             |
-| `permission-dialogs` |  1,822 |     3 | The 4 permission/sharing dialogs — moved here 2026-08-24 from `features/collections`   |
-| `app-config`         |  1,620 |     4 | Layer 0 loader. **Published**                                                          |
-| `ke-client`          |    734 |     1 | Knowledge Enrichment client                                                            |
-| `ai-client`          |    457 | **0** | The 12 `AI.*` operations. Thin HTTP client                                             |
-| `util`               |    108 |     0 | Small helpers                                                                          |
+| Library              |  Lines | Specs | Responsibility                                                                                                                   |
+| -------------------- | -----: | ----: | -------------------------------------------------------------------------------------------------------------------------------- |
+| `nuxeo-client`       | 14,483 |    29 | **The integration layer.** 25 services, models, utils. Everything that talks to Nuxeo                                            |
+| `adf-hx-bridge`      |  8,380 |    12 | **The only place adf-hx types may appear.** 12 API port implementations, HXQL escaping                                           |
+| `ui`                 |  4,741 |     4 | Shared presentational components. **Published** as `@nuxeo-satori/platform/ui`                                                   |
+| `extensions`         |  3,101 |     9 | The 4 registries, rules, `provideSatoriExtensions`. **Published**                                                                |
+| `kd-client`          |  2,172 |     3 | Knowledge Discovery client                                                                                                       |
+| `permission-dialogs` |  1,822 |     3 | The 4 permission/sharing dialogs — moved here 2026-08-24 from `features/collections`                                             |
+| `document-layouts`   |  2,262 |     5 | Per-type Properties-panel layouts: a package's layout file, or generated from the type's schemas (NXSAT-311; counted 2026-10-07) |
+| `app-config`         |  1,620 |     4 | Layer 0 loader. **Published**                                                                                                    |
+| `ke-client`          |    734 |     1 | Knowledge Enrichment client                                                                                                      |
+| `ai-client`          |    457 | **0** | The 12 `AI.*` operations. Thin HTTP client                                                                                       |
+| `util`               |    108 |     0 | Small helpers                                                                                                                    |
 
 ### The other three
 
@@ -143,7 +144,8 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 `libs/shared/ui` is a **published** entry point (`@nuxeo-satori/platform/ui`). Putting the
 four dialogs there would have added eight symbols to the customer-facing API for components
 that are internal application UI. Once a customer can import a name, renaming it is a
-breaking change.
+breaking change. `document-layouts` is kept out of the published entry points for the same
+reason: its layout-file format is the customer contract, not its classes.
 
 ---
 

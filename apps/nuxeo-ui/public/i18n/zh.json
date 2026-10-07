@@ -1513,6 +1513,11 @@
     "visual-editor": "可视化编辑器",
     "workflow-started-on-document": "您已在此文档上启动 {{ workflow }} 工作流程。"
   },
+  "document-layouts": {
+    "no": "否",
+    "sections": "属性分区",
+    "yes": "是"
+  },
   "drawer": {
     "administration-analytics": "分析",
     "administration-audit": "审计",

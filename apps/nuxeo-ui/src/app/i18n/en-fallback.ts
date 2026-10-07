@@ -254,6 +254,7 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'document-detail.note-image-picker-dialog.close': 'Close',
   'document-detail.note-image-picker-dialog.picture-documents': 'Picture documents',
   'document-detail.note-image-picker-dialog.select-all': 'Select all',
+  'document-layouts.sections': 'Property sections',
   'hxp.hxp-browse-details-panel.close-panel': 'Close panel',
   'hxp.hxp-browse-details-panel.document-details': 'Document details',
   'hxp.hxp-browse-details-panel.search-or-create-a-tag': 'Search or create a tag',
