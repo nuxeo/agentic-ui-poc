@@ -716,17 +716,20 @@ lines) in full.
 
 **Two configuration stores that are constantly confused. They are not the same thing.**
 
-- **Bootstrap file** — `/nuxeo/agentic-ui-config/bootstrap.json`, read **pre-authentication**.
-  Holds `nuxeoApiOrigin`, `nuxeoServerUrl`, `aiBackendUrl`, `manifestDocumentPath`, `branding`,
+- **Bootstrap** — `/nuxeo/agentic-ui-config/bootstrap.json`, read **pre-authentication**.
+  Holds `nuxeoApiOrigin`, `nuxeoServerUrl`, `aiBackendUrl`, `branding`,
   `themes`/`defaultThemeId`, `defaultLanguage`, `integrations` (ARender, KD and KE operation maps),
   `session` (idle timeout), `sso`.
-- **Runtime manifest** — a **Nuxeo document** at `/default-domain/config/agentic-ui`, read
-  post-authentication with the user's own session. Holds `version`, `navItems`, `actions`, `rules`,
+- **Runtime manifest** — `/nuxeo/agentic-ui-config/manifest.json`, also read
+  **pre-authentication**, in parallel with the bootstrap. Holds `version`, `navItems`, `actions`, `rules`,
   `presets`, `featureToggles`, `labels`, `extensions`. It has **no `integrations` key** — ARender
   configured there silently does nothing.
 
-Both loads are deliberately tolerant: a missing file, an absent document, a 403 or malformed JSON
-all fall back to packaged defaults.
+Both are the configuration servlet's envelope of ordered fragments, one per Marketplace package;
+the browser applies them in order over its compiled defaults. Both loads are deliberately
+tolerant: a 404, an unreachable server or a response that is not the envelope falls back to
+packaged defaults. The manifest Note this used to be (`/default-domain/config/agentic-ui`) is no
+longer read, with no migration.
 
 **Registered IDs** follow `<owner>.<surface>.<name>`. Renaming a shipped ID is a **breaking
 change**. Eight slots: `navbar` (14 packaged entries), `bulk-actions` (6), `toolbar` (16–17),

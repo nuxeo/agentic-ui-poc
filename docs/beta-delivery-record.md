@@ -64,7 +64,8 @@ reopened rather than quietly carried.
   `bootstrap.json` there with `overwrite="false"`, which a 2026-10-07 rehearsal showed failing
   the upgrade after an edit; since NXSAT-317 the package installs only `bootstrap.example.json`,
   and the customer copies it to `bootstrap.json`.
-- Runtime manifest as a **Nuxeo document** at `/default-domain/config/agentic-ui`, so it
+- _Superseded by NXSAT-312: both halves are now package fragments served by `nuxeo-agentic-core`,
+  and the Note below is no longer read._ Runtime manifest as a **Nuxeo document** at `/default-domain/config/agentic-ui`, so it
   inherits Nuxeo versioning, ACLs and per-tenant scoping. Eleven `InjectionToken` factories
   resolve from it. Every load path is tolerant: a missing file, absent document, 403 or
   malformed JSON falls back to packaged defaults that reproduce the pre-Phase-1 values

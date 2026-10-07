@@ -113,14 +113,14 @@ Layer 1.
 
 ```text
 Problem:        "Hide Reports. Rename Home to Dashboard. Add a Contracts entry."
-Entry point:    A Nuxeo document at /default-domain/config/<their-app> (note:note)
+Entry point:    A manifest fragment in their configuration package (NXSAT-312)
 User action:    Edits JSON:
                   overrides: { "template.navbar.reports": { "visible": false },
                                "template.navbar.home": { "label": "Dashboard", "order": 5 } }
                   slots:     { "navbar": [ { "id": "acme.navbar.contracts", ... } ] }
-System:         AppConfigService fetches the document; registries merge manifest with code
-Result:         Changed navigation. No build. Versioned, audited and ACL'd by Nuxeo.
-Benefit:        Configuration inherits the repository's governance for free
+System:         The server serves the fragment after ours; registries merge manifest with code
+Result:         Changed navigation. No build. Versioned with their package.
+Benefit:        An upgrade of ours leaves their configuration in force
 ```
 
 Evidence: `phase-2-registry`, 46 checks.

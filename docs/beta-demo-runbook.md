@@ -46,9 +46,10 @@ curl -s -o /dev/null -w 'bootstrap: %{http_code}\n' \
   http://localhost:4200/agentic-ui-config/bootstrap.json                                  # → 404
 ```
 
-The `404` is correct: with no `bootstrap.json` the app runs on its compiled defaults. The dev server
-serves `apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json`, which is gitignored and absent until
-you create it for Beat 3 — do that before starting the dev server. On a server, since NXSAT-312,
+The `404` is correct: with no configuration the app runs on its compiled defaults. The dev server
+serves `apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json` and `manifest.json`, which are
+gitignored and absent until `npm run config:dev` writes them — do that before starting the dev
+server (§0.6). On a server, since NXSAT-312,
 configuration comes only from Marketplace packages through the configuration service; the package
 installs no file to copy or edit.
 
@@ -83,40 +84,31 @@ each of these once, then return to the dashboard:
 - `http://localhost:4200/#/browse-adf-hx?path=%2Fdefault-domain`
 - `http://localhost:4200/#/search-adf-hx`
 
-### 0.6 Create the manifest document
+### 0.6 Write the dev configuration
 
-Every customisation beat needs it, and on a clean instance it **does not exist**. The phase
-harness scripts do not create it — they intercept the HTTP call in the browser, so there was no
-procedure to reuse. This one was built and verified end to end.
+Every customisation beat needs it. On a server, configuration is fragments contributed by
+Marketplace packages and served by `nuxeo-agentic-core`; under `nx serve` there is no server
+side, so `npm run config:dev` writes the same response into the gitignored
+`apps/nuxeo-ui/public/agentic-ui-config/`: our defaults, then any fragment files you name.
+Nothing is created in the repository — the manifest Note this section used to create is no
+longer read (NXSAT-312).
 
 ```bash
-curl -s -u Administrator:Administrator -X POST \
-  http://localhost:8080/nuxeo/api/v1/path/default-domain/config \
-  -H 'Content-Type: application/json' \
-  -d '{"entity-type":"document","name":"agentic-ui","type":"Note",
-       "properties":{"dc:title":"agentic-ui","note:mime_type":"text/plain",
-                     "note:note":"{\"version\":1}"}}' \
-  -w '\nHTTP %{http_code}\n'          # → 201
+npm run config:dev            # before `nx serve`: the dev server serves only files present at start
 ```
 
 Save this as `/tmp/apply-manifest.sh` and `chmod +x` it. You will use it for every beat:
 
 ```bash
 #!/usr/bin/env bash
+# Usage: apply-manifest.sh <manifest-fragment.json>; set BOOTSTRAP=<file> to keep Beat 3's branding.
 set -euo pipefail
-python3 - "$1" > /tmp/.envelope.json <<'PY'
-import json,sys
-print(json.dumps({"entity-type":"document",
-  "properties":{"note:note":json.dumps(json.load(open(sys.argv[1])))}}))
-PY
-curl -s -u Administrator:Administrator -X PUT \
-  http://localhost:8080/nuxeo/api/v1/path/default-domain/config/agentic-ui \
-  -H 'Content-Type: application/json' -d @/tmp/.envelope.json \
-  -o /dev/null -w 'applied: HTTP %{http_code}\n'    # → 200
+cd "$(git rev-parse --show-toplevel)"
+npm run --silent config:dev -- ${BOOTSTRAP:+--bootstrap "$BOOTSTRAP"} --manifest "$1"
 ```
 
-`note:note` holds a **JSON string**, not nested JSON. Writing an object there makes the parser
-return `null` and you silently get the packaged UI. The script does the double-encoding for you.
+Each beat's file is a **manifest fragment** — the JSON a configuration package would contribute.
+The script rewrites both files, so a bootstrap fragment you are not passing is dropped.
 
 **After every manifest change you must hard-reload (⌘⇧R).** `withHashLocation()` means hash
 navigation is same-document, so `APP_INITIALIZER` never re-runs and the old value survives. This
@@ -264,10 +256,10 @@ adf-hx entirely — except `@alfresco/adf-extensions`, which they install as a p
 
 **There are two Layer 0 stores and conflating them is the most likely thing to trip you up:**
 
-|                      | Lives in                                              | Holds                                                               |
-| -------------------- | ----------------------------------------------------- | ------------------------------------------------------------------- |
-| **bootstrap**        | a **file**, `agentic-ui-config/bootstrap.json`        | branding, themes, SSO, session, integrations                        |
-| **runtime manifest** | a **Nuxeo Note**, `/default-domain/config/agentic-ui` | `labels`, `featureToggles`, and the whole Layer 1 `extensions` tree |
+|                      | Lives in                                                  | Holds                                                               |
+| -------------------- | --------------------------------------------------------- | ------------------------------------------------------------------- |
+| **bootstrap**        | `bootstrap` fragments, `agentic-ui-config/bootstrap.json` | branding, themes, SSO, session, integrations                        |
+| **runtime manifest** | `manifest` fragments, `agentic-ui-config/manifest.json`   | `labels`, `featureToggles`, and the whole Layer 1 `extensions` tree |
 
 `runtime-manifest.ts` has no `branding` or `themes` key. **Branding is not a manifest edit.**
 
@@ -290,17 +282,8 @@ Trash. Properties and Versions are not browse tabs on either — open a document
 
 ### Beat 3 — Rebrand, no rebuild (3 min)
 
-Create the dev server's local config — gitignored, so nothing here can reach a commit — by copying
-the sample, **before starting `nx serve`** (or restart it afterwards: the dev server serves only
-asset files that existed when it started, though edits to one are then live). Then edit it:
-
-```bash
-mkdir -p apps/nuxeo-ui/public/agentic-ui-config
-cp nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json \
-  apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json
-```
-
-Set these keys (anything left out keeps its compiled default):
+Save this as `/tmp/acme-bootstrap.json` — a bootstrap fragment, as the prospect's configuration
+package would contribute it; anything left out keeps its compiled default:
 
 ```json
 {
@@ -328,11 +311,17 @@ Set these keys (anything left out keeps its compiled default):
 }
 ```
 
+Then write it — gitignored, so nothing here can reach a commit:
+
+```bash
+npm run config:dev -- --bootstrap /tmp/acme-bootstrap.json
+```
+
 Put the prospect's logo at `apps/nuxeo-ui/public/agentic-ui-config/acme-logo.svg` — under
-`nx serve` that directory is served at `/agentic-ui-config/`, beside the `bootstrap.json` you
-just created; on a server it is `nxserver/nuxeo.war/agentic-ui-config/`, beside the customer's
-own `bootstrap.json`. Like that file, the logo is only picked up if it exists when `nx serve`
-starts.
+`nx serve` that directory is served at `/agentic-ui-config/`. On a server the logo is an `<asset>`
+in the configuration package, served at `agentic-ui-config/assets/<name>`, and `src` names it as
+`assets/acme-logo.svg`. Like the configuration files, the logo is only picked up if it exists when
+`nx serve` starts.
 
 Hard-reload, open `/#/settings/themes`. The audience sees the **logo** in the header and on the
 login page, the **browser tab title** change, a fifth theme card "Acme Brand", and the purple
@@ -344,9 +333,8 @@ NXSAT-313; the favicon is not.
 The strongest version of this beat: point out that the JavaScript bundle is byte-identical before
 and after. It was verified by hashing `main-*.js` across a rebrand — `sha256` unchanged.
 
-Reset: `rm apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json` and delete
-`apps/nuxeo-ui/public/agentic-ui-config/acme-logo.svg`, which is not gitignored. On a server
-both are in `nxserver/nuxeo.war/agentic-ui-config/`.
+Reset: `npm run config:dev` and delete `apps/nuxeo-ui/public/agentic-ui-config/acme-logo.svg`,
+which is not gitignored. On a server, remove the configuration package.
 
 ### Beat 4 — Relabel the product (2 min)
 
@@ -851,7 +839,7 @@ renders upstream's read-only properties panel either; metadata is on the documen
 | **F9**  | `/#/search-adf-hx` **with an empty box**                                                                           | Shows repository plumbing: personal workspaces, `My Favorites`, rows titled `1783067622304`. Type a term first. Use `test 01` (5 results), **not** `Domain` (104 of 137 — looks broken). It also has **no nav entry**; bookmark the URL.                                                                                                                                                                                                                                                                                                                     |
 | **F10** | `acme.panel.policySummary`**,** `acme.actions.exportClaim`**,** `acme.rules.isLegalTeam`                           | Registered but never placed. Nothing renders them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | **F11** | **A statically served production build past sign-in**                                                              | Stock Docker Nuxeo sends no CORS headers, so a static bundle cannot authenticate. Use `nx serve`. The rebrand _is_ demoable statically, because brand and tab title render pre-sign-in.                                                                                                                                                                                                                                                                                                                                                                      |
-| **F12** | **Layer 1 on the template app**                                                                                    | `/default-domain/config/satori-template` exists but its `note:note` is **empty** — deliberately, so the "before" state is honest. `manifest.example.json` will not be visible unless someone pastes it in first. There is no one-command way.                                                                                                                                                                                                                                                                                                                |
+| **F12** | **Layer 1 on the template app**                                                                                    | The template serves a manifest with **no fragments** — deliberately, so the "before" state is honest. `manifest.example.json` is visible only once it is added as a fragment to `apps/nuxeo-satori-template/public/agentic-ui-config/manifest.json`.                                                                                                                                                                                                                                                                                                         |
 | **F13** | ~~**"The marketplace package builds"**~~ — **withdrawn 2026-09-26, it builds and publishes**                       | This entry was wrong from the day CI started running Maven on every pull request. `2026.0.1-20260926071953-BUILD-1109` was built and published to preprod by run 36226401180 and is live on the listing under the title **Nuxeo Satori**. Demo it by opening the listing. **Install and upgrade were rehearsed on 2026-10-07** with `nuxeoctl mp-install`: the original `overwrite="false"` design broke the upgrade after a customer edit and was fixed by NXSAT-317. Claim install and upgrade for `nuxeoctl`; the Admin Center path is still unrehearsed. |
 
 ### Cosmetic things a sharp audience will notice
@@ -883,18 +871,12 @@ echo '{"version":1}' > /tmp/inert.json && ./apply-manifest.sh /tmp/inert.json
 **Branding:**
 
 ```bash
-rm -f apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json
+npm run config:dev
 ```
 
-**Full reset to a clean, unconfigured instance:**
-
-```bash
-curl -s -u Administrator:Administrator -X DELETE \
-  http://localhost:8080/nuxeo/api/v1/path/default-domain/config/agentic-ui \
-  -o /dev/null -w 'HTTP %{http_code}\n'          # → 204, then GET → 404
-```
-
-The full cycle DELETE → 404 → POST → 201 was verified: no trashed leftovers, no path conflict.
+**Full reset to a clean, unconfigured instance:** nothing in the repository holds configuration,
+so `npm run config:dev` is the whole reset. On a server, `nuxeoctl mp-remove` the configuration
+and demo packages.
 
 **Browser state:** clear `localStorage.browse_column_settings` and
 `localStorage.agentic_ui_color_theme`.

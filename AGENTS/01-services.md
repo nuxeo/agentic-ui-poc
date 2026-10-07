@@ -443,6 +443,23 @@ Admin console operations (users, groups, system info).
 
 ---
 
+## AppConfigService (`libs/shared/app-config/src/lib/app-config.service.ts`)
+
+Layer 0/1 configuration, loaded once at startup. Import: `@nuxeo-satori/platform/app-config`.
+
+| Member                                                                      | Notes                                                                                                                                                                                  |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `load(): Promise<void>`                                                     | Fetches `agentic-ui-config/bootstrap.json` and `manifest.json` together, anonymously; folds their fragments over the defaults; applies a presales preset where enabled. Never rejects. |
+| `bootstrap` / `manifest`                                                    | Signals of the merged configuration. `manifest().extensionLayers` holds each fragment's `extensions` block, resolved per layer by `AppExtensionsService`.                              |
+| `diagnostics`                                                               | Source of each half, the fragments applied with their package, server diagnostics, and fallback messages.                                                                              |
+| `activePreset`                                                              | `{ name, label }` of the preset in force, or `null`; shown by the header badge.                                                                                                        |
+| `themes`, `brandingLogo`, `resolveTheme(id)`, `featureToggle(id, fallback)` | Unchanged.                                                                                                                                                                             |
+
+Removed in NXSAT-312, with no replacement: `loadBootstrap()`, `loadManifest()`, `resetManifest()`,
+`diagnostics().manifestAttempt`, and `parseRuntimeManifest`.
+
+---
+
 ## ArenderService (`arender.service.ts`)
 
 ```typescript

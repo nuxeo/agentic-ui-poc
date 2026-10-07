@@ -167,11 +167,12 @@ describes:
 | Layer | Where                                       | What it demonstrates                                   |
 | ----- | ------------------------------------------- | ------------------------------------------------------ |
 | 0     | `public/agentic-ui-config/bootstrap.json`   | branding, theme tokens and the API origin; reload only |
-| 1     | a Nuxeo document at `manifestDocumentPath`  | `overrides` relabel, reorder and hide navigation       |
+| 1     | `public/agentic-ui-config/manifest.json`    | `overrides` relabel, reorder and hide navigation       |
 | 2     | `src/app/extensions/template-extensions.ts` | all five contribution kinds, in the factory form       |
 
-`manifest.example.json` is the Layer 1 payload to paste into that document; it is not
-loaded from the bundle.
+Both files are the configuration servlet's envelope, standing in for it under `nx serve`; the
+template's manifest has no fragments. `manifest.example.json` is a Layer 1 fragment to add there
+— on a server, to a configuration package — and is not loaded from the bundle.
 
 The nav is **resolved from the registry**, not written in the template — that is what
 makes it addressable. The brand is read from Layer 0 too; it used to be the literal

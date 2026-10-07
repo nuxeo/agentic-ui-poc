@@ -63,11 +63,9 @@ In two places, and both are a known problem:
    installs, replaces or deletes `bootstrap.json`, so an upgrade leaves it alone; that was
    rehearsed on a real server with `nuxeoctl` (NXSAT-317). Without the file the application uses
    its defaults. Users see a change the next time they open the application.
-2. **A configuration document in the repository**: a Nuxeo Note at
-   `/default-domain/config/agentic-ui` whose text is JSON, in plain-text format, edited by any
-   Nuxeo user allowed to write it. It holds the wording and the whole arrangement. The longer documents call it the
-   _manifest_. Each user reads it with their own permissions, and a change applies at their next
-   sign-in or page reload.
+2. **The manifest**, which holds the wording and the whole arrangement. Since NXSAT-312 it is part
+   of a configuration package installed on the server, like the settings, and is the same for
+   every user; it is no longer a Nuxeo Note in the repository, and an old Note is not read.
 
 Editing files on a server is not a deployment, and some regulated customers require configuration
 to be kept apart from repository data. The plan is to let you ship your configuration in **your

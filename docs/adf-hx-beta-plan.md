@@ -143,6 +143,9 @@ So configuration must not live inside the packaged `web` directory. Split it:
   `/default-domain/config/agentic-ui`, fetched through the existing authenticated `HttpClient`,
   with the packaged default as fallback. This inherits Nuxeo versioning, audit, ACLs and per-tenant
   scoping for free, and can be edited from the app itself.
+  _Superseded 2026-10-07 (NXSAT-312): both halves are now fragments contributed by Marketplace
+  packages and served anonymously by `nuxeo-agentic-core` at `agentic-ui-config/`; the Note is no
+  longer read, with no migration._
 
 ---
 
@@ -250,6 +253,8 @@ Delivered:
   **sibling** of the bundle and therefore outside its destructive copy. A second `install.xml`
   copy puts only a sample there, `bootstrap.example.json`, with `overwrite="true"`; the customer
   copies it to `bootstrap.json`, which no install, upgrade or uninstall touches (NXSAT-317, R7).
+  _Superseded 2026-10-07 (NXSAT-312): both halves are served by the configuration servlet from
+  package contributions, fetched together pre-auth; neither a file on disk nor the Note is read._
   The copy first shipped with `overwrite="false"` on `bootstrap.json` itself, and the 2026-10-07
   rehearsal showed that design leaving no version installed after an edit. `nuxeo.war` is the
   Tomcat docBase for the `/nuxeo` context; `nxserver/web` holds only `root.war` and is not served.
@@ -280,6 +285,10 @@ Remaining, deliberately not attempted:
 - An in-app editor for the configuration document; today it is edited as a Nuxeo Note.
 
 ### Configuration document ACLs — the model to apply
+
+_Superseded 2026-10-07 (NXSAT-312): the manifest is no longer a Nuxeo document, so no ACL governs
+it. It is a package fragment served to everyone before sign-in, which is why it must hold nothing
+sensitive. Kept for the record of why the Note was chosen and what it cost._
 
 The runtime manifest is a Nuxeo document, fetched by `AppConfigService.loadManifest()` as
 `GET /nuxeo/api/v1/path{manifestDocumentPath}` **using the signed-in user's own session**. Nuxeo's
