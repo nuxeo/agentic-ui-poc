@@ -127,7 +127,8 @@ export class AppConfigService {
    * `APP_INITIALIZER` functions concurrently.
    */
   load(): Promise<void> {
-    return (this.loading ??= this.fetchAndApply());
+    this.loading ??= this.fetchAndApply();
+    return this.loading;
   }
 
   private async fetchAndApply(): Promise<void> {
