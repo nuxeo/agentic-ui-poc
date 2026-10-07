@@ -145,6 +145,26 @@ class ConfigEndpointTest {
     }
 
     @Test
+    void aFragmentWithAnUnknownOrMissingLayerIsReportedInBootstrap() throws Exception {
+        ContributionRegistry registry = new ContributionRegistry();
+        registry.add(fragment("ours", "bootstrap", "defaults", "{}"));
+        registry.add(fragment("acme", "runtime", "acme", "{}"));
+        registry.add(fragment("acme", null, "unlayered", "{}"));
+        ConfigEndpoint endpoint = new ConfigEndpoint(ConfigSnapshot.build(registry.resolve()));
+
+        JsonNode bootstrap = body(endpoint.respond("/bootstrap.json", null));
+
+        assertEquals(1, bootstrap.get("fragments").size());
+        JsonNode diagnostics = bootstrap.get("diagnostics");
+        assertEquals(2, diagnostics.size());
+        for (JsonNode diagnostic : diagnostics) {
+            assertEquals("invalid-contribution", diagnostic.get("code").asText());
+            assertEquals("acme", diagnostic.get("component").asText());
+        }
+        assertEquals(0, body(endpoint.respond("/manifest.json", null)).get("diagnostics").size());
+    }
+
+    @Test
     void contributionDiagnosticsAreFiledUnderTheirResponse() throws Exception {
         ContributionRegistry registry = new ContributionRegistry();
         registry.add(fragment("ours", "bootstrap", "defaults", "{}"));

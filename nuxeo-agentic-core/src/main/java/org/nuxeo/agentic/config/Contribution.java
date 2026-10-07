@@ -47,10 +47,14 @@ record Contribution(Kind kind, String layer, String name, String type, String mo
         };
     }
 
-    /** The response this contribution's diagnostics belong in. */
+    /**
+     * The response this contribution's diagnostics belong in. A fragment whose layer is missing or
+     * unknown is reported in bootstrap, the response every client reads first, rather than under a
+     * layer no response serves.
+     */
     String scope() {
         return switch (kind) {
-            case FRAGMENT -> layer;
+            case FRAGMENT -> ConfigScope.isFragmentLayer(layer) ? layer : ConfigScope.BOOTSTRAP;
             case LAYOUT -> ConfigScope.LAYOUTS;
             case ASSET -> ConfigScope.BOOTSTRAP;
         };

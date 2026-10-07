@@ -17,22 +17,28 @@ import org.nuxeo.runtime.api.Framework;
  * everything a package puts in a fragment is public. The servlet reads only what packages
  * contributed; it touches neither the repository nor the server's filesystem.
  *
- * GET and HEAD only; {@link HttpServlet} answers 405 to anything else.
+ * GET and HEAD only: every other method, OPTIONS and TRACE included, is answered 405.
  */
 public class AgenticUiConfigServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    static final String ALLOWED_METHODS = "GET, HEAD";
+
     private transient volatile ConfigEndpoint endpoint;
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        serve(request, response, true);
-    }
-
-    @Override
-    protected void doHead(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        serve(request, response, false);
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String method = request.getMethod();
+        if ("GET".equals(method)) {
+            serve(request, response, true);
+        } else if ("HEAD".equals(method)) {
+            serve(request, response, false);
+        } else {
+            response.setHeader("Allow", ALLOWED_METHODS);
+            response.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+            response.setContentLength(0);
+        }
     }
 
     private void serve(HttpServletRequest request, HttpServletResponse response, boolean withBody)

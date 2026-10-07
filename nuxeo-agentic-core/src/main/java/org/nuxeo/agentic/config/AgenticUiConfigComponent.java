@@ -40,29 +40,37 @@ public class AgenticUiConfigComponent extends DefaultComponent implements Agenti
         String component = contributor.getName().getName();
         RuntimeContext context = contributor.getContext();
         String bundle = context.getBundle() == null ? component : context.getBundle().getSymbolicName();
+        Contribution entry;
         if (contribution instanceof FragmentDescriptor fragment) {
-            registry.add(Contribution.fragment(fragment.getLayer(), fragment.getName(), fragment.isEnabled(),
+            entry = Contribution.fragment(fragment.getLayer(), fragment.getName(), fragment.isEnabled(),
                     new Provenance(component, bundle, source(fragment.getSrc())),
-                    content(context, fragment.getSrc(), fragment.getJson()), fragment));
+                    content(context, fragment.getSrc(), fragment.getJson()), fragment);
         } else if (contribution instanceof LayoutDescriptor layout) {
-            registry.add(Contribution.layout(layout.getType(), layout.getMode(), layout.isEnabled(),
+            entry = Contribution.layout(layout.getType(), layout.getMode(), layout.isEnabled(),
                     new Provenance(component, bundle, source(layout.getSrc())),
-                    content(context, layout.getSrc(), layout.getJson()), layout));
+                    content(context, layout.getSrc(), layout.getJson()), layout);
         } else if (contribution instanceof AssetDescriptor asset) {
-            registry.add(Contribution.asset(asset.getName(), asset.isEnabled(),
+            entry = Contribution.asset(asset.getName(), asset.isEnabled(),
                     new Provenance(component, bundle, source(asset.getSrc())),
-                    content(context, asset.getSrc(), null), asset));
+                    content(context, asset.getSrc(), null), asset);
         } else {
             log.warn("Unknown contribution to {}: {}", XP_CONFIGURATION, contribution);
             return;
         }
-        snapshot = null;
+        // The same lock as the build: a hot reload must not interleave with one, or the build
+        // would publish a snapshot of contributions that have since changed.
+        synchronized (this) {
+            registry.add(entry);
+            snapshot = null;
+        }
     }
 
     @Override
     public void unregisterContribution(Object contribution, String extensionPoint, ComponentInstance contributor) {
-        if (registry.remove(contribution)) {
-            snapshot = null;
+        synchronized (this) {
+            if (registry.remove(contribution)) {
+                snapshot = null;
+            }
         }
     }
 
