@@ -293,7 +293,8 @@ Edit `nuxeo-agentic-ui-package/src/main/config/bootstrap.json`:
 {
   "branding": {
     "applicationTitle": "Acme Content Cloud",
-    "documentTitle": "Acme Content Cloud"
+    "documentTitle": "Acme Content Cloud",
+    "logo": { "src": "acme-logo.svg", "alt": "Acme Content Cloud" }
   },
   "defaultThemeId": "acme",
   "themes": [
@@ -314,16 +315,23 @@ Edit `nuxeo-agentic-ui-package/src/main/config/bootstrap.json`:
 }
 ```
 
-Hard-reload, open `/#/settings/themes`. The audience sees the **browser tab title** change, a
-fifth theme card "Acme Brand", and the purple accent applied.
+Put the prospect's logo at `apps/nuxeo-ui/public/agentic-ui-config/acme-logo.svg` — under
+`nx serve` that directory is served at `/agentic-ui-config/`, beside the packaged
+`bootstrap.json`; on a server it is `nxserver/nuxeo.war/agentic-ui-config/`. A file in a new
+directory is only picked up after restarting `nx serve`.
 
-**Demo** `documentTitle`**, not** `applicationTitle` — see F2. And say "product name and colour",
-never "logo" — see F1.
+Hard-reload, open `/#/settings/themes`. The audience sees the **logo** in the header and on the
+login page, the **browser tab title** change, a fifth theme card "Acme Brand", and the purple
+accent applied.
+
+**Demo** `documentTitle`**, not** `applicationTitle` — see F2. The logo is demoable since
+NXSAT-313; the favicon is not.
 
 The strongest version of this beat: point out that the JavaScript bundle is byte-identical before
 and after. It was verified by hashing `main-*.js` across a rebrand — `sha256` unchanged.
 
-Reset: `git checkout -- nuxeo-agentic-ui-package/src/main/config/bootstrap.json`
+Reset: `git checkout -- nuxeo-agentic-ui-package/src/main/config/bootstrap.json` and delete
+`apps/nuxeo-ui/public/agentic-ui-config/acme-logo.svg`, which is not gitignored.
 
 ### Beat 4 — Relabel the product (2 min)
 
@@ -341,9 +349,11 @@ Reset: `git checkout -- nuxeo-agentic-ui-package/src/main/config/bootstrap.json`
 "Appearance", button "Use this one". The manifest layers **last** over the shipped catalogue, so
 the customer always wins.
 
-`labels` **does** relabel navigation too, per locale, through each descriptor's `labelKey` —
-`labels["nav.item.collections"]` renames Collections in that language alone. Use
-`overrides.<id>.label` when you want one literal in every locale; set both and the override wins.
+`labels` **does** relabel navigation too, through each descriptor's `labelKey` —
+`labels["nav.item.collections"]` renames Collections. The manifest's `labels` map is not keyed by
+language, so that text replaces the key in every language's catalogue; per-language wording is not
+configurable today. `overrides.<id>.label` also shows one literal in every locale, but bypasses
+the key entirely; set both and the override wins.
 This corrects F5, which was withdrawn on 2026-09-26.
 
 ### Beat 5 — Nav: hide one, add one, and the security question (4 min)
@@ -782,7 +792,8 @@ and say what it proves: the **npm** upgrade rehearsal, eight assertions across L
 marketplace installer.
 
 **"Can I change the logo?"**
-Not today. Product name and theme colours, yes. There is no logo or favicon key. Say so plainly.
+Yes, in `bootstrap.json` with no rebuild: `branding.logo` names an image beside the file, and it
+replaces the Satori marks in the header and on the login page. The favicon cannot be changed yet.
 
 **"Is this adf-hx or your own UI?"**
 Both, deliberately. Six upstream components render real adf-hx surfaces; the surrounding chrome is
@@ -814,11 +825,11 @@ renders upstream's read-only properties panel either; metadata is on the documen
 | #       | What                                                                                                               | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **F0**  | **The customer extension on** `:4200`                                                                              | `nuxeo-ui` never registers `acme.`*. No manifest can add it — Layer 1 only addresses IDs that code registered. Layer 2 lives on `:4310`.                                                                                                                                                                                                                                                                                                                                                                                        |
-| **F1**  | **A logo change**                                                                                                  | `AppBrandingConfig` has only `applicationTitle` and `documentTitle`. No logo, favicon or image key exists. Not achievable at Layer 0 or 1.                                                                                                                                                                                                                                                                                                                                                                                      |
+| **F1**  | ~~**A logo change**~~ — **withdrawn 2026-10-06, it is demoable**                                                   | NXSAT-313 added `branding.logo` to `AppBrandingConfig`: a file beside `bootstrap.json` replaces the Satori marks in the header and on the login page, with no rebuild. See Beat 3. The **favicon** still has no key and remains out of scope.                                                                                                                                                                                                                                                                                   |
 | **F2**  | `applicationTitle` **in the header**                                                                               | The route label wins. With the brand set, `/#/browse` still reads "Browse". It only surfaces on a route no nav entry matches. Demo `documentTitle` — the browser tab — which changes everywhere.                                                                                                                                                                                                                                                                                                                                |
 | **F3**  | **Branding via the Nuxeo document**                                                                                | Two separate stores. Branding is the `bootstrap.json` file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **F4**  | `overrides` **with** `hiddenByDefault` **/** `sortable` **/** `field`                                              | Silently dropped; `overrides` honours only `order`, `label`, `rule`, `visible`. Use `slots.documentList`. The doc example was wrong and is now fixed.                                                                                                                                                                                                                                                                                                                                                                           |
-| **F5**  | ~~`labels` **to rename nav entries**~~ — **withdrawn 2026-09-26, it is demoable**                                  | This entry was wrong. Descriptors carry `labelKey`, the rail (`app-shell.component.html:25`) and the drawer (`nav-drawer.component.html:10`) both resolve it, and the manifest's `labels` layer last over the catalogue (`app-translate-loader.ts:220`). So `labels["nav.item.<slug>"]` renames a nav entry in that locale alone. `overrides.<id>.label` is still how you set one literal in every locale, and wins when both are set.                                                                                          |
+| **F5**  | ~~`labels` **to rename nav entries**~~ — **withdrawn 2026-09-26, it is demoable**                                  | This entry was wrong. Descriptors carry `labelKey`, the rail (`app-shell.component.html:25`) and the drawer (`nav-drawer.component.html:10`) both resolve it, and the manifest's `labels` layer last over the catalogue (`app-translate-loader.ts:220`). So `labels["nav.item.<slug>"]` renames a nav entry, with the same text in every locale; per-language wording is not configurable. `overrides.<id>.label` bypasses the key and wins when both are set.                                                                  |
 | **F6**  | ~~`toolbar`**,** `contextMenu`**,** `tabs`**,** `routes` **slots**~~ — **withdrawn 2026-09-26, all four are live** | This entry was wrong, and `docs/demo-deck-claims.md` recorded it as withdrawn while this row still told presenters the opposite. All four are registered (`provide-app-extensions.ts:104-106`) and consumed: `toolbar` at `document-detail.html:156`, `tabs` at `document-detail.ts:397`, `contextMenu` at `browse.ts:469-471`, and `routes` through `provideExtensionRoutes()` (`provide-app-extensions.ts:218`), which calls `router.resetConfig` at `extension-routes.ts:112`. Re-checked against those lines on 2026-09-26. |
 | **F7**  | `app.rules.canWriteSelection` **/** `canRemoveSelection`                                                           | Still inert, always `false`, so they hide whatever you gate on them.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | **F8**  | `npm run beta:evidence -- showcase-adf-hx` **live**                                                                | It **fails** (21/22). Three of ten screenshots are byte-identical duplicates, and steps 8-10 photograph the repository root, so panels captioned "reads real Nuxeo ACLs" show "no local permissions" and "No audit entries found." Use only `02-agentic-ui-production-browse.png` + `03-adf-hx-browse-list.png`.                                                                                                                                                                                                                |

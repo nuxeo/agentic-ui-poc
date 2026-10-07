@@ -162,8 +162,9 @@ Treat them as settled; if you contradict one, prove it first.
   diverges from two upwards while the file claimed ACA parity. Corrected, with a
   multi-argument test.
 - **The rule context has three independently populated halves.** `document` is
-  written by document detail alone and cleared on destroy, so the seven document
-  rules answer `false` on every other surface. `selectionCount` is populated from
+  written by document detail alone and cleared on destroy, so the document rules —
+  including `app.rules.isType` and `app.rules.hasFacet` — answer `false` on every
+  other surface. `selectionCount` is populated from
   `SelectionService`, so the cardinality rules are live. `selection` — the
   documents — is **still empty**, because `SelectionService` tracks ids, so
   `canWriteSelection` and `canRemoveSelection` still answer `false`. Do not

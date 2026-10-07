@@ -143,8 +143,9 @@ export class ExtensionSlotRegistry {
       // could fail. Clearing the key here puts that precedence in one place rather than
       // asking every render site to remember it.
       //
-      // The customer who wants per-language text uses the manifest's `labels` map against the
-      // packaged key instead, and does not set `label`. Both routes are documented in
+      // The customer who wants to replace the key's text uses the manifest's `labels` map
+      // against the packaged key instead, and does not set `label`. That map is not keyed by
+      // language, so either route shows the same text in every language. Both routes are documented in
       // `docs/extension-reference.md`; setting both is defined, not undefined — the override
       // wins and the `labels` entry is inert.
       patch['labelKey'] = undefined;

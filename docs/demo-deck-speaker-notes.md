@@ -64,7 +64,7 @@ than quoting a number that will be wrong by the time anyone checks.
 ### Slide 4 — Make it their product, in a file · 1 min
 
 > "Branding is Layer 0, and it lives in a **file** — not in the manifest document. Application title,
-> default theme, and a set of CSS custom properties. That is the whole rebrand surface."
+> logo, default theme, and a set of CSS custom properties. That is the whole rebrand surface."
 
 The distinction to land, because it is the most common way this goes wrong:
 
@@ -79,24 +79,17 @@ Then the upgrade point, which is a real engineering decision rather than a diagr
 > replaced on every upgrade with `overwrite="true"`. Configuration was deliberately put where the
 > installer cannot reach it."
 
-**Volunteer the limit, then the path.** They will ask about the logo, so get there first — but do not
-leave it as a flat no, because it is not an architectural gap:
+**Volunteer the logo, then the limit.** They will ask about it, so get there first:
 
-> "Today this is product name and theme colours. There is **no logo or favicon key yet** — so if a
-> customer's first question is 'can I put our mark in the header', the honest answer is not today."
+> "The logo is in the same file. The customer's logo sits beside `bootstrap.json` in the config
+> directory, `branding.logo` names it, and it replaces our mark in the header and on the login page —
+> no rebuild. The one piece that is not configurable yet is the favicon."
 
-> "It is on the list rather than off the table, and the reason it is cheap is that both mechanisms
-> already exist. A customer's logo file would sit beside `bootstrap.json` in the config directory —
-> which the installer copies with `overwrite="false"`, so the installer does not replace it — the same route
-> the configuration does. And the favicon is a runtime swap in the same place we already set the browser
-> tab title from config."
+The config directory is copied with `overwrite="false"`, so the installer is meant to leave the logo
+alone on upgrade as it does the configuration. That is the intended effect of the copy layout; no
+marketplace install or upgrade has been run (R7), so do not say it has been observed.
 
-**If pressed on size, say assessed rather than estimated:** the header mark is a Satori design-system
-component with no image input, so it is a conditional swap at three template sites, not a parameter.
-Roughly one config key pair, three conditionals, and one runtime `href` update.
-
-**Do not say it is done, planned for a release, or costed.** It has been assessed against the code, not
-built and not scheduled. "We know where it goes and it is small" is true; anything firmer is not.
+**Do not say the favicon is done, planned for a release, or costed.** It has no key.
 
 ---
 
@@ -128,12 +121,13 @@ addressable like any other id, and restorable — as a `navbar` slot entry resta
 `"disabled": false`, not an `overrides` entry. Say "fourteen by default", not "fourteen packaged",
 if a technical audience is counting.
 
-**If asked about translations:** both routes work, and which one you want depends on the answer to
-"one wording, or one per language?".
+**If asked about translations:** both routes work, and both show one wording in every language.
+Per-language wording is not configurable today — the manifest's `labels` map is not keyed by
+language.
 
 - `overrides.<id>.label` — your literal, verbatim, in every locale. Translation is bypassed.
-- Layer 0 `labels["nav.item.<slug>"]` — per-locale text, resolved through the descriptor's
-  `labelKey`. The manifest's `labels` layer last over the shipped catalogue
+- Layer 0 `labels["nav.item.<slug>"]` — replaces the text of the descriptor's `labelKey`. The
+  manifest's `labels` layer last over every language's shipped catalogue
   (`app-translate-loader.ts`), and the shell resolves `labelKey` before falling back to `label`.
 
 Setting **both** is the trap: the override wins outright and the `labels` entry is silently inert.
@@ -452,17 +446,17 @@ Then the upgrade proof, which is the commercial claim:
 
 Have these ready. Each is verified; none needs hedging.
 
-| Question                                        | Answer                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **"Can I install it from npm today?"**          | No. It is **publishable and dry-run verified**, not published. The first publish is a deliberate step and the final package name is part of it.                                                                                                                                                                                                                                                                                                                                                        |
-| **"Is this adf-hx or your own UI?"**            | Both, deliberately. **Seven** upstream components render real adf-hx surfaces; the surrounding chrome is ours — thirteen components sharing the same `hxp-` prefix. The prefix tells you nothing; the import does.                                                                                                                                                                                                                                                                                     |
-| **"Does the marketplace package install?"**     | **Still unverified, but not for the old reason.** Say: it **builds and publishes** — `2026.0.1-20260926071953-BUILD-1109` is live on the preprod listing — and **nobody has installed it**, so the install and an upgrade over it are both untested. The old answer here, "nobody has run Maven", was withdrawn 2026-09-26 (F13): Maven runs in CI on every pull request.                                                                                                                              |
-| **"Is it production quality?"**                 | **Do not say "ten of ten".** Say: **ten of eleven** in-scope projects are above 90% as of 2026-09-22, and Phase 6 step 6 is reopened for the eleventh — `shared-ai-client` at 15.98%. It was ten of ten until three never-measured projects entered the denominator. **And the caveat travels with it** — those are percentages of the measured subset, and **6,137** in-scope lines are in no test at all. "The bar is met" and "the code is 90% tested" are different sentences.                     |
-| **"Accessibility?"**                            | **Do not say "met".** Say: it was met on 2026-08-24 across fifteen cases on eight routes, and it is being re-verified — five consecutive `phase-6-a11y` captures from 2026-09-15 to 2026-09-16 fail 3 `button-name` checks (browse, browse cards, column panel), undiagnosed as of 2026-09-23. **Dialogs, upload, dark mode and the login page were never in that scan.** One remaining violation is upstream's.                                                                                       |
-| **"How big is the bundle?"**                    | 3.56 MB initial against a 4 MB budget. adf-core registers eleven root services so it is eager — every user pays it, including users who never open an adf-hx route. A known constraint, not a surprise.                                                                                                                                                                                                                                                                                                |
-| **"Can I change the logo?"**                    | Not today — product name and theme colours only. Add that it is a small addition rather than an architectural gap: the config directory is already copied with `overwrite="false"` so the installer does not replace it (intended effect of the copy layout; no marketplace install or upgrade has been run — R7), so a logo file would live there, and the favicon is a runtime swap beside where we already set the tab title from config. **Assessed against the code — not built, not scheduled.** |
-| **"Can I edit metadata in the adf-hx panel?"**  | No. Upstream does not export the cache service its editable sidebar needs, so the read-only properties panel renders instead. Upstream's to fix.                                                                                                                                                                                                                                                                                                                                                       |
-| **"How do I know these screenshots are real?"** | Each one asserts its own content before the run is allowed to pass, all images are hashed so no two can be duplicates, and the run aborts if it is authenticated as the wrong user. That last check exists because a whole run once came back as `Anonymous` and every other check still passed.                                                                                                                                                                                                       |
+| Question                                        | Answer                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **"Can I install it from npm today?"**          | No. It is **publishable and dry-run verified**, not published. The first publish is a deliberate step and the final package name is part of it.                                                                                                                                                                                                                                                                                                                                    |
+| **"Is this adf-hx or your own UI?"**            | Both, deliberately. **Seven** upstream components render real adf-hx surfaces; the surrounding chrome is ours — thirteen components sharing the same `hxp-` prefix. The prefix tells you nothing; the import does.                                                                                                                                                                                                                                                                 |
+| **"Does the marketplace package install?"**     | **Still unverified, but not for the old reason.** Say: it **builds and publishes** — `2026.0.1-20260926071953-BUILD-1109` is live on the preprod listing — and **nobody has installed it**, so the install and an upgrade over it are both untested. The old answer here, "nobody has run Maven", was withdrawn 2026-09-26 (F13): Maven runs in CI on every pull request.                                                                                                          |
+| **"Is it production quality?"**                 | **Do not say "ten of ten".** Say: **ten of eleven** in-scope projects are above 90% as of 2026-09-22, and Phase 6 step 6 is reopened for the eleventh — `shared-ai-client` at 15.98%. It was ten of ten until three never-measured projects entered the denominator. **And the caveat travels with it** — those are percentages of the measured subset, and **6,137** in-scope lines are in no test at all. "The bar is met" and "the code is 90% tested" are different sentences. |
+| **"Accessibility?"**                            | **Do not say "met".** Say: it was met on 2026-08-24 across fifteen cases on eight routes, and it is being re-verified — five consecutive `phase-6-a11y` captures from 2026-09-15 to 2026-09-16 fail 3 `button-name` checks (browse, browse cards, column panel), undiagnosed as of 2026-09-23. **Dialogs, upload, dark mode and the login page were never in that scan.** One remaining violation is upstream's.                                                                   |
+| **"How big is the bundle?"**                    | 3.56 MB initial against a 4 MB budget. adf-core registers eleven root services so it is eager — every user pays it, including users who never open an adf-hx route. A known constraint, not a surprise.                                                                                                                                                                                                                                                                            |
+| **"Can I change the logo?"**                    | Yes, with no rebuild: `branding.logo` in `bootstrap.json` names an image beside the file, and it replaces the Satori marks in the header and on the login page. The config directory is copied with `overwrite="false"`, so the logo is meant to survive an upgrade with the configuration (intended effect of the copy layout; no marketplace install or upgrade has been run — R7). The favicon cannot be changed yet.                                                           |
+| **"Can I edit metadata in the adf-hx panel?"**  | No. Upstream does not export the cache service its editable sidebar needs, so the read-only properties panel renders instead. Upstream's to fix.                                                                                                                                                                                                                                                                                                                                   |
+| **"How do I know these screenshots are real?"** | Each one asserts its own content before the run is allowed to pass, all images are hashed so no two can be duplicates, and the run aborts if it is authenticated as the wrong user. That last check exists because a whole run once came back as `Anonymous` and every other check still passed.                                                                                                                                                                                   |
 
 ---
 

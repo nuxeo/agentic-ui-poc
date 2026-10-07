@@ -69,6 +69,12 @@ installer copies that directory with `overwrite="true"` and would destroy it. Se
 of the plan for the ACL model — in short, grant Read broadly and Write narrowly, and block
 inheritance on the config folder.
 
+With the default `manifestDocumentProperty`, `note:note`, the document is a Note and its
+`note:mime_type` must be **`text/plain`**. Nuxeo's HTML sanitizer escapes the quotes in a Note of
+any other type — `application/json` included — so the stored JSON stops parsing and the packaged
+defaults apply with no error shown. A deployment that points `manifestDocumentProperty` at a
+property of its own schema is not subject to this.
+
 The Layer 1 configuration is the `extensions` key of that document:
 
 ```json
@@ -174,10 +180,13 @@ Packaged entries carry both a `label` (the English literal) and a `labelKey` (a 
 The renderer prefers the key when it resolves. That gives you two ways to change the text, and
 they are not interchangeable.
 
-| You want                       | Set                                         | Result                                                                    |
-| ------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------- |
-| One wording, every language    | `overrides["app.navbar.collections"].label` | Your literal, verbatim, in all locales. Translation is bypassed entirely. |
-| Different wording per language | `labels["nav.item.collections"]` (Layer 0)  | Your text wherever that key resolves, per catalogue.                      |
+| You want                    | Set                                         | Result                                                                    |
+| --------------------------- | ------------------------------------------- | ------------------------------------------------------------------------- |
+| One wording, every language | `overrides["app.navbar.collections"].label` | Your literal, verbatim, in all locales. Translation is bypassed entirely. |
+| Replace a translation key   | `labels["nav.item.collections"]` (Layer 0)  | Your text wherever that key resolves, the same in every language.         |
+
+The manifest's `labels` map is not keyed by language: `AppTranslateLoader` layers the same map
+over every language's catalogue. Per-language wording is not configurable today.
 
 **Setting `label` disables the key for that entry**, deliberately and by design: a manifest
 literal is an instruction to show exactly that string, so it must win. If you set both, `label`
@@ -268,7 +277,9 @@ supported state but not a useful one.
 ## 4. `rules` — the registered predicates
 
 Referenced as a bare string (`"app.rules.canWrite"`) or as an object with parameters
-(`{ "type": "core.every", "parameters": [...] }`).
+(`{ "type": "core.every", "parameters": [...] }`). `parameters` must be a JSON array; anything
+else — `"parameters": "File"` with the brackets forgotten — is read as an empty list rather than
+breaking the slot it sits in.
 
 ### Document rules
 
@@ -282,12 +293,35 @@ Registered by `DOCUMENT_RULE_EVALUATORS`. These wrap the existing pure predicate
 | `app.rules.canAddChildren`       | The user has `AddChildren`                                        |
 | `app.rules.canManagePermissions` | The user has `WriteSecurity` or `Everything`                      |
 | `app.rules.hasDocument`          | A document is in focus                                            |
+| `app.rules.isType`               | The focused document's type is one of the `parameters`            |
+| `app.rules.hasFacet`             | The focused document carries at least one facet in `parameters`   |
 | `app.rules.isTrashed`            | The focused document is in the trash                              |
 | `app.rules.isNotTrashed`         | A document is in focus and is not in the trash                    |
 
+`app.rules.isType` and `app.rules.hasFacet` take the type or facet names as `parameters`, matched
+exactly — Nuxeo names are case-sensitive. With no string parameters — or `parameters` that is not
+an array — both answer `false`, so a misconfigured entry is hidden rather than shown everywhere.
+Nuxeo Web UI offers the same two tests through `nuxeo-filter`'s `type` and `facet`. Show the
+Publishing tab only on Case and Claim documents:
+
+```json
+{
+  "overrides": {
+    "app.tabs.publishing": {
+      "rule": { "type": "app.rules.isType", "parameters": ["Case", "Claim"] }
+    }
+  }
+}
+```
+
+and negate with `core.not`, or combine with `core.every` — `hasFacet("Versionable")` alongside
+`isType("Claim")` is an ordinary composite.
+
 **Scope, stated plainly.** "The focused document" means the document open on
 `/#/doc/:uid`. That page is the only surface that publishes one, and it clears it
-when you navigate away, so all seven answer `false` everywhere else. An earlier
+when you navigate away, so all nine answer `false` everywhere else. In particular the two
+type rules gate document-detail **tabs and toolbar actions**; they cannot vary browse list
+columns by type, because a list has no single focused document. An earlier
 version of this document described the first five as functional with no caveat
 while nothing populated the context at all, so they answered `false` everywhere.
 That is fixed; the remaining limit is which surfaces have a focused document.

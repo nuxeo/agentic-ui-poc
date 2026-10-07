@@ -294,7 +294,8 @@ No global store — no NgRx, no Redux. State is either component-local signals o
 
 **The rule context has three independently populated halves**, and the distinction is
 deliberate: `document` is written by document-detail alone and cleared on destroy, so the
-seven document rules answer `false` on every other surface. `selectionCount` is populated
+document rules — `app.rules.isType` and `app.rules.hasFacet` among them — answer `false` on
+every other surface. `selectionCount` is populated
 and live. `selection` — the documents themselves — is **still empty**, because
 `SelectionService` tracks ids, so `canWriteSelection` and `canRemoveSelection` still answer
 `false`. Do not collapse `selectionCount` into `selection.length`; that is what keeps the
