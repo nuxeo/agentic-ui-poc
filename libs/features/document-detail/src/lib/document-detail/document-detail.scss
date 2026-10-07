@@ -316,9 +316,11 @@ sat-breadcrumbs {
 }
 
 // NXENG-776 — properties panel sub-tabs (plain buttons, borderless). Same IBM `:focus`-only rule.
+// Ring colour tracks the fixed light properties panel, not `--mat-sys-primary` (too pale on dark/kawaii).
+// Negative offset keeps the ring inside the tab box: `.properties-panel` sets `overflow: hidden`.
 .sub-tab:focus {
-  outline: 2px solid var(--mat-sys-primary);
-  outline-offset: 2px;
+  outline: 2px solid var(--document-detail-properties-label-muted);
+  outline-offset: -2px;
 }
 
 .panel-body {

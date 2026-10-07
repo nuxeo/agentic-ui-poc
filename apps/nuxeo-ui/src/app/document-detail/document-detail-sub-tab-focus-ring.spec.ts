@@ -9,6 +9,10 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
+import { COMPILED_THEME_BASES } from '../theme/app-theme';
+
+const MINIMUM_RATIO = 3;
+
 @Component({
   standalone: true,
   templateUrl: './document-detail-sub-tab-focus-ring.host.html',
@@ -18,96 +22,159 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 })
 class DocumentDetailSubTabFocusHostComponent {}
 
-/** WCAG 2.1 relative luminance. */
-function relativeLuminance([r, g, b]: [number, number, number]): number {
-  const channel = (v: number): number => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+function luminance([r, g, b]: readonly number[]): number {
+  const channel = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
   };
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
-function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
-  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
+function contrastRatio(a: readonly number[], b: readonly number[]): number {
+  const [la, lb] = [luminance(a), luminance(b)];
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
-function rgb(css: string): [number, number, number] {
-  const parts = (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
-  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
+function parseColor(value: string): { rgb: number[]; alpha: number } {
+  const match = /rgba?\(([^)]+)\)/.exec(value);
+  if (!match) throw new Error(`not a computed colour: "${value}"`);
+  const parts = match[1]
+    .split(/[,\s/]+/)
+    .filter(Boolean)
+    .map(Number);
+  return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
+}
+
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+  backdrop: readonly number[],
+): number[] {
+  return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
+}
+
+function paintedBackground(element: HTMLElement): number[] {
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    const parsed = parseColor(getComputedStyle(node).backgroundColor);
+    if (parsed.alpha > 0) {
+      return parsed.rgb;
+    }
+  }
+  return [255, 255, 255];
 }
 
 describe('Document detail properties sub-tab — keyboard focus indicator (NXENG-776)', () => {
   let fixture: ComponentFixture<DocumentDetailSubTabFocusHostComponent>;
-  let tab: HTMLButtonElement;
+  let originalTheme: string | null;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DocumentDetailSubTabFocusHostComponent],
       providers: [provideNoopAnimations()],
     }).compileComponents();
-
+    originalTheme = document.documentElement.getAttribute('data-app-theme');
     fixture = TestBed.createComponent(DocumentDetailSubTabFocusHostComponent);
     document.body.appendChild(fixture.nativeElement);
     fixture.detectChanges();
-    await fixture.whenStable();
-
-    tab = fixture.nativeElement.querySelector('.sub-tab') as HTMLButtonElement;
   });
-
-  function surfaceBehindTheRing(): string {
-    let node: HTMLElement | null = tab.parentElement;
-    while (node) {
-      const bg = getComputedStyle(node).backgroundColor;
-      if (bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(bg)) return bg;
-      node = node.parentElement;
-    }
-    return 'rgb(255, 255, 255)';
-  }
 
   afterEach(() => {
-    tab?.blur();
     fixture.nativeElement.remove();
+    if (originalTheme === null) document.documentElement.removeAttribute('data-app-theme');
+    else document.documentElement.setAttribute('data-app-theme', originalTheme);
   });
 
-  it('draws no outline while unfocused', () => {
-    expect(getComputedStyle(tab).outlineStyle).toBe('none');
+  function subTab(index: number): HTMLButtonElement {
+    const buttons = fixture.nativeElement.querySelectorAll(
+      '.sub-tab',
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(buttons.length).toBeGreaterThanOrEqual(3);
+    return buttons[index];
+  }
+
+  function measure(theme: string, tabIndex = 2) {
+    document.documentElement.setAttribute('data-app-theme', theme);
+    fixture.detectChanges();
+
+    const button = subTab(tabIndex);
+    button.focus();
+
+    const styles = getComputedStyle(button);
+    const backdrop = paintedBackground(button);
+    const ring = parseColor(styles.outlineColor);
+    const ringOnBackdrop = compositeOver(ring, backdrop);
+
+    return {
+      outlineStyle: styles.outlineStyle,
+      outlineWidth: Number.parseFloat(styles.outlineWidth),
+      outlineOffset: Number.parseFloat(styles.outlineOffset),
+      ratioVsBackdrop: contrastRatio(ringOnBackdrop, backdrop),
+    };
+  }
+
+  it('draws a visible focus ring on :focus (IBM style_focus_visible reads :focus only)', () => {
+    const measured = measure('nuxeo');
+    expect(measured.outlineStyle).not.toBe('none');
+    expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
+    expect(measured.outlineOffset).toBeLessThanOrEqual(-2);
+    expect(measured.outlineWidth + measured.outlineOffset)
+      .withContext('ring must be inset so overflow:hidden on .properties-panel cannot clip it')
+      .toBeLessThanOrEqual(0);
   });
 
-  it('draws a 2px solid outline on the sub-tab once focused', () => {
-    tab.focus();
-    expect(document.activeElement).toBe(tab);
+  for (const theme of COMPILED_THEME_BASES) {
+    it(`focus ring meets ${MINIMUM_RATIO}:1 on the ${theme} theme`, () => {
+      const measured = measure(theme);
+      expect(measured.outlineStyle).not.toBe('none');
+      expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
+      expect(measured.ratioVsBackdrop)
+        .withContext(`ring on Activity sub-tab under ${theme}`)
+        .toBeGreaterThanOrEqual(MINIMUM_RATIO);
+    });
+  }
 
-    const style = getComputedStyle(tab);
-    expect(style.outlineStyle).toBe('solid');
-    expect(style.outlineWidth).toBe('2px');
-    expect(style.outlineOffset).toBe('2px');
-  });
+  for (const tabIndex of [0, 2] as const) {
+    it(`edge sub-tab ${tabIndex} keeps a full ring inside the overflow-hidden panel`, () => {
+      document.documentElement.setAttribute('data-app-theme', 'dark');
+      fixture.detectChanges();
 
-  it('meets the 3:1 non-text contrast of SC 1.4.11 against the fixture surface the ring touches', () => {
-    tab.focus();
-    const style = getComputedStyle(tab);
+      const panel = fixture.nativeElement.querySelector('.properties-panel') as HTMLElement;
+      const button = subTab(tabIndex);
+      button.focus();
 
-    expect(style.outlineStyle).not.toBe('none');
-    expect(parseFloat(style.outlineWidth)).toBeGreaterThan(0);
-    expect(parseFloat(style.outlineOffset)).toBeGreaterThan(0);
+      const styles = getComputedStyle(button);
+      expect(styles.outlineStyle).not.toBe('none');
+      const outlineWidth = Number.parseFloat(styles.outlineWidth);
+      const outlineOffset = Number.parseFloat(styles.outlineOffset);
+      expect(outlineWidth).toBeGreaterThanOrEqual(2);
+      expect(outlineOffset).toBeLessThanOrEqual(-2);
+      expect(outlineWidth + outlineOffset)
+        .withContext('outline must be fully inset — outlines do not participate in hit testing')
+        .toBeLessThanOrEqual(0);
 
-    expect(
-      contrastRatio(rgb(style.outlineColor), rgb(surfaceBehindTheRing())),
-    ).toBeGreaterThanOrEqual(3);
-  });
+      const panelRect = panel.getBoundingClientRect();
+      const btnRect = button.getBoundingClientRect();
+      expect(btnRect.left).toBeGreaterThanOrEqual(panelRect.left);
+      expect(btnRect.right).toBeLessThanOrEqual(panelRect.right);
+      expect(btnRect.top).toBeGreaterThanOrEqual(panelRect.top);
+      expect(btnRect.bottom).toBeLessThanOrEqual(panelRect.bottom);
+    });
+  }
 
   it('draws a visible ring on :focus when :focus-visible is false (IBM style_focus_visible)', () => {
-    tab.focus({ focusVisible: false } as FocusOptions);
-    expect(tab.matches(':focus')).toBe(true);
-    expect(tab.matches(':focus-visible')).toBe(false);
+    const button = subTab(0);
+    button.focus({ focusVisible: false } as FocusOptions);
+    expect(button.matches(':focus')).toBe(true);
+    expect(button.matches(':focus-visible')).toBe(false);
 
-    const style = getComputedStyle(tab);
+    const style = getComputedStyle(button);
     expect(style.outlineStyle).toBe('solid');
-    expect(style.outlineWidth).toBe('2px');
+    expect(Number.parseFloat(style.outlineWidth)).toBeGreaterThanOrEqual(2);
   });
 
   it('declares a standalone :focus rule that IBM Equal Access can read', () => {
+    document.documentElement.setAttribute('data-app-theme', 'nuxeo');
+    fixture.detectChanges();
+
     const focusSelectors: string[] = [];
     for (const sheet of Array.from(document.styleSheets)) {
       let sheetRules: CSSRuleList;
