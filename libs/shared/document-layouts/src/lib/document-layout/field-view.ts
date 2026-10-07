@@ -113,6 +113,47 @@ function subFields(
     );
 }
 
+function complexView(
+  key: string,
+  label: string,
+  definition: LayoutFieldType,
+  value: unknown,
+  list: boolean,
+  context: ValueContext,
+  depth: number,
+): FieldView {
+  const items = (list && Array.isArray(value) ? value : [value]).filter(isRecord);
+  if (items.length > 0) {
+    return {
+      key,
+      label,
+      kind: 'groups',
+      groups: items.map((item) => subFields(definition, item, context, depth)),
+    };
+  }
+  return list
+    ? { key, label, kind: 'empty' }
+    : { key, label, kind: 'value', value: { text: textOf(value) } };
+}
+
+function listView(
+  key: string,
+  label: string,
+  type: string,
+  definition: LayoutFieldType,
+  value: unknown,
+  context: ValueContext,
+): FieldView {
+  const items = (Array.isArray(value) ? value : [value]).filter((item) => !isEmpty(item));
+  if (items.length === 0) return { key, label, kind: 'empty' };
+  return {
+    key,
+    label,
+    kind: 'chips',
+    chips: items.map((item) => scalar(type, definition.directory, item, context)),
+  };
+}
+
 /** What one field of one document looks like, chosen from its schema type. */
 export function describeField(
   key: string,
@@ -125,31 +166,10 @@ export function describeField(
   if (isEmpty(value)) return { key, label, kind: 'empty' };
   const list = definition.type.endsWith('[]');
   const type = list ? definition.type.slice(0, -2) : definition.type;
-
   if (type === 'complex' && depth < MAX_DEPTH) {
-    const items = (list && Array.isArray(value) ? value : [value]).filter(isRecord);
-    if (items.length === 0) {
-      return list
-        ? { key, label, kind: 'empty' }
-        : { key, label, kind: 'value', value: { text: textOf(value) } };
-    }
-    return {
-      key,
-      label,
-      kind: 'groups',
-      groups: items.map((item) => subFields(definition, item, context, depth)),
-    };
+    return complexView(key, label, definition, value, list, context, depth);
   }
-  if (list) {
-    const items = (Array.isArray(value) ? value : [value]).filter((item) => !isEmpty(item));
-    if (items.length === 0) return { key, label, kind: 'empty' };
-    return {
-      key,
-      label,
-      kind: 'chips',
-      chips: items.map((item) => scalar(type, definition.directory, item, context)),
-    };
-  }
+  if (list) return listView(key, label, type, definition, value, context);
   return { key, label, kind: 'value', value: scalar(type, definition.directory, value, context) };
 }
 
