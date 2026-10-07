@@ -1452,14 +1452,15 @@ within 10 s (`CONFIG_LOAD_TIMEOUT_MS`) leaves the compiled defaults in force and
 
 ## 29. Per-Type Layouts — Layout Files and Document Type Schemas (NXSAT-311)
 
-| Field           | Value                                                                                                                                                      |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Service**     | `DocumentLayoutService` (`libs/shared/document-layouts/src/lib/document-layout.service.ts`)                                                                |
-| **Method**      | `layoutFor(type, mode)`, the first time a document of that type needs its layout; each read below is cached for the session                                |
-| **HTTP Method** | `GET`                                                                                                                                                      |
-| **Endpoints**   | `/nuxeo/agentic-ui-config/layouts.json` and `/nuxeo/agentic-ui-config/layouts/<type>/<mode>.layout.json` — without interceptors, no `Authorization` header |
-|                 | `/nuxeo/api/v1/config/types/<type>` with header `fetch-schema: fields` — authenticated, through `NuxeoApiBase`                                             |
-| **Server side** | `AgenticUiConfigServlet` (from `<layout>` contributions to `org.nuxeo.agentic.ui.config`); Nuxeo's type registry                                           |
+| Field           | Value                                                                                                                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Service**     | `DocumentLayoutService` (`libs/shared/document-layouts/src/lib/document-layout.service.ts`)                                                                                               |
+| **Method**      | `layoutFor(type, mode)`, the first time a document of that type needs its layout; `vocabularyLabel(directory, id)`, per vocabulary value shown; each read below is cached for the session |
+| **HTTP Method** | `GET`                                                                                                                                                                                     |
+| **Endpoints**   | `/nuxeo/agentic-ui-config/layouts.json` and `/nuxeo/agentic-ui-config/layouts/<type>/<mode>.layout.json` — without interceptors, no `Authorization` header                                |
+|                 | `/nuxeo/api/v1/config/types/<type>` with header `fetch-schema: fields` — authenticated, through `NuxeoApiBase`                                                                            |
+|                 | `/nuxeo/api/v1/directory/<directory>/<id>` with headers `translate-directoryEntry: label` and `Accept-Language: en` — authenticated, through `NuxeoApiBase`                               |
+| **Server side** | `AgenticUiConfigServlet` (from `<layout>` contributions to `org.nuxeo.agentic.ui.config`); Nuxeo's type registry and directories                                                          |
 
 The layout URLs sit beside `bootstrap.json` (from `APP_BOOTSTRAP_CONFIG_URL`), so under `nx serve`
 they are `/agentic-ui-config/layouts.json` and `/agentic-ui-config/layouts/…`, written by
@@ -1480,6 +1481,15 @@ layout generated from the type, with the reason in the console under `[agentic-u
 one, and per-field `constraints` — a `directoryResolver` names the vocabulary a value is bound to
 (`itemConstraints` for a list). The list endpoint and `/config/schemas` ignore that header. A
 failed read is not cached, so the next document of the type asks again.
+
+A vocabulary-bound value is labelled from its own entry, read by id: one request per value the
+document shows, plus one for its parent in an `l10n…` vocabulary, which is labelled
+`Parent/Child`. The whole vocabulary is never read — `Directory.SuggestEntries` with an empty
+term, which the pickers use, returns every entry, and a customer vocabulary can be of any size.
+`translate-directoryEntry: label` makes the server translate a label that is a message key, as
+`SuggestEntries` with `localize` does, and `Accept-Language: en` keeps it in English, as the
+panel's own vocabulary rows are. An entry that cannot be read shows the stored id, and is asked
+for again by the next document that shows it.
 
 **Usage:** the Properties panel on document detail (`metadata` mode).
 

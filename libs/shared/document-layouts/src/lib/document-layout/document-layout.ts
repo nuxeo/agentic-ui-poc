@@ -11,31 +11,38 @@ import {
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import {
-  DirectoryService,
-  NuxeoDocument,
-  directoryUsesL10nLabel,
-  formatHierarchicalL10nLabel,
-} from '@nuxeo-satori/platform/nuxeo-client';
-import {
-  Observable,
-  catchError,
-  forkJoin,
-  map,
-  merge,
-  of,
-  shareReplay,
-  startWith,
-  switchMap,
-} from 'rxjs';
+import { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import { forkJoin, map, merge, of, startWith, switchMap } from 'rxjs';
 
 import { DocumentLayoutService } from '../document-layout.service';
 import { LayoutLabel, LayoutMode, ResolvedLayout } from '../layout.model';
 import { humanize } from '../resolve-layout';
-import { FieldView, describeField, directoriesOf } from './field-view';
+import { FieldView, VocabularyValue, describeField, vocabularyValues } from './field-view';
 
 type Vocabularies = ReadonlyMap<string, ReadonlyMap<string, string>>;
-type VocabularyLabels = readonly [name: string, labels: ReadonlyMap<string, string>];
+
+function sameValues(a: readonly VocabularyValue[], b: readonly VocabularyValue[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((value, i) => value.directory === b[i]?.directory && value.id === b[i]?.id)
+  );
+}
+
+function byDirectory(
+  labels: readonly (VocabularyValue & { readonly label: string | null })[],
+): Vocabularies {
+  const vocabularies = new Map<string, Map<string, string>>();
+  for (const { directory, id, label } of labels) {
+    if (label === null) continue;
+    let entries = vocabularies.get(directory);
+    if (!entries) {
+      entries = new Map();
+      vocabularies.set(directory, entries);
+    }
+    entries.set(id, label);
+  }
+  return vocabularies;
+}
 
 interface SectionView {
   readonly id: string;
@@ -73,7 +80,6 @@ export class DocumentLayoutComponent {
   readonly mode = input<LayoutMode>('metadata');
 
   private readonly layouts = inject(DocumentLayoutService);
-  private readonly directories = inject(DirectoryService);
   private readonly translate = inject(TranslateService);
   private readonly locale = inject(LOCALE_ID);
 
@@ -89,29 +95,47 @@ export class DocumentLayoutComponent {
     { equal: (a, b) => a?.uid === b?.uid && a?.type === b?.type && a?.mode === b?.mode },
   );
 
-  /** Entry labels per vocabulary, kept while this panel lives; a failed read is asked again. */
-  private readonly vocabularyCache = new Map<string, Observable<VocabularyLabels>>();
-
-  private readonly resolved = toSignal(
+  private readonly layout = toSignal(
     toObservable(this.target).pipe(
       switchMap((target) => (target ? this.layouts.layoutFor(target.type, target.mode) : of(null))),
-      switchMap((layout) => {
-        const names = layout
-          ? directoriesOf(
-              layout.sections.flatMap((section) => section.fields.map((field) => field.definition)),
-            )
-          : [];
-        if (!layout || names.length === 0) return of({ layout, vocabularies: NO_VOCABULARIES });
-        return forkJoin(names.map((name) => this.vocabulary(name))).pipe(
-          map((pairs): { layout: ResolvedLayout; vocabularies: Vocabularies } => ({
-            layout,
-            vocabularies: new Map(pairs),
-          })),
-          startWith({ layout, vocabularies: NO_VOCABULARIES }),
-        );
-      }),
     ),
-    { initialValue: { layout: null, vocabularies: NO_VOCABULARIES } },
+    { initialValue: null },
+  );
+
+  /** The vocabulary entries this document's values name: only those are read. */
+  private readonly vocabularyValues = computed(
+    () => {
+      const layout = this.layout();
+      const document = this.document();
+      if (!layout || !document || layout.type !== document.type) return [];
+      return vocabularyValues(
+        layout.sections.flatMap((section) =>
+          section.fields.map((field) => ({
+            definition: field.definition,
+            value: document.properties[field.xpath],
+          })),
+        ),
+      );
+    },
+    { equal: sameValues },
+  );
+
+  /** Shown as the stored ids until the labels arrive, and as the id wherever one cannot be read. */
+  private readonly vocabularies = toSignal(
+    toObservable(this.vocabularyValues).pipe(
+      switchMap((values) =>
+        values.length === 0
+          ? of(NO_VOCABULARIES)
+          : forkJoin(
+              values.map((value) =>
+                this.layouts
+                  .vocabularyLabel(value.directory, value.id)
+                  .pipe(map((label) => ({ ...value, label }))),
+              ),
+            ).pipe(map(byDirectory), startWith(NO_VOCABULARIES)),
+      ),
+    ),
+    { initialValue: NO_VOCABULARIES },
   );
 
   /** Bumped when the language or a catalogue changes, so labels resolved with `instant` follow. */
@@ -126,7 +150,8 @@ export class DocumentLayoutComponent {
   readonly view = computed<LayoutView | null>(() => {
     this.translations();
     const document = this.document();
-    const { layout, vocabularies } = this.resolved();
+    const layout = this.layout();
+    const vocabularies = this.vocabularies();
     // A layout still resolving for the previous document's type must not show this one's values.
     if (!document || !layout || layout.type !== document.type) return null;
     const context = {
@@ -152,51 +177,6 @@ export class DocumentLayoutComponent {
   /** A tab needs a name even where a section heading may be left out. */
   tabLabel(section: SectionView): string {
     return section.heading ?? humanize(section.id);
-  }
-
-  private vocabulary(name: string): Observable<VocabularyLabels> {
-    let cached = this.vocabularyCache.get(name);
-    if (!cached) {
-      // An l10n vocabulary is not readable through Directory.SuggestEntries (HTTP 500), so it is
-      // read and labelled the way the panel's own Subjects and Coverage rows are.
-      const labels: Observable<ReadonlyMap<string, string>> = directoryUsesL10nLabel(name)
-        ? this.directories
-            .getAllL10nEntries(name)
-            .pipe(
-              map(
-                (entries) =>
-                  new Map(
-                    entries.map((entry) => [
-                      entry.id,
-                      formatHierarchicalL10nLabel(entry.id, entries),
-                    ]),
-                  ),
-              ),
-            )
-        : this.directories
-            .getEntries(name)
-            .pipe(
-              map(
-                (entries) =>
-                  new Map(
-                    entries.map((entry) => [
-                      entry.id,
-                      entry.displayLabel || entry.label || entry.id,
-                    ]),
-                  ),
-              ),
-            );
-      cached = labels.pipe(
-        map((entries): VocabularyLabels => [name, entries]),
-        catchError(() => {
-          this.vocabularyCache.delete(name);
-          return of<VocabularyLabels>([name, new Map()]);
-        }),
-        shareReplay({ bufferSize: 1, refCount: false }),
-      );
-      this.vocabularyCache.set(name, cached);
-    }
-    return cached;
   }
 
   private text(label: LayoutLabel): string | null {

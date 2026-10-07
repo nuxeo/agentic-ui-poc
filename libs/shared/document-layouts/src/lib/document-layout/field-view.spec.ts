@@ -1,4 +1,4 @@
-import { FieldView, ValueContext, describeField, directoriesOf } from './field-view';
+import { FieldView, ValueContext, describeField, vocabularyValues } from './field-view';
 
 const context: ValueContext = {
   locale: 'en-US',
@@ -125,21 +125,43 @@ describe('describeField', () => {
   });
 });
 
-describe('directoriesOf', () => {
-  it('collects every vocabulary, including those of sub-fields, once', () => {
+describe('vocabularyValues', () => {
+  it('names only the entries the values hold, in sub-fields and lists too, each once', () => {
     expect(
-      directoriesOf([
-        { type: 'string', directory: 'claim_status' },
-        { type: 'string[]', directory: 'l10nsubjects' },
+      vocabularyValues([
+        { definition: { type: 'string', directory: 'claim_status' }, value: 'pending' },
         {
-          type: 'complex',
-          fields: {
-            country: { type: 'string', directory: 'country' },
-            again: { type: 'string', directory: 'claim_status' },
-          },
+          definition: { type: 'string[]', directory: 'l10nsubjects' },
+          value: ['architecture', '', null, 'architecture'],
         },
-        { type: 'long' },
+        {
+          definition: {
+            type: 'complex[]',
+            fields: {
+              country: { type: 'string', directory: 'country' },
+              again: { type: 'string', directory: 'claim_status' },
+            },
+          },
+          value: [{ country: 'FR', again: 'pending' }, { country: 'DE' }, null],
+        },
       ]),
-    ).toEqual(['claim_status', 'country', 'l10nsubjects']);
+    ).toEqual([
+      { directory: 'claim_status', id: 'pending' },
+      { directory: 'country', id: 'DE' },
+      { directory: 'country', id: 'FR' },
+      { directory: 'l10nsubjects', id: 'architecture' },
+    ]);
+  });
+
+  it('names nothing for an empty value, an unbound field or a type shown without a label', () => {
+    expect(
+      vocabularyValues([
+        { definition: { type: 'string', directory: 'claim_status' }, value: '' },
+        { definition: { type: 'string', directory: 'claim_status' }, value: null },
+        { definition: { type: 'string' }, value: 'pending' },
+        { definition: { type: 'date', directory: 'claim_status' }, value: '2026-09-14' },
+        { definition: { type: 'string', directory: 'claim_status' }, value: ['pending'] },
+      ]),
+    ).toEqual([]);
   });
 });

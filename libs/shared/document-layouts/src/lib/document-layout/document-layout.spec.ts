@@ -1,12 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
-import {
-  DirectoryEntry,
-  DirectoryService,
-  L10nDirectoryEntry,
-  NuxeoDocument,
-} from '@nuxeo-satori/platform/nuxeo-client';
-import { Observable, of, throwError } from 'rxjs';
+import { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import { Observable, of } from 'rxjs';
 
 import { DocumentLayoutService } from '../document-layout.service';
 import { LayoutSection, ResolvedLayout } from '../layout.model';
@@ -66,13 +61,14 @@ describe('DocumentLayoutComponent', () => {
   let layoutFor: ReturnType<
     typeof vi.fn<(type: string, mode: string) => Observable<ResolvedLayout | null>>
   >;
-  let getEntries: ReturnType<typeof vi.fn<(name: string) => Observable<DirectoryEntry[]>>>;
-  let getAllL10nEntries: ReturnType<
-    typeof vi.fn<(name: string) => Observable<L10nDirectoryEntry[]>>
+  let vocabularyLabel: ReturnType<
+    typeof vi.fn<(directory: string, id: string) => Observable<string | null>>
   >;
-
-  const entry = (id: string, label: string) =>
-    ({ id, label, displayLabel: label }) as DirectoryEntry;
+  const LABELS: Record<string, string> = {
+    'claim_status/pending': 'Pending review',
+    'claim_status/approved': 'Approved',
+    'l10nsubjects/architecture': 'Art/Architecture',
+  };
 
   async function render(document: NuxeoDocument | null, answer: ResolvedLayout | null = layout()) {
     layoutFor.mockReturnValue(of(answer));
@@ -91,22 +87,12 @@ describe('DocumentLayoutComponent', () => {
 
   beforeEach(() => {
     layoutFor = vi.fn();
-    getEntries = vi.fn().mockReturnValue(of([entry('pending', 'Pending review')]));
-    const l10n = (id: string, parent: string, label: string) =>
-      ({
-        id,
-        directoryName: 'l10nsubjects',
-        properties: { id, parent, ordering: 0, obsolete: 0, label_en: label },
-      }) as L10nDirectoryEntry;
-    getAllL10nEntries = vi
-      .fn()
-      .mockReturnValue(of([l10n('art', '', 'Art'), l10n('architecture', 'art', 'Architecture')]));
+    vocabularyLabel = vi.fn((directory: string, id: string) =>
+      of(LABELS[`${directory}/${id}`] ?? null),
+    );
     TestBed.configureTestingModule({
       imports: [DocumentLayoutComponent],
-      providers: [
-        { provide: DocumentLayoutService, useValue: { layoutFor } },
-        { provide: DirectoryService, useValue: { getEntries, getAllL10nEntries } },
-      ],
+      providers: [{ provide: DocumentLayoutService, useValue: { layoutFor, vocabularyLabel } }],
     });
   });
 
@@ -131,7 +117,7 @@ describe('DocumentLayoutComponent', () => {
         (chip) => chip.textContent?.trim(),
       ),
     ).toEqual(['R51.9', 'G44.209']);
-    expect(getEntries).toHaveBeenCalledWith('claim_status');
+    expect(vocabularyLabel.mock.calls).toEqual([['claim_status', 'pending']]);
   });
 
   it('translates a boolean false as No and an unset value as a dash', async () => {
@@ -140,7 +126,7 @@ describe('DocumentLayoutComponent', () => {
     expect(value('claim:number')).toBe('—');
   });
 
-  it('labels an l10n vocabulary from its own entries, as Parent/Child', async () => {
+  it('labels each listed value by its own entry, and shows the id of one with no label', async () => {
     const subjects = {
       ...claimSection,
       fields: [field('dc:subjects', 'string[]', { directory: 'l10nsubjects' })],
@@ -154,12 +140,14 @@ describe('DocumentLayoutComponent', () => {
         (chip) => chip.textContent?.trim(),
       ),
     ).toEqual(['Art/Architecture', 'unknown']);
-    expect(getAllL10nEntries).toHaveBeenCalledWith('l10nsubjects');
-    expect(getEntries).not.toHaveBeenCalledWith('l10nsubjects');
+    expect(vocabularyLabel.mock.calls).toEqual([
+      ['l10nsubjects', 'architecture'],
+      ['l10nsubjects', 'unknown'],
+    ]);
   });
 
-  it('shows the stored id when the vocabulary cannot be read', async () => {
-    getEntries.mockReturnValue(throwError(() => new Error('403')));
+  it('shows the stored id when the entry cannot be read', async () => {
+    vocabularyLabel.mockReturnValue(of(null));
     await render(claimDocument());
     expect(value('claim:status')).toBe('pending');
   });
@@ -251,13 +239,15 @@ describe('DocumentLayoutComponent', () => {
     expect(value('claim:number')).toBe('CLM-1b');
   });
 
-  it('reads each vocabulary once while documents of the type are browsed, retrying one that failed', async () => {
-    getEntries.mockReturnValueOnce(throwError(() => new Error('503')));
+  it('asks for an entry only when a value names it, not again for the same values', async () => {
     await render(claimDocument());
-    expect(value('claim:status')).toBe('pending');
-    await show({ ...claimDocument(), uid: 'c2' });
-    expect(value('claim:status')).toBe('Pending review');
-    await show({ ...claimDocument(), uid: 'c3' });
-    expect(getEntries).toHaveBeenCalledTimes(2);
+    await show(claimDocument({ 'claim:number': 'CLM-1b' }));
+    expect(vocabularyLabel).toHaveBeenCalledTimes(1);
+    await show(claimDocument({ 'claim:status': 'approved' }));
+    expect(value('claim:status')).toBe('Approved');
+    expect(vocabularyLabel.mock.calls).toEqual([
+      ['claim_status', 'pending'],
+      ['claim_status', 'approved'],
+    ]);
   });
 });

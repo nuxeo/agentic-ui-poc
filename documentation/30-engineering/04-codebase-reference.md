@@ -133,13 +133,13 @@ If you read six files, read these.
 Internal: no `@nuxeo-satori/platform` entry point re-exports it. Its contract is the layout-file
 format in [`docs/extension-reference.md`](../../docs/extension-reference.md) §9b.
 
-| File                                 | Responsibility                                                                                                        |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| `layout-file.ts`                     | Reads the servlet's `layouts.json` and layout envelopes, and validates a layout file (version 1)                      |
-| `resolve-layout.ts`                  | Reads `/config/types/<type>`; generates the default layout from the type's schemas; applies a contributed file, whole |
-| `document-layout.service.ts`         | `layoutFor(type, mode)`: lazy, cached reads — the layout reads skip the interceptors (no `Authorization` header)      |
-| `document-layout/document-layout.ts` | `<lib-document-layout>`: sections or tabs in the Properties panel; vocabulary labels; translation-key labels          |
-| `document-layout/field-view.ts`      | How one value is shown, chosen from its schema type                                                                   |
+| File                                 | Responsibility                                                                                                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `layout-file.ts`                     | Reads the servlet's `layouts.json` and layout envelopes, and validates a layout file (version 1)                                                                                     |
+| `resolve-layout.ts`                  | Reads `/config/types/<type>`; generates the default layout from the type's schemas; applies a contributed file, whole                                                                |
+| `document-layout.service.ts`         | `layoutFor(type, mode)`: lazy, cached reads — the layout reads skip the interceptors (no `Authorization` header); `vocabularyLabel(directory, id)`: one vocabulary entry, read by id |
+| `document-layout/document-layout.ts` | `<lib-document-layout>`: sections or tabs in the Properties panel; vocabulary labels; translation-key labels                                                                         |
+| `document-layout/field-view.ts`      | How one value is shown, chosen from its schema type                                                                                                                                  |
 
 ---
 

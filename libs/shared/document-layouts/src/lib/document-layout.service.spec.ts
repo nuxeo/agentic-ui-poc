@@ -320,4 +320,83 @@ describe('DocumentLayoutService', () => {
     answerType();
     expect((await second)?.source).toBe('generated');
   });
+
+  describe('vocabularyLabel', () => {
+    const ENTRY = (directory: string, id: string) =>
+      `/nuxeo/api/v1/directory/${directory}/${encodeURIComponent(id)}`;
+    const entry = (directory: string, id: string, properties: Record<string, unknown>) => ({
+      'entity-type': 'directoryEntry',
+      directoryName: directory,
+      id,
+      properties: { id, ordering: 0, obsolete: 0, ...properties },
+    });
+    const label = (directory: string, id: string) =>
+      firstValueFrom(service.vocabularyLabel(directory, id));
+
+    it('reads one entry by id, translated in English, through the interceptors', async () => {
+      const answer = label('claim_status', 'pending');
+      const request = http.expectOne(ENTRY('claim_status', 'pending'));
+      expect(request.request.method).toBe('GET');
+      expect(request.request.headers.get('translate-directoryEntry')).toBe('label');
+      expect(request.request.headers.get('Accept-Language')).toBe('en');
+      request.flush(entry('claim_status', 'pending', { label: 'Pending review' }));
+      expect(await answer).toBe('Pending review');
+      expect(intercepted).toContain(ENTRY('claim_status', 'pending'));
+    });
+
+    it('names an entry whose label is an untranslated key by its id, as the pickers do', async () => {
+      const answer = label('nature', 'article');
+      http
+        .expectOne(ENTRY('nature', 'article'))
+        .flush(entry('nature', 'article', { label: 'label.directories.nature.article' }));
+      expect(await answer).toBe('Article');
+    });
+
+    it('labels an l10n entry Parent/Child, reading its parent too', async () => {
+      const answer = label('l10nsubjects', 'astronomy');
+      http
+        .expectOne(ENTRY('l10nsubjects', 'astronomy'))
+        .flush(entry('l10nsubjects', 'astronomy', { parent: 'sciences', label_en: 'Astronomy' }));
+      http
+        .expectOne(ENTRY('l10nsubjects', 'sciences'))
+        .flush(entry('l10nsubjects', 'sciences', { parent: '', label_en: 'Sciences' }));
+      expect(await answer).toBe('Sciences/Astronomy');
+    });
+
+    it('reads each entry once per session', async () => {
+      const first = label('claim_status', 'pending');
+      http
+        .expectOne(ENTRY('claim_status', 'pending'))
+        .flush(entry('claim_status', 'pending', { label: 'Pending review' }));
+      await first;
+      expect(await label('claim_status', 'pending')).toBe('Pending review');
+      http.expectNone(ENTRY('claim_status', 'pending'));
+    });
+
+    it('answers null for an entry it cannot read, and asks again the next time', async () => {
+      const first = label('claim_status', 'gone');
+      http
+        .expectOne(ENTRY('claim_status', 'gone'))
+        .flush('', { status: 404, statusText: 'Not Found' });
+      expect(await first).toBeNull();
+
+      const second = label('claim_status', 'gone');
+      http.expectOne(ENTRY('claim_status', 'gone')).flush({ unexpected: true });
+      expect(await second).toBeNull();
+
+      const third = label('claim_status', 'gone');
+      http
+        .expectOne(ENTRY('claim_status', 'gone'))
+        .flush(entry('claim_status', 'gone', { label: 'Gone' }));
+      expect(await third).toBe('Gone');
+    });
+
+    it('encodes the id into the path', async () => {
+      const answer = label('claim_status', 'a b?');
+      http
+        .expectOne('/nuxeo/api/v1/directory/claim_status/a%20b%3F')
+        .flush(entry('claim_status', 'a b?', { label: 'Odd' }));
+      expect(await answer).toBe('Odd');
+    });
+  });
 });

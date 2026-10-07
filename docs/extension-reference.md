@@ -916,16 +916,16 @@ so that a file written for a later version still loads.
 
 How each value is shown is decided by its schema type — there is no widget name to set:
 
-| Field type                     | Shown as                                                                                                                          |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| `string`                       | text                                                                                                                              |
-| `string` bound to a vocabulary | the entry's label, read from the vocabulary; `Parent/Child` for an `l10n…` vocabulary, in English as the panel's own Subjects row |
-| `string[]` and other lists     | one chip per item (vocabulary items labelled)                                                                                     |
-| `date`                         | a long date, in UTC, so a calendar date is the same day everywhere                                                                |
-| `long`, `double`               | a number in the user's locale                                                                                                     |
-| `boolean`                      | Yes or No, translated                                                                                                             |
-| `blob`                         | the file name                                                                                                                     |
-| `complex`, `complex[]`         | its sub-fields, one group per item                                                                                                |
+| Field type                     | Shown as                                                                                                                                                                                                  |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `string`                       | text                                                                                                                                                                                                      |
+| `string` bound to a vocabulary | the entry's label, read for the entries the document holds only, so a vocabulary of any size costs a read per value; `Parent/Child` for an `l10n…` vocabulary, in English as the panel's own Subjects row |
+| `string[]` and other lists     | one chip per item (vocabulary items labelled)                                                                                                                                                             |
+| `date`                         | a long date, in UTC, so a calendar date is the same day everywhere                                                                                                                                        |
+| `long`, `double`               | a number in the user's locale                                                                                                                                                                             |
+| `boolean`                      | Yes or No, translated                                                                                                                                                                                     |
+| `blob`                         | the file name                                                                                                                                                                                             |
+| `complex`, `complex[]`         | its sub-fields, one group per item                                                                                                                                                                        |
 
 **Labels.** A field's `label` is shown verbatim; else its `labelKey` if it translates; else the
 key `layout.field.<prefix>:<field>`; else a readable form of the field name (`billedAmount` →

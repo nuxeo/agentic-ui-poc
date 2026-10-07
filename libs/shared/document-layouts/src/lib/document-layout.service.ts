@@ -1,7 +1,13 @@
 import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { APP_BOOTSTRAP_CONFIG_URL } from '@nuxeo-satori/platform/app-config';
-import { NuxeoApiBase } from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  L10nDirectoryEntry,
+  NuxeoApiBase,
+  directoryPickerLabel,
+  directoryUsesL10nLabel,
+  formatHierarchicalL10nLabel,
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   Observable,
   TimeoutError,
@@ -51,6 +57,23 @@ function describe(error: unknown): string {
   return typeof message === 'string' ? message : 'request failed';
 }
 
+/** An l10n vocabulary labels an entry with `label_en`; any other with `label`, here translated. */
+interface VocabularyEntry extends L10nDirectoryEntry {
+  readonly properties: L10nDirectoryEntry['properties'] & { readonly label?: unknown };
+}
+
+/** One entry as `GET /directory/<name>/<id>` answers it, or `null` for any other body. */
+function readEntry(raw: unknown): VocabularyEntry | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const { id, directoryName, properties } = raw as Record<string, unknown>;
+  if (typeof id !== 'string' || typeof properties !== 'object' || properties === null) return null;
+  return {
+    id,
+    directoryName: typeof directoryName === 'string' ? directoryName : '',
+    properties: properties as VocabularyEntry['properties'],
+  };
+}
+
 /** The product app has no page showing diagnostics, so the console is where support finds them. */
 function warn(message: string): void {
   console.warn(`[agentic-ui-layouts] ${message}`);
@@ -81,6 +104,7 @@ export class DocumentLayoutService {
   private index$: Observable<LayoutIndex> | null = null;
   private readonly files = new Map<string, Observable<LayoutFile | null>>();
   private readonly types = new Map<string, Observable<DocumentTypeDefinition | null>>();
+  private readonly entries = new Map<string, Observable<VocabularyEntry | null>>();
 
   /** The layout to render, or `null` when the type's schemas cannot be read. Never errors. */
   layoutFor(type: string, mode: LayoutMode): Observable<ResolvedLayout | null> {
@@ -95,6 +119,64 @@ export class DocumentLayoutService {
         return layout;
       }),
     );
+  }
+
+  /**
+   * The label of one vocabulary entry, or `null` when it cannot be read. Never errors.
+   *
+   * Read by id, so a document costs a request per value it shows — and one for its parent in an
+   * l10n vocabulary, labelled `Parent/Child` as the panel's Subjects and Coverage rows are —
+   * however many entries the vocabulary has. In English, as those rows are. Each entry is read
+   * once per session; a failed read is asked again by the next document that shows it.
+   */
+  vocabularyLabel(directory: string, id: string): Observable<string | null> {
+    return this.entry(directory, id).pipe(
+      switchMap((entry) => {
+        if (!entry) return of(null);
+        if (!directoryUsesL10nLabel(directory)) {
+          const { label } = entry.properties;
+          return of(
+            directoryPickerLabel({
+              id,
+              displayLabel: '',
+              label: typeof label === 'string' ? label : undefined,
+            }),
+          );
+        }
+        const parent = entry.properties.parent;
+        if (!parent) return of(formatHierarchicalL10nLabel(id, [entry]));
+        return this.entry(directory, parent).pipe(
+          map((found) => formatHierarchicalL10nLabel(id, found ? [entry, found] : [entry])),
+        );
+      }),
+    );
+  }
+
+  private entry(directory: string, id: string): Observable<VocabularyEntry | null> {
+    const key = `${directory}\n${id}`;
+    let cached = this.entries.get(key);
+    if (!cached) {
+      cached = this.api
+        .get<unknown>(
+          `/nuxeo/api/v1/directory/${encodeURIComponent(directory)}/${encodeURIComponent(id)}`,
+          undefined,
+          { 'translate-directoryEntry': 'label', 'Accept-Language': 'en' },
+        )
+        .pipe(
+          map((raw) => {
+            const entry = readEntry(raw);
+            if (!entry) throw new Error('the response is not a directory entry');
+            return entry;
+          }),
+          catchError(() => {
+            this.entries.delete(key);
+            return of(null);
+          }),
+          shareReplay({ bufferSize: 1, refCount: false }),
+        );
+      this.entries.set(key, cached);
+    }
+    return cached;
   }
 
   private documentType(type: string): Observable<DocumentTypeDefinition | null> {

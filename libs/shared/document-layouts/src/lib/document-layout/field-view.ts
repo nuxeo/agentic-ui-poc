@@ -173,14 +173,58 @@ export function describeField(
   return { key, label, kind: 'value', value: scalar(type, definition.directory, value, context) };
 }
 
-/** Every vocabulary a layout's fields — and their sub-fields — are bound to. */
-export function directoriesOf(definitions: readonly LayoutFieldType[]): string[] {
-  const found = new Set<string>();
-  const walk = (definition: LayoutFieldType, depth: number) => {
-    if (definition.directory) found.add(definition.directory);
-    if (depth < MAX_DEPTH)
-      for (const sub of Object.values(definition.fields ?? {})) walk(sub, depth + 1);
-  };
-  for (const definition of definitions) walk(definition, 0);
-  return [...found].sort((a, b) => a.localeCompare(b));
+/** A vocabulary entry a value names: the vocabulary, and the id the document stores. */
+export interface VocabularyValue {
+  readonly directory: string;
+  readonly id: string;
+}
+
+type FoundValues = Map<string, VocabularyValue>;
+
+function collectSubFieldValues(
+  definition: LayoutFieldType,
+  items: readonly Record<string, unknown>[],
+  depth: number,
+  found: FoundValues,
+): void {
+  const subs = Object.entries(definition.fields ?? {});
+  for (const item of items) {
+    for (const [name, sub] of subs) collectValues(sub, item[name], depth + 1, found);
+  }
+}
+
+function collectValues(
+  definition: LayoutFieldType,
+  value: unknown,
+  depth: number,
+  found: FoundValues,
+): void {
+  if (isEmpty(value)) return;
+  const list = definition.type.endsWith('[]');
+  const type = list ? definition.type.slice(0, -2) : definition.type;
+  const values: unknown[] = list && Array.isArray(value) ? value : [value];
+  if (type === 'complex' && depth < MAX_DEPTH) {
+    collectSubFieldValues(definition, values.filter(isRecord), depth, found);
+    return;
+  }
+  const directory = definition.directory;
+  if (!directory || VIEWS[type]) return;
+  for (const id of values) {
+    if (typeof id === 'string' && id !== '') found.set(`${directory}\n${id}`, { directory, id });
+  }
+}
+
+/**
+ * The vocabulary entries a document's values name, in its fields and their sub-fields: the
+ * entries `describeField` will ask a label for, so only those need reading, however large the
+ * vocabulary is. Sorted, so an unchanged document gives an equal list.
+ */
+export function vocabularyValues(
+  fields: readonly { readonly definition: LayoutFieldType; readonly value: unknown }[],
+): VocabularyValue[] {
+  const found: FoundValues = new Map();
+  for (const { definition, value } of fields) collectValues(definition, value, 0, found);
+  return [...found.values()].sort(
+    (a, b) => a.directory.localeCompare(b.directory) || a.id.localeCompare(b.id),
+  );
 }
