@@ -199,16 +199,36 @@ describe('DocumentLayoutComponent', () => {
     expect(host().querySelector('.document-layout')).toBeNull();
   });
 
-  it('does not ask again when another document of the same type opens', async () => {
-    await render(claimDocument());
-    fixture.componentRef.setInput('document', {
-      ...claimDocument({ 'claim:number': 'CLM-2' }),
-      uid: 'c2',
-    });
+  async function show(document: NuxeoDocument) {
+    fixture.componentRef.setInput('document', document);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(layoutFor).toHaveBeenCalledTimes(1);
+  }
+
+  it('asks again for the next document, so a failed schema read recovers', async () => {
+    await render(claimDocument(), null);
+    expect(host().querySelector('.document-layout')).toBeNull();
+    layoutFor.mockReturnValue(of(layout()));
+    await show({ ...claimDocument({ 'claim:number': 'CLM-2' }), uid: 'c2' });
+    expect(layoutFor).toHaveBeenCalledTimes(2);
     expect(value('claim:number')).toBe('CLM-2');
+  });
+
+  it('does not ask again when the same document is refetched', async () => {
+    await render(claimDocument());
+    await show(claimDocument({ 'claim:number': 'CLM-1b' }));
+    expect(layoutFor).toHaveBeenCalledTimes(1);
+    expect(value('claim:number')).toBe('CLM-1b');
+  });
+
+  it('reads each vocabulary once while documents of the type are browsed, retrying one that failed', async () => {
+    getEntries.mockReturnValueOnce(throwError(() => new Error('503')));
+    await render(claimDocument());
+    expect(value('claim:status')).toBe('pending');
+    await show({ ...claimDocument(), uid: 'c2' });
+    expect(value('claim:status')).toBe('Pending review');
+    await show({ ...claimDocument(), uid: 'c3' });
+    expect(getEntries).toHaveBeenCalledTimes(2);
   });
 });

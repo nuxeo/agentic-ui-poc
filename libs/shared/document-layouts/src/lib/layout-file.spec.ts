@@ -138,6 +138,12 @@ describe('readLayoutFile', () => {
     });
   });
 
+  it('accepts a section id of 64 characters', () => {
+    expect(
+      readLayoutFile({ version: 1, sections: [{ id: `s${'.'.repeat(63)}`, fields: [] }] }),
+    ).toHaveProperty('sections');
+  });
+
   it('accepts display tabs and an empty layout', () => {
     expect(readLayoutFile({ version: 1, display: 'tabs', sections: [] })).toEqual({
       display: 'tabs',
@@ -161,6 +167,26 @@ describe('readLayoutFile', () => {
     ]);
   });
 
+  it('skips a field listed twice in one section, and says so; another section may list it again', () => {
+    const file = readLayoutFile({
+      version: 1,
+      sections: [
+        {
+          id: 'a',
+          fields: ['claim:number', { field: 'claim:number', label: 'Again' }, 'claim:status'],
+        },
+        { id: 'b', fields: ['claim:number'] },
+      ],
+    });
+    expect('invalid' in file).toBe(false);
+    if ('invalid' in file) return;
+    expect(file.sections.map((section) => section.fields.map((field) => field.field))).toEqual([
+      ['claim:number', 'claim:status'],
+      ['claim:number'],
+    ]);
+    expect(file.problems).toEqual(['section "a" lists claim:number twice']);
+  });
+
   it.each([
     [{ sections: [] }, 'version must be 1, got null'],
     [{ version: 2, sections: [] }, 'version must be 1, got 2'],
@@ -173,11 +199,19 @@ describe('readLayoutFile', () => {
     [{ version: 1, sections: ['a'] }, 'sections[0] must be an object'],
     [
       { version: 1, sections: [{ fields: [] }] },
-      "sections[0].id must be letters, digits, '.', '_' or '-'",
+      "sections[0].id must be 1 to 64 letters, digits, '.', '_' or '-', starting with a letter or digit",
     ],
     [
       { version: 1, sections: [{ id: 'a b', fields: [] }] },
-      "sections[0].id must be letters, digits, '.', '_' or '-'",
+      "sections[0].id must be 1 to 64 letters, digits, '.', '_' or '-', starting with a letter or digit",
+    ],
+    [
+      { version: 1, sections: [{ id: '_summary', fields: [] }] },
+      "sections[0].id must be 1 to 64 letters, digits, '.', '_' or '-', starting with a letter or digit",
+    ],
+    [
+      { version: 1, sections: [{ id: 'a'.repeat(65), fields: [] }] },
+      "sections[0].id must be 1 to 64 letters, digits, '.', '_' or '-', starting with a letter or digit",
     ],
     [
       {

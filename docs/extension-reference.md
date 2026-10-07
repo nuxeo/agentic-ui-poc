@@ -891,34 +891,34 @@ nothing generated is merged in. The type must match exactly.
 }
 ```
 
-| Key                   | Meaning                                                                                                        |
-| --------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `version`             | Required, `1`. Any other value and the file is refused.                                                        |
-| `display`             | `"sections"` (default), or `"tabs"` for one tab per section.                                                   |
-| `sections`            | Required list, may be empty — an empty layout shows nothing.                                                   |
-| `sections[].id`       | Required, unique; letters, digits, `.`, `_`, `-`.                                                              |
-| `sections[].label`    | Heading, as a literal. Wins over `labelKey`. A section with neither has no heading (a tab is named from `id`). |
-| `sections[].labelKey` | Heading, as a translation key.                                                                                 |
-| `sections[].fields`   | Required list of `"<prefix>:<field>"`, or `{ "field", "label"?, "labelKey"? }`. Top-level fields only.         |
+| Key                   | Meaning                                                                                                                       |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `version`             | Required, `1`. Any other value and the file is refused.                                                                       |
+| `display`             | `"sections"` (default), or `"tabs"` for one tab per section.                                                                  |
+| `sections`            | Required list, may be empty — an empty layout shows nothing.                                                                  |
+| `sections[].id`       | Required, unique; 1 to 64 letters, digits, `.`, `_` or `-`, starting with a letter or digit.                                  |
+| `sections[].label`    | Heading, as a literal. Wins over `labelKey`. A section with neither has no heading (a tab is named from `id`).                |
+| `sections[].labelKey` | Heading, as a translation key.                                                                                                |
+| `sections[].fields`   | Required list of `"<prefix>:<field>"`, or `{ "field", "label"?, "labelKey"? }`. Top-level fields only, each once per section. |
 
-A field the type does not have, or an entry that is not `<prefix>:<field>`, is skipped and the rest
-of the file applies; a file that is refused shows the generated layout instead. Both are logged in
+A field the type does not have, an entry that is not `<prefix>:<field>`, or a field listed twice in
+one section is skipped and the rest of the file applies; a file that is refused shows the generated layout instead. Both are logged in
 the browser console under `[agentic-ui-layouts]`, and the page never breaks. A schema with no prefix
 is addressed by its name, as Nuxeo does: `file:content`. Unknown keys are ignored without a message,
 so that a file written for a later version still loads.
 
 How each value is shown is decided by its schema type — there is no widget name to set:
 
-| Field type                     | Shown as                                      |
-| ------------------------------ | --------------------------------------------- |
-| `string`                       | text                                          |
-| `string` bound to a vocabulary | the entry's label, read from the vocabulary   |
-| `string[]` and other lists     | one chip per item (vocabulary items labelled) |
-| `date`                         | a long date                                   |
-| `long`, `double`               | a number in the user's locale                 |
-| `boolean`                      | Yes or No, translated                         |
-| `blob`                         | the file name                                 |
-| `complex`, `complex[]`         | its sub-fields, one group per item            |
+| Field type                     | Shown as                                                           |
+| ------------------------------ | ------------------------------------------------------------------ |
+| `string`                       | text                                                               |
+| `string` bound to a vocabulary | the entry's label, read from the vocabulary                        |
+| `string[]` and other lists     | one chip per item (vocabulary items labelled)                      |
+| `date`                         | a long date, in UTC, so a calendar date is the same day everywhere |
+| `long`, `double`               | a number in the user's locale                                      |
+| `boolean`                      | Yes or No, translated                                              |
+| `blob`                         | the file name                                                      |
+| `complex`, `complex[]`         | its sub-fields, one group per item                                 |
 
 **Labels.** A field's `label` is shown verbatim; else its `labelKey` if it translates; else the
 key `layout.field.<prefix>:<field>`; else a readable form of the field name (`billedAmount` →

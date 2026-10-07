@@ -126,7 +126,9 @@ export function readLayoutFile(content: Record<string, unknown>): LayoutFile | I
     if (!isRecord(section)) return { invalid: `sections[${index}] must be an object` };
     const id = section['id'];
     if (typeof id !== 'string' || !SECTION_ID.test(id)) {
-      return { invalid: `sections[${index}].id must be letters, digits, '.', '_' or '-'` };
+      return {
+        invalid: `sections[${index}].id must be 1 to 64 letters, digits, '.', '_' or '-', starting with a letter or digit`,
+      };
     }
     if (seen.has(id)) return { invalid: `section id "${id}" is used twice` };
     seen.add(id);
@@ -136,17 +138,28 @@ export function readLayoutFile(content: Record<string, unknown>): LayoutFile | I
       id,
       label: optionalText(section['label']),
       labelKey: optionalText(section['labelKey']),
-      fields: fields.flatMap((entry, position) => {
-        const field = readField(entry);
-        if (!field) {
-          problems.push(`section "${id}" field ${position + 1} is not "<prefix>:<name>"`);
-          return [];
-        }
-        return [field];
-      }),
+      fields: readFields(id, fields, problems),
     });
   }
   return { display, sections: read, problems };
+}
+
+/** A section's fields, skipping and reporting any that is not an xpath or is listed twice. */
+function readFields(section: string, entries: unknown[], problems: string[]): LayoutFileField[] {
+  const seen = new Set<string>();
+  return entries.flatMap((entry, position) => {
+    const field = readField(entry);
+    if (!field) {
+      problems.push(`section "${section}" field ${position + 1} is not "<prefix>:<name>"`);
+      return [];
+    }
+    if (seen.has(field.field)) {
+      problems.push(`section "${section}" lists ${field.field} twice`);
+      return [];
+    }
+    seen.add(field.field);
+    return [field];
+  });
 }
 
 function readField(entry: unknown): LayoutFileField | null {

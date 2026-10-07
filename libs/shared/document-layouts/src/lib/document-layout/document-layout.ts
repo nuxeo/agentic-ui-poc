@@ -12,7 +12,17 @@ import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-i
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { DirectoryService, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
-import { catchError, forkJoin, map, merge, of, startWith, switchMap } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  forkJoin,
+  map,
+  merge,
+  of,
+  shareReplay,
+  startWith,
+  switchMap,
+} from 'rxjs';
 
 import { DocumentLayoutService } from '../document-layout.service';
 import { LayoutLabel, LayoutMode, ResolvedLayout } from '../layout.model';
@@ -20,6 +30,7 @@ import { humanize } from '../resolve-layout';
 import { FieldView, describeField, directoriesOf } from './field-view';
 
 type Vocabularies = ReadonlyMap<string, ReadonlyMap<string, string>>;
+type VocabularyLabels = readonly [name: string, labels: ReadonlyMap<string, string>];
 
 interface SectionView {
   readonly id: string;
@@ -61,13 +72,20 @@ export class DocumentLayoutComponent {
   private readonly translate = inject(TranslateService);
   private readonly locale = inject(LOCALE_ID);
 
+  /**
+   * Re-resolved per document, not per type: the service caches what it read successfully, and
+   * asking again is how a failed schema read recovers on the next document.
+   */
   private readonly target = computed(
     () => {
-      const type = this.document()?.type;
-      return type ? { type, mode: this.mode() } : null;
+      const document = this.document();
+      return document?.type ? { uid: document.uid, type: document.type, mode: this.mode() } : null;
     },
-    { equal: (a, b) => a?.type === b?.type && a?.mode === b?.mode },
+    { equal: (a, b) => a?.uid === b?.uid && a?.type === b?.type && a?.mode === b?.mode },
   );
+
+  /** Entry labels per vocabulary, kept while this panel lives; a failed read is asked again. */
+  private readonly vocabularyCache = new Map<string, Observable<VocabularyLabels>>();
 
   private readonly resolved = toSignal(
     toObservable(this.target).pipe(
@@ -79,25 +97,7 @@ export class DocumentLayoutComponent {
             )
           : [];
         if (!layout || names.length === 0) return of({ layout, vocabularies: NO_VOCABULARIES });
-        return forkJoin(
-          names.map((name) =>
-            this.directories.getEntries(name).pipe(
-              map(
-                (entries) =>
-                  [
-                    name,
-                    new Map(
-                      entries.map((entry) => [
-                        entry.id,
-                        entry.displayLabel || entry.label || entry.id,
-                      ]),
-                    ),
-                  ] as const,
-              ),
-              catchError(() => of([name, new Map<string, string>()] as const)),
-            ),
-          ),
-        ).pipe(
+        return forkJoin(names.map((name) => this.vocabulary(name))).pipe(
           map((pairs): { layout: ResolvedLayout; vocabularies: Vocabularies } => ({
             layout,
             vocabularies: new Map(pairs),
@@ -147,6 +147,27 @@ export class DocumentLayoutComponent {
   /** A tab needs a name even where a section heading may be left out. */
   tabLabel(section: SectionView): string {
     return section.heading ?? humanize(section.id);
+  }
+
+  private vocabulary(name: string): Observable<VocabularyLabels> {
+    let cached = this.vocabularyCache.get(name);
+    if (!cached) {
+      cached = this.directories.getEntries(name).pipe(
+        map((entries): VocabularyLabels => [
+          name,
+          new Map(
+            entries.map((entry) => [entry.id, entry.displayLabel || entry.label || entry.id]),
+          ),
+        ]),
+        catchError(() => {
+          this.vocabularyCache.delete(name);
+          return of<VocabularyLabels>([name, new Map()]);
+        }),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+      this.vocabularyCache.set(name, cached);
+    }
+    return cached;
   }
 
   private text(label: LayoutLabel): string | null {

@@ -47,11 +47,13 @@ function scalar(
 ): ValueView {
   switch (type) {
     case 'date': {
+      // In UTC, as formatCompareDate does: a calendar date is stored at midnight UTC, and the
+      // browser's timezone would move it to the previous day west of Greenwich.
       const date = new Date(String(value));
       return {
         text: Number.isNaN(date.getTime())
           ? String(value)
-          : formatDate(date, 'longDate', context.locale),
+          : formatDate(date, 'longDate', context.locale, 'UTC'),
       };
     }
     case 'long':

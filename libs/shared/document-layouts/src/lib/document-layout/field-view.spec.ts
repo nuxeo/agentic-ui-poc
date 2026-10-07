@@ -24,6 +24,16 @@ describe('describeField', () => {
     });
   });
 
+  it('shows a date in UTC, so a calendar date is the same day in every timezone', () => {
+    // Outside UTC, local formatting moves one of these two across a day boundary.
+    expect(describe1('date', '2026-09-14T00:00:00.000Z').value).toEqual({
+      text: 'September 14, 2026',
+    });
+    expect(describe1('date', '2026-09-14T23:59:00.000Z').value).toEqual({
+      text: 'September 14, 2026',
+    });
+  });
+
   it('shows a date as a long date, and an unparseable one as written', () => {
     expect(describe1('date', '2026-09-14T12:00:00.000Z').value).toEqual({
       text: 'September 14, 2026',
