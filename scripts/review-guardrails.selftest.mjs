@@ -249,6 +249,18 @@ expectRed(
   /has no trailing newline/,
 );
 
+expectRed(
+  'a catalogue with a bare carriage return inside a JSON string',
+  'checkTranslationCatalogues',
+  APP,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/public/i18n/en.json',
+      '{\n  "app": { "title": "Hyland' + '\r' + ' Nuxeo" }\n}\n',
+    ),
+  /bare carriage return/,
+);
+
 expectWarn(
   'locale missing a key the reference has — warns, because English is the fallback',
   'checkTranslationCatalogues',
@@ -4338,6 +4350,68 @@ expectRed(
   },
   null,
   /panelLabelKey\(\).*(control-flow path does not return a resolvable|could not resolve any translation keys from that method declaration)/s,
+);
+
+const METHOD_SHADOW_TS = `export class XComponent {
+  panelLabelKey(): string {
+    const key = 'x.panel.hide';
+    if (this.open) {
+      const key = 'x.panel.show';
+      return key;
+    }
+    return key;
+  }
+}
+`;
+expectRed(
+  'a method-bound name whose nested const shadows an outer key',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_SHADOW_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+const METHOD_HOST_SPEC_TS = `import { Component } from '@angular/core';
+@Component({ standalone: true, templateUrl: './widget.host.html' })
+export class WidgetHostSpec {
+  open = false;
+  panelLabelKey(): string {
+    return this.open ? 'x.panel.hide' : 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound name on a host template resolved through templateUrl',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/widget.host.html': METHOD_BINDING_HTML,
+    'libs/features/x/src/lib/widget.spec.ts': METHOD_HOST_SPEC_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /binds panelLabelKey\(\) to `x\.panel\.show`.*omits/s,
+);
+
+expectRed(
+  'a method-bound name with no resolvable component TypeScript owner',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/orphan.host.html': METHOD_BINDING_HTML,
+  },
+  null,
+  /panelLabelKey\(\).*could not resolve any translation keys from that method declaration/s,
 );
 
 const METHOD_UNRESOLVABLE_TS = `export class XComponent {

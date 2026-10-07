@@ -37,10 +37,10 @@ function fileExists(path) {
 }
 
 function read(path) {
-  // Normalise CRLF for every guardrail read. Workflow YAML on Windows left `\r` before `$` anchors,
-  // so a step's `uses:` line was invisible while `\s*`-terminated inputs still matched — the push
-  // workflow gate could pass with no uploader step. Intentionally repository-wide, not per-check.
-  return readFileSync(join(repoRoot, path), 'utf8').replace(/\r/g, '');
+  // Normalise CRLF line endings only. Stripping every `\r` also removed illegal raw carriage returns
+  // inside JSON string values, so `JSON.parse` could succeed here while the runtime catalogue load
+  // still fails — `checkTranslationCatalogues` rejects bare `\r` before parsing.
+  return readFileSync(join(repoRoot, path), 'utf8').replace(/\r\n/g, '\n');
 }
 
 function toPosixRel(rel) {
@@ -2015,7 +2015,16 @@ function checkTranslationCatalogues() {
   const parsed = new Map();
 
   for (const catalogue of catalogues) {
-    const body = read(catalogue);
+    const raw = readFileSync(join(repoRoot, catalogue), 'utf8');
+    if (/\r(?!\n)/.test(raw)) {
+      fail(
+        `${catalogue} contains a bare carriage return (U+000D not part of CRLF).\n` +
+          '    Normalising every `\\r` away would let this file pass `JSON.parse` here while the ' +
+          'runtime loader still rejects it. Fix the bytes or escape the character inside JSON strings.',
+      );
+      continue;
+    }
+    const body = raw.replace(/\r\n/g, '\n');
 
     if (!body.endsWith('\n')) {
       fail(
@@ -3118,6 +3127,27 @@ function checkAccessibleNameFallbacks() {
     .split('\n')
     .filter((file) => /^(libs|apps)\/.+\.html$/.test(file));
 
+  /** @type {Map<string, string> | null} */
+  let templateOwnerByHtmlPath = null;
+  function componentTsForTemplate(template) {
+    const sibling = template.replace(/\.html$/, '.ts');
+    if (fileExists(sibling)) return sibling;
+    if (!templateOwnerByHtmlPath) {
+      templateOwnerByHtmlPath = new Map();
+      const tsPredicate = (path) => path.endsWith('.ts');
+      const tsFiles = [...walk('apps', tsPredicate), ...walk('libs', tsPredicate)];
+      const templateUrlRe = /\btemplateUrl\s*:\s*['"](\.\/)?([^'"]+\.html)['"]/g;
+      for (const ownerTs of tsFiles) {
+        const dir = dirname(ownerTs).replace(/\\/g, '/');
+        for (const match of read(ownerTs).matchAll(templateUrlRe)) {
+          const htmlPath = `${dir}/${match[2]}`.replace(/\/+/g, '/');
+          templateOwnerByHtmlPath.set(htmlPath, ownerTs);
+        }
+      }
+    }
+    return templateOwnerByHtmlPath.get(template) ?? null;
+  }
+
   // `[attr.aria-label]`, `[aria-label]`, `[attr.title]`, `[title]` and `[placeholder]` bound to a
   // single translate-piped literal key, plus visible `<label>` text using the same interpolation
   // shape (NXENG-798 moved global search naming off placeholder). A ternary or a concatenation is
@@ -3190,9 +3220,11 @@ function checkAccessibleNameFallbacks() {
     const keyShape = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
 
     /** @type {Map<string, { keys: Set<string>, fullyResolved: boolean }>} */
-    let localVarKeys = new Map();
+    function forkScope(parent) {
+      return new Map(parent);
+    }
 
-    function addResolvableKeysFromExpression(expr, target, locals = localVarKeys) {
+    function addResolvableKeysFromExpression(expr, target, locals) {
       if (!expr) return;
       if (ts.isParenthesizedExpression(expr)) {
         addResolvableKeysFromExpression(expr.expression, target, locals);
@@ -3212,65 +3244,112 @@ function checkAccessibleNameFallbacks() {
       }
     }
 
-    function expressionFullyResolved(expr) {
+    function initializerFullyResolved(expr, scope) {
       if (!expr) return false;
-      if (ts.isParenthesizedExpression(expr)) return expressionFullyResolved(expr.expression);
+      if (ts.isParenthesizedExpression(expr)) return initializerFullyResolved(expr.expression, scope);
       if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
       if (ts.isConditionalExpression(expr)) {
         return (
-          expressionFullyResolved(expr.whenTrue) && expressionFullyResolved(expr.whenFalse)
+          initializerFullyResolved(expr.whenTrue, scope) &&
+          initializerFullyResolved(expr.whenFalse, scope)
         );
       }
       if (ts.isIdentifier(expr)) {
-        return localVarKeys.get(expr.text)?.fullyResolved === true;
+        return scope.get(expr.text)?.fullyResolved === true;
       }
       return false;
     }
 
-    function collectKeysFromReturnExpression(expr) {
-      if (!expr) return;
-      if (ts.isIdentifier(expr)) {
-        const mapped = localVarKeys.get(expr.text);
-        if (mapped) mapped.keys.forEach((key) => keys.add(key));
-        return;
+    function expressionFullyResolved(expr, scope) {
+      if (!expr) return false;
+      if (ts.isParenthesizedExpression(expr)) return expressionFullyResolved(expr.expression, scope);
+      if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
+      if (ts.isConditionalExpression(expr)) {
+        return (
+          expressionFullyResolved(expr.whenTrue, scope) &&
+          expressionFullyResolved(expr.whenFalse, scope)
+        );
       }
-      addResolvableKeysFromExpression(expr, keys);
+      if (ts.isIdentifier(expr)) {
+        return scope.get(expr.text)?.fullyResolved === true;
+      }
+      return false;
     }
 
-    function collectLocalVarKeys(body) {
-      const out = new Map();
-      if (!ts.isBlock(body)) return out;
-      function initializerFullyResolved(expr) {
-        if (!expr) return false;
-        if (ts.isParenthesizedExpression(expr)) return initializerFullyResolved(expr.expression);
-        if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
-        if (ts.isConditionalExpression(expr)) {
-          return (
-            initializerFullyResolved(expr.whenTrue) && initializerFullyResolved(expr.whenFalse)
-          );
-        }
-        if (ts.isIdentifier(expr)) {
-          return out.get(expr.text)?.fullyResolved === true;
-        }
-        return false;
+    function collectKeysFromReturnExpression(expr, scope) {
+      if (!expr) return;
+      if (ts.isIdentifier(expr)) {
+        scope.get(expr.text)?.keys.forEach((key) => keys.add(key));
+        return;
       }
-      for (const stmt of body.statements) {
-        if (!ts.isVariableStatement(stmt)) continue;
-        if ((stmt.declarationList.flags & ts.NodeFlags.Const) === 0) continue;
-        for (const decl of stmt.declarationList.declarations) {
-          if (ts.isIdentifier(decl.name) && decl.initializer) {
-            const found = new Set();
-            addResolvableKeysFromExpression(decl.initializer, found, out);
-            if (found.size) {
-              out.set(decl.name.text, {
-                keys: found,
-                fullyResolved: initializerFullyResolved(decl.initializer),
-              });
-            }
+      addResolvableKeysFromExpression(expr, keys, scope);
+    }
+
+    function bindConstDeclaration(scope, decl) {
+      if (!ts.isIdentifier(decl.name) || !decl.initializer) return;
+      const found = new Set();
+      addResolvableKeysFromExpression(decl.initializer, found, scope);
+      if (found.size) {
+        scope.set(decl.name.text, {
+          keys: found,
+          fullyResolved: initializerFullyResolved(decl.initializer, scope),
+        });
+      }
+    }
+
+    function statementsOf(node) {
+      return ts.isBlock(node) ? node.statements : [node];
+    }
+
+    function walkScopedStatements(statements, scope) {
+      for (const stmt of statements) {
+        if (ts.isVariableStatement(stmt) && (stmt.declarationList.flags & ts.NodeFlags.Const) !== 0) {
+          for (const decl of stmt.declarationList.declarations) bindConstDeclaration(scope, decl);
+        } else if (ts.isReturnStatement(stmt)) {
+          if (!expressionFullyResolved(stmt.expression, scope)) partialReturn = true;
+          collectKeysFromReturnExpression(stmt.expression, scope);
+        } else if (ts.isIfStatement(stmt)) {
+          walkScopedStatements(statementsOf(stmt.thenStatement), forkScope(scope));
+          if (stmt.elseStatement) {
+            walkScopedStatements(statementsOf(stmt.elseStatement), forkScope(scope));
           }
+        } else if (ts.isSwitchStatement(stmt)) {
+          for (const clause of stmt.caseBlock.clauses) {
+            walkScopedStatements(clause.statements, forkScope(scope));
+          }
+        } else if (ts.isTryStatement(stmt)) {
+          walkScopedStatements(statementsOf(stmt.tryBlock), forkScope(scope));
+          if (stmt.catchClause?.block) {
+            walkScopedStatements(stmt.catchClause.block.statements, forkScope(scope));
+          }
+          if (stmt.finallyBlock) {
+            walkScopedStatements(statementsOf(stmt.finallyBlock), forkScope(scope));
+          }
+        } else if (ts.isBlock(stmt)) {
+          walkScopedStatements(stmt.statements, forkScope(scope));
+        } else {
+          visitReturnsInUnscoped(stmt, scope);
         }
       }
-      return out;
+    }
+
+    function visitReturnsInUnscoped(node, scope) {
+      if (ts.isReturnStatement(node)) {
+        if (!expressionFullyResolved(node.expression, scope)) partialReturn = true;
+        collectKeysFromReturnExpression(node.expression, scope);
+        return;
+      }
+      if (
+        ts.isFunctionDeclaration(node) ||
+        ts.isMethodDeclaration(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isArrowFunction(node) ||
+        ts.isGetAccessorDeclaration(node) ||
+        ts.isSetAccessorDeclaration(node)
+      ) {
+        return;
+      }
+      ts.forEachChild(node, (child) => visitReturnsInUnscoped(child, scope));
     }
 
     function collectUnionLiteralKeysFromType(typeNode) {
@@ -3320,29 +3399,12 @@ function checkAccessibleNameFallbacks() {
     function collectReturnLiteralKeys(body) {
       if (!body) return;
       if (!ts.isBlock(body)) {
-        if (!expressionFullyResolved(body)) partialReturn = true;
-        collectKeysFromReturnExpression(body);
+        const scope = new Map();
+        if (!expressionFullyResolved(body, scope)) partialReturn = true;
+        collectKeysFromReturnExpression(body, scope);
         return;
       }
-      function visitReturns(node) {
-        if (ts.isReturnStatement(node)) {
-          if (!expressionFullyResolved(node.expression)) partialReturn = true;
-          collectKeysFromReturnExpression(node.expression);
-          return;
-        }
-        if (
-          ts.isFunctionDeclaration(node) ||
-          ts.isMethodDeclaration(node) ||
-          ts.isFunctionExpression(node) ||
-          ts.isArrowFunction(node) ||
-          ts.isGetAccessorDeclaration(node) ||
-          ts.isSetAccessorDeclaration(node)
-        ) {
-          return;
-        }
-        ts.forEachChild(node, visitReturns);
-      }
-      visitReturns(body);
+      walkScopedStatements(body.statements, new Map());
     }
 
     function visit(node) {
@@ -3354,7 +3416,6 @@ function checkAccessibleNameFallbacks() {
       if (isNamedMethod) {
         if (node.type) collectUnionLiteralKeysFromType(node.type);
         if (node.body) {
-          if (ts.isBlock(node.body)) localVarKeys = collectLocalVarKeys(node.body);
           collectReturnLiteralKeys(node.body);
           if (ts.isBlock(node.body) && !methodBodyAlwaysReturns(node.body)) {
             partialReturn = true;
@@ -3394,10 +3455,21 @@ function checkAccessibleNameFallbacks() {
     for (const [, attribute, key] of html.matchAll(BINDING)) {
       recordBinding(template, attribute, key);
     }
-    const tsPath = template.replace(/\.html$/, '.ts');
-    if (!fileExists(tsPath)) continue;
+    const methodBindings = [...html.matchAll(METHOD_BINDING)];
+    if (methodBindings.length === 0) continue;
+    const tsPath = componentTsForTemplate(template);
+    if (!tsPath) {
+      for (const [, methodName] of methodBindings) {
+        const attr = `${methodName}()`;
+        if (!unresolvedMethodBindings.has(attr)) {
+          unresolvedMethodBindings.set(attr, { attribute: attr, sites: [], partial: false });
+        }
+        unresolvedMethodBindings.get(attr).sites.push(template);
+      }
+      continue;
+    }
     const tsSource = read(tsPath);
-    for (const [, methodName] of html.matchAll(METHOD_BINDING)) {
+    for (const [, methodName] of methodBindings) {
       const { keys: methodKeys, partial } = translationKeysReturnedByMethod(
         tsSource,
         methodName,
