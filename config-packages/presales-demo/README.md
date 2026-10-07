@@ -33,9 +33,11 @@ npx nx build presales-demo            # checks the fragments, writes the zip
 nuxeoctl mp-install dist/config-packages/presales-demo/presales-demo-<version>.zip   # then restart Nuxeo
 ```
 
-`nx build` runs `build.mjs`, which refuses — with the file and the reason — a fragment the server
-would reject: JSON that does not parse, is not an object, repeats a key, or exceeds 1 MiB. It also
-refuses a component that names a missing file, or that does not `<require>` Satori's defaults.
+`nx build` runs `build.mjs`, which refuses — with the file and the reason — what the server would
+leave out: a fragment or layout body, in a file or inline, that does not parse, is not an object,
+repeats a key, or exceeds 1 MiB; an asset over 2 MiB or not named as a plain image file; an entry
+whose name or layer the server rejects, or that has no body. It also refuses a `src` that names no
+packaged file, and a component that does not `<require>` Satori's defaults.
 
 **Raise the version for every change you install.** Nuxeo installs a higher version as an upgrade;
 the same version is the package it already has.

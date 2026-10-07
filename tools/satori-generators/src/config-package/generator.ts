@@ -54,11 +54,16 @@ function titleCase(kebab: string): string {
 export default async function configPackageGenerator(tree: Tree, options: ConfigPackageSchema) {
   const parentDirectory = options.directory ?? 'config-packages';
   // Both paths go into the `build` target's command line unquoted, which is portable across
-  // shells only while they hold nothing a shell would split or interpret.
+  // shells only while they hold nothing a shell would split or interpret — and nothing `node`
+  // would read as an option, which a leading "-" is.
   const segments = parentDirectory.split('/');
-  if (!segments.every((segment) => /^[A-Za-z0-9._-]+$/.test(segment) && !/^\.\.?$/.test(segment))) {
+  if (
+    !segments.every(
+      (segment) => /^[A-Za-z0-9._][A-Za-z0-9._-]*$/.test(segment) && !/^\.\.?$/.test(segment),
+    )
+  ) {
     throw new Error(
-      `--directory "${parentDirectory}" must be a relative path of letters, digits, ".", "_" and "-" separated by "/".`,
+      `--directory "${parentDirectory}" must be a relative path of letters, digits, ".", "_" and "-" separated by "/", no part starting with "-".`,
     );
   }
   if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(options.name)) {

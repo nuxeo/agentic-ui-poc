@@ -99,7 +99,7 @@ describe('config-package generator', () => {
     expect(packageXml).toContain('<vendor>Acme &#34;Insurance&#34;</vendor>');
   });
 
-  it.each(['customer configs', '../outside', 'a;b', 'a/./b'])(
+  it.each(['customer configs', '../outside', 'a;b', 'a/./b', '-configs', 'customers/-acme'])(
     'refuses --directory "%s", which the build command cannot carry unquoted',
     async (directory) => {
       await expect(
@@ -145,13 +145,18 @@ describe('the generated build.mjs', () => {
     }
   }
 
-  function build(): { status: number; output: string; zip?: Buffer } {
+  function build(env: NodeJS.ProcessEnv = process.env): {
+    status: number;
+    output: string;
+    zip?: Buffer;
+  } {
     try {
       const output = execFileSync(
         process.execPath,
         [join(dir, 'build.mjs'), '--out', join(dir, 'out')],
         {
           encoding: 'utf8',
+          env,
           stdio: ['ignore', 'pipe', 'pipe'],
         },
       );
@@ -165,6 +170,15 @@ describe('the generated build.mjs', () => {
   const write = (path: string, content: string) => writeFileSync(join(dir, path), content);
   const fragment = 'bundle/agentic-ui-config/bootstrap.json';
   const componentXml = 'bundle/OSGI-INF/acme-config-config.xml';
+  /** Adds entries to the generated component's extension, after the two fragments it ships. */
+  const contribute = (entries: string) =>
+    write(
+      componentXml,
+      readFileSync(join(dir, componentXml), 'utf8').replace(
+        '</extension>',
+        `${entries}\n  </extension>`,
+      ),
+    );
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'config-package-'));
@@ -186,11 +200,12 @@ describe('the generated build.mjs', () => {
       'package.xml',
     ]);
     const jar = unzip(archive.get('install/bundles/acme-config.jar') as Buffer);
+    // By code point after the manifest: upper case before lower, whatever the locale says.
     expect([...jar.keys()]).toEqual([
       'META-INF/MANIFEST.MF',
+      'OSGI-INF/acme-config-config.xml',
       'agentic-ui-config/bootstrap.json',
       'agentic-ui-config/manifest.json',
-      'OSGI-INF/acme-config-config.xml',
     ]);
     const packaged = JSON.parse(
       jar.get('agentic-ui-config/bootstrap.json')?.toString('utf8') ?? '',
@@ -209,6 +224,18 @@ describe('the generated build.mjs', () => {
     // Past the 2-second resolution of a zip timestamp, so a build stamping the clock would differ.
     await new Promise((resolve) => setTimeout(resolve, 2100));
     expect(digest()).toBe(first);
+  });
+
+  it('builds the same bytes whatever the machine’s locale', async () => {
+    await generate();
+    // English collation puts "ia" first (i and I are one letter); Turkish puts "Iz" first (I is ı).
+    write('bundle/agentic-ui-config/assets/ia.svg', '<svg/>');
+    write('bundle/agentic-ui-config/assets/Iz.svg', '<svg/>');
+    const digestIn = (locale: string) =>
+      createHash('sha256')
+        .update(build({ ...process.env, LC_ALL: locale, LANG: locale }).zip as Buffer)
+        .digest('hex');
+    expect(digestIn('tr_TR.UTF-8')).toBe(digestIn('en_US.UTF-8'));
   });
 
   it.each([
@@ -238,7 +265,9 @@ describe('the generated build.mjs', () => {
     write(fragment, JSON.stringify({ padding: 'x'.repeat(1024 * 1024) }));
     const { status, output } = build();
     expect(status).toBe(1);
-    expect(output).toMatch(/packaged as \d+ bytes; the server refuses a fragment over 1048576/);
+    expect(output).toMatch(
+      /packaged as \d+ bytes; the server refuses a fragment or layout over 1048576/,
+    );
   });
 
   it('measures the limit on what is packaged, not on the source', async () => {
@@ -303,18 +332,101 @@ describe('the generated build.mjs', () => {
       expect(output).toMatch(/2097153 bytes; the server refuses an asset over 2097152/);
     });
 
-    it('is not checked when disabled, since it has no body', async () => {
+    it('has no body to check when disabled, by any value Nuxeo reads as false', async () => {
       await generate();
-      const xml = readFileSync(join(dir, componentXml), 'utf8');
-      write(
-        componentXml,
-        xml.replace(
-          '</extension>',
-          '<asset name="old.html" src="gone" enabled="false" />\n  </extension>',
-        ),
+      contribute(
+        '<asset name="old-logo.svg" src="gone" enabled="false" />\n' +
+          '<asset name="older-logo.svg" src="gone" enabled="no" />',
       );
       expect(build().status).toBe(0);
     });
+
+    it('is refused for a bad name even when disabled, as the server validates it first', async () => {
+      await generate();
+      contribute('<asset name="old.html" src="gone" enabled="false" />');
+      const { status, output } = build();
+      expect(status).toBe(1);
+      expect(output).toMatch(/asset name "old\.html" must be a plain file name/);
+    });
+  });
+
+  it.each([
+    ['a fragment layer', '<fragment name="x" layer="bootstap" src="a.json" />', /has layer "bootstap"/],
+    ['a fragment name', '<fragment name="a b" layer="bootstrap" src="a.json" />', /fragment name "a b"/],
+    ['a layout type', '<layout type="1File" mode="view" src="a.json" />', /layout type "1File"/],
+    ['a layout mode', '<layout type="File" mode="View" src="a.json" />', /layout mode "View"/],
+  ])('refuses %s the server rejects', async (_case, element, message) => {
+    await generate();
+    contribute(element);
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toMatch(message);
+  });
+
+  describe('a fragment or layout body', () => {
+    it('is checked when its file is not called .json, and packaged compact', async () => {
+      await generate();
+      write('bundle/agentic-ui-config/labels.txt', '{\n  "labels": {}\n}\n');
+      contribute('<fragment name="labels" layer="manifest" src="agentic-ui-config/labels.txt" />');
+      const { status, zip } = build();
+      expect(status).toBe(0);
+      const jar = unzip(unzip(zip as Buffer).get('install/bundles/acme-config.jar') as Buffer);
+      expect(jar.get('agentic-ui-config/labels.txt')?.toString('utf8')).toBe('{"labels":{}}');
+
+      write('bundle/agentic-ui-config/labels.txt', '{ "labels": {}, "labels": {} }');
+      const refused = build();
+      expect(refused.status).toBe(1);
+      expect(refused.output).toMatch(/labels\.txt: duplicate key "labels" in the top level/);
+    });
+
+    it('is checked when inline, references and CDATA read as the server reads them', async () => {
+      await generate();
+      contribute(
+        '<fragment name="labels" layer="manifest"><json>{ &quot;labels&quot;: {} }</json></fragment>\n' +
+          '<layout type="File" mode="view"><json><![CDATA[{ "a": 1, "b": "<&>" }]]></json></layout>',
+      );
+      expect(build().status).toBe(0);
+
+      contribute(
+        '<fragment name="dup" layer="bootstrap"><json><![CDATA[{ "branding": {}, "branding": {} }]]></json></fragment>\n' +
+          '<layout type="Note" mode="edit"><json>[1]</json></layout>',
+      );
+      const { status, output } = build();
+      expect(status).toBe(1);
+      expect(output).toMatch(
+        /inline JSON of fragment "dup" in bootstrap: duplicate key "branding" in the top level/,
+      );
+      expect(output).toMatch(/inline JSON of layout Note\/edit: must be a JSON object/);
+    });
+
+    it('is refused when it has both a src and inline JSON, or neither', async () => {
+      await generate();
+      contribute(
+        '<fragment name="both" layer="manifest" src="agentic-ui-config/manifest.json"><json>{}</json></fragment>\n' +
+          '<fragment name="neither" layer="manifest" />\n' +
+          '<asset name="nothing.svg" />',
+      );
+      const { status, output } = build();
+      expect(status).toBe(1);
+      expect(output).toMatch(/fragment "both" in manifest has both a src and inline JSON; use one/);
+      expect(output).toMatch(/fragment "neither" in manifest has neither a src nor inline JSON/);
+      expect(output).toMatch(/asset "nothing\.svg" has no src/);
+    });
+  });
+
+  it.each([
+    ['a directory', 'agentic-ui-config', /src="agentic-ui-config" names no file in bundle\//],
+    [
+      'a Markdown file, which is not packaged',
+      'agentic-ui-config/assets/README.md',
+      /names a Markdown file, which is not packaged/,
+    ],
+  ])('refuses a src naming %s', async (_case, src, message) => {
+    await generate();
+    contribute(`<fragment name="x" layer="manifest" src="${src}" />`);
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toMatch(message);
   });
 
   it('refuses a component that does not require Satori’s defaults', async () => {
