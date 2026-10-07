@@ -153,6 +153,24 @@ describe('resolveExtensionLayers', () => {
     expect(config.overrides?.['app.navbar.trash']).toBeUndefined();
     expect(missing).toEqual(['shared']);
   });
+
+  it('keeps the other packages when one has malformed layer metadata', () => {
+    const { config, applied, missing } = resolveExtensionLayers([
+      { overrides: { 'app.navbar.trash': { label: 'Bin' } } },
+      { $references: 'brand', $ignoreReferenceList: 1, $layers: { brand: 'x' } },
+      { $references: ['brand', 7], $layers: [] },
+      { $references: ['brand'], $layers: { brand: 'x' } },
+      {
+        $references: ['brand'],
+        $layers: { brand: { overrides: { 'app.navbar.tasks': { label: 'Queue' } } } },
+      },
+    ]);
+
+    expect(config.overrides?.['app.navbar.trash']).toEqual({ label: 'Bin' });
+    expect(config.overrides?.['app.navbar.tasks']).toEqual({ label: 'Queue' });
+    expect(applied).toEqual(['brand']);
+    expect(missing).toEqual(['brand', 'brand']);
+  });
 });
 
 describe('readExtensionConfig', () => {

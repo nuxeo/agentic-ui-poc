@@ -131,6 +131,25 @@ export function readExtensionConfig(raw: unknown): ExtensionConfig {
   for (const [key, value] of Object.entries(raw)) {
     if (key.startsWith('$')) config[key] = value;
   }
+  // Resolution iterates these, so a fragment that gets their shape wrong loses them rather than
+  // throwing for every package.
+  for (const key of ['$references', '$ignoreReferenceList']) {
+    const names = raw[key];
+    if (names === undefined) continue;
+    config[key] = Array.isArray(names)
+      ? names.filter((name): name is string => typeof name === 'string')
+      : [];
+  }
+  const layers = raw['$layers'];
+  if (layers !== undefined) {
+    config['$layers'] = isRecord(layers)
+      ? Object.fromEntries(
+          Object.entries(layers)
+            .filter(([, layer]) => isRecord(layer))
+            .map(([name, layer]) => [name, readExtensionConfig(layer)]),
+        )
+      : {};
+  }
 
   const slots = raw['slots'];
   if (isRecord(slots)) {
