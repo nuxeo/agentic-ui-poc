@@ -102,7 +102,11 @@ export class DocumentLayoutService {
           'fetch-schema': 'fields',
         })
         .pipe(
-          map((raw) => readDocumentType(raw, type)),
+          map((raw) => {
+            const definition = readDocumentType(raw, type);
+            if (!definition) throw new Error('the response is not a document type');
+            return definition;
+          }),
           catchError((error: unknown) => {
             // Not cached, so the next document of this type asks again.
             this.types.delete(type);

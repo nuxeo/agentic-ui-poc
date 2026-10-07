@@ -214,14 +214,12 @@ describe('DocumentLayoutService', () => {
     const layout = resolve();
     answerType();
     http.expectOne(INDEX).flush(index('Claim/metadata'));
-    http
-      .expectOne(CLAIM_FILE)
-      .flush(
-        envelope({
-          version: 1,
-          sections: [{ id: 'a', fields: ['claim:nope', 'not an xpath', 'claim:number'] }],
-        }),
-      );
+    http.expectOne(CLAIM_FILE).flush(
+      envelope({
+        version: 1,
+        sections: [{ id: 'a', fields: ['claim:nope', 'not an xpath', 'claim:number'] }],
+      }),
+    );
     expect((await layout)?.sections[0]?.fields.map((field) => field.xpath)).toEqual([
       'claim:number',
     ]);
@@ -246,6 +244,20 @@ describe('DocumentLayoutService', () => {
     expect(warnings).toContain(
       '[agentic-ui-layouts] server warning kept: layout Claim/metadata from a stays in force.',
     );
+  });
+
+  it('treats a 200 that is not a document type as a failed read: logged, and asked again', async () => {
+    const first = resolve();
+    http.expectOne(CLAIM_TYPE).flush({ unexpected: true });
+    http.expectOne(INDEX).flush(index());
+    expect(await first).toBeNull();
+    expect(warnings).toContain(
+      '[agentic-ui-layouts] schemas of Claim not read: the response is not a document type',
+    );
+
+    const second = resolve();
+    answerType();
+    expect((await second)?.source).toBe('generated');
   });
 
   it('answers null when the type cannot be read, and asks again for the next document', async () => {
