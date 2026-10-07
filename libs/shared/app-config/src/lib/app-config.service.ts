@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { catchError, firstValueFrom, of } from 'rxjs';
@@ -7,6 +8,8 @@ import {
   AppThemeConfig,
   DEFAULT_APP_BOOTSTRAP_CONFIG,
   mergeBootstrapConfig,
+  nuxeoOriginsOf,
+  resolveBrandingLogoUrl,
   resolveTheme,
 } from './bootstrap-config';
 import { APP_BOOTSTRAP_CONFIG_URL } from './app-config.tokens';
@@ -57,6 +60,7 @@ export interface AppConfigDiagnostics {
 export class AppConfigService {
   private readonly http = inject(HttpClient);
   private readonly bootstrapUrl = inject(APP_BOOTSTRAP_CONFIG_URL);
+  private readonly document = inject(DOCUMENT);
 
   private readonly bootstrapConfig = signal<AppBootstrapConfig>(DEFAULT_APP_BOOTSTRAP_CONFIG);
   private readonly runtimeManifest = signal<AppRuntimeManifest>(DEFAULT_APP_RUNTIME_MANIFEST);
@@ -76,6 +80,20 @@ export class AppConfigService {
 
   /** Themes available to the theme picker — packaged ones merged with configured ones. */
   readonly themes = computed<readonly AppThemeConfig[]>(() => this.bootstrapConfig().themes);
+
+  /**
+   * The configured logo with its `src` resolved to the URL an `<img>` loads, or `null` to keep the
+   * Satori marks. Resolved here because only this service knows where `bootstrap.json` came from.
+   */
+  readonly brandingLogo = computed<{ readonly url: string; readonly alt: string } | null>(() => {
+    const config = this.bootstrapConfig();
+    const logo = config.branding.logo;
+    if (!logo) return null;
+    const baseUri = this.document.baseURI;
+    const configUrl = new URL(this.bootstrapUrl, baseUri).href;
+    const url = resolveBrandingLogoUrl(logo.src, configUrl, nuxeoOriginsOf(config, baseUri));
+    return url === null ? null : { url, alt: logo.alt };
+  });
 
   /** Load both halves. Never rejects, so it is safe as an `APP_INITIALIZER`. */
   async load(): Promise<void> {

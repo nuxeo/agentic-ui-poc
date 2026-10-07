@@ -48,21 +48,22 @@ audience: product
 
 ## 2. Document detail
 
-| Feature              | Description                                                                          | Problem solved                    | Depends on                                 | Status                           |
-| -------------------- | ------------------------------------------------------------------------------------ | --------------------------------- | ------------------------------------------ | -------------------------------- |
-| Metadata view & edit | Properties panel, edit dialog, content-model-driven fields                           | See and change document data      | `content-model.service`                    | **Shipped**                      |
-| Preview / viewer     | Inline preview; ARender integration for rich formats                                 | Read without downloading          | ARender (Docker), `arender.service`        | **Shipped**                      |
-| Versions             | Create a version, restore, manage-versions dialog                                    | Audit and rollback                | adf-hx version ports                       | **Shipped**                      |
-| Permissions          | View local ACLs, add/update/delete permissions, external sharing, notification email | Control access                    | `principal-permissions.service`, 4 dialogs | **Shipped, limited** — see below |
-| History / audit      | Activity log with event labels                                                       | Who did what                      | `administration.service` audit APIs        | **Shipped**                      |
-| Comments             | Threaded comments with edit/delete on replies                                        | Collaborate                       |                                            | **Shipped**                      |
-| Publishing           | Publish dialog                                                                       | Release content to a section      |                                            | **Shipped**                      |
-| Attachments          | Add, replace, remove, preview                                                        | Multi-file documents              | `document-detail.service` (834 lines)      | **Shipped**                      |
-| Note editor          | Rich-text notes, HTML/text/XML formats, source view                                  | Author in place                   | Quill, DOMPurify                           | **Shipped**                      |
-| Nuxeo Drive          | Sync dialog, synchronisation roots                                                   | Desktop sync                      | `nuxeo-drive.service`                      | **Shipped**                      |
-| Add to collection    |                                                                                      | Organise from the document        |                                            | **Shipped**                      |
-| Tags                 | Tagging with autocomplete                                                            | Classify                          | `tag.service`                              | **Shipped**                      |
-| Document compare     | Side-by-side field comparison                                                        | Spot differences between versions | `document-compare.utils` (320 lines)       | **Shipped**                      |
+| Feature              | Description                                                                                   | Problem solved                    | Depends on                                 | Status                           |
+| -------------------- | --------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------ | -------------------------------- |
+| Metadata view & edit | Properties panel, edit dialog — fixed Dublin Core fields; no custom-type fields               | See and change document data      | `edit-document-dialog`                     | **Shipped, limited**             |
+| Preview / viewer     | Inline preview; ARender integration for rich formats                                          | Read without downloading          | ARender (Docker), `arender.service`        | **Shipped**                      |
+| Per-type View        | A manifest `documentView` entry replaces the View tab body for the documents its rule matches | One type opens on its own view    | A Layer 2 registered component             | **Shipped, no packaged entries** |
+| Versions             | Create a version, restore, manage-versions dialog                                             | Audit and rollback                | adf-hx version ports                       | **Shipped**                      |
+| Permissions          | View local ACLs, add/update/delete permissions, external sharing, notification email          | Control access                    | `principal-permissions.service`, 4 dialogs | **Shipped, limited** — see below |
+| History / audit      | Activity log with event labels                                                                | Who did what                      | `administration.service` audit APIs        | **Shipped**                      |
+| Comments             | Threaded comments with edit/delete on replies                                                 | Collaborate                       |                                            | **Shipped**                      |
+| Publishing           | Publish dialog                                                                                | Release content to a section      |                                            | **Shipped**                      |
+| Attachments          | Add, replace, remove, preview                                                                 | Multi-file documents              | `document-detail.service` (834 lines)      | **Shipped**                      |
+| Note editor          | Rich-text notes, HTML/text/XML formats, source view                                           | Author in place                   | Quill, DOMPurify                           | **Shipped**                      |
+| Nuxeo Drive          | Sync dialog, synchronisation roots                                                            | Desktop sync                      | `nuxeo-drive.service`                      | **Shipped**                      |
+| Add to collection    |                                                                                               | Organise from the document        |                                            | **Shipped**                      |
+| Tags                 | Tagging with autocomplete                                                                     | Classify                          | `tag.service`                              | **Shipped**                      |
+| Document compare     | Side-by-side field comparison                                                                 | Spot differences between versions | `document-compare.utils` (320 lines)       | **Shipped**                      |
 
 > **Permissions limitation.** The UI reads and displays permissions and can add, update and
 > delete them. But the Layer 1 **rule context** still carries selection _ids_ rather than
@@ -151,19 +152,20 @@ HTTP 500, which is expected. Feature-flagged client-side
 
 ## 8. Platform & extensibility — the differentiating capability
 
-| Feature                      | Description                                                                       | Customer value                                                                                 | Status                         |
-| ---------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------ |
-| **Layer 0 configuration**    | Theme tokens, branding, languages, feature toggles in `bootstrap.json`            | Rebrand with no code and no rebuild; **survives upgrade**                                      | **Shipped**                    |
-| **Layer 1 manifest**         | A Nuxeo document holding JSON: add slot entries, override descriptors by ID       | Reconfigure the addressable surface with no rebuild; inherits Nuxeo versioning, audit and ACLs | **Shipped**                    |
-| **52 registered IDs**        | 17 navbar, 15 rules, 3 sidebar, 1 route, plus actions and components              | A documented, drift-gated contract                                                             | **Shipped**                    |
-| 8 extension slots            |                                                                                   |                                                                                                | **4 Shipped, 4 Reserved**      |
-| **`@nuxeo-satori/platform`** | 4 published entry points, 10 peers                                                | Build extensions against a versioned API                                                       | **Shipped**, not yet published |
-| **App template**             | Forkable, ships no design system                                                  | Bring your own design system                                                                   | **Shipped**                    |
-| **4 Nx generators**          | Library, rule, action, component — shipped inside the package                     | Correct, registered, tested scaffolding by default                                             | **Shipped**                    |
-| **Customer guardrail**       | 5 checks a customer runs in their own CI                                          | An agent can verify its own output                                                             | **Shipped**                    |
-| **Upgrade rehearsal**        | Proves a Layer 0/1/2 customisation survives a version bump                        | The upgrade promise is tested, not asserted                                                    | **Shipped**                    |
-| Rule composites              | `core.every`, `core.some`, `core.not`, `core.true`, `core.false` — ACA-compatible | Manifests written against ACA docs work                                                        | **Shipped**                    |
-| Fail-closed security rules   | 3 rules deny when unregistered                                                    | A registration gap cannot expose Administration                                                | **Shipped**                    |
+| Feature                      | Description                                                                       | Customer value                                                                                 | Status                                              |
+| ---------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| **Layer 0 configuration**    | Theme tokens, branding and logo, languages, feature toggles in `bootstrap.json`   | Rebrand with no code and no rebuild; **survives upgrade**                                      | **Shipped**                                         |
+| **Layer 1 manifest**         | A Nuxeo document holding JSON: add slot entries, override descriptors by ID       | Reconfigure the addressable surface with no rebuild; inherits Nuxeo versioning, audit and ACLs | **Shipped**                                         |
+| **52 registered IDs**        | 17 navbar, 15 rules, 3 sidebar, 1 route, plus actions and components              | A documented, drift-gated contract                                                             | **Shipped**                                         |
+| 9 extension slots            |                                                                                   |                                                                                                | **6 Populated, 3 resolve with no packaged entries** |
+| **`@nuxeo-satori/platform`** | 4 published entry points, 10 peers                                                | Build extensions against a versioned API                                                       | **Shipped**, not yet published                      |
+| **App template**             | Forkable, ships no design system                                                  | Bring your own design system                                                                   | **Shipped**                                         |
+| **4 Nx generators**          | Library, rule, action, component — shipped inside the package                     | Correct, registered, tested scaffolding by default                                             | **Shipped**                                         |
+| **Customer guardrail**       | 5 checks a customer runs in their own CI                                          | An agent can verify its own output                                                             | **Shipped**                                         |
+| **Upgrade rehearsal**        | Proves a Layer 0/1/2 customisation survives a version bump                        | The upgrade promise is tested, not asserted                                                    | **Shipped**                                         |
+| Document-type rules          | `app.rules.isType`, `app.rules.hasFacet` — Web UI `nuxeo-filter` type and facet   | Different tabs and actions per Case, Claim or Member — document detail, not browse columns     | **Shipped**                                         |
+| Rule composites              | `core.every`, `core.some`, `core.not`, `core.true`, `core.false` — ACA-compatible | Manifests written against ACA docs work                                                        | **Shipped**                                         |
+| Fail-closed security rules   | 3 rules deny when unregistered                                                    | A registration gap cannot expose Administration                                                | **Shipped**                                         |
 
 ## 9. Cross-cutting
 
@@ -175,7 +177,7 @@ HTTP 500, which is expected. Feature-flagged client-side
 | Runtime theming from Layer 0 tokens                                                | **Shipped**                                                                 |
 | Accessibility                                                                      | **Shipped** — WCAG 2.1 AA met on 15 scanned cases; `KNOWN_VIOLATIONS` empty |
 | Notification email on permission grant                                             | **Shipped** — Mailpit locally                                               |
-| Marketplace packaging with upgrade-safe config                                     | **Shipped**                                                                 |
+| Marketplace packaging with upgrade-safe config                                     | **Shipped** — upgrade with an edited `bootstrap.json` rehearsed (NXSAT-317) |
 
 ---
 

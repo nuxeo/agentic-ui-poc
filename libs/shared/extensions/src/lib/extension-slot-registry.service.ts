@@ -39,7 +39,7 @@ export const NO_EXTENSION_SLOT_OVERRIDES: ExtensionSlotOverrides = { byId: {}, a
  *
  * Registration and resolution are both generic and per-slot. There is no enum,
  * no union and no `switch` on slot identity anywhere below, which is what makes
- * the eight Beta slots extensible to a ninth without touching them — see
+ * the nine Beta slots extensible to a tenth without touching them — see
  * `extension-slots.ts` and the additivity spec.
  *
  * `filterEnabled` and `sortByOrder` come from `@alfresco/adf-extensions`, so
@@ -143,8 +143,9 @@ export class ExtensionSlotRegistry {
       // could fail. Clearing the key here puts that precedence in one place rather than
       // asking every render site to remember it.
       //
-      // The customer who wants per-language text uses the manifest's `labels` map against the
-      // packaged key instead, and does not set `label`. Both routes are documented in
+      // The customer who wants to replace the key's text uses the manifest's `labels` map
+      // against the packaged key instead, and does not set `label`. That map is not keyed by
+      // language, so either route shows the same text in every language. Both routes are documented in
       // `docs/extension-reference.md`; setting both is defined, not undefined — the override
       // wins and the `labels` entry is inert.
       patch['labelKey'] = undefined;

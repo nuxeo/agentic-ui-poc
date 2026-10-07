@@ -72,9 +72,16 @@ none"_ — and does not enforce it. A manifest naming only `viewerOrigin` yields
 `base.arender?.nuxeoInternalUrl ?? ''` and `base.arender` is `null`. A blank endpoint is worse than
 `null`: `fetch('')` resolves against the _application's own_ origin, so `isAvailable()` would report
 a viewer as present and `getPreviewerUrl` would build a same-origin `/?url=…` that then gets
-trusted and loaded into an iframe. `ARenderService` now treats a blank endpoint as absent, which
-makes it correct regardless of that layer. **The comment/code mismatch in `bootstrap-config.ts` is
-NOT fixed** — it is Layer 0 manifest semantics and wants a deliberate decision, not a drive-by.
+trusted and loaded into an iframe. `ARenderService` then treated a blank endpoint as absent, which
+made it correct regardless of that layer. **The comment/code mismatch in `bootstrap-config.ts` was
+left unfixed** — it is Layer 0 manifest semantics and wanted a deliberate decision, not a drive-by.
+
+> **Superseded by NXSAT-279.** That decision has now been taken, and it went the other way: only
+> `viewerOrigin` is required. The client no longer builds a `?url=` from `nuxeoInternalUrl`, so the
+> field is vestigial, and requiring it would have forced deployments that retired the auth-proxy
+> sidecar to invent a dummy value. `completeARenderConfig` now returns `null` only on a blank
+> `viewerOrigin`, and its comment says so — the mismatch is resolved by changing the comment's claim
+> to match a deliberately chosen contract, not by enforcing the old one.
 
 **What the fix is now:** `ARENDER_CONFIG` is `InjectionToken<ARenderConfig | null>` with a
 `() => null` factory (both literals gone); `ARenderService` guards on absent _or incomplete_ config,
@@ -89,7 +96,15 @@ overstated completion this programme keeps producing. Every phase so far self-re
 contained at least one such claim; this was one, and it was caught in review rather than by any
 gate.
 
-### Category C — the deliberate exposure, now closed
+### Category C
+
+> **Update (NXSAT-279).** The missing origin allow-list described in this section is **closed**.
+> `ARenderService` no longer builds the viewer URL — it asks Nuxeo for it via
+> `Document.ARenderGetPreviewerUrl` — so `viewerOrigin` is no longer needed to construct anything
+> and now serves as `allowedOrigins` on the URL the server returns. Verified by negative control:
+> removing the allow-list turns two tests red. A CSP `frame-src` is still not set, so that half of
+> the residual risk stands.
+> — the deliberate exposure, now closed
 
 The Category E work removed the _accidental_ exposure (a compiled `http://localhost:8180` default)
 and left the _deliberate_ one: `document-detail.ts` bypassed and navigated the ARender URL with no
@@ -120,35 +135,45 @@ Two subtleties worth keeping:
 **Site 1 (ARender) is defended twice, both failing closed to `null`:**
 
 1. `ARenderService.cfg` treats a `viewerOrigin` that is not an http(s) origin as _unconfigured_, so
-   the dangerous URL is never built. `https:` is required unless `isDevMode()`.
+   no URL is ever framed. `https:` is required unless the host page is itself plaintext — see
+   `insecureAllowedForHost`.
 2. `loadARenderUrl` re-validates before `bypassSecurityTrustResourceUrl`. A privilege boundary
    defended in exactly one place is one refactor away from being undefended.
 
-`nuxeoInternalUrl` is deliberately still allowed to be plain `http:` — it is encoded into the `url=`
-parameter and fetched by ARender's _own server_ through the auth-proxy sidecar, never navigated by
-the browser. It must still be a well-formed absolute http(s) URL.
+Since NXSAT-279 the URL is no longer built here at all — `Document.ARenderGetPreviewerUrl` returns
+it — so there is a third check between the two: `framableOrNull` validates the **response body**
+against `allowedOrigins: [viewerOrigin]` before it reaches either.
+
+`nuxeoInternalUrl` is no longer validated at all. It addressed the retired auth-proxy sidecar; NEV
+2026's connector resolves blobs itself from `documentId` over OAuth2, so nothing reads the field and
+checking it could only reject configurations that would have worked.
 
 **Site 2 (Nuxeo preview)** is constrained to same-origin or the configured `NUXEO_API_ORIGIN`, and
 dropped otherwise, falling through to the viewer's "Preview not available" placeholder.
 
-#### ACCEPTED RESIDUAL RISK — site 1 validates the scheme, not the origin
+#### ACCEPTED RESIDUAL RISK — the allow-list is itself customer-configured
 
-This is deliberate, and "Category C mitigated" should not be read as more than it is.
+"Category C mitigated" should not be read as more than it is, but note what changed: site 1 now
+checks the origin as well as the scheme.
 
 ```ts
 navigableUrlOrNull(url, {
   allowInsecure: insecureAllowedForHost(isDevMode()), // host-relative, not build-relative
-}); // note: no allowedOrigins
+  allowedOrigins: [cfg.viewerOrigin],                 // CLOSED by NXSAT-279
 ```
 
-There is no origin allow-list on the ARender site, because a customer configures where _their own_
-ARender instance lives and we cannot know it in advance. Site 2 can be origin-checked precisely
-because the answer is knowable — it must be the Nuxeo repository we are already talking to.
+There **is** an origin allow-list on the ARender site as of NXSAT-279. It was absent while the
+client built the viewer URL from configuration, because the only candidate for an allow-list was the
+same value being concatenated and checking it against itself proved nothing. Now that the URL
+arrives in a Nuxeo **response body**, `viewerOrigin` has something to constrain, and a compromised
+server cannot redirect the iframe to an origin the deployment did not configure. Site 2 is
+origin-checked against `NUXEO_API_ORIGIN` for the same reason — the answer is knowable.
 
-So what Category C closed is the **privilege escalation**: `javascript:` in the manifest becoming
-script execution in _our_ origin, with access to the session and the DOM. What remains is
-**inherent to the feature**: whoever can edit the app-config manifest can point that iframe at any
-`https:` origin they like.
+So Category C closed the **privilege escalation** (`javascript:` in the manifest becoming script
+execution in _our_ origin, with access to the session and the DOM) and, with it, the
+server-controlled redirect. What remains is **inherent to the feature**: whoever can edit the
+app-config manifest sets `viewerOrigin`, which is the allow-list, so they can still point that
+iframe at any `https:` origin they like.
 
 That residual is accepted on three grounds:
 
@@ -585,8 +610,9 @@ if (parsed.origin !== new URL(this.cfg.viewerOrigin).origin) return null;
 `javascript:` URLs have no origin and fail the check; a relative or malformed value throws. Only then
 call `bypassSecurityTrustResourceUrl`. **Fail closed means returning `null`**, which the template
 already handles — `@if (showARenderViewer())` degrades to "Annotations are not available", the same
-path taken when ARender is not deployed. This is validated by `bootstrap-config.ts` already refusing
-half an ARender configuration ("half … is worse than none").
+path taken when ARender is not deployed. (As planned, this leaned on `bootstrap-config.ts` refusing
+half an ARender configuration. **Superseded by NXSAT-279:** only `viewerOrigin` is required there
+now, which is also the only endpoint this check reads, so the check is unaffected.)
 
 For site 2, assert the preview URL's origin equals the Nuxeo API origin (`NUXEO_API_ORIGIN`) or is
 same-origin-relative, and drop the preview otherwise.
@@ -1113,7 +1139,8 @@ Each of these would close the Sonar issues and leave the codebase worse.
    and tooling" is not product code — is reasonable for _maintainability_ rules and wrong for
    _security_ rules, which is precisely where hardcoded endpoints and credentials live. Worth
    narrowing the exclusion to the non-security rule set, and expecting new findings when it is.
-6. **Does `mergeIntegrations` mean what its comment says?** `bootstrap-config.ts:339` claims both
-   ARender endpoints are required and does not enforce it, so a half-configured manifest produces a
-   blank endpoint rather than `null`. `ARenderService` now defends against that, but the manifest
-   layer should probably reject it outright — that is a Layer 0 semantics decision.
+6. ~~**Does `mergeIntegrations` mean what its comment says?**~~ **Answered by NXSAT-279.** It claimed
+   both ARender endpoints were required and enforced neither. Rather than enforce both, the Layer 0
+   semantics decision was to require only `viewerOrigin`: `nuxeoInternalUrl` became vestigial when
+   the client stopped building `?url=` values, so gating on it could only reject configurations that
+   would have worked. `completeARenderConfig` and its comment now agree on that contract.

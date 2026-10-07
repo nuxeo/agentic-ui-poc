@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   ChangeDetectorRef,
   Component,
+  computed,
   ElementRef,
   inject,
   OnDestroy,
@@ -27,6 +28,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { TranslateModule, TranslatePipe, TranslateService } from '@ngx-translate/core';
 
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
+
+import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 
 import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -81,6 +84,16 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   private readonly host = inject(ElementRef<HTMLElement>);
 
   private readonly cdr = inject(ChangeDetectorRef);
+
+  private readonly appConfig = inject(AppConfigService);
+
+  /** Layer 0 `branding.logo`; `null` keeps the Satori lockup. */
+  protected readonly brandLogo = this.appConfig.brandingLogo;
+
+  /** Accessible name of the brand link when a logo replaces the lockup. */
+  protected readonly brandLabel = computed(
+    () => this.brandLogo()?.alt || this.appConfig.bootstrap().branding.applicationTitle,
+  );
 
   private readonly autofillSyncTimeouts: ReturnType<typeof setTimeout>[] = [];
 
