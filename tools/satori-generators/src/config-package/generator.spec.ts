@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
@@ -399,6 +399,23 @@ describe('the generated build.mjs', () => {
       expect(output).toMatch(/inline JSON of layout Note\/edit: must be a JSON object/);
     });
 
+    it('keeps comment markers and markup inside CDATA as text', async () => {
+      await generate();
+      contribute(
+        `<fragment name="marks" layer="manifest"><json><![CDATA[{ "labels": { "a": "<!--", "b": "<asset name='x.html'/>" } }]]></json></fragment>`,
+      );
+      expect(build().status).toBe(0);
+
+      contribute(
+        `<fragment name="hidden" layer="manifest"><json><![CDATA[{ "labels": { "a": "<!--", "a": "-->" } }]]></json></fragment>`,
+      );
+      const { status, output } = build();
+      expect(status).toBe(1);
+      expect(output).toMatch(
+        /inline JSON of fragment "hidden" in manifest: duplicate key "a" in labels/,
+      );
+    });
+
     it('is refused when it has both a src and inline JSON, or neither', async () => {
       await generate();
       contribute(
@@ -427,6 +444,18 @@ describe('the generated build.mjs', () => {
     const { status, output } = build();
     expect(status).toBe(1);
     expect(output).toMatch(message);
+  });
+
+  it('refuses a symbolic link in bundle/, to a file or a directory, rather than following it', async () => {
+    await generate();
+    writeFileSync(join(dir, 'outside.txt'), 'not part of the package');
+    symlinkSync(join(dir, 'outside.txt'), join(dir, 'bundle/agentic-ui-config/assets/logo.svg'));
+    mkdirSync(join(dir, 'elsewhere'));
+    symlinkSync(join(dir, 'elsewhere'), join(dir, 'bundle/agentic-ui-config/linked'));
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toContain('bundle/agentic-ui-config/assets/logo.svg: is a symbolic link');
+    expect(output).toContain('bundle/agentic-ui-config/linked: is a symbolic link');
   });
 
   it('refuses a component that does not require Satori’s defaults', async () => {

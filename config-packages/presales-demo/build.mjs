@@ -24,14 +24,24 @@
  *     not parse, is not an object, repeats a key, or is packaged over 1 MiB; an asset over 2 MiB;
  *   - a component contributing configuration without
  *     `<require>org.nuxeo.agentic.ui.config.defaults</require>`, without which this package's
- *     fragments could register before Satori's own and lose to them.
+ *     fragments could register before Satori's own and lose to them;
+ *   - a symbolic link anywhere under `bundle/`, which would package bytes from outside what was
+ *     reviewed — and an asset is served without authentication.
  *
  * Packaged: everything under `bundle/` except Markdown files. Every `.json` file, and any other
  * file a fragment or layout names as its `src`, is packaged compact, with a top-level `"$schema"`
  * key removed (it is for your editor, not the server).
  */
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateRawSync } from 'node:zlib';
@@ -56,14 +66,23 @@ const OUT = resolve(outIndex > 0 ? process.argv[outIndex + 1] : join(HERE, 'dist
 const problems = [];
 const problem = (file, message) => problems.push(`${relative(HERE, file)}: ${message}`);
 
+/** The files under `directory`. A symbolic link is refused, not followed: it could reach outside. */
 function filesUnder(directory) {
   return readdirSync(directory).flatMap((entry) => {
     const path = join(directory, entry);
-    return statSync(path).isDirectory() ? filesUnder(path) : [path];
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink()) {
+      problem(
+        path,
+        'is a symbolic link; put the file itself in bundle/, so the package holds only what was reviewed',
+      );
+      return [];
+    }
+    return stat.isDirectory() ? filesUnder(path) : [path];
   });
 }
 
-const isFile = (path) => statSync(path, { throwIfNoEntry: false })?.isFile() === true;
+const isFile = (path) => lstatSync(path, { throwIfNoEntry: false })?.isFile() === true;
 /** What goes into the bundle. The one predicate for packaging and for checking a `src`. */
 const isPackaged = (path) => isFile(path) && !path.endsWith('.md');
 
@@ -125,19 +144,34 @@ function rejectDuplicateKeys(text) {
   if (i !== text.length) throw new Error(`unexpected input after the value at offset ${i}`);
 }
 
-/** XML with its comments removed. XML comments do not nest; an unterminated one runs to the end. */
+/**
+ * XML with its comments removed. Inside CDATA `<!--` is text, so a CDATA section is kept whole.
+ * Comments do not nest; an unterminated comment or CDATA section runs to the end.
+ */
 function withoutComments(xml) {
   let out = '';
   let at = 0;
   for (;;) {
     const start = xml.indexOf('<!--', at);
     if (start < 0) return out + xml.slice(at);
+    const cdata = xml.indexOf('<![CDATA[', at);
+    if (cdata >= 0 && cdata < start) {
+      const end = xml.indexOf(']]>', cdata);
+      const stop = end < 0 ? xml.length : end + 3;
+      out += xml.slice(at, stop);
+      at = stop;
+      continue;
+    }
     out += xml.slice(at, start);
     const end = xml.indexOf('-->', start + 4);
     if (end < 0) return out;
     at = end + 3;
   }
 }
+
+/** The same XML with every CDATA section blanked, so markup is never matched inside text. */
+const withoutCdata = (xml) =>
+  xml.replace(/<!\[CDATA\[[\s\S]*?(?:\]\]>|$)/g, (section) => ' '.repeat(section.length));
 
 const ENTITIES = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
 
@@ -257,7 +291,7 @@ function invalidEntry(element, { name, layer, type, mode }) {
 const packageXmlFile = join(HERE, 'package', 'package.xml');
 const packageXml = readFileSync(packageXmlFile, 'utf8');
 const { name: packageName, version: packageVersion } = attributes(
-  /<package\b([^>]*)>/.exec(withoutComments(packageXml))?.[1] ?? '',
+  /<package\b([^>]*)>/.exec(withoutCdata(withoutComments(packageXml)))?.[1] ?? '',
 );
 if (!packageName || !packageVersion)
   problem(packageXmlFile, '<package> needs a name and a version');
@@ -284,18 +318,20 @@ for (const componentPath of componentPaths) {
   // Comments removed first, so a commented-out example can neither satisfy nor fail a check.
   // Line endings normalised, as an XML parser does before the server measures inline JSON.
   const xml = withoutComments(readFileSync(componentFile, 'utf8').replace(/\r\n?/g, '\n'));
-  const contributes = [...xml.matchAll(/<extension\b([^>]*)>/g)].some(
+  // Markup is looked for here; text, including inline JSON, is read from `xml` at the same offsets.
+  const markup = withoutCdata(xml);
+  const contributes = [...markup.matchAll(/<extension\b([^>]*)>/g)].some(
     ([, tag]) => attributes(tag).target === 'org.nuxeo.agentic.ui.config',
   );
   const requiresDefaults =
-    /<require>\s*org\.nuxeo\.agentic\.ui\.config\.defaults\s*<\/require>/.test(xml);
+    /<require>\s*org\.nuxeo\.agentic\.ui\.config\.defaults\s*<\/require>/.test(markup);
   if (contributes && !requiresDefaults) {
     problem(
       componentFile,
       `must <require>${DEFAULTS_COMPONENT}</require>, or its fragments may apply before Satori's defaults`,
     );
   }
-  for (const match of xml.matchAll(/<(fragment|layout|asset)\b([^>]*)>/g)) {
+  for (const match of markup.matchAll(/<(fragment|layout|asset)\b([^>]*)>/g)) {
     const [startTag, element, tag] = match;
     const entry = attributes(tag);
     const invalid = invalidEntry(element, entry);

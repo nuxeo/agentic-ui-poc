@@ -37,7 +37,8 @@ nuxeoctl mp-install dist/config-packages/presales-demo/presales-demo-<version>.z
 leave out: a fragment or layout body, in a file or inline, that does not parse, is not an object,
 repeats a key, or exceeds 1 MiB; an asset over 2 MiB or not named as a plain image file; an entry
 whose name or layer the server rejects, or that has no body. It also refuses a `src` that names no
-packaged file, and a component that does not `<require>` Satori's defaults.
+packaged file, a symbolic link anywhere in `bundle/`, and a component that does not `<require>`
+Satori's defaults.
 
 **Raise the version for every change you install.** Nuxeo installs a higher version as an upgrade;
 the same version is the package it already has.
