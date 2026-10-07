@@ -126,6 +126,12 @@ sat-breadcrumbs {
   animation: ke-spin 1s linear infinite;
 }
 
+// NXENG-789 — IBM `style_focus_visible` reads `:focus` only (not comma-grouped lists).
+.ke-action-btn.mat-mdc-outlined-button:focus {
+  outline: 2px solid var(--mat-sys-primary, #0073e6) !important;
+  outline-offset: 2px;
+}
+
 @keyframes ke-spin {
   to {
     transform: rotate(360deg);
