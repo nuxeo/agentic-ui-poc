@@ -321,6 +321,20 @@ describe('AppConfigService', () => {
       ]);
       expect(localStorage.getItem(PRESET_STORAGE_KEY)).toBeNull();
     });
+
+    it.each(['toString', 'constructor', '__proto__'])(
+      'treats %s as an unknown preset, not a property every object has',
+      async (name) => {
+        window.history.replaceState({}, '', `/?preset=${name}`);
+        await load(envelope('bootstrap', [presales(true)]));
+
+        expect(service.activePreset()).toBeNull();
+        expect(service.diagnostics().messages).toEqual([
+          `preset "${name}" is not defined by any package`,
+        ]);
+        expect(localStorage.getItem(PRESET_STORAGE_KEY)).toBeNull();
+      },
+    );
   });
 
   describe('brandingLogo', () => {

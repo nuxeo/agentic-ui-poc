@@ -49,7 +49,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  */
 export function readPresales(fragments: readonly unknown[]): AppPresalesConfig {
   let presetSwitching = false;
-  const presets: Record<string, AppPreset> = {};
+  // Looked up by a name from the URL, so `toString` or `__proto__` must not resolve to a builtin.
+  const presets: Record<string, AppPreset> = Object.create(null);
   for (const fragment of fragments) {
     if (!isRecord(fragment) || !isRecord(fragment['presales'])) continue;
     const presales = fragment['presales'];
