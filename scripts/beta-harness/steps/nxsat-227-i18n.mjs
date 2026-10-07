@@ -115,11 +115,11 @@ async function headerSearchVisibleLabel(page, h) {
 }
 
 /**
- * The sample the marketplace package installs, whose values are the compiled defaults. Served
+ * The defaults our bundle contributes to the configuration service, whose values are the compiled defaults. Served
  * verbatim for the English pass.
  */
 const PACKAGED_BOOTSTRAP = readFileSync(
-  resolve(process.cwd(), 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json'),
+  resolve(process.cwd(), 'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json'),
   'utf8',
 );
 

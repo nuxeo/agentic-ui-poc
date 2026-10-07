@@ -48,8 +48,9 @@ curl -s -o /dev/null -w 'bootstrap: %{http_code}\n' \
 
 The `404` is correct: with no `bootstrap.json` the app runs on its compiled defaults. The dev server
 serves `apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json`, which is gitignored and absent until
-you create it for Beat 3 — do that before starting the dev server. Since NXSAT-317 the packaged file is a sample, `bootstrap.example.json`, which
-the app never reads.
+you create it for Beat 3 — do that before starting the dev server. On a server, since NXSAT-312,
+configuration comes only from Marketplace packages through the configuration service; the package
+installs no file to copy or edit.
 
 ### 0.3 The customer-extension app — a **separate** app on a **separate** port
 
@@ -295,7 +296,7 @@ asset files that existed when it started, though edits to one are then live). Th
 
 ```bash
 mkdir -p apps/nuxeo-ui/public/agentic-ui-config
-cp nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json \
+cp nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json \
   apps/nuxeo-ui/public/agentic-ui-config/bootstrap.json
 ```
 

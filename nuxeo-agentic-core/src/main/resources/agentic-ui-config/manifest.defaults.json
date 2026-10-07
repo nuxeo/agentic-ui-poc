@@ -1,0 +1,5 @@
+{
+  "$schema": "Layer 0/1 runtime manifest - the packaged defaults: an empty manifest, so the packaged navigation, actions, tabs and labels stand unchanged. To change them, contribute a manifest fragment from your own configuration package; it is applied after this one. See docs/extension-reference.md for every ID a manifest can address.",
+  "$public": "Served without authentication at /nuxeo/agentic-ui-config/manifest.json, because the application reads it before sign-in. Put nothing secret in a manifest fragment. Hiding an action is not a security control: Nuxeo permissions still decide what each user may do.",
+  "version": 1
+}

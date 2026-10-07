@@ -63,6 +63,21 @@ JSON document any repository writer can edit.
 
 ### Where the manifest lives, and how it survives upgrade
 
+Layer 0 and Layer 1 are contributed, not edited. Since NXSAT-312 a customer ships their own
+Marketplace package that contributes `bootstrap` and `manifest` fragments to the
+`org.nuxeo.agentic.ui.config` extension point, and the server serves them after our defaults at
+`/nuxeo/agentic-ui-config/bootstrap.json` and `manifest.json`. Ordering needs two declarations:
+the package's `package.xml` depends on `nuxeo-agentic-ui`, which orders installation, and its
+component `<require>`s `org.nuxeo.agentic.ui.config.defaults`, which orders contributions so our
+defaults are always registered first. Everything at that path is served without authentication —
+put nothing secret in a fragment. The `bootstrap.json` that used to be copied and edited beside
+the bundle is **removed with no migration**: a file left in `nxserver/nuxeo.war/agentic-ui-config`
+is not served.
+
+**Until NXSAT-312 slice 2 ships, the client below is unchanged:** it does not yet merge the
+served fragments, and it still reads the manifest from the Note described next. Slice 2 removes
+the Note, also with no migration, and the two slices ship together.
+
 The manifest is a Nuxeo document at `/default-domain/config/agentic-ui`, read with the signed-in
 user's own session. It is **not** a file inside the packaged web directory, because the marketplace
 installer copies that directory with `overwrite="true"` and would destroy it. See the Phase 1 section
@@ -74,16 +89,6 @@ With the default `manifestDocumentProperty`, `note:note`, the document is a Note
 any other type — `application/json` included — so the stored JSON stops parsing and the packaged
 defaults apply with no error shown. A deployment that points `manifestDocumentProperty` at a
 property of its own schema is not subject to this.
-
-The Layer 0 file is the other store, and the package does **not** install it. The package ships a
-sample, `nxserver/nuxeo.war/agentic-ui-config/bootstrap.example.json`, and replaces it on every
-upgrade; to customise, copy it to `bootstrap.json` in the same directory and edit the copy. No
-install, upgrade or uninstall touches `bootstrap.json`, and with no `bootstrap.json` the app runs on
-its compiled defaults, which are the sample's values. Do not edit the sample itself: the change is
-lost on the next upgrade and never applied anyway. Until NXSAT-317 the package installed
-`bootstrap.json` itself, and upgrading after an edit left no version installed; if a server was
-installed from such a package, its edited `bootstrap.json` keeps working after the upgrade to a
-fixed version. Both files are served without authentication — put nothing secret in either.
 
 The Layer 1 configuration is the `extensions` key of that document:
 
