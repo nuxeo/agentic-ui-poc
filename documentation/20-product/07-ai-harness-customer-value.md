@@ -77,7 +77,7 @@ disappeared.
 | The generated library registers **live**, not merely present                      | `phase-5-harness` evidence, 27 checks; guardrail check 3 requires a spec asserting registry state                                                                 |
 | The guardrail catches five specific classes of mistake                            | Each corresponds to a mistake actually made in this repository. All five probed                                                                                   |
 | A Layer 0/1/2 customisation **survives a version bump**                           | `npm run beta:upgrade`, 8 assertions incl. slot existence                                                                                                         |
-| Config and manifest survive a **marketplace upgrade**                             | `install.xml` `overwrite="false"`; manifest is a Nuxeo document                                                                                                   |
+| Config and manifest survive a **marketplace upgrade**                             | Edited `bootstrap.json` survives — rehearsed (NXSAT-317); the package ships only a sample. Manifest is a Nuxeo document                                           |
 
 ### Tier 2 · Shipped but unproven with a customer
 

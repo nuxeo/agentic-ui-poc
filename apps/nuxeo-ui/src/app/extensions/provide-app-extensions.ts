@@ -177,7 +177,7 @@ function provideRuleContextWiring(): Provider {
     multi: true,
     useFactory: () => {
       // Injected for its constructor, which registers `DOCUMENT_RULE_EVALUATORS`.
-      // Eager construction here is what guarantees the seven document rules are
+      // Eager construction here is what guarantees the document rules are
       // known before any surface resolves a rule-gated entry; an unknown rule
       // id fails open, so a lazy construction would leave that window open.
       inject(AppExtensionsService);

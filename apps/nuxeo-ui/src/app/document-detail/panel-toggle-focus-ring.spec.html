@@ -1,0 +1,17 @@
+<!--
+  Fixture for panel-toggle-focus-ring.spec.ts. Mirrors document-detail.html: `.tabs-header-row`
+  with `.detail-tabs` (Material tab header) and the overlay `.panel-toggle-btn`.
+-->
+<div class="tabs-header-row panel-toggle-focus-ring-host">
+  <mat-tab-group class="detail-tabs">
+    <mat-tab [label]="'app.tabs.view' | translate">Tab body</mat-tab>
+  </mat-tab-group>
+  <button
+    type="button"
+    mat-icon-button
+    class="panel-toggle-btn"
+    [attr.aria-label]="'document-detail.document-detail.toggle-details-panel' | translate"
+  >
+    <mat-icon>info_outline</mat-icon>
+  </button>
+</div>

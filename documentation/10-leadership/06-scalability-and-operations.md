@@ -129,21 +129,23 @@ tracked at the code _and_ in a register, and leadership can read the count.
 
 ## 7. Deployment and upgrade
 
-| Aspect                          | Position                                                                                                   |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Deployment unit                 | Maven marketplace package: the Angular app + a small Java/OSGi bundle                                      |
-| Install                         | Nuxeo marketplace install; assets served by Nuxeo's Tomcat                                                 |
-| Config seeding                  | `install.xml`, `overwrite="false"` — seeds on first install, **preserves customer edits on every upgrade** |
-| Upgrade of our app              | Overwrites the app directory; leaves config alone                                                          |
-| Upgrade of the platform library | Customer's `npm version` bump, then their build                                                            |
-| Rollback                        | Nuxeo marketplace package rollback. **Not verified in repository**                                         |
-| Zero-downtime                   | **Not verified.** Depends on the customer's Nuxeo deployment topology                                      |
-| Release automation              | `release.yml` (manual dispatch), `build-marketplace.yml`, `changelog.yml`                                  |
+| Aspect                          | Position                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Deployment unit                 | Maven marketplace package: the Angular app + a small Java/OSGi bundle                                        |
+| Install                         | Nuxeo marketplace install; assets served by Nuxeo's Tomcat                                                   |
+| Config seeding                  | Ships `bootstrap.example.json` only; the customer's `bootstrap.json` is never installed, replaced or deleted |
+| Upgrade of our app              | Overwrites the app directory; leaves `bootstrap.json` alone — rehearsed with an edit (NXSAT-317)             |
+| Upgrade of the platform library | Customer's `npm version` bump, then their build                                                              |
+| Rollback                        | Nuxeo marketplace package rollback. **Not verified in repository**                                           |
+| Zero-downtime                   | **Not verified.** Depends on the customer's Nuxeo deployment topology                                        |
+| Release automation              | `release.yml` (manual dispatch), `build-marketplace.yml`, `changelog.yml`                                    |
 
-The `overwrite="false"` mechanism is the operationally important detail, and its reasoning is
-recorded at the code — including that the obvious destination (`nxserver/web`) is **not a Tomcat
-docBase**, so a config file placed there is never served. An earlier version did exactly that and
-would have 404'd on every install.
+Not owning the customer's file is the operationally important detail, and its reasoning is
+recorded in `install.xml`. Two earlier designs were wrong. One placed the file in `nxserver/web`,
+which is **not a Tomcat docBase**, so it was never served. The other installed it with
+`overwrite="false"`, documented as preserving edits. A rehearsal showed the upgrade then failing on
+the edited file and leaving **no version installed** — the app 404 until fixed by hand (NXSAT-317).
+`checkInstallerOwnsNoCustomerFile` now fails the build if either comes back.
 
 ---
 

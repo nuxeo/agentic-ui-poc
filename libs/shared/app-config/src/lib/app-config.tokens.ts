@@ -13,14 +13,16 @@ export const APP_BOOTSTRAP_CONFIG_FILE = 'bootstrap.json';
  * copies the packaged `web` directory over the deployed one with
  * `overwrite="true"`, so a configuration file inside `.../agentic-ui/` is
  * silently replaced by ours on every upgrade. `.../agentic-ui-config/` is
- * outside that copy's source tree and is installed by a separate,
- * non-overwriting step, so customer edits survive.
+ * outside that copy's source tree. The package installs only a sample there,
+ * `bootstrap.example.json`; `bootstrap.json` is the customer's own copy, which
+ * no install, upgrade or uninstall touches, so customer edits survive. When it
+ * is absent the request 404s and the compiled defaults apply.
  *
  * Production base href is `/nuxeo/agentic-ui/`, giving
  * `/nuxeo/agentic-ui-config/bootstrap.json`. The `nuxeo` Tomcat context has
  * `docBase="../nxserver/nuxeo.war"`, so that URL is served from
  * `<server.home>/nxserver/nuxeo.war/agentic-ui-config/` — which is exactly the
- * `todir` of the non-overwriting copy in `install.xml`. Note that
+ * `todir` of the sample's copy in `install.xml`. Note that
  * `<server.home>/nxserver/web` holds only `root.war` and is not a docBase;
  * installing there produces a permanent 404.
  *

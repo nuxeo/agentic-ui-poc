@@ -6,6 +6,7 @@ import { DOCUMENT_RULE_EVALUATORS } from './document-rules';
 import {
   EMPTY_EXTENSION_RULE_CONTEXT,
   ExtensionRuleRegistry,
+  type ExtensionRule,
   type ExtensionRuleContext,
 } from './extension-rules';
 
@@ -159,6 +160,29 @@ describe('ExtensionRuleRegistry', () => {
     it('treats an absent rule as no gate at all', () => {
       expect(registry.evaluate(null, EMPTY_EXTENSION_RULE_CONTEXT)).toBe(true);
       expect(registry.evaluate(undefined, EMPTY_EXTENSION_RULE_CONTEXT)).toBe(true);
+    });
+
+    it('hands every evaluator a list, whatever the manifest wrote as parameters', () => {
+      // The manifest reader checks a rule's `type` and nothing inside it, so
+      // `"parameters": "File"` arrives here whatever its declared type says, mid slot resolution.
+      const received: unknown[] = [];
+      registry.registerRules({
+        'test.capture': (_ctx, parameters) => {
+          received.push(parameters);
+          return true;
+        },
+      });
+      for (const parameters of ['File', { 0: 'File' }, 42]) {
+        const malformed = { type: 'test.capture', parameters } as unknown as ExtensionRule;
+        expect(() => registry.evaluate(malformed, EMPTY_EXTENSION_RULE_CONTEXT)).not.toThrow();
+      }
+      expect(received).toEqual([[], [], []]);
+
+      const composite = {
+        type: 'core.some',
+        parameters: 'app.rules.hasDocument',
+      } as unknown as ExtensionRule;
+      expect(registry.evaluate(composite, EMPTY_EXTENSION_RULE_CONTEXT)).toBe(false);
     });
 
     it('breaks a self-referential composite instead of overflowing the stack', () => {

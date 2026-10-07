@@ -21,12 +21,12 @@ promise checkable rather than aspirational.
 
 ## 1. The four layers
 
-| Layer                      | What the customer writes                                                    | Build needed           | Survives upgrade                           |
-| -------------------------- | --------------------------------------------------------------------------- | ---------------------- | ------------------------------------------ |
-| **0 — Configuration**      | JSON + CSS custom properties: theme tokens, branding, languages             | No                     | Yes — `overwrite="false"` in `install.xml` |
-| **1 — Declarative wiring** | JSON referencing components, rules, actions and routes **by registered ID** | No                     | Yes — it is a Nuxeo document               |
-| **2 — Customer code**      | A TypeScript library against `@nuxeo-satori/platform`                       | Yes, in **their** repo | Yes — npm semver                           |
-| **3 — Agent harness**      | Prompts. The generators and guardrails ship inside the package              | Yes, in their repo     | Yes                                        |
+| Layer                      | What the customer writes                                                    | Build needed           | Survives upgrade                                  |
+| -------------------------- | --------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------- |
+| **0 — Configuration**      | JSON + CSS custom properties: theme tokens, branding, languages             | No                     | Yes — the package never installs `bootstrap.json` |
+| **1 — Declarative wiring** | JSON referencing components, rules, actions and routes **by registered ID** | No                     | Yes — it is a Nuxeo document                      |
+| **2 — Customer code**      | A TypeScript library against `@nuxeo-satori/platform`                       | Yes, in **their** repo | Yes — npm semver                                  |
+| **3 — Agent harness**      | Prompts. The generators and guardrails ship inside the package              | Yes, in their repo     | Yes                                               |
 
 Layers 0 and 1 are expected to absorb most customer requests and need no build.
 
@@ -50,18 +50,56 @@ Live example: [`apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.js
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `nuxeoApiOrigin`                                    | Where the Nuxeo REST API lives                                                            |
 | `manifestDocumentPath` / `manifestDocumentProperty` | Where the Layer 1 manifest document is, and which property holds it (default `note:note`) |
-| `branding`                                          | Product name, logo                                                                        |
+| `branding`                                          | Product name, browser tab title, and `logo` (below)                                       |
 | `themes` / `defaultThemeId`                         | Named token sets applied to `<html>`                                                      |
 | `defaultLanguage` / `availableLanguages`            | i18n                                                                                      |
+
+### `branding.logo`
+
+`{ "src": "acme-logo.svg", "alt": "Acme Insurance" }` replaces the Satori word mark in the header
+and the Satori lockup on the login page. `null` or absent keeps the Satori marks.
+
+- **`src`** is a file name or relative path resolved against the directory `bootstrap.json` is
+  served from — so a logo dropped beside it in `nxserver/nuxeo.war/agentic-ui-config/` survives
+  an upgrade exactly as the file does. An `https:` URL or a `data:image/` URI also works. Both
+  `<img>` elements carry `crossorigin="anonymous"`, so a remote logo is loaded without cookies
+  and a redirect from it to a Nuxeo URL cannot carry the session — which means an `https:` logo
+  only renders if its host sends `Access-Control-Allow-Origin`. A file beside `bootstrap.json` is
+  same-origin and unaffected.
+- **Every other form is rejected** and the Satori marks are kept. An `<img>` request bypasses the
+  HTTP interceptor but still sends the session cookie, so a `src` that could name a Nuxeo REST
+  endpoint is refused rather than left to fail. The deciding check runs on the **resolved** URL,
+  after the URL parser has dropped tabs and newlines and collapsed `..` and `%2e%2e`. On any host
+  that serves Nuxeo — the application's, and those of `nuxeoApiOrigin` and `nuxeoServerUrl`,
+  including protocol-relative values — it is refused whatever the scheme or port, because cookies
+  are scoped by host. The one exception is the configuration directory itself, where no path
+  segment may carry a `;`, an encoded `;` or `/`, or a double-encoded escape such as `%252e` —
+  Tomcat strips `;` path parameters before it collapses `..`, so `..;/api/v1/me` would leave the
+  directory on the server while staying inside it in the browser, and a proxy that decodes before
+  forwarding turns the encoded forms into the same thing. A logo file name therefore cannot
+  contain `;` or `%`. Elsewhere it must be `https:`. Refused earlier, on the string as written:
+  control characters, backslashes, an absolute or protocol-relative path, a `..` segment, a query
+  or fragment with no path (it would load `bootstrap.json` itself), `http:`, `javascript:`, and a
+  `data:` URI that is not an image or has no payload (a payload that starts with `#` is a
+  fragment, so it counts as none).
+- **`alt`** names the login page's brand link. Empty falls back to `applicationTitle`. The header
+  logo is decorative (`alt=""`): the header is named by its heading.
+- The configuration directory is outside every `NuxeoAuthenticationFilter` URL pattern in
+  `nuxeo.war/WEB-INF/web.xml`, which is what lets the login page load a logo before sign-in. That
+  is read from the filter mapping, and the 2026-10-07 marketplace rehearsal observed
+  `bootstrap.json` there being served without authentication; a logo file was not part of it.
 
 ### Why it lives outside the bundle
 
 The marketplace installer copies the web directory with `overwrite="true"`, so
-configuration inside the bundle is **destroyed on upgrade**. The config is therefore
-installed as a _sibling_ of that tree with `overwrite="false"` — seeded on first install,
-preserved on every upgrade after. The full reasoning, including why `nxserver/web` is the
-wrong destination (it is not a Tomcat docBase, so anything placed there is never served),
-is in [`install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml).
+configuration inside the bundle is **destroyed on upgrade**. The config therefore lives in a
+_sibling_ of that tree, and the package puts only a sample there, `bootstrap.example.json`. The
+customer copies it to `bootstrap.json`, which no install, upgrade or uninstall touches. With no
+`bootstrap.json`, the compiled defaults apply. Installing the file itself with `overwrite="false"`
+was tried, and rehearsal showed an upgrade after a customer edit leaving no version installed
+(NXSAT-317). The full reasoning, including why `nxserver/web` is the wrong destination (it is not
+a Tomcat docBase, so anything placed there is never served), is in
+[`install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml).
 
 An earlier version shipped to `nxserver/web/…` and **would have 404'd on every install**.
 It was recorded complete before that was caught.
@@ -134,7 +172,7 @@ only that check goes red.
 
 ---
 
-## 4. The eight slots, and what actually reads them
+## 4. The nine slots, and what actually reads them
 
 Declared in [`libs/shared/extensions/src/lib/extension-slots.ts`](../../libs/shared/extensions/src/lib/extension-slots.ts).
 
@@ -144,14 +182,18 @@ Declared in [`libs/shared/extensions/src/lib/extension-slots.ts`](../../libs/sha
 | `bulk-actions` | **Live** — packaged descriptors + host                           |                                                                             |
 | `documentList` | **Live** — 12 packaged columns, resolved by _both_ browse routes | `provide-app-extensions.ts:93`, `browse.ts:373`, `browse-adf-hx-poc.ts:133` |
 | `sidebar`      | Resolved, **no packaged descriptor**                             | 3 documented IDs                                                            |
-| `routes`       | **Reserved — nothing reads it**                                  |                                                                             |
-| `toolbar`      | **Reserved — nothing reads it**                                  |                                                                             |
-| `contextMenu`  | **Reserved — nothing reads it**                                  |                                                                             |
-| `tabs`         | **Reserved — nothing reads it**                                  |                                                                             |
+| `routes`       | Resolved, **no packaged descriptor**                             | `extension-reference.md` section 11                                         |
+| `toolbar`      | **Live** — 16 packaged actions on document detail                | `extension-reference.md` section 8                                          |
+| `contextMenu`  | **Live** — 4 packaged actions in the browse "More actions" menu  | `extension-reference.md` section 10                                         |
+| `tabs`         | **Live** — 6 packaged document-detail tabs                       | `extension-reference.md` section 9                                          |
+| `documentView` | Resolved, **no packaged descriptor** — the View tab body         | `extension-reference.md` section 9a                                         |
 
-**Do not describe a reserved ID as an extension point.** Four of eight are reserved. The
-manifest example above places entries in `toolbar` and `sidebar`, which is legitimate as
-_forward-compatible configuration_ but renders nothing today.
+This table read "Reserved — nothing reads it" for `routes`, `toolbar`, `contextMenu` and
+`tabs` well after each gained a host. `npm run beta:reference` checks the states in
+`docs/extension-reference.md`, not this table, so the reference is authoritative.
+
+**Do not describe a reserved ID as an extension point.** No slot is reserved today; every
+one is read by a host, and `sidebar`, `routes` and `documentView` carry no packaged entries.
 
 `rules` was **removed** from `EXTENSION_SLOTS`: rules are not descriptors and live in
 `ExtensionRuleRegistry`, so `slots.rules` was silently inert.
@@ -159,7 +201,7 @@ _forward-compatible configuration_ but renders nothing today.
 ### Slots are additive by construction
 
 `ExtensionSlotRegistry` keys slots by opaque string with **no enum, union or `switch` on
-slot identity**, so a ninth slot requires no change to the eight. Do not introduce a central
+slot identity**, so a tenth slot requires no change to the nine. Do not introduce a central
 slot dispatch — it would undo the property the addressable-surface decision rests on.
 
 ---
@@ -193,6 +235,13 @@ docs works unchanged.
 
 Fail-open, recursion bounds and the security-relevant list: see
 [Architecture §9](02-architecture.md#9-error-handling-retry-and-validation).
+
+**Varying by document type.** `app.rules.isType` and `app.rules.hasFacet` take type or facet names
+as `parameters` — the same tests as the `type` and `facet` attributes of Nuxeo Web UI's
+`nuxeo-filter` — so a manifest can show a tab or action for a Case and not a Claim with no code.
+Both answer `false` with no string parameter, and both read the focused document, so they gate
+document-detail tabs and toolbar actions but not browse columns. Reference and examples:
+`docs/extension-reference.md` §4.
 
 ### Our rule context is deliberately not upstream's
 

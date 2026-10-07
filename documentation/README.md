@@ -19,8 +19,8 @@ with a four-layer customisation contract.
 
 It exists because the product was built largely through AI-assisted development, and the
 knowledge that accumulated sat in code comments, 29 scattered documents, and the heads of
-two or three people. These pages consolidate that into something three different audiences
-can each use on their own.
+two or three people. These pages consolidate that into something each audience below can
+use on its own.
 
 ---
 
@@ -28,6 +28,7 @@ can each use on their own.
 
 | You are                               | Read                                                                                                                                                                                 | Time                     |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ |
+| **Presales, customer or partner**     | [The short version](20-product/00-the-short-version.md) → [Feature Catalog](20-product/02-feature-catalog.md) → [Extension reference](../docs/extension-reference.md)                | ~5 minutes               |
 | **A developer joining the team**      | [Developer Getting Started](30-engineering/01-getting-started.md) → [Architecture](30-engineering/02-architecture.md) → [Code KT](30-engineering/11-code-kt.md)                      | ~2 hours to first commit |
 | **A product manager**                 | [Product Overview](20-product/01-product-overview.md) → [Feature Catalog](20-product/02-feature-catalog.md) → [Nuxeo Web UI Comparison](20-product/06-nuxeo-web-ui-comparison.md)    | ~45 minutes              |
 | **An executive or sponsor**           | [Executive Overview](10-leadership/01-executive-overview.md) → [Cost & TCO](10-leadership/03-cost-and-tco.md) → [Risks & Opportunities](10-leadership/07-risks-and-opportunities.md) | ~20 minutes              |
@@ -72,6 +73,7 @@ otherwise. The customer-facing AI features are always called "runtime AI feature
 
 | Page                                                                    | Answers                                                  |
 | ----------------------------------------------------------------------- | -------------------------------------------------------- |
+| [The short version](20-product/00-the-short-version.md)                 | What it does, what changes without code, how to start    |
 | [Product Overview](20-product/01-product-overview.md)                   | What is it, for whom, and what is the value proposition? |
 | [Feature Catalog](20-product/02-feature-catalog.md)                     | Everything it can do, with evidence                      |
 | [Personas](20-product/03-personas.md)                                   | Who uses it and what they need                           |

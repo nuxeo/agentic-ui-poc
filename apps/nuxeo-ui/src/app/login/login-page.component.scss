@@ -59,6 +59,14 @@
   color: inherit;
 }
 
+.login-brand-logo {
+  display: block;
+  height: 48px;
+  width: auto;
+  max-width: 240px;
+  object-fit: contain;
+}
+
 .login-form {
   display: flex;
   flex-direction: column;

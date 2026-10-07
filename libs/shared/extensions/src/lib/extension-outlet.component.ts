@@ -10,7 +10,9 @@ import {
   effect,
   inject,
   input,
+  reflectComponentType,
   signal,
+  untracked,
   type ComponentRef,
   type Type,
 } from '@angular/core';
@@ -35,6 +37,13 @@ import { TranslatePipe } from '@ngx-translate/core';
  * It uses `createComponent()` rather than `ViewContainerRef.createComponent()`
  * because the former accepts `bindings`/`environmentInjector` explicitly, which
  * is what makes input binding to a dynamically chosen component possible at all.
+ *
+ * A change to `componentInputs` values is applied to the live instance. The `documentView`
+ * slot feeds the focused document, which is a new object on every refetch, and recreating
+ * on each one would discard whatever state the rendered view holds. A change of component,
+ * or of which declared inputs are set, recreates it: in place, an input the new inputs
+ * omit would keep its previous value. While a lazy component loads, nothing is shown.
+ * After a loader rejects, the next `componentInputs` change retries it, at most twice.
  */
 @Component({
   selector: 'lib-extension-outlet',
@@ -72,8 +81,18 @@ export class ExtensionOutletComponent {
   private readonly injector = inject(Injector);
   private readonly environmentInjector = inject(EnvironmentInjector);
   private componentRef: ComponentRef<unknown> | null = null;
+  private renderedType: Type<unknown> | null = null;
+  /** Public names of the inputs the rendered component declares. */
+  private declaredInputs: ReadonlySet<string> = new Set();
+  /** The declared input names last set, from {@link declaredKeysOf}. */
+  private appliedKeys: ReadonlySet<string> = new Set();
   /** Bumped on every request so a slow load cannot overwrite a newer one. */
   private generation = 0;
+  /** Retries left for the requested id after its loader rejected — {@link retryUnresolved}. */
+  private retriesLeft = 0;
+  /** A retry's load is pending; updates meanwhile ride on it rather than starting another. */
+  private retrying = false;
+  private static readonly MAX_RETRIES = 2;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.clear());
@@ -81,11 +100,10 @@ export class ExtensionOutletComponent {
     effect(() => {
       const id = this.componentId();
       const type = this.componentType();
-      const inputs = this.componentInputs() ?? {};
       const generation = ++this.generation;
 
       if (type) {
-        this.render(type, inputs, generation);
+        untracked(() => this.render(type, generation));
         return;
       }
       if (!id) {
@@ -97,30 +115,81 @@ export class ExtensionOutletComponent {
 
       const immediate = this.registry.peek(id);
       if (immediate) {
-        this.render(immediate, inputs, generation);
+        untracked(() => this.render(immediate, generation));
         return;
       }
 
-      this.loading.set(true);
-      this.unresolved.set(false);
-      void this.registry.resolve(id).then((resolvedType) => {
-        if (generation !== this.generation) return;
-        this.loading.set(false);
-        if (!resolvedType) {
-          this.clear();
-          this.unresolved.set(true);
+      this.retriesLeft = ExtensionOutletComponent.MAX_RETRIES;
+      this.retrying = false;
+      untracked(() => this.load(id, generation, false));
+    });
+
+    effect(() => {
+      const inputs = this.componentInputs() ?? {};
+      untracked(() => {
+        if (!this.componentRef || !this.renderedType) {
+          this.retryUnresolved();
           return;
         }
-        this.render(resolvedType, inputs, generation);
+        if (this.setsAppliedKeys(inputs)) {
+          this.applyInputs(this.componentRef, inputs);
+        } else {
+          this.render(this.renderedType, this.generation);
+        }
       });
     });
   }
 
-  private render(
-    type: Type<unknown>,
-    inputs: Readonly<Record<string, unknown>>,
-    generation: number,
-  ): void {
+  /**
+   * Resolve `id` and render it, or mark the outlet unresolved.
+   *
+   * A `retry` leaves the outlet as it is — unresolved, nothing rendered, no loading state —
+   * until the load settles, so a host showing its fallback keeps showing it rather than
+   * blanking for the length of a chunk request that may fail again.
+   */
+  private load(id: string, generation: number, retry: boolean): void {
+    if (!retry) {
+      this.clear();
+      this.loading.set(true);
+      this.unresolved.set(false);
+    }
+    void this.registry.resolve(id).then((resolvedType) => {
+      if (generation !== this.generation) return;
+      if (retry) this.retrying = false;
+      this.loading.set(false);
+      if (!resolvedType) {
+        this.clear();
+        this.unresolved.set(true);
+        return;
+      }
+      this.render(resolvedType, generation);
+    });
+  }
+
+  /**
+   * Ask again for a registered component whose loader rejected.
+   *
+   * The registry does not cache a rejection, so a transient chunk failure is recoverable —
+   * but only if something asks. A new `componentInputs` value is a fresh render request
+   * (for `documentView`, a refetched or different document), so it retries. Bounded by
+   * {@link MAX_RETRIES} per requested id, so a loader that always fails is called three
+   * times in all rather than on every refetch. An id nothing registered is not retried:
+   * that is a missing library, not a transient failure.
+   *
+   * An update while a retry is still loading starts nothing and spends nothing: the
+   * registry would fold it onto the pending load, and the retry renders with whatever
+   * inputs are current when it lands.
+   */
+  private retryUnresolved(): void {
+    const id = this.componentId();
+    if (this.retrying || !this.unresolved() || !id || this.componentType()) return;
+    if (this.retriesLeft <= 0 || !this.registry.has(id)) return;
+    this.retriesLeft -= 1;
+    this.retrying = true;
+    this.load(id, ++this.generation, true);
+  }
+
+  private render(type: Type<unknown>, generation: number): void {
     if (generation !== this.generation) return;
     this.clear();
 
@@ -128,27 +197,59 @@ export class ExtensionOutletComponent {
       environmentInjector: this.environmentInjector,
       elementInjector: this.injector,
     });
-
-    for (const [name, value] of Object.entries(inputs)) {
-      // `setInput` throws on a component that does not declare the input, and a
-      // descriptor's inputs are customer-authored data. A mistyped key must not
-      // blank the panel.
-      try {
-        ref.setInput(name, value);
-      } catch {
-        /* ignore an input the component does not declare */
-      }
-    }
+    this.declaredInputs = new Set(
+      reflectComponentType(type)?.inputs.map((declared) => declared.templateName) ?? [],
+    );
+    this.applyInputs(ref, this.componentInputs() ?? {});
 
     this.outlet.insert(ref.hostView);
     this.componentRef = ref;
+    this.renderedType = type;
     this.loading.set(false);
     this.unresolved.set(false);
+  }
+
+  /**
+   * Set the inputs the component declares, and only those.
+   *
+   * A descriptor's inputs are customer-authored, and a host may offer an input not every
+   * component wants — `documentView` always offers `document`. `setInput` does not throw
+   * on an undeclared name; in a development build it logs NG0303 to the console, so the
+   * filter is what keeps an unused key silent rather than a `catch` that never fires.
+   */
+  private applyInputs(ref: ComponentRef<unknown>, inputs: Readonly<Record<string, unknown>>): void {
+    this.appliedKeys = this.declaredKeysOf(inputs);
+    for (const [name, value] of Object.entries(inputs)) {
+      if (!this.declaredInputs.has(name)) continue;
+      // A declared input's `transform` is the component's code, run on customer data;
+      // a value it rejects must not blank the panel.
+      try {
+        ref.setInput(name, value);
+      } catch {
+        /* keep the rest of the inputs and the rendered component */
+      }
+    }
+  }
+
+  /** The declared input names `inputs` sets. */
+  private declaredKeysOf(inputs: Readonly<Record<string, unknown>>): ReadonlySet<string> {
+    return new Set(Object.keys(inputs).filter((name) => this.declaredInputs.has(name)));
+  }
+
+  /** Whether `inputs` sets exactly the declared inputs last applied. */
+  private setsAppliedKeys(inputs: Readonly<Record<string, unknown>>): boolean {
+    const keys = this.declaredKeysOf(inputs);
+    return (
+      keys.size === this.appliedKeys.size && [...keys].every((name) => this.appliedKeys.has(name))
+    );
   }
 
   private clear(): void {
     this.outlet?.clear();
     this.componentRef?.destroy();
     this.componentRef = null;
+    this.renderedType = null;
+    this.declaredInputs = new Set();
+    this.appliedKeys = new Set();
   }
 }

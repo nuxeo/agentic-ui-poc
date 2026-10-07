@@ -76,7 +76,8 @@ export const EMPTY_EXTENSION_RULE_CONTEXT: ExtensionRuleContext = {
 /**
  * A reference to a registered rule, as written in a manifest.
  *
- * `type` is the registered evaluator id; `parameters` are passed to it verbatim.
+ * `type` is the registered evaluator id; `parameters` reach it as written, or as `[]` when they
+ * are absent or not an array.
  * A bare string is shorthand for `{ type: <string> }`, which is what most
  * manifest entries want.
  */
@@ -271,7 +272,9 @@ export class ExtensionRuleRegistry {
 
     if (depth >= MAX_RULE_DEPTH) return !this.failClosed.has(ref.type);
 
-    const parameters = ref.parameters ?? [];
+    // Manifest JSON is validated down to `type` and no further, so `"parameters": "File"` gets
+    // here; an evaluator calling `.filter` on it would throw out of slot resolution.
+    const parameters = Array.isArray(ref.parameters) ? ref.parameters : [];
     return evaluator(context, parameters, (nested) =>
       this.evaluateRef(asRuleRef(nested), context, depth + 1),
     );

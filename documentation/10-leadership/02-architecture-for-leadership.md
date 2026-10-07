@@ -50,13 +50,13 @@ audience: leadership
 
 The line between "we own it" and "the customer owns it" is not a convention — it is enforced:
 
-| Guarantee                                   | Mechanism                                                |
-| ------------------------------------------- | -------------------------------------------------------- |
-| Their config survives our upgrade           | `install.xml` copies with `overwrite="false"`            |
-| Their wiring survives our upgrade           | The manifest is a Nuxeo **document**, not a bundled file |
-| Their code depends only on published API    | 4 entry points; a guardrail rejects deep imports         |
-| Our public API cannot change by accident    | A 2,221-line snapshot gate                               |
-| Their customisation survives a version bump | An upgrade rehearsal, run on every build                 |
+| Guarantee                                   | Mechanism                                                       |
+| ------------------------------------------- | --------------------------------------------------------------- |
+| Their config survives our upgrade           | Package ships a sample, never their file; rehearsed (NXSAT-317) |
+| Their wiring survives our upgrade           | The manifest is a Nuxeo **document**, not a bundled file        |
+| Their code depends only on published API    | 4 entry points; a guardrail rejects deep imports                |
+| Our public API cannot change by accident    | A 2,221-line snapshot gate                                      |
+| Their customisation survives a version bump | An upgrade rehearsal, run on every build                        |
 
 **Why leadership should care:** this is what makes a support boundary defensible, an upgrade
 shippable, and a certification claim makeable. Without it, every customer is a fork.
@@ -123,10 +123,13 @@ Java/OSGi bundle, and installed into Nuxeo. Static assets are served by Nuxeo's 
 **no separate server to run and no new infrastructure** — which is a genuine operational
 advantage, and the reason the runtime cost delta for a customer is close to zero.
 
-The one subtlety that has already caused a defect: the customer-editable config must land inside
-the directory Tomcat actually serves, and it must not be overwritten on upgrade. An earlier
-version installed to a path that is not a docBase and **would have 404'd on every install** — it
-was recorded complete before that was caught, which is why the phase-state gate now exists.
+The one subtlety that has already caused two defects: the customer-editable config must land inside
+the directory Tomcat actually serves, and the package must not own it. An earlier version installed
+to a path that is not a docBase and **would have 404'd on every install** — it was recorded complete
+before that was caught, which is why the phase-state gate now exists. The next installed the file
+itself with `overwrite="false"`, documented as upgrade-safe; the first real rehearsal showed an
+upgrade after a customer edit left **no version installed** (NXSAT-317). The package now ships only
+a sample, and that upgrade was rehearsed after the fix.
 
 ---
 

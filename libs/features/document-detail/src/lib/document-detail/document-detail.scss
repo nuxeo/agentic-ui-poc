@@ -50,6 +50,8 @@
   background: #fff;
   border-bottom: 1px solid #e0e0e0;
   flex-shrink: 0;
+  // Header stays #fff in every packaged theme; positive-offset focus rings must contrast with it.
+  --agentic-document-detail-header-focus-outline: #3f51b5;
 }
 
 .header-info {
@@ -126,6 +128,27 @@ sat-breadcrumbs {
   animation: ke-spin 1s linear infinite;
 }
 
+// NXENG-789 / IBM issue 299839583 — Material stroked buttons suppress the default focus ring.
+// IBM Equal Access `style_focus_visible` reads `:focus` only; keep this selector standalone.
+//
+// Positive `outline-offset` paints outside the button; the pixels behind it are the header's
+// fixed `#fff` (`.detail-header` above), not the themed page chrome. In dark and kawaii,
+// `--mat-sys-primary` resolves too pale on that surface (1.71:1). Use the same indigo as the
+// panel toggle so 1.4.11 holds on the white header in every theme.
+.ke-action-btn.mat-mdc-outlined-button:focus {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-color: var(--agentic-document-detail-header-focus-outline);
+  outline-offset: 2px;
+}
+
+.ke-action-btn.mat-mdc-outlined-button:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-color: var(--agentic-document-detail-header-focus-outline);
+  outline-offset: 2px;
+}
+
 @keyframes ke-spin {
   to {
     transform: rotate(360deg);
@@ -189,6 +212,8 @@ sat-breadcrumbs {
   min-height: 0;
   overflow: hidden;
   position: relative;
+  // Tab header stays #fff in every packaged theme; ring must contrast with that surface.
+  --agentic-document-detail-panel-toggle-focus-outline: #3f51b5;
 }
 
 .panel-toggle-btn {
@@ -201,6 +226,22 @@ sat-breadcrumbs {
   &:hover {
     color: #3f51b5;
   }
+}
+
+// NXENG-773 / IBM 247628794 — Material `mat-icon-button` suppresses the default ring and
+// `apps/nuxeo-ui/src/styles.scss` has no global fallback, so keyboard focus changed no pixels.
+// IBM Equal Access `style_focus_visible` reads `:focus` only — keep a standalone selector, not
+// a comma list with `:focus-visible` (see AGENTS/08-bug-patterns.md §17).
+//
+// Positive `outline-offset` paints outside the button; the pixels behind it are the tab header's
+// fixed `#fff` (`.detail-tabs .mat-mdc-tab-header` below), not the themed page chrome. In dark
+// and kawaii, `--mat-sys-primary` resolves too pale on that surface (1.71:1). Use the same
+// indigo as `.panel-toggle-btn:hover` so 1.4.11 holds on the white header in every theme.
+.panel-toggle-btn.mat-mdc-icon-button:focus {
+  outline-style: solid;
+  outline-width: 2px;
+  outline-color: var(--agentic-document-detail-panel-toggle-focus-outline);
+  outline-offset: 2px;
 }
 
 // Tabs — compact, left-aligned (matching Figma)
@@ -245,6 +286,19 @@ sat-breadcrumbs {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+  }
+}
+
+// A contributed View tab body brings no layout of its own; the tab body clips, so it scrolls here.
+.document-view-outlet {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+
+  // The packaged view renders beside it as the fallback; an empty flex child would share the space.
+  &--unresolved {
+    display: none;
   }
 }
 

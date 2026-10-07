@@ -116,6 +116,28 @@ export interface ExtensionTabDescriptor extends ExtensionElement {
 }
 
 /**
+ * What the document-detail View tab renders for the documents a rule selects.
+ *
+ * The host resolves the `documentView` slot against the focused document and renders the
+ * first entry, by `order`, whose component is registered. Nothing resolving leaves the
+ * packaged view in place, so a manifest that contributes nothing changes nothing.
+ *
+ * `rule` is what makes it per type: `{ "type": "app.rules.isType", "parameters": ["Claim"] }`.
+ * Any registered rule works. An entry with no rule matches every document.
+ *
+ * The rendered component receives the focused document as a `document` input when it
+ * declares one, plus `inputs`. `document` is the host's: an `inputs.document` is overwritten,
+ * so a manifest cannot hand a view a document other than the one on screen.
+ */
+export interface ExtensionDocumentViewDescriptor extends ExtensionElement {
+  readonly rule?: ExtensionRule;
+  /** Registered component id rendering the View tab body. Defaults to the descriptor `id`. */
+  readonly componentId?: string;
+  /** Static values set on the component's declared inputs. Unknown keys are ignored. */
+  readonly inputs?: Readonly<Record<string, unknown>>;
+}
+
+/**
  * A route contributed by id — `path` plus the component that answers it.
  *
  * The component is resolved through `ExtensionComponentRegistry`, so a manifest

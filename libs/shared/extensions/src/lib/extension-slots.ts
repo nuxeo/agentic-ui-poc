@@ -16,7 +16,7 @@
  *
  * The practical consequence — and the thing that turns the "addressable
  * ceiling" from an irreversible decision into ordinary backlog — is that adding
- * a ninth slot after Beta ships requires **no change to the eight**, and no
+ * a tenth slot after Beta ships requires **no change to the nine**, and no
  * change to this library at all. `extension-slot-registry.service.spec.ts`
  * proves it by registering a slot this file has never heard of.
  *
@@ -25,7 +25,7 @@
  */
 
 /**
- * The eight slots Beta implements. Not a closed set — see the file comment.
+ * The nine slots Beta implements. Not a closed set — see the file comment.
  *
  * `rules` used to be listed here and was removed: rules are not descriptors and
  * do not live in a slot. They are registered in `ExtensionRuleRegistry`, so a
@@ -49,6 +49,14 @@ export const EXTENSION_SLOTS = {
   tabs: 'tabs',
   /** Document list column descriptors. */
   documentList: 'documentList',
+  /**
+   * The body of the document-detail View tab, chosen per document by rule.
+   *
+   * Named for the view alone. Nuxeo Web UI resolves four layouts per type — view, edit,
+   * create and metadata — and the other three are not this slot: a per-type metadata layout
+   * is a separate design, and a generic `documentLayout` name here would have decided it.
+   */
+  documentView: 'documentView',
 } as const;
 
 /** A slot id. Deliberately `string`, not a union over {@link EXTENSION_SLOTS}. */
