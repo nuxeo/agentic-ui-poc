@@ -41,7 +41,7 @@
           "alt": "Browse page with default columns"
         }
       ],
-      "footnote": "The manifest is reset to `{\"version\": 1}` for this capture on purpose. An earlier run had left column overrides applied, which would have made a customised screen look like the baseline."
+      "footnote": "The manifest response is reset to our defaults alone, with no customer fragment, for this capture on purpose. An earlier run had left column overrides applied, which would have made a customised screen look like the baseline."
     },
     {
       "eyebrow": "Track A · 1 of 5 — rebrand",

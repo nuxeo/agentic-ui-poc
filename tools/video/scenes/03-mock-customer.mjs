@@ -283,7 +283,7 @@ export default async function run({ page, deckUrl, hold, teardown, ROOT }) {
   await page.waitForSelector('.docs__table', { timeout: 45000 });
   await caption(
     page,
-    'Layer 0 — configuration beside the bundle',
+    'Layer 0 — configuration in their own package',
     'This is Acme’s brand and palette, from the bootstrap fragment in their configuration package. Watch what one fragment does to the same build.',
   );
   await showCode(
