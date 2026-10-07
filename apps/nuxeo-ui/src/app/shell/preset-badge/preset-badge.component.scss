@@ -6,7 +6,8 @@
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  margin-inline: 8px;
+  align-self: center;
+  margin-inline: 12px 8px;
   padding: 2px 10px;
   border: 1px solid var(--mat-sys-tertiary);
   border-radius: 999px;
