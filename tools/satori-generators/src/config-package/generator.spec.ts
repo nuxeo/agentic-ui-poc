@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import {
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   renameSync,
   rmSync,
@@ -127,6 +128,26 @@ describe('config-package generator', () => {
     );
   });
 
+  it('refuses a name over 128 characters, the server’s limit for the fragment name it becomes', async () => {
+    const longest = `a${'-b'.repeat(63)}a`;
+    expect(longest).toHaveLength(128);
+    await expect(
+      configPackageGenerator(tree, { name: longest, owner: 'acme' }),
+    ).resolves.toBeDefined();
+    await expect(
+      configPackageGenerator(createTreeWithEmptyWorkspace(), { name: `${longest}x`, owner: 'acme' }),
+    ).rejects.toThrow(/129 characters; a fragment name may have at most 128/);
+  });
+
+  it.each([
+    [{ owner: 'Acme Corp' }, /--owner "Acme Corp" must be/],
+    [{ owner: 'acme', version: '1.0' }, /--version "1\.0" must be/],
+  ])('refuses %j when called directly, as the CLI schema would', async (options, message) => {
+    await expect(
+      configPackageGenerator(tree, { name: 'acme-config', ...options }),
+    ).rejects.toThrow(message);
+  });
+
   it('refuses to overwrite an existing package unless forced', async () => {
     await configPackageGenerator(tree, { name: 'acme-config', owner: 'acme' });
     await expect(
@@ -142,12 +163,13 @@ describe('the generated build.mjs', () => {
   let dir: string;
 
   /** Generate into a real directory, so the generated script runs as a customer would run it. */
-  async function generate(presales = false): Promise<void> {
+  async function generate(presales = false, name = 'acme-config'): Promise<void> {
     const tree = createTreeWithEmptyWorkspace();
-    await configPackageGenerator(tree, { name: 'acme-config', owner: 'acme', presales });
+    await configPackageGenerator(tree, { name, owner: 'acme', presales });
+    const root = `config-packages/${name}`;
     for (const change of tree.listChanges()) {
-      if (!change.path.startsWith(`${ROOT}/`) || !change.content) continue;
-      const target = join(dir, change.path.slice(ROOT.length + 1));
+      if (!change.path.startsWith(`${root}/`) || !change.content) continue;
+      const target = join(dir, change.path.slice(root.length + 1));
       mkdirSync(dirname(target), { recursive: true });
       writeFileSync(target, change.content);
     }
@@ -168,7 +190,8 @@ describe('the generated build.mjs', () => {
           stdio: ['ignore', 'pipe', 'pipe'],
         },
       );
-      return { status: 0, output, zip: readFileSync(join(dir, 'out', 'acme-config-1.0.0.zip')) };
+      const [zip] = readdirSync(join(dir, 'out')).filter((file) => file.endsWith('.zip'));
+      return { status: 0, output, zip: readFileSync(join(dir, 'out', zip)) };
     } catch (error) {
       const failure = error as { status: number; stdout: string; stderr: string };
       return { status: failure.status, output: `${failure.stdout}${failure.stderr}` };
@@ -410,7 +433,7 @@ describe('the generated build.mjs', () => {
     it('keeps comment markers and markup inside CDATA as text', async () => {
       await generate();
       contribute(
-        `<fragment name="marks" layer="manifest"><json><![CDATA[{ "labels": { "a": "<!--", "b": "<asset name='x.html'/>", "c": "-- --->" } }]]></json></fragment>`,
+        `<fragment name="marks" layer="manifest"><json><![CDATA[{ "labels": { "a": "<!--", "b": "<asset name='x.html'/>", "c": "-- --->", "d": "<?pi <require/> ?>" } }]]></json></fragment>`,
       );
       expect(build().status).toBe(0);
 
@@ -536,6 +559,40 @@ describe('the generated build.mjs', () => {
     expect(status).toBe(1);
     expect(output).toContain('bundle/OSGI-INF/acme-config-config.xml: is not well-formed XML');
     expect(output).toMatch(message);
+  });
+
+  it('builds the untouched scaffold of a 128-character name', async () => {
+    const longest = `a${'-b'.repeat(63)}a`;
+    await generate(false, longest);
+    const { status, zip } = build();
+    expect(status).toBe(0);
+    expect([...unzip(zip as Buffer).keys()]).toContain(`install/bundles/${longest}.jar`);
+  });
+
+  it('does not read markup written inside a processing instruction', async () => {
+    await generate();
+    write(
+      componentXml,
+      readFileSync(join(dir, componentXml), 'utf8').replace(
+        /<require>([^<]*)<\/require>/,
+        '<?probe <require>$1</require> ?>',
+      ),
+    );
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toMatch(/must <require>org\.nuxeo\.agentic\.ui\.config\.defaults<\/require>/);
+  });
+
+  it.each([
+    ['a fragment', 'bundle/agentic-ui-config/bootstrap.json', '{ "branding": { "applicationTitle": "Caf', '" } }'],
+    ['the manifest', 'bundle/META-INF/MANIFEST.MF', 'Manifest-Version: 1.0\nNuxeo-Component: OSGI-INF/acme-config-config.xml\nBundle-Name: Caf', '\n'],
+  ])('refuses %s that is not valid UTF-8, rather than packaging it changed', async (_case, path, before, after) => {
+    await generate();
+    // "Café" as Windows-1252 writes it: 0xE9 is not UTF-8 on its own.
+    writeFileSync(join(dir, path), Buffer.concat([Buffer.from(before), Buffer.from([0xe9]), Buffer.from(after)]));
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toContain(`${path}: is not valid UTF-8`);
   });
 
   it('refuses component XML that is not valid UTF-8', async () => {

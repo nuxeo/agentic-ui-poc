@@ -102,6 +102,20 @@ function filesUnder(directory) {
 }
 
 /**
+ * A text file decoded strictly, so a byte that is not UTF-8 is refused rather than read as U+FFFD
+ * and packaged changed; the decoder drops a byte-order mark. `null`, reported, if it is not UTF-8.
+ */
+function readUtf8(file) {
+  const bytes = readFileSync(file);
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    problem(file, 'is not valid UTF-8');
+    return null;
+  }
+}
+
+/**
  * An XML file as a parser reads it — no byte-order mark, line endings normalised — checked for
  * well-formedness; `null`, reported, when it is missing or malformed.
  */
@@ -110,16 +124,9 @@ function readXml(file) {
     problem(file, 'is missing');
     return null;
   }
-  let xml;
-  try {
-    // Strict, so a byte that is not UTF-8 is refused rather than read as U+FFFD; the decoder also
-    // drops a byte-order mark.
-    xml = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
-  } catch {
-    problem(file, 'is not valid UTF-8');
-    return null;
-  }
-  xml = xml.replace(/\r\n?/g, '\n');
+  const text = readUtf8(file);
+  if (text === null) return null;
+  const xml = text.replace(/\r\n?/g, '\n');
   const malformed = notWellFormed(xml);
   if (malformed) {
     problem(file, `is not well-formed XML: ${malformed}`);
@@ -406,27 +413,24 @@ function rejectDuplicateKeys(text) {
 }
 
 /**
- * XML with its comments removed. Inside CDATA `<!--` is text, so a CDATA section is kept whole.
- * Comments do not nest; an unterminated comment or CDATA section runs to the end.
+ * XML without its comments and processing instructions, neither of which a parser hands on as
+ * content. Inside CDATA both are text, so a CDATA section is kept whole. An unterminated one of
+ * any of the three runs to the end.
  */
-function withoutComments(xml) {
+function withoutCommentsOrInstructions(xml) {
+  const CLOSE = { '<!--': '-->', '<?': '?>', '<![CDATA[': ']]>' };
+  const next = /<!--|<\?|<!\[CDATA\[/g;
   let out = '';
   let at = 0;
   for (;;) {
-    const start = xml.indexOf('<!--', at);
-    if (start < 0) return out + xml.slice(at);
-    const cdata = xml.indexOf('<![CDATA[', at);
-    if (cdata >= 0 && cdata < start) {
-      const end = xml.indexOf(']]>', cdata);
-      const stop = end < 0 ? xml.length : end + 3;
-      out += xml.slice(at, stop);
-      at = stop;
-      continue;
-    }
-    out += xml.slice(at, start);
-    const end = xml.indexOf('-->', start + 4);
-    if (end < 0) return out;
-    at = end + 3;
+    next.lastIndex = at;
+    const match = next.exec(xml);
+    if (!match) return out + xml.slice(at);
+    const close = CLOSE[match[0]];
+    const end = xml.indexOf(close, match.index + match[0].length);
+    const stop = end < 0 ? xml.length : end + close.length;
+    out += xml.slice(at, match[0] === '<![CDATA[' ? stop : match.index);
+    at = stop;
   }
 }
 
@@ -512,8 +516,9 @@ function parseObject(text, report) {
 
 /** A JSON file as packaged, compact and without `$schema`; `null` if the server would refuse it. */
 function checkJson(file) {
-  // A byte-order mark is skipped, as the server's parser skips it.
-  const text = readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
+  // Decoded strictly; a byte-order mark is dropped, as the server's parser skips it.
+  const text = readUtf8(file);
+  if (text === null) return null;
   const parsed = parseObject(text, (message) => problem(file, message));
   if (!parsed) return null;
   delete parsed.$schema;
@@ -558,7 +563,7 @@ for (const path of [PACKAGE, packageXmlFile, installXmlFile]) isLink(path);
 readXml(installXmlFile);
 const { name: packageName, version: packageVersion } = attributes(
   /<package(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/.exec(
-    withoutCdata(withoutComments(readXml(packageXmlFile) ?? '')),
+    withoutCdata(withoutCommentsOrInstructions(readXml(packageXmlFile) ?? '')),
   )?.[1] ?? '',
 );
 // Both name the files written below, so each must be a plain file name and nothing more.
@@ -576,7 +581,7 @@ if (!packageName || !packageVersion) {
 
 const manifestFile = join(BUNDLE, 'META-INF', 'MANIFEST.MF');
 // A manifest line longer than 72 bytes continues on the next one, which starts with a space.
-const manifest = (existsSync(manifestFile) ? readFileSync(manifestFile, 'utf8') : '').replace(
+const manifest = ((existsSync(manifestFile) ? readUtf8(manifestFile) : '') ?? '').replace(
   /(?:\r\n|\r|\n) /g,
   '',
 );
@@ -600,8 +605,9 @@ for (const componentPath of componentPaths) {
   }
   const source = readXml(componentFile);
   if (source === null) continue;
-  // Comments removed first, so a commented-out example can neither satisfy nor fail a check.
-  const xml = withoutComments(source);
+  // Comments and processing instructions removed first, so neither a commented-out example nor
+  // markup written inside an instruction can satisfy or fail a check.
+  const xml = withoutCommentsOrInstructions(source);
   // Markup is looked for here; text, including inline JSON, is read from `xml` at the same offsets.
   const markup = withoutCdata(xml);
   const contributes = [

@@ -7,7 +7,8 @@
   "properties": {
     "name": {
       "type": "string",
-      "description": "Marketplace package name, kebab-case. Also the directory and the Nx project name. Renaming it later is a different package to Nuxeo.",
+      "description": "Marketplace package name, kebab-case, at most 128 characters. Also the directory, the Nx project name and the fragment name. Renaming it later is a different package to Nuxeo.",
+      "maxLength": 128,
       "$default": {
         "$source": "argv",
         "index": 0

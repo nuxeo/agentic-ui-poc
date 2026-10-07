@@ -69,6 +69,22 @@ export default async function configPackageGenerator(tree: Tree, options: Config
   if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(options.name)) {
     throw new Error(`"${options.name}" must be kebab-case, e.g. acme-config.`);
   }
+  // The name is also the fragment name, which the server accepts up to 128 characters.
+  if (options.name.length > 128) {
+    throw new Error(
+      `"${options.name}" is ${options.name.length} characters; a fragment name may have at most 128.`,
+    );
+  }
+  // The schema says the same, but only the CLI applies it; a caller of this function would not.
+  if (!/^[a-z][a-z0-9]*$/.test(options.owner)) {
+    throw new Error(`--owner "${options.owner}" must be lower-case letters and digits.`);
+  }
+  if (
+    options.version !== undefined &&
+    !/^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$/.test(options.version)
+  ) {
+    throw new Error(`--version "${options.version}" must be like 1.0.0 or 1.0.0-rc.1.`);
+  }
   const name = names(options.name);
   const projectRoot = `${parentDirectory}/${name.fileName}`;
 
