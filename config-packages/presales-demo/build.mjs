@@ -100,6 +100,20 @@ function rejectDuplicateKeys(text) {
   if (i !== text.length) throw new Error(`unexpected input after the value at offset ${i}`);
 }
 
+/** XML with its comments removed. XML comments do not nest; an unterminated one runs to the end. */
+function withoutComments(xml) {
+  let out = '';
+  let at = 0;
+  for (;;) {
+    const start = xml.indexOf('<!--', at);
+    if (start < 0) return out + xml.slice(at);
+    out += xml.slice(at, start);
+    const end = xml.indexOf('-->', start + 4);
+    if (end < 0) return out;
+    at = end + 3;
+  }
+}
+
 function checkJson(file) {
   const bytes = readFileSync(file);
   if (bytes.length > MAX_FRAGMENT_BYTES) {
@@ -154,11 +168,10 @@ for (const componentPath of componentPaths) {
     continue;
   }
   // Comments removed first, so a commented-out example can neither satisfy nor fail a check.
-  const xml = readFileSync(componentFile, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const xml = withoutComments(readFileSync(componentFile, 'utf8'));
   const contributes = /target="org\.nuxeo\.agentic\.ui\.config"/.test(xml);
-  const requiresDefaults = new RegExp(
-    `<require>\\s*${DEFAULTS_COMPONENT.replace(/\./g, '\\.')}\\s*</require>`,
-  ).test(xml);
+  const requiresDefaults =
+    /<require>\s*org\.nuxeo\.agentic\.ui\.config\.defaults\s*<\/require>/.test(xml);
   if (contributes && !requiresDefaults) {
     problem(
       componentFile,

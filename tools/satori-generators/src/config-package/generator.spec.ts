@@ -232,6 +232,18 @@ describe('the generated build.mjs', () => {
     expect(output).toMatch(/must <require>org\.nuxeo\.agentic\.ui\.config\.defaults<\/require>/);
   });
 
+  it('does not count a commented-out require', async () => {
+    await generate();
+    const xml = readFileSync(join(dir, componentXml), 'utf8');
+    write(
+      componentXml,
+      xml.replace(/<require>([^<]*)<\/require>/, '<!-- <require>$1</require> -->'),
+    );
+    const { status, output } = build();
+    expect(status).toBe(1);
+    expect(output).toMatch(/must <require>org\.nuxeo\.agentic\.ui\.config\.defaults<\/require>/);
+  });
+
   it('refuses a src that names no file, and ignores the commented-out example', async () => {
     await generate();
     const xml = readFileSync(join(dir, componentXml), 'utf8');
