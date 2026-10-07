@@ -215,6 +215,20 @@ describe('AppConfigService', () => {
       expect(service.diagnostics().messages[0]).toContain('expected layer "bootstrap"');
     });
 
+    it('refuses an envelope whose fragments or diagnostics are not lists, and says so', async () => {
+      await load(
+        { ...envelope('bootstrap', []), fragments: { acme: {} } },
+        { ...envelope('manifest', []), diagnostics: undefined },
+      );
+
+      expect(service.diagnostics().bootstrapSource).toBe('packaged-default');
+      expect(service.diagnostics().manifestSource).toBe('packaged-default');
+      expect(service.diagnostics().messages).toEqual([
+        `bootstrap configuration from ${BOOTSTRAP_URL} ignored: fragments and diagnostics must both be lists`,
+        `manifest configuration from ${MANIFEST_URL} ignored: fragments and diagnostics must both be lists`,
+      ]);
+    });
+
     it('never rejects, so it is safe as an APP_INITIALIZER', async () => {
       const loaded = service.load();
       http.expectOne(BOOTSTRAP_URL).error(new ProgressEvent('error'));

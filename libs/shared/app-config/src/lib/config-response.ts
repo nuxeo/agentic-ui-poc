@@ -62,8 +62,11 @@ export function readConfigResponse(
   if (raw['layer'] !== layer) {
     return { invalid: `expected layer "${layer}", got "${String(raw['layer'])}"` };
   }
-  const fragments = Array.isArray(raw['fragments']) ? raw['fragments'] : [];
-  const diagnostics = Array.isArray(raw['diagnostics']) ? raw['diagnostics'] : [];
+  const fragments = raw['fragments'];
+  const diagnostics = raw['diagnostics'];
+  if (!Array.isArray(fragments) || !Array.isArray(diagnostics)) {
+    return { invalid: 'fragments and diagnostics must both be lists' };
+  }
   return {
     fragments: fragments.filter(isRecord).flatMap((entry) => {
       const content = entry['content'];
