@@ -841,13 +841,117 @@ For Notes alone, the packaged `app.rules.isNote` reads the same way:
 What this slot does **not** do:
 
 - **Only the View tab.** The other tabs, the toolbar and the properties panel are
-  unchanged by any `documentView` entry. A per-type metadata or edit layout is a separate
-  design and is not this slot.
+  unchanged by any `documentView` entry. Which properties the panel shows per type is a
+  layout file, section 9b, not this slot.
 - **The packaged views are not entries.** The note editor and document viewer are still
   host markup, so a manifest cannot hide or reorder them — only outrank them with an
   entry of your own. Making them registered entries is a follow-up.
 - **Like every slot, it is not a security control.** Whatever your component reads is
   still gated by Nuxeo server-side.
+
+---
+
+## 9b. Per-type layouts — which properties a document type shows
+
+Not a slot and not an ID: a **layout file** per document type and mode, shipped in your
+configuration package, as Nuxeo Web UI keeps a layout per type and mode. This build renders one
+mode, `metadata`: the Properties panel on document detail, beneath the packaged rows (title, tags,
+description and the Dublin Core vocabularies) and above Attachments. Read-only.
+
+**With no file, the layout is generated from the type's own schemas.** One section per schema,
+fields by name, each value shown by its schema type. Schemas the panel and viewers already
+present are left out — `common`, `dublincore`, `uid`, `file`, `files`, `note`, `facetedTag`,
+`relatedtext`, `picture`, `image_metadata`, `video`, `audio` — so a stock File or Note shows
+nothing new, a Claim shows its `claim` schema, and a schema you add to File appears on File. A
+type never falls back to its parent type's file.
+
+**A file replaces the generated layout whole.** Only the fields it lists are shown, in its order;
+nothing generated is merged in. The type must match exactly.
+
+```json
+{
+  "version": 1,
+  "display": "sections",
+  "sections": [
+    {
+      "id": "summary",
+      "label": "Claim summary",
+      "fields": [
+        "claim:number",
+        { "field": "claim:status", "label": "Status" },
+        "claim:serviceDate"
+      ]
+    },
+    {
+      "id": "amounts",
+      "labelKey": "acme.layout.amounts",
+      "fields": ["claim:billedAmount", "claim:allowedAmount"]
+    }
+  ]
+}
+```
+
+| Key                   | Meaning                                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `version`             | Required, `1`. Any other value and the file is refused.                                                        |
+| `display`             | `"sections"` (default), or `"tabs"` for one tab per section.                                                   |
+| `sections`            | Required list, may be empty — an empty layout shows nothing.                                                   |
+| `sections[].id`       | Required, unique; letters, digits, `.`, `_`, `-`.                                                              |
+| `sections[].label`    | Heading, as a literal. Wins over `labelKey`. A section with neither has no heading (a tab is named from `id`). |
+| `sections[].labelKey` | Heading, as a translation key.                                                                                 |
+| `sections[].fields`   | Required list of `"<prefix>:<field>"`, or `{ "field", "label"?, "labelKey"? }`. Top-level fields only.         |
+
+A field the type does not have, or an entry that is not `<prefix>:<field>`, is skipped and the rest
+of the file applies; a file that is refused shows the generated layout instead. Both are logged in
+the browser console under `[agentic-ui-layouts]`, and the page never breaks. A schema with no prefix
+is addressed by its name, as Nuxeo does: `file:content`. Unknown keys are ignored without a message,
+so that a file written for a later version still loads.
+
+How each value is shown is decided by its schema type — there is no widget name to set:
+
+| Field type                     | Shown as                                      |
+| ------------------------------ | --------------------------------------------- |
+| `string`                       | text                                          |
+| `string` bound to a vocabulary | the entry's label, read from the vocabulary   |
+| `string[]` and other lists     | one chip per item (vocabulary items labelled) |
+| `date`                         | a long date                                   |
+| `long`, `double`               | a number in the user's locale                 |
+| `boolean`                      | Yes or No, translated                         |
+| `blob`                         | the file name                                 |
+| `complex`, `complex[]`         | its sub-fields, one group per item            |
+
+**Labels.** A field's `label` is shown verbatim; else its `labelKey` if it translates; else the
+key `layout.field.<prefix>:<field>`; else a readable form of the field name (`billedAmount` →
+"Billed amount"). Generated section headings look up `layout.schema.<schema>` first. So a manifest
+`labels` entry renames a generated label with no layout file at all:
+
+```json
+{ "labels": { "layout.field.claim:memberId": "Member ID", "layout.schema.claim": "Claim details" } }
+```
+
+**Shipping one.** Put the file in your configuration package's bundle and contribute it from the
+component that `<require>`s `org.nuxeo.agentic.ui.config.defaults`:
+
+```xml
+<extension target="org.nuxeo.agentic.ui.config" point="configuration">
+  <layout type="Claim" mode="metadata" src="agentic-ui-config/layouts/Claim/metadata.layout.json" />
+</extension>
+```
+
+A later package's file for the same type and mode replaces yours whole; `enabled="false"` removes
+the one in force. While developing, `npm run config:dev -- --layout Claim/metadata=claim.layout.json`
+serves it to `nx serve` the same way.
+
+What a layout file does **not** do:
+
+- **Only the `metadata` mode, read-only.** Edit and create layouts are not in this build; a file
+  for another mode is served but not rendered.
+- **Not the packaged rows above it.** Title, tags, description and the Dublin Core vocabularies are
+  still the panel's own; a `dc:` field you list appears in your layout as well.
+- **Folderish types.** Document detail redirects them to Browse, so their Properties panel is never
+  shown.
+- **Like every configuration, it is not a security control.** A field left out of a layout is still
+  returned by the REST API to anyone who may read the document.
 
 ---
 

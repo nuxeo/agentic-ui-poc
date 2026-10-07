@@ -1,0 +1,144 @@
+import { formatDate, formatNumber } from '@angular/common';
+
+import { LayoutFieldType } from '../layout.model';
+import { humanize } from '../resolve-layout';
+
+/** One rendered value: text, or a boolean the template translates. */
+export type ValueView = { readonly text: string } | { readonly flag: boolean };
+
+export interface FieldView {
+  /** The xpath at the top level, the bare sub-field name inside a complex value. */
+  readonly key: string;
+  readonly label: string;
+  readonly kind: 'empty' | 'value' | 'chips' | 'groups';
+  readonly value?: ValueView;
+  readonly chips?: readonly ValueView[];
+  /** One group of sub-field rows per complex value. */
+  readonly groups?: readonly (readonly FieldView[])[];
+}
+
+export interface ValueContext {
+  readonly locale: string;
+  /** The vocabulary entry's label for an id, or the id itself when it is not known. */
+  readonly vocabulary: (directory: string, id: string) => string;
+}
+
+/** Complex values nest arbitrarily in Nuxeo; past this depth the rest is shown as JSON. */
+const MAX_DEPTH = 4;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isEmpty(value: unknown): boolean {
+  return (
+    value === null ||
+    value === undefined ||
+    value === '' ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
+function scalar(
+  type: string,
+  directory: string | undefined,
+  value: unknown,
+  context: ValueContext,
+): ValueView {
+  switch (type) {
+    case 'date': {
+      const date = new Date(String(value));
+      return {
+        text: Number.isNaN(date.getTime())
+          ? String(value)
+          : formatDate(date, 'longDate', context.locale),
+      };
+    }
+    case 'long':
+    case 'integer':
+    case 'double':
+      return {
+        text: typeof value === 'number' ? formatNumber(value, context.locale) : String(value),
+      };
+    case 'boolean':
+      if (value === true || value === 'true') return { flag: true };
+      if (value === false || value === 'false') return { flag: false };
+      return { text: String(value) };
+    case 'blob':
+      return { text: isRecord(value) && typeof value['name'] === 'string' ? value['name'] : '' };
+    default:
+      if (directory && typeof value === 'string')
+        return { text: context.vocabulary(directory, value) };
+      return { text: typeof value === 'object' ? JSON.stringify(value) : String(value) };
+  }
+}
+
+function subFields(
+  definition: LayoutFieldType,
+  value: Record<string, unknown>,
+  context: ValueContext,
+  depth: number,
+): FieldView[] {
+  const fields = definition.fields ?? {};
+  const names = Object.keys(fields).length ? Object.keys(fields) : Object.keys(value);
+  return names
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) =>
+      describeField(
+        name,
+        humanize(name),
+        fields[name] ?? { type: 'string' },
+        value[name],
+        context,
+        depth + 1,
+      ),
+    );
+}
+
+/** What one field of one document looks like, chosen from its schema type. */
+export function describeField(
+  key: string,
+  label: string,
+  definition: LayoutFieldType,
+  value: unknown,
+  context: ValueContext,
+  depth = 0,
+): FieldView {
+  if (isEmpty(value)) return { key, label, kind: 'empty' };
+  const list = definition.type.endsWith('[]');
+  const type = list ? definition.type.slice(0, -2) : definition.type;
+
+  if (type === 'complex' && depth < MAX_DEPTH) {
+    const items = (list && Array.isArray(value) ? value : [value]).filter(isRecord);
+    if (items.length === 0)
+      return { key, label, kind: 'value', value: { text: JSON.stringify(value) } };
+    return {
+      key,
+      label,
+      kind: 'groups',
+      groups: items.map((item) => subFields(definition, item, context, depth)),
+    };
+  }
+  if (list) {
+    const items = (Array.isArray(value) ? value : [value]).filter((item) => !isEmpty(item));
+    return {
+      key,
+      label,
+      kind: 'chips',
+      chips: items.map((item) => scalar(type, definition.directory, item, context)),
+    };
+  }
+  return { key, label, kind: 'value', value: scalar(type, definition.directory, value, context) };
+}
+
+/** Every vocabulary a layout's fields — and their sub-fields — are bound to. */
+export function directoriesOf(definitions: readonly LayoutFieldType[]): string[] {
+  const found = new Set<string>();
+  const walk = (definition: LayoutFieldType, depth: number) => {
+    if (definition.directory) found.add(definition.directory);
+    if (depth < MAX_DEPTH)
+      for (const sub of Object.values(definition.fields ?? {})) walk(sub, depth + 1);
+  };
+  for (const definition of definitions) walk(definition, 0);
+  return [...found].sort();
+}

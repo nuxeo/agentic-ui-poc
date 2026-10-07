@@ -1513,6 +1513,11 @@
     "visual-editor": "ビジュアルエディター",
     "workflow-started-on-document": "この文書で {{ workflow }} ワークフローを開始しました。"
   },
+  "document-layouts": {
+    "no": "いいえ",
+    "sections": "プロパティのセクション",
+    "yes": "はい"
+  },
   "drawer": {
     "administration-analytics": "分析",
     "administration-audit": "監査",

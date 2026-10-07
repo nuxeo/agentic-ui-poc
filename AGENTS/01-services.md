@@ -460,6 +460,18 @@ Removed in NXSAT-312, with no replacement: `loadBootstrap()`, `loadManifest()`, 
 
 ---
 
+## DocumentLayoutService (`libs/shared/document-layouts/src/lib/document-layout.service.ts`)
+
+Per-type layouts (NXSAT-311). Internal: `@agentic-ui/shared/document-layouts` exports only the
+`<lib-document-layout [document] mode>` component that uses it, and no `@nuxeo-satori/platform`
+entry point re-exports the library.
+
+| Member                                                                          | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `layoutFor(type: string, mode: LayoutMode): Observable<ResolvedLayout \| null>` | The contributed file for `type`/`mode` if `agentic-ui-config/layouts.json` lists one, else the layout generated from `GET /config/types/<type>` (`fetch-schema: fields`). The index and files are read anonymously without the interceptors; index, files and types are each read once per session, except that a failed type read is retried. `null` when the type cannot be read. Never errors; every fallback is logged under `[agentic-ui-layouts]`. |
+
+---
+
 ## ArenderService (`arender.service.ts`)
 
 ```typescript

@@ -1450,6 +1450,39 @@ within 10 s (`CONFIG_LOAD_TIMEOUT_MS`) leaves the compiled defaults in force and
 
 ---
 
+## 29. Per-Type Layouts — Layout Files and Document Type Schemas (NXSAT-311)
+
+| Field           | Value                                                                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Service**     | `DocumentLayoutService` (`libs/shared/document-layouts/src/lib/document-layout.service.ts`)                                                    |
+| **Method**      | `layoutFor(type, mode)`, the first time a document of that type needs its layout; each read below is cached for the session                    |
+| **HTTP Method** | `GET`                                                                                                                                          |
+| **Endpoints**   | `/nuxeo/agentic-ui-config/layouts.json` and `/nuxeo/agentic-ui-config/layouts/<type>/<mode>.layout.json` — **anonymous**, without interceptors |
+|                 | `/nuxeo/api/v1/config/types/<type>` with header `fetch-schema: fields` — authenticated, through `NuxeoApiBase`                                 |
+| **Server side** | `AgenticUiConfigServlet` (from `<layout>` contributions to `org.nuxeo.agentic.ui.config`); Nuxeo's type registry                               |
+
+The layout URLs sit beside `bootstrap.json` (from `APP_BOOTSTRAP_CONFIG_URL`), so under `nx serve`
+they are `/agentic-ui-config/layouts.json` and `/agentic-ui-config/layouts/…`, written by
+`npm run config:dev -- --layout <Type>/<mode>=<file>`. Like the bootstrap reads, they skip the
+interceptors: no `Authorization` header, and they do not count as activity for the idle timer.
+
+`layouts.json` lists `{ type, mode, url, component, bundle, source }` per layout in force, plus the
+server's `diagnostics`. A layout file is fetched only when the index lists its type and mode, and
+answers `{ format, layer: "layout", type, mode, component, bundle, source, content }`, where
+`content` is the layout file itself — format in `docs/extension-reference.md` §9b. A missing or
+malformed index or file, or no answer within 10 s (`LAYOUT_LOAD_TIMEOUT_MS`), falls back to the
+layout generated from the type, with the reason in the console under `[agentic-ui-layouts]`.
+
+`/config/types/<type>` is the per-type read, not the `/config/types` list: asked for
+`fetch-schema: fields` it returns each of the type's schemas nested, with `@prefix` when it has
+one, and per-field `constraints` — a `directoryResolver` names the vocabulary a value is bound to
+(`itemConstraints` for a list). The list endpoint and `/config/schemas` ignore that header. A
+failed read is not cached, so the next document of the type asks again.
+
+**Usage:** the Properties panel on document detail (`metadata` mode).
+
+---
+
 ## Administration — Recently Created Users and Groups
 
 | Field           | Value                                                                       |

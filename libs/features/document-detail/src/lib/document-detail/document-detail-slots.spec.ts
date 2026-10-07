@@ -1,7 +1,7 @@
 import { Component, input, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
@@ -116,6 +116,25 @@ function doc(over: Partial<NuxeoDocument> = {}): NuxeoDocument {
   };
 }
 
+/** `/config/types/<type>` as Nuxeo answers it; only Claim carries a schema of its own. */
+const nuxeoGet = vi.fn((path: string): Observable<unknown> =>
+  of(
+    path === '/nuxeo/api/v1/config/types/Claim'
+      ? {
+          name: 'Claim',
+          schemas: [
+            { name: 'dublincore', '@prefix': 'dc', fields: { title: 'string' } },
+            {
+              name: 'claim',
+              '@prefix': 'claim',
+              fields: { number: 'string', billedAmount: 'double' },
+            },
+          ],
+        }
+      : { schemas: [{ name: 'dublincore', '@prefix': 'dc', fields: { title: 'string' } }] },
+  ),
+);
+
 const emptyKe = (): Observable<KeEnrichmentResult> =>
   of({ textClassification: { result: '' } } as KeEnrichmentResult);
 
@@ -197,7 +216,10 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
         },
         { provide: AiChatService, useValue: { openPanel: vi.fn() } },
         { provide: AiFeatureFlagService, useValue: { aiEnabled: signal(false) } },
-        { provide: NuxeoApiBase, useValue: { nxqlSearch: vi.fn(() => of({ entries: [] })) } },
+        {
+          provide: NuxeoApiBase,
+          useValue: { nxqlSearch: vi.fn(() => of({ entries: [] })), get: nuxeoGet },
+        },
         { provide: CURRENT_USERNAME, useValue: () => 'tester' },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         {
@@ -266,6 +288,58 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
       const panel = fixture.nativeElement.querySelector('aside.properties-panel') as HTMLElement;
       expect(panel).toBeTruthy();
       expect(panel.getAttribute('aria-label')).toBe('Document properties');
+    });
+  });
+
+  /**
+   * NXSAT-311. The properties panel hosts the per-type layout, fed the focused document. With
+   * no package layout (the index 404s here) it is generated from the type's own schemas, so a
+   * Claim shows its `claim` fields and a File, whose schemas the panel already presents, gets
+   * nothing added. Seen red on purpose by removing `<lib-document-layout>` from the template.
+   */
+  describe('per-type layout', () => {
+    async function settle(): Promise<void> {
+      TestBed.inject(HttpTestingController)
+        .match((request) => request.url.endsWith('/agentic-ui-config/layouts.json'))
+        .forEach((request) => request.flush('', { status: 404, statusText: 'Not Found' }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    const layoutIn = (): HTMLElement | null =>
+      fixture.nativeElement.querySelector('aside.properties-panel lib-document-layout');
+
+    it('shows a Claim the fields of its own schema, with its values', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      await render(
+        {},
+        doc({ type: 'Claim', properties: { 'claim:number': 'CLM-1', 'claim:billedAmount': 2480 } }),
+      );
+      await settle();
+
+      const section = layoutIn()?.querySelector('[data-section-id="claim"]');
+      expect(section?.querySelector('.document-layout__heading')?.textContent?.trim()).toBe(
+        'Claim',
+      );
+      expect(
+        [...(section?.querySelectorAll('[data-field]') ?? [])].map((row) => [
+          row.getAttribute('data-field'),
+          row.querySelector('.document-layout__value')?.textContent?.trim(),
+        ]),
+      ).toEqual([
+        ['claim:billedAmount', '2,480'],
+        ['claim:number', 'CLM-1'],
+      ]);
+    });
+
+    it('adds nothing to the panel of a File', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      await render({}, doc({ type: 'File' }));
+      await settle();
+
+      expect(layoutIn()).toBeTruthy();
+      expect(layoutIn()?.querySelector('[data-section-id]')).toBeNull();
     });
   });
 
