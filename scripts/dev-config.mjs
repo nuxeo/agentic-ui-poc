@@ -27,7 +27,7 @@ const extra = { bootstrap: [], manifest: [] };
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i += 2) {
   const layer = args[i]?.replace(/^--/, '');
-  if (!(layer in extra) || !args[i + 1]) {
+  if (!Object.hasOwn(extra, layer ?? '') || !args[i + 1]) {
     console.error(
       'usage: dev-config.mjs [--bootstrap <fragment.json>]... [--manifest <fragment.json>]...',
     );
