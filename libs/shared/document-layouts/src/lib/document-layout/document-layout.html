@@ -29,9 +29,7 @@
         @for (section of layout.sections; track section.id) {
           <section class="document-layout__section" [attr.data-section-id]="section.id">
             @if (section.heading) {
-              <div class="document-layout__heading" role="heading" aria-level="4">
-                {{ section.heading }}
-              </div>
+              <h4 class="document-layout__heading">{{ section.heading }}</h4>
             }
             <ng-container
               [ngTemplateOutlet]="rows"

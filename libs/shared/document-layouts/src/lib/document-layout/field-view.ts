@@ -39,40 +39,56 @@ function isEmpty(value: unknown): boolean {
   );
 }
 
+/** A value as text, with objects as JSON rather than `[object Object]`. */
+function textOf(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  return JSON.stringify(value) ?? '';
+}
+
+function dateView(value: unknown, context: ValueContext): ValueView {
+  // In UTC, as formatCompareDate does: a calendar date is stored at midnight UTC, and the
+  // browser's timezone would move it to the previous day west of Greenwich.
+  const date = new Date(textOf(value));
+  if (Number.isNaN(date.getTime())) return { text: textOf(value) };
+  return { text: formatDate(date, 'longDate', context.locale, 'UTC') };
+}
+
+function numberView(value: unknown, context: ValueContext): ValueView {
+  return { text: typeof value === 'number' ? formatNumber(value, context.locale) : textOf(value) };
+}
+
+function booleanView(value: unknown): ValueView {
+  if (value === true || value === 'true') return { flag: true };
+  if (value === false || value === 'false') return { flag: false };
+  return { text: textOf(value) };
+}
+
+function blobView(value: unknown): ValueView {
+  return { text: isRecord(value) && typeof value['name'] === 'string' ? value['name'] : '' };
+}
+
+const VIEWS: Readonly<Record<string, (value: unknown, context: ValueContext) => ValueView>> = {
+  date: dateView,
+  long: numberView,
+  integer: numberView,
+  double: numberView,
+  boolean: booleanView,
+  blob: blobView,
+};
+
 function scalar(
   type: string,
   directory: string | undefined,
   value: unknown,
   context: ValueContext,
 ): ValueView {
-  switch (type) {
-    case 'date': {
-      // In UTC, as formatCompareDate does: a calendar date is stored at midnight UTC, and the
-      // browser's timezone would move it to the previous day west of Greenwich.
-      const date = new Date(String(value));
-      return {
-        text: Number.isNaN(date.getTime())
-          ? String(value)
-          : formatDate(date, 'longDate', context.locale, 'UTC'),
-      };
-    }
-    case 'long':
-    case 'integer':
-    case 'double':
-      return {
-        text: typeof value === 'number' ? formatNumber(value, context.locale) : String(value),
-      };
-    case 'boolean':
-      if (value === true || value === 'true') return { flag: true };
-      if (value === false || value === 'false') return { flag: false };
-      return { text: String(value) };
-    case 'blob':
-      return { text: isRecord(value) && typeof value['name'] === 'string' ? value['name'] : '' };
-    default:
-      if (directory && typeof value === 'string')
-        return { text: context.vocabulary(directory, value) };
-      return { text: typeof value === 'object' ? JSON.stringify(value) : String(value) };
-  }
+  const view = VIEWS[type];
+  if (view) return view(value, context);
+  if (directory && typeof value === 'string') return { text: context.vocabulary(directory, value) };
+  return { text: textOf(value) };
 }
 
 function subFields(
@@ -83,7 +99,7 @@ function subFields(
 ): FieldView[] {
   const fields = definition.fields ?? {};
   const names = Object.keys(fields).length ? Object.keys(fields) : Object.keys(value);
-  return names
+  return [...names]
     .sort((a, b) => a.localeCompare(b))
     .map((name) =>
       describeField(
@@ -142,5 +158,5 @@ export function directoriesOf(definitions: readonly LayoutFieldType[]): string[]
       for (const sub of Object.values(definition.fields ?? {})) walk(sub, depth + 1);
   };
   for (const definition of definitions) walk(definition, 0);
-  return [...found].sort();
+  return [...found].sort((a, b) => a.localeCompare(b));
 }

@@ -107,10 +107,8 @@ describe('DocumentLayoutComponent', () => {
     expect(host().querySelector('[data-layout-source="generated"]')).not.toBeNull();
     expect(text('[data-section-id="claim"] .document-layout__heading')).toBe('Claim');
     expect(
-      host()
-        .querySelector('[data-section-id="claim"] .document-layout__heading')
-        ?.getAttribute('aria-level'),
-    ).toBe('4');
+      host().querySelector('[data-section-id="claim"] .document-layout__heading')?.tagName,
+    ).toBe('H4');
     expect(value('claim:number')).toBe('CLM-1');
     expect(value('claim:status')).toBe('Pending review');
     expect(value('claim:urgent')).toBe('Yes');
