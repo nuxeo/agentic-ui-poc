@@ -266,6 +266,19 @@ sat-breadcrumbs {
   }
 }
 
+// A contributed View tab body brings no layout of its own; the tab body clips, so it scrolls here.
+.document-view-outlet {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+
+  // The packaged view renders beside it as the fallback; an empty flex child would share the space.
+  &--unresolved {
+    display: none;
+  }
+}
+
 // Properties panel (right sidebar, outside tabs)
 .properties-panel {
   width: 380px;

@@ -37,6 +37,7 @@ export {
   type ExtensionActionHandler,
   type ExtensionActionRegistration,
   type ExtensionColumnDescriptor,
+  type ExtensionDocumentViewDescriptor,
   type ExtensionRouteDescriptor,
   type ExtensionTabDescriptor,
 } from './lib/extension-actions';

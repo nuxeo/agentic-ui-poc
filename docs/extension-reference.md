@@ -102,7 +102,7 @@ The Layer 1 configuration is the `extensions` key of that document:
 
 ## 2. Slots
 
-A slot is a named, ordered list of descriptors. Eight exist for Beta, of which six
+A slot is a named, ordered list of descriptors. Nine exist for Beta, of which six
 carry packaged entries.
 
 | Slot           | What it addresses                         | Status in Beta                                     |
@@ -115,6 +115,7 @@ carry packaged entries.
 | `contextMenu`  | The browse "More actions" menu            | **Populated** — 4 packaged actions, section 10     |
 | `tabs`         | Document-detail tab children              | **Populated** — 6 packaged tabs, section 9         |
 | `documentList` | Document list columns                     | **Populated** — 12 packaged columns, section 7     |
+| `documentView` | The View tab body on document detail      | Resolves; **no packaged entries** — see section 9a |
 
 Read the three states precisely, because they are different promises:
 
@@ -137,7 +138,7 @@ Deferred to GA and deliberately absent: `content-metadata-presets`, `badges`,
 ### Slots are additive
 
 Slot IDs are plain strings. There is no enum, union or `switch` on slot identity in the registry, so
-a ninth slot needs no change to the eight and no new release of the registry —
+a tenth slot needs no change to the nine and no new release of the registry —
 `libs/shared/extensions/src/lib/extension-slot-registry.service.spec.ts` proves it by registering a
 slot the library has never heard of and showing the nine unchanged.
 
@@ -697,7 +698,8 @@ not addressable**, and that asymmetry is deliberate and worth stating: the six
 packaged bodies are still markup in the host template, matched by ID. Extracting
 a thousand-plus lines of tab body into separately registered components would
 have been a rewrite, and the point of this slot is to make the tab strip
-addressable without one.
+addressable without one. The one exception is the body of `app.tabs.view`, which
+a `documentView` entry can replace per document — section 9a.
 
 A tab you contribute names a registered component instead, through `componentId`,
 and is rendered by the same `ExtensionOutletComponent` the sidebar uses. The
@@ -723,6 +725,83 @@ component must already be compiled in — contributing one is Layer 2.
 the tab's own ID is enough. A contributed tab with no registered component
 renders an empty body rather than throwing, so the manifest can precede the
 library.
+
+---
+
+## 9a. `documentView` — a different View per document type
+
+Resolves, with no packaged entries. The host asks this slot for the body of the
+View tab each time the focused document changes, so a Claim can open on a claim
+summary while a File keeps the packaged viewer and a Note keeps the note editor.
+Nothing of ours is registered here: with no entries, the View tab is exactly what
+it was before the slot existed.
+
+| Field         | Meaning                                                                       |
+| ------------- | ----------------------------------------------------------------------------- |
+| `componentId` | Registered component rendering the tab body. Defaults to the descriptor `id`. |
+| `rule`        | When it denies for the focused document, the entry is skipped.                |
+| `inputs`      | Static values set on the component's declared inputs. Unknown keys ignored.   |
+
+**Which entry wins.** Entries whose rule passes are taken in ascending `order`, and the
+first whose component is registered renders. Nothing matching, or nothing registered,
+renders the packaged view. A registered component whose lazy loader fails also falls
+back to the packaged view rather than leaving the tab blank, so a broken chunk costs the
+customer their custom view, not the document. The load is retried when the document is
+refetched or another document using the same entry opens — at most twice, so a chunk that
+is permanently missing is requested three times in all. The packaged view stays on screen
+while a retry is in flight.
+
+**The document is the host's.** The component receives the focused document on its
+`document` input. A manifest `inputs.document` is overwritten, so configuration cannot
+make the tab show a different document from the one the toolbar and properties panel act
+on. Declare `document` as an `input()` to receive it; a component that does not declare
+it is still rendered, and the value is not set.
+
+The natural rule is a type check, with the packaged `app.rules.isType` (section 4). Any
+registered rule works, including one your library registers:
+
+```json
+{
+  "slots": {
+    "documentView": [
+      {
+        "id": "acme.documentView.claim",
+        "componentId": "acme.components.claimView",
+        "rule": { "type": "app.rules.isType", "parameters": ["Claim"] },
+        "order": 10,
+        "inputs": { "heading": "Claim summary" }
+      }
+    ]
+  }
+}
+```
+
+For Notes alone, the packaged `app.rules.isNote` reads the same way:
+
+```json
+{
+  "slots": {
+    "documentView": [
+      {
+        "id": "acme.documentView.notes",
+        "componentId": "acme.components.noteView",
+        "rule": "app.rules.isNote"
+      }
+    ]
+  }
+}
+```
+
+What this slot does **not** do:
+
+- **Only the View tab.** The other tabs, the toolbar and the properties panel are
+  unchanged by any `documentView` entry. A per-type metadata or edit layout is a separate
+  design and is not this slot.
+- **The packaged views are not entries.** The note editor and document viewer are still
+  host markup, so a manifest cannot hide or reorder them — only outrank them with an
+  entry of your own. Making them registered entries is a follow-up.
+- **Like every slot, it is not a security control.** Whatever your component reads is
+  still gated by Nuxeo server-side.
 
 ---
 
@@ -829,13 +908,15 @@ Stated so nobody plans around a capability that is not there.
 
 The first two are a **deliberate Beta boundary**, not an oversight: Layer 1 is additive for
 Beta. You can add surfaces and you can hide, reorder or relabel packaged ones. You cannot
-replace a shipped route or change what a packaged tab renders. Making either addressable is a
+replace a shipped route or change what a packaged tab renders, beyond outranking the View tab
+body per document through `documentView`. Making either addressable is a
 rewrite rather than a refactor, so it is deferred to GA. If you need to replace a shipped page,
 that is Layer 2 — see section 14.
 
 - **Tab and toolbar bodies.** The six packaged tab bodies and the document-specific header
   controls listed in section 8 are still markup. The tab strip and the toolbar are addressable;
-  what a packaged tab renders is not.
+  what a packaged tab renders is not, except the View tab, which a `documentView` entry can
+  replace per document (section 9a).
 
 - **The packaged routes.** `app.routes.ts` imports each feature library's `Routes` array
   directly, so no packaged route carries an ID and none can be moved, guarded or removed from a
