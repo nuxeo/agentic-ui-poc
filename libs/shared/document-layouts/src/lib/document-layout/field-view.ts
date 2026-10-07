@@ -128,8 +128,11 @@ export function describeField(
 
   if (type === 'complex' && depth < MAX_DEPTH) {
     const items = (list && Array.isArray(value) ? value : [value]).filter(isRecord);
-    if (items.length === 0)
-      return { key, label, kind: 'value', value: { text: JSON.stringify(value) } };
+    if (items.length === 0) {
+      return list
+        ? { key, label, kind: 'empty' }
+        : { key, label, kind: 'value', value: { text: textOf(value) } };
+    }
     return {
       key,
       label,
@@ -139,6 +142,7 @@ export function describeField(
   }
   if (list) {
     const items = (Array.isArray(value) ? value : [value]).filter((item) => !isEmpty(item));
+    if (items.length === 0) return { key, label, kind: 'empty' };
     return {
       key,
       label,

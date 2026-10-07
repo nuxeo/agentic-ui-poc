@@ -10,6 +10,13 @@ const describe1 = (type: string, value: unknown, extra: Record<string, unknown> 
   describeField('x:f', 'F', { type, ...extra }, value, context);
 
 describe('describeField', () => {
+  it('shows a list of only empty entries as empty, not as an empty chip list', () => {
+    expect(describe1('string[]', ['', null]).kind).toBe('empty');
+    expect(describe1('complex[]', [null], { fields: { a: { type: 'string' } } }).kind).toBe(
+      'empty',
+    );
+  });
+
   it.each([null, undefined, '', []])('shows %j as empty', (value) => {
     expect(describe1('string', value).kind).toBe('empty');
   });
