@@ -5,7 +5,12 @@ import { APP_BOOTSTRAP_CONFIG_URL } from '@nuxeo-satori/platform/app-config';
 import { NUXEO_API_ORIGIN } from '@nuxeo-satori/platform/nuxeo-client';
 import { firstValueFrom } from 'rxjs';
 
-import { DocumentLayoutService, layoutFileUrl, layoutsIndexUrl } from './document-layout.service';
+import {
+  DocumentLayoutService,
+  LAYOUT_LOAD_TIMEOUT_MS,
+  layoutFileUrl,
+  layoutsIndexUrl,
+} from './document-layout.service';
 import { ResolvedLayout } from './layout.model';
 
 const FORMAT = 'nuxeo-agentic-ui-config/1';
@@ -165,6 +170,50 @@ describe('DocumentLayoutService', () => {
     http.expectOne(INDEX).flush('', { status: 404, statusText: 'Not Found' });
     expect((await layout)?.source).toBe('generated');
     expect(warnings).toContain(`[agentic-ui-layouts] layouts not loaded from ${INDEX}: HTTP 404`);
+  });
+
+  it('gives up on an index that never answers, cancels it, and shows the generated layout', async () => {
+    vi.useFakeTimers();
+    try {
+      let settled = false;
+      const layout = resolve().then((resolved) => {
+        settled = true;
+        return resolved;
+      });
+      answerType();
+      const pending = http.expectOne(INDEX);
+
+      await vi.advanceTimersByTimeAsync(LAYOUT_LOAD_TIMEOUT_MS);
+
+      expect(settled).toBe(true);
+      expect(pending.cancelled).toBe(true);
+      expect((await layout)?.source).toBe('generated');
+      expect(warnings).toContain(
+        `[agentic-ui-layouts] layouts not loaded from ${INDEX}: no response within 10 s`,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives up on a layout file that never answers, cancels it, and shows the generated layout', async () => {
+    vi.useFakeTimers();
+    try {
+      const layout = resolve();
+      answerType();
+      http.expectOne(INDEX).flush(index('Claim/metadata'));
+      const pending = http.expectOne(CLAIM_FILE);
+
+      await vi.advanceTimersByTimeAsync(LAYOUT_LOAD_TIMEOUT_MS);
+
+      expect(pending.cancelled).toBe(true);
+      expect((await layout)?.source).toBe('generated');
+      expect(warnings).toContain(
+        `[agentic-ui-layouts] Claim/metadata layout not loaded from ${CLAIM_FILE}: no response within 10 s`,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('ignores an index that is not the layouts envelope', async () => {

@@ -11,7 +11,12 @@ import {
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { MatTabsModule } from '@angular/material/tabs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { DirectoryService, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  DirectoryService,
+  NuxeoDocument,
+  directoryUsesL10nLabel,
+  formatHierarchicalL10nLabel,
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   Observable,
   catchError,
@@ -152,13 +157,37 @@ export class DocumentLayoutComponent {
   private vocabulary(name: string): Observable<VocabularyLabels> {
     let cached = this.vocabularyCache.get(name);
     if (!cached) {
-      cached = this.directories.getEntries(name).pipe(
-        map((entries): VocabularyLabels => [
-          name,
-          new Map(
-            entries.map((entry) => [entry.id, entry.displayLabel || entry.label || entry.id]),
-          ),
-        ]),
+      // An l10n vocabulary is not readable through Directory.SuggestEntries (HTTP 500), so it is
+      // read and labelled the way the panel's own Subjects and Coverage rows are.
+      const labels: Observable<ReadonlyMap<string, string>> = directoryUsesL10nLabel(name)
+        ? this.directories
+            .getAllL10nEntries(name)
+            .pipe(
+              map(
+                (entries) =>
+                  new Map(
+                    entries.map((entry) => [
+                      entry.id,
+                      formatHierarchicalL10nLabel(entry.id, entries),
+                    ]),
+                  ),
+              ),
+            )
+        : this.directories
+            .getEntries(name)
+            .pipe(
+              map(
+                (entries) =>
+                  new Map(
+                    entries.map((entry) => [
+                      entry.id,
+                      entry.displayLabel || entry.label || entry.id,
+                    ]),
+                  ),
+              ),
+            );
+      cached = labels.pipe(
+        map((entries): VocabularyLabels => [name, entries]),
         catchError(() => {
           this.vocabularyCache.delete(name);
           return of<VocabularyLabels>([name, new Map()]);

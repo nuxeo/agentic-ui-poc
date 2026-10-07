@@ -3,6 +3,7 @@ import { TranslateService } from '@ngx-translate/core';
 import {
   DirectoryEntry,
   DirectoryService,
+  L10nDirectoryEntry,
   NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { Observable, of, throwError } from 'rxjs';
@@ -66,6 +67,9 @@ describe('DocumentLayoutComponent', () => {
     typeof vi.fn<(type: string, mode: string) => Observable<ResolvedLayout | null>>
   >;
   let getEntries: ReturnType<typeof vi.fn<(name: string) => Observable<DirectoryEntry[]>>>;
+  let getAllL10nEntries: ReturnType<
+    typeof vi.fn<(name: string) => Observable<L10nDirectoryEntry[]>>
+  >;
 
   const entry = (id: string, label: string) =>
     ({ id, label, displayLabel: label }) as DirectoryEntry;
@@ -88,11 +92,20 @@ describe('DocumentLayoutComponent', () => {
   beforeEach(() => {
     layoutFor = vi.fn();
     getEntries = vi.fn().mockReturnValue(of([entry('pending', 'Pending review')]));
+    const l10n = (id: string, parent: string, label: string) =>
+      ({
+        id,
+        directoryName: 'l10nsubjects',
+        properties: { id, parent, ordering: 0, obsolete: 0, label_en: label },
+      }) as L10nDirectoryEntry;
+    getAllL10nEntries = vi
+      .fn()
+      .mockReturnValue(of([l10n('art', '', 'Art'), l10n('architecture', 'art', 'Architecture')]));
     TestBed.configureTestingModule({
       imports: [DocumentLayoutComponent],
       providers: [
         { provide: DocumentLayoutService, useValue: { layoutFor } },
-        { provide: DirectoryService, useValue: { getEntries } },
+        { provide: DirectoryService, useValue: { getEntries, getAllL10nEntries } },
       ],
     });
   });
@@ -125,6 +138,24 @@ describe('DocumentLayoutComponent', () => {
     await render(claimDocument({ 'claim:urgent': false, 'claim:number': null }));
     expect(value('claim:urgent')).toBe('No');
     expect(value('claim:number')).toBe('—');
+  });
+
+  it('labels an l10n vocabulary from its own entries, as Parent/Child', async () => {
+    const subjects = {
+      ...claimSection,
+      fields: [field('dc:subjects', 'string[]', { directory: 'l10nsubjects' })],
+    };
+    await render(
+      claimDocument({ 'dc:subjects': ['architecture', 'unknown'] }),
+      layout({ sections: [subjects] }),
+    );
+    expect(
+      [...host().querySelectorAll('[data-field="dc:subjects"] .document-layout__chip')].map(
+        (chip) => chip.textContent?.trim(),
+      ),
+    ).toEqual(['Art/Architecture', 'unknown']);
+    expect(getAllL10nEntries).toHaveBeenCalledWith('l10nsubjects');
+    expect(getEntries).not.toHaveBeenCalledWith('l10nsubjects');
   });
 
   it('shows the stored id when the vocabulary cannot be read', async () => {
