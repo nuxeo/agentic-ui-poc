@@ -70,7 +70,14 @@ Marketplace package that contributes `bootstrap` and `manifest` fragments to the
 the package's `package.xml` depends on `nuxeo-agentic-ui`, which orders installation, and its
 component `<require>`s `org.nuxeo.agentic.ui.config.defaults`, which orders contributions so our
 defaults are always registered first. Everything at that path is served without authentication —
-put nothing secret in a fragment. The `bootstrap.json` that used to be copied and edited beside
+put nothing secret in a fragment.
+
+Scaffold that package rather than writing it by hand:
+`npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme` writes both
+declarations, starter fragments with JSON schemas for your editor, and a `build` target whose
+`build.mjs` refuses what the server would reject — JSON that does not parse, a repeated key, a
+fragment over 1 MiB, a missing asset — and writes the installable zip. `config-packages/presales-demo`
+in this repository is one, with two demo presets. The `bootstrap.json` that used to be copied and edited beside
 the bundle is **removed with no migration**: a file left in `nxserver/nuxeo.war/agentic-ui-config`
 is not served.
 

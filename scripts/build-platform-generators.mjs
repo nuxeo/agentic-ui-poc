@@ -115,7 +115,8 @@ try {
       '--esModuleInterop',
       'true',
       ...readdirSync(join(SRC, 'src'), { recursive: true })
-        .filter((f) => typeof f === 'string' && f.endsWith('.ts'))
+        // Specs run in this repository only; they would not compile without vitest's types.
+        .filter((f) => typeof f === 'string' && f.endsWith('.ts') && !f.endsWith('.spec.ts'))
         .map((f) => join(SRC, 'src', f)),
     ],
     {

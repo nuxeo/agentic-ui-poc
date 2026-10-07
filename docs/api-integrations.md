@@ -4,7 +4,7 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Base URL:** `/nuxeo` (proxied to `http://localhost:8080` in development via `apps/nuxeo-ui/proxy.conf.json`)
 
-**Authentication:** All `/nuxeo/**` requests are automatically decorated with `Authorization: Basic <credentials>` by the `nuxeoAuthInterceptor` (see `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`), except the anonymous configuration requests, which skip the interceptors: the two of §28, sent by `AppConfigService`, and the layout index and files of §29, sent by `DocumentLayoutService`.
+**Authentication:** `nuxeoAuthInterceptor` (see `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`) authenticates `/nuxeo/**` requests from the session in force: it adds `Authorization: Basic <credentials>` after a password sign-in, while an SSO session — and a share link, once its token has been exchanged for one — travels as the browser's cookies. The share token's own header is added only while that exchange is in progress. With no session in force it adds no header, but still sends the request with credentials, so the browser attaches any cookies it holds. The sign-in request is the one that arrives already authenticated: `AuthService.login()` sets the typed credentials as its own Basic header, and the interceptor keeps that header and sends the request without cookies. The anonymous configuration requests never reach it: the two of §28, which `AppConfigService` sends, and the layout index and files of §29, which `DocumentLayoutService` sends, both skip the interceptors.
 
 ---
 
