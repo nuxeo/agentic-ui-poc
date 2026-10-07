@@ -4176,7 +4176,38 @@ expectRed(
     'libs/features/x/src/lib/x.ts': METHOD_UNRESOLVABLE_TS,
   },
   null,
-  /panelLabelKey\(\).*could not resolve any translation keys from that method declaration/s,
+  /panelLabelKey\(\).*(at least one return branch|could not resolve any translation keys from that method declaration)/s,
+);
+
+const METHOD_PARTIAL_RETURN_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    return this.open ? 'x.panel.hide' : this.pickKey();
+  }
+  pickKey(): string {
+    return 'x.panel.show';
+  }
+}
+`;
+expectRed(
+  'a method-bound name with a partially resolved return ternary',
+  'checkAccessibleNameFallbacks',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json': `{
+  "app": { "nav": { "toggle": "Toggle navigation menu" } },
+  "x": { "panel": { "hide": "Hide panel", "show": "Show panel" } }
+}
+`,
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': `export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
+  'app.nav.toggle': 'Toggle navigation menu',
+  'x.panel.hide': 'Hide panel',
+  'x.panel.show': 'Show panel',
+};
+`,
+    'libs/features/x/src/lib/x.html': METHOD_UNRESOLVABLE_HTML,
+    'libs/features/x/src/lib/x.ts': METHOD_PARTIAL_RETURN_TS,
+  },
+  null,
+  /panelLabelKey\(\).*at least one return branch/s,
 );
 
 const METHOD_PARAM_HTML =

@@ -3162,8 +3162,8 @@ function checkAccessibleNameFallbacks() {
   const offences = new Map();
   /** Keys in OUR shape that no catalogue defines — a typo renders as the raw key. */
   const undefinedKeys = new Map();
-  /** Method-bound names the extractor could not resolve — must not pass silently. */
-  /** @type {Map<string, { attribute: string, sites: string[] }>} */
+  /** Method-bound names the extractor could not fully resolve — must not pass silently. */
+  /** @type {Map<string, { attribute: string, sites: string[], partial: boolean }>} */
   const unresolvedMethodBindings = new Map();
   let bindings = 0;
 
@@ -3174,7 +3174,10 @@ function checkAccessibleNameFallbacks() {
    */
   const isUpstreamShaped = (key) => /^[A-Z][A-Z0-9_]*(\.[A-Z0-9_-]+)+$/.test(key);
 
-  /** String-literal translation keys returned by `methodName()` in a component class. */
+  /**
+   * Translation keys a method may return, and whether every return branch was statically resolved.
+   * @returns {{ keys: string[], partial: boolean }}
+   */
   function translationKeysReturnedByMethod(tsSource, methodName) {
     const sourceFile = ts.createSourceFile(
       'component.ts',
@@ -3184,9 +3187,10 @@ function checkAccessibleNameFallbacks() {
       ts.ScriptKind.TS,
     );
     const keys = new Set();
+    let partialReturn = false;
     const keyShape = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
 
-    /** @type {Map<string, Set<string>>} */
+    /** @type {Map<string, { keys: Set<string>, fullyResolved: boolean }>} */
     let localVarKeys = new Map();
 
     function addResolvableKeysFromExpression(expr, target) {
@@ -3205,11 +3209,26 @@ function checkAccessibleNameFallbacks() {
       }
     }
 
+    function expressionFullyResolved(expr) {
+      if (!expr) return false;
+      if (ts.isParenthesizedExpression(expr)) return expressionFullyResolved(expr.expression);
+      if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
+      if (ts.isConditionalExpression(expr)) {
+        return (
+          expressionFullyResolved(expr.whenTrue) && expressionFullyResolved(expr.whenFalse)
+        );
+      }
+      if (ts.isIdentifier(expr)) {
+        return localVarKeys.get(expr.text)?.fullyResolved === true;
+      }
+      return false;
+    }
+
     function collectKeysFromReturnExpression(expr) {
       if (!expr) return;
       if (ts.isIdentifier(expr)) {
         const mapped = localVarKeys.get(expr.text);
-        if (mapped) mapped.forEach((key) => keys.add(key));
+        if (mapped) mapped.keys.forEach((key) => keys.add(key));
         return;
       }
       addResolvableKeysFromExpression(expr, keys);
@@ -3218,29 +3237,35 @@ function checkAccessibleNameFallbacks() {
     function collectLocalVarKeys(body) {
       const out = new Map();
       if (!ts.isBlock(body)) return out;
-      function visitVars(node) {
-        if (ts.isVariableStatement(node)) {
-          for (const decl of node.declarationList.declarations) {
-            if (ts.isIdentifier(decl.name) && decl.initializer) {
-              const found = new Set();
-              addResolvableKeysFromExpression(decl.initializer, found);
-              if (found.size) out.set(decl.name.text, found);
+      function initializerFullyResolved(expr) {
+        if (!expr) return false;
+        if (ts.isParenthesizedExpression(expr)) return initializerFullyResolved(expr.expression);
+        if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
+        if (ts.isConditionalExpression(expr)) {
+          return (
+            initializerFullyResolved(expr.whenTrue) && initializerFullyResolved(expr.whenFalse)
+          );
+        }
+        if (ts.isIdentifier(expr)) {
+          return out.get(expr.text)?.fullyResolved === true;
+        }
+        return false;
+      }
+      for (const stmt of body.statements) {
+        if (!ts.isVariableStatement(stmt)) continue;
+        for (const decl of stmt.declarationList.declarations) {
+          if (ts.isIdentifier(decl.name) && decl.initializer) {
+            const found = new Set();
+            addResolvableKeysFromExpression(decl.initializer, found);
+            if (found.size) {
+              out.set(decl.name.text, {
+                keys: found,
+                fullyResolved: initializerFullyResolved(decl.initializer),
+              });
             }
           }
         }
-        if (
-          ts.isFunctionDeclaration(node) ||
-          ts.isMethodDeclaration(node) ||
-          ts.isFunctionExpression(node) ||
-          ts.isArrowFunction(node) ||
-          ts.isGetAccessorDeclaration(node) ||
-          ts.isSetAccessorDeclaration(node)
-        ) {
-          return;
-        }
-        ts.forEachChild(node, visitVars);
       }
-      visitVars(body);
       return out;
     }
 
@@ -3258,11 +3283,13 @@ function checkAccessibleNameFallbacks() {
     function collectReturnLiteralKeys(body) {
       if (!body) return;
       if (!ts.isBlock(body)) {
+        if (!expressionFullyResolved(body)) partialReturn = true;
         collectKeysFromReturnExpression(body);
         return;
       }
       function visitReturns(node) {
         if (ts.isReturnStatement(node)) {
+          if (!expressionFullyResolved(node.expression)) partialReturn = true;
           collectKeysFromReturnExpression(node.expression);
           return;
         }
@@ -3298,7 +3325,7 @@ function checkAccessibleNameFallbacks() {
     }
 
     visit(sourceFile);
-    return [...keys];
+    return { keys: [...keys], partial: partialReturn };
   }
 
   function recordBinding(template, attribute, key) {
@@ -3331,11 +3358,14 @@ function checkAccessibleNameFallbacks() {
     if (!fileExists(tsPath)) continue;
     const tsSource = read(tsPath);
     for (const [, methodName] of html.matchAll(METHOD_BINDING)) {
-      const methodKeys = translationKeysReturnedByMethod(tsSource, methodName);
-      if (methodKeys.length === 0) {
+      const { keys: methodKeys, partial } = translationKeysReturnedByMethod(
+        tsSource,
+        methodName,
+      );
+      if (partial || methodKeys.length === 0) {
         const attr = `${methodName}()`;
         if (!unresolvedMethodBindings.has(attr)) {
-          unresolvedMethodBindings.set(attr, { attribute: attr, sites: [] });
+          unresolvedMethodBindings.set(attr, { attribute: attr, sites: [], partial });
         }
         unresolvedMethodBindings.get(attr).sites.push(template);
         continue;
@@ -3366,17 +3396,27 @@ function checkAccessibleNameFallbacks() {
     );
   }
 
-  for (const [methodAttr, { sites }] of unresolvedMethodBindings) {
+  for (const [methodAttr, { sites, partial }] of unresolvedMethodBindings) {
     const where =
       sites.length === 1
         ? sites[0]
         : `${[...new Set(sites)].join(', ')} (${sites.length} bindings)`;
-    fail(
-      `${where} binds an accessible name to \`${methodAttr}\`, but this gate could not resolve ` +
-        'any translation keys from that method declaration. A silent pass would miss missing ' +
-        'EN_FALLBACK_TRANSLATIONS entries when other templates still carry literal bindings. ' +
-        'Bind a literal key, simplify the return shape, or extend translationKeysReturnedByMethod.',
-    );
+    if (partial) {
+      fail(
+        `${where} binds an accessible name to \`${methodAttr}\`, but at least one return branch ` +
+          'uses an expression this gate cannot resolve (for example a call or a ternary arm that ' +
+          'is not a string literal). Recording only the resolved literals would miss fallbacks for ' +
+          'other branches. Bind a literal key, return only resolvable literals/ternaries, or extend ' +
+          'translationKeysReturnedByMethod.',
+      );
+    } else {
+      fail(
+        `${where} binds an accessible name to \`${methodAttr}\`, but this gate could not resolve ` +
+          'any translation keys from that method declaration. A silent pass would miss missing ' +
+          'EN_FALLBACK_TRANSLATIONS entries when other templates still carry literal bindings. ' +
+          'Bind a literal key, simplify the return shape, or extend translationKeysReturnedByMethod.',
+      );
+    }
   }
 
   for (const [key, { attribute, sites }] of offences) {
