@@ -172,9 +172,9 @@ tarball, not the source tree.
 Problem:        "A new Satori version is out. Will it break what we built?"
 Step 1:  npm version bump of @nuxeo-satori/platform
 Step 2:  Reinstall the marketplace package
-System:  install.xml — app overwritten; only the sample in agentic-ui-config replaced,
-         their bootstrap.json never touched (rehearsed, NXSAT-317)
-         Their Layer 1 manifest is a Nuxeo document, untouched
+System:  install.xml — app overwritten; no configuration file installed or replaced
+         Their bootstrap and manifest fragments stay in their own configuration
+         package, which upgrading ours does not touch (rehearsed, NXSAT-312)
          Their Layer 2 library compiles against the new published types
 Result:  Customisation intact
 Benefit: The upgrade promise is TESTED, not asserted
