@@ -521,14 +521,6 @@
   }
 }
 
-// NXENG-786 / NXENG-781 — IBM style_focus_visible reads `:focus` only (not comma lists).
-.format-download-btn.mat-mdc-icon-button:focus {
-  outline-style: solid;
-  outline-width: 2px;
-  outline-color: var(--mat-sys-primary, #0073e6);
-  outline-offset: 2px;
-}
-
 // NXENG-781 / NXENG-786 — IBM `style_focus_visible` reads `:focus` only; keep this selector
 // separate from `:focus-visible` (comma lists are not resolved by the scanner).
 .format-download-btn.mat-mdc-icon-button:focus {
