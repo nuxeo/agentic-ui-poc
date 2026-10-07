@@ -1,5 +1,7 @@
 /**
- * NXENG-792 — document detail sidebar `.sub-tab` keyboard focus indicator.
+ * NXENG-776 / NXENG-792 — document detail sidebar `.sub-tab` keyboard focus indicator.
+ * Source-level IBM `style_focus_visible` contract (standalone `:focus` selector). Runtime
+ * contrast and inset geometry: `apps/nuxeo-ui/.../sub-tab-focus-ring.spec.ts`.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
