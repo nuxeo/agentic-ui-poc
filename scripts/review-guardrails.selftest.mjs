@@ -4329,7 +4329,7 @@ expectRed(
     'libs/features/x/src/lib/x.ts': METHOD_UNRESOLVABLE_TS,
   },
   null,
-  /panelLabelKey\(\).*(at least one return branch|could not resolve any translation keys from that method declaration)/s,
+  /panelLabelKey\(\).*(control-flow path does not return a resolvable|could not resolve any translation keys from that method declaration)/s,
 );
 
 const METHOD_PARTIAL_RETURN_TS = `export class XComponent {
@@ -4341,6 +4341,27 @@ const METHOD_PARTIAL_RETURN_TS = `export class XComponent {
   }
 }
 `;
+const METHOD_FALLTHROUGH_TS = `export class XComponent {
+  panelLabelKey(): 'x.panel.hide' | 'x.panel.show' {
+    if (this.open) return 'x.panel.hide';
+  }
+}
+`;
+expectRed(
+  'a method-bound name with an implicit fall-through after a guarded return',
+  'checkAccessibleNameFallbacks',
+  {
+    ...METHOD_BINDING_APP,
+    'libs/features/x/src/lib/x.ts': METHOD_FALLTHROUGH_TS,
+  },
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/i18n/en-fallback.ts',
+      METHOD_BINDING_FALLBACK.replace(/\s*'x\.panel\.show': 'Show panel',/, ''),
+    ),
+  /panelLabelKey\(\).*fall through/s,
+);
+
 expectRed(
   'a method-bound name with a partially resolved return ternary',
   'checkAccessibleNameFallbacks',
@@ -4360,7 +4381,7 @@ expectRed(
     'libs/features/x/src/lib/x.ts': METHOD_PARTIAL_RETURN_TS,
   },
   null,
-  /panelLabelKey\(\).*at least one return branch/s,
+  /panelLabelKey\(\).*control-flow path does not return a resolvable/s,
 );
 
 const METHOD_PARAM_HTML =

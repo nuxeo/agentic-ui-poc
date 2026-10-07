@@ -3279,6 +3279,39 @@ function checkAccessibleNameFallbacks() {
       if (typeNode) visit(typeNode);
     }
 
+    function blockOrStatementReturns(node) {
+      if (ts.isBlock(node)) {
+        let reachable = true;
+        for (const stmt of node.statements) {
+          if (!reachable) break;
+          if (statementAlwaysReturns(stmt)) return true;
+          if (ts.isIfStatement(stmt) && !stmt.elseStatement) {
+            // A guarded return still allows fall-through after the `if`.
+            continue;
+          }
+        }
+        return false;
+      }
+      return statementAlwaysReturns(node);
+    }
+
+    function statementAlwaysReturns(stmt) {
+      if (ts.isReturnStatement(stmt) || ts.isThrowStatement(stmt)) return true;
+      if (ts.isIfStatement(stmt)) {
+        const thenReturns = blockOrStatementReturns(stmt.thenStatement);
+        const elseReturns = stmt.elseStatement
+          ? blockOrStatementReturns(stmt.elseStatement)
+          : false;
+        return thenReturns && elseReturns;
+      }
+      return false;
+    }
+
+    function methodBodyAlwaysReturns(body) {
+      if (!ts.isBlock(body)) return true;
+      return blockOrStatementReturns(body);
+    }
+
     function collectReturnLiteralKeys(body) {
       if (!body) return;
       if (!ts.isBlock(body)) {
@@ -3318,6 +3351,9 @@ function checkAccessibleNameFallbacks() {
         if (node.body) {
           if (ts.isBlock(node.body)) localVarKeys = collectLocalVarKeys(node.body);
           collectReturnLiteralKeys(node.body);
+          if (ts.isBlock(node.body) && !methodBodyAlwaysReturns(node.body)) {
+            partialReturn = true;
+          }
         }
       }
       ts.forEachChild(node, visit);
@@ -3402,11 +3438,12 @@ function checkAccessibleNameFallbacks() {
         : `${[...new Set(sites)].join(', ')} (${sites.length} bindings)`;
     if (partial) {
       fail(
-        `${where} binds an accessible name to \`${methodAttr}\`, but at least one return branch ` +
-          'uses an expression this gate cannot resolve (for example a call or a ternary arm that ' +
-          'is not a string literal). Recording only the resolved literals would miss fallbacks for ' +
-          'other branches. Bind a literal key, return only resolvable literals/ternaries, or extend ' +
-          'translationKeysReturnedByMethod.',
+        `${where} binds an accessible name to \`${methodAttr}\`, but at least one control-flow ` +
+          'path does not return a resolvable catalogue key (for example a call or ternary arm this ' +
+          'gate cannot read, or an `if` without a matching `else`/`return` so the method can ' +
+          'fall through). Recording only the resolved literals would miss fallbacks for other ' +
+          'paths. Bind a literal key, return only resolvable literals/ternaries on every path, or ' +
+          'extend translationKeysReturnedByMethod.',
       );
     } else {
       fail(
