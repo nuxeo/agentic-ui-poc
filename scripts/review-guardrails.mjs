@@ -37,9 +37,12 @@ function fileExists(path) {
 }
 
 function read(path) {
-  // Normalise CRLF line endings only. Stripping every `\r` also removed illegal raw carriage returns
-  // inside JSON string values, so `JSON.parse` could succeed here while the runtime catalogue load
-  // still fails — `checkTranslationCatalogues` rejects bare `\r` before parsing.
+  // Normalise CRLF line endings only (`\r\n` → `\n`), repository-wide, so workflow matchers see
+  // Unix line ends on Windows checkouts. Do not strip every `\r`: that can remove raw carriage
+  // returns inside JSON string values and turn a runtime `JSON.parse` failure into a pass here.
+  // Catalogues are validated in `checkTranslationCatalogues`, which reads through this helper and
+  // fails on `JSON.parse` — illegal control characters inside strings stay invalid; `\r` as JSON
+  // whitespace between tokens remains legal.
   return readFileSync(join(repoRoot, path), 'utf8').replace(/\r\n/g, '\n');
 }
 
