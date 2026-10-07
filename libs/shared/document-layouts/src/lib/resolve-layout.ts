@@ -25,6 +25,7 @@ export const PRESENTED_SCHEMAS: ReadonlySet<string> = new Set([
   'relatedtext',
   'picture',
   'image_metadata',
+  'iptc',
   'video',
   'audio',
 ]);

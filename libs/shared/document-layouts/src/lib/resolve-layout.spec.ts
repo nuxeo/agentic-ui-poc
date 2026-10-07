@@ -163,6 +163,26 @@ describe('generateLayout', () => {
     expect(file && generateLayout(file, 'metadata').sections).toEqual([]);
   });
 
+  it('adds nothing to a stock Picture, including the iptc schema a distribution may add', () => {
+    const picture = readDocumentType(
+      {
+        schemas: [
+          'common',
+          'uid',
+          'dublincore',
+          'facetedTag',
+          'file',
+          'picture',
+          'image_metadata',
+          'iptc',
+          'relatedtext',
+        ].map((name) => ({ name, fields: { anything: 'string' } })),
+      },
+      'Picture',
+    );
+    expect(picture && generateLayout(picture, 'metadata').sections).toEqual([]);
+  });
+
   it('shows a customer schema added to a stock type, and drops a schema with no fields', () => {
     const file = readDocumentType(
       {

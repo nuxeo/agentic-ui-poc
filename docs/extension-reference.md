@@ -868,7 +868,7 @@ description and the Dublin Core vocabularies) and above Attachments. Read-only.
 **With no file, the layout is generated from the type's own schemas.** One section per schema,
 fields by name, each value shown by its schema type. Schemas the panel and viewers already
 present are left out — `common`, `dublincore`, `uid`, `file`, `files`, `note`, `facetedTag`,
-`relatedtext`, `picture`, `image_metadata`, `video`, `audio` — so a stock File or Note shows
+`relatedtext`, `picture`, `image_metadata`, `iptc`, `video`, `audio` — so a stock File or Note shows
 nothing new, a Claim shows its `claim` schema, and a schema you add to File appears on File. A
 type never falls back to its parent type's file.
 
