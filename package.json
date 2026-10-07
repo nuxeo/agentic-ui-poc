@@ -32,6 +32,7 @@
     "beta:upgrade": "node scripts/beta-harness/upgrade-rehearsal.mjs",
     "beta:sync-docs": "node scripts/sync-platform-docs.mjs",
     "build": "nx build",
+    "config:dev": "node scripts/dev-config.mjs",
     "dev": "nx serve nuxeo-ui",
     "evidence:collect": "node scripts/collect-evidence/story-runner.mjs",
     "evidence:story": "node scripts/collect-evidence/story-report.mjs",

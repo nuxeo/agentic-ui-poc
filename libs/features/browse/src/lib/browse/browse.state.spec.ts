@@ -76,7 +76,7 @@ const detail = {
   trashDocument: vi.fn((_uid: string): DetailReturn<'trashDocument'> => EMPTY),
 };
 
-const manifest = signal<{ extensions?: unknown }>({});
+const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
 /**
  * The filtering, sorting, cell-rendering and folder-navigation state this
@@ -115,7 +115,7 @@ describe('BrowseComponent — listing state', () => {
     URL.createObjectURL = vi.fn(() => `blob:mock/${counter++}`);
     URL.revokeObjectURL = vi.fn((url: string) => revoked.push(url));
 
-    manifest.set({});
+    manifest.set({ extensionLayers: [] });
     await buildComponent();
     selection = TestBed.inject(SelectionService);
     selection.clear();

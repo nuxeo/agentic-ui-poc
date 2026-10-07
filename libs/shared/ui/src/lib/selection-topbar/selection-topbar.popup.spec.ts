@@ -38,10 +38,10 @@ describe('SelectionTopbarComponent — selection popup', () => {
 
   // No `extensions` registered on purpose: `bulkActions()` resolves to an empty slot, so the
   // action row renders nothing and cannot interfere with the focus assertions below.
-  const manifest = signal<{ extensions?: unknown }>({});
+  const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
   async function render(items: SelectedItem[] = []): Promise<void> {
-    manifest.set({});
+    manifest.set({ extensionLayers: [] });
     await TestBed.configureTestingModule({
       imports: [SelectionTopbarComponent, NoopAnimationsModule],
       providers: [

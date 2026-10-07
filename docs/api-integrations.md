@@ -1407,6 +1407,49 @@ prefers `dc:source` (rarely auto-filled) and falls back to `dc:rights` when
 
 ---
 
+## 28. Application Configuration — Bootstrap and Manifest (NXSAT-312)
+
+| Field           | Value                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Service**     | `AppConfigService` (`libs/shared/app-config/src/lib/app-config.service.ts`)                                         |
+| **Method**      | `load()`, once, from an `APP_INITIALIZER`                                                                           |
+| **HTTP Method** | `GET`, both in parallel, at startup; **anonymous**: no credentials needed (a stored session's are sent and ignored) |
+| **Endpoints**   | `/nuxeo/agentic-ui-config/bootstrap.json`, `/nuxeo/agentic-ui-config/manifest.json`                                 |
+| **Server side** | `AgenticUiConfigServlet` in `nuxeo-agentic-core`, from `org.nuxeo.agentic.ui.config` contributions                  |
+
+Both URLs are resolved from the application's base href (`resolveBootstrapConfigUrl`,
+`resolveManifestConfigUrl`), so under `nx serve` they are `/agentic-ui-config/*.json`, served from
+the gitignored files `npm run config:dev` writes. Not proxied to Nuxeo.
+
+**Response (both):**
+
+```json
+{
+  "format": "nuxeo-agentic-ui-config/1",
+  "layer": "bootstrap",
+  "fragments": [
+    {
+      "name": "defaults",
+      "component": "org.nuxeo.agentic.ui.config.defaults",
+      "bundle": "org.nuxeo.agentic.core",
+      "source": "agentic-ui-config/bootstrap.defaults.json",
+      "content": { "branding": { "applicationTitle": "Nuxeo Platform" } }
+    }
+  ],
+  "diagnostics": []
+}
+```
+
+`fragments` are applied in order over the compiled defaults; the bootstrap response also carries
+`assets`. A response that is not this envelope, an error status, a network failure or no answer
+within 10 s (`CONFIG_LOAD_TIMEOUT_MS`) leaves the compiled defaults in force and is recorded in
+`diagnostics().messages`. The manifest Note at
+`/nuxeo/api/v1/path/default-domain/config/agentic-ui` is **no longer requested**.
+
+**Usage:** every startup, before the first render. Never re-fetched on sign-in or sign-out.
+
+---
+
 ## Administration — Recently Created Users and Groups
 
 | Field           | Value                                                                       |

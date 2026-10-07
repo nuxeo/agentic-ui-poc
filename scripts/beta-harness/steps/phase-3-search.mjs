@@ -162,7 +162,11 @@ const resultTitles = (page) =>
   );
 
 const countText = async (page) =>
-  (await page.locator('.hxp-search-page__results-count').first().textContent().catch(() => '')) ?? '';
+  (await page
+    .locator('.hxp-search-page__results-count')
+    .first()
+    .textContent()
+    .catch(() => '')) ?? '';
 
 export default async function run(page, h) {
   // -------------------------------------------------------------------------
@@ -279,7 +283,11 @@ export default async function run(page, h) {
 
   await search(page, 'zzznomatchzzz' + Date.now());
   const emptyTitles = await resultTitles(page);
-  h.check('no rows are rendered', emptyTitles.length === 0, `rendered ${emptyTitles.length} row(s)`);
+  h.check(
+    'no rows are rendered',
+    emptyTitles.length === 0,
+    `rendered ${emptyTitles.length} row(s)`,
+  );
   h.check(
     'the "no results" state is visible',
     Boolean(await page.$('.hxp-search-page__no-results')),
@@ -301,7 +309,11 @@ export default async function run(page, h) {
    * offset rather than as the end of the results.
    */
   await search(page, '');
-  const pageInfoBefore = (await page.locator('.hxp-search-page__page-info').textContent().catch(() => '')) ?? '';
+  const pageInfoBefore =
+    (await page
+      .locator('.hxp-search-page__page-info')
+      .textContent()
+      .catch(() => '')) ?? '';
   const titlesBefore = await resultTitles(page);
   h.note(`Paging the unfiltered result set: ${(await countText(page)).trim()}.`);
 
@@ -316,7 +328,11 @@ export default async function run(page, h) {
   } else {
     await next.click();
     await page.waitForTimeout(3500);
-    const pageInfoAfter = (await page.locator('.hxp-search-page__page-info').textContent().catch(() => '')) ?? '';
+    const pageInfoAfter =
+      (await page
+        .locator('.hxp-search-page__page-info')
+        .textContent()
+        .catch(() => '')) ?? '';
     const titlesAfter = await resultTitles(page);
 
     h.check(
@@ -351,9 +367,11 @@ export default async function run(page, h) {
     // an earlier cut used and which would have hidden any resource failure at all,
     // making this check unable to fail.
     //
-    // The Layer 1 manifest document does not exist on this instance; falling back to
-    // packaged defaults is the documented behaviour, and `app-config` reports it.
-    '/default-domain/config/agentic-ui',
+    // Nothing answers `agentic-ui-config/*` under `nx serve` unless a developer has put a
+    // file there; falling back to packaged defaults is the documented behaviour, and
+    // `app-config` reports it.
+    '/agentic-ui-config/bootstrap.json',
+    '/agentic-ui-config/manifest.json',
     // This run signs out deliberately in order to reach the login form.
     '/nuxeo/logout',
     // The AI backend is a separate marketplace package; its absence is a 500 by design.

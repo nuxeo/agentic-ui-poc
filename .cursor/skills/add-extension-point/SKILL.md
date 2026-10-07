@@ -73,10 +73,11 @@ inspection.
 
 ## 6. Configuration must survive upgrade
 
-Anything a customer edits cannot live in the packaged web directory —
-`install.xml` copies it with `overwrite="true"` and destroys it on upgrade.
-Bootstrap settings go to a non-overwritten static path; the runtime manifest is
-read from a Nuxeo document with the packaged default as fallback.
+Anything a customer changes cannot live in our package — an upgrade replaces it.
+Since NXSAT-312 both halves are fragments the customer's own Marketplace package
+contributes to `org.nuxeo.agentic.ui.config`, served after our defaults at
+`agentic-ui-config/bootstrap.json` and `manifest.json`, anonymously. Nothing is
+edited on the server and nothing is read from the repository.
 
 If your change adds a customer-editable value, state in the PR where it lives and
 how it survives an upgrade. If you cannot answer that, the change is not done.

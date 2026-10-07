@@ -322,7 +322,10 @@ export default async function run(page, h) {
     ...Object.values(build.configurations ?? {}).map((c) => c.assets),
   ].filter(Array.isArray);
   const withSatori = assetArrays.filter((a) =>
-    a.some((entry) => typeof entry === 'object' && /@hylandsoftware\/satori-ui\/i18n/.test(entry.input ?? '')),
+    a.some(
+      (entry) =>
+        typeof entry === 'object' && /@hylandsoftware\/satori-ui\/i18n/.test(entry.input ?? ''),
+    ),
   );
   h.check(
     'every build asset array copies the satori-ui i18n folder',
@@ -354,8 +357,8 @@ export default async function run(page, h) {
   h.expectNoConsoleErrors('no unexpected browser console errors', [
     /automation\/AI\./,
     '/nuxeo/logout',
-    '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
     '/agentic-ui-config/bootstrap.json',
+    '/agentic-ui-config/manifest.json',
     // Added with the knowledge-discovery surface, and each verified against the server rather
     // than assumed — widening this list to get to green is how a health check stops meaning
     // anything.

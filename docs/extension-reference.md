@@ -59,7 +59,7 @@ both yours:
 
 Replacing what a packaged ID _does_ is a Layer 2 operation: register a handler under that ID from
 your own library (section 14), where the change is in reviewed, versioned code rather than in a
-JSON document any repository writer can edit.
+JSON fragment.
 
 ### Where the manifest lives, and how it survives upgrade
 
@@ -74,23 +74,22 @@ put nothing secret in a fragment. The `bootstrap.json` that used to be copied an
 the bundle is **removed with no migration**: a file left in `nxserver/nuxeo.war/agentic-ui-config`
 is not served.
 
-**Until NXSAT-312 slice 2 ships, the client below is unchanged:** it does not yet merge the
-served fragments, and it still reads the manifest from the Note described next. Slice 2 removes
-the Note, also with no migration, and the two slices ship together.
+The application fetches both, anonymously and together, before anything renders, and applies
+the fragments in the order the server lists them, our defaults first. A key a later fragment sets
+wins over an earlier one. Each fragment's `extensions` block is handled in two stages. First its
+`$references` resolve against its own `$layers` only, so one package cannot reach another's named
+layers. Then the resolved blocks merge in the same order, and that merge is **not** isolated: slot
+entries with the same `id` merge across packages, so a later package can patch a descriptor an
+earlier one contributed. Nothing is read from the repository: the Nuxeo Note at
+`/default-domain/config/agentic-ui` that held the manifest before NXSAT-312 is no longer read, by
+any request, with **no migration** — re-create its content as a manifest fragment in your package.
+Nothing about configuration changes when a user signs in or out.
 
-The manifest is a Nuxeo document at `/default-domain/config/agentic-ui`, read with the signed-in
-user's own session. It is **not** a file inside the packaged web directory, because the marketplace
-installer copies that directory with `overwrite="true"` and would destroy it. See the Phase 1 section
-of the plan for the ACL model — in short, grant Read broadly and Write narrowly, and block
-inheritance on the config folder.
+`AppConfigService.diagnostics()` reports where each half came from (`configuration-service` or
+`packaged-default`), the package component behind every fragment, and the server's own
+diagnostics — a replacement it rejected, a contribution it removed.
 
-With the default `manifestDocumentProperty`, `note:note`, the document is a Note and its
-`note:mime_type` must be **`text/plain`**. Nuxeo's HTML sanitizer escapes the quotes in a Note of
-any other type — `application/json` included — so the stored JSON stops parsing and the packaged
-defaults apply with no error shown. A deployment that points `manifestDocumentProperty` at a
-property of its own schema is not subject to this.
-
-The Layer 1 configuration is the `extensions` key of that document:
+The Layer 1 configuration is the `extensions` key of a manifest fragment:
 
 ```json
 {
@@ -112,6 +111,38 @@ The Layer 1 configuration is the `extensions` key of that document:
   }
 }
 ```
+
+### Presales presets
+
+A demo server can carry several named configurations and switch between them per browser, without
+reinstalling anything. A bootstrap fragment declares them:
+
+```json
+{
+  "presales": {
+    "presetSwitching": true,
+    "presets": {
+      "acme": {
+        "label": "Acme Insurance",
+        "bootstrap": { "branding": { "applicationTitle": "Acme Insurance" } },
+        "manifest": { "labels": { "nav.item.browse-adf-hx": "Claims" } }
+      }
+    }
+  }
+}
+```
+
+Open the application with `?preset=acme` — before or after the `#` — and that preset's `bootstrap`
+and `manifest` are applied after every package's fragments. The choice is remembered in
+`localStorage` (`agentic-ui.preset`) until `?preset=` clears it, and a badge in the header names
+the preset in force. **Nothing happens unless a package sets `presetSwitching: true`**: on any
+other server the parameter and the stored choice are both ignored, and the diagnostics and the browser console say so. A
+later fragment's `presetSwitching` wins, so a customer package can switch it off. A preset name
+is up to 64 letters, digits, `.`, `_` and `-`, starting with a letter or digit; a preset whose
+name breaks that rule is skipped, and an unknown name is reported and forgotten.
+
+Presets are package content, served anonymously like every fragment. Switching chooses among them
+for one browser; it grants nothing and changes nothing on the server.
 
 ---
 

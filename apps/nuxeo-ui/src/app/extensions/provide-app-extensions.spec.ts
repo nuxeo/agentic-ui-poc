@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 
-import { AppConfigService } from '@nuxeo-satori/platform/app-config';
+import { APP_CONFIG_FORMAT, AppConfigService } from '@nuxeo-satori/platform/app-config';
 import {
   AppExtensionsService,
   EXTENSION_SLOTS,
@@ -23,8 +23,8 @@ import { AuthService } from '../auth/auth.service';
  * or that `provideExtensionRoutes()` is in `provideAppExtensions()` — and a
  * descriptor nothing registers is the same defect as a descriptor nothing
  * renders, one layer up. So this bootstraps the real `appConfig.providers` and
- * drives the manifest through `AppConfigService.loadManifest()`, the method the
- * app itself calls after sign-in.
+ * drives the manifest through `AppConfigService.load()`, the method the app
+ * itself calls at startup.
  */
 describe('provideAppExtensions — the four reserved slots, as the app wires them', () => {
   const authMock = {
@@ -59,13 +59,25 @@ describe('provideAppExtensions — the four reserved slots, as the app wires the
     http.verify();
   });
 
-  /** Stand in a manifest document the way Nuxeo returns one. */
+  /** Stand in the configuration service, with one package contributing `extensions`. */
   async function loadManifest(extensionConfig: unknown): Promise<void> {
     const config = TestBed.inject(AppConfigService);
-    const done = config.loadManifest();
-    http
-      .expectOne((request) => request.url.includes('/nuxeo/api/v1/path'))
-      .flush({ properties: { 'note:note': JSON.stringify({ extensions: extensionConfig }) } });
+    const done = config.load();
+    for (const layer of ['bootstrap', 'manifest'] as const) {
+      const content = layer === 'manifest' ? { extensions: extensionConfig } : {};
+      http
+        .match((request) => request.url.endsWith(`/agentic-ui-config/${layer}.json`))
+        .forEach((request) =>
+          request.flush({
+            format: APP_CONFIG_FORMAT,
+            layer,
+            fragments: [
+              { name: 'acme', component: 'com.acme', bundle: 'com.acme', source: 'x', content },
+            ],
+            diagnostics: [],
+          }),
+        );
+    }
     await done;
     TestBed.inject(ApplicationRef).tick();
   }

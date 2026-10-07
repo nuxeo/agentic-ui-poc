@@ -130,7 +130,7 @@ const tag = {
   removeTag: vi.fn((): TagReturn<'removeTag'> => EMPTY),
 };
 
-const manifest = signal<{ extensions?: unknown }>({});
+const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
 /**
  * Every action the browse toolbar, side panel and tabs can start, in both its
@@ -190,7 +190,7 @@ describe('BrowseComponent — actions', () => {
     URL.createObjectURL = vi.fn(() => `blob:mock/${counter++}`);
     URL.revokeObjectURL = vi.fn((url: string) => revoked.push(url));
 
-    manifest.set({});
+    manifest.set({ extensionLayers: [] });
     await TestBed.configureTestingModule({
       imports: [testTranslateModule(), testTranslateModule(), BrowseComponent],
       providers: [

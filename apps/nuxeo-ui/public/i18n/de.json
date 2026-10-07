@@ -517,6 +517,9 @@
     "placeholder-page": {
       "coming-soon": "Demnächst verfügbar"
     },
+    "preset": {
+      "badge": "Voreinstellung: {{ label }}"
+    },
     "profile-page": {
       "change-password": "Passwort ändern",
       "company": "Unternehmen",

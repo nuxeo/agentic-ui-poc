@@ -41,8 +41,8 @@ const EXPECTED_HEADERS = ['Title', 'Modified', 'Last Contributor'];
 const ENVIRONMENTAL_ERRORS = [
   /automation\/AI\./,
   '/nuxeo/logout',
-  '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
   '/agentic-ui-config/bootstrap.json',
+  '/agentic-ui-config/manifest.json',
   // sys_acl principal resolution: probes /group/ first for every principal, gets 404 for users
   /HTTP 404 \/nuxeo\/api\/v1\/group\//,
   // adf-core viewer / pdfjs-dist passive event listener warning

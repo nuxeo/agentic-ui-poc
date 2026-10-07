@@ -33,7 +33,7 @@ describe('SelectionTopbarComponent — bulk-actions slot', () => {
     'app.bulkActions.delete',
   ];
 
-  const manifest = signal<{ extensions?: unknown }>({});
+  const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
   function render(selectionCount = 3) {
     manifest.set(manifest());
@@ -62,7 +62,7 @@ describe('SelectionTopbarComponent — bulk-actions slot', () => {
     ] as HTMLButtonElement[];
   }
 
-  beforeEach(() => manifest.set({}));
+  beforeEach(() => manifest.set({ extensionLayers: [] }));
 
   it('renders the packaged six in the order the fixed markup had', () => {
     const buttons = renderedButtons(render());
@@ -104,20 +104,24 @@ describe('SelectionTopbarComponent — bulk-actions slot', () => {
   });
 
   it('lets a manifest hide one action without disturbing the rest', () => {
-    manifest.set({ extensions: { overrides: { 'app.bulkActions.publish': { visible: false } } } });
+    manifest.set({
+      extensionLayers: [{ overrides: { 'app.bulkActions.publish': { visible: false } } }],
+    });
     const ids = renderedButtons(render()).map((button) => button.getAttribute('data-action-id'));
     expect(ids).toEqual(MARKUP_ORDER.filter((id) => id !== 'app.bulkActions.publish'));
   });
 
   it('lets a manifest add an action, which dispatches to its registered handler', () => {
     manifest.set({
-      extensions: {
-        slots: {
-          'bulk-actions': [
-            { id: 'acme.bulkActions.archive', label: 'Archive', icon: 'archive', order: 15 },
-          ],
+      extensionLayers: [
+        {
+          slots: {
+            'bulk-actions': [
+              { id: 'acme.bulkActions.archive', label: 'Archive', icon: 'archive', order: 15 },
+            ],
+          },
         },
-      },
+      ],
     });
     const fixture = render();
     const calls: string[] = [];
@@ -135,13 +139,15 @@ describe('SelectionTopbarComponent — bulk-actions slot', () => {
 
   it('renders a manifest action with no handler as inert rather than throwing', () => {
     manifest.set({
-      extensions: {
-        slots: {
-          'bulk-actions': [
-            { id: 'acme.bulkActions.ghost', label: 'Ghost', icon: 'help', order: 5 },
-          ],
+      extensionLayers: [
+        {
+          slots: {
+            'bulk-actions': [
+              { id: 'acme.bulkActions.ghost', label: 'Ghost', icon: 'help', order: 5 },
+            ],
+          },
         },
-      },
+      ],
     });
     const button = renderedButtons(render())[0];
     expect(button.getAttribute('data-action-id')).toBe('acme.bulkActions.ghost');

@@ -54,6 +54,12 @@
       </button>
 
       <h1 satAppHeaderTitle>{{ pageTitle() }}</h1>
+      <!--
+        In the title slot, not the trailing one: the global search below is absolutely
+        positioned from the trailing container's left edge, so anything widening that
+        container slides under it.
+      -->
+      <app-preset-badge satAppHeaderTitle />
 
       <div
         #globalSearchContainer

@@ -383,12 +383,16 @@ DocumentService`. The chain, read from the published bundle:
   under `nxserver/nuxeo.war`** — the Tomcat docBase for the `/nuxeo` context; `nxserver/web` is
   not a docBase. Everything served at `/nuxeo/agentic-ui-config/` is **anonymous**. Not
   rehearsed: the Admin Center / Update Center path, which runs the same package tasks.
-- **Configuration is loaded, not compiled.** `libs/shared/app-config` reads a
-  static bootstrap file pre-auth and a runtime manifest from the Nuxeo document
-  at `/default-domain/config/agentic-ui` post-auth. Eleven `InjectionToken`
-  factories resolve from it. Both loads are tolerant: a missing file, absent
-  document, 403 or malformed JSON falls back to the packaged defaults, and the
-  packaged defaults reproduce the pre-Phase-1 compiled values exactly.
+- **Configuration is loaded, not compiled.** `libs/shared/app-config` fetches
+  `agentic-ui-config/bootstrap.json` and `manifest.json` together, pre-auth,
+  from the configuration servlet, and folds their ordered fragments over the
+  packaged defaults. Eleven `InjectionToken` factories resolve from it. Both
+  loads are tolerant: a 404, an unreachable server or a response that is not
+  the `nuxeo-agentic-ui-config/1` envelope falls back to the packaged defaults,
+  and the packaged defaults reproduce the pre-Phase-1 compiled values exactly.
+  _Changed by NXSAT-312 (2026-10):_ until then the manifest was a Nuxeo Note at
+  `/default-domain/config/agentic-ui`, read post-auth; nothing reads it now, and
+  nothing is re-fetched on sign-in.
 - **Angular's hash routing hides configuration reloads from evidence captures.**
   `withHashLocation()` makes route changes same-document, so `page.goto('/#/x')`
   does not re-run `APP_INITIALIZER`. Any capture that changes configuration must

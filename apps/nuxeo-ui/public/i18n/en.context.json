@@ -2133,5 +2133,6 @@
   "ui.save-current-search": "Title of the dialog that saves the search currently on screen. A VERB phrase, imperative. \"Current\" means the query the user is looking at right now.",
   "ui.saved-search": "Rendered from an Angular binding in saved-search-dialog.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English.",
   "ui.unblock": "Rendered from an Angular binding in share-saved-search-dialog.component.html — usually one branch of a two-state control, so its opposite is a sibling key. Keep it as short as the English.",
-  "ui.update": "Button in the shared edit dialogs (collection and saved-search sharing). Verb, imperative: saves the changes to an existing entry; the same button reads 'Create' for a new one — not the noun 'an update'."
+  "ui.update": "Button in the shared edit dialogs (collection and saved-search sharing). Verb, imperative: saves the changes to an existing entry; the same button reads 'Create' for a new one — not the noun 'an update'.",
+  "app.preset.badge": "Short badge in the application header, shown only on a presales demonstration server, naming the demo configuration currently applied. {{ label }} is that configuration's display name, usually a prospect's company name, and is not translated. A 'preset' here is a named set of demonstration settings."
 }

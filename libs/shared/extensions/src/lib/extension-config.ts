@@ -17,7 +17,7 @@ export interface ExtensionConfig {
   readonly $references?: readonly string[];
   /** Layer names to drop even when `$references` lists them. */
   readonly $ignoreReferenceList?: readonly string[];
-  /** Named layers, so a single Nuxeo document can carry a whole stack. */
+  /** Named layers, so a single manifest fragment can carry a whole stack. */
   readonly $layers?: Readonly<Record<string, ExtensionConfig>>;
   /** Free-form metadata for diagnostics. */
   readonly $name?: string;
@@ -101,6 +101,22 @@ export function resolveExtensionConfig(
 }
 
 /**
+ * Resolve each package's extension layer on its own, then merge them in contribution order, so
+ * a package that depends on another wins over it.
+ *
+ * Each layer's `$references` resolve against that layer's own `$layers`: one package cannot
+ * reach into another's named layers.
+ */
+export function resolveExtensionLayers(layers: readonly unknown[]): ResolvedExtensionConfig {
+  const resolved = layers.map((layer) => resolveExtensionConfig(readExtensionConfig(layer)));
+  return {
+    config: mergeExtensionConfigs(...resolved.map((entry) => entry.config)),
+    applied: resolved.flatMap((entry) => entry.applied),
+    missing: resolved.flatMap((entry) => entry.missing),
+  };
+}
+
+/**
  * Read an untrusted value into an {@link ExtensionConfig}.
  *
  * Tolerant in the same way as the Phase 1 loaders: a customer who saves
@@ -114,6 +130,25 @@ export function readExtensionConfig(raw: unknown): ExtensionConfig {
   const config: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(raw)) {
     if (key.startsWith('$')) config[key] = value;
+  }
+  // Resolution iterates these, so a fragment that gets their shape wrong loses them rather than
+  // throwing for every package.
+  for (const key of ['$references', '$ignoreReferenceList']) {
+    const names = raw[key];
+    if (names === undefined) continue;
+    config[key] = Array.isArray(names)
+      ? names.filter((name): name is string => typeof name === 'string')
+      : [];
+  }
+  const layers = raw['$layers'];
+  if (layers !== undefined) {
+    config['$layers'] = isRecord(layers)
+      ? Object.fromEntries(
+          Object.entries(layers)
+            .filter(([, layer]) => isRecord(layer))
+            .map(([name, layer]) => [name, readExtensionConfig(layer)]),
+        )
+      : {};
   }
 
   const slots = raw['slots'];

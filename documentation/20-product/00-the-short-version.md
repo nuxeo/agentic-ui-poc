@@ -56,41 +56,37 @@ On this page, layers 0 and 1 are "configuration" and layers 2 and 3 are "code".
 
 In two places, and both are a known problem:
 
-1. **A settings file on the Nuxeo server**,
-   `nxserver/nuxeo.war/agentic-ui-config/bootstrap.json`, created by someone with access to the
-   server's files by copying the sample the package installs beside it, `bootstrap.example.json`,
-   and editing the copy. It holds the name, colours and default language. The package never
-   installs, replaces or deletes `bootstrap.json`, so an upgrade leaves it alone; that was
-   rehearsed on a real server with `nuxeoctl` (NXSAT-317). Without the file the application uses
-   its defaults. Users see a change the next time they open the application.
-2. **A configuration document in the repository**: a Nuxeo Note at
-   `/default-domain/config/agentic-ui` whose text is JSON, in plain-text format, edited by any
-   Nuxeo user allowed to write it. It holds the wording and the whole arrangement. The longer documents call it the
-   _manifest_. Each user reads it with their own permissions, and a change applies at their next
-   sign-in or page reload.
+1. **The settings** (bootstrap): the name, colours and default language.
+2. **The manifest**, which holds the wording and the whole arrangement.
 
-Editing files on a server is not a deployment, and some regulated customers require configuration
-to be kept apart from repository data. The plan is to let you ship your configuration in **your
-own Marketplace package that depends on ours**. That is planned, not built.
+Since NXSAT-312 you ship both in **your own Marketplace package that depends on ours**. It
+contributes configuration fragments, and the server serves them after our defaults, in dependency
+order. Nothing is edited on the server and nothing is stored in the repository. The application
+reads both at startup, before sign-in, so they are the same for every user and must hold nothing
+secret. Users see a change the next time they open the application. An edited `bootstrap.json`
+beside the bundle and the old manifest Note are not read, and nothing converts them. A generator
+that scaffolds such a package is coming next; until then
+[deployment and troubleshooting](../30-engineering/13-deployment-and-troubleshooting.md) shows the
+package layout.
 
 ## What you can change without code
 
-| You want to…                                                                                                                   | Where                                          | Details                                                                                                         |
-| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Change the product name and the browser-tab title                                                                              | settings file, `branding`                      | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
-| Change the colours, or add your own colour theme and make it the default                                                       | settings file, `themes` and `defaultThemeId`   | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
-| Choose the default language                                                                                                    | settings file, `defaultLanguage`               | [Our default settings](../../nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json)   |
-| Change on-screen wording — the same text in every language                                                                     | configuration document, `labels`               | [Runbook, beat 4](../../docs/beta-demo-runbook.md#beat-4--relabel-the-product-2-min)                            |
-| Hide, reorder or rename a menu entry, toolbar button, tab, list column or bulk action                                          | configuration document, `extensions.overrides` | [Extension reference, overrides](../../docs/extension-reference.md#per-id-overrides)                            |
-| Add a menu entry that opens an existing page                                                                                   | configuration document, `extensions.slots`     | [Runbook, beat 5](../../docs/beta-demo-runbook.md#beat-5--nav-hide-one-add-one-and-the-security-question-4-min) |
-| Show an entry only when a condition holds: the user can edit the document, is an administrator, has several documents selected | configuration document, a `rule` on the entry  | [Extension reference, rules](../../docs/extension-reference.md#4-rules--the-registered-predicates)              |
-| Choose which list columns are offered, and which start switched on                                                             | configuration document, `extensions.slots`     | [Runbook, beat 6](../../docs/beta-demo-runbook.md#beat-6--columns-3-min)                                        |
+| You want to…                                                                                                                   | Where                                         | Details                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Change the product name and the browser-tab title                                                                              | settings fragment, `branding`                 | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
+| Change the colours, or add your own colour theme and make it the default                                                       | settings fragment, `themes`, `defaultThemeId` | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
+| Choose the default language                                                                                                    | settings fragment, `defaultLanguage`          | [Our default settings](../../nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json)   |
+| Change on-screen wording — the same text in every language                                                                     | manifest fragment, `labels`                   | [Runbook, beat 4](../../docs/beta-demo-runbook.md#beat-4--relabel-the-product-2-min)                            |
+| Hide, reorder or rename a menu entry, toolbar button, tab, list column or bulk action                                          | manifest fragment, `extensions.overrides`     | [Extension reference, overrides](../../docs/extension-reference.md#per-id-overrides)                            |
+| Add a menu entry that opens an existing page                                                                                   | manifest fragment, `extensions.slots`         | [Runbook, beat 5](../../docs/beta-demo-runbook.md#beat-5--nav-hide-one-add-one-and-the-security-question-4-min) |
+| Show an entry only when a condition holds: the user can edit the document, is an administrator, has several documents selected | manifest fragment, a `rule` on the entry      | [Extension reference, rules](../../docs/extension-reference.md#4-rules--the-registered-predicates)              |
+| Choose which list columns are offered, and which start switched on                                                             | manifest fragment, `extensions.slots`         | [Runbook, beat 6](../../docs/beta-demo-runbook.md#beat-6--columns-3-min)                                        |
 
 The conditions are a fixed list that ships with the product; adding your own is code. Every name
 that configuration can address is listed in the
 [extension reference](../../docs/extension-reference.md).
 
-For example, this configuration document hides Trash, renames Collections to "Repository", and
+For example, this manifest fragment hides Trash, renames Collections to "Repository", and
 shows Administration to administrators only:
 
 ```json
@@ -124,7 +120,6 @@ shows Administration to administrators only:
   fields, so the fields of your own document types are not shown or editable. Conditions on a
   document's type exist (`app.rules.isType`), and a type can have its own View tab through the
   `documentView` slot, but the properties and edit form are the same for every type.
-- **Deploy configuration from your own package.** Planned, not built; see above.
 - **Install from a public registry.** The Marketplace package has only been published to Nuxeo's
   pre-production Marketplace. The developer package your own code builds against,
   `@nuxeo-satori/platform`, is not on any npm registry yet.
@@ -152,13 +147,10 @@ the package is not published yet, you build it from this repository. Publishing 
 1. **Run it.** On your own machine, against Nuxeo in Docker: follow
    [Developer Getting Started](../30-engineering/01-getting-started.md). You need Docker,
    Node.js 20, and a GitHub token that can read Hyland's and Alfresco's GitHub Packages.
-2. **Change something without code.** Copy the sample settings file to `bootstrap.json` and edit
-   the copy ([beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min) shows
-   where), or create the configuration document
-   and paste the example above. Create it as a plain-text Note (`note:mime_type` `text/plain`) as
-   [Part 0.6 of the runbook](../../docs/beta-demo-runbook.md#06-create-the-manifest-document)
-   does. In any other format Nuxeo escapes the quotes in the JSON, and the application then
-   ignores the document and keeps its defaults, without an error. Beats 3 to 7 of the
+2. **Change something without code.** Locally, put the example above in a file and run
+   `npm run config:dev -- --manifest <file>` before `nx serve`
+   ([Part 0.6 of the runbook](../../docs/beta-demo-runbook.md#06-write-the-dev-configuration)).
+   On a server, contribute the same JSON as a fragment from your own package. Beats 3 to 7 of the
    [demo runbook](../../docs/beta-demo-runbook.md#part-4--the-demo-script) give the exact JSON
    for each change and what you should see.
 3. **Customise it with an AI coding agent.** Use the

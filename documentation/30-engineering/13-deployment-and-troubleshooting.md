@@ -102,11 +102,32 @@ fragment is public.
 
 The old mechanism — a `bootstrap.json` edited beside the bundle, and a manifest Note at
 `/default-domain/config/agentic-ui` — is **removed with no migration**, in two steps that ship
-together. The server side (NXSAT-312 slice 1) stops serving files from disk at once: a file left
-in `nxserver/nuxeo.war/agentic-ui-config` is not read, served or reported. The client side (slice 2) removes the Note: until it lands, the application still reads the Note at the compiled path and
-does not yet merge the server's contributed fragments, so it runs on its compiled defaults plus
-any Note. Anyone using either must re-create their settings in a configuration package or a
-preset.
+together. The server side (NXSAT-312 slice 1) stops serving files from disk: a file left in
+`nxserver/nuxeo.war/agentic-ui-config` is not read, served or reported. The client side (slice 2)
+stops reading the Note: the application makes no request for it, before or after sign-in, and
+applies only the fragments the server serves. A Note left in the repository is inert. Anyone
+using either must re-create their settings in a configuration package, or as a preset in a demo
+package.
+
+### How the application loads it
+
+At startup, before anything renders and before anyone signs in, the application fetches
+`agentic-ui-config/bootstrap.json` and `manifest.json` — siblings, resolved from its base href —
+in parallel and anonymously. It folds each response's fragments over its compiled defaults in the
+order served, then applies a presales preset if a package enables switching and one is chosen.
+Nothing is fetched again when a user signs in, out, or switches: both halves are the same for
+everyone. Only the `nuxeo-agentic-ui-config/1` envelope is accepted; a bare JSON object, an error
+status, an unreachable server or one that does not answer within 10 s leaves the compiled defaults
+in force, and `AppConfigService.diagnostics()` records why. Every reason, and every diagnostic the server
+reports, is also written to the browser console as a warning prefixed `[agentic-ui-config]`. The
+template app's home page lists the package behind every fragment. "Anonymously" means neither URL
+needs credentials: once a user has signed in with a password, the auth interceptor adds them to
+these requests as it does to every `/nuxeo/` request, and the servlet ignores them.
+
+Under `nx serve` there is no servlet: `npm run config:dev` writes both files, as envelopes, into
+the gitignored `apps/nuxeo-ui/public/agentic-ui-config/`, from our defaults plus any fragment
+files given. Run it before starting the dev server, which serves only files that existed when it
+started.
 
 ### Why the package installs no file a customer edits (NXSAT-317)
 
@@ -176,19 +197,22 @@ Verify with `npm run beta:backend`.
 
 ### Runtime
 
-| Symptom                                         | Cause                                                                                                         | Fix                                                                                                  |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `NG0201: No provider for …`                     | An upstream `providedIn: 'root'` service resolving a port from the root injector                              | Provide the port in the **root** injector. See the comment at `app.config.ts:37`                     |
-| Raw i18n keys — `MANAGE_VERSIONS.DIALOG.TITLE`  | A seeded catalogue folder whose file is not shipped. The loader catches the 404 and returns `{}` **silently** | `npm run beta:bundle` — asserts required assets present **and non-empty**                            |
-| Empty lists; intermittent 403 on `/nuxeo/api`   | XHRs unauthenticated                                                                                          | Session satisfies the _guard_; `httpCredentials` authenticates _requests_. Both needed               |
-| HTTP 500 from `AI.*`                            | The AI backend is a **separate package not in this repo**                                                     | Expected. Install it, or accept the 500                                                              |
-| Broken image, or an internal API URL in the DOM | `<img [src]>` bound to a Nuxeo URL — bypasses the interceptor entirely                                        | Fetch the blob via a service, use a blob URL, revoke on destroy                                      |
-| Memory growth over a session                    | An un-revoked blob URL                                                                                        | Track the raw URL at creation — a `SafeUrl` cannot be read back — and revoke on destroy and on reset |
-| A nav entry lands on the wrong page             | A registered path with **no route** — it falls through the wildcard                                           | The host must map the path; `ExtensionOutletComponent` resolves the component by ID                  |
-| A manifest entry silently does nothing          | The slot is **reserved** (`routes`, `toolbar`, `contextMenu`, `tabs`) or was renamed                          | Check the slot list. `beta:upgrade` catches the rename class                                         |
-| Preview fails for rich formats                  | ARender not running                                                                                           | Start the compose stack                                                                              |
-| Permission emails not arriving                  | No SMTP locally                                                                                               | Start Mailpit                                                                                        |
-| A rule permits when it should deny              | Unregistered rule IDs **fail open** by design                                                                 | Add it to `failClosedRules` if it gates a surface                                                    |
+| Symptom                                                    | Cause                                                                                                         | Fix                                                                                                  |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `NG0201: No provider for …`                                | An upstream `providedIn: 'root'` service resolving a port from the root injector                              | Provide the port in the **root** injector. See the comment at `app.config.ts:37`                     |
+| Raw i18n keys — `MANAGE_VERSIONS.DIALOG.TITLE`             | A seeded catalogue folder whose file is not shipped. The loader catches the 404 and returns `{}` **silently** | `npm run beta:bundle` — asserts required assets present **and non-empty**                            |
+| An edited manifest Note has no effect                      | The application no longer reads it (NXSAT-312), with no migration                                             | Re-create its content as a `manifest` fragment in a configuration package                            |
+| `?preset=` does nothing and no badge appears               | No package sets `presales.presetSwitching: true`, or the preset name is not defined                           | The console shows `[agentic-ui-config] preset … ignored: …`; enable it in the demo package only      |
+| Under `nx serve`, configuration falls back to the defaults | `public/agentic-ui-config/*.json` missing, created after the server started, or not an envelope               | `npm run config:dev`, then restart `nx serve`                                                        |
+| Empty lists; intermittent 403 on `/nuxeo/api`              | XHRs unauthenticated                                                                                          | Session satisfies the _guard_; `httpCredentials` authenticates _requests_. Both needed               |
+| HTTP 500 from `AI.*`                                       | The AI backend is a **separate package not in this repo**                                                     | Expected. Install it, or accept the 500                                                              |
+| Broken image, or an internal API URL in the DOM            | `<img [src]>` bound to a Nuxeo URL — bypasses the interceptor entirely                                        | Fetch the blob via a service, use a blob URL, revoke on destroy                                      |
+| Memory growth over a session                               | An un-revoked blob URL                                                                                        | Track the raw URL at creation — a `SafeUrl` cannot be read back — and revoke on destroy and on reset |
+| A nav entry lands on the wrong page                        | A registered path with **no route** — it falls through the wildcard                                           | The host must map the path; `ExtensionOutletComponent` resolves the component by ID                  |
+| A manifest entry silently does nothing                     | The slot is **reserved** (`routes`, `toolbar`, `contextMenu`, `tabs`) or was renamed                          | Check the slot list. `beta:upgrade` catches the rename class                                         |
+| Preview fails for rich formats                             | ARender not running                                                                                           | Start the compose stack                                                                              |
+| Permission emails not arriving                             | No SMTP locally                                                                                               | Start Mailpit                                                                                        |
+| A rule permits when it should deny                         | Unregistered rule IDs **fail open** by design                                                                 | Add it to `failClosedRules` if it gates a surface                                                    |
 
 ### Diagnosis limits, stated honestly
 

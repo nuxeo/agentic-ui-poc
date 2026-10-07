@@ -64,7 +64,7 @@ const mockBrowseService = {
   updateDocument: vi.fn(() => of(folder)),
 };
 
-const manifest = signal<{ extensions?: unknown }>({});
+const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
 /**
  * The `contextMenu` slot, asserted against the rendered overlay.
@@ -78,7 +78,7 @@ describe('BrowseComponent — rendered contextMenu slot', () => {
   let fixture: ComponentFixture<BrowseComponent>;
 
   async function render(extensions: unknown): Promise<void> {
-    manifest.set({ extensions });
+    manifest.set({ extensionLayers: [extensions] });
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [BrowseComponent, testTranslateModule()],

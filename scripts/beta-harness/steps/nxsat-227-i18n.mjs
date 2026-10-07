@@ -40,6 +40,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { configResponse } from '../config-response.mjs';
+
 const BOOTSTRAP_ROUTE = '**/agentic-ui-config/bootstrap.json';
 
 /**
@@ -54,10 +56,10 @@ const UNSHIPPED_LOCALE = 'xx';
 /**
  * Console errors this environment produces regardless of the change under test.
  *
- * The manifest 403 is the tolerant path working as designed: this local Nuxeo has no
- * `/default-domain/config/agentic-ui` document, the application falls back to its packaged
- * defaults, and the browser logs an entry for the denied request whether or not the application
- * handled it. `phase-1-config.mjs` asserts the present and absent manifest cases separately and
+ * The manifest 404 is the tolerant path working as designed: under `nx serve` nothing answers
+ * `agentic-ui-config/manifest.json` unless a developer has put a file there, the application
+ * falls back to its packaged defaults, and the browser logs an entry for the missing file whether
+ * or not the application handled it. `phase-1-config.mjs` asserts the present and absent manifest cases separately and
  * suppresses the same set for the same reason.
  *
  * The AI operations 500 because the `AI.*` marketplace package is not installed here — recorded
@@ -66,7 +68,7 @@ const UNSHIPPED_LOCALE = 'xx';
 const ENVIRONMENTAL_ERRORS = [
   /automation\/AI\./,
   '/nuxeo/logout',
-  '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
+  '/agentic-ui-config/manifest.json',
   // `GET /api/v1/group/Administrator` 404s because `Administrator` is a user, not a group. It
   // appears only once the adf-hx nav drawer is opened, comes from upstream's user resolution,
   // and has nothing to do with translation. Suppressed rather than left to fail a capture it is
@@ -114,14 +116,8 @@ async function headerSearchVisibleLabel(page, h) {
   return painted.text;
 }
 
-/**
- * The defaults our bundle contributes to the configuration service, whose values are the compiled defaults. Served
- * verbatim for the English pass.
- */
-const PACKAGED_BOOTSTRAP = readFileSync(
-  resolve(process.cwd(), 'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json'),
-  'utf8',
-);
+/** The servlet's bootstrap response with only our defaults, served verbatim for the English pass. */
+const PACKAGED_BOOTSTRAP = configResponse('bootstrap');
 
 /**
  * A raw translation key rendered where a human-readable string belongs.
@@ -229,7 +225,9 @@ async function rawKeysOnPage(page) {
       // control's name — and this attribute sweep still does not read `<label>` text, while the
       // unnamed-control check below deliberately accepts a placeholder AS a name. `alt` is included
       // for the same reason: it is the accessible name of an image.
-      for (const element of document.querySelectorAll('[aria-label], [title], [placeholder], [alt]')) {
+      for (const element of document.querySelectorAll(
+        '[aria-label], [title], [placeholder], [alt]',
+      )) {
         for (const attribute of ['aria-label', 'title', 'placeholder', 'alt']) {
           const value = element.getAttribute(attribute);
           if (value && isRawKey(value.trim())) {
@@ -283,11 +281,9 @@ async function rawKeysOnPage(page) {
   );
 }
 
-/** The bootstrap file with `defaultLanguage` swapped, leaving everything else alone. */
+/** The bootstrap response with a customer package setting `defaultLanguage`, and nothing else. */
 function bootstrapWithLanguage(language) {
-  const config = JSON.parse(PACKAGED_BOOTSTRAP);
-  config.defaultLanguage = language;
-  return JSON.stringify(config, null, 2);
+  return configResponse('bootstrap', { customer: [{ defaultLanguage: language }] });
 }
 
 /**
@@ -307,7 +303,7 @@ export default async function run(page, h) {
   const servedLanguages = [];
 
   await page.route(BOOTSTRAP_ROUTE, (route) => {
-    servedLanguages.push(JSON.parse(bootstrapBody).defaultLanguage);
+    servedLanguages.push(JSON.parse(bootstrapBody).fragments.at(-1).content.defaultLanguage);
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -467,8 +463,7 @@ export default async function run(page, h) {
   // link role, and axe's `link-name` rule does not apply to it. The broad `a` selector reported one
   // such anchor in the shell as unnamed, which is a finding nobody can act on — there is nothing to
   // name. Matching axe's own scope keeps the check's verdict comparable with the axe step's.
-  const INTERACTIVE =
-    'button, a[href], input, select, textarea, [role="button"], [role="link"]';
+  const INTERACTIVE = 'button, a[href], input, select, textarea, [role="button"], [role="link"]';
   const blanks = await page.evaluate((selector) => {
     const offenders = [];
     for (const element of document.querySelectorAll(selector)) {
@@ -828,7 +823,10 @@ export default async function run(page, h) {
   // where the eleven `InvalidPipeArgument` errors were measured in the first place.
   await h.goTo('/#/browse-adf-hx');
   await page.waitForTimeout(4000);
-  const renderedDates = await page.locator('.adf-cell-date').allInnerTexts().catch(() => []);
+  const renderedDates = await page
+    .locator('.adf-cell-date')
+    .allInnerTexts()
+    .catch(() => []);
   const nonEmptyDates = renderedDates.map((text) => text.trim()).filter(Boolean);
   h.check(
     'the unshipped locale rendered at least one date cell to judge',

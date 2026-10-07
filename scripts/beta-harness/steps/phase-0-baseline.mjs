@@ -30,11 +30,11 @@
  * `AI.*` operations come from a marketplace package that is not installed on a
  * plain local Nuxeo, and the app probes `/nuxeo/logout` on boot.
  *
- * The third entry was added later than the other two, and the reason matters: it
- * is a *Phase 1* behaviour appearing in a *Phase 0* baseline. Phase 1 made the
- * runtime manifest a Nuxeo document, and a plain local instance has no
- * `/default-domain/config/agentic-ui`, so the fetch 404s and the app falls back to
- * the packaged default by design. This file was written before that existed and
+ * The last two entries were added later than the others, and the reason matters:
+ * they are a *Phase 1* behaviour appearing in a *Phase 0* baseline. The app loads
+ * its configuration from `agentic-ui-config/`, which nothing answers under
+ * `nx serve` unless a developer has put a file there, so the fetches 404 and the
+ * app falls back to the packaged default by design. This file was written before that existed and
  * failed on it when re-run — a stale baseline, not a regression.
  *
  * Suppressing it is only safe because this run separately proves the fallback
@@ -45,7 +45,8 @@
 const ENVIRONMENTAL_ERRORS = [
   /automation\/AI\./,
   '/nuxeo/logout',
-  '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
+  '/agentic-ui-config/bootstrap.json',
+  '/agentic-ui-config/manifest.json',
 ];
 
 /**
@@ -53,7 +54,7 @@ const ENVIRONMENTAL_ERRORS = [
  * @param {ReturnType<import('../helpers.mjs').createHelpers>} h
  */
 export default async function run(page, h) {
-  h.step('Precondition: the dev server serves adf-core\'s translation catalogue');
+  h.step("Precondition: the dev server serves adf-core's translation catalogue");
   // adf-hx components fetch `assets/adf-core/i18n/<lang>.json` at runtime, copied in by an
   // asset glob in `angular.json`. Without it one accessibility label renders as a raw key and
   // the console fills with 404s — asserted as a precondition so the run says so instead of
@@ -108,7 +109,10 @@ export default async function run(page, h) {
 
   h.step('Nav drawer and folder tree mount when entered via platform nav');
   await h.goTo('/#/browse');
-  const navEntry = page.locator('a,button').filter({ hasText: /adf-hx/i }).first();
+  const navEntry = page
+    .locator('a,button')
+    .filter({ hasText: /adf-hx/i })
+    .first();
   h.check('platform nav offers the adf-hx entry', (await navEntry.count()) > 0);
   await navEntry.click();
   await page.waitForTimeout(3000);

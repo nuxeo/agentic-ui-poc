@@ -24,7 +24,7 @@ promise checkable rather than aspirational.
 | Layer                      | What the customer writes                                                    | Build needed           | Survives upgrade                                  |
 | -------------------------- | --------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------- |
 | **0 — Configuration**      | JSON + CSS custom properties: theme tokens, branding, languages             | No                     | Yes — the package never installs `bootstrap.json` |
-| **1 — Declarative wiring** | JSON referencing components, rules, actions and routes **by registered ID** | No                     | Yes — it is a Nuxeo document                      |
+| **1 — Declarative wiring** | JSON referencing components, rules, actions and routes **by registered ID** | No                     | Yes — it is a fragment in the customer's package  |
 | **2 — Customer code**      | A TypeScript library against `@nuxeo-satori/platform`                       | Yes, in **their** repo | Yes — npm semver                                  |
 | **3 — Agent harness**      | Prompts. The generators and guardrails ship inside the package              | Yes, in their repo     | Yes                                               |
 
@@ -44,15 +44,17 @@ Layer 2 exists because a manifest can only rewire what is already compiled in �
 
 `bootstrap.json`, fetched before authentication because it carries the Nuxeo server URL.
 
-Live example: [`apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json`](../../apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json).
+Live example: [`apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json`](../../apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json). It is the servlet's
+response with one fragment, which is what the template's dev server answers; on a server, the
+fragment's `content` is a `bootstrap` fragment in your configuration package.
 
-| Key                                                 | Purpose                                                                                   |
-| --------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `nuxeoApiOrigin`                                    | Where the Nuxeo REST API lives                                                            |
-| `manifestDocumentPath` / `manifestDocumentProperty` | Where the Layer 1 manifest document is, and which property holds it (default `note:note`) |
-| `branding`                                          | Product name, browser tab title, and `logo` (below)                                       |
-| `themes` / `defaultThemeId`                         | Named token sets applied to `<html>`                                                      |
-| `defaultLanguage` / `availableLanguages`            | i18n                                                                                      |
+| Key                                      | Purpose                                                                      |
+| ---------------------------------------- | ---------------------------------------------------------------------------- |
+| `nuxeoApiOrigin`                         | Where the Nuxeo REST API lives                                               |
+| `branding`                               | Product name, browser tab title, and `logo` (below)                          |
+| `themes` / `defaultThemeId`              | Named token sets applied to `<html>`                                         |
+| `defaultLanguage` / `availableLanguages` | i18n                                                                         |
+| `presales`                               | Presales presets, honoured only where a package sets `presetSwitching: true` |
 
 ### `branding.logo`
 
@@ -121,12 +123,16 @@ gate while the fallback did all the work.
 
 ## 3. Layer 1 — the manifest
 
-A **Nuxeo document**, not a file in the bundle. Example payload:
+A **`manifest` fragment in the customer's configuration package**, served with every other
+package's fragments at `agentic-ui-config/manifest.json`. Example fragment:
 [`apps/nuxeo-satori-template/manifest.example.json`](../../apps/nuxeo-satori-template/manifest.example.json).
 
-Choosing a document rather than a file was deliberate: it inherits the repository's
-versioning, audit trail, ACLs and per-tenant scoping for free, survives a marketplace
-upgrade, and can be edited from the application itself.
+It survives an upgrade of ours because it is in their package, which depends on ours, and it is
+versioned with that package. It is read before sign-in, so it is the same for every user and
+must hold nothing sensitive. Until NXSAT-312 the manifest was a Nuxeo Note at
+`/default-domain/config/agentic-ui`, read with each user's session; the application no longer
+reads it, with no migration. Each fragment's `extensions` block is resolved on its own, so two
+packages' contributions never depend on each other's `$layer` references.
 
 ```jsonc
 {

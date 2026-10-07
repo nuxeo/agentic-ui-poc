@@ -199,7 +199,7 @@ Full table in [Dev Harness & Gates](08-dev-harness-and-gates.md). Structure:
 | Extension point                           | Mechanism                                                                                        | Who                |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------ |
 | Layer 0 config                            | A `bootstrap` fragment in the customer's Marketplace package, served by `AgenticUiConfigServlet` | Customer, no build |
-| Layer 1 manifest                          | A Nuxeo document                                                                                 | Customer, no build |
+| Layer 1 manifest                          | A `manifest` fragment in the customer's Marketplace package, served by the same servlet          | Customer, no build |
 | 8 slots (4 live)                          | `ExtensionSlotRegistry`                                                                          | Both               |
 | Rules                                     | `ExtensionRuleRegistry`, `provideSatoriExtensions`                                               | Both               |
 | Actions                                   | `ExtensionActionRegistry`                                                                        | Both               |

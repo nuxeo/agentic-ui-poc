@@ -133,8 +133,8 @@ allowlists in every steps file include `/automation\/AI\./`:
 // scripts/beta-harness/steps/*.mjs — ENVIRONMENTAL_ERRORS
 /automation\/AI\./,          // the AI backend is a separate package
 '/nuxeo/logout',
-'/nuxeo/api/v1/path/default-domain/config/agentic-ui',
 '/agentic-ui-config/bootstrap.json',
+'/agentic-ui-config/manifest.json',
 ```
 
 Those suppressions are **listed in the `beta:audit` output** on every run, because a suppression

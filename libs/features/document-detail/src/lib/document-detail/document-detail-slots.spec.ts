@@ -147,7 +147,7 @@ const mockDirectoryService = {
   getAllL10nEntries: vi.fn((): Observable<unknown[]> => of([])),
 };
 
-const manifest = signal<{ extensions?: unknown }>({});
+const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
 describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
   let fixture: ComponentFixture<DocumentDetailComponent>;
@@ -157,7 +157,7 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
   (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn();
 
   async function render(extensions: unknown, focused: NuxeoDocument = doc()): Promise<void> {
-    manifest.set({ extensions });
+    manifest.set({ extensionLayers: [extensions] });
     mockDetailService.getFullDocument.mockReturnValue(of(focused));
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({

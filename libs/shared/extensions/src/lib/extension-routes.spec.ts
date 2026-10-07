@@ -30,7 +30,7 @@ class ReportsComponent {}
 /**
  * A manifest with one `routes` entry, fed the way the product feeds one.
  *
- * `AppExtensionsService` reads `AppConfigService.manifest().extensions`, so
+ * `AppExtensionsService` reads `AppConfigService.manifest().extensionLayers`, so
  * standing in a manifest here exercises the real merge path rather than calling
  * `ExtensionSlotRegistry.register()` directly — which is what a customer cannot
  * do and therefore what this test must not do either.
@@ -38,7 +38,7 @@ class ReportsComponent {}
 function provideManifest(extensions: unknown) {
   return {
     provide: AppConfigService,
-    useValue: { manifest: signal({ extensions }) },
+    useValue: { manifest: signal({ extensionLayers: [extensions] }) },
   };
 }
 

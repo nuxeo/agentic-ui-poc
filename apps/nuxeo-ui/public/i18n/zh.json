@@ -517,6 +517,9 @@
     "placeholder-page": {
       "coming-soon": "即将推出"
     },
+    "preset": {
+      "badge": "预设：{{ label }}"
+    },
     "profile-page": {
       "change-password": "更改密码",
       "company": "公司",

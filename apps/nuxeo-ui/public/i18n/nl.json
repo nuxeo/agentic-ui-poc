@@ -517,6 +517,9 @@
     "placeholder-page": {
       "coming-soon": "Binnenkort beschikbaar"
     },
+    "preset": {
+      "badge": "Voorinstelling: {{ label }}"
+    },
     "profile-page": {
       "change-password": "Wachtwoord wijzigen",
       "company": "Bedrijf",

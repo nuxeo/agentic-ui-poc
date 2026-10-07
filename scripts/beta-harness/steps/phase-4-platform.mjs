@@ -49,11 +49,11 @@
  * **Negative / fallback** — regression guards that would also pass if parts of the
  * system were inert:
  *
- * - Step 8: the diagnostics panel reports the Layer 1 manifest falling back to
- *   packaged defaults. The template ships no Nuxeo server, so this is the *expected*
- *   path; it proves the fallback is reported honestly, not that the manifest works.
- * - Step 12: no unexpected console errors. The manifest 404 is expected and excluded
- *   by URL, so this cannot quietly absorb it.
+ * - Step 8: the diagnostics panel reports both halves as served by the
+ *   configuration response, and the manifest as naming no package. The template
+ *   serves a manifest with no fragments, so this proves the source is reported
+ *   honestly, not that a manifest works.
+ * - Step 12: no unexpected console errors, and no failed request at all.
  *
  * That is 9 load-bearing steps and 2 negative ones.
  *
@@ -253,26 +253,23 @@ export default async function run(page, h) {
   }
 
   // ---------------------------------------------------------------------------
-  h.step('Configuration diagnostics report the fallback honestly (negative check)');
+  h.step('Configuration diagnostics report where configuration came from (negative check)');
 
   const diagnostics = (await page.textContent('.home__panel')) ?? '';
   h.check(
-    'bootstrap.json was loaded as a deployed file, not a packaged default',
-    diagnostics.includes('deployed-file'),
+    'both halves were loaded from the configuration response, not packaged defaults',
+    /Bootstrap\s*configuration-service\s*Manifest\s*configuration-service/.test(diagnostics),
     `diagnostics panel read: ${diagnostics.slice(0, 200)}`,
   );
   h.check(
-    'the Layer 1 manifest is reported as falling back to packaged defaults',
-    diagnostics.includes('packaged-default'),
-    'The template ships no Nuxeo server, so this is the expected path. This check ' +
-      'proves the fallback is surfaced rather than swallowed — not that the manifest works.',
+    'the manifest is reported as naming no package',
+    /Manifest packages\s*none/.test(diagnostics),
+    'The template serves a manifest with no fragments, so this is the expected path. This ' +
+      'check proves the source is surfaced rather than assumed — not that a manifest works.',
   );
   // Scrolled to the inventory panel, so this image shows the registered-ID list rather
   // than repeating the same above-the-fold viewport as the first shot.
-  await h.screenshot(
-    'registered-ids-and-config-sources',
-    page.locator('.home__panel').last(),
-  );
+  await h.screenshot('registered-ids-and-config-sources', page.locator('.home__panel').last());
 
   // ---------------------------------------------------------------------------
   h.step('The published declarations carry nullable types');
@@ -335,11 +332,11 @@ export default async function run(page, h) {
   // ---------------------------------------------------------------------------
   h.step('No unexpected console errors (negative check)');
 
-  // The manifest fetch 404s because the template ships no Nuxeo server. Excluded by
-  // URL rather than by count, so this check cannot quietly absorb a different failure.
-  const unexpectedRequests = failedRequests.filter((r) => !/\/nuxeo\/api\/v1\/path/.test(r));
+  // Both configuration files are served beside the template, and it reads no Nuxeo
+  // document for configuration, so no request is expected to fail.
+  const unexpectedRequests = failedRequests;
   h.check(
-    'no failed requests other than the expected manifest 404',
+    'no failed requests',
     unexpectedRequests.length === 0,
     `unexpected: ${unexpectedRequests.join(', ')}`,
   );

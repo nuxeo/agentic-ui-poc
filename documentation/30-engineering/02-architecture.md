@@ -122,7 +122,7 @@ sequenceDiagram
   M->>C: bootstrapApplication(App, appConfig)
   C->>Cfg: 1. load Layer 0 bootstrap.json
   Note over Cfg: repoints every configuration token<br/>at the loaded result
-  Cfg->>N: fetch Layer 1 manifest document
+  Cfg->>N: GET bootstrap.json + manifest.json, anonymously
   C->>Ext: 2. register slot / rule / component IDs
   Note over Ext: must follow provideAppConfig —<br/>it merges with the loaded manifest
   C->>C: 3. provideAdfHxNuxeoBridge() — 12 ports, ROOT injector
@@ -227,8 +227,8 @@ Detailed in [Extensibility Contract](07-extensibility-contract.md). In outline:
 
 ```mermaid
 flowchart TD
-  L0["Layer 0 — Configuration<br/>bootstrap.json: theme, branding, languages<br/>no code, no build"]
-  L1["Layer 1 — Declarative wiring<br/>a Nuxeo document holding JSON: slots, overrides, rules by ID<br/>no customer code"]
+  L0["Layer 0 — Configuration<br/>bootstrap fragments: theme, branding, languages<br/>no code, no build"]
+  L1["Layer 1 — Declarative wiring<br/>manifest fragments holding JSON: slots, overrides, rules by ID<br/>no customer code"]
   L2["Layer 2 — Customer code<br/>their own npm library against @nuxeo-satori/platform<br/>their repo, their build"]
   L3["Layer 3 — Agent harness<br/>generators + guardrails shipped IN the package<br/>makes Layer 2 cheap"]
   L0 --> L1 --> L2
