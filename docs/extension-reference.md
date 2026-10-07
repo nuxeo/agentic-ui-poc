@@ -76,9 +76,11 @@ is not served.
 
 The application fetches both, anonymously and together, before anything renders, and applies
 the fragments in the order the server lists them, our defaults first. A key a later fragment sets
-wins over an earlier one. Each fragment's `extensions` block is resolved on its own and the results
-merged in the same order, so one package's `$layer` references and slot entries never depend on
-another's. Nothing is read from the repository: the Nuxeo Note at
+wins over an earlier one. Each fragment's `extensions` block is handled in two stages. First its
+`$references` resolve against its own `$layers` only, so one package cannot reach another's named
+layers. Then the resolved blocks merge in the same order, and that merge is **not** isolated: slot
+entries with the same `id` merge across packages, so a later package can patch a descriptor an
+earlier one contributed. Nothing is read from the repository: the Nuxeo Note at
 `/default-domain/config/agentic-ui` that held the manifest before NXSAT-312 is no longer read, by
 any request, with **no migration** — re-create its content as a manifest fragment in your package.
 Nothing about configuration changes when a user signs in or out.

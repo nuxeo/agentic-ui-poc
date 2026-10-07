@@ -62,8 +62,9 @@ caching means that increase is not damped. Nobody has measured requests per user
 | Customer code isolation     | Complete — their library is in their repository, built by them                                                                                                              |
 | Cross-customer blast radius | A defect in our published package affects every customer on that version. Mitigated by semver, the API-surface gate and the upgrade rehearsal                               |
 
-The manifest-as-Nuxeo-document choice pays off here: per-tenant configuration needed no new
-machinery.
+Since NXSAT-312 configuration is installation-wide: every user gets the same fragments, so
+per-tenant configuration would need new machinery. The earlier manifest-as-Nuxeo-document design,
+which inherited Nuxeo's scoping, is gone.
 
 ---
 
