@@ -2,34 +2,15 @@
   <update file="${package.root}/install/bundles" todir="${env.bundles}" />
   <copy dir="${package.root}/web" todir="${env.server.home}/nxserver" overwrite="true" />
   <!--
-    Layer 0 configuration lives beside the application bundle rather than inside
-    it, and the package ships only a SAMPLE of it: `bootstrap.example.json`.
+    The package installs no configuration file. Configuration is contributed by Marketplace
+    packages to the org.nuxeo.agentic.ui.config extension point and served by a servlet at
+    /nuxeo/agentic-ui-config/ (NXSAT-312). Our defaults are a contribution inside the
+    nuxeo-agentic-core bundle; a customer ships their own package that depends on this one.
+    Nothing is edited on the server and nothing is read from the repository.
 
-    The destination must be inside the directory Tomcat actually serves. The
-    `nuxeo` context declares docBase="../nxserver/nuxeo.war", so a request for
-    `/nuxeo/agentic-ui-config/bootstrap.json` resolves to
-    `nxserver/nuxeo.war/agentic-ui-config/bootstrap.json`. `nxserver/web` holds
-    only `root.war` and is not a docBase; anything placed there is never served.
-
-    The package must never install `bootstrap.json` itself, the file a customer
-    creates and edits (NXSAT-317). An upgrade is an uninstall of the old version
-    followed by an install of the new one. The uninstall deletes a package file
-    only if its md5 still matches, so an edited file is left on disk, and a copy
-    with overwrite="false" then fails on it. The install rolls back only its own
-    commands, so the result is NO version installed and `/nuxeo/agentic-ui/`
-    returning 404. Without overwrite="false", a copy would destroy the edit
-    instead. A file nobody edits has neither problem, so the sample is
-    package-owned and replaced with overwrite="true", and `bootstrap.json` is
-    never touched by an install, an upgrade or an uninstall.
-
-    The application treats a missing `bootstrap.json` as "use the compiled
-    defaults", which the sample's values are, so a fresh install needs no copy.
-    `review-guardrails.mjs` (checkInstallerOwnsNoCustomerFile) fails the build on
-    any copy not declared overwrite="true" (Nuxeo's default is false), a packaged
-    `bootstrap.json`, or any other file in the config directory, where it would
-    replace a customer's same-named file, a logo for instance, on upgrade.
+    `review-guardrails.mjs` (checkInstallerOwnsNoCustomerFile) fails the gate on any copy into
+    agentic-ui-config, which the servlet owns, and on any copy not declared overwrite="true":
+    Nuxeo's default is false, and a copy that refuses to overwrite fails the upgrade on the first
+    file someone edited, leaving no version installed (NXSAT-317).
   -->
-  <copy dir="${package.root}/config"
-        todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config"
-        overwrite="true" />
 </install>

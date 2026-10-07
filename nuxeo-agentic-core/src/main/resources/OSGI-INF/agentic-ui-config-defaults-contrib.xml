@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<component name="org.nuxeo.agentic.ui.config.defaults" version="1.0">
+
+  <documentation>
+    The packaged defaults, as one contribution. A customer's configuration component requires
+    this one, so its fragments are registered — and applied by the browser — after these.
+  </documentation>
+
+  <require>org.nuxeo.agentic.ui.config</require>
+
+  <extension target="org.nuxeo.agentic.ui.config" point="configuration">
+    <fragment name="defaults" layer="bootstrap" src="agentic-ui-config/bootstrap.defaults.json" />
+    <fragment name="defaults" layer="manifest" src="agentic-ui-config/manifest.defaults.json" />
+  </extension>
+
+</component>

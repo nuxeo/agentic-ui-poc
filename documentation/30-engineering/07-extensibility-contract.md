@@ -56,16 +56,18 @@ Live example: [`apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.js
 
 ### `branding.logo`
 
-`{ "src": "acme-logo.svg", "alt": "Acme Insurance" }` replaces the Satori word mark in the header
+`{ "src": "assets/acme-logo.svg", "alt": "Acme Insurance" }` replaces the Satori word mark in the header
 and the Satori lockup on the login page. `null` or absent keeps the Satori marks.
 
-- **`src`** is a file name or relative path resolved against the directory `bootstrap.json` is
-  served from — so a logo dropped beside it in `nxserver/nuxeo.war/agentic-ui-config/` survives
-  an upgrade exactly as the file does. An `https:` URL or a `data:image/` URI also works. Both
-  `<img>` elements carry `crossorigin="anonymous"`, so a remote logo is loaded without cookies
-  and a redirect from it to a Nuxeo URL cannot carry the session — which means an `https:` logo
-  only renders if its host sends `Access-Control-Allow-Origin`. A file beside `bootstrap.json` is
-  same-origin and unaffected.
+- **`src`** is a relative path resolved against the directory `bootstrap.json` is served from,
+  `/nuxeo/agentic-ui-config/`. The servlet serves images only under `assets/`, so a logo is
+  `assets/<name>`, backed by an `<asset>` the configuration package contributes and the file in
+  its bundle — `<asset name="acme-logo.svg" src="agentic-ui-config/assets/acme-logo.svg" />`.
+  Nothing placed on the server's disk is served. An `https:` URL or a
+  `data:image/` URI also works. Both `<img>` elements carry `crossorigin="anonymous"`, so a remote
+  logo is loaded without cookies and a redirect from it to a Nuxeo URL cannot carry the session —
+  which means an `https:` logo only renders if its host sends `Access-Control-Allow-Origin`. A
+  contributed asset is same-origin and unaffected.
 - **Every other form is rejected** and the Satori marks are kept. An `<img>` request bypasses the
   HTTP interceptor but still sends the session cookie, so a `src` that could name a Nuxeo REST
   endpoint is refused rather than left to fail. The deciding check runs on the **resolved** URL,
@@ -84,22 +86,22 @@ and the Satori lockup on the login page. `null` or absent keeps the Satori marks
   fragment, so it counts as none).
 - **`alt`** names the login page's brand link. Empty falls back to `applicationTitle`. The header
   logo is decorative (`alt=""`): the header is named by its heading.
-- The configuration directory is outside every `NuxeoAuthenticationFilter` URL pattern in
-  `nuxeo.war/WEB-INF/web.xml`, which is what lets the login page load a logo before sign-in. That
-  is read from the filter mapping, and the 2026-10-07 marketplace rehearsal observed
-  `bootstrap.json` there being served without authentication; a logo file was not part of it.
+- Contributed assets are served at `/nuxeo/agentic-ui-config/assets/<name>` (NXSAT-312). The servlet path is outside every
+  `NuxeoAuthenticationFilter` URL pattern, which is what lets the login page load the logo before
+  sign-in; the NXSAT-312 rehearsal fetched a contributed SVG there anonymously, as `image/svg+xml`.
 
-### Why it lives outside the bundle
+### Why it is contributed, not edited
 
-The marketplace installer copies the web directory with `overwrite="true"`, so
-configuration inside the bundle is **destroyed on upgrade**. The config therefore lives in a
-_sibling_ of that tree, and the package puts only a sample there, `bootstrap.example.json`. The
-customer copies it to `bootstrap.json`, which no install, upgrade or uninstall touches. With no
-`bootstrap.json`, the compiled defaults apply. Installing the file itself with `overwrite="false"`
-was tried, and rehearsal showed an upgrade after a customer edit leaving no version installed
-(NXSAT-317). The full reasoning, including why `nxserver/web` is the wrong destination (it is not
-a Tomcat docBase, so anything placed there is never served), is in
-[`install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml).
+The marketplace installer copies the web directory with `overwrite="true"`, so configuration
+inside the bundle is **destroyed on upgrade**, and a file the package protects with
+`overwrite="false"` made an upgrade after an edit leave no version installed (NXSAT-317). Since
+NXSAT-312 nothing is edited on the server at all: a customer ships their own Marketplace package
+that contributes fragments to the configuration service in `nuxeo-agentic-core`, and a servlet
+serves them at `/nuxeo/agentic-ui-config/`. Upgrading our package uninstalls and reinstalls the
+packages that depend on it, so their contributions come back unchanged. The old
+`bootstrap.json`-on-disk mechanism is **removed with no migration**. The package layout, and why
+`nxserver/web` is the wrong web destination (it is not a Tomcat docBase), are in
+[`13-deployment-and-troubleshooting.md`](13-deployment-and-troubleshooting.md) §2.
 
 An earlier version shipped to `nxserver/web/…` and **would have 404'd on every install**.
 It was recorded complete before that was caught.

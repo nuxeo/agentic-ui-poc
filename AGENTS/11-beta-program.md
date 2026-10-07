@@ -358,27 +358,30 @@ DocumentService`. The chain, read from the published bundle:
   pull adf-hx into the initial bundle on purpose — `provideAdfHxNuxeoBridge()` in
   `app.config.ts` and `HxpBrowseNavDrawerComponent` in the shell nav drawer (see the guardrail
   allowlist in `scripts/review-guardrails.mjs`).
-- **The package installs Layer 0 configuration as a sample, never as `bootstrap.json` —
-  `overwrite="false"` was rehearsed and it breaks the upgrade (R7, NXSAT-317).** Until
-  NXSAT-317 a second `install.xml` copy put `bootstrap.json` in
-  `nxserver/nuxeo.war/agentic-ui-config` with `overwrite="false"`, and every document said that
-  made customer edits survive an upgrade. Rehearsed on a throwaway server on 2026-10-07, it did
-  the opposite: an upgrade is `pkgUninstall(old)` then `pkgInstall(new)`; the uninstall deletes a
-  package file only while its md5 matches, so an **edited** file stays; the new version's
-  `overwrite="false"` copy then throws on it, and the install rolls back only its own commands —
-  **no version installed, `/nuxeo/agentic-ui/` 404**. Unedited installs upgraded fine. The
-  package now ships `bootstrap.example.json` (`overwrite="true"`, package-owned) and the customer
-  copies it to `bootstrap.json`, which no install, upgrade or uninstall touches; a missing
-  `bootstrap.json` means the compiled defaults, which the sample's values are. Rehearsed fixed:
-  today's package with an edit upgrades to it and keeps serving the edit
-  (`evidence/feedback-response/NXSAT-317/`, local). `checkInstallerOwnsNoCustomerFile` fails on
-  any `overwrite="false"` copy or a packaged `bootstrap.json`. **The destination must be under
-  `nxserver/nuxeo.war`** — that is the Tomcat docBase for the `/nuxeo` context
-  (`docBase="../nxserver/nuxeo.war"`). `nxserver/web` holds only `root.war`, is
-  not a docBase, and anything installed there is never served. Phase 1 shipped the
-  `nxserver/web/…` variant and it would have 404'd in every deployment. Both files are served
-  **without authentication**. Workstream A (configuration served from the package by a servlet)
-  is expected to replace the file entirely; this is the interim, not the end state. Not
+- **Configuration is contributed by Marketplace packages and served by a servlet; the package
+  installs no configuration file (NXSAT-312).** The `nuxeo-agentic-core` bundle declares
+  `org.nuxeo.agentic.ui.config` with the extension point `configuration`
+  (`<fragment name layer="bootstrap|manifest">`, `<layout type mode>`, `<asset name>`; `src` read
+  from the contributing bundle, or an inline `<json>`) and contributes our defaults as
+  `org.nuxeo.agentic.ui.config.defaults`. `AgenticUiConfigServlet`, mapped at
+  `/agentic-ui-config/*` by the deployment fragment's `web#SERVLET` and `web#SERVLET-MAPPING`,
+  serves the ordered fragments with provenance, an ETag fixed per snapshot and
+  `Cache-Control: no-cache`. A customer package depends on `nuxeo-agentic-ui` in `package.xml`
+  and `<require>`s our defaults component. Rehearsed on a throwaway 2025.26.16 on 2026-10-07:
+  fresh install; a customer package installed and removed (back to our defaults byte for byte);
+  two customer packages, where the resolver refuses the dependent alone and installs both in
+  dependency order however they are named; and an upgrade of **our** package with both installed,
+  which `nuxeoctl` performs as uninstall dependents → upgrade ours → reinstall dependents, with
+  their configuration served unchanged (`evidence/feedback-response/NXSAT-312/rehearsal/`,
+  local). **A configuration package on a server whose `nuxeo-agentic-ui` predates NXSAT-312
+  stops Nuxeo from starting**: strict mode aborts on the unresolved `<require>`. The servlet path
+  is more specific than Tomcat's default servlet, so nothing on disk under
+  `nxserver/nuxeo.war/agentic-ui-config` is served, and `checkInstallerOwnsNoCustomerFile` fails
+  on any copy there. The old `bootstrap.json`-beside-the-bundle mechanism is **removed with no
+  migration**. `overwrite="false"` stays forbidden everywhere: rehearsed in NXSAT-317, an upgrade
+  after an edit to a file it protected left no version installed. **The web destination must be
+  under `nxserver/nuxeo.war`** — the Tomcat docBase for the `/nuxeo` context; `nxserver/web` is
+  not a docBase. Everything served at `/nuxeo/agentic-ui-config/` is **anonymous**. Not
   rehearsed: the Admin Center / Update Center path, which runs the same package tasks.
 - **Configuration is loaded, not compiled.** `libs/shared/app-config` reads a
   static bootstrap file pre-auth and a runtime manifest from the Nuxeo document

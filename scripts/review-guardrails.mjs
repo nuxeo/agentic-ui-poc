@@ -3587,14 +3587,15 @@ function checkAccessibleNameFallbacks() {
  */
 
 /**
- * The Layer 0 sample the marketplace package installs, and the sources it is built from.
+ * The packaged Layer 0 defaults — the bootstrap fragment our own bundle contributes to the
+ * configuration service (NXSAT-312) — and the marketplace package sources.
  *
- * A sample, not `bootstrap.json`: the package must not own the file a customer edits
- * (NXSAT-317, `checkInstallerOwnsNoCustomerFile`). Shared, because three checks read it and a
- * rename that missed one would leave it checking nothing — `checkAdvertisedLocalesShip` skips a
- * config that does not exist rather than failing on it.
+ * Shared, because several checks read it and a rename that missed one would leave it checking
+ * nothing — `checkAdvertisedLocalesShip` skips a config that does not exist rather than failing
+ * on it. `PACKAGED_CONFIG_DIR` is where the package used to stage files for the server's disk; it
+ * must not exist any more (`checkInstallerOwnsNoCustomerFile`).
  */
-const PACKAGED_CONFIG = 'nuxeo-agentic-ui-package/src/main/config/bootstrap.example.json';
+const PACKAGED_CONFIG = 'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json';
 const PACKAGE_SOURCES = 'nuxeo-agentic-ui-package/src';
 const PACKAGED_CONFIG_DIR = 'nuxeo-agentic-ui-package/src/main/config';
 
@@ -4835,7 +4836,7 @@ function checkCrowdinConfig() {
 /**
  * The packaged marketplace config ships Nuxeo defaults, not a demo rebrand.
  *
- * `PACKAGED_CONFIG` is installed into a customer's Nuxeo, and it is the sample they copy. The
+ * `PACKAGED_CONFIG` is served by every customer's Nuxeo as the base its own package layers on. The
  * rebrand demo used to edit it — `docs/beta-demo-runbook.md` walked through setting
  * `applicationTitle` to "Acme Content Cloud" and adding an `acme` theme — and told you to
  * run `git checkout --` on it afterwards.
@@ -4957,26 +4958,24 @@ function checkPackagedConfigIsNotADemo() {
 }
 
 /**
- * The marketplace package installs no file a customer edits.
+ * The marketplace package installs no configuration file, and no copy that refuses to overwrite.
  *
- * NXSAT-317. The package installed `agentic-ui-config/bootstrap.json` with `overwrite="false"`
- * and every document said that made customer edits survive an upgrade. Rehearsed on a real
- * server, it did the opposite: an upgrade is an uninstall of the old version, which deletes a
- * package file only while its md5 still matches and so leaves an edited one behind, followed by
- * an install of the new version, whose `overwrite="false"` copy then fails on that file. The
- * install rolls back only its own commands. Result: no version installed, `/nuxeo/agentic-ui/`
- * 404. Unedited installs upgraded fine, so nothing short of a rehearsal with an edit could see it.
+ * Configuration is contributed by Marketplace packages to the `org.nuxeo.agentic.ui.config`
+ * extension point and served by a servlet at `/nuxeo/agentic-ui-config/` (NXSAT-312). Our defaults
+ * are a contribution inside the `nuxeo-agentic-core` bundle. So nothing may be copied into
+ * `agentic-ui-config` — the servlet owns that path and a file there is never served, which makes
+ * such a copy a configuration that looks installed and does nothing — and the package may carry
+ * no `src/main/config` directory or `bootstrap.json` at all.
  *
- * `overwrite="false"` has no other use — a file nobody edits is copied with `overwrite="true"` —
- * so every such copy is this defect waiting for its first edit, whatever file it names, and an
- * omitted attribute is the same copy because false is Nuxeo's default. And the file the
- * application reads must not be packaged at all: with `overwrite="true"` it would be the
- * customer's edit that is destroyed instead. The packaged copy is a sample, and it is the only
- * file in the config directory, which is where the customer's own files, a logo among them, live.
+ * `overwrite="false"` is refused everywhere (NXSAT-317). Rehearsed on a real server: an upgrade
+ * is an uninstall of the old version, which deletes a package file only while its md5 still
+ * matches and so leaves an edited one behind, followed by an install of the new version, whose
+ * `overwrite="false"` copy then fails on that file. The install rolls back only its own
+ * commands. Result: no version installed, `/nuxeo/agentic-ui/` 404. An omitted attribute is the
+ * same copy, because false is Nuxeo's default.
  *
- * The second half walks the filesystem rather than `git ls-files` on purpose: the Maven assembly
- * stages `src/main/config/**` from disk, so an untracked `bootstrap.json` left there by hand
- * would still be packaged.
+ * The directory walks read the filesystem rather than `git ls-files` on purpose: the Maven
+ * assembly stages from disk, so an untracked file left there by hand would still be packaged.
  */
 function checkInstallerOwnsNoCustomerFile() {
   const installers = walk(PACKAGE_SOURCES, (path) => path.endsWith('/install.xml'));
@@ -5007,18 +5006,12 @@ function checkInstallerOwnsNoCustomerFile() {
       if (inComment(match.index)) continue;
       const attribute = (name) =>
         new RegExp(`\\b${name}\\s*=\\s*(["'])(.*?)\\1`).exec(match[0])?.[2];
-      // The directory walk below proves what the config source holds, so nothing else may write
-      // into the customer's directory: another source would bypass it.
-      if (
-        /agentic-ui-config/.test(attribute('todir') ?? attribute('tofile') ?? '') &&
-        (attribute('dir') !== '${package.root}/config' || attribute('file') !== undefined)
-      ) {
+      if (/agentic-ui-config/.test(attribute('todir') ?? attribute('tofile') ?? '')) {
         fail(
-          `${file} copies into agentic-ui-config from somewhere other than ` +
-            `\${package.root}/config: ${match[0].replace(/\s+/g, ' ')}\n` +
-            "    That directory holds the customer's own files, a logo among them; only the " +
-            `config directory, which may hold nothing but ${PACKAGED_CONFIG}, may be copied ` +
-            'there (NXSAT-317).',
+          `${file} copies into agentic-ui-config: ${match[0].replace(/\s+/g, ' ')}\n` +
+            '    The configuration servlet owns /nuxeo/agentic-ui-config/, so nothing on disk there ' +
+            'is ever served. Contribute configuration to the org.nuxeo.agentic.ui.config extension ' +
+            'point from a bundle instead (NXSAT-312).',
         );
       }
       const value = attribute('overwrite');
@@ -5031,28 +5024,25 @@ function checkInstallerOwnsNoCustomerFile() {
           '    That is only ever used to protect a file someone edits, and it is what breaks the ' +
           'upgrade: the old version is uninstalled, the edited file is left behind because its ' +
           'md5 no longer matches, and this copy then fails on it — leaving no version installed ' +
-          '(NXSAT-317). Ship a sample with overwrite="true"; the customer owns the real file.',
+          '(NXSAT-317). Nothing a customer edits belongs in this package.',
       );
     }
   }
 
-  // Everything in the config directory lands beside the customer's own files, a logo among them,
-  // and `overwrite="true"` replaces a same-named one on every upgrade.
   for (const file of walk(PACKAGED_CONFIG_DIR, () => true)) {
-    if (file === PACKAGED_CONFIG || /(^|\/)bootstrap\.json$/.test(file)) continue;
     fail(
-      `${file} would be installed into agentic-ui-config beside the customer's own files, ` +
-        `replacing a same-named one on every upgrade.\n    Package only ${PACKAGED_CONFIG} ` +
-        "there; a logo or stylesheet is the customer's to add (NXSAT-317).",
+      `${file} is packaged for installation onto the server's disk.\n` +
+        '    The package installs no configuration file: our defaults are contributed from the ' +
+        'nuxeo-agentic-core bundle and served by the configuration servlet (NXSAT-312).',
     );
   }
 
   for (const file of walk(PACKAGE_SOURCES, (path) => /(^|\/)bootstrap\.json$/.test(path))) {
+    if (file.startsWith(`${PACKAGED_CONFIG_DIR}/`)) continue;
     fail(
-      `${file} would be installed as the bootstrap.json the application reads, which is the file ` +
-        `a customer edits.\n    Package only ${PACKAGED_CONFIG}; the customer copies it to ` +
-        'bootstrap.json. A packaged bootstrap.json either fails the upgrade or destroys their ' +
-        'edit, depending on the copy (NXSAT-317).',
+      `${file} is a bootstrap.json in the marketplace package sources.\n` +
+        '    Configuration is contributed to the org.nuxeo.agentic.ui.config extension point from ' +
+        'a bundle, never installed as a file (NXSAT-312).',
     );
   }
 }
@@ -5133,9 +5123,9 @@ function checkNoProseInComponentInputs() {
  * The shipped Layer 0 default must be a locale that ships.
  *
  * `zz` is generated by `tools/i18n/pseudo-locale.mjs` for auditing, and selecting it means
- * pointing the packaged sample, `bootstrap.example.json`, at it — a tracked file that installs
- * into a customer's Nuxeo as the template they copy to `bootstrap.json`, so the pseudo-locale
- * would travel into their configuration. It was committed that way once. Nothing else would have
+ * pointing the packaged defaults, `bootstrap.defaults.json`, at it — a tracked file every
+ * customer's Nuxeo serves as its base configuration, so the pseudo-locale would travel into
+ * their application. It was committed that way once. Nothing else would have
  * caught it: the build is happy, every test is happy, and the application renders perfectly.
  * In accented gibberish.
  *
@@ -5208,9 +5198,9 @@ function checkNoTemplateSyntaxInDocumentShell() {
  * The shipped Layer 0 default must be a locale that ships.
  *
  * `zz` is generated by `tools/i18n/pseudo-locale.mjs` for auditing, and selecting it means
- * pointing the packaged sample, `bootstrap.example.json`, at it — a tracked file that installs
- * into a customer's Nuxeo as the template they copy to `bootstrap.json`, so the pseudo-locale
- * would travel into their configuration. It was committed that way once. Nothing else would have
+ * pointing the packaged defaults, `bootstrap.defaults.json`, at it — a tracked file every
+ * customer's Nuxeo serves as its base configuration, so the pseudo-locale would travel into
+ * their application. It was committed that way once. Nothing else would have
  * caught it: the build is happy, every test is happy, and the application renders perfectly.
  * In accented gibberish.
  *

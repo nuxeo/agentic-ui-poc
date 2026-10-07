@@ -1020,15 +1020,15 @@ safety:
 ```
 <update file="${package.root}/install/bundles" todir="${env.bundles}" />
 <copy dir="${package.root}/web" todir="${env.server.home}/nxserver" overwrite="true" />
-<copy dir="${package.root}/config"
-      todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config" overwrite="true" />
 ```
 
 The `overwrite="true"` copy destroys everything under `nuxeo.war/agentic-ui/` on every upgrade —
-which is exactly why customer Layer 0 configuration lives in the **sibling** `agentic-ui-config/`
-directory. The package puts only `bootstrap.example.json` there. The customer's `bootstrap.json`
-is never packaged: an `overwrite="false"` copy of it made the upgrade fail after an edit, leaving
-no version installed (NXSAT-317), and `checkInstallerOwnsNoCustomerFile` rejects both. The destination **must** be under `nxserver/nuxeo.war`, the
+which is one reason customer configuration is never a file on the server. Since NXSAT-312 it is
+contributed by the customer's own Marketplace package to the configuration service in
+`nuxeo-agentic-core` and served by a servlet at `/nuxeo/agentic-ui-config/`; the package installs no
+configuration file. An `overwrite="false"` copy that protected an edited file made the upgrade fail,
+leaving no version installed (NXSAT-317), and `checkInstallerOwnsNoCustomerFile` rejects it, along
+with any copy into `agentic-ui-config`. The destination **must** be under `nxserver/nuxeo.war`, the
 Tomcat docBase for `/nuxeo`; `nxserver/web` is not a docBase, and a build that shipped that variant
 would have 404'd in every deployment.
 
