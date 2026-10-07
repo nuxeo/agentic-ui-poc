@@ -121,12 +121,13 @@ addressable like any other id, and restorable — as a `navbar` slot entry resta
 `"disabled": false`, not an `overrides` entry. Say "fourteen by default", not "fourteen packaged",
 if a technical audience is counting.
 
-**If asked about translations:** both routes work, and which one you want depends on the answer to
-"one wording, or one per language?".
+**If asked about translations:** both routes work, and both show one wording in every language.
+Per-language wording is not configurable today — the manifest's `labels` map is not keyed by
+language.
 
 - `overrides.<id>.label` — your literal, verbatim, in every locale. Translation is bypassed.
-- Layer 0 `labels["nav.item.<slug>"]` — per-locale text, resolved through the descriptor's
-  `labelKey`. The manifest's `labels` layer last over the shipped catalogue
+- Layer 0 `labels["nav.item.<slug>"]` — replaces the text of the descriptor's `labelKey`. The
+  manifest's `labels` layer last over every language's shipped catalogue
   (`app-translate-loader.ts`), and the shell resolves `labelKey` before falling back to `label`.
 
 Setting **both** is the trap: the override wins outright and the `labels` entry is silently inert.
