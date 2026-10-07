@@ -27,8 +27,24 @@ raising rather than a reason to fork.
 
 ## 2. Start with a generator
 
-The four generators ship **inside this package** — `generators.json` at its root, so Nx
+The five generators ship **inside this package** — `generators.json` at its root, so Nx
 resolves them from `node_modules` like any other plugin. Nothing to clone.
+
+For Layer 0 and 1 — no code — scaffold the **configuration package** you install on Nuxeo:
+
+```bash
+npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme
+npx nx build acme-config          # checks the fragments, writes dist/config-packages/acme-config/acme-config-1.0.0.zip
+nuxeoctl mp-install dist/config-packages/acme-config/acme-config-1.0.0.zip   # then restart Nuxeo
+```
+
+It writes the Marketplace package — `package.xml` depending on `nuxeo-agentic-ui`, a component
+that `<require>`s Satori's defaults, starter `bootstrap.json` and `manifest.json` with JSON
+schemas for your editor — and a `build.mjs` that refuses what the server would reject (bad JSON,
+a repeated key, a fragment over 1 MiB, a missing asset) before anything reaches a server.
+`--presales` adds demo presets. Everything in a fragment is served without authentication.
+
+For Layer 2 — code — the other four:
 
 ```bash
 # once, per library

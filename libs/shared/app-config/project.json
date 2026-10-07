@@ -8,6 +8,12 @@
   "targets": {
     "test": {
       "executor": "@nx/vitest:test",
+      "$comment": "config-package-schema.spec.ts reads the generator's schema templates by path. Naming them as inputs is what makes an edit to one hash this target and select it under `nx affected`; the import graph has no edge to them.",
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/tools/satori-generators/src/config-package/files/schema/*"
+      ],
       "outputs": ["{options.reportsDirectory}"],
       "options": {
         "reportsDirectory": "coverage/libs/shared/app-config"
