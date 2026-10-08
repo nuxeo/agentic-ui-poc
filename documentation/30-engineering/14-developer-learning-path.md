@@ -1012,7 +1012,7 @@ release engineering you can skip this; if you do, it is unavoidable.
 | Java            | **21** (`maven.compiler.source/target`)                       |
 | Maven           | 3.9+                                                          |
 | `nuxeo-parent`  | **11.5.154**                                                  |
-| Reactor version | `org.nuxeo.agentic:nuxeo-agentic-ui-parent:2026.0.1-SNAPSHOT` |
+| Reactor version | `org.nuxeo.agentic:nuxeo-agentic-ui-parent:2026.0.2-SNAPSHOT` |
 | Target platform | `lts [2025.0,2026.0)`                                         |
 
 Three modules: `apps/nuxeo-ui` (packaging `pom`, drives the Angular build through
