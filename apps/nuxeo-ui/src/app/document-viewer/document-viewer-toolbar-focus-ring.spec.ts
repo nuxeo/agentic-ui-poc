@@ -203,12 +203,7 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
       assertFocusRingContrast(button, toolbar, label);
 
       const rotate = rotateLeftButton();
-      const host = fixture.nativeElement as HTMLElement;
-      const sentinel = 'rgb(7, 8, 9)';
-      host.style.setProperty('--document-viewer-focus-on-light-surface', sentinel);
-      fixture.detectChanges();
-      rotate.focus();
-      expect(getComputedStyle(rotate).outlineColor).toBe(sentinel);
+      assertFocusRingContrast(rotate, toolbar, `${label} — Rotate left`);
 
       const backdrop = surfaceBehindPositiveOutlineRing(button);
       const stripBg = parseColor(getComputedStyle(toolbar).backgroundColor).rgb;
