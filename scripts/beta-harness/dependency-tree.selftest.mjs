@@ -393,6 +393,20 @@ control(
     'libs/ui/src/lazy.spec.ts': `const m = await ${'import'}('${EXT}');\nexport default m;\n`,
   }),
 );
+// Mid-file, after executable code: a scanner that reads only the leading import prologue misses it.
+control(
+  'import: a lazy-route import() after executable code is reported',
+  'fail',
+  `[import] libs/ui/src/routes.ts ${CORE}/columns`,
+  fixture('import-dynamic-mid-file', {
+    'libs/ui/src/routes.ts':
+      `import { Routes } ${'from'} '@angular/router';\n` +
+      `const title = 'Columns';\n` +
+      `export const routes: Routes = [\n` +
+      `  { path: 'columns', title, loadComponent: () => ${'import'}('${CORE}/columns').then((m) => m.Columns) },\n` +
+      `];\n`,
+  }),
+);
 control(
   'import: a require() in a .cjs file is reported',
   'fail',
