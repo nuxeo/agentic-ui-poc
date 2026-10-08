@@ -89,7 +89,7 @@ Verdicts: `pass` (every gate), `pass-partial` (a filtered run — **not** a phas
 | `npm run beta:dependency-tree`                                         | No ADF package in lock, installed tree, manifests, `.npmrc`, imports | 1 when blocking; **report-only** (exit 0, lists findings) until the ADF removal commit; 2 if a location cannot be read |
 | `npm run beta:dependency-tree -- --blocking --list-files`              | Preview the blocking verdict, every importing file listed            |                                                                                                                        |
 | `npm run beta:dependency-tree-selftest`                                | The gate's negative and positive controls                            | 1                                                                                                                      |
-| `npm run review:guardrails`                                            | The 10 repo invariants                                               | 1                                                                                                                      |
+| `npm run review:guardrails`                                            | Every check in `GUARDRAILS` (`scripts/review-guardrails.mjs`)        | 1                                                                                                                      |
 | `npm run review:preflight`                                             | guardrails + affected lint + affected test                           | 1                                                                                                                      |
 
 ---

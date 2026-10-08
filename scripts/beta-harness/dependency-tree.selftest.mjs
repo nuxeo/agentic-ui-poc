@@ -14,9 +14,10 @@
  * the exit code **and** the line naming that location, because a control that checks only the exit
  * code cannot tell "red for my reason" from "red for an unrelated one". The fixture they
  * all start from carries the things that must stay quiet — comments and strings naming the
- * packages, a commented-out registry line, the `@hylandsoftware` mapping that stays, and an
- * extraneous package that makes `npm ls` exit non-zero — so every red also shows those did not
- * cause it.
+ * packages, a commented-out registry line, the `@hylandsoftware` mapping that stays, a package
+ * installed at a version its manifest does not allow (which is what makes `npm ls` exit non-zero),
+ * and an extraneous one (which npm 10 lists but still exits 0 for) — so every red also shows those
+ * did not cause it.
  *
  * Package names never appear here in the shapes the `supply-chain` gate reads as a reference — a
  * `from '…'`, `import(…)` or `node_modules/…` literal. That gate scans `scripts/` for those to
@@ -249,8 +250,9 @@ control(
 
 // -------------------------------------------------------------------------- 2. installed ----
 
-// 8. Installed but declared nowhere — extraneous. Only `npm ls` can see this, and npm exits 1 for it,
-//    so the finding has to come from the tree.
+// 8. Installed but declared nowhere — extraneous. Only `npm ls` can see this, and its exit status
+//    says nothing about it (1 here only because of the fixture's invalid entry), so the finding has
+//    to come from the tree.
 control(
   'installed: an extraneous top-level install is reported',
   'fail',
@@ -312,6 +314,45 @@ control(
 );
 
 // 13. The `libs/platform` peer: the one place no lock entry represents.
+// The remaining dependency fields the gate claims to read, one control each, so deleting any of
+// those branches turns something red.
+control(
+  'manifest: a root optionalDependency is reported',
+  'fail',
+  `[manifest] package.json optionalDependencies.${HXCS} = 2.0.111`,
+  fixture('manifest-root-optional', {
+    'package.json': { ...cleanManifest(), optionalDependencies: { [HXCS]: '2.0.111' } },
+  }),
+);
+control(
+  'manifest: a libs/ peerDependenciesMeta entry is reported',
+  'fail',
+  `[manifest] libs/platform/package.json peerDependenciesMeta.${EXT}`,
+  fixture('manifest-libs-peer-meta', {
+    'libs/platform/package.json': {
+      name: '@fixture/platform',
+      version: '0.1.0',
+      peerDependenciesMeta: { [EXT]: { optional: true } },
+    },
+  }),
+);
+control(
+  'manifest: a libs/ bundleDependencies entry is reported',
+  'fail',
+  `[manifest] libs/ui/package.json bundleDependencies[] ${JS_API}`,
+  fixture('manifest-libs-bundle', {
+    'libs/ui/package.json': { name: '@fixture/ui', version: '0.0.0', bundleDependencies: [JS_API] },
+  }),
+);
+control(
+  'manifest: a root bundledDependencies entry is reported',
+  'fail',
+  `[manifest] package.json bundledDependencies[] ${CORE}`,
+  fixture('manifest-root-bundled', {
+    'package.json': { ...cleanManifest(), bundledDependencies: [CORE] },
+  }),
+);
+
 // npm's `"."` replaces the enclosing package itself, so an alias there swaps a harmless-looking
 // name for a forbidden one without either key naming it.
 control(
