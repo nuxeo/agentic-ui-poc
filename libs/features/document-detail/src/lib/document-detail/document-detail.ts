@@ -29,6 +29,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
+import { CdkAriaLive } from '@angular/cdk/a11y';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -286,6 +287,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   selector: 'lib-document-detail',
   standalone: true,
   imports: [
+    CdkAriaLive,
     DescriptorLabelPipe,
     TranslatePipe,
     DatePipe,
