@@ -670,9 +670,16 @@ export default async function run(page, h, outDir) {
     wire.push({
       method: res.request().method(),
       url: decodeURIComponent(url),
+      raw: url,
       status: res.status(),
     });
   });
+  /** A state's text only if it is visible: an attached but hidden template must not count. */
+  const visibleText = async (selector) => {
+    const el = page.locator(selector).first();
+    if (!(await el.isVisible().catch(() => false))) return '';
+    return el.innerText().catch(() => '');
+  };
   const warnings = [];
   const consoleErrors = [];
   page.on('console', (msg) => {
@@ -947,8 +954,13 @@ export default async function run(page, h, outDir) {
   );
   const beforeKeySort = wire.length;
   await page.locator(A.list.headerControl('Modified')).first().focus();
+  // The response itself, not a fixed sleep: a slow sorted page otherwise reads as "no request".
+  const modifiedResponse = page
+    .waitForResponse((r) => /sortBy=dc(%3A|:)modified/.test(r.url()), { timeout: 20_000 })
+    .catch(noAnswer);
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(2500);
+  await modifiedResponse;
+  await waitForList(page, A);
   const keySort = wire.slice(beforeKeySort).filter((w) => /sortBy=dc:modified/.test(w.url));
   h.check(
     `${LB} Enter on the focused Modified header asks the server for sortBy=dc:modified`,
@@ -961,6 +973,20 @@ export default async function run(page, h, outDir) {
     )}`,
   );
   const rowsByModified = await readRows(page, A.list.rows, A.list.title);
+  // The server's answer to the very request the UI made, so the claim is "the UI shows the
+  // server's dc:modified order" rather than "the first row changed".
+  const replay = keySort.at(-1)
+    ? await page.request
+        .get(keySort.at(-1).raw, { failOnStatusCode: false })
+        .then((r) => r.json())
+        .catch(noAnswer)
+    : null;
+  const serverModifiedOrder = (replay?.entries ?? []).map((e) => e.title);
+  h.check(
+    `${LB} the rows are exactly the server's dc:modified page, in its order`,
+    serverModifiedOrder.length === PAGED.pageSize && sameOrder(rowsByModified, serverModifiedOrder),
+    `rendered ${JSON.stringify(rowsByModified.slice(0, 3).map((r) => r.title))}…, server ${JSON.stringify(serverModifiedOrder.slice(0, 3))}…`,
+  );
   h.check(
     `${LB} modified order differs from title order (the fixture was created shuffled)`,
     rowsByModified.length === PAGED.pageSize &&
@@ -1170,11 +1196,7 @@ export default async function run(page, h, outDir) {
   h.step('DocumentList — empty folder shows an empty state, not a blank table');
   await h.goTo(A.browse(EMPTY.path));
   await waitForList(page, A);
-  const emptyText = await page
-    .locator(A.list.empty)
-    .first()
-    .innerText()
-    .catch(() => '');
+  const emptyText = await visibleText(A.list.empty);
   const emptyRows = await readRows(page, A.list.rows, A.list.title);
   h.check(
     `${LB} the empty state says the folder is empty`,
@@ -1644,15 +1666,16 @@ export default async function run(page, h, outDir) {
   ).map((t) => t.replace(/\s+/g, ' ').trim());
   const grantable = options.filter((o) => !/^clear$/i.test(o));
   gap('perm.full-set', {
-    correct: grantable.some((o) =>
-      /add ?children|write ?version|remove|write ?security|manage/i.test(o),
-    ),
+    correct:
+      grantable.some((o) => /add ?children/i.test(o)) &&
+      grantable.some((o) => /write ?version/i.test(o)),
     wrongObserved:
       grantable.length === 3 &&
       /^Read\b/.test(grantable[0]) &&
       /^Read & Write/.test(grantable[1]) &&
       /^Everything/.test(grantable[2]),
-    expect: 'offer the grantable Nuxeo permissions beyond Read, Read & Write and Everything',
+    expect:
+      'offer the grantable permissions beyond the three levels, AddChildren and WriteVersion among them',
     observed: `offered ${JSON.stringify(options)}`,
   });
   await h.screenshot('permissions-three-levels-offered');
@@ -1776,10 +1799,10 @@ export default async function run(page, h, outDir) {
   h.step('Viewer — PDF');
   await h.goTo(A.browse(MEDIA.path));
   await waitForList(page, A);
-  const viewerState = () =>
-    page
-      .locator(A.viewer.root)
-      .first()
+  const viewerState = async () => {
+    const root = page.locator(A.viewer.root).first();
+    const visible = await root.isVisible().catch(() => false);
+    const state = await root
       .evaluate((el) => {
         const img = el.querySelector('img:not([src$=".svg"])');
         const vid = el.querySelector('video');
@@ -1813,13 +1836,21 @@ export default async function run(page, h, outDir) {
         };
       })
       .catch(noAnswer);
+    return state ? { ...state, visible } : null;
+  };
   const errorsBeforePdf = consoleErrors.length;
   await A.viewer.open(page, A, MEDIA.pdf);
   const pdf = await viewerState();
-  h.check(`${CTX} the viewer opened for the PDF`, Boolean(pdf), 'no viewer element');
+  h.check(
+    `${CTX} the viewer opened, visibly, for the PDF`,
+    Boolean(pdf?.visible),
+    JSON.stringify(pdf),
+  );
   gap('viewer.pdf', {
     correct:
-      Boolean(pdf) && (pdf.text.includes(MEDIA.pdfText) || pdf.painted > 0) && pdf.unknown === 0,
+      Boolean(pdf?.visible) &&
+      (pdf.text.includes(MEDIA.pdfText) || pdf.painted > 0) &&
+      pdf.unknown === 0,
     wrongObserved: Boolean(pdf) && pdf.painted === 0 && !pdf.text.includes(MEDIA.pdfText),
     expect: 'render the PDF (its text, or a canvas with the page painted on it)',
     observed: `${JSON.stringify(pdf)}`,
@@ -1839,8 +1870,8 @@ export default async function run(page, h, outDir) {
   await A.viewer.open(page, A, MEDIA.image);
   const img = await viewerState();
   h.check(
-    `${LB} the viewer's image is the fixture PNG, decoded at its intrinsic 480×270`,
-    img?.img?.w === 480 && img?.img?.h === 270,
+    `${LB} the visible viewer's image is the fixture PNG, decoded at its intrinsic 480×270`,
+    Boolean(img?.visible) && img?.img?.w === 480 && img?.img?.h === 270,
     JSON.stringify(img?.img ?? null),
   );
   gap('viewer.img-alt', {
@@ -1858,9 +1889,13 @@ export default async function run(page, h, outDir) {
   h.step('Viewer — video (WebM)');
   await A.viewer.open(page, A, MEDIA.video);
   const vid = await viewerState();
-  h.check(`${CTX} the viewer opened for the video`, Boolean(vid), 'no viewer element');
+  h.check(
+    `${CTX} the viewer opened, visibly, for the video`,
+    Boolean(vid?.visible),
+    JSON.stringify(vid),
+  );
   gap('viewer.video', {
-    correct: Boolean(vid?.video) && vid.video.ready >= 1 && vid.video.duration > 3,
+    correct: Boolean(vid?.visible && vid.video) && vid.video.ready >= 1 && vid.video.duration > 3,
     wrongObserved: Boolean(vid) && !vid.video && vid.unknown > 0,
     expect: 'play the video',
     observed: JSON.stringify(vid),
@@ -1872,8 +1907,8 @@ export default async function run(page, h, outDir) {
   await A.viewer.open(page, A, MEDIA.unknown);
   const unk = await viewerState();
   h.check(
-    `${LB} the fallback is shown for application/octet-stream`,
-    Boolean(unk) && unk.unknown > 0,
+    `${LB} the visible viewer shows the fallback for application/octet-stream`,
+    Boolean(unk?.visible) && unk.unknown > 0,
     JSON.stringify(unk),
   );
   h.check(
@@ -1909,7 +1944,13 @@ export default async function run(page, h, outDir) {
     .catch(() => '');
   h.check(
     `${LB} the first page lists 50 hits, all of them paged items`,
-    s1.length === 50 && s1.every((r) => r.title.startsWith('Paged item')),
+    s1.length === 50 &&
+      s1.every((r) => r.title.startsWith('Paged item')) &&
+      (await page
+        .locator(A.search.rows)
+        .first()
+        .isVisible()
+        .catch(() => false)),
     `${s1.length} rows`,
   );
   h.check(`${CTX} the result count is 125`, /125/.test(countText), JSON.stringify(countText));
@@ -1938,11 +1979,7 @@ export default async function run(page, h, outDir) {
 
   h.step('Search listing — no results, and a match the administrator can see');
   await searchFor(SEARCH.none);
-  const noneText = await page
-    .locator(A.search.none)
-    .first()
-    .innerText()
-    .catch(() => '');
+  const noneText = await visibleText(A.search.none);
   h.check(
     `${LB} an unmatched term says no results were found`,
     /no results/i.test(noneText),
@@ -1967,11 +2004,7 @@ export default async function run(page, h, outDir) {
   await fail500(A.list.failPattern);
   await h.goTo(A.browse(PAGED.path));
   await waitForList(page, A);
-  const list500 = await page
-    .locator(A.list.error)
-    .first()
-    .innerText()
-    .catch(() => '');
+  const list500 = await visibleText(A.list.error);
   const rows500 = await readRows(page, A.list.rows, A.list.title);
   h.check(
     `${LB} the listing shows an error state with a message`,
@@ -1997,11 +2030,7 @@ export default async function run(page, h, outDir) {
   await h.goTo(A.search.route);
   await fail500(A.search.failPattern);
   await searchFor(`${SEARCH.token}x`);
-  const search500 = await page
-    .locator(A.search.error)
-    .first()
-    .innerText()
-    .catch(() => '');
+  const search500 = await visibleText(A.search.error);
   h.check(
     `${LB} search shows an error state with a message`,
     search500.trim().length > 0,
@@ -2048,7 +2077,9 @@ export default async function run(page, h, outDir) {
     },
   );
   await h.goTo(A.browse(ROOT));
-  await page.reload({ waitUntil: 'networkidle' });
+  // `load`, not `networkidle`: the identity switch can leave a request in flight for long enough
+  // to time the reload out, and the list wait below is what the next checks depend on.
+  await page.reload({ waitUntil: 'load' });
   await waitForList(page, A);
   const me = await page.evaluate(() =>
     fetch('/nuxeo/api/v1/me')
@@ -2090,11 +2121,7 @@ export default async function run(page, h, outDir) {
   for (const w of wire.slice(beforeDenied).filter((x) => x.status === 403)) {
     provoked.add(`HTTP 403 ${new URL(w.url.replace(/ /g, '%20')).pathname}`);
   }
-  const deniedText = await page
-    .locator(A.list.error)
-    .first()
-    .innerText()
-    .catch(() => '');
+  const deniedText = await visibleText(A.list.error);
   const deniedRows = await readRows(page, A.list.rows, A.list.title);
   h.check(
     `${CTX} Nuxeo answered 403 for the restricted folder`,
@@ -2143,11 +2170,7 @@ export default async function run(page, h, outDir) {
   await h.goTo(A.search.route);
   await searchFor(SEARCH.secret);
   const userSecret = await readRows(page, A.search.rows, A.search.title);
-  const userNone = await page
-    .locator(A.search.none)
-    .first()
-    .innerText()
-    .catch(() => '');
+  const userNone = await visibleText(A.search.none);
   h.check(
     `${LB} the search completed (a no-results state or result rows)`,
     userSecret.length > 0 || /no results/i.test(userNone),
