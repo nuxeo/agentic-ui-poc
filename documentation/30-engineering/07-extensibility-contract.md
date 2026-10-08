@@ -59,7 +59,10 @@ fragment's `content` is a `bootstrap` fragment in your configuration package.
 ### `branding.logo`
 
 `{ "src": "assets/acme-logo.svg", "alt": "Acme Insurance" }` replaces the Satori word mark in the header
-and the Satori lockup on the login page. `null` or absent keeps the Satori marks.
+and the Satori lockup on the login page. `null` or absent keeps the Satori marks. It does not
+replace the Hyland mark at the top of the navigation rail or the "Content Innovation Cloud" title
+shown when the rail is expanded (both hard-coded in Satori's `sat-platform-nav`), and there is no
+key for the favicon.
 
 - **`src`** is a relative path resolved against the directory `bootstrap.json` is served from,
   `/nuxeo/agentic-ui-config/`. The servlet serves images only under `assets/`, so a logo is

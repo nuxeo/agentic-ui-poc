@@ -85,12 +85,12 @@ product follows from it.
 
 ## The four layers — the core of the value proposition
 
-| Layer                      | Customer writes                 | Build?      | Example                                                                                       |
-| -------------------------- | ------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
-| **0 — Configuration**      | JSON + CSS variables            | **No**      | Rebrand: colours, product name, logo, default language — not the favicon yet                  |
-| **1 — Declarative wiring** | JSON referencing registered IDs | **No**      | Hide the Reports nav entry; relabel Home to "Dashboard"; add a Contracts entry at position 35 |
-| **2 — Customer code**      | TypeScript in **their** repo    | Yes, theirs | A contract-approval action visible only to users who can write the document                   |
-| **3 — Agent harness**      | Prompts                         | Yes, theirs | The same request as a short agent session against a defined API                               |
+| Layer                      | Customer writes                 | Build?      | Example                                                                                                              |
+| -------------------------- | ------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| **0 — Configuration**      | JSON + CSS variables            | **No**      | Rebrand: colours, product name, header and sign-in logo, default language — not the rail mark, rail title or favicon |
+| **1 — Declarative wiring** | JSON referencing registered IDs | **No**      | Hide the Reports nav entry; relabel Home to "Dashboard"; add a Contracts entry at position 35                        |
+| **2 — Customer code**      | TypeScript in **their** repo    | Yes, theirs | A contract-approval action visible only to users who can write the document                                          |
+| **3 — Agent harness**      | Prompts                         | Yes, theirs | The same request as a short agent session against a defined API                                                      |
 
 RFC §6.3 describes the intended Layer 3 experience:
 
