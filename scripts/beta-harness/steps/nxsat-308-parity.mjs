@@ -335,6 +335,17 @@ const ADF_HX_REMOUNT = {
   id: 'adf-hx-remount',
   label: 'upstream adf-hx components, plus the properties and versions sidebars re-mounted locally',
   knownGaps: new Set([...UPSTREAM_GAPS, ...SIDEBAR_GAPS]),
+  /** The re-mount is a local patch; without it this surface must stop, not report missing panels. */
+  async present(page, h) {
+    if (!(await ADF_HX.present(page, h))) return false;
+    const tabs = (
+      await page
+        .locator('hxp-browse-tabs [role="tab"]')
+        .allInnerTexts()
+        .catch(() => [])
+    ).map((t) => t.trim());
+    return ['Properties', 'Versions'].every((t) => tabs.includes(t));
+  },
   properties: {
     provenance: 'upstream hxp-properties-sidebar, re-mounted as the browse POC Properties tab',
     root: 'hxp-properties-sidebar',
@@ -616,6 +627,16 @@ async function waitForList(page, A, timeout = 15_000) {
   await page.waitForTimeout(600);
 }
 
+/** Paged item titles from `from` to `to`, inclusive, in that direction. */
+const titleRange = (from, to) =>
+  Array.from({ length: Math.abs(to - from) + 1 }, (_, i) =>
+    pagedTitle(from < to ? from + i : from - i),
+  );
+
+/** Every rendered row, in order: endpoints alone would admit missing, duplicated or swapped rows. */
+const sameOrder = (rows, titles) =>
+  JSON.stringify(rows.map((r) => r.title)) === JSON.stringify(titles);
+
 const sameSet = (a, b) =>
   a.length === b.length && [...a].sort().join('|') === [...b].sort().join('|');
 
@@ -804,9 +825,12 @@ export default async function run(page, h, outDir) {
   h.requirePrecondition(
     `the ${surfaceId} surface renders on the browse route`,
     await A.present(page, h),
-    surfaceId === 'nxs'
-      ? 'nxs-document-list is not rendered yet — the after-half cannot run before the components exist'
-      : 'hxp-document-list did not render on /browse-adf-hx — is the app served from a commit that still has the POC route?',
+    {
+      nxs: 'nxs-document-list is not rendered yet — the after-half cannot run before the components exist',
+      'adf-hx-remount':
+        'the Properties and Versions tabs are not on /browse-adf-hx — apply remount-sidebars.local.patch to the served checkout first',
+    }[surfaceId] ??
+      'hxp-document-list did not render on /browse-adf-hx — is the app served from a commit that still has the POC route?',
   );
   if (A.upstream) {
     const catalogue = await page.request
@@ -834,9 +858,7 @@ export default async function run(page, h, outDir) {
   );
   h.check(
     `${LB} the first server page lists 50 rows, Paged item 001 to 050, by title ascending`,
-    rows0.length === PAGED.pageSize &&
-      rows0[0]?.title === pagedTitle(1) &&
-      rows0.at(-1)?.title === pagedTitle(50),
+    sameOrder(rows0, titleRange(1, 50)),
     `${rows0.length} rows, first ${rows0[0]?.title}, last ${rows0.at(-1)?.title}`,
   );
   const titleHeader0 = headers0.find((x) => x.label === 'Title');
@@ -889,9 +911,7 @@ export default async function run(page, h, outDir) {
   );
   h.check(
     `${LB} the rows read Paged item 125 down to 076`,
-    rowsDesc.length === PAGED.pageSize &&
-      rowsDesc[0]?.title === pagedTitle(125) &&
-      rowsDesc.at(-1)?.title === pagedTitle(76),
+    sameOrder(rowsDesc, titleRange(125, 76)),
     `${rowsDesc.length} rows, first ${rowsDesc[0]?.title}, last ${rowsDesc.at(-1)?.title}`,
   );
   const titleDesc = headersDesc.find((x) => x.label === 'Title');
@@ -978,7 +998,7 @@ export default async function run(page, h, outDir) {
   );
   h.check(
     `${LB} page 2 lists Paged item 051 to 100`,
-    p2.length === 50 && p2[0]?.title === pagedTitle(51) && p2.at(-1)?.title === pagedTitle(100),
+    sameOrder(p2, titleRange(51, 100)),
     `${p2.length} rows, ${p2[0]?.title} … ${p2.at(-1)?.title}`,
   );
   h.check(
@@ -1002,7 +1022,7 @@ export default async function run(page, h, outDir) {
   );
   h.check(
     `${LB} page 3 lists the last 25, Paged item 101 to 125`,
-    p3.length === 25 && p3[0]?.title === pagedTitle(101) && p3.at(-1)?.title === pagedTitle(125),
+    sameOrder(p3, titleRange(101, 125)),
     `${p3.length} rows, ${p3[0]?.title} … ${p3.at(-1)?.title}`,
   );
   h.check(
