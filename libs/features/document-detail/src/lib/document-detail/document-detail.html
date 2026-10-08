@@ -143,12 +143,16 @@
         } @else {
           <button
             mat-icon-button
+            type="button"
+            class="content-lake-ingest-btn"
             [matTooltip]="'document-detail.document-detail.ingest-to-content-lake' | translate"
-            [attr.aria-label]="'document-detail.document-detail.ingest-to-content-lake' | translate"
             [disabled]="keActionInFlight() !== null"
             (click)="ingestToContentLake()"
           >
-            <mat-icon>cloud_upload</mat-icon>
+            <span class="cdk-visually-hidden" cdkAriaLive="off">{{
+              'document-detail.document-detail.ingest-to-content-lake' | translate
+            }}</span>
+            <mat-icon aria-hidden="true">cloud_upload</mat-icon>
           </button>
         }
       }
