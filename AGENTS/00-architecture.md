@@ -112,21 +112,23 @@ and when any of its files sits outside the measurement — only `noStatements` b
 never a dated allowlist entry. `npm run beta:coverage` runs at the end of the SonarCloud workflow,
 after its test-with-coverage step.
 
-**Two shared barrels fail the dependency rule today**, because it follows imports:
-
-- `@nuxeo-satori/platform/nuxeo-client` — `lib/constants/avatar-colors.ts` imports the
-  `SatAvatarCategory` type from `@hylandsoftware/satori-ui/avatar`.
-- `@nuxeo-satori/platform/extensions` — imports `@alfresco/adf-extensions`, until the NXSAT-308
-  reimplementation of `filterEnabled`, `sortByOrder` and `mergeObjects` lands.
-
-Fix the file that carries the package, rather than copying code into the library to dodge the rule.
+**The rule follows imports, so a shared barrel the library uses must be free of both packages
+too.** Two were not, and each was fixed in the file that carried the package:
+`@nuxeo-satori/platform/nuxeo-client`'s `avatar-colors.ts` imported a Satori type, and
+`@nuxeo-satori/platform/extensions` imported `@alfresco/adf-extensions`. `nxs-permissions-panel`
+is the first component to import `nuxeo-client`. Fix any new case the same way, rather than
+copying code into the library to dodge the rule.
 
 **Adding a component, with every gate staying green:**
 
 1. `src/lib/<name>/<name>.component.{ts,html,scss,spec.ts}` — selector `nxs-<name>`, class
    `Nxs<Name>Component`, `standalone: true`, `templateUrl`, theme tokens only.
 2. Text inputs take already-translated strings; the library ships no catalogue.
-   `checkNoProseInComponentInputs` scans `nxs-` elements, so a caller must bind them.
+   `checkNoProseInComponentInputs` scans `nxs-` elements, so a caller must bind them. A composite
+   component's own chrome — headings, buttons, messages — is translated with keys under
+   `satori-components.<name>.*` in the app catalogue (`apps/nuxeo-ui/public/i18n/en.json` plus
+   `en.context.json`), written as literals or literal-prefixed template strings so that
+   `node tools/i18n/platform-english.mjs` finds them and ships their English with the package.
 3. The spec covers the empty and error paths and keeps the library at 90% or more:
    `npx nx test satori-components --coverage.enabled=true`, then `npm run beta:coverage`.
 4. Export it from `src/index.ts`, run `npm run beta:api -- --update` and review the
@@ -134,6 +136,14 @@ Fix the file that carries the package, rather than copying code into the library
 5. A new runtime dependency is a `libs/platform/package.json` peer, or is listed in
    `allowedNonPeerDependencies`.
 6. Shared state is an `InjectionToken` with an exported `provide…()` function, never `providedIn`.
+   A service only one component uses goes in that component's `providers`, as
+   `NxsPermissionsService` does.
+7. Members only the template uses are `protected`, so the component's contract is its inputs and
+   outputs. Specs reach them by element access (`panel()['save']()`).
+8. A component that replaces packaged markup is registered by ID (`nxs.<group>.<name>`, exported as
+   a constant) and rendered through `lib-extension-outlet` with the component as the unresolved
+   fallback, so a customer library can re-register the ID. `beta:reference` checks `nxs.*` IDs
+   against `docs/extension-reference.md` as it does `app.*` ones.
 
 ---
 

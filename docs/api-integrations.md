@@ -1508,6 +1508,51 @@ for again by the next document that shows it.
 
 ---
 
+## 30. Permissions Panel — ACL Read and Per-Entry Writes (NXSAT-308)
+
+| Field           | Value                                                                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Service**     | `NxsPermissionsService` (`libs/shared/satori-components/src/lib/permissions-panel/permissions-panel.service.ts`), over `DocumentDetailService`                       |
+| **Read**        | `GET /nuxeo/api/v1/id/:uid` with `enrichers.document=acls,permissions,userVisiblePermissions` and `fetch-acls: username,creator,extended` (`getDocumentPermissions`) |
+| **Add**         | `POST /nuxeo/api/v1/automation/Document.AddPermission` — `username`, `permission`, `begin`, `end`, `notify: false` (`addPermission`)                                 |
+| **Edit**        | `POST /nuxeo/api/v1/automation/Document.ReplacePermission` — `id`, `username`, `permission`, `begin`, `end`, `notify: false` (`replacePermission`)                   |
+| **Remove**      | `POST /nuxeo/api/v1/id/:uid/@op/Document.RemovePermission` — `id`, `acl` (`removePermissionById`)                                                                    |
+| **Inheritance** | `Document.BlockPermissionInheritance` / `Document.UnblockPermissionInheritance` on `/id/:uid/@op/…`                                                                  |
+| **Users**       | `POST /nuxeo/api/v1/automation/UserGroup.Suggestion` (`searchUsersGroups`)                                                                                           |
+
+**The permission list comes from two enrichers, because neither is enough alone.**
+`userVisiblePermissions` is the server's list for the document type, from the `permissionsVisibility`
+extension point: `Read`, `ReadWrite`, `Everything` on a stock workspace, plus `CanAskForPublishing`
+on a section root. `permissions` lists every permission the server defines **that the caller
+holds** — 33 on 2025.26.16 for a holder of `Everything`, 9 for a manager holding only
+`WriteSecurity`. The panel offers the first list, then the standard grants (`Write`, `ReadVersion`,
+`WriteVersion`, `AddChildren`, `RemoveChildren`, `Remove`, `Version`, `WriteSecurity`, `Unlock`,
+`SetRetention`, `UnsetRetention`), then the rest of the second. It filters the standard grants by the
+second list only when that list includes `Everything`, since only then is it the full set.
+
+**Behaviour measured on 2025.26.16, which the panel is built around:**
+
+- `Document.RemovePermission` with `user` removes **every** ACE that principal holds in the ACL,
+  whatever else is passed. With `id` it removes exactly one. `DocumentDetailService.removePermission`
+  sends `user`; the panel uses `removePermissionById`.
+- An `id` that matches no ACE is answered `200` with nothing changed, by both `RemovePermission`
+  and `ReplacePermission`. The panel re-reads the ACL before writing, refusing a change whose target
+  is gone, and again after, reporting any change the server does not show.
+- `ReplacePermission` writes the `begin` and `end` it is given, so an edit of the permission alone
+  must send the entry's existing dates or it becomes permanent.
+- `AddPermission` answers `400` "Permission X is invalid" for a permission the server does not
+  define, and `403` "Privilege 'WriteSecurity' is not granted" to a user who cannot manage
+  permissions. A deny other than the inheritance marker is refused with `500` ("Negative ACL not
+  allowed") unless the server allows negative ACLs.
+- Blocking inheritance adds the current user's and `administrators`' `Everything` and the
+  `Everyone`/`Everything`/deny marker to the local ACL, and the read then has no `inherited` ACL.
+  The repository root has no `inherited` ACL either, so the panel reads "blocked" from the marker.
+
+**Usage:** the Permissions tab of document detail and of `/browse`, through the registered
+component `nxs.components.permissionsPanel`.
+
+---
+
 ## Administration — Recently Created Users and Groups
 
 | Field           | Value                                                                       |

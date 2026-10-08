@@ -568,12 +568,13 @@ at the table below, conflating the two.
 
 Components are referenced by ID and must already be compiled in. Contributing a new one is Layer 2.
 
-| Component ID                | Renders                                    |
-| --------------------------- | ------------------------------------------ |
-| `app.sidebar.assets`        | Asset facet filters                        |
-| `app.sidebar.searchFilters` | Search filter panel                        |
-| `app.sidebar.trashFilters`  | Trash filter panel                         |
-| `app.page.contracts`        | A full-page surface, for the `routes` slot |
+| Component ID                      | Renders                                                                            |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `app.sidebar.assets`              | Asset facet filters                                                                |
+| `app.sidebar.searchFilters`       | Search filter panel                                                                |
+| `app.sidebar.trashFilters`        | Trash filter panel                                                                 |
+| `app.page.contracts`              | A full-page surface, for the `routes` slot                                         |
+| `nxs.components.permissionsPanel` | Local and inherited permissions in the document-detail and browse Permissions tabs |
 
 `app.page.contracts` is the first component registered for the **`routes`** slot rather than for a
 drawer, and it exists because that slot went live with **no component in the product able to serve
@@ -763,8 +764,12 @@ not addressable**, and that asymmetry is deliberate and worth stating: the six
 packaged bodies are still markup in the host template, matched by ID. Extracting
 a thousand-plus lines of tab body into separately registered components would
 have been a rewrite, and the point of this slot is to make the tab strip
-addressable without one. The one exception is the body of `app.tabs.view`, which
-a `documentView` entry can replace per document — section 9a.
+addressable without one. There are two exceptions. The body of `app.tabs.view` can be
+replaced per document by a `documentView` entry — section 9a. And the local and inherited
+half of `app.tabs.permissions` renders the component registered as
+`nxs.components.permissionsPanel`, as does the Permissions tab of `/browse`, so re-registering
+that ID from your library (section 14) replaces the panel in both; the external-user section
+under it stays packaged. The component receives one input, `documentId`.
 
 A tab you contribute names a registered component instead, through `componentId`,
 and is rendered by the same `ExtensionOutletComponent` the sidebar uses. The
@@ -1138,28 +1143,22 @@ that is Layer 2 — see section 14.
   package (section 1), so a change is a new version of that package, built and installed. On a
   demo server, a preset (section 1) switches between configurations per browser.
 
-- **The permissions panel handles three permission levels, not Nuxeo's twelve.** The adopted
-  upstream panel represents `Read`, `ReadWrite` and `Everything`, and ranks rows against exactly
-  that list. A document whose local ACL holds anything else — `Write`, `AddChildren`,
-  `WriteSecurity`, `ReadVersion` and the rest, which workflows and server-side code do set — cannot
-  be round-tripped through it.
+- **The upstream permissions panel on `/browse-adf-hx` still handles three levels.** That route is
+  the adf-hx proof of concept, kept until the components are removed. It represents only `Read`,
+  `ReadWrite` and `Everything`, saves by clearing the local ACL and replaying it, and so **refuses**
+  to save a document whose local ACL holds anything else rather than delete it — including the
+  `sections` root, which Nuxeo grants `members: CanAskForPublishing` by default.
 
-  Because Nuxeo has no replace-an-ACL operation, saving is a clear followed by a replay, so an ACE
-  the panel cannot represent would be **deleted** by a save that reported success. The bridge now
-  **refuses the write** on such a document and names the offending entries, rather than losing them.
-
-  That is a guard, not a capability: the panel still cannot edit those documents at all, and their
-  permissions must be managed in Nuxeo until upstream can express the full set. Treat a refusal as
-  correct behaviour, not a defect.
-
-  **This is not only exotic documents.** Surveyed against a stock instance, 2 of the 12 documents
-  carrying a local ACL would be refused, and both are ones Nuxeo creates itself — the `sections`
-  root of a domain, which Nuxeo grants `members: CanAskForPublishing` by default, and a document's
-  `Comments` container, which the comment service gives `AddChildren` and `RemoveChildren`.
-
-  So the permissions panel is unusable on the Sections root of a stock domain from day one. Saving
-  there would have deleted the grant the publishing workflow depends on, so the refusal is doing its
-  job — but expect it, and manage those permissions in Nuxeo.
+  The product's Permissions tabs — document detail and `/browse` — use
+  `nxs.components.permissionsPanel` instead, which has neither limit. It offers every permission
+  the server defines: the server's list for the document type, then `Write`, `ReadVersion`,
+  `WriteVersion`, `AddChildren`, `RemoveChildren`, `Remove`, `Version`, `WriteSecurity`, `Unlock`,
+  `SetRetention` and `UnsetRetention`, then any other permission the server reports. It writes one
+  entry per change, so an entry nobody touched is never written. What it still refuses, before
+  writing anything and naming each entry and why: an entry that changed on the server after the
+  page loaded, editing a deny (Nuxeo's write operations only grant), an entry with no identifier,
+  and a permission the server does not define. Its labels for permissions outside that standard set
+  are the Nuxeo identifiers, not translated names.
 
 ---
 

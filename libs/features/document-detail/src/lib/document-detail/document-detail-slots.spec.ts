@@ -1,4 +1,4 @@
-import { Component, input, provideZonelessChangeDetection, signal } from '@angular/core';
+import { Component, input, provideZonelessChangeDetection, signal, type Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideHttpClient } from '@angular/common/http';
@@ -98,6 +98,16 @@ class ClaimViewComponent {
 })
 class CaseViewComponent {}
 
+/** A customer's permissions panel, registered under the packaged panel's ID. */
+@Component({
+  standalone: true,
+  selector: 'lib-test-custom-permissions',
+  template: '<p>CUSTOM PERMISSIONS for {{ documentId() }}</p>',
+})
+class CustomPermissionsComponent {
+  readonly documentId = input('');
+}
+
 /** The packaged type rule, so these tests exercise the rule a customer is told to write. */
 const IS_TYPE_RULE = 'app.rules.isType';
 
@@ -177,7 +187,11 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
   (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:mock/1');
   (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn();
 
-  async function render(extensions: unknown, focused: NuxeoDocument = doc()): Promise<void> {
+  async function render(
+    extensions: unknown,
+    focused: NuxeoDocument = doc(),
+    components: Readonly<Record<string, Type<unknown>>> = {},
+  ): Promise<void> {
     manifest.set({ extensionLayers: [extensions] });
     mockDetailService.getFullDocument.mockReturnValue(of(focused));
     TestBed.resetTestingModule();
@@ -243,6 +257,7 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
               ++flakyLoads === 1
                 ? Promise.reject(new Error('chunk failed to load'))
                 : Promise.resolve(ClaimViewComponent),
+            ...components,
           },
         }),
       ],
@@ -695,6 +710,72 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
 
       expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
       expect(viewBody().textContent).not.toContain('CLAIM VIEW');
+    });
+  });
+
+  describe('permissions tab', () => {
+    const withWriteVersion = () =>
+      doc({
+        contextParameters: {
+          permissions: ['Everything'],
+          acls: [
+            {
+              name: 'local',
+              aces: [
+                {
+                  id: 'jdoe:WriteVersion:true:Administrator::',
+                  username: 'jdoe',
+                  permission: 'WriteVersion',
+                  granted: true,
+                  externalUser: false,
+                  creator: 'Administrator',
+                  begin: null,
+                  end: null,
+                  status: 'effective',
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+    async function openPermissions(): Promise<HTMLElement> {
+      const tab = [...fixture.nativeElement.querySelectorAll('.mat-mdc-tab')].find((el) =>
+        (el as HTMLElement).textContent?.includes('Permissions'),
+      ) as HTMLElement;
+      tab.click();
+      for (let i = 0; i < 3; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        fixture.detectChanges();
+        await fixture.whenStable();
+      }
+      const body = fixture.nativeElement.querySelector('.mat-mdc-tab-body-active') as HTMLElement;
+      if (!body) throw new Error('no active tab body');
+      return body;
+    }
+
+    it('renders the library panel, with every permission the ACL holds', async () => {
+      mockDetailService.getDocumentPermissions.mockReturnValue(of(withWriteVersion()));
+      await render({});
+
+      const body = await openPermissions();
+
+      const panel = body.querySelector('nxs-permissions-panel');
+      expect(panel).toBeTruthy();
+      expect(panel?.textContent).toContain('Write versions');
+      expect(panel?.textContent).toContain('WriteVersion');
+      // The external-user section stays the host's.
+      expect(body.textContent).toContain('Permissions Assigned to External Users');
+    });
+
+    it('renders a component a customer registered under the panel ID instead', async () => {
+      mockDetailService.getDocumentPermissions.mockReturnValue(of(withWriteVersion()));
+      await render({}, doc(), { 'nxs.components.permissionsPanel': CustomPermissionsComponent });
+
+      const body = await openPermissions();
+
+      expect(body.querySelector('nxs-permissions-panel')).toBeNull();
+      expect(body.textContent).toContain('CUSTOM PERMISSIONS for doc-1');
     });
   });
 

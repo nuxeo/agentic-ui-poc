@@ -245,7 +245,12 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 ```
 
 - **Text inputs take text you have already translated.** The library ships no catalogue, so
-  bind every heading, message and label through your own translate pipe.
+  bind every heading, message and label through your own translate pipe. A composite component
+  such as `nxs-permissions-panel` translates its own chrome under `satori-components.*`; the
+  package's English for those keys is served by `providePlatformEnglishFallback()`.
+- **Replace a packaged panel by its ID.** `nxs-permissions-panel` is registered as
+  `NXS_PERMISSIONS_PANEL_ID` (`nxs.components.permissionsPanel`). Register your own component
+  under it and both Permissions tabs render yours, with one input, `documentId`.
 - **Import only the entry point.** A path past it fails the shipped guardrail like any other
   deep import.
 - **It is new and growing.** The type declarations are the list of what exists; do not take

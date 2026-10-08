@@ -1,4 +1,4 @@
-import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { Component, input, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -11,6 +11,7 @@ import { EMPTY, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
+import { provideSatoriExtensions } from '@nuxeo-satori/platform/extensions';
 import {
   BrowseService,
   ClipboardTargetService,
@@ -105,6 +106,17 @@ const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLaye
  * branches are the whole of what a user sees on this page, so they are asserted
  * here through the DOM, driving the controls rather than calling the methods.
  */
+
+/** A customer's permissions panel, registered under the packaged panel's ID. */
+@Component({
+  standalone: true,
+  selector: 'lib-test-custom-permissions',
+  template: '<p class="custom-permissions">CUSTOM PERMISSIONS for {{ documentId() }}</p>',
+})
+class CustomPermissionsComponent {
+  readonly documentId = input('');
+}
+
 describe('BrowseComponent — rendered document list', () => {
   let fixture: ComponentFixture<BrowseComponent>;
   let createdObjectUrls: string[];
@@ -660,9 +672,36 @@ describe('BrowseComponent — rendered document list', () => {
     component.activeTabIndex.set(1);
     await settle();
 
+    // The local table is the library panel's now; its actions column is labelled for screen
+    // readers only, which still counts as text.
+    const localTable = 'nxs-permissions-panel .nxs-permissions-panel__table';
     expect(component.canManageCurrentPermissions()).toBe(true);
-    expect(component.localAces()).toHaveLength(1);
-    expect(query('.perm-table')).not.toBeNull();
-    expect(unlabelledHeaders('.perm-table')).toEqual([]);
+    expect(query(localTable)).not.toBeNull();
+    expect(unlabelledHeaders(localTable)).toEqual([]);
+  });
+
+  it('renders a permissions panel a customer registered under the panel ID instead', async () => {
+    const folder = doc({
+      uid: 'ws-1',
+      title: 'Workspace',
+      type: 'Workspace',
+      path: '/default-domain/workspaces/ws-1',
+      facets: ['Folderish'],
+      contextParameters: { permissions: ['Everything'], acls: [{ name: 'local', aces: [] }] },
+    });
+    browse.getBrowseFolderContents.mockReturnValue(of({ folder, entries: [], totalSize: 0 }));
+    detail.getDocumentPermissions.mockReturnValue(of(folder));
+
+    const component = await render([
+      provideNoopAnimations(),
+      provideSatoriExtensions({
+        components: { 'nxs.components.permissionsPanel': CustomPermissionsComponent },
+      }),
+    ]);
+    component.activeTabIndex.set(1);
+    await settle();
+
+    expect(query('nxs-permissions-panel')).toBeNull();
+    expect(query('.custom-permissions')?.textContent).toContain('CUSTOM PERMISSIONS for ws-1');
   });
 });
