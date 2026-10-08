@@ -99,11 +99,12 @@ There is no embedding, no shared shell and no cross-navigation between the two.
 
 Each verifiable in this repository:
 
-1. **Configuration survives upgrade — rehearsed on a real server.** The package ships a sample
-   and never installs the customer's `bootstrap.json`, with the reasoning recorded in
-   `install.xml` — including two designs that were wrong: `nxserver/web` is not a Tomcat docBase,
-   so a file there is never served, and installing the file with `overwrite="false"` left **no
-   version installed** when a customer had edited it (NXSAT-317).
+1. **Configuration survives upgrade — rehearsed on a real server.** It ships in the customer's
+   own Marketplace package, which depends on ours, and our package installs no configuration
+   file, with the reasoning recorded in `install.xml` (NXSAT-312). Two earlier designs, which kept
+   a customer-edited file on the server, were wrong: `nxserver/web` is not a Tomcat docBase, so a
+   file there is never served, and installing the file with `overwrite="false"` left **no version
+   installed** when a customer had edited it (NXSAT-317).
 2. **The customisation surface is a contract, and drift is detectable.**
    `npm run beta:reference` fails if a documented ID is unregistered **or** a registered ID
    is undocumented.

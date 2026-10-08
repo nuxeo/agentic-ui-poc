@@ -119,6 +119,11 @@ The Layer 1 configuration is the `extensions` key of a manifest fragment:
 }
 ```
 
+Most examples later in this reference start at `overrides` or `slots`: they show the contents of
+this `extensions` key, and in a package's `manifest.json` they go inside it. At the top level of a
+fragment those keys are ignored without an error. The JSON schema the generator writes flags them in
+your editor; the package build does not.
+
 ### Presales presets
 
 A demo server can carry several named configurations and switch between them per browser, without
@@ -1087,7 +1092,9 @@ that is Layer 2 — see section 14.
   statement of slot state and is gated by `npm run beta:reference`; this prose is not.
 
 - **The two selection permission rules**, for the reason given in section 4.
-- **An in-app editor** for the manifest. It is edited as a Nuxeo Note.
+- **An in-app editor** for configuration. Configuration is the fragments in a configuration
+  package (section 1), so a change is a new version of that package, built and installed. On a
+  demo server, a preset (section 1) switches between configurations per browser.
 
 - **The permissions panel handles three permission levels, not Nuxeo's twelve.** The adopted
   upstream panel represents `Read`, `ReadWrite` and `Everything`, and ranks rows against exactly
