@@ -85,6 +85,15 @@ control('a shape change is a shortfall row, not a silent loss', 'must report', (
     : `last row is ${JSON.stringify(last)}`;
 });
 
+control('a title with nested markup keeps no angle bracket', 'must stay quiet', () => {
+  const nested = withThreads.replace(
+    'Missing --root causes exit 1',
+    '<scr<script>ipt>Missing --root</scr</b>ipt> causes exit 1',
+  );
+  const title = previouslyMissedFindings(nested)[0].finding;
+  return /[<>]/.test(title) ? `title kept markup: ${JSON.stringify(title)}` : '';
+});
+
 control('an unparsed non-clean body with no threads is still one summary row', 'must report', () =>
   same(where(reviewBodyItems('### Changes recommended\n\nSomething is wrong.', false)), [
     '(review summary):null',

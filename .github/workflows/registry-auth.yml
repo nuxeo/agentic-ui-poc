@@ -11,7 +11,7 @@ name: Registry auth (cold cache)
 #   - A PR can change what has to authenticate — a new @alfresco or @hylandsoftware dependency, a
 #     version on a package the token cannot see, a registry mapping in .npmrc — so PRs touching
 #     those files run it before merge, as does a change to this check itself.
-#   - Every other PR would spend a full uncached install (about two minutes) re-proving the
+#   - Every other PR would spend a full uncached install (about 30 s on a runner) re-proving the
 #     schedule's answer about a secret the PR cannot affect.
 on:
   schedule:
