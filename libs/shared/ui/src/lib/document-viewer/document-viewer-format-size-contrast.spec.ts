@@ -13,9 +13,13 @@ import { DocumentViewerComponent } from './document-viewer.component';
 
 const WCAG_AA_NORMAL_TEXT = 4.5;
 
-function scssBlocks(source: string, className: string): string[] {
-  const re = new RegExp(`\\.${className}\\s*\\{[^}]+\\}`, 'gs');
-  return [...source.matchAll(re)].map((match) => match[0]);
+/** Rule blocks whose selector prelude includes `.className` (compound/pseudo included). */
+function scssBlocks(source: string, className: string): { prelude: string; body: string }[] {
+  const re = new RegExp(`([^{}]*\\.${className}\\b[^{]*)\\{([^}]+)\\}`, 'gs');
+  return [...source.matchAll(re)].map((match) => ({
+    prelude: match[1].trim(),
+    body: match[2],
+  }));
 }
 
 function parseRgb(css: string): [number, number, number] | null {
@@ -106,14 +110,24 @@ describe('DocumentViewerComponent — format-size contrast (NXENG-806)', () => {
     }
   });
 
+  it('scssBlocks catches compound and pseudo-class .format-size selectors', () => {
+    const sample = [
+      '.format-size { color: var(--document-viewer-muted-on-light-surface); }',
+      '.picture-cards .format-size { color: var(--document-viewer-muted-on-light-surface); }',
+      '.format-size.regressed { color: #999; }',
+    ].join('\n');
+    const blocks = scssBlocks(sample, 'format-size');
+    expect(blocks).toHaveLength(3);
+  });
+
   it('pins every .format-size block to the light-strip muted token per NXENG-806', () => {
     const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
     const scss = readFileSync(scssPath, 'utf8');
     const sizeBlocks = scssBlocks(scss, 'format-size');
     expect(sizeBlocks.length, '.format-size declarations in SCSS').toBeGreaterThan(0);
-    for (const block of sizeBlocks) {
-      expect(block).toMatch(/var\(--document-viewer-muted-on-light-surface\)/);
-      expect(block).not.toMatch(/#999/i);
+    for (const { body } of sizeBlocks) {
+      expect(body).toMatch(/var\(--document-viewer-muted-on-light-surface\)/);
+      expect(body).not.toMatch(/#999/i);
     }
   });
 
