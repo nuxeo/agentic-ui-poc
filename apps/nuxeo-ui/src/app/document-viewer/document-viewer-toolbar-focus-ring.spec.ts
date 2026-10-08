@@ -1,8 +1,6 @@
 /**
- * NXENG-781 / NXENG-786 / NXENG-800 — additional-format download icon buttons (e.g. Download
- * Small, IBM 368748540) must show a keyboard focus indicator on the fixed light `.picture-cards`
- * strip (IBM `style_focus_visible`, WCAG 2.4.7 / 1.4.11). Karma loads `apps/nuxeo-ui/src/styles.scss`,
- * so `data-app-theme` resolves real tokens.
+ * NXENG-799 — Toggle fit and sibling toolbar icon buttons must show a keyboard focus
+ * indicator on the image toolbar strip (IBM `style_focus_visible`, WCAG 2.4.7 / 1.4.11).
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -55,7 +53,6 @@ function compositeOver(
   return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
 }
 
-/** Surface the ring is painted on — positive `outline-offset` skips the control's own fill. */
 function surfaceBehindPositiveOutlineRing(control: HTMLElement): [number, number, number] {
   for (let node: HTMLElement | null = control.parentElement; node; node = node.parentElement) {
     const bg = parseRgb(getComputedStyle(node).backgroundColor);
@@ -63,12 +60,12 @@ function surfaceBehindPositiveOutlineRing(control: HTMLElement): [number, number
       return bg;
     }
   }
-  return [255, 255, 255];
+  return [240, 240, 240];
 }
 
 function assertFocusRingContrast(
   button: HTMLButtonElement,
-  cards: HTMLElement,
+  toolbar: HTMLElement,
   context: string,
 ): void {
   button.focus();
@@ -86,17 +83,17 @@ function assertFocusRingContrast(
   expect(style.outlineOffset).withContext(`${context}`).toBe('2px');
 
   const ringParsed = parseColor(style.outlineColor);
-  const stripBg = parseColor(getComputedStyle(cards).backgroundColor).rgb;
+  const stripBg = parseColor(getComputedStyle(toolbar).backgroundColor).rgb;
   const paintedRing = compositeOver(ringParsed, stripBg);
   const ratio = contrastRatio(paintedRing, stripBg);
   expect(ratio)
     .withContext(
-      `${context}: ring ${style.outlineColor} on strip ${getComputedStyle(cards).backgroundColor}`,
+      `${context}: ring ${style.outlineColor} on toolbar ${getComputedStyle(toolbar).backgroundColor}`,
     )
     .toBeGreaterThanOrEqual(WCAG_FOCUS_INDICATOR);
 }
 
-describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-786, NXENG-800)', () => {
+describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
@@ -113,38 +110,12 @@ describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-7
     fixture.componentRef.setInput('mimeType', 'image/jpeg');
     fixture.componentRef.setInput('blobUrl', 'blob:mock-image');
     fixture.componentRef.setInput('rawBlobUrl', 'blob:mock-image');
-    fixture.componentRef.setInput('pictureInfo', {
-      width: 1920,
-      height: 1080,
-      format: 'JPEG',
-      colorSpace: 'sRGB',
-      depth: 8,
-      weight: '8 KB',
-    });
-    fixture.componentRef.setInput('pictureViews', [
-      {
-        title: 'Small',
-        width: 480,
-        height: 270,
-        fileSize: '2048 Bytes',
-        format: 'JPEG',
-        downloadUrl: '/nuxeo/small',
-      },
-      {
-        title: 'FullHD',
-        width: 1920,
-        height: 1080,
-        fileSize: '8792 Bytes',
-        format: 'JPEG',
-        downloadUrl: '/nuxeo/fullhd',
-      },
-    ]);
     fixture.detectChanges();
   });
 
   afterEach(() => {
     const button = fixture.nativeElement.querySelector(
-      '.format-download-btn',
+      '.viewer-toolbar button[aria-label="Toggle fit"]',
     ) as HTMLButtonElement | null;
     button?.blur();
     fixture.nativeElement.remove();
@@ -158,29 +129,16 @@ describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-7
     }
   });
 
-  it('focuses the Download Small control with IBM-readable outline (NXENG-800)', () => {
-    const rows = Array.from(fixture.nativeElement.querySelectorAll('.format-row')) as HTMLElement[];
-    const smallRow = rows.find((row) => row.textContent?.includes('Small'));
-    expect(smallRow).withContext('expected Small format row').toBeTruthy();
-    const button = smallRow?.querySelector('.format-download-btn') as HTMLButtonElement | null;
-    expect(button).not.toBeNull();
-    if (!button) return;
-
-    expect(button.getAttribute('aria-label')).toContain('Small');
-    const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
-    expect(cards).not.toBeNull();
-    if (!cards) return;
-
-    assertFocusRingContrast(button, cards, 'Download Small (NXENG-800)');
-  });
+  function toggleFitButton(): HTMLButtonElement {
+    const button = fixture.nativeElement.querySelector(
+      '.viewer-toolbar button[aria-label="Toggle fit"]',
+    ) as HTMLButtonElement | null;
+    expect(button).withContext('expected Toggle fit toolbar button').not.toBeNull();
+    return button!;
+  }
 
   it('wires the focus ring through --document-viewer-focus-on-light-surface on the viewer host', () => {
-    const button = fixture.nativeElement.querySelector(
-      '.format-download-btn',
-    ) as HTMLButtonElement | null;
-    expect(button).withContext('expected .format-download-btn').not.toBeNull();
-    if (!button) return;
-
+    const button = toggleFitButton();
     const host = fixture.nativeElement as HTMLElement;
     const sentinel = 'rgb(1, 2, 3)';
     host.style.setProperty('--document-viewer-focus-on-light-surface', sentinel);
@@ -202,7 +160,7 @@ describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-7
       for (const rule of Array.from(sheetRules)) {
         const selector = (rule as CSSStyleRule).selectorText;
         if (
-          selector?.includes('.format-download-btn') &&
+          selector?.includes('.viewer-toolbar') &&
           selector.includes('.mat-mdc-icon-button') &&
           selector.includes(':focus')
         ) {
@@ -214,14 +172,14 @@ describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-7
     const canonical = focusSelectors.map((selector) =>
       selector.replace(/\[_ngcontent-[^\]]+\]/g, '').trim(),
     );
-    expect(canonical).toContain('.format-download-btn.mat-mdc-icon-button:focus');
+    expect(canonical).toContain('.viewer-toolbar button.mat-mdc-icon-button:focus');
     expect(canonical.some((selector) => selector.includes(':focus,'))).toBeFalse();
   });
 
   for (const theme of [...COMPILED_THEME_BASES, null] as const) {
     const label = theme ?? 'no data-app-theme (first paint)';
 
-    it(`meets ${WCAG_FOCUS_INDICATOR}:1 focus-indicator contrast on picture-cards — ${label}`, () => {
+    it(`meets ${WCAG_FOCUS_INDICATOR}:1 focus-indicator contrast on toolbar — ${label}`, () => {
       if (theme === null) {
         document.documentElement.removeAttribute('data-app-theme');
       } else {
@@ -229,20 +187,17 @@ describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-7
       }
       fixture.detectChanges();
 
-      const button = fixture.nativeElement.querySelector(
-        '.format-download-btn',
-      ) as HTMLButtonElement | null;
-      const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
-      expect(button).withContext(`${label}: expected download button`).not.toBeNull();
-      expect(cards).withContext(`${label}: expected .picture-cards`).not.toBeNull();
-      if (!button || !cards) return;
+      const button = toggleFitButton();
+      const toolbar = fixture.nativeElement.querySelector('.viewer-toolbar') as HTMLElement | null;
+      expect(toolbar).withContext(`${label}: expected .viewer-toolbar`).not.toBeNull();
+      if (!toolbar) return;
 
-      assertFocusRingContrast(button, cards, label);
+      assertFocusRingContrast(button, toolbar, label);
 
       const backdrop = surfaceBehindPositiveOutlineRing(button);
-      const stripBg = parseColor(getComputedStyle(cards).backgroundColor).rgb;
+      const stripBg = parseColor(getComputedStyle(toolbar).backgroundColor).rgb;
       expect(backdrop)
-        .withContext(`${label}: ring backdrop should match the light strip`)
+        .withContext(`${label}: ring backdrop should match the toolbar strip`)
         .toEqual(stripBg);
     });
   }
