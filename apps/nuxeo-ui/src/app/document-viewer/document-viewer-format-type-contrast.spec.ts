@@ -1,7 +1,10 @@
 /**
- * NXENG-768 / NXENG-760 — strip text on themed `.picture-cards` must consume mat-sys tokens and meet
- * WCAG 2.1 SC 1.4.3 under every compiled palette and when CSS fallbacks apply (unset/invalid tokens).
- * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
+ * NXENG-768 / NXENG-760 / NXENG-801 / NXENG-806 — fixed light-strip text on `.picture-cards`
+ * (including `.format-size`) uses host-scoped `--document-viewer-*` tokens such as
+ * `--document-viewer-muted-on-light-surface`, not theme `--mat-sys-on-surface-variant`. Karma
+ * loads `apps/nuxeo-ui/src/styles.scss` and cross-checks ≥4.5:1 under every compiled palette and
+ * when CSS fallbacks apply (unset/invalid tokens). WCAG 2.1 AA conformance is owned by
+ * `npm run beta:evidence -- phase-6-a11y` (see docs/accessibility.md).
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -106,7 +109,7 @@ function assertFormatTypeOnCards(
     .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
 }
 
-describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760, NXENG-801)', () => {
+describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760, NXENG-801, NXENG-806)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
