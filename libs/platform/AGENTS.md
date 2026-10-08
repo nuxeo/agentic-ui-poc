@@ -233,8 +233,8 @@ of them named the new IDs.
 ## 7. The `nxs-` components
 
 `@nuxeo-satori/platform/components` is the Nuxeo-owned component library: `nxs-` selectors,
-built on Angular Material, with no ADF and no Satori import, so it installs without GitHub
-Packages access. Compose its components inside your own Layer 2 components:
+built on Angular Material, with no ADF and no Satori import of its own. Compose its components
+inside your own Layer 2 components:
 
 ```ts
 import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';

@@ -102,8 +102,9 @@ gate, also in CI):
 | Federation readiness: no `@NgModule`, every component, directive and pipe says `standalone: true`, and no `providedIn` of any value                                                                                      | `checkSatoriComponentsFederationReadiness` |
 
 Satori is to reach these components only through a later, separate `/components-satori` entry
-point that re-registers the same IDs, so a customer without GitHub Packages access still gets the
-Material implementations.
+point that re-registers the same IDs, so that once Satori is an optional peer of the package (the
+plan's `satori-fallback` work), a customer without GitHub Packages access still gets the Material
+implementations.
 
 **Coverage: a hard 90% line floor** (`FLOORS` in `scripts/beta-harness/coverage-gate.mjs`), from
 the first commit rather than ratcheted. The floor also fails when the library was not measured,

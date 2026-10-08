@@ -5976,8 +5976,8 @@ function checkTranslateIsInjectedWhereUsed() {
  *
  * Three rules hold it to the plan of record (`satori_component_library` plan, sections 3 and 7):
  * it builds and ships with no ADF, no HxCS client and no Satori, because Satori is to enter only
- * through a separate `/components-satori` entry point, so a customer without GitHub Packages
- * access still gets the Material implementations; it is reached only through its entry point; and
+ * through a separate `/components-satori` entry point — so that once Satori is an optional peer of
+ * the package, a customer without GitHub Packages access still gets the Material implementations; it is reached only through its entry point; and
  * it stays cheap to turn into a federated remote later.
  */
 const SATORI_COMPONENTS_ROOT = 'libs/shared/satori-components';
@@ -6073,7 +6073,7 @@ function checkSatoriComponentsDependencies() {
     if (/^@hylandsoftware\//.test(specifier)) {
       return (
         'Satori may enter only through a separate `/components-satori` entry point, so this ' +
-        'library builds and ships for a customer with no GitHub Packages access'
+        'library never needs the Satori package itself'
       );
     }
     return null;
