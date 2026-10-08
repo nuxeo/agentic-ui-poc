@@ -1239,12 +1239,14 @@ export default async function run(page, h, outDir) {
   await page.waitForTimeout(3500);
   const tree500 = wire.slice(beforeTree500).filter((w) => w.status === 500);
   const pagedKids = treeChildren(await readTree(page, A), PAGED.title);
-  const treeAlert = await page
-    .locator(
-      `${A.tree.region} [role="alert"], ${A.tree.region} .error, ${A.tree.region} :text-matches("error|failed|could not", "i")`,
-    )
-    .count()
-    .catch(() => 0);
+  // Visible ones only: a hidden template or container must not count as telling the user.
+  let treeAlert = 0;
+  const treeAlertCandidates = page.locator(
+    `${A.tree.region} [role="alert"], ${A.tree.region} .error, ${A.tree.region} :text-matches("error|failed|could not", "i")`,
+  );
+  for (const candidate of await treeAlertCandidates.all()) {
+    if (await candidate.isVisible().catch(() => false)) treeAlert++;
+  }
   h.check(
     `${CTX} the children request was answered 500`,
     tree500.length > 0,
@@ -1682,6 +1684,23 @@ export default async function run(page, h, outDir) {
           text: (el.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 200),
           unknown: el.querySelectorAll('adf-viewer-unknown-format, nxs-viewer-fallback').length,
           canvas: el.querySelectorAll('canvas').length,
+          // A canvas proves nothing on its own: a blank or failed renderer still creates one.
+          painted: [...el.querySelectorAll('canvas')].filter((c) => {
+            try {
+              const ctx = c.getContext('2d');
+              if (!ctx || !c.width || !c.height) return false;
+              const { data } = ctx.getImageData(0, 0, c.width, c.height);
+              for (let i = 4; i < data.length; i += 4 * 97) {
+                if (data[i] !== data[0] || data[i + 1] !== data[1] || data[i + 2] !== data[2]) {
+                  return true;
+                }
+              }
+              return false;
+            } catch {
+              // A tainted or non-2d canvas cannot be read, so it does not count as painted.
+              return false;
+            }
+          }).length,
           img: img
             ? { w: img.naturalWidth, h: img.naturalHeight, alt: img.getAttribute('alt') }
             : null,
@@ -1697,9 +1716,9 @@ export default async function run(page, h, outDir) {
   h.check(`${CTX} the viewer opened for the PDF`, Boolean(pdf), 'no viewer element');
   gap('viewer.pdf', {
     correct:
-      Boolean(pdf) && (pdf.text.includes(MEDIA.pdfText) || pdf.canvas > 0) && pdf.unknown === 0,
-    wrongObserved: Boolean(pdf) && pdf.canvas === 0 && !pdf.text.includes(MEDIA.pdfText),
-    expect: 'render the PDF',
+      Boolean(pdf) && (pdf.text.includes(MEDIA.pdfText) || pdf.painted > 0) && pdf.unknown === 0,
+    wrongObserved: Boolean(pdf) && pdf.painted === 0 && !pdf.text.includes(MEDIA.pdfText),
+    expect: 'render the PDF (its text, or a canvas with the page painted on it)',
     observed: `${JSON.stringify(pdf)}`,
   });
   if (A.upstream) {
@@ -1722,9 +1741,12 @@ export default async function run(page, h, outDir) {
     JSON.stringify(img?.img ?? null),
   );
   gap('viewer.img-alt', {
-    correct: Boolean(img?.img?.alt) && img.img.alt !== 'undefined',
+    correct:
+      Boolean(img?.img?.alt) &&
+      (img.img.alt.toLowerCase().includes(MEDIA.image.toLowerCase()) ||
+        /parity\.png/i.test(img.img.alt)),
     wrongObserved: img?.img?.alt === 'undefined',
-    expect: 'give the rendered image a meaningful alt text',
+    expect: 'give the rendered image an alt text naming the document',
     observed: `alt=${JSON.stringify(img?.img?.alt ?? null)}`,
   });
   await h.screenshot('viewer-image');
@@ -1802,9 +1824,12 @@ export default async function run(page, h, outDir) {
     `${s2.length} and ${s3.length}`,
   );
   h.check(
-    `${LB} the three pages are disjoint and cover all 125 paged items`,
-    union.size === 125,
-    `${union.size} distinct titles`,
+    `${LB} the three pages are disjoint and cover exactly Paged item 001 to 125`,
+    sameSet(
+      [...union],
+      Array.from({ length: PAGED.count }, (_, i) => pagedTitle(i + 1)),
+    ) && s1.length + s2.length + s3.length === PAGED.count,
+    `${union.size} distinct titles across ${s1.length + s2.length + s3.length} rows`,
   );
   await h.screenshot('search-results-page-3');
 
@@ -1926,7 +1951,8 @@ export default async function run(page, h, outDir) {
     fetch('/nuxeo/api/v1/me')
       .then((r) => r.json())
       .then((j) => j.id)
-      .catch(noAnswer),
+      // Runs in the browser, where this module's helpers do not exist; null fails the check below.
+      .catch(() => null),
   );
   h.check(
     `${CTX} the browser is now signed in to Nuxeo as parity-user`,
