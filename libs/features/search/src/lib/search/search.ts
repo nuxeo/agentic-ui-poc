@@ -137,11 +137,17 @@ interface SearchResultViewModel {
   icon: string;
 }
 
+/**
+ * Relative, so it resolves against `<base href>`: the Marketplace package serves the app from
+ * `/nuxeo/agentic-ui/`, where a root-absolute path 404s.
+ */
+const FALLBACK_ART_URL = 'images/Login-background.svg';
+
 function mapToView(item: SearchResultItem): SearchResultViewModel {
   return {
     id: item.id,
     name: item.title,
-    imageUrl: '/images/Login-background.svg',
+    imageUrl: FALLBACK_ART_URL,
     type: item.type,
     modifiedDate: item.modifiedDate,
     lastContributor: item.lastContributor,
@@ -631,7 +637,7 @@ export class SearchComponent {
   onImageError(event: Event): void {
     const img = event.target as HTMLImageElement | null;
     if (!img) return;
-    img.src = '/images/Login-background.svg';
+    img.src = FALLBACK_ART_URL;
   }
 
   toggleFavorite(id: string, event?: Event): void {

@@ -1,6 +1,7 @@
 /**
- * NXENG-799 / NXENG-816 — image toolbar icon buttons must show a keyboard focus indicator (IBM
- * `style_focus_visible`, WCAG 2.4.7). Material suppresses the default ring.
+ * NXENG-799 / NXENG-816 / NXENG-817 — image toolbar icon buttons must show a keyboard focus
+ * indicator (IBM `style_focus_visible` / 922184956, WCAG 2.4.7). Material suppresses the default
+ * ring.
  *
  * Computed focus visibility and per-theme contrast:
  * `apps/nuxeo-ui/.../document-viewer-toolbar-focus-ring.spec.ts`.
@@ -9,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-describe('DocumentViewerComponent — image toolbar focus ring (NXENG-799 / NXENG-816)', () => {
+describe('DocumentViewerComponent — image toolbar focus ring (NXENG-799 / NXENG-816 / NXENG-817)', () => {
   const scss = readFileSync(join(import.meta.dirname, 'document-viewer.component.scss'), 'utf8');
 
   function toolbarIconButtonFocusRule(): string {
