@@ -518,7 +518,7 @@
       "coming-soon": "近日公開"
     },
     "preset": {
-      "badge": "プリセット: {{ label }}"
+      "badge": "Preset: {{ label }}"
     },
     "profile-page": {
       "change-password": "パスワードの変更",
@@ -1514,9 +1514,9 @@
     "workflow-started-on-document": "この文書で {{ workflow }} ワークフローを開始しました。"
   },
   "document-layouts": {
-    "no": "いいえ",
-    "sections": "プロパティのセクション",
-    "yes": "はい"
+    "no": "No",
+    "sections": "Property sections",
+    "yes": "Yes"
   },
   "drawer": {
     "administration-analytics": "分析",
