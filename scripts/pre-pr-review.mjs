@@ -430,19 +430,64 @@ function brokenReference(file) {
  * the tree, including a PR body citing a file that had never been changed.
  */
 let pkgScripts = null;
+
+/** npm options that take the next word as their value when written without `=`. */
+const NPM_VALUE_OPTIONS = new Set([
+  '-w',
+  '--workspace',
+  '--prefix',
+  '-C',
+  '--script-shell',
+  '--loglevel',
+  '--userconfig',
+]);
+
+/**
+ * The script name in the words after `npm run`, skipping the options before it with their
+ * values — `--silent config:dev`, `--workspace docs test`, `--workspace=docs test`.
+ */
+function npmRunScript(words) {
+  const tokens = words.split(/\s+/).filter(Boolean);
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    if (token.startsWith('-')) {
+      if (!token.includes('=') && NPM_VALUE_OPTIONS.has(token)) i += 1;
+      continue;
+    }
+    return /^[a-z0-9:._-]+/i.exec(token)?.[0] ?? null;
+  }
+  return null;
+}
+
+// Regression cases for the parser, run on every invocation so it cannot regress unnoticed.
+for (const [words, want] of [
+  ['beta:gate', 'beta:gate'],
+  ['--silent config:dev -- --manifest x', 'config:dev'],
+  ['--workspace docs test', 'test'],
+  ['--workspace=docs test', 'test'],
+  ['-w docs test', 'test'],
+  ['beta:api -- --update', 'beta:api'],
+  ['--silent', null],
+]) {
+  const got = npmRunScript(words);
+  if (got !== want) {
+    throw new Error(`pre-pr-review: npmRunScript(${JSON.stringify(words)}) is ${got}, not ${want}`);
+  }
+}
+
 function falseClaim(file) {
   if (!/\.(md|mdc)$/.test(file)) return;
   const text = read(file);
   pkgScripts ??= Object.keys(JSON.parse(read('package.json')).scripts ?? {});
 
-  // Options before the script name (`npm run --silent config:dev`) are not the script name.
-  for (const m of text.matchAll(/npm run (?:--?[a-z][a-z-]*\s+)*([a-z0-9:._][a-z0-9:._-]*)/gi)) {
-    if (!pkgScripts.includes(m[1])) {
+  for (const m of text.matchAll(/npm run((?:[ \t]+[^\s`'"|;&)]+)+)/gi)) {
+    const script = npmRunScript(m[1]);
+    if (script && !pkgScripts.includes(script)) {
       report(
         file,
         lineOf(text, m.index),
         'false-claim',
-        `\`npm run ${m[1]}\` is not a script in package.json`,
+        `\`npm run ${script}\` is not a script in package.json`,
       );
     }
   }
