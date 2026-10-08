@@ -1,7 +1,8 @@
 /**
  * NXENG-812 — `.info-label` on themed `.picture-cards` uses the light-strip muted token
- * (IBM 716638997). WCAG 1.4.3 verdict is owned by axe runtime (`docs/accessibility.md`).
- * Karma loads `apps/nuxeo-ui/src/styles.scss`.
+ * (IBM 716638997). Per-theme cases below verify **token wiring** only (sentinel on
+ * `--document-viewer-muted-on-light-surface`), not a WCAG 1.4.3 verdict — that is axe-owned
+ * (`docs/accessibility.md` §87–91). Karma loads `apps/nuxeo-ui/src/styles.scss`.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
