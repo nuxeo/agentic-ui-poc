@@ -24,15 +24,16 @@ Seconds, not minutes. Run it after every meaningful edit.
 npm run beta:gate -- --phase <phase-id>
 ```
 
-Twenty-one gates, cheapest first: `node`, `lockfile`, `supply-chain`, `code-scanning`,
-`guardrails`, `sanitizer-audit`, `sanitizer-selftest`, `assertions`, then affected
-`lint`, `test`, `build`, `typecheck`, then `spec-types`, `bundle`, `api-surface`,
-`publishability`, `fork-simulation`, `upgrade-rehearsal`, `reference-drift`,
+Every gate in `ALL_GATES`, cheapest first — the verdict line prints how many: `node`,
+`lockfile`, `lockfile-selftest`, `supply-chain`, `code-scanning`, `guardrails`,
+`guardrails-selftest`, `crowdin-selftest`, `sanitizer-audit`, `sanitizer-selftest`, `assertions`,
+then affected `lint`, `test`, `build`, `typecheck`, then `spec-types`, `bundle`, `api-surface`,
+`publishability`, `peer-installability`, `fork-simulation`, `upgrade-rehearsal`, `reference-drift`,
 `agent-mirror` and `customer-guardrails`. Stops at the first failure and prints only its output tail.
 Reports land in `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`.
 
 Only a run with **no** `--gates` filter can be cited for a phase. A filtered run
-reports `verdict: pass-partial` and prints `PASS (PARTIAL) — n of 21`, because two
+reports `verdict: pass-partial` and prints `PASS (PARTIAL) — n of <total>`, because two
 reports in the evidence corpus read `"verdict": "pass"` having run one gate. The run
 also prints `NOT REQUESTED` for every gate it skipped — read that line before quoting
 a count.

@@ -5,8 +5,9 @@ import type { NxsBreadcrumbItem, NxsBreadcrumbsInputs } from '@nuxeo-satori/plat
 /**
  * `nxs.primitives.breadcrumbs` on Satori's `sat-breadcrumbs`, which collapses a long trail.
  *
- * Satori names its navigation landmark from its own catalogue, so `label` is accepted for the
- * shared contract and not read. Needs `provideSatori()` for the chevron icon and that catalogue.
+ * Satori names its navigation landmark from its own `sat.*` catalogue, so `label` is accepted for
+ * the shared contract and not read. Needs `provideSatori()` for the chevron icon, and that
+ * catalogue loaded into ngx-translate.
  */
 @Component({
   selector: 'nxs-satori-breadcrumbs',

@@ -634,8 +634,11 @@ providers: [
 ];
 ```
 
-`provideNxsSatoriComponents()` also needs Satori's own `provideSatori()`, which the breadcrumbs use
-for their icon and catalogue. An override of yours implements the matching `Nxs…Inputs` interface.
+`provideNxsSatoriComponents()` also needs what any Satori host provides: `provideSatori()` for the
+theme and icons, and Satori's `sat.*` catalogue in ngx-translate (upstream's
+`provideAndConfigureSatoriUITranslations`, or seeded into your own loader). Without the catalogue
+the breadcrumbs' landmark and the tooltip's close hint render as raw keys. An override of yours
+implements the matching `Nxs…Inputs` interface.
 
 **Registered, not yet rendered by a packaged screen.** The product registers both, but its screens
 still use the `sat-*` elements directly until they move onto these IDs. Today the IDs render where a

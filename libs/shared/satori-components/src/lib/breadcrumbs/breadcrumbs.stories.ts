@@ -1,4 +1,4 @@
-import { provideRouter } from '@angular/router';
+import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 
 import { NxsBreadcrumbsComponent } from './breadcrumbs.component';
@@ -6,7 +6,9 @@ import { NxsBreadcrumbsComponent } from './breadcrumbs.component';
 const meta: Meta<NxsBreadcrumbsComponent> = {
   title: 'Primitives/Breadcrumbs',
   component: NxsBreadcrumbsComponent,
-  decorators: [applicationConfig({ providers: [provideRouter([])] })],
+  decorators: [
+    applicationConfig({ providers: [provideRouter([], withDisabledInitialNavigation())] }),
+  ],
   args: {
     label: 'Breadcrumbs',
     items: [
