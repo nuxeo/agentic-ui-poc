@@ -41,13 +41,14 @@ export function codeSpecifiers(text) {
  *
  * A scanner rather than a regex, because neither construct can be found without knowing whether
  * you are inside the other: the `//` in `$marker: "//"` is not a comment, and the `;` and
- * `@import` in `content: "; @import 'x'"` are not a statement. `//` directly after `url(` is a
- * protocol-relative URL, not a comment.
+ * `@import` in `content: "; @import 'x'"` are not a statement. An unquoted `url(...)` is copied
+ * verbatim to its `)`, so the `//` in `url(//cdn/x)` or `url(http://cdn/x)` is not a comment.
  * @param {string} text
  */
 function maskStylesheet(text) {
   let out = '';
   let quote = null;
+  let inUrl = false;
   for (let i = 0; i < text.length; i += 1) {
     const c = text[i];
     if (quote) {
@@ -62,13 +63,19 @@ function maskStylesheet(text) {
       }
       continue;
     }
+    if (!inUrl && /url\(\s*$/i.test(out) && !/["'\s]/.test(c)) inUrl = true;
+    if (inUrl) {
+      out += c;
+      if (c === ')') inUrl = false;
+      continue;
+    }
     if (c === '"' || c === "'") {
       quote = c;
       out += c;
       continue;
     }
     const block = c === '/' && text[i + 1] === '*';
-    const line = c === '/' && text[i + 1] === '/' && !/url\(\s*$/i.test(out);
+    const line = c === '/' && text[i + 1] === '/';
     if (block || line) {
       const end = block ? text.indexOf('*/', i + 2) : text.indexOf('\n', i);
       const stop = end === -1 ? text.length : block ? end + 2 : end;
@@ -164,7 +171,7 @@ const DEP = 'fixture-dep';
 
 /**
  * `[name, kind, text, expected]`. Ten of the first thirteen `false` rows were `true` under the regex
- * this replaced, and five of the eleven `true` rows were `false` under it: it never saw a triple-slash
+ * this replaced, and five of the first eleven `true` rows were `false` under it: it never saw a triple-slash
  * type reference, and no stylesheet import at the start of a line, because `\b@use` needs a word
  * character before the `@`. The `true` rows also keep the parser from passing the `false` ones by
  * finding nothing at all.
@@ -205,6 +212,12 @@ const CONTROLS = [
   ['stylesheet @import with ~', 'style', `.a {}\n@import '~${DEP}/x';\n`, true],
   ['// inside a string is not a comment', 'style', `$marker: "//"; @use '${DEP}/theming';\n`, true],
   ['second target after a url()', 'style', `@import url(//cdn.example/x.css), '${DEP}/y';\n`, true],
+  [
+    'second target after an absolute url()',
+    'style',
+    `@import url(http://cdn.example/x.css), '${DEP}/y';\n`,
+    true,
+  ],
   ['build asset path', 'build', `{ "input": "node_modules/${DEP}/assets" }`, true],
 ];
 
