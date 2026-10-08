@@ -120,16 +120,16 @@ the API-surface gate and the upgrade rehearsal exist.**
 
 ### Demonstrated with evidence
 
-| Capability                                                                          | Evidence                                                                                    |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| A deep ECM slice works against real Nuxeo                                           | 9 feature libraries, ~53.6k lines; 12 E2E specs on browse, search, document detail and auth |
-| Configuration alone changes the app, with no rebuild of the application             | `phase-1-config` evidence, 39 checks                                                        |
-| A manifest edit changes the addressable surface, with no rebuild of the application | `phase-2-registry` evidence, 46 checks                                                      |
-| Real adf-hx components render against Nuxeo                                         | `phase-3-adf-hx` evidence, 55 checks; 12 API ports bound                                    |
-| The platform is an installable, publishable package                                 | `phase-4-platform`, 25 checks; `npm publish --dry-run` passes                               |
-| Generators produce **live** registrations                                           | `phase-5-harness`, 27 checks                                                                |
-| A Layer 0/1/2 customisation **survives an upgrade**                                 | `npm run beta:upgrade`, 8 assertions                                                        |
-| 52 addressable IDs, documented and drift-gated                                      | `npm run beta:reference`                                                                    |
+| Capability                                                                          | Evidence                                                                                                                                                                                                   |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A deep ECM slice works against real Nuxeo                                           | 9 feature libraries, ~53.6k lines; 12 E2E specs on browse, search, document detail and auth                                                                                                                |
+| Configuration alone changes the app, with no rebuild of the application             | `phase-1-config` evidence, 39 checks: a swapped configuration response changes the app while the bundle stays byte-identical. Installing it as a package: NXSAT-312 rehearsal (`docs/demo-deck-claims.md`) |
+| A manifest edit changes the addressable surface, with no rebuild of the application | `phase-2-registry` evidence, 46 checks, by the same swapped-response method                                                                                                                                |
+| Real adf-hx components render against Nuxeo                                         | `phase-3-adf-hx` evidence, 55 checks; 12 API ports bound                                                                                                                                                   |
+| The platform is an installable, publishable package                                 | `phase-4-platform`, 25 checks; `npm publish --dry-run` passes                                                                                                                                              |
+| Generators produce **live** registrations                                           | `phase-5-harness`, 27 checks                                                                                                                                                                               |
+| A Layer 0/1/2 customisation **survives an upgrade**                                 | `npm run beta:upgrade`, 8 assertions                                                                                                                                                                       |
+| 52 addressable IDs, documented and drift-gated                                      | `npm run beta:reference`                                                                                                                                                                                   |
 
 ### Not demonstrated
 

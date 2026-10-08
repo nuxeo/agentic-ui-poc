@@ -56,7 +56,7 @@ On this page, layers 0 and 1 are "configuration" and layers 2 and 3 are "code".
 
 Configuration has two parts:
 
-1. **The settings** (bootstrap): the name, colours and default language.
+1. **The settings** (bootstrap): the name, logo, colours and default language.
 2. **The manifest**, which holds the wording and the whole arrangement.
 
 Since NXSAT-312 you ship both in **your own Marketplace package that depends on ours**. It
