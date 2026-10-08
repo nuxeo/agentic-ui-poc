@@ -636,6 +636,34 @@ A spec of one service with the token provided by hand passes whatever the startu
 
 ---
 
+## 20. A file the app ships, referenced from the server root
+
+```typescript
+// BAD ❌ — resolves to the server root. The Marketplace package serves the app from
+// /nuxeo/agentic-ui/, so this is http://host/images/… → 404 on every packaged install.
+protected readonly heroImagePath = '/images/Login-background.svg';
+
+// GOOD ✅ — relative, so the browser resolves it against <base href>:
+// /nuxeo/agentic-ui/images/… when packaged, /images/… on the dev server.
+protected readonly heroImagePath = 'images/Login-background.svg';
+```
+
+The same holds for anything under `apps/nuxeo-ui/public/` or an `assets` `output` in
+`angular.json` — `src`, `href`, `url()` in a stylesheet, an `HttpClient` URL. It is invisible
+everywhere except a packaged install: the dev server, the unit tests and the e2e suite all use
+base href `/`, where the two forms are the same URL. The login page's background art was a
+broken image on every Marketplace install that way (NXSAT-318).
+
+Not the same as a server path. `/nuxeo/api/...`, `/nuxeo/icons/...` and
+`/nuxeo/agentic-ui-config/...` are Nuxeo's, not the app's, and are server-absolute on purpose.
+
+`checkNoRootAbsoluteShippedAssetPaths` in `scripts/review-guardrails.mjs` rejects the root-absolute
+form, reading what ships from `angular.json`. Regression test pattern: resolve the value against
+the packaged base, `new URL(src, 'http://host/nuxeo/agentic-ui/').pathname` — see
+`apps/nuxeo-ui/src/app/login/login-page.component.spec.ts`.
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.
@@ -652,3 +680,4 @@ Fix proactively to avoid a review cycle:
 - "`<mat-spinner>` inside a button" → use a spinning `<mat-icon class="ke-spinning">progress_activity</mat-icon>` to preserve inline layout
 - "SVG has no accessible name" → if the link around it is already named, mark the graphic decorative with `aria-hidden="true"` on the wrapper; an `aria-label` on the host element does not reach the `<svg>`
 - "Focus indicator may not be visible" → set the vendor's focus-outline custom property to its own foreground token; left unset it falls back to a low-emphasis divider colour and misses 3:1
+- "Absolute path to a bundled asset" → drop the leading `/` so it resolves against `<base href>`; the packaged app lives under `/nuxeo/agentic-ui/`

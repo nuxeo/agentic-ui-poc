@@ -5195,6 +5195,252 @@ function checkNoTemplateSyntaxInDocumentShell() {
 }
 
 /**
+ * `source` with its comments blanked — replaced by spaces, newlines kept, so an offset still maps
+ * to the line as written.
+ *
+ * A scanner rather than a regex, because a comment opener inside a value is not a comment: the
+ * `//` of `url("//cdn…")` or `url(//cdn…)`, or `<!--` inside an attribute. Read as comments, they
+ * blank whatever follows them, including a real reference. `//` is a comment in `.scss` only; in
+ * `.css` and `.html` it never is.
+ *
+ * @param {string} source
+ * @param {string} kind file extension: `html`, `css` or `scss`
+ */
+function blankComments(source, kind) {
+  const blank = (text) => text.replace(/[^\n]/g, ' ');
+  let out = '';
+  let quote = null;
+  let inTag = false;
+  let inUrl = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const c = source[i];
+    const rest = source.slice(i, i + 4);
+    if (quote) {
+      out += c;
+      if (c === '\\' && kind !== 'html') out += source[++i] ?? '';
+      else if (c === quote || (c === '\n' && kind !== 'html')) quote = null;
+      continue;
+    }
+    if (inUrl) {
+      out += c;
+      if (c === ')') inUrl = false;
+      continue;
+    }
+    const opener =
+      kind === 'html'
+        ? !inTag && rest === '<!--'
+          ? '-->'
+          : null
+        : rest.startsWith('/*')
+          ? '*/'
+          : kind === 'scss' && rest.startsWith('//')
+            ? '\n'
+            : null;
+    if (opener) {
+      const end = source.indexOf(opener, i + 2);
+      const stop = end === -1 ? source.length : opener === '\n' ? end : end + opener.length;
+      out += blank(source.slice(i, stop));
+      i = stop - 1;
+      continue;
+    }
+    out += c;
+    if (kind === 'html') {
+      if (!inTag && c === '<' && /[A-Za-z/]/.test(source[i + 1] ?? '')) inTag = true;
+      else if (inTag && c === '>') inTag = false;
+      else if (inTag && (c === '"' || c === "'")) quote = c;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (
+      c === '(' &&
+      /url$/i.test(out.slice(-4, -1)) &&
+      !/^\s*["']/.test(source.slice(i + 1))
+    ) {
+      inUrl = true;
+    }
+  }
+  return out;
+}
+
+/**
+ * A file the app ships is referenced relative to `<base href>`, never from the server root.
+ *
+ * The Marketplace package serves the app from `/nuxeo/agentic-ui/`, so `/images/x.svg` resolves
+ * to the server root there and 404s while `images/x.svg` resolves to
+ * `/nuxeo/agentic-ui/images/x.svg`. The dev server, the unit tests and the e2e suite all use base
+ * href `/`, where the two are the same URL, so none of them can see the difference. The login
+ * page's background art was a broken image on every packaged install that way (NXSAT-318).
+ *
+ * What ships is read from `angular.json`, not listed here: the top-level names each
+ * application's build `assets` put at the output root — every tracked entry of an input copied to
+ * the root, and the first segment of every `output`. A new `public/fonts/` is covered once it is
+ * committed. A directory only matches with a segment after it, so the `/login` route is not taken
+ * for the shipped `login/` folder.
+ *
+ * Files under `apps/<app>/` are held to that app's names, and `libs/` to every app's, since any
+ * app can load a library. Specs are exempt: they assert URLs rather than load them. In `.ts` only
+ * string literals are read, so a comment quoting a path is not a reference; in templates and
+ * stylesheets comments are blanked first. Server paths — `/nuxeo/api/…`, `/nuxeo/icons/…`, the
+ * `/nuxeo/agentic-ui-config/` servlet — name nothing the app ships, so they never match.
+ */
+function checkNoRootAbsoluteShippedAssetPaths() {
+  const file = 'angular.json';
+  if (!fileExists(file)) {
+    fail(`${file} was not found, so checkNoRootAbsoluteShippedAssetPaths asserted nothing.`);
+    return;
+  }
+
+  /** @type {any} */
+  let doc;
+  try {
+    doc = JSON.parse(read(file));
+  } catch (error) {
+    fail(`${file} is not valid JSON: ${error instanceof Error ? error.message : error}`);
+    return;
+  }
+
+  /** @type {Map<string, Map<string, boolean>>} app root → shipped top-level name → is a directory */
+  const shippedByApp = new Map();
+  for (const project of Object.values(doc.projects ?? {})) {
+    const p = /** @type {any} */ (project);
+    const assets = (p.architect ?? p.targets)?.build?.options?.assets;
+    if (!Array.isArray(assets) || typeof p.root !== 'string') continue;
+    const names = new Map();
+    for (const entry of assets) {
+      if (typeof entry === 'string') {
+        const absolute = join(repoRoot, entry);
+        names.set(entry.split('/').pop(), existsSync(absolute) && statSync(absolute).isDirectory());
+        continue;
+      }
+      const output = String(entry.output ?? '').replace(/^\/+|\/+$/g, '');
+      if (output) {
+        names.set(output.split('/')[0], true);
+        continue;
+      }
+      const input = String(entry.input ?? '').replace(/\/+$/, '');
+      for (const tracked of git(['ls-files', '--', input]).split('\n').filter(Boolean)) {
+        const rest = tracked.slice(input.length + 1).split('/');
+        names.set(rest[0], (names.get(rest[0]) ?? false) || rest.length > 1);
+      }
+    }
+    if (names.size) shippedByApp.set(p.root.replace(/\/+$/, ''), names);
+  }
+
+  if (shippedByApp.size === 0) {
+    fail(
+      `No application in ${file} declares build assets, so checkNoRootAbsoluteShippedAssetPaths ` +
+        'asserted nothing. Check how it reads the asset configuration before trusting a pass.',
+    );
+    return;
+  }
+
+  const escape = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  /**
+   * Leading form, for a `.ts` string literal; embedded form, for markup and CSS. A value opens
+   * after a quote or `url(` only, so nothing inside a URL — a query's `?path=/images/x.svg` —
+   * can open one. A quote after `+` is the tail of a concatenation
+   * (`[src]="base + '/images/x.svg'"`), placed by whatever precedes it, as `isSuffix` decides
+   * for `.ts`.
+   *
+   * Two shapes are deliberately not matched. An unquoted attribute value (`src=/images/x.svg`)
+   * cannot be committed: the pre-commit hook runs Prettier on every template, which quotes it.
+   * A later `srcset` candidate (`a.svg 1x, /images/x.svg 2x`) — nothing here uses `srcset`.
+   * Openers for both were tried, and each matched inside ordinary query strings.
+   */
+  const patternsFor = (names) => {
+    const dirs = [...names].filter(([, dir]) => dir).map(([name]) => escape(name));
+    const files = [...names].filter(([, dir]) => !dir).map(([name]) => escape(name));
+    const alternatives = [
+      ...(dirs.length ? [`(?:${dirs.join('|')})/`] : []),
+      ...(files.length ? [`(?:${files.join('|')})(?=$|[\\s?#"'\`),>])`] : []),
+    ].join('|');
+    return {
+      leading: new RegExp(`^/(?:${alternatives})`),
+      embedded: new RegExp(`(?:(?<!\\+\\s*)["'\`]|[uU][rR][lL]\\()\\s*/(?:${alternatives})`, 'g'),
+    };
+  };
+  /**
+   * A literal that only ends a URL — a template's `${base}/images/x.svg`, or `base +
+   * '/images/x.svg'` — is not root-absolute: whatever precedes it decides where it points.
+   */
+  const isSuffix = (node) =>
+    ts.isTemplateMiddle(node) ||
+    ts.isTemplateTail(node) ||
+    (ts.isBinaryExpression(node.parent) &&
+      node.parent.operatorToken.kind === ts.SyntaxKind.PlusToken &&
+      node.parent.right === node);
+  const everyApp = new Map([...shippedByApp.values()].flatMap((names) => [...names]));
+  const patternsByApp = new Map(
+    [...shippedByApp].map(([root, names]) => [root, patternsFor(names)]),
+  );
+  const libPatterns = patternsFor(everyApp);
+
+  const sources = git(['ls-files', '--cached', '--others', '--exclude-standard'])
+    .split('\n')
+    .filter((path) => /^(apps|libs)\/.+\.(ts|html|scss|css)$/.test(path))
+    .filter((path) => !/\.spec\.(ts|html)$/.test(path));
+
+  let scanned = 0;
+  for (const path of sources) {
+    if (!fileExists(path)) continue;
+    const appRoot = [...patternsByApp.keys()].find((root) => path.startsWith(`${root}/`));
+    const patterns = path.startsWith('libs/') ? libPatterns : patternsByApp.get(appRoot);
+    if (!patterns) continue;
+    scanned += 1;
+
+    const body = read(path);
+    /** @type {{ line: number, text: string }[]} */
+    const hits = [];
+    if (path.endsWith('.ts')) {
+      const source = ts.createSourceFile(path, body, ts.ScriptTarget.Latest, true);
+      const visit = (node) => {
+        if (
+          ts.isStringLiteral(node) ||
+          ts.isNoSubstitutionTemplateLiteral(node) ||
+          ts.isTemplateHead(node) ||
+          ts.isTemplateMiddle(node) ||
+          ts.isTemplateTail(node)
+        ) {
+          const text = node.text;
+          patterns.embedded.lastIndex = 0;
+          if ((!isSuffix(node) && patterns.leading.test(text)) || patterns.embedded.test(text)) {
+            const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
+            hits.push({ line: line + 1, text });
+          }
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    } else {
+      const stripped = blankComments(body, path.split('.').pop());
+      // The whole file, not line by line: `url(` and its path may sit on different lines. The
+      // reported line is the one the path itself is on.
+      const lines = stripped.split('\n');
+      for (const match of stripped.matchAll(patterns.embedded)) {
+        const line = stripped.slice(0, match.index + match[0].length).split('\n').length;
+        hits.push({ line, text: lines[line - 1].trim() });
+      }
+    }
+
+    for (const hit of hits) {
+      fail(
+        `${path}:${hit.line} references a file the app ships from the server root: ` +
+          `${JSON.stringify(hit.text.slice(0, 120))}.\n` +
+          '    The Marketplace package serves the app from /nuxeo/agentic-ui/, so a leading "/"\n' +
+          '    resolves outside it and 404s; dev and every test use base href "/", where it looks\n' +
+          '    fine. Drop the leading "/" so it resolves against <base href> (NXSAT-318).',
+      );
+    }
+  }
+
+  if (scanned === 0) {
+    fail(
+      'checkNoRootAbsoluteShippedAssetPaths scanned no source files under apps/ or libs/, so it ' +
+        'asserted nothing. Check the file glob before trusting a pass.',
+    );
+  }
+}
+
+/**
  * No prose in a plain attribute on a component — it is an `@Input`, not HTML.
  *
  * `checkNoHardcodedUiText` knows the HTML attributes that hold text: `title`, `aria-label`,
@@ -6376,6 +6622,7 @@ const GUARDRAILS = [
   checkTranslatorContextPush,
   checkNoProseInComponentInputs,
   checkNoTemplateSyntaxInDocumentShell,
+  checkNoRootAbsoluteShippedAssetPaths,
   checkShippedDefaultLanguage,
   checkAccessibleNameFallbacks,
   checkLocaleDataRegistered,
