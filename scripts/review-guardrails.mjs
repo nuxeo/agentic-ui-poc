@@ -5195,6 +5195,73 @@ function checkNoTemplateSyntaxInDocumentShell() {
 }
 
 /**
+ * `source` with its comments blanked — replaced by spaces, newlines kept, so an offset still maps
+ * to the line as written.
+ *
+ * A scanner rather than a regex, because a comment opener inside a value is not a comment: the
+ * `//` of `url("//cdn…")` or `url(//cdn…)`, or `<!--` inside an attribute. Read as comments, they
+ * blank whatever follows them, including a real reference. `//` is a comment in `.scss` only; in
+ * `.css` and `.html` it never is.
+ *
+ * @param {string} source
+ * @param {string} kind file extension: `html`, `css` or `scss`
+ */
+function blankComments(source, kind) {
+  const blank = (text) => text.replace(/[^\n]/g, ' ');
+  let out = '';
+  let quote = null;
+  let inTag = false;
+  let inUrl = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const c = source[i];
+    const rest = source.slice(i, i + 4);
+    if (quote) {
+      out += c;
+      if (c === '\\' && kind !== 'html') out += source[++i] ?? '';
+      else if (c === quote || (c === '\n' && kind !== 'html')) quote = null;
+      continue;
+    }
+    if (inUrl) {
+      out += c;
+      if (c === ')') inUrl = false;
+      continue;
+    }
+    const opener =
+      kind === 'html'
+        ? !inTag && rest === '<!--'
+          ? '-->'
+          : null
+        : rest.startsWith('/*')
+          ? '*/'
+          : kind === 'scss' && rest.startsWith('//')
+            ? '\n'
+            : null;
+    if (opener) {
+      const end = source.indexOf(opener, i + 2);
+      const stop = end === -1 ? source.length : opener === '\n' ? end : end + opener.length;
+      out += blank(source.slice(i, stop));
+      i = stop - 1;
+      continue;
+    }
+    out += c;
+    if (kind === 'html') {
+      if (!inTag && c === '<' && /[A-Za-z/]/.test(source[i + 1] ?? '')) inTag = true;
+      else if (inTag && c === '>') inTag = false;
+      else if (inTag && (c === '"' || c === "'")) quote = c;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (
+      c === '(' &&
+      /url$/i.test(out.slice(-4, -1)) &&
+      !/^\s*["']/.test(source.slice(i + 1))
+    ) {
+      inUrl = true;
+    }
+  }
+  return out;
+}
+
+/**
  * A file the app ships is referenced relative to `<base href>`, never from the server root.
  *
  * The Marketplace package serves the app from `/nuxeo/agentic-ui/`, so `/images/x.svg` resolves
@@ -5336,17 +5403,7 @@ function checkNoRootAbsoluteShippedAssetPaths() {
       };
       visit(source);
     } else {
-      // Blanked, not dropped, so a reported line number still points at the file as written.
-      const blank = (block) => block.replace(/[^\n]/g, ' ');
-      // A `//` after `:` or `(` is a URL (`https://`, `url(//cdn…)`), not a comment.
-      const stripped = path.endsWith('.html')
-        ? body.replace(/<!--[\s\S]*?-->/g, blank)
-        : body
-            .replace(/\/\*[\s\S]*?\*\//g, blank)
-            .replace(
-              /(^|[^:(/])\/\/.*$/gm,
-              (comment, lead) => lead + blank(comment.slice(lead.length)),
-            );
+      const stripped = blankComments(body, path.split('.').pop());
       // The whole file, not line by line: `url(` and its path may sit on different lines. The
       // reported line is the one the path itself is on.
       const lines = stripped.split('\n');

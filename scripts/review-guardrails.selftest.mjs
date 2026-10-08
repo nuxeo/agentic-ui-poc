@@ -1364,6 +1364,44 @@ expectRed(
   /login\.scss:3 references a file the app ships/,
 );
 
+// A comment opener inside a value is not a comment, so it must not blank what follows it.
+expectRed(
+  'a root-absolute url() after a quoted protocol-relative one',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      '.hero {\n  background: url("//cdn.example/overlay.png"), url("/images/art.svg");\n}\n',
+    ),
+  /login\.scss:2 references a file the app ships/,
+);
+
+expectRed(
+  'a root-absolute src after a comment opener inside an attribute',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.html',
+      '<img title="<!--" src="/images/art.svg" alt="" />\n<!-- a later comment -->\n',
+    ),
+  /login\.html:1 references a file the app ships/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'protocol-relative and absolute URLs in a stylesheet',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.a {\n  background: url(//cdn.example/x.png), url("https://cdn.example/y.png");\n}\n' +
+      "/* url(/images/art.svg) */\n.b {\n  content: '//'; // url(/images/art.svg)\n}\n",
+    'apps/nuxeo-ui/src/styles.css': '.c {\n  background: url(//cdn.example/x.png);\n}\n',
+  },
+);
+
 // A literal that only ends a URL is placed by what precedes it, so it is not root-absolute.
 falsePositiveControls += 1;
 expectGreen('a path appended to a base URL', 'checkNoRootAbsoluteShippedAssetPaths', {
