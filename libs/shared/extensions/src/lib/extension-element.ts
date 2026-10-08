@@ -29,6 +29,7 @@ export function sortByOrder(
   a: Pick<ExtensionElement, 'order'>,
   b: Pick<ExtensionElement, 'order'>,
 ): number {
+  // `=== undefined`, not `??`: a `null` order must take part in the subtraction and sort as `0`.
   const left = a.order === undefined ? Number.MAX_SAFE_INTEGER : a.order;
   const right = b.order === undefined ? Number.MAX_SAFE_INTEGER : b.order;
   return left - right;

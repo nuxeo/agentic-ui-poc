@@ -41,23 +41,24 @@ type Bag = Record<PropertyKey, unknown>;
 export function mergeObjects(...objects: readonly object[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const source of objects) {
-    const bag = source as Bag;
-    for (const key of Object.keys(source)) {
-      const replace = key.endsWith(REPLACE_SUFFIX);
-      // `replace` removes the first occurrence, as upstream's does, so a key with the suffix
-      // twice reads a different source key below. Kept: it is upstream's output for that key.
-      const prop = replace ? key.replace(REPLACE_SUFFIX, '') : key;
-      if (prop.startsWith('$') || prop === '__proto__') continue;
-      if (replace) {
-        result[prop] = bag[`${prop}${REPLACE_SUFFIX}`];
-      } else {
-        result[prop] = Object.hasOwn(result, prop)
-          ? mergeValue(result[prop], bag[prop])
-          : bag[prop];
-      }
-    }
+    for (const key of Object.keys(source)) mergeKey(result, source as Bag, key);
   }
   return result;
+}
+
+function mergeKey(result: Record<string, unknown>, source: Bag, key: string): void {
+  const replace = key.endsWith(REPLACE_SUFFIX);
+  // `replace` removes the first occurrence, as upstream's does, so a key with the suffix twice
+  // reads a different source key below. Kept: it is upstream's output for that key.
+  const prop = replace ? key.replace(REPLACE_SUFFIX, '') : key;
+  if (prop.startsWith('$') || prop === '__proto__') return;
+  if (replace) {
+    result[prop] = source[`${prop}${REPLACE_SUFFIX}`];
+  } else {
+    result[prop] = Object.hasOwn(result, prop)
+      ? mergeValue(result[prop], source[prop])
+      : source[prop];
+  }
 }
 
 function mergeValue(current: unknown, incoming: unknown): unknown {
