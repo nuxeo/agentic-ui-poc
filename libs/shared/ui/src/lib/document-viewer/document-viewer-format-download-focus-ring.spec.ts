@@ -1,6 +1,7 @@
 /**
- * NXENG-781 / NXENG-786 — additional-format download icon buttons must show a keyboard focus
- * indicator (IBM `style_focus_visible`, WCAG 2.4.7). Material suppresses the default ring.
+ * NXENG-781 / NXENG-786 / NXENG-800 — additional-format download icon buttons (e.g. Download
+ * Small, IBM 368748540) must show a keyboard focus indicator (IBM `style_focus_visible`, WCAG
+ * 2.4.7). Material suppresses the default ring.
  *
  * Computed focus visibility and per-theme contrast: `apps/nuxeo-ui/.../document-viewer-format-download-focus-ring.spec.ts`.
  */
@@ -8,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-describe('DocumentViewerComponent — format download focus ring (NXENG-781 / NXENG-786)', () => {
+describe('DocumentViewerComponent — format download focus ring (NXENG-781 / NXENG-786 / NXENG-800)', () => {
   const scss = readFileSync(join(import.meta.dirname, 'document-viewer.component.scss'), 'utf8');
 
   it('declares a light-strip focus token and routes the ring through it', () => {

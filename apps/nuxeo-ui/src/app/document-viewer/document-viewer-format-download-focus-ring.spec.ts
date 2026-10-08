@@ -1,7 +1,8 @@
 /**
- * NXENG-781 / NXENG-786 — additional-format download icon buttons must show a keyboard focus
- * indicator on the fixed light `.picture-cards` strip (IBM `style_focus_visible`, WCAG 2.4.7 /
- * 1.4.11). Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real tokens.
+ * NXENG-781 / NXENG-786 / NXENG-800 — additional-format download icon buttons (e.g. Download
+ * Small, IBM 368748540) must show a keyboard focus indicator on the fixed light `.picture-cards`
+ * strip (IBM `style_focus_visible`, WCAG 2.4.7 / 1.4.11). Karma loads `apps/nuxeo-ui/src/styles.scss`,
+ * so `data-app-theme` resolves real tokens.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -95,7 +96,7 @@ function assertFocusRingContrast(
     .toBeGreaterThanOrEqual(WCAG_FOCUS_INDICATOR);
 }
 
-describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-786)', () => {
+describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-786, NXENG-800)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
@@ -122,6 +123,14 @@ describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-7
     });
     fixture.componentRef.setInput('pictureViews', [
       {
+        title: 'Small',
+        width: 480,
+        height: 270,
+        fileSize: '2048 Bytes',
+        format: 'JPEG',
+        downloadUrl: '/nuxeo/small',
+      },
+      {
         title: 'FullHD',
         width: 1920,
         height: 1080,
@@ -147,6 +156,22 @@ describe('DocumentViewer format download focus ring by theme (NXENG-781, NXENG-7
     } else {
       document.documentElement.setAttribute('data-app-theme', originalTheme);
     }
+  });
+
+  it('focuses the Download Small control with IBM-readable outline (NXENG-800)', () => {
+    const rows = Array.from(fixture.nativeElement.querySelectorAll('.format-row')) as HTMLElement[];
+    const smallRow = rows.find((row) => row.textContent?.includes('Small'));
+    expect(smallRow).withContext('expected Small format row').toBeTruthy();
+    const button = smallRow?.querySelector('.format-download-btn') as HTMLButtonElement | null;
+    expect(button).not.toBeNull();
+    if (!button) return;
+
+    expect(button.getAttribute('aria-label')).toContain('Small');
+    const cards = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement | null;
+    expect(cards).not.toBeNull();
+    if (!cards) return;
+
+    assertFocusRingContrast(button, cards, 'Download Small (NXENG-800)');
   });
 
   it('wires the focus ring through --document-viewer-focus-on-light-surface on the viewer host', () => {
