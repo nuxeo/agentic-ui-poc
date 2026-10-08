@@ -2,6 +2,8 @@
 @use '@hylandsoftware/satori-ui/theme' as sat;
 @use './styles/hxp-theme' as hxp;
 
+@import './app/document-detail/document-detail-header-toolbar-focus.scss';
+
 html[data-app-theme='nuxeo'],
 html:not([data-app-theme]) {
   color-scheme: light dark;

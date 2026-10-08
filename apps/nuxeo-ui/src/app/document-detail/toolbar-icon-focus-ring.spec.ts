@@ -53,6 +53,7 @@ function productionDetailHeaderBackground(host: HTMLElement): string {
   imports: [MatButtonModule, MatIconModule],
   styleUrls: [
     '../../../../../libs/features/document-detail/src/lib/document-detail/document-detail.scss',
+    './document-detail-header-toolbar-focus.scss',
     './toolbar-icon-focus-ring.fixture.scss',
   ],
   templateUrl: './toolbar-icon-focus-ring.spec.html',

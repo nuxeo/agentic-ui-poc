@@ -97,23 +97,6 @@ sat-breadcrumbs {
   }
 }
 
-// NXENG-808 / IBM 673904446 — extension toolbar `mat-icon-button` actions (e.g. Add to collection).
-// Material icon buttons suppress the default ring; IBM Equal Access `style_focus_visible` reads
-// `:focus` only — keep standalone selectors (see AGENTS/08-bug-patterns.md §17).
-.detail-header .header-actions button.mat-mdc-icon-button:focus {
-  outline-style: solid;
-  outline-width: 2px;
-  outline-color: var(--agentic-document-detail-header-focus-outline);
-  outline-offset: 2px;
-}
-
-.detail-header .header-actions button.mat-mdc-icon-button:focus-visible {
-  outline-style: solid;
-  outline-width: 2px;
-  outline-color: var(--agentic-document-detail-header-focus-outline);
-  outline-offset: 2px;
-}
-
 .content-lake-ingest-loader,
 .content-lake-ingest-marker {
   display: inline-flex;
