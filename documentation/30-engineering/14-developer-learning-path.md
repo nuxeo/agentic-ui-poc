@@ -2,15 +2,17 @@
 title: Developer Learning Path (No-Agent)
 parent: Engineering
 order: 14
-last_reviewed: 2026-10-05
-repo_commit: b15d9cf
+last_reviewed: 2026-10-08
+repo_commit: 5abcd50
 audience: engineering
 ---
 
 # Developer Learning Path — Building This Application Without AI Agents
 
-> **Last reviewed:** 2026-10-05 · **Repository:** `b15d9cf` (`fix/nxsat-303-production-advisories`)
-> Only the Angular and `dompurify` rows were re-verified at that commit — see Appendix A.
+> **Last reviewed:** 2026-10-08 · **Repository:** `5abcd50` (`feature/nxsat-308-replace-adf-extensions`)
+> Only the `@alfresco/adf-extensions` lines in §15 and §16 and the platform version in §19 were
+> re-verified at that commit. The Angular and `dompurify` rows were re-verified on 2026-10-05 at
+> `b15d9cf` (`fix/nxsat-303-production-advisories`) — see Appendix A.
 > **Purpose:** the complete list of technologies, versions and concepts a developer must know to
 > build, extend and operate Nuxeo Satori **by hand**, with no AI assistance of any kind.
 > **Sources:** `package.json`, `package-lock.json`, `pom.xml`, `nx.json`, `angular.json`,

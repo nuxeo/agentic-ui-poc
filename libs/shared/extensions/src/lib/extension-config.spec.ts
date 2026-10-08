@@ -154,7 +154,7 @@ describe('resolveExtensionLayers', () => {
     expect(missing).toEqual(['shared']);
   });
 
-  it('lets a later package clear an earlier one’s rule or order with null, in either direction', () => {
+  it('lets a later null clear an earlier rule, and a later order replace an earlier null', () => {
     // Upstream's merge threw here, inside the computed every slot reads, so all of them rethrew.
     const { config } = resolveExtensionLayers([
       {

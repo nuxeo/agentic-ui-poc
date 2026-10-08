@@ -2,14 +2,16 @@
 title: Technology Stack
 parent: Engineering
 order: 5
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: 5abcd50
 audience: engineering
 ---
 
 # Technology Stack
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-08 · **Repository:** `5abcd50` (`feature/nxsat-308-replace-adf-extensions`)
+> Only the `@alfresco/adf-extensions` row was re-verified at that commit; the rest of the page as of
+> 2026-08-24 · `77265f9`.
 > Source: `package.json`, `pom.xml`, `nx.json`, `angular.json`. Where a choice has a recorded
 > rationale, it is cited; where the rationale is not recorded, that is said.
 

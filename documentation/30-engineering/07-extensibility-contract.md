@@ -2,14 +2,16 @@
 title: Extensibility Contract
 parent: Engineering
 order: 7
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: 5abcd50
 audience: engineering
 ---
 
 # The Extensibility Contract — four layers
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-08 · **Repository:** `5abcd50` (`feature/nxsat-308-replace-adf-extensions`)
+> Only "Our rule context is deliberately not upstream's" in §5 was re-verified at that commit; the
+> rest of the page as of 2026-08-24 · `77265f9`.
 > Customer-facing companion: [`docs/extension-reference.md`](../../docs/extension-reference.md),
 > which is drift-gated by `npm run beta:reference`.
 
