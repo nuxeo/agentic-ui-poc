@@ -15,11 +15,29 @@ import { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { forkJoin, map, merge, of, startWith, switchMap } from 'rxjs';
 
 import { DocumentLayoutService } from '../document-layout.service';
-import { LayoutLabel, LayoutMode, ResolvedLayout } from '../layout.model';
-import { humanize } from '../resolve-layout';
+import { DocumentSchemaRef, LayoutLabel, LayoutMode, ResolvedLayout } from '../layout.model';
+import { humanize, readDocumentSchemas } from '../resolve-layout';
 import { FieldView, VocabularyValue, describeField, vocabularyValues } from './field-view';
 
 type Vocabularies = ReadonlyMap<string, ReadonlyMap<string, string>>;
+
+interface LayoutTarget {
+  readonly uid: string;
+  readonly type: string;
+  readonly mode: LayoutMode;
+  readonly schemas: readonly DocumentSchemaRef[];
+}
+
+function sameTarget(a: LayoutTarget | null, b: LayoutTarget | null): boolean {
+  if (!a || !b) return a === b;
+  return (
+    a.uid === b.uid &&
+    a.type === b.type &&
+    a.mode === b.mode &&
+    a.schemas.length === b.schemas.length &&
+    a.schemas.every((schema, i) => schema.name === b.schemas[i]?.name)
+  );
+}
 
 function sameValues(a: readonly VocabularyValue[], b: readonly VocabularyValue[]): boolean {
   return (
@@ -62,7 +80,8 @@ const NO_VOCABULARIES: Vocabularies = new Map();
 
 /**
  * Renders a document's per-type layout: the file a configuration package contributed for its
- * type and mode, or the layout generated from the type's own schemas.
+ * type and mode, or the layout generated from the type's own schemas and those the document's
+ * dynamic facets add.
  *
  * Read-only. Each value is shown by its schema type, and a vocabulary-bound value by its entry's
  * label. Hiding a field here hides it from this panel only — the REST API still returns it.
@@ -85,22 +104,44 @@ export class DocumentLayoutComponent {
 
   /**
    * Re-resolved per document, not per type: the service caches what it read successfully, and
-   * asking again is how a failed schema read recovers on the next document.
+   * asking again is how a failed schema read recovers on the next document. The schemas are part
+   * of it because a dynamic facet gives one document schemas its type does not have.
    */
-  private readonly target = computed(
+  private readonly target = computed<LayoutTarget | null>(
     () => {
       const document = this.document();
-      return document?.type ? { uid: document.uid, type: document.type, mode: this.mode() } : null;
+      if (!document?.type) return null;
+      return {
+        uid: document.uid,
+        type: document.type,
+        mode: this.mode(),
+        schemas: readDocumentSchemas('schemas' in document ? document.schemas : undefined),
+      };
     },
-    { equal: (a, b) => a?.uid === b?.uid && a?.type === b?.type && a?.mode === b?.mode },
+    { equal: sameTarget },
   );
 
-  private readonly layout = toSignal(
+  private readonly resolved = toSignal(
     toObservable(this.target).pipe(
-      switchMap((target) => (target ? this.layouts.layoutFor(target.type, target.mode) : of(null))),
+      switchMap((target) =>
+        target
+          ? this.layouts
+              .layoutFor(target.type, target.mode, target.schemas)
+              .pipe(map((layout) => ({ target, layout })))
+          : of(null),
+      ),
     ),
     { initialValue: null },
   );
+
+  /**
+   * The layout resolved for the document in force. Two documents of one type can now have
+   * different layouts, so the previous one's must not show while this one's resolves.
+   */
+  private readonly layout = computed(() => {
+    const resolved = this.resolved();
+    return resolved?.target === this.target() ? resolved.layout : null;
+  });
 
   /** The vocabulary entries this document's values name: only those are read. */
   private readonly vocabularyValues = computed(

@@ -1452,15 +1452,16 @@ within 10 s (`CONFIG_LOAD_TIMEOUT_MS`) leaves the compiled defaults in force and
 
 ## 29. Per-Type Layouts — Layout Files and Document Type Schemas (NXSAT-311)
 
-| Field           | Value                                                                                                                                                                                     |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Service**     | `DocumentLayoutService` (`libs/shared/document-layouts/src/lib/document-layout.service.ts`)                                                                                               |
-| **Method**      | `layoutFor(type, mode)`, the first time a document of that type needs its layout; `vocabularyLabel(directory, id)`, per vocabulary value shown; each read below is cached for the session |
-| **HTTP Method** | `GET`                                                                                                                                                                                     |
-| **Endpoints**   | `/nuxeo/agentic-ui-config/layouts.json` and `/nuxeo/agentic-ui-config/layouts/<type>/<mode>.layout.json` — without interceptors, no `Authorization` header                                |
-|                 | `/nuxeo/api/v1/config/types/<type>` with header `fetch-schema: fields` — authenticated, through `NuxeoApiBase`                                                                            |
-|                 | `/nuxeo/api/v1/directory/<directory>/<id>` with headers `translate-directoryEntry: label` and `Accept-Language: en` — authenticated, through `NuxeoApiBase`                               |
-| **Server side** | `AgenticUiConfigServlet` (from `<layout>` contributions to `org.nuxeo.agentic.ui.config`); Nuxeo's type registry and directories                                                          |
+| Field           | Value                                                                                                                                                                  |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Service**     | `DocumentLayoutService` (`libs/shared/document-layouts/src/lib/document-layout.service.ts`)                                                                            |
+| **Method**      | `layoutFor(type, mode, documentSchemas)`, per document shown; `vocabularyLabel(directory, id)`, per vocabulary value shown; each read below is cached for the session  |
+| **HTTP Method** | `GET`                                                                                                                                                                  |
+| **Endpoints**   | `/nuxeo/agentic-ui-config/layouts.json` and `/nuxeo/agentic-ui-config/layouts/<type>/<mode>.layout.json` — without interceptors, no `Authorization` header             |
+|                 | `/nuxeo/api/v1/config/types/<type>` with header `fetch-schema: fields` — authenticated, through `NuxeoApiBase`                                                         |
+|                 | `/nuxeo/api/v1/config/schemas/<schema>` with header `fetch-schema: fields`, for a schema a dynamic facet added to the document — authenticated, through `NuxeoApiBase` |
+|                 | `/nuxeo/api/v1/directory/<directory>/<id>` with headers `translate-directoryEntry: label` and `Accept-Language: en` — authenticated, through `NuxeoApiBase`            |
+| **Server side** | `AgenticUiConfigServlet` (from `<layout>` contributions to `org.nuxeo.agentic.ui.config`); Nuxeo's type registry and directories                                       |
 
 The layout URLs sit beside `bootstrap.json` (from `APP_BOOTSTRAP_CONFIG_URL`), so under `nx serve`
 they are `/agentic-ui-config/layouts.json` and `/agentic-ui-config/layouts/…`, written by
@@ -1479,8 +1480,20 @@ layout generated from the type, with the reason in the console under `[agentic-u
 `/config/types/<type>` is the per-type read, not the `/config/types` list: asked for
 `fetch-schema: fields` it returns each of the type's schemas nested, with `@prefix` when it has
 one, and per-field `constraints` — a `directoryResolver` names the vocabulary a value is bound to
-(`itemConstraints` for a list). The list endpoint and `/config/schemas` ignore that header. A
-failed read is not cached, so the next document of the type asks again.
+(`itemConstraints` for a list). The `/config/types` and `/config/schemas` lists ignore that header;
+the per-schema read below honours it. A failed read is not cached, so the next document of the
+type asks again.
+
+A dynamic facet adds schemas to one document, not to its type, so no type read has them. The
+document's own read lists every schema it carries in `schemas`, as `{ name, prefix }`, and each
+one its type lacks is read from `/config/schemas/<schema>` — answered in the same shape as a
+schema of the type read, vocabulary constraints included — once per session, whichever type
+carries it. Only those the layout could show are read: for the generated layout, the ones the
+panel does not already present; for a layout file, the ones whose prefix it names. So, with no
+layout file, a File that is collected, followed and has a thumbnail costs no extra read. An unknown schema answers 204 with
+no body; that, an error status, a body that is not the schema asked for with a `fields` object,
+or no answer within 10 s (`LAYOUT_LOAD_TIMEOUT_MS`, since the other sections wait for it) leaves
+only that schema out, is logged, and is asked for again by the next document that carries it.
 
 A vocabulary-bound value is labelled from its own entry, read by id: one request per value the
 document shows, plus one for its parent in an `l10n…` vocabulary, which is labelled

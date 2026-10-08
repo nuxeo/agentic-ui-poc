@@ -1,5 +1,6 @@
 import { LayoutFile } from './layout-file';
 import {
+  DocumentSchemaRef,
   DocumentTypeDefinition,
   DocumentTypeSchema,
   LayoutField,
@@ -13,6 +14,11 @@ import {
  * present them. Without this list a File would grow a section for `uid` and `files`, and a
  * Picture one for `picture:views`, a list of blob-bearing records. A layout file may still name
  * any of their fields.
+ *
+ * The last three come with stock facets Nuxeo adds to a document as it is used, not with its
+ * type: `collectionMember` once it is put in a collection, which the panel's Collections row
+ * shows; `notification` once someone subscribes, which the toolbar's subscribe action shows;
+ * `thumbnail` once it has content, which the viewers show.
  */
 export const PRESENTED_SCHEMAS: ReadonlySet<string> = new Set([
   'common',
@@ -28,6 +34,9 @@ export const PRESENTED_SCHEMAS: ReadonlySet<string> = new Set([
   'iptc',
   'video',
   'audio',
+  'collectionMember',
+  'notification',
+  'thumbnail',
 ]);
 
 /** Translation keys a manifest `labels` entry can set to rename a generated label. */
@@ -83,6 +92,39 @@ function readFields(raw: Record<string, unknown>): Record<string, LayoutFieldTyp
   return fields;
 }
 
+/** The name Nuxeo addresses a schema's fields by: its prefix, else, as for `file`, its name. */
+function prefixOf(raw: Record<string, unknown>, name: string): string {
+  const prefix = raw['@prefix'] ?? raw['prefix'];
+  return typeof prefix === 'string' && prefix ? prefix : name;
+}
+
+/**
+ * One schema read with `fetch-schema: fields`, as `/config/types/<type>` answers it among the
+ * type's and `/config/schemas/<name>` answers it alone: the same shape, vocabulary bindings
+ * included. `null` for any other body, a 204's empty one among them.
+ */
+export function readSchema(raw: unknown): DocumentTypeSchema | null {
+  if (!isRecord(raw)) return null;
+  const name = raw['name'];
+  if (typeof name !== 'string' || !name) return null;
+  return {
+    name,
+    prefix: prefixOf(raw, name),
+    fields: isRecord(raw['fields']) ? readFields(raw['fields']) : {},
+  };
+}
+
+/**
+ * A `/config/schemas/<name>` response. Stricter than a schema inside a type: it must be the schema
+ * asked for and carry a `fields` object, so a malformed answer is a failed read rather than a
+ * schema with no fields that would be kept for the session.
+ */
+export function readSchemaResponse(raw: unknown, name: string): DocumentTypeSchema | null {
+  if (!isRecord(raw) || !isRecord(raw['fields'])) return null;
+  const schema = readSchema(raw);
+  return schema?.name === name ? schema : null;
+}
+
 /**
  * A `/config/types/<type>` response, read with `fetch-schema: fields`.
  *
@@ -91,26 +133,55 @@ function readFields(raw: Record<string, unknown>): Record<string, LayoutFieldTyp
  */
 export function readDocumentType(raw: unknown, name: string): DocumentTypeDefinition | null {
   if (!isRecord(raw) || !Array.isArray(raw['schemas'])) return null;
-  const schemas: DocumentTypeSchema[] = raw['schemas'].filter(isRecord).flatMap((schema) => {
-    const schemaName = schema['name'];
-    if (typeof schemaName !== 'string' || !schemaName) return [];
-    const prefix = schema['@prefix'] ?? schema['prefix'];
-    return [
-      {
-        name: schemaName,
-        prefix: typeof prefix === 'string' && prefix ? prefix : schemaName,
-        fields: isRecord(schema['fields']) ? readFields(schema['fields']) : {},
-      },
-    ];
-  });
+  const schemas = raw['schemas'].flatMap((schema) => readSchema(schema) ?? []);
   return { name, schemas };
 }
 
 const byName = (a: string, b: string) => a.localeCompare(b);
 
-/** No layout file for this type and mode: one section per schema the panel does not already present. */
-export function generateLayout(type: DocumentTypeDefinition, mode: LayoutMode): ResolvedLayout {
-  const sections = type.schemas
+/** `externalEntity:origin` → `externalEntity`. */
+export const prefixOfXpath = (xpath: string): string => xpath.slice(0, xpath.indexOf(':'));
+
+/**
+ * The `schemas` of a document's own read: every schema it carries, its type's and those its
+ * dynamic facets added, each once and sorted by name. None for anything that is not that list.
+ */
+export function readDocumentSchemas(raw: unknown): readonly DocumentSchemaRef[] {
+  if (!Array.isArray(raw)) return [];
+  const read = new Map<string, DocumentSchemaRef>();
+  for (const schema of raw) {
+    if (!isRecord(schema)) continue;
+    const name = schema['name'];
+    if (typeof name === 'string' && name && !read.has(name)) {
+      read.set(name, { name, prefix: prefixOf(schema, name) });
+    }
+  }
+  return [...read.values()].sort((a, b) => byName(a.name, b.name));
+}
+
+/**
+ * The schemas a document carries that its type does not, and the layout could show: for the
+ * generated layout those the panel does not already present, for a contributed file those whose
+ * prefix it names. Only these are worth a read.
+ */
+export function facetSchemasToRead(
+  type: DocumentTypeDefinition,
+  documentSchemas: readonly DocumentSchemaRef[],
+  file: LayoutFile | null,
+): readonly DocumentSchemaRef[] {
+  const own = new Set(type.schemas.map((schema) => schema.name));
+  const named = file
+    ? new Set(file.sections.flatMap((section) => section.fields.map((f) => prefixOfXpath(f.field))))
+    : null;
+  return documentSchemas.filter(
+    (schema) =>
+      !own.has(schema.name) &&
+      (named ? named.has(schema.prefix) : !PRESENTED_SCHEMAS.has(schema.name)),
+  );
+}
+
+function sectionsOf(schemas: readonly DocumentTypeSchema[]) {
+  return schemas
     .filter((schema) => !PRESENTED_SCHEMAS.has(schema.name))
     .sort((a, b) => byName(a.name, b.name))
     .map((schema) => ({
@@ -121,6 +192,19 @@ export function generateLayout(type: DocumentTypeDefinition, mode: LayoutMode): 
         .map((name) => field(`${schema.prefix}:${name}`, name, schema.fields[name])),
     }))
     .filter((section) => section.fields.length > 0);
+}
+
+/**
+ * No layout file for this type and mode: one section per schema the panel does not already
+ * present. The type's own come first, then those the document's dynamic facets added, so a
+ * facet on one document never moves the sections every document of its type shows.
+ */
+export function generateLayout(
+  type: DocumentTypeDefinition,
+  mode: LayoutMode,
+  facetSchemas: readonly DocumentTypeSchema[] = [],
+): ResolvedLayout {
+  const sections = [...sectionsOf(type.schemas), ...sectionsOf(facetSchemas)];
   return { type: type.name, mode, source: 'generated', display: 'sections', sections };
 }
 
@@ -143,16 +227,17 @@ function field(
 }
 
 /**
- * A contributed file, in place of the generated layout. A field the type does not have is
- * skipped and reported, and the rest of the file still applies.
+ * A contributed file, in place of the generated layout. A field neither the type nor the
+ * document's facet schemas have is skipped and reported, and the rest of the file still applies.
  */
 export function applyLayoutFile(
   type: DocumentTypeDefinition,
   mode: LayoutMode,
   file: LayoutFile,
+  facetSchemas: readonly DocumentTypeSchema[] = [],
 ): { readonly layout: ResolvedLayout; readonly skipped: readonly string[] } {
   const known = new Map<string, { name: string; definition: LayoutFieldType }>();
-  for (const schema of type.schemas) {
+  for (const schema of [...type.schemas, ...facetSchemas]) {
     for (const [name, definition] of Object.entries(schema.fields)) {
       known.set(`${schema.prefix}:${name}`, { name, definition });
     }

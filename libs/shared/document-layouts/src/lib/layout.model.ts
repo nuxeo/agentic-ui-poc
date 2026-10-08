@@ -3,8 +3,8 @@
  *
  * A layout is chosen per document type and mode, as in Nuxeo Web UI. A package contributes one
  * through `org.nuxeo.agentic.ui.config` (`<layout type="Claim" mode="metadata" src="…"/>`); with
- * none, the layout is generated from the type's own schemas. A contributed layout replaces the
- * generated one whole — nothing is merged.
+ * none, the layout is generated from the type's own schemas and those the document's dynamic
+ * facets add. A contributed layout replaces the generated one whole — nothing is merged.
  */
 
 /** The modes this build renders. `view` is not one: the View tab body is the `documentView` slot. */
@@ -12,7 +12,10 @@ export type LayoutMode = 'metadata';
 
 export type LayoutDisplay = 'sections' | 'tabs';
 
-/** A field's type as `/config/types/<type>` describes it when asked for `fetch-schema: fields`. */
+/**
+ * A field's type as `/config/types/<type>` and `/config/schemas/<name>` describe it when asked
+ * for `fetch-schema: fields`.
+ */
 export interface LayoutFieldType {
   /** `string`, `date`, `long`, `double`, `boolean`, `blob` or `complex`, each possibly ending in `[]`. */
   readonly type: string;
@@ -27,6 +30,12 @@ export interface DocumentTypeSchema {
   /** The property prefix; the schema name when Nuxeo reports none, as it does for `file`. */
   readonly prefix: string;
   readonly fields: Readonly<Record<string, LayoutFieldType>>;
+}
+
+/** A schema a document reports carrying, as the `schemas` of its own read list it. */
+export interface DocumentSchemaRef {
+  readonly name: string;
+  readonly prefix: string;
 }
 
 export interface DocumentTypeDefinition {

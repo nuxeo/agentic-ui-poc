@@ -26,6 +26,41 @@ const CLAIM = {
   ],
 };
 
+const SCHEMA = (name: string) => `/nuxeo/api/v1/config/schemas/${name}`;
+const STRING = { 'entity-type': 'validation_constraint', name: 'string', parameters: {} };
+
+/** Trimmed from real `/config/schemas/<name>` responses with `fetch-schema: fields`. */
+const EXTERNAL_ENTITY = {
+  'entity-type': 'schema',
+  name: 'externalEntity',
+  prefix: 'externalEntity',
+  '@prefix': 'externalEntity',
+  fields: {
+    entityId: { type: 'string', constraints: [STRING] },
+    origin: { type: 'string', constraints: [STRING] },
+    entity: { type: 'string', constraints: [STRING] },
+  },
+};
+const HXAI = {
+  'entity-type': 'schema',
+  name: 'hxai',
+  prefix: 'hxai',
+  '@prefix': 'hxai',
+  fields: {
+    mappings: { type: 'string[]', constraints: [], itemConstraints: [STRING] },
+    aggregateDefaultMappings: { type: 'boolean', constraints: [] },
+  },
+};
+
+const PREFIXES: Record<string, string> = {
+  dublincore: 'dc',
+  notification: 'notif',
+  thumbnail: 'thumb',
+};
+/** The `schemas` a document read reports: its type's, then whatever its dynamic facets added. */
+const carrying = (...names: string[]) =>
+  ['claim', 'dublincore', ...names].map((name) => ({ name, prefix: PREFIXES[name] ?? name }));
+
 const index = (...keys: string[]) => ({
   format: FORMAT,
   layer: 'layouts',
@@ -89,8 +124,13 @@ describe('DocumentLayoutService', () => {
     vi.restoreAllMocks();
   });
 
-  const resolve = (type = 'Claim'): Promise<ResolvedLayout | null> =>
-    firstValueFrom(service.layoutFor(type, 'metadata'));
+  const resolve = (
+    type = 'Claim',
+    schemas: readonly { name: string; prefix: string }[] = [],
+  ): Promise<ResolvedLayout | null> => firstValueFrom(service.layoutFor(type, 'metadata', schemas));
+
+  const sectionIds = (layout: ResolvedLayout | null) =>
+    layout?.sections.map((section) => section.id);
 
   const answerType = (body: object = CLAIM) => http.expectOne(CLAIM_TYPE).flush(body);
 
@@ -273,7 +313,7 @@ describe('DocumentLayoutService', () => {
       'claim:number',
     ]);
     expect(warnings).toContain(
-      '[agentic-ui-layouts] Claim/metadata layout: field claim:nope is not on the Claim type; skipped',
+      "[agentic-ui-layouts] Claim/metadata layout: field claim:nope is not on the Claim type or this document's facets; skipped",
     );
     expect(warnings).toContain(
       '[agentic-ui-layouts] Claim/metadata layout: section "a" field 2 is not "<prefix>:<name>"; skipped',
@@ -319,6 +359,200 @@ describe('DocumentLayoutService', () => {
     const second = resolve();
     answerType();
     expect((await second)?.source).toBe('generated');
+  });
+
+  describe('schemas a dynamic facet adds to one document', () => {
+    /** The type read and the index come first; the facet schemas are read once both are in. */
+    const answerTypeAndIndex = (...layouts: string[]) => {
+      answerType();
+      http.expectOne(INDEX).flush(index(...layouts));
+    };
+
+    const claimFile = (...fields: string[]) =>
+      http.expectOne(CLAIM_FILE).flush(envelope({ version: 1, sections: [{ id: 'a', fields }] }));
+
+    it("gives each a section after the type's own, read with fetch-schema: fields", async () => {
+      const layout = resolve('Claim', carrying('hxai', 'externalEntity'));
+      answerTypeAndIndex();
+      const external = http.expectOne(SCHEMA('externalEntity'));
+      expect(external.request.headers.get('fetch-schema')).toBe('fields');
+      external.flush(EXTERNAL_ENTITY);
+      const hxai = http.expectOne(SCHEMA('hxai'));
+      expect(hxai.request.headers.get('fetch-schema')).toBe('fields');
+      hxai.flush(HXAI);
+
+      const resolved = await layout;
+      expect(resolved?.source).toBe('generated');
+      expect(
+        resolved?.sections.map((section) => [section.id, section.fields.map((f) => f.xpath)]),
+      ).toEqual([
+        ['claim', ['claim:number', 'claim:status']],
+        [
+          'externalEntity',
+          ['externalEntity:entity', 'externalEntity:entityId', 'externalEntity:origin'],
+        ],
+        ['hxai', ['hxai:aggregateDefaultMappings', 'hxai:mappings']],
+      ]);
+      expect(resolved?.sections[2]?.fields[1]?.definition).toEqual({ type: 'string[]' });
+      expect(intercepted).toContain(SCHEMA('externalEntity'));
+    });
+
+    it('reads no schema the type already has, nor one the panel already presents', async () => {
+      const layout = resolve('Claim', carrying('collectionMember', 'notification', 'thumbnail'));
+      answerTypeAndIndex();
+      expect(sectionIds(await layout)).toEqual(['claim']);
+      http.expectNone((request) => request.url.includes('/config/schemas/'));
+    });
+
+    it('reads each facet schema once per session, whichever type carries it', async () => {
+      const first = resolve('Claim', carrying('externalEntity'));
+      answerTypeAndIndex();
+      http.expectOne(SCHEMA('externalEntity')).flush(EXTERNAL_ENTITY);
+      await first;
+
+      const member = resolve('Member', [{ name: 'externalEntity', prefix: 'externalEntity' }]);
+      http
+        .expectOne('/nuxeo/api/v1/config/types/Member')
+        .flush({ schemas: [{ name: 'member', fields: { plan: 'string' } }] });
+      expect(sectionIds(await member)).toEqual(['member', 'externalEntity']);
+      http.expectNone(SCHEMA('externalEntity'));
+    });
+
+    it("resolves each document's own schemas, never another document's of the same type", async () => {
+      const withFacet = resolve('Claim', carrying('externalEntity'));
+      answerTypeAndIndex();
+      http.expectOne(SCHEMA('externalEntity')).flush(EXTERNAL_ENTITY);
+      expect(sectionIds(await withFacet)).toEqual(['claim', 'externalEntity']);
+
+      expect(sectionIds(await resolve('Claim', carrying()))).toEqual(['claim']);
+
+      const other = resolve('Claim', carrying('hxai'));
+      http.expectOne(SCHEMA('hxai')).flush(HXAI);
+      expect(sectionIds(await other)).toEqual(['claim', 'hxai']);
+
+      expect(sectionIds(await resolve('Claim', carrying('hxai', 'externalEntity')))).toEqual([
+        'claim',
+        'externalEntity',
+        'hxai',
+      ]);
+    });
+
+    it('drops only the section of a schema it cannot read, says why, and asks again next time', async () => {
+      const first = resolve('Claim', carrying('externalEntity', 'hxai'));
+      answerTypeAndIndex();
+      http
+        .expectOne(SCHEMA('externalEntity'))
+        .flush('', { status: 500, statusText: 'Server Error' });
+      http.expectOne(SCHEMA('hxai')).flush(HXAI);
+      expect(sectionIds(await first)).toEqual(['claim', 'hxai']);
+      expect(warnings).toContain('[agentic-ui-layouts] schema externalEntity not read: HTTP 500');
+
+      const second = resolve('Claim', carrying('externalEntity', 'hxai'));
+      http.expectOne(SCHEMA('externalEntity')).flush(EXTERNAL_ENTITY);
+      http.expectNone(SCHEMA('hxai'));
+      expect(sectionIds(await second)).toEqual(['claim', 'externalEntity', 'hxai']);
+    });
+
+    it('treats a 204, or a body that is not the schema asked for, as a failed read', async () => {
+      const first = resolve('Claim', carrying('externalEntity'));
+      answerTypeAndIndex();
+      http
+        .expectOne(SCHEMA('externalEntity'))
+        .flush(null, { status: 204, statusText: 'No Content' });
+      expect(sectionIds(await first)).toEqual(['claim']);
+
+      const second = resolve('Claim', carrying('externalEntity'));
+      http.expectOne(SCHEMA('externalEntity')).flush(HXAI);
+      expect(sectionIds(await second)).toEqual(['claim']);
+      expect(
+        warnings.filter((w) => w.includes('schema externalEntity not read: the response is not')),
+      ).toHaveLength(2);
+    });
+
+    it.each([
+      ['no fields', { name: 'externalEntity' }],
+      ['null fields', { name: 'externalEntity', fields: null }],
+      ['a list of fields', { name: 'externalEntity', fields: [] }],
+    ])(
+      'treats a schema answered with %s as a failed read, not an empty schema',
+      async (_, body) => {
+        const first = resolve('Claim', carrying('externalEntity'));
+        answerTypeAndIndex();
+        http.expectOne(SCHEMA('externalEntity')).flush(body);
+        expect(sectionIds(await first)).toEqual(['claim']);
+        expect(warnings).toContain(
+          '[agentic-ui-layouts] schema externalEntity not read: the response is not the externalEntity schema',
+        );
+
+        const second = resolve('Claim', carrying('externalEntity'));
+        http.expectOne(SCHEMA('externalEntity')).flush(EXTERNAL_ENTITY);
+        expect(sectionIds(await second)).toEqual(['claim', 'externalEntity']);
+      },
+    );
+
+    it('gives up on a schema read that never answers, cancels it, and shows the rest', async () => {
+      vi.useFakeTimers();
+      try {
+        const first = resolve('Claim', carrying('externalEntity', 'hxai'));
+        answerTypeAndIndex();
+        const stalled = http.expectOne(SCHEMA('externalEntity'));
+        http.expectOne(SCHEMA('hxai')).flush(HXAI);
+
+        await vi.advanceTimersByTimeAsync(LAYOUT_LOAD_TIMEOUT_MS);
+
+        expect(stalled.cancelled).toBe(true);
+        expect(sectionIds(await first)).toEqual(['claim', 'hxai']);
+        expect(warnings).toContain(
+          '[agentic-ui-layouts] schema externalEntity not read: no response within 10 s',
+        );
+
+        const second = resolve('Claim', carrying('externalEntity', 'hxai'));
+        http.expectOne(SCHEMA('externalEntity')).flush(EXTERNAL_ENTITY);
+        expect(sectionIds(await second)).toEqual(['claim', 'externalEntity', 'hxai']);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('lets a contributed file show a field of a facet schema the document carries', async () => {
+      const layout = resolve('Claim', carrying('externalEntity', 'hxai'));
+      answerTypeAndIndex('Claim/metadata');
+      claimFile('externalEntity:origin', 'claim:number');
+      http.expectOne(SCHEMA('externalEntity')).flush(EXTERNAL_ENTITY);
+      http.expectNone(SCHEMA('hxai'));
+      expect((await layout)?.sections[0]?.fields.map((field) => field.xpath)).toEqual([
+        'externalEntity:origin',
+        'claim:number',
+      ]);
+      expect(warnings.filter((w) => w.includes('skipped'))).toEqual([]);
+    });
+
+    it('skips and reports a facet field on a document without that facet, reading nothing', async () => {
+      const layout = resolve('Claim', carrying());
+      answerTypeAndIndex('Claim/metadata');
+      claimFile('externalEntity:origin', 'claim:number');
+      expect((await layout)?.sections[0]?.fields.map((field) => field.xpath)).toEqual([
+        'claim:number',
+      ]);
+      http.expectNone((request) => request.url.includes('/config/schemas/'));
+      expect(warnings).toContain(
+        "[agentic-ui-layouts] Claim/metadata layout: field externalEntity:origin is not on the Claim type or this document's facets; skipped",
+      );
+    });
+
+    it('reports a field whose facet schema could not be read as unread, not as absent', async () => {
+      const layout = resolve('Claim', carrying('externalEntity'));
+      answerTypeAndIndex('Claim/metadata');
+      claimFile('externalEntity:origin', 'claim:number');
+      http.expectOne(SCHEMA('externalEntity')).flush('', { status: 403, statusText: 'Forbidden' });
+      expect((await layout)?.sections[0]?.fields.map((field) => field.xpath)).toEqual([
+        'claim:number',
+      ]);
+      expect(warnings).toContain(
+        '[agentic-ui-layouts] Claim/metadata layout: field externalEntity:origin skipped: schema externalEntity was not read',
+      );
+      expect(warnings.some((w) => w.includes("or this document's facets"))).toBe(false);
+    });
   });
 
   describe('vocabularyLabel', () => {

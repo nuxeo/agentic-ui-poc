@@ -1,6 +1,15 @@
 import { readLayoutFile } from './layout-file';
-import { DocumentTypeDefinition } from './layout.model';
-import { applyLayoutFile, generateLayout, humanize, readDocumentType } from './resolve-layout';
+import { DocumentTypeDefinition, DocumentTypeSchema } from './layout.model';
+import {
+  applyLayoutFile,
+  facetSchemasToRead,
+  generateLayout,
+  humanize,
+  readDocumentSchemas,
+  readDocumentType,
+  readSchema,
+  readSchemaResponse,
+} from './resolve-layout';
 
 /** Trimmed from a real `/config/types/Claim` response with `fetch-schema: fields`. */
 const CLAIM_RESPONSE = {
@@ -125,7 +134,180 @@ describe('readDocumentType', () => {
   });
 });
 
+describe('readSchema', () => {
+  /** Trimmed from a real `/config/schemas/dublincore` response with `fetch-schema: fields`. */
+  const DUBLINCORE = {
+    'entity-type': 'schema',
+    name: 'dublincore',
+    prefix: 'dc',
+    '@prefix': 'dc',
+    fields: {
+      nature: {
+        type: 'string',
+        constraints: [
+          { 'entity-type': 'validation_constraint', name: 'string', parameters: {} },
+          {
+            'entity-type': 'validation_constraint',
+            name: 'directoryResolver',
+            parameters: { directory: 'nature', validation: 'true' },
+          },
+        ],
+      },
+      subjects: {
+        type: 'string[]',
+        constraints: [],
+        itemConstraints: [
+          {
+            'entity-type': 'validation_constraint',
+            name: 'directoryResolver',
+            parameters: { directory: 'l10nsubjects', validation: 'true' },
+          },
+        ],
+      },
+      title: 'string',
+    },
+  };
+
+  it('reads a schema answered alone as it reads one inside a type, vocabularies included', () => {
+    expect(readSchema(DUBLINCORE)).toEqual({
+      name: 'dublincore',
+      prefix: 'dc',
+      fields: {
+        nature: { type: 'string', directory: 'nature' },
+        subjects: { type: 'string[]', directory: 'l10nsubjects' },
+        title: { type: 'string' },
+      },
+    });
+    expect(readSchema(DUBLINCORE)).toEqual(
+      readDocumentType({ schemas: [DUBLINCORE] }, 'File')?.schemas[0],
+    );
+  });
+
+  it('addresses a schema with no prefix by its name, as for a type', () => {
+    expect(
+      readSchema({ 'entity-type': 'schema', name: 'file', fields: { content: 'blob' } }),
+    ).toEqual({ name: 'file', prefix: 'file', fields: { content: { type: 'blob' } } });
+  });
+
+  it('answers null for a body that is not a schema, as a 204 is', () => {
+    expect(readSchema(null)).toBeNull();
+    expect(readSchema('')).toBeNull();
+    expect(readSchema({ fields: {} })).toBeNull();
+  });
+
+  it('takes a response alone only for the schema asked for, with a fields object', () => {
+    expect(readSchemaResponse(DUBLINCORE, 'dublincore')).toEqual(readSchema(DUBLINCORE));
+    expect(readSchemaResponse({ name: 'marker', fields: {} }, 'marker')).toEqual({
+      name: 'marker',
+      prefix: 'marker',
+      fields: {},
+    });
+    expect(readSchemaResponse(DUBLINCORE, 'hxai')).toBeNull();
+    expect(readSchemaResponse({ name: 'marker' }, 'marker')).toBeNull();
+    expect(readSchemaResponse({ name: 'marker', fields: null }, 'marker')).toBeNull();
+    expect(readSchemaResponse({ name: 'marker', fields: [] }, 'marker')).toBeNull();
+    expect(readSchemaResponse(null, 'marker')).toBeNull();
+  });
+});
+
+describe('readDocumentSchemas', () => {
+  it("reads a document's schemas by name and prefix, sorted by name", () => {
+    expect(
+      readDocumentSchemas([
+        { name: 'uid', prefix: 'uid' },
+        { name: 'externalEntity', prefix: 'externalEntity' },
+        { name: 'dublincore', prefix: 'dc' },
+      ]),
+    ).toEqual([
+      { name: 'dublincore', prefix: 'dc' },
+      { name: 'externalEntity', prefix: 'externalEntity' },
+      { name: 'uid', prefix: 'uid' },
+    ]);
+  });
+
+  it('skips an entry it cannot read, once each, and names an unprefixed one by its name', () => {
+    expect(
+      readDocumentSchemas([
+        { name: 'file' },
+        { prefix: 'x' },
+        'hxai',
+        { name: 'file', prefix: 'file' },
+      ]),
+    ).toEqual([{ name: 'file', prefix: 'file' }]);
+  });
+
+  it('answers no schemas for a document that reports none', () => {
+    expect(readDocumentSchemas(undefined)).toEqual([]);
+    expect(readDocumentSchemas({ name: 'claim' })).toEqual([]);
+  });
+});
+
+describe('facetSchemasToRead', () => {
+  const document = readDocumentSchemas(
+    [
+      'claim',
+      'common',
+      'dublincore',
+      'externalEntity',
+      'hxai',
+      'collectionMember',
+      'thumbnail',
+    ].map((name) => ({
+      name,
+      prefix: name === 'dublincore' ? 'dc' : name === 'thumbnail' ? 'thumb' : name,
+    })),
+  );
+  const names = (refs: readonly { name: string }[]) => refs.map((ref) => ref.name);
+
+  it('reads, for the generated layout, the ones the type lacks and the panel does not present', () => {
+    expect(names(facetSchemasToRead(claim(), document, null))).toEqual(['externalEntity', 'hxai']);
+  });
+
+  it('reads, for a contributed file, only the ones whose prefix the file names', () => {
+    const named = readLayoutFile({
+      version: 1,
+      sections: [{ id: 'a', fields: ['externalEntity:origin', 'thumb:thumbnail', 'claim:status'] }],
+    });
+    if ('invalid' in named) throw new Error(named.invalid);
+    expect(names(facetSchemasToRead(claim(), document, named))).toEqual([
+      'externalEntity',
+      'thumbnail',
+    ]);
+  });
+});
+
 describe('generateLayout', () => {
+  it("puts a facet schema's section after the type's own, each in name order", () => {
+    const facet = (name: string): DocumentTypeSchema => ({
+      name,
+      prefix: name,
+      fields: { b: { type: 'string' }, a: { type: 'string' } },
+    });
+    const layout = generateLayout(claim(), 'metadata', [facet('hxai'), facet('externalEntity')]);
+    expect(layout.sections.map((section) => section.id)).toEqual([
+      'claim',
+      'externalEntity',
+      'hxai',
+    ]);
+    expect(layout.sections[1]?.fields.map((field) => field.xpath)).toEqual([
+      'externalEntity:a',
+      'externalEntity:b',
+    ]);
+    expect(layout.sections[1]?.label).toEqual({
+      keys: ['layout.schema.externalEntity'],
+      fallback: 'External entity',
+    });
+  });
+
+  it('adds nothing for the facets of a File in a collection, subscribed, with a thumbnail', () => {
+    const stock = ['collectionMember', 'notification', 'thumbnail'].map((name) => ({
+      name,
+      prefix: name,
+      fields: { anything: { type: 'string' } },
+    }));
+    expect(generateLayout(claim(), 'metadata', stock).sections.map((s) => s.id)).toEqual(['claim']);
+  });
+
   it('gives each schema the panel does not already present a section, fields by name', () => {
     const layout = generateLayout(claim(), 'metadata');
     expect(layout.source).toBe('generated');
@@ -267,6 +449,28 @@ describe('applyLayoutFile', () => {
     );
     expect(skipped).toEqual(['claim:nope', 'member:plan']);
     expect(layout.sections[0]?.fields.map((field) => field.xpath)).toEqual(['claim:number']);
+  });
+
+  it('finds a field of a facet schema passed beside the type', () => {
+    const external: DocumentTypeSchema = {
+      name: 'externalEntity',
+      prefix: 'externalEntity',
+      fields: { origin: { type: 'string' } },
+    };
+    const contents = file({
+      version: 1,
+      sections: [{ id: 'a', fields: ['externalEntity:origin'] }],
+    });
+    expect(applyLayoutFile(claim(), 'metadata', contents).skipped).toEqual([
+      'externalEntity:origin',
+    ]);
+    const { layout, skipped } = applyLayoutFile(claim(), 'metadata', contents, [external]);
+    expect(skipped).toEqual([]);
+    expect(layout.sections[0]?.fields[0]).toMatchObject({
+      xpath: 'externalEntity:origin',
+      definition: { type: 'string' },
+      label: { fallback: 'Origin' },
+    });
   });
 
   it('addresses a prefix-less schema by its name, as Nuxeo does', () => {
