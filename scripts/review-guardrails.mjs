@@ -3246,7 +3246,8 @@ function checkAccessibleNameFallbacks() {
 
     function initializerFullyResolved(expr, scope) {
       if (!expr) return false;
-      if (ts.isParenthesizedExpression(expr)) return initializerFullyResolved(expr.expression, scope);
+      if (ts.isParenthesizedExpression(expr))
+        return initializerFullyResolved(expr.expression, scope);
       if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
       if (ts.isConditionalExpression(expr)) {
         return (
@@ -3262,7 +3263,8 @@ function checkAccessibleNameFallbacks() {
 
     function expressionFullyResolved(expr, scope) {
       if (!expr) return false;
-      if (ts.isParenthesizedExpression(expr)) return expressionFullyResolved(expr.expression, scope);
+      if (ts.isParenthesizedExpression(expr))
+        return expressionFullyResolved(expr.expression, scope);
       if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
       if (ts.isConditionalExpression(expr)) {
         return (
@@ -3303,7 +3305,10 @@ function checkAccessibleNameFallbacks() {
 
     function walkScopedStatements(statements, scope) {
       for (const stmt of statements) {
-        if (ts.isVariableStatement(stmt) && (stmt.declarationList.flags & ts.NodeFlags.Const) !== 0) {
+        if (
+          ts.isVariableStatement(stmt) &&
+          (stmt.declarationList.flags & ts.NodeFlags.Const) !== 0
+        ) {
           for (const decl of stmt.declarationList.declarations) bindConstDeclaration(scope, decl);
         } else if (ts.isReturnStatement(stmt)) {
           if (!expressionFullyResolved(stmt.expression, scope)) partialReturn = true;
@@ -3470,10 +3475,7 @@ function checkAccessibleNameFallbacks() {
     }
     const tsSource = read(tsPath);
     for (const [, methodName] of methodBindings) {
-      const { keys: methodKeys, partial } = translationKeysReturnedByMethod(
-        tsSource,
-        methodName,
-      );
+      const { keys: methodKeys, partial } = translationKeysReturnedByMethod(tsSource, methodName);
       if (partial || methodKeys.length === 0) {
         const attr = `${methodName}()`;
         if (!unresolvedMethodBindings.has(attr)) {
@@ -6044,6 +6046,30 @@ function satoriComponentsSources() {
   return walk(`${SATORI_COMPONENTS_ROOT}/src`, (path) => /\.(ts|mts)$/.test(path));
 }
 
+const SATORI_COMPONENTS_STORYBOOK = `${SATORI_COMPONENTS_ROOT}/.storybook`;
+const SATORI_COMPONENTS_PROJECT = `${SATORI_COMPONENTS_ROOT}/project.json`;
+
+/**
+ * The stylesheets the **default** `build-storybook` configuration compiles.
+ *
+ * Only `options.styles`: a named configuration such as `:satori` is opt-in and may need a token,
+ * the default is what has to build without one. An unreadable project.json yields nothing, and the
+ * library sources are still checked.
+ */
+function satoriComponentsStorybookStyles() {
+  if (!fileExists(SATORI_COMPONENTS_PROJECT)) return [];
+  let styles;
+  try {
+    styles = JSON.parse(read(SATORI_COMPONENTS_PROJECT)).targets?.['build-storybook']?.options
+      ?.styles;
+  } catch {
+    return [];
+  }
+  return (Array.isArray(styles) ? styles : [])
+    .map((style) => (typeof style === 'string' ? style : style?.input))
+    .filter((style) => typeof style === 'string' && style.endsWith('.scss'));
+}
+
 /**
  * No `@alfresco/*`, no `@hylandsoftware/*` — reached directly **or through anything it imports**.
  *
@@ -6052,10 +6078,18 @@ function satoriComponentsSources() {
  * barrel would need both packages to compile while a direct-import check stayed green. A type-only
  * import counts: it still needs the package installed to compile. Stylesheets count too, because
  * `@use '@hylandsoftware/satori-ui/theme'` needs the package as much as an import does.
+ *
+ * The Storybook build is held to the same rule, because it has to build without a token (plan
+ * section 9.4): `.storybook/*.ts` are roots, and so are the stylesheets the default
+ * `build-storybook` configuration names. The opt-in `:satori` configuration's are not.
  */
 function checkSatoriComponentsDependencies() {
-  const roots = satoriComponentsSources();
-  if (roots.length === 0) {
+  const sources = satoriComponentsSources();
+  const roots = [
+    ...sources,
+    ...walk(SATORI_COMPONENTS_STORYBOOK, (path) => /\.(ts|mts)$/.test(path)),
+  ];
+  if (sources.length === 0) {
     fail(
       `${SATORI_COMPONENTS_ROOT} has no TypeScript sources, so the no-ADF / no-Satori rule for ` +
         'the component library asserted nothing.',
@@ -6113,7 +6147,10 @@ function checkSatoriComponentsDependencies() {
       if (use[1].startsWith('@') || use[1].startsWith('sass:')) continue;
       const base = toPosixRel(join(dirname(styleFile), use[1]));
       // `theme` and `theme.scss` name the same partial, `_theme.scss`.
-      const name = base.split('/').pop().replace(/\.scss$/, '');
+      const name = base
+        .split('/')
+        .pop()
+        .replace(/\.scss$/, '');
       const dir = dirname(base);
       for (const candidate of [
         base,
@@ -6128,6 +6165,18 @@ function checkSatoriComponentsDependencies() {
       }
     }
   };
+
+  const storybookStyles = new Set();
+  for (const styleFile of satoriComponentsStorybookStyles()) {
+    if (!fileExists(styleFile)) {
+      fail(
+        `${SATORI_COMPONENTS_PROJECT} names \`${styleFile}\` in build-storybook's styles, and it ` +
+          'does not exist, so the token-free Storybook theme was not checked.',
+      );
+      continue;
+    }
+    scanStyles(styleFile, [SATORI_COMPONENTS_PROJECT], storybookStyles);
+  }
 
   for (const root of roots) {
     const seen = new Set();
@@ -6343,6 +6392,226 @@ function checkSatoriComponentsFederationReadiness() {
   }
 }
 
+/** The local names `@angular/core`'s `Component` is imported under in a source file. */
+function componentDecoratorNames(source) {
+  const names = new Set();
+  const namespaces = new Set();
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    if (statement.moduleSpecifier.text !== '@angular/core') continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings) continue;
+    if (ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
+    else {
+      for (const element of bindings.elements) {
+        if ((element.propertyName ?? element.name).text === 'Component') {
+          names.add(element.name.text);
+        }
+      }
+    }
+  }
+  return { names, namespaces };
+}
+
+/**
+ * The `@Component` classes a module exports, by public name, following re-exports.
+ *
+ * `export class X` with a `@Component` decorator, `export { a as b } from './m'`,
+ * `export * from './m'`, and an imported class re-exported by a bare `export { X }`.
+ */
+function exportedComponentClasses(file, paths, ancestors = new Set()) {
+  // `ancestors` guards a re-export cycle along one path only: a module re-exported twice from
+  // one barrel must be read twice, or the second statement finds nothing.
+  const seen = ancestors;
+  const found = new Map();
+  if (seen.has(file) || !fileExists(file)) return found;
+  seen.add(file);
+  const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+  const imported = new Map();
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier))
+      continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings || !ts.isNamedImports(bindings)) continue;
+    for (const element of bindings.elements) {
+      imported.set(element.name.text, {
+        specifier: statement.moduleSpecifier.text,
+        name: (element.propertyName ?? element.name).text,
+      });
+    }
+  }
+  const { names, namespaces } = componentDecoratorNames(source);
+  const isComponentDecorator = (decorator) => {
+    if (!ts.isCallExpression(decorator.expression)) return false;
+    const callee = decorator.expression.expression;
+    if (ts.isIdentifier(callee)) return names.has(callee.text);
+    return (
+      ts.isPropertyAccessExpression(callee) &&
+      ts.isIdentifier(callee.expression) &&
+      namespaces.has(callee.expression.text) &&
+      callee.name.text === 'Component'
+    );
+  };
+
+  for (const statement of source.statements) {
+    if (ts.isClassDeclaration(statement) && statement.name) {
+      const exported = statement.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+      if (exported && (ts.getDecorators(statement) ?? []).some(isComponentDecorator)) {
+        found.set(statement.name.text, { file, className: statement.name.text });
+      }
+      continue;
+    }
+    if (!ts.isExportDeclaration(statement) || statement.isTypeOnly) continue;
+    if (!statement.moduleSpecifier) {
+      if (!statement.exportClause || !ts.isNamedExports(statement.exportClause)) continue;
+      for (const element of statement.exportClause.elements) {
+        const local = imported.get((element.propertyName ?? element.name).text);
+        if (element.isTypeOnly || !local) continue;
+        const target = resolveSpecifier(file, local.specifier, paths);
+        const origin =
+          target && exportedComponentClasses(target, paths, new Set(seen)).get(local.name);
+        if (origin) found.set(element.name.text, origin);
+      }
+      continue;
+    }
+    if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
+    const target = resolveSpecifier(file, statement.moduleSpecifier.text, paths);
+    if (!target) continue;
+    const inner = exportedComponentClasses(target, paths, new Set(seen));
+    if (!statement.exportClause) {
+      for (const [name, origin] of inner) found.set(name, origin);
+    } else if (ts.isNamedExports(statement.exportClause)) {
+      for (const element of statement.exportClause.elements) {
+        if (element.isTypeOnly) continue;
+        const origin = inner.get((element.propertyName ?? element.name).text);
+        if (origin) found.set(element.name.text, origin);
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * The component classes a story file documents: `{ file, className }` keys, as `file#className`.
+ *
+ * A story counts when its default-exported meta names the class as `component:`, the class is
+ * imported from the module that declares it, and the file exports at least one story. The meta may
+ * be the default export itself or a variable it names, optionally behind `satisfies` or `as`.
+ */
+function storiedComponents(storyFile, paths) {
+  const covered = new Set();
+  const source = ts.createSourceFile(storyFile, read(storyFile), ts.ScriptTarget.Latest, true);
+
+  const imports = new Map();
+  const variables = new Map();
+  let defaultExport = null;
+  let namedStories = 0;
+  const unwrap = (node) => {
+    let current = node;
+    while (
+      current &&
+      (ts.isSatisfiesExpression(current) ||
+        ts.isAsExpression(current) ||
+        ts.isParenthesizedExpression(current))
+    ) {
+      current = current.expression;
+    }
+    return current;
+  };
+
+  for (const statement of source.statements) {
+    if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
+      const bindings = statement.importClause?.namedBindings;
+      if (!bindings || !ts.isNamedImports(bindings)) continue;
+      const target = resolveSpecifier(storyFile, statement.moduleSpecifier.text, paths);
+      if (!target) continue;
+      for (const element of bindings.elements) {
+        imports.set(element.name.text, {
+          file: target,
+          name: (element.propertyName ?? element.name).text,
+        });
+      }
+    } else if (ts.isVariableStatement(statement)) {
+      const exported = statement.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+      for (const declaration of statement.declarationList.declarations) {
+        if (!ts.isIdentifier(declaration.name)) continue;
+        variables.set(declaration.name.text, declaration.initializer);
+        if (exported) namedStories += 1;
+      }
+    } else if (ts.isExportAssignment(statement) && !statement.isExportEquals) {
+      defaultExport = unwrap(statement.expression);
+    }
+  }
+
+  if (defaultExport && ts.isIdentifier(defaultExport)) {
+    defaultExport = unwrap(variables.get(defaultExport.text));
+  }
+  if (namedStories === 0 || !defaultExport || !ts.isObjectLiteralExpression(defaultExport)) {
+    return covered;
+  }
+  const componentProperty = defaultExport.properties.find(
+    (p) =>
+      ts.isPropertyAssignment(p) &&
+      (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
+      p.name.text === 'component',
+  );
+  const value = componentProperty && unwrap(componentProperty.initializer);
+  if (!value || !ts.isIdentifier(value)) return covered;
+  const origin = imports.get(value.text);
+  if (!origin) return covered;
+
+  // The import may itself be a barrel; resolve the name to the module that declares the class.
+  const declared = exportedComponentClasses(origin.file, paths).get(origin.name);
+  if (declared) covered.add(`${declared.file}#${declared.className}`);
+  return covered;
+}
+
+/**
+ * Every component the library exports has a story (plan section 9.4).
+ *
+ * Storybook is the library's human documentation and the agent's usage reference, so a component
+ * without a story ships undocumented. Read from the barrel, because an exported component is a
+ * published one. A story is a `*.stories.ts` under `src/` — the glob `.storybook/main.ts` loads,
+ * which is checked too — whose meta names the class as `component:`; a file that only mentions the
+ * class, or names it with no story exported, does not count.
+ */
+function checkSatoriComponentsHaveStories() {
+  if (!fileExists(SATORI_COMPONENTS_BARREL)) return;
+  const paths = tsconfigPaths();
+  const exported = exportedComponentClasses(SATORI_COMPONENTS_BARREL, paths);
+  if (exported.size === 0) return;
+
+  const STORY_GLOB = '../src/**/*.stories.ts';
+  const main = `${SATORI_COMPONENTS_STORYBOOK}/main.ts`;
+  if (!fileExists(main)) {
+    fail(
+      `${main} does not exist, so the ${exported.size} component(s) ${SATORI_COMPONENTS_BARREL} ` +
+        'exports have no Storybook to be documented in.',
+    );
+  } else if (!read(main).includes(`'${STORY_GLOB}'`)) {
+    fail(
+      `${main} does not load \`${STORY_GLOB}\`, so the stories this check counts are not the ` +
+        'ones Storybook renders.',
+    );
+  }
+
+  const covered = new Set();
+  for (const story of walk(`${SATORI_COMPONENTS_ROOT}/src`, (path) =>
+    path.endsWith('.stories.ts'),
+  )) {
+    for (const key of storiedComponents(story, paths)) covered.add(key);
+  }
+  for (const [name, { file, className }] of exported) {
+    if (covered.has(`${file}#${className}`)) continue;
+    fail(
+      `${SATORI_COMPONENTS_BARREL} exports \`${name}\` (${file}), and no story documents it. Add ` +
+        `a \`*.stories.ts\` beside it whose default-exported meta says \`component: ${className}\`, ` +
+        'with at least one story exported — Storybook is the library’s documentation and the ' +
+        'agent’s usage reference.',
+    );
+  }
+}
+
 const GUARDRAILS = [
   checkThemeTokens,
   checkDocsNumbering,
@@ -6382,6 +6651,7 @@ const GUARDRAILS = [
   checkSatoriComponentsDependencies,
   checkSatoriComponentsEntryPoint,
   checkSatoriComponentsFederationReadiness,
+  checkSatoriComponentsHaveStories,
 ];
 
 /**
