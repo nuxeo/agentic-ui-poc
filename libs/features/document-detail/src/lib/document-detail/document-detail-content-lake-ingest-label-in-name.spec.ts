@@ -32,6 +32,14 @@ function openingTag(markup: string): string {
   return tag![0];
 }
 
+function visuallyHiddenAccessibleName(markup: string): string {
+  const span = markup.match(
+    /<span class="cdk-visually-hidden" cdkAriaLive="off">[\s\S]*?<\/span>/,
+  )?.[0];
+  expect(span, 'Content Lake ingest visually hidden accessible name').toBeTruthy();
+  return span!;
+}
+
 describe('Document detail Content Lake ingest label in name (NXENG-793)', () => {
   it('keeps ingest tooltip text in a cdk-visually-hidden span and hides the icon ligature', () => {
     const html = readFileSync(templatePath, 'utf8');
@@ -41,8 +49,8 @@ describe('Document detail Content Lake ingest label in name (NXENG-793)', () => 
     expect(ingestOpeningTag).toContain(`[matTooltip]="'${INGEST_KEY}' | translate"`);
     expect(ingestOpeningTag).not.toContain('[attr.aria-label]');
 
-    expect(ingestButton).toContain('class="cdk-visually-hidden" cdkAriaLive="off"');
-    expect(ingestButton).toContain(`'${INGEST_KEY}' | translate`);
+    const hiddenName = visuallyHiddenAccessibleName(ingestButton);
+    expect(hiddenName).toContain(`'${INGEST_KEY}' | translate`);
     expect(ingestButton).toContain('<mat-icon aria-hidden="true">cloud_upload</mat-icon>');
   });
 });
