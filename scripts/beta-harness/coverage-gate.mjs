@@ -47,6 +47,7 @@ import { spawnSync } from 'node:child_process';
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
+import ts from 'typescript';
 
 const repoRoot = resolve(import.meta.dirname, '..', '..');
 const argv = process.argv.slice(2);
@@ -260,6 +261,40 @@ const datedAllowlist = rawAllowlist.files ?? {};
 const noStatementsAllowlist = new Set(Object.keys(rawAllowlist.noStatements ?? {}));
 
 /**
+ * Executable top-level statements in a source file, read from the source, not the coverage map.
+ *
+ * A `noStatements` exemption is otherwise checked only against coverage, and a file no spec
+ * imports has an empty coverage map whatever it holds — so a barrel that gained a function would
+ * stay exempt. For a floor project the exemption is re-derived from the code instead. Imports,
+ * re-exports, interfaces, type aliases and `declare` forms carry no runtime code.
+ */
+function executableStatements(text) {
+  const source = ts.createSourceFile('file.ts', text, ts.ScriptTarget.Latest, false);
+  return source.statements.filter(
+    (statement) =>
+      !ts.isImportDeclaration(statement) &&
+      !ts.isExportDeclaration(statement) &&
+      !ts.isInterfaceDeclaration(statement) &&
+      !ts.isTypeAliasDeclaration(statement) &&
+      !ts.getModifiers(statement)?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword),
+  ).length;
+}
+
+// Regression cases, run on every invocation so the exemption check cannot regress unnoticed.
+for (const [text, want] of [
+  ["export { A } from './a';\nexport * from './b';\nexport type { T } from './t';\n", 0],
+  ['export interface I {\n  a: string;\n}\nexport type U = 1 | 2;\n', 0],
+  ["export { A } from './a';\nexport function f(): number {\n  return 1;\n}\n", 1],
+  ['export const x = 1;\n', 1],
+  ['export enum E {\n  A,\n}\n', 1],
+]) {
+  const got = executableStatements(text);
+  if (got !== want) {
+    throw new Error(`coverage-gate: executableStatements found ${got}, not ${want}, in:\n${text}`);
+  }
+}
+
+/**
  * Computed before either baseline write, so `--update-baseline` can reset the ratchet without
  * resetting a floor: a write still exits 1 when a floor is not met.
  *
@@ -282,11 +317,21 @@ for (const [project, floor] of Object.entries(FLOORS)) {
     fails('it has no coverage report this run, so the floor was not measured');
     continue;
   }
-  if (m.lines < floor) {
-    fails(`${m.lines}% of lines covered (${m.sCovered} of ${m.sTotal} statements)`);
+  // Compared on the counts: `m.lines` is rounded, and 89.996% must not round its way to 90.
+  if (m.sCovered * 100 < floor * m.sTotal) {
+    const truncated = Math.floor((m.sCovered / m.sTotal) * 10000) / 100;
+    fails(`${truncated}% of lines covered (${m.sCovered} of ${m.sTotal} statements)`);
   }
   for (const u of m.unmeasured ?? []) {
-    if (noStatementsAllowlist.has(u.file)) continue;
+    if (noStatementsAllowlist.has(u.file)) {
+      const code = executableStatements(readFileSync(resolve(repoRoot, u.file), 'utf8'));
+      if (code === 0) continue;
+      fails(
+        `${u.file} is exempt under noStatements but has ${code} executable top-level ` +
+          'statement(s), and no spec reaches it',
+      );
+      continue;
+    }
     fails(`${u.file} contributes no statements [${u.why}] — no spec reaches it`);
   }
 }
@@ -1142,7 +1187,7 @@ function reportFloors() {
     if (failures.length === 0) {
       console.log(
         `    ${project.padEnd(24)} ${String(m.lines).padStart(6)}%  meets ${FLOORS[project]}% ` +
-          `(${m.sCovered} of ${m.sTotal} statements, no file outside the measurement)`,
+          `(${m.sCovered} of ${m.sTotal} statements; every unmeasured file is statement-free)`,
       );
       continue;
     }
