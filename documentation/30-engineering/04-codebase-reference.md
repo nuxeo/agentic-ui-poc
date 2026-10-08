@@ -2,16 +2,16 @@
 title: Codebase Reference
 parent: Engineering
 order: 4
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: 815ed15
 audience: engineering
 ---
 
 # Codebase Reference — file and folder responsibilities
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
-> The `constants/avatar-colors.ts` row was updated on 2026-10-08 for NXSAT-308; the rest of the
-> page is as of `77265f9`.
+> **Last reviewed:** 2026-10-08 · **Repository:** `815ed15` (`refactor/nxsat-308-nuxeo-client-satori-free`)
+> Only the `constants/avatar-colors.ts` row was re-verified at that commit; the rest of the page as
+> of 2026-08-24 · `77265f9`.
 > Directory-level view: [Repository Guide](03-repository-guide.md).
 >
 > **What is excluded, and why:** `node_modules/`, `dist/`, `coverage/`, `.angular/`, `.nx/`,
@@ -85,7 +85,7 @@ If you read six files, read these.
 | `utils/browse-path.utils.ts`                |   175 | Path parsing, router-URL translation                                                                                                                                                             |
 | `models/directory.model.ts`                 |   296 | Vocabulary shapes                                                                                                                                                                                |
 | `auth/admin-access.token.ts`                |       | `ADMIN_ACCESS_CHECKS`, `CURRENT_USERNAME` — the app supplies the implementations                                                                                                                 |
-| `constants/avatar-colors.ts`                |       | `AvatarColor` — **our own** union, imports no design system. Its spec asserts it equals upstream's `SatAvatarCategory` both ways. Previously leaked that third-party type into the public API    |
+| `constants/avatar-colors.ts`                |       | `AvatarColor` — **our own** union; nuxeo-client imports no design system. The app's dashboard page asserts it equals `SatAvatarCategory` both ways. Previously leaked that third-party type      |
 | `src/index.ts`                              |   342 | The published barrel — 275 exported symbols                                                                                                                                                      |
 
 ---
