@@ -39,7 +39,8 @@
  *   - a location that could not be inspected — a `--root` that does not resolve, an unreadable lock,
  *     manifest or .npmrc, a lock or manifest that is valid JSON but not an object, no installed tree,
  *     `npm ls` output that is not JSON, a directory under apps/, libs/ or tools/ that cannot be
- *     listed, a link that cannot be resolved, a source file that cannot be read — exits 2 in either
+ *     listed, a link that cannot be resolved or that leaves the repository, a source file that
+ *     cannot be read — exits 2 in either
  *     mode. A gap in the list is not a short list;
  *   - report-only on a tree with **no** findings exits 1. A clean tree means the removal has
  *     landed, and a gate left report-only after that would let the packages come back unseen, so
@@ -160,7 +161,10 @@ const notes = [];
 {
   const lockPath = join(root, 'package-lock.json');
   const lock = readJson(lockPath, 'package-lock.json');
-  if (lock && (typeof lock.packages !== 'object' || lock.packages === null)) {
+  if (
+    lock &&
+    (typeof lock.packages !== 'object' || lock.packages === null || Array.isArray(lock.packages))
+  ) {
     gaps.push(
       `package-lock.json has no "packages" map (lockfileVersion ${lock.lockfileVersion ?? '?'}), so its entries cannot be listed.`,
     );
@@ -602,6 +606,10 @@ function walkFiles(dir, keep) {
     let entries;
     try {
       const real = realpathSync(join(root, rel));
+      if (real !== root && !real.startsWith(`${root}${sep}`)) {
+        gaps.push(`${rel}: links outside the repository, to ${real} — not scanned`);
+        return;
+      }
       if (seen.has(real)) return;
       seen.add(real);
       entries = readdirSync(join(root, rel), { withFileTypes: true });
@@ -616,6 +624,14 @@ function walkFiles(dir, keep) {
       if (entry.isSymbolicLink()) {
         try {
           const target = statSync(join(root, child));
+          // The scan scope is the repository. A link out of it is not followed — it could reach
+          // `/` or a runner's workspace — and is not skipped either, because what it points at is
+          // source the build may compile.
+          const real = realpathSync(join(root, child));
+          if (real !== root && !real.startsWith(`${root}${sep}`)) {
+            gaps.push(`${child}: links outside the repository, to ${real} — not scanned`);
+            continue;
+          }
           isDirectory = target.isDirectory();
           isFile = target.isFile();
         } catch (error) {

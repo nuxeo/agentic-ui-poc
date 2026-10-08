@@ -9,9 +9,10 @@
  * throwaway repository under the OS temp directory and runs the real gate against it with
  * `--root`, so nothing tracked is touched.
  *
- * Each negative control puts one package in exactly one location and runs in blocking mode. It
- * asserts the exit code **and** the line naming that location, because a control that checks only
- * the exit code cannot tell "red for my reason" from "red for an unrelated one". The fixture they
+ * A detection control puts one package in exactly one location and runs in blocking mode; a gap
+ * control makes one location uninspectable and expects exit 2 rather than a finding. Each asserts
+ * the exit code **and** the line naming that location, because a control that checks only the exit
+ * code cannot tell "red for my reason" from "red for an unrelated one". The fixture they
  * all start from carries the things that must stay quiet — comments and strings naming the
  * packages, a commented-out registry line, the `@hylandsoftware` mapping that stays, and an
  * extraneous package that makes `npm ls` exit non-zero — so every red also shows those did not
@@ -506,6 +507,26 @@ control(
 );
 // Valid JSON of the wrong shape parses without throwing, so a reader that only catches parse
 // errors returns nothing and the file drops out of the scan.
+control(
+  'a lock whose "packages" is an array is a gap, not an empty lock',
+  'gap',
+  ['CANNOT INSPECT', 'package-lock.json has no "packages" map'],
+  fixture('gap-lock-packages-array', { 'package-lock.json': { ...cleanLock(), packages: [] } }),
+);
+{
+  // A link out of the repository: not followed, and not silently skipped.
+  const dir = fixture('gap-link-outside-root');
+  const outside = join(workspace, 'outside-the-repository');
+  mkdirSync(outside, { recursive: true });
+  writeFileSync(join(outside, 'columns.ts'), `import type { DataColumn } ${'from'} '${CORE}';\n`);
+  symlinkSync(outside, join(dir, 'libs', 'escape'));
+  control(
+    'a link that leaves the repository is a gap, not followed or skipped',
+    'gap',
+    ['CANNOT INSPECT', 'libs/escape: links outside the repository'],
+    dir,
+  );
+}
 control(
   'a lock that is valid JSON but not an object is a gap',
   'gap',
