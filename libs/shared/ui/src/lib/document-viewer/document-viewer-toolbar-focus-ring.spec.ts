@@ -12,9 +12,14 @@ import { describe, expect, it } from 'vitest';
 describe('DocumentViewerComponent — image toolbar focus ring (NXENG-799)', () => {
   const scss = readFileSync(join(import.meta.dirname, 'document-viewer.component.scss'), 'utf8');
 
-  it('routes the toolbar ring through the light-strip focus token', () => {
+  function toolbarIconButtonFocusRule(): string {
     const rule = scss.match(/\.viewer-toolbar button\.mat-mdc-icon-button:focus\s*\{[^}]+\}/)?.[0];
     expect(rule).toBeTruthy();
+    return rule!;
+  }
+
+  it('routes the toolbar ring through the light-strip focus token', () => {
+    const rule = toolbarIconButtonFocusRule();
     expect(rule).toMatch(/var\(--document-viewer-focus-on-light-surface\)/);
     expect(rule).not.toMatch(/--mat-sys-primary/);
   });
@@ -22,11 +27,8 @@ describe('DocumentViewerComponent — image toolbar focus ring (NXENG-799)', () 
   it('declares a standalone :focus ring on .viewer-toolbar button.mat-mdc-icon-button', () => {
     expect(scss).toMatch(/\.viewer-toolbar button\.mat-mdc-icon-button:focus\s*\{/);
     expect(scss).not.toMatch(/\.viewer-toolbar button\.mat-mdc-icon-button:focus,\s/);
-    expect(scss).toMatch(
-      /\.viewer-toolbar button\.mat-mdc-icon-button:focus[\s\S]*outline:\s*2px\s+solid/,
-    );
-    expect(scss).toMatch(
-      /\.viewer-toolbar button\.mat-mdc-icon-button:focus[\s\S]*outline-offset:\s*2px/,
-    );
+    const rule = toolbarIconButtonFocusRule();
+    expect(rule).toMatch(/outline:\s*2px\s+solid/);
+    expect(rule).toMatch(/outline-offset:\s*2px/);
   });
 });
