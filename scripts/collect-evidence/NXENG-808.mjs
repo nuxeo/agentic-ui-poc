@@ -1,74 +1,346 @@
 /**
+
  * NXENG-808 — Header toolbar icon button focus ring (IBM 673904446).
+
  *
+
  *   NUXEO_DOC_UID=<any doc detail> EVIDENCE_PHASE=after \
+
  *   npm run evidence:collect -- NXENG-808 scripts/collect-evidence/NXENG-808.mjs
+
  */
+
 export const summary =
+
   'Document detail header toolbar icon buttons show a visible keyboard focus ring';
 
+
+
 const DOC_UID = process.env['NUXEO_DOC_UID']?.trim();
+
 const TOOLBAR_BTN = '[data-action-id="app.toolbar.addToCollection"]';
 
-export const scenes = [
-  {
-    act: 1,
-    title: 'Open document detail header toolbar',
-    intent: 'Reach toolbar actions such as Add to collection',
-    criterion: 'AC-1',
-    async run(page, h) {
-      await h.login();
-      await h.requirePrecondition('NUXEO_DOC_UID is set', Boolean(DOC_UID), 'Set NUXEO_DOC_UID');
-      await h.goToDoc(DOC_UID);
-      await h.expectVisible('detail header', '.detail-header');
-      await h.expectVisible('Add to collection toolbar action', TOOLBAR_BTN);
-      await h.shot('header-context', { highlight: TOOLBAR_BTN, label: 'Header toolbar' });
-    },
-  },
-  {
-    act: 2,
-    title: 'Focus Add to collection',
-    intent: 'Keyboard user on a header toolbar icon button',
-    criterion: 'AC-2',
-    hold: 2000,
-    spotlight: { selector: TOOLBAR_BTN, label: 'Add to collection' },
-    async run(page, h) {
-      const btn = page.locator(TOOLBAR_BTN);
-      await btn.waitFor({ state: 'visible', timeout: 30000 });
-      await btn.focus();
-      const style = await btn.evaluate((el) => {
-        const s = getComputedStyle(el);
-        return {
-          outlineStyle: s.outlineStyle,
-          outlineWidth: s.outlineWidth,
-          active: document.activeElement === el,
+const BACK_BTN = '.detail-header > button.mat-mdc-icon-button, .detail-header > button.mat-icon-button';
+
+const WCAG_1411_MIN_RATIO = 3;
+
+const MAX_TAB_STEPS = 120;
+
+
+
+/** @param {import('@playwright/test').Page} page */
+
+async function tabToToolbarAddToCollection(page) {
+
+  const back = page.locator(BACK_BTN).first();
+
+  await back.waitFor({ state: 'visible', timeout: 30000 });
+
+  await back.focus();
+
+
+
+  for (let step = 0; step <= MAX_TAB_STEPS; step++) {
+
+    const onTarget = await page.evaluate((sel) => {
+
+      const target = document.querySelector(sel);
+
+      return target != null && document.activeElement === target;
+
+    }, TOOLBAR_BTN);
+
+    if (onTarget) {
+
+      return { ok: true, steps: step };
+
+    }
+
+    if (step === MAX_TAB_STEPS) {
+
+      break;
+
+    }
+
+    await page.keyboard.press('Tab');
+
+  }
+
+  return { ok: false, steps: MAX_TAB_STEPS };
+
+}
+
+
+
+/** @param {import('@playwright/test').Page} page */
+
+async function focusRingContrastOnHeader(page) {
+
+  return page.evaluate(
+
+    ({ toolbarSel, headerSel, minRatio }) => {
+
+      const btn = document.querySelector(toolbarSel);
+
+      const header = document.querySelector(headerSel);
+
+      if (!btn || !header) {
+
+        return { ok: false, reason: 'missing toolbar button or detail header' };
+
+      }
+
+
+
+      const parseRgb = (css) => {
+
+        const m = /^rgba?\(([^)]+)\)$/.exec((css ?? '').trim());
+
+        if (!m) return null;
+
+        const parts = m[1]
+
+          .split(/[,\s/]+/)
+
+          .filter(Boolean)
+
+          .map(Number);
+
+        if (parts.length < 3 || parts.some((n) => Number.isNaN(n))) return null;
+
+        return parts.slice(0, 3);
+
+      };
+
+
+
+      const lum = ([r, g, b]) => {
+
+        const ch = (v) => {
+
+          const s = v / 255;
+
+          return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+
         };
-      });
-      h.check('focus on toolbar icon button', style.active, String(style.active));
-      h.check(
-        'visible outline',
-        style.outlineStyle !== 'none' && style.outlineWidth !== '0px',
-        `${style.outlineStyle} ${style.outlineWidth}`,
-      );
-      await h.shot('toolbar-focused', { highlight: TOOLBAR_BTN, label: 'Toolbar button focused' });
+
+        return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+
+      };
+
+
+
+      const ratio = (fgRgb, bgRgb) => {
+
+        const [hi, lo] = [lum(fgRgb), lum(bgRgb)].sort((x, y) => y - x);
+
+        return (hi + 0.05) / (lo + 0.05);
+
+      };
+
+
+
+      const style = getComputedStyle(btn);
+
+      const outlineRgb = parseRgb(style.outlineColor);
+
+      const headerRgb = parseRgb(getComputedStyle(header).backgroundColor);
+
+      if (!outlineRgb || !headerRgb) {
+
+        return {
+
+          ok: false,
+
+          reason: `unparsed colours outline=${style.outlineColor} header=${getComputedStyle(header).backgroundColor}`,
+
+        };
+
+      }
+
+
+
+      const contrast = ratio(outlineRgb, headerRgb);
+
+      return {
+
+        ok: contrast >= minRatio,
+
+        contrast: contrast.toFixed(2),
+
+        outlineColor: style.outlineColor,
+
+        headerBackground: getComputedStyle(header).backgroundColor,
+
+      };
+
     },
-  },
+
+    {
+
+      toolbarSel: TOOLBAR_BTN,
+
+      headerSel: '.detail-header',
+
+      minRatio: WCAG_1411_MIN_RATIO,
+
+    },
+
+  );
+
+}
+
+
+
+export const scenes = [
+
   {
-    act: 3,
-    title: 'Focus ring on header surface',
-    intent: 'Ring visible against .detail-header background',
-    criterion: 'AC-2',
+
+    act: 1,
+
+    title: 'Open document detail header toolbar',
+
+    intent: 'Reach toolbar actions such as Add to collection',
+
+    criterion: 'AC-1',
+
     async run(page, h) {
-      const btn = page.locator(TOOLBAR_BTN);
-      await btn.focus();
-      const w = await btn.evaluate((el) => getComputedStyle(el).outlineWidth);
-      h.check('2px outline', w === '2px', w ?? 'missing');
-      await h.expectNoConsoleErrors('header toolbar', [
-        /automation\/AI\./,
-        /bootstrap\.json/,
-        /\/nuxeo\/logout/,
-      ]);
-      await h.shot('toolbar-ring-proof', { highlight: TOOLBAR_BTN, label: 'Focus ring' });
+
+      await h.login();
+
+      await h.requirePrecondition('NUXEO_DOC_UID is set', Boolean(DOC_UID), 'Set NUXEO_DOC_UID');
+
+      await h.goToDoc(DOC_UID);
+
+      await h.expectVisible('detail header', '.detail-header');
+
+      await h.expectVisible('Add to collection toolbar action', TOOLBAR_BTN);
+
+      await h.shot('header-context', { highlight: TOOLBAR_BTN, label: 'Header toolbar' });
+
     },
+
   },
+
+  {
+
+    act: 2,
+
+    title: 'Tab to Add to collection',
+
+    intent: 'Keyboard user reaches a header toolbar icon button via Tab',
+
+    criterion: 'AC-2',
+
+    hold: 2000,
+
+    spotlight: { selector: TOOLBAR_BTN, label: 'Add to collection' },
+
+    async run(page, h) {
+
+      const nav = await tabToToolbarAddToCollection(page);
+
+      h.check('Tab reached Add to collection', nav.ok, `steps=${nav.steps}`);
+
+
+
+      const style = await page.evaluate((sel) => {
+
+        const el = document.querySelector(sel);
+
+        if (!el) return null;
+
+        const s = getComputedStyle(el);
+
+        return {
+
+          outlineStyle: s.outlineStyle,
+
+          outlineWidth: s.outlineWidth,
+
+          active: document.activeElement === el,
+
+        };
+
+      }, TOOLBAR_BTN);
+
+
+
+      h.check('focus on toolbar icon button', style?.active === true, String(style?.active));
+
+      h.check(
+
+        'visible outline',
+
+        style != null && style.outlineStyle !== 'none' && style.outlineWidth !== '0px',
+
+        style ? `${style.outlineStyle} ${style.outlineWidth}` : 'missing button',
+
+      );
+
+      await h.shot('toolbar-focused', { highlight: TOOLBAR_BTN, label: 'Toolbar button focused' });
+
+    },
+
+  },
+
+  {
+
+    act: 3,
+
+    title: 'Focus ring on header surface',
+
+    intent: 'Ring visible against .detail-header background (WCAG 1.4.11)',
+
+    criterion: 'AC-2',
+
+    async run(page, h) {
+
+      const nav = await tabToToolbarAddToCollection(page);
+
+      h.check('Tab reached Add to collection', nav.ok, `steps=${nav.steps}`);
+
+
+
+      const w = await page.evaluate((sel) => {
+        const el = document.querySelector(sel);
+        return el ? getComputedStyle(el).outlineWidth : null;
+      }, TOOLBAR_BTN);
+
+      h.check('2px outline', w === '2px', w ?? 'missing');
+
+
+
+      const contrast = await focusRingContrastOnHeader(page);
+
+      h.check(
+
+        `outline vs header ≥ ${WCAG_1411_MIN_RATIO}:1`,
+
+        contrast.ok,
+
+        contrast.reason ?? `${contrast.contrast}:1 (${contrast.outlineColor} on ${contrast.headerBackground})`,
+
+      );
+
+
+
+      await h.expectNoConsoleErrors('header toolbar', [
+
+        /automation\/AI\./,
+
+        /bootstrap\.json/,
+
+        /\/nuxeo\/logout/,
+
+      ]);
+
+      await h.shot('toolbar-ring-proof', { highlight: TOOLBAR_BTN, label: 'Focus ring' });
+
+    },
+
+  },
+
 ];
+
+
