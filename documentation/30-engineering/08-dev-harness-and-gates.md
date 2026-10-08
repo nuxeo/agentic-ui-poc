@@ -2,16 +2,16 @@
 title: Dev Harness & Gates
 parent: Engineering
 order: 8
-last_reviewed: 2026-10-05
-repo_commit: b32d4c8
+last_reviewed: 2026-10-08
+repo_commit: d8079db
 audience: engineering
 ---
 
 # The Development Harness and its Gates
 
-> **Last reviewed:** 2026-10-05 · **Repository:** `b32d4c8` — the revision that implements the
-> 24-gate set and the 23-control lockfile suite described below. The `dependency-tree` pair
-> (gates 4 and 5) was added on 2026-10-08; the rest of the page was not re-reviewed then
+> **Last reviewed:** 2026-10-08 · **Repository:** `d8079db` plus the `dependency-tree` pair
+> (gates 4 and 5) that NXSAT-308 adds — 26 gates. That review covered the gate inventory (§2 and
+> §7); figures elsewhere on the page carry the dates they were measured on and were not re-measured
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).
 
@@ -65,7 +65,7 @@ running the full set on a known-broken tree wastes minutes per iteration.
 | 2   | `lockfile`                 | Every non-optional dependency edge resolves **within the lock**                                                                                                                                                                                             | The failure the other gates structurally cannot see. `npm ci --dry-run` only demands what the current platform resolves, so on macOS it never looks at the pruned Linux subtree                                                                   |
 | 3   | `lockfile-selftest`        | The lockfile gate's own 23 controls — 14 negative, 9 positive                                                                                                                                                                                               | That gate has been wrong in both directions — names-not-versions, then waiving every `brace-expansion` major off a `^5.0.0`-scoped override — and both were found by a human reading it, not by anything that ran                                 |
 | 4   | `dependency-tree`          | None of adf-hx, adf-core, adf-extensions, js-api or hxcs-js-client in the lock, the installed tree (`npm ls`), any manifest, `.npmrc` or an import under `apps/`/`libs/`. **Report-only** until the ADF removal commit sets `BLOCKING = true` in the script | NXSAT-308 criterion 3, "checked in CI". Report-only because all five are on `main` by construction and a permanently red gate gets bypassed — but it still fails on an uninspectable location, and on a clean tree whose switch was never flipped |
-| 5   | `dependency-tree-selftest` | The dependency-tree gate's own controls, each negative one a single package in a single location; the run prints the negative/positive split                                                                                                                | A report-only gate passes whatever it finds, so without controls it could regress into finding nothing and stay green until the day it became blocking                                                                                            |
+| 5   | `dependency-tree-selftest` | The dependency-tree gate's own controls, each negative one a single package or an inspection gap in a single location; the run prints how many are negative, quiet and listing                                                                              | A report-only gate passes whatever it finds, so without controls it could regress into finding nothing and stay green until the day it became blocking                                                                                            |
 | 6   | `supply-chain`             | No production `high`/`critical`; every acceptance is dated and unexpired; no unimported production dependency                                                                                                                                               | SCA was a human running `npm audit` and writing the number into a document. It also found `cors` and `dotenv` — two unused production dependencies nobody had recorded                                                                            |
 | 7   | `code-scanning`            | The ref **was analysed**, and no CodeQL alert is unaccounted for                                                                                                                                                                                            | SAST was already running and finding 21 alerts, 6 high, that nobody read. The gap was never the tool — it was that no process consumed the output                                                                                                 |
 | 8   | `guardrails`               | 11 repo invariants — see §3                                                                                                                                                                                                                                 |                                                                                                                                                                                                                                                   |

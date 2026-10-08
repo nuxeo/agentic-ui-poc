@@ -127,9 +127,20 @@ function lockWith(entries) {
 
 // -------------------------------------------------------------------------------- harness ----
 
-/** @type {{ name: string, expected: 'pass'|'fail'|'gap', because: (string|RegExp)[], dir: string, args: string[] }[]} */
+/** @type {{ name: string, expected: 'pass'|'fail'|'gap', kind: Kind, because: (string|RegExp)[], dir: string, args: string[] }[]} */
 const controls = [];
 const EXIT = { pass: 0, fail: 1, gap: 2 };
+
+/**
+ * What a control proves, which its exit code alone does not say: a report-only run that lists
+ * findings exits 0 like a clean one, and counting it as "stayed quiet" overstated the evidence
+ * that the gate does not cry wolf.
+ *
+ * @typedef {'negative' | 'quiet' | 'listing'} Kind
+ *   negative  must fail or report a gap
+ *   quiet     must pass and report nothing
+ *   listing   must pass and list findings — report-only doing its job
+ */
 
 /**
  * @param {string} name
@@ -137,9 +148,17 @@ const EXIT = { pass: 0, fail: 1, gap: 2 };
  * @param {string|RegExp|(string|RegExp)[]} because  what the output must contain
  * @param {string} dir  fixture root
  * @param {string[]} [args]  defaults to blocking mode with every importing file listed
+ * @param {Kind} [kind]  defaults to `negative` for a failure and `quiet` for a pass
  */
-function control(name, expected, because, dir, args = ['--blocking', '--list-files']) {
-  controls.push({ name, expected, because: [because].flat(), dir, args });
+function control(name, expected, because, dir, args = ['--blocking', '--list-files'], kind) {
+  controls.push({
+    name,
+    expected,
+    kind: kind ?? (expected === 'pass' ? 'quiet' : 'negative'),
+    because: [because].flat(),
+    dir,
+    args,
+  });
 }
 
 async function runGate(dir, args) {
@@ -166,7 +185,7 @@ function judge(c, result) {
     b instanceof RegExp ? !b.test(result.out) : !result.out.includes(b),
   );
   const ok = codeOk && missing.length === 0;
-  results.push({ name: c.name, expected: c.expected, ok });
+  results.push({ name: c.name, expected: c.expected, kind: c.kind, ok });
   console.log(
     `${ok ? 'ok  ' : 'FAIL'} ${c.name} — expected ${c.expected}, got exit ${result.code}`,
   );
@@ -385,6 +404,24 @@ control(
   fixture('import-scss', { 'libs/ui/src/styles.scss': `@use '${CORE}/theming' as adf;\n` }),
 );
 
+// Every target in a stylesheet statement, not the first quoted one.
+control(
+  'import: the second target of a comma-separated Sass @import is reported',
+  'fail',
+  `[import] libs/ui/src/multi.scss ${CORE}/theming`,
+  fixture('import-scss-multi', {
+    'libs/ui/src/multi.scss': `@import 'local',\n  '${CORE}/theming';\n`,
+  }),
+);
+control(
+  'import: an unquoted CSS url() target is reported',
+  'fail',
+  `[import] libs/ui/src/legacy.css ${HX}/ui/assets/theme.css`,
+  fixture('import-css-url', {
+    'libs/ui/src/legacy.css': `@import url(${HX}/ui/assets/theme.css);\n`,
+  }),
+);
+
 // ------------------------------------------------------------------- 6. the gate's own rules ----
 
 // Report-only must not be "cannot fail": a clean tree means the removal landed, and the gate has to
@@ -458,6 +495,26 @@ if (process.getuid?.() === 0) {
     dir,
   );
 }
+control(
+  'a --root that does not resolve is a gap, not a crash',
+  'gap',
+  ['CANNOT INSPECT', 'cannot be resolved'],
+  join(workspace, 'no-such-repository'),
+);
+// Valid JSON of the wrong shape parses without throwing, so a reader that only catches parse
+// errors returns nothing and the file drops out of the scan.
+control(
+  'a lock that is valid JSON but not an object is a gap',
+  'gap',
+  ['CANNOT INSPECT', 'package-lock.json: is null, not a JSON object'],
+  fixture('gap-lock-null', { 'package-lock.json': 'null\n' }),
+);
+control(
+  'a manifest that is valid JSON but not an object is a gap',
+  'gap',
+  ['CANNOT INSPECT', 'libs/ui/package.json: is an array, not a JSON object'],
+  fixture('gap-manifest-array', { 'libs/ui/package.json': '[]\n' }),
+);
 control(
   'an unreadable .npmrc is a gap, not an absent mapping',
   'gap',
@@ -543,6 +600,7 @@ control(
     'libs/ui/src/columns.ts': `import type { DataColumn } ${'from'} '${CORE}';\nexport type C = DataColumn;\n`,
   }),
   ['--report-only'],
+  'listing',
 );
 
 // ------------------------------------------------------------------------------- run them ----
@@ -566,7 +624,7 @@ controls.forEach((c, i) => judge(c, outcomes[i]));
 // gate's green on main mean something: the repository's own run is green as configured, AND the
 // same tree in blocking mode is red whenever that run listed anything. On today's main — every
 // package present — the second is the plan's "red run against the pre-removal lockfile". After the
-// removal it becomes a positive control, without this file changing.
+// removal both become quiet controls, without this file changing.
 {
   const asConfigured = await runGate(ROOT, ['--json']);
   let report = null;
@@ -575,10 +633,12 @@ controls.forEach((c, i) => judge(c, outcomes[i]));
   } catch {
     /* judged below */
   }
+  const found = typeof report?.total === 'number' && report.total > 0;
   judge(
     {
       name: 'real repository, mode as configured: exits 0',
       expected: 'pass',
+      kind: found ? 'listing' : 'quiet',
       because: [/"verdict": "(REPORT-ONLY|pass) —/],
     },
     asConfigured,
@@ -588,15 +648,19 @@ controls.forEach((c, i) => judge(c, outcomes[i]));
     judge(
       {
         name: `real repository, forced blocking: red iff the configured run found anything (it found ${total})`,
-        expected: total > 0 ? 'fail' : 'pass',
-        because: [
-          total > 0 ? `dependency-tree: FAIL — ${total} finding(s)` : 'dependency-tree: pass',
-        ],
+        expected: found ? 'fail' : 'pass',
+        kind: found ? 'negative' : 'quiet',
+        because: [found ? `dependency-tree: FAIL — ${total} finding(s)` : 'dependency-tree: pass'],
       },
       await runGate(ROOT, ['--blocking']),
     );
   } else {
-    results.push({ name: 'real repository, forced blocking', expected: 'fail', ok: false });
+    results.push({
+      name: 'real repository, forced blocking',
+      expected: 'fail',
+      kind: 'negative',
+      ok: false,
+    });
     console.log(
       'FAIL real repository, forced blocking — the configured run printed no JSON report to compare with',
     );
@@ -608,10 +672,12 @@ rmSync(workspace, { recursive: true, force: true });
 
 const failed = results.filter((r) => !r.ok);
 // The split is reported rather than a total, because only the negative controls prove the gate
-// can fail; the positive ones prove it does not cry wolf.
-const negatives = results.filter((r) => r.expected !== 'pass').length;
-const positives = results.length - negatives;
-const split = `${negatives} negative (must report) + ${positives} positive (must stay quiet)`;
+// can fail, only the quiet ones prove it does not cry wolf, and the listing ones prove neither —
+// they prove report-only reports.
+const count = (kind) => results.filter((r) => r.kind === kind).length;
+const split =
+  `${count('negative')} negative (must fail) + ${count('quiet')} quiet (must pass and report nothing)` +
+  ` + ${count('listing')} listing (must pass and list findings)`;
 console.log();
 for (const why of notRun) console.log(`NOT RUN ${why}`);
 if (failed.length === 0) {

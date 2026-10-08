@@ -102,7 +102,7 @@ const ALL_GATES = [
     label: 'Dependency tree controls',
     cmd: 'node',
     argv: ['scripts/beta-harness/dependency-tree.selftest.mjs'],
-    // The negative/positive split is the evidence, so surface it on a pass too.
+    // The negative/quiet/listing split is the evidence, so surface it on a pass too.
     echoOnPass: true,
   },
   // Phase 6 step 4 gate: SCA with teeth, next to `lockfile` because both read the dependency

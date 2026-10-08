@@ -24,7 +24,8 @@
  *   npmrc      an `@alfresco:registry` mapping in the root .npmrc. Comment lines do not count.
  *   imports    a module specifier naming one of the five, or a subpath of one, in any source or
  *              style file under apps/ or libs/. Code is read with the TypeScript scanner, so a
- *              comment or a string that mentions a name is not an import.
+ *              comment or a string that mentions a name is not an import. A stylesheet's `@use`,
+ *              `@forward` and `@import` count every target, quoted or `url(...)`.
  *
  * ## Report-only until the removal commit
  *
@@ -35,7 +36,8 @@
  *
  * Report-only is not "cannot fail":
  *
- *   - a location that could not be inspected — an unreadable lock, manifest or .npmrc, no installed tree,
+ *   - a location that could not be inspected — a `--root` that does not resolve, an unreadable lock,
+ *     manifest or .npmrc, a lock or manifest that is valid JSON but not an object, no installed tree,
  *     `npm ls` output that is not JSON, a directory under apps/, libs/ or tools/ that cannot be
  *     listed, a link that cannot be resolved, a source file that cannot be read — exits 2 in either
  *     mode. A gap in the list is not a short list;
@@ -128,7 +130,15 @@ if (has('--blocking') && has('--report-only')) {
 const rootArg = option('--root');
 // Real path, because `npm ls --long` reports real paths and macOS's temp directory is a symlink —
 // `relative()` across the two printed `../../private/var/...` for every installed package.
-const root = realpathSync(resolve(rootArg ?? join(import.meta.dirname, '..', '..')));
+let root;
+try {
+  root = realpathSync(resolve(rootArg ?? join(import.meta.dirname, '..', '..')));
+} catch (error) {
+  console.error(
+    `dependency-tree: CANNOT INSPECT — the root ${rootArg ?? '(this repository)'} cannot be resolved: ${error.message}`,
+  );
+  process.exit(2);
+}
 const blocking = has('--blocking') ? true : has('--report-only') ? false : BLOCKING;
 const modeSource =
   has('--blocking') || has('--report-only')
@@ -358,7 +368,7 @@ const notes = [];
       gaps.push(`${rel}: cannot read — ${error.message}`);
       continue;
     }
-    const specifiers = CODE_FILE.test(rel) ? codeSpecifiers(text) : styleSpecifiers(text);
+    const specifiers = CODE_FILE.test(rel) ? codeSpecifiers(text) : styleSpecifiers(text, rel);
     const hits = new Map();
     for (const specifier of specifiers) {
       const pkg = FORBIDDEN.find((n) => specifier === n || specifier.startsWith(`${n}/`));
@@ -564,10 +574,17 @@ function codeSpecifiers(text) {
 }
 
 /** `@use`, `@forward` and `@import` in a stylesheet, with block and line comments stripped first. */
-function styleSpecifiers(text) {
+function styleSpecifiers(text, rel) {
   const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
-  return [...code.matchAll(/@(?:use|forward|import)\s+(?:url\(\s*)?['"]~?([^'"]+)['"]/g)].map(
-    (m) => m[1],
+  // Every target in the statement, not the first: Sass takes `@import 'a', 'b';` and CSS takes an
+  // unquoted `url(...)`. A statement runs to `;`, which may be lines away; the indented `.sass`
+  // syntax has no `;`, so there it runs to the end of the line.
+  const statement = rel.endsWith('.sass')
+    ? /@(?:use|forward|import)\b([^\n]*)/g
+    : /@(?:use|forward|import)\b([^;]*)/g;
+  const target = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"]+)\3/g;
+  return [...code.matchAll(statement)].flatMap((s) =>
+    [...s[1].matchAll(target)].map((t) => (t[2] ?? t[4]).replace(/^~/, '')),
   );
 }
 
@@ -640,13 +657,22 @@ function projectOf(rel) {
   return fallback;
 }
 
+/** A JSON object, or `null` with a gap recorded. Valid JSON of another shape is a gap too. */
 function readJson(path, label) {
+  let value;
   try {
-    return JSON.parse(readFileSync(path, 'utf8'));
+    value = JSON.parse(readFileSync(path, 'utf8'));
   } catch (error) {
     gaps.push(`${label}: cannot read — ${error.message}`);
     return null;
   }
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    gaps.push(
+      `${label}: is ${Array.isArray(value) ? 'an array' : String(value)}, not a JSON object`,
+    );
+    return null;
+  }
+  return value;
 }
 
 function toRepoPath(path) {
