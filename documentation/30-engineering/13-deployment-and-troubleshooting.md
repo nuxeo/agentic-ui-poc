@@ -107,7 +107,9 @@ together. The server side (NXSAT-312 slice 1) stops serving files from disk: a f
 stops reading the Note: the application makes no request for it, before or after sign-in, and
 applies only the fragments the server serves. A Note left in the repository is inert. Anyone
 using either must re-create their settings in a configuration package, or as a preset in a demo
-package. `npx nx g @nuxeo-satori/platform:config-package <name> --owner=<owner>` scaffolds one,
+package. `npx nx g @nuxeo-satori/platform:config-package <name> --owner=<owner>` scaffolds one
+(in a clone of this repository, before the platform package is published:
+`npx nx g ./tools/satori-generators:config-package <name> --owner=<owner>`),
 and `npx nx build <name>` checks its fragments and writes the zip `nuxeoctl mp-install` takes;
 `config-packages/presales-demo` is the demo package presales installs.
 

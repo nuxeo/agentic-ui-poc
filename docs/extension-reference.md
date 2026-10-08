@@ -73,7 +73,8 @@ defaults are always registered first. Everything at that path is served without 
 put nothing secret in a fragment.
 
 Scaffold that package rather than writing it by hand:
-`npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme` writes both
+`npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme` (from the published
+package; in a clone of this repository, `npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`) writes both
 declarations, starter fragments with JSON schemas for your editor, and a `build` target whose
 `build.mjs` refuses what the server would reject — JSON that does not parse, a repeated key, a
 fragment over 1 MiB, a missing asset — and writes the installable zip. `config-packages/presales-demo`
