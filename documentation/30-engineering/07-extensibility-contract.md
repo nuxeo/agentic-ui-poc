@@ -28,7 +28,8 @@ promise checkable rather than aspirational.
 | **2 — Customer code**      | A TypeScript library against `@nuxeo-satori/platform`                       | Yes, in **their** repo | Yes — npm semver                                  |
 | **3 — Agent harness**      | Prompts. The generators and guardrails ship inside the package              | Yes, in their repo     | Yes                                               |
 
-Layers 0 and 1 are expected to absorb most customer requests and need no build.
+Layers 0 and 1 are expected to absorb most customer requests and need no build of the application:
+the customer's configuration package is zipped by a dependency-free script and installed.
 
 > **This expectation is a design assumption, not a measured fact.** It has not been tested
 > against real customer requests. [`docs/adf-hx-beta-plan.md`](../../docs/adf-hx-beta-plan.md)

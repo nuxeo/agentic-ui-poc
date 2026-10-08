@@ -43,7 +43,7 @@ those features do not work, and the rest of the application does.
 
 The longer documents sort every change into four numbered layers:
 
-| Layer | In plain words                                                                                                  | Code?                  | Rebuild?            |
+| Layer | In plain words                                                                                                  | Code?                  | Rebuild the app?    |
 | ----- | --------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------- |
 | 0     | **Settings**: product name, colours, language, on-screen wording                                                | No                     | No                  |
 | 1     | **Arrangement**: which menu entries, buttons, tabs and columns appear, in what order, under what name, for whom | No                     | No                  |
