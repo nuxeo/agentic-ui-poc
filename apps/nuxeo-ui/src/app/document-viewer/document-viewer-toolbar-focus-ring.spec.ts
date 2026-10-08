@@ -1,6 +1,7 @@
 /**
- * NXENG-799 — Toggle fit and sibling toolbar icon buttons must show a keyboard focus
- * indicator on the image toolbar strip (IBM `style_focus_visible`, WCAG 2.4.7 / 1.4.11).
+ * NXENG-799 / NXENG-816 — Toggle fit, Zoom in, and sibling toolbar icon buttons must show a
+ * keyboard focus indicator on the image toolbar strip (IBM `style_focus_visible`, WCAG 2.4.7 /
+ * 1.4.11).
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -93,7 +94,7 @@ function assertFocusRingContrast(
     .toBeGreaterThanOrEqual(WCAG_FOCUS_INDICATOR);
 }
 
-describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
+describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-816)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
@@ -114,10 +115,12 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
   });
 
   afterEach(() => {
-    const button = fixture.nativeElement.querySelector(
-      '.viewer-toolbar button[aria-label="Toggle fit"]',
-    ) as HTMLButtonElement | null;
-    button?.blur();
+    for (const label of ['Toggle fit', 'Zoom in']) {
+      const button = fixture.nativeElement.querySelector(
+        `.viewer-toolbar button[aria-label="${label}"]`,
+      ) as HTMLButtonElement | null;
+      button?.blur();
+    }
     fixture.nativeElement.remove();
     (fixture.nativeElement as HTMLElement).style.removeProperty(
       '--document-viewer-focus-on-light-surface',
@@ -129,12 +132,20 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
     }
   });
 
-  function toggleFitButton(): HTMLButtonElement {
+  function toolbarButton(accessibleName: string): HTMLButtonElement {
     const button = fixture.nativeElement.querySelector(
-      '.viewer-toolbar button[aria-label="Toggle fit"]',
+      `.viewer-toolbar button[aria-label="${accessibleName}"]`,
     ) as HTMLButtonElement | null;
-    expect(button).withContext('expected Toggle fit toolbar button').not.toBeNull();
+    expect(button).withContext(`expected ${accessibleName} toolbar button`).not.toBeNull();
     return button!;
+  }
+
+  function toggleFitButton(): HTMLButtonElement {
+    return toolbarButton('Toggle fit');
+  }
+
+  function zoomInButton(): HTMLButtonElement {
+    return toolbarButton('Zoom in');
   }
 
   it('wires the focus ring through --document-viewer-focus-on-light-surface on the viewer host', () => {
@@ -146,6 +157,18 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
     button.focus();
 
     expect(getComputedStyle(button).outlineColor).toBe(sentinel);
+  });
+
+  it('wires Zoom in through --document-viewer-focus-on-light-surface (NXENG-816 / IBM 911144409)', () => {
+    const button = zoomInButton();
+    const host = fixture.nativeElement as HTMLElement;
+    const sentinel = 'rgb(4, 5, 6)';
+    host.style.setProperty('--document-viewer-focus-on-light-surface', sentinel);
+    fixture.detectChanges();
+    button.focus();
+
+    expect(getComputedStyle(button).outlineColor).toBe(sentinel);
+    expect(getComputedStyle(button).outlineWidth).toBe('2px');
   });
 
   it('declares a standalone :focus rule that IBM style_focus_visible can read', () => {
@@ -199,6 +222,26 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
       expect(backdrop)
         .withContext(`${label}: ring backdrop should match the toolbar strip`)
         .toEqual(stripBg);
+    });
+  }
+
+  for (const theme of [...COMPILED_THEME_BASES, null] as const) {
+    const label = theme ?? 'no data-app-theme (first paint)';
+
+    it(`Zoom in meets ${WCAG_FOCUS_INDICATOR}:1 focus-indicator contrast — ${label} (NXENG-816)`, () => {
+      if (theme === null) {
+        document.documentElement.removeAttribute('data-app-theme');
+      } else {
+        document.documentElement.setAttribute('data-app-theme', theme);
+      }
+      fixture.detectChanges();
+
+      const button = zoomInButton();
+      const toolbar = fixture.nativeElement.querySelector('.viewer-toolbar') as HTMLElement | null;
+      expect(toolbar).withContext(`${label}: expected .viewer-toolbar`).not.toBeNull();
+      if (!toolbar) return;
+
+      assertFocusRingContrast(button, toolbar, `${label} — Zoom in`);
     });
   }
 });
