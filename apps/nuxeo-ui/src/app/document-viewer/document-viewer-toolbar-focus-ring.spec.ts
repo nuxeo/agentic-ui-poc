@@ -159,18 +159,6 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-81
     expect(getComputedStyle(button).outlineColor).toBe(sentinel);
   });
 
-  it('wires Zoom in through --document-viewer-focus-on-light-surface (NXENG-816 / IBM 911144409)', () => {
-    const button = zoomInButton();
-    const host = fixture.nativeElement as HTMLElement;
-    const sentinel = 'rgb(4, 5, 6)';
-    host.style.setProperty('--document-viewer-focus-on-light-surface', sentinel);
-    fixture.detectChanges();
-    button.focus();
-
-    expect(getComputedStyle(button).outlineColor).toBe(sentinel);
-    expect(getComputedStyle(button).outlineWidth).toBe('2px');
-  });
-
   it('declares a standalone :focus rule that IBM style_focus_visible can read', () => {
     const focusSelectors: string[] = [];
     for (const sheet of Array.from(document.styleSheets)) {
@@ -216,6 +204,7 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-81
       if (!toolbar) return;
 
       assertFocusRingContrast(button, toolbar, label);
+      assertFocusRingContrast(zoomInButton(), toolbar, `${label} — Zoom in (NXENG-816)`);
 
       const backdrop = surfaceBehindPositiveOutlineRing(button);
       const stripBg = parseColor(getComputedStyle(toolbar).backgroundColor).rgb;

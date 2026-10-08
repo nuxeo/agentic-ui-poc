@@ -55,7 +55,17 @@ export const scenes = [
         'lib-document-viewer .viewer-toolbar button[aria-label="Zoom in"]',
       );
       h.check('Zoom in control exists', (await btn.count()) > 0, 'Picture with image preview');
-      await btn.focus();
+      await page.keyboard.press('Tab');
+      for (let i = 0; i < 40; i += 1) {
+        const active = await page.evaluate(
+          () =>
+            document.activeElement?.getAttribute('aria-label') ??
+            document.activeElement?.tagName ??
+            '',
+        );
+        if (active === 'Zoom in') break;
+        await page.keyboard.press('Tab');
+      }
       const o = await btn.evaluate((el) => {
         const s = getComputedStyle(el);
         return {
@@ -64,7 +74,7 @@ export const scenes = [
           active: document.activeElement === el,
         };
       });
-      h.check('button receives focus', o.active === true, String(o.active));
+      h.check('button receives focus via Tab', o.active === true, String(o.active));
       h.check(
         'outline is visible',
         o.outlineStyle !== 'none' && o.outlineWidth !== '0px',
