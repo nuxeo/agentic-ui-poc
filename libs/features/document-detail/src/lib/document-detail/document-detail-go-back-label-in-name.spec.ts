@@ -23,6 +23,9 @@ describe('Document detail Go back label in name (NXENG-826)', () => {
     );
     const iconMarkup = backButton!.match(/<mat-icon[\s\S]*?<\/mat-icon>/)?.[0];
     expect(iconMarkup, 'header back mat-icon').toBeTruthy();
-    expect(iconMarkup).toBe('<mat-icon fontIcon="arrow_back"></mat-icon>');
+    expect(iconMarkup).toContain('fontIcon="arrow_back"');
+    expect(iconMarkup, 'ligature text must not appear as mat-icon content').not.toMatch(
+      />\s*arrow_back\s*</,
+    );
   });
 });
