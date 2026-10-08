@@ -1,7 +1,9 @@
 /**
  * NXENG-830 / IBM 1230336254 — the document-detail properties panel close control must show a
- * keyboard focus indicator (WCAG 2.1 SC 2.4.7). Same IBM `style_focus_visible` constraints as
- * NXENG-776 / NXENG-773: standalone `:focus` on the focused Material icon button.
+ * keyboard focus indicator (WCAG 2.1 SC 2.4.7). Karma loads theme tokens; the host pulls in the
+ * real feature SCSS. Standalone `.panel-close-btn:focus` selector shape and production template
+ * wiring are owned by `document-detail-panel-close-focus-ring.spec.ts` (feature Vitest); this
+ * suite owns compiled contrast, inset geometry, and IBM `:focus`-only focus-visible behaviour.
  */
 import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -134,34 +136,4 @@ describe('Document detail panel close — keyboard focus indicator (NXENG-830)',
       }
     });
   }
-
-  it('declares a standalone :focus rule that IBM style_focus_visible can read', async () => {
-    const { fixture, button } = await mount();
-    try {
-      const focusSelectors: string[] = [];
-      for (const sheet of Array.from(document.styleSheets)) {
-        let sheetRules: CSSRuleList;
-        try {
-          sheetRules = sheet.cssRules;
-        } catch {
-          continue;
-        }
-        for (const rule of Array.from(sheetRules)) {
-          const selector = (rule as CSSStyleRule).selectorText;
-          if (selector?.includes('.panel-close-btn') && selector.includes(':focus')) {
-            focusSelectors.push(selector);
-          }
-        }
-      }
-
-      const canonical = focusSelectors.map((selector) =>
-        selector.replace(/\[_ngcontent-[^\]]+\]/g, '').trim(),
-      );
-      expect(focusSelectors.length).toBeGreaterThan(0);
-      expect(canonical).toContain('.panel-close-btn.mat-mdc-icon-button:focus');
-    } finally {
-      button.blur();
-      fixture.nativeElement.remove();
-    }
-  });
 });

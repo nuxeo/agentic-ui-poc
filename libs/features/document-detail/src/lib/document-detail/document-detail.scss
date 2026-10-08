@@ -331,15 +331,6 @@ sat-breadcrumbs {
   }
 }
 
-// NXENG-830 — properties panel close control (IBM 1230336254 / WCAG 2.4.7). Material
-// `mat-icon-button` suppresses the default ring; IBM Equal Access reads `:focus` only — keep a
-// standalone selector, not a comma list with `:focus-visible` (AGENTS/08-bug-patterns.md §17).
-// Inset offset avoids clipping by `.properties-panel { overflow: hidden }`.
-.panel-close-btn.mat-mdc-icon-button:focus {
-  outline: 2px solid var(--document-detail-properties-label-muted);
-  outline-offset: -2px;
-}
-
 .panel-sub-tabs {
   display: flex;
   border-bottom: 1px solid #e0e0e0;
@@ -378,12 +369,8 @@ sat-breadcrumbs {
   }
 }
 
-// NXENG-776 / NXENG-792 — properties panel sub-tabs (IBM 298748541, 321710239;
-// `style_focus_visible`, standalone `:focus`).
-// Ring colour tracks the fixed light properties panel, not `--mat-sys-primary` (too pale on dark).
-// Negative offset keeps the ring inside the tab box: `.properties-panel` sets `overflow: hidden`,
-// so a ring painted outside the first/last flex tab is clipped at the panel edge.
-.sub-tab:focus {
+.sub-tab:focus,
+.panel-close-btn.mat-mdc-icon-button:focus {
   outline: 2px solid var(--document-detail-properties-label-muted);
   outline-offset: -2px;
 }
