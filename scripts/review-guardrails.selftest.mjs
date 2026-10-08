@@ -1180,6 +1180,27 @@ expectRed(
   /carries `label: 'Knowledge Discovery'` — a user-facing string in a descriptor/,
 );
 
+// A story's args are documentation sample data, like a spec's fixtures.
+falsePositiveControls += 1;
+expectGreen('a literal label in a story arg', 'checkNoHardcodedDescriptorText', {
+  ...WITH_DESCRIPTORS,
+  'libs/shared/satori-components/src/lib/tag/tag.stories.ts':
+    "export const Default = { args: { label: 'Invoice' } };\n",
+});
+
+// …but only a `.stories.ts` file: the same literal in a neighbouring source file is still caught.
+expectRed(
+  'a literal label in a file merely named like a story',
+  'checkNoHardcodedDescriptorText',
+  WITH_DESCRIPTORS,
+  (write) =>
+    write(
+      'libs/shared/satori-components/src/lib/tag/tag.stories-data.ts',
+      "export const TAGS = [{ id: 'x', label: 'Invoice' }];\n",
+    ),
+  /tag\.stories-data\.ts:1 carries `label: 'Invoice'`/,
+);
+
 const SHELL = (title) =>
   `<!doctype html>\n<html lang="en">\n  <head>\n    <title>${title}</title>\n  </head>\n` +
   `  <body><app-root></app-root></body>\n</html>\n`;
