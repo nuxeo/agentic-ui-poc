@@ -7,6 +7,10 @@
 still download from GitHub Packages with a fresh cache, and nobody has said package access is being
 withdrawn. The plan's section 11 order stands: ADF is removed last, in the removal commit.
 
+So `/browse-adf-hx` stays as a parallel route while the `nxs-` components are built. The removal commit
+then deletes it and re-enables `app.navbar.browse` on `/browse`, as the NXSAT-308 plan decided on
+2026-10-07.
+
 The order is safe only if the "before" half of the parity evidence is captured early (section 4). That
 evidence is the one thing that cannot be produced after access is lost.
 

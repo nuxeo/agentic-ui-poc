@@ -277,8 +277,9 @@ contracts.
      or have the component disable sorting and paging for a source that cannot honour them. Do not show
      sort headers that change nothing.
 2. **Paging.**
-   - Next and Previous are driven by `hasNextPage`. Show "of N" only when `totalSize` is a real,
-     non-negative total.
+   - Next is enabled by `hasNextPage`. Previous is enabled whenever the current page index is above
+     zero; `hasNextPage` says nothing about it. Show "of N" only when `totalSize` is a real, non-negative
+     total.
    - Keep the page size at 100 or less (today it is 50).
    - If a "load more" mode is added, cap the accumulated rows at 500, the largest size measured that
      stays smooth at 4× throttle.

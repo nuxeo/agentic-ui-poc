@@ -34,7 +34,7 @@ own it. It also covers the two wrapper-only patterns, `MatSnackBar` toasts and i
 | Upload controls (drop zone, input) | 7 (5)               | 6                      | `upload` (`[satUpload]`, `sat-upload-area`), `upload-field`                                                     | `nxs-upload`                     |
 | Upload queues                      | 2 (2)               | 1                      | `upload-field` file list (fit not verified)                                                                     | `nxs-upload`                     |
 | Cards and grid tiles               | 7 (7)               | 2, plus DocumentCards  | `interactive-card`, `card-surface`                                                                              | `nxs-card`                       |
-| Banners and inline notices         | 19 (11)             | 6                      | `banner`                                                                                                        | `nxs-banner`                     |
+| Banners and inline notices         | 20 (12)             | 6                      | `banner`                                                                                                        | `nxs-banner`                     |
 | Chips (`mat-chip-set`/`-grid`)     | 18 (7)              | 16                     | **none**: `inline-chip` is not an input chip (section 3, item 1)                                                | **none**; owned by §5 J/K inputs |
 | Loading: existing skeletons        | 7 (3)               | 0                      | `ghost`                                                                                                         | `nxs-ghost`                      |
 | Loading: region-level spinners     | 56 (33)             | 20                     | `ghost` where the content shape is known                                                                        | `nxs-ghost` or `nxs-spinner`     |
@@ -224,13 +224,23 @@ notice, so it is a card here rather than a `banner`.
 | `libs/features/administration/src/lib/admin-audit-page/admin-audit-page.component.html:17`                | AI anomaly banner                            | admin (no ticket)          |
 | `apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.html:4`                                         | AI insights banner                           | app                        |
 | `apps/nuxeo-ui/src/app/features/contracts/contracts-page.component.html:234`                              | Info banner                                  | app                        |
+| `libs/features/browse/src/lib/browse-adf-hx-poc/browse-adf-hx-poc.html:19`                                | POC scope notice (`role="status"`)           | POC route (deleted)        |
 
-Three `role="status"` regions matched the scan but are not banners. The extension outlet's loading
-announcement (`libs/shared/extensions/src/lib/extension-outlet.component.html:2`) is the kind of live
-region `nxs-ghost` needs (section 3, item 5). The preset badge
-(`apps/nuxeo-ui/src/app/shell/preset-badge/preset-badge.component.html:4`) is a status badge. The progress
-and success regions in the create/import dialog (`create-import-dialog.component.html:258`, `:335`, `:955`,
-`:1002`) belong with `nxs-upload`.
+The scan's `role` pattern matched 21 elements. The rows above cover 7 of them. The other 14 are accounted
+for elsewhere or are not banners:
+
+- **Form and load errors, in section 4.12:** `create-import-dialog.component.html:251`, `:332`, `:435` and
+  `:950`; `browse-adf-hx-poc.html:84`; `hxp-browse-trash.component.html:9`.
+- **A form validation hint, which stays as text:** `create-import-dialog.component.html:430`, "upload a
+  main file to create".
+- **Upload progress and success, which belong with `nxs-upload`:** `create-import-dialog.component.html:258`,
+  `:335`, `:955` and `:1002`.
+- **Live regions that are not notices.** The extension outlet's loading announcement
+  (`libs/shared/extensions/src/lib/extension-outlet.component.html:2`) is the kind `nxs-ghost` needs
+  (section 3, item 5). The bridge pager's range label
+  (`libs/shared/adf-hx-bridge/src/lib/ui/hxp-browse-pager/hxp-browse-pager.component.html:2`) goes with the
+  promoted Pager. The preset badge (`apps/nuxeo-ui/src/app/shell/preset-badge/preset-badge.component.html:4`)
+  is a status badge.
 
 ### 4.7 Chips → no Satori target → stay Material, owned by the §5 J/K inputs
 
