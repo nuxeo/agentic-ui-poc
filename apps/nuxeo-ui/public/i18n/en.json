@@ -1829,6 +1829,13 @@
       "done": "Done",
       "reset": "Reset",
       "title": "Column Settings"
+    },
+    "drive-dialog": {
+      "checking": "Checking Nuxeo Drive...",
+      "close": "Close",
+      "package": "Package to Install",
+      "platform": "Platform",
+      "title": "Download Nuxeo Drive Client"
     }
   },
   "permission": {

@@ -1,0 +1,17 @@
+<div class="nxs-folder-header__lead">
+  @if (documentType()) {
+    <nxs-doc-type-icon class="nxs-folder-header__icon" [type]="documentType()" />
+  }
+  <div class="nxs-folder-header__text">
+    @if (heading()) {
+      <div class="nxs-folder-header__heading" role="heading" aria-level="1">{{ heading() }}</div>
+    }
+    @if (subheading()) {
+      <span class="nxs-folder-header__subheading">{{ subheading() }}</span>
+    }
+    <ng-content select="[nxsFolderHeaderDetail]" />
+  </div>
+</div>
+<div class="nxs-folder-header__actions">
+  <ng-content />
+</div>

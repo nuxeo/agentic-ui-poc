@@ -189,7 +189,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-4 exported symbol(s).
+10 exported symbol(s).
 
 ```ts
 class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
@@ -211,12 +211,57 @@ class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsColumnPickerComponent, "nxs-column-picker", never, { "columns": { "alias": "columns"; "required": true; "isSignal": true; }; "required": { "alias": "required"; "required": false; "isSignal": true; }; "defaults": { "alias": "defaults"; "required": false; "isSignal": true; }; }, { "apply": "apply"; "dismiss": "dismiss"; }, never, never, true, never>;
     }
 }
+class NxsDocTypeIconComponent {
+    readonly type: _angular_core.InputSignal<string>;
+    readonly label: _angular_core.InputSignal<string>;
+    protected readonly icon: _angular_core.Signal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsDocTypeIconComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsDocTypeIconComponent, "nxs-doc-type-icon", never, { "type": { "alias": "type"; "required": true; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
+    }
+}
+class NxsDomainHintComponent {
+    readonly documentType: _angular_core.InputSignal<string | null | undefined>;
+    readonly path: _angular_core.InputSignal<string | null | undefined>;
+    protected readonly guidanceKey = "browse.message.domain-container-guidance";
+    protected readonly visible: _angular_core.Signal<boolean>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsDomainHintComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsDomainHintComponent, "nxs-domain-hint", never, { "documentType": { "alias": "documentType"; "required": false; "isSignal": true; }; "path": { "alias": "path"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
+    }
+}
+class NxsDriveDialogComponent {
+    protected readonly packages: readonly DrivePackage[];
+    protected readonly checking: _angular_core.WritableSignal<boolean>;
+    constructor();
+    protected close(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsDriveDialogComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsDriveDialogComponent, "nxs-drive-dialog", never, {}, {}, never, never, true, never>;
+    }
+}
+interface NxsDriveDialogData {
+    readonly folderPath?: string;
+    }
+}
 class NxsEmptyStateComponent {
     readonly heading: _angular_core.InputSignal<string>;
     readonly message: _angular_core.InputSignal<string>;
     readonly icon: _angular_core.InputSignal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsEmptyStateComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
+    }
+}
+class NxsFolderHeaderComponent {
+    readonly heading: _angular_core.InputSignal<string>;
+    readonly subheading: _angular_core.InputSignal<string>;
+    readonly documentType: _angular_core.InputSignal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsFolderHeaderComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsFolderHeaderComponent, "nxs-folder-header", never, { "heading": { "alias": "heading"; "required": false; "isSignal": true; }; "subheading": { "alias": "subheading"; "required": false; "isSignal": true; }; "documentType": { "alias": "documentType"; "required": false; "isSignal": true; }; }, {}, never, ["[nxsFolderHeaderDetail]", "*"], true, never>;
+    }
+}
+class NxsIconComponent {
+    readonly name: _angular_core.InputSignal<string>;
+    readonly label: _angular_core.InputSignal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsIconComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsIconComponent, "nxs-icon", never, { "name": { "alias": "name"; "required": true; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
 }
 interface NxsPickableColumn {

@@ -35,7 +35,6 @@ import {
   DOMAIN_CONTAINER_GUIDANCE_KEY,
   defaultNoteContent,
   BLOB_NOT_ATTACHED_ERROR,
-  docTypeIcon,
   docTypeLabel,
   directoryPickerLabel,
   filterDirectoryPickerEntries,
@@ -64,7 +63,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
-import { NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
+import { NxsDocTypeIconComponent, NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
 
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */
@@ -108,7 +107,6 @@ export interface StagedImportFile {
 export interface DocTypeDef {
   type: string;
   label: string;
-  icon: string;
 }
 
 function defaultImportPropertiesState(file: File): ImportPropertiesState {
@@ -148,7 +146,6 @@ function toDocTypeDefs(types: string[], translate: (key: string) => string): Doc
   return types.map((type) => ({
     type,
     label: docTypeLabel(type, translate),
-    icon: docTypeIcon(type),
   }));
 }
 
@@ -161,6 +158,7 @@ const DIALOG_SIZE = {
   selector: 'lib-create-import-dialog',
   standalone: true,
   imports: [
+    NxsDocTypeIconComponent,
     NxsSpinnerComponent,
     TranslatePipe,
     MatDialogModule,
