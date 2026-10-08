@@ -215,6 +215,20 @@ describe('readExtensionConfig', () => {
     expect(config.slots?.['navbar'].map((entry) => entry.id)).toEqual(['acme.navbar.ok']);
   });
 
+  it('ignores a __proto__ slot or override id rather than re-prototyping what it reads', () => {
+    const config = readExtensionConfig(
+      JSON.parse(
+        '{"slots": {"__proto__": [{"id": "acme.navbar.x"}]},' +
+          ' "overrides": {"__proto__": {"app.navbar.trash": {"visible": false}}}}',
+      ),
+    );
+
+    expect(Object.getPrototypeOf(config.slots)).toBe(Object.prototype);
+    expect(Object.getPrototypeOf(config.overrides)).toBe(Object.prototype);
+    expect(config.overrides?.['app.navbar.trash']).toBeUndefined();
+    expect(config).toStrictEqual({ slots: {}, overrides: {} });
+  });
+
   it('tolerates the shapes a customer can actually save', () => {
     expect(readExtensionConfig(null)).toEqual({});
     expect(readExtensionConfig('a string')).toEqual({});

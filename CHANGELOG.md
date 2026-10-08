@@ -25,9 +25,10 @@ so the next publish has to be a minor. Nothing has been published yet.
   longer break every slot. The `$references` merge (`mergeExtensionConfigs`) threw `TypeError`
   there — so `"rule": null` after a nested rule, or any `order` after `"order": null`, made every
   slot's `resolve()` rethrow — and now the later layer's value is used.
-- A `__proto__` key in an extension layer is ignored instead of replacing the merged object's
-  prototype, and an entry whose `id` is `__proto__` or names an `Object.prototype` member
-  (`constructor`, `toString`) merges by id like any other.
+- A `__proto__` key in an extension layer — a slot id, an override id, or any key the merge
+  reaches — is ignored instead of replacing an object's prototype, and an entry whose `id` is
+  `__proto__` or names an `Object.prototype` member (`constructor`, `toString`) merges by id like
+  any other.
 
 ### Changed — BREAKING (`@nuxeo-satori/platform/nuxeo-client`)
 

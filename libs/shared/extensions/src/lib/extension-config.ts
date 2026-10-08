@@ -154,7 +154,8 @@ export function readExtensionConfig(raw: unknown): ExtensionConfig {
   if (isRecord(slots)) {
     const readSlots: Record<string, ExtensionElement[]> = {};
     for (const [slotId, entries] of Object.entries(slots)) {
-      if (!Array.isArray(entries)) continue;
+      // Assigning it would replace the object's prototype, the thing `mergeObjects` refuses too.
+      if (!Array.isArray(entries) || slotId === '__proto__') continue;
       readSlots[slotId] = entries.filter(
         (entry): entry is ExtensionElement =>
           isRecord(entry) && typeof entry['id'] === 'string' && entry['id'].trim() !== '',
@@ -167,7 +168,9 @@ export function readExtensionConfig(raw: unknown): ExtensionConfig {
   if (isRecord(overrides)) {
     const readOverrides: Record<string, ExtensionOverride> = {};
     for (const [id, override] of Object.entries(overrides)) {
-      if (isRecord(override)) readOverrides[id] = override as ExtensionOverride;
+      if (isRecord(override) && id !== '__proto__') {
+        readOverrides[id] = override as ExtensionOverride;
+      }
     }
     config['overrides'] = readOverrides;
   }
