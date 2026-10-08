@@ -13,9 +13,9 @@ import { DocumentViewerComponent } from './document-viewer.component';
 
 const WCAG_AA_NORMAL_TEXT = 4.5;
 
-function scssBlock(source: string, className: string): string {
-  const match = source.match(new RegExp(`\\.${className}\\s*\\{[^}]+\\}`, 's'));
-  return match?.[0] ?? '';
+function scssBlocks(source: string, className: string): string[] {
+  const re = new RegExp(`\\.${className}\\s*\\{[^}]+\\}`, 'gs');
+  return [...source.matchAll(re)].map((match) => match[0]);
 }
 
 function parseRgb(css: string): [number, number, number] | null {
@@ -86,6 +86,14 @@ describe('DocumentViewerComponent — format-size contrast (NXENG-806)', () => {
         format: 'JPEG',
         downloadUrl: '/nuxeo/fullhd',
       },
+      {
+        title: 'Medium',
+        width: 800,
+        height: 600,
+        fileSize: '2048 Bytes',
+        format: 'JPEG',
+        downloadUrl: '/nuxeo/medium',
+      },
     ]);
     fixture.detectChanges();
   });
@@ -98,12 +106,15 @@ describe('DocumentViewerComponent — format-size contrast (NXENG-806)', () => {
     }
   });
 
-  it('pins .format-size to the light-strip muted token per NXENG-806', () => {
+  it('pins every .format-size block to the light-strip muted token per NXENG-806', () => {
     const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
     const scss = readFileSync(scssPath, 'utf8');
-    const size = scssBlock(scss, 'format-size');
-    expect(size).toMatch(/var\(--document-viewer-muted-on-light-surface\)/);
-    expect(size).not.toMatch(/#999/i);
+    const sizeBlocks = scssBlocks(scss, 'format-size');
+    expect(sizeBlocks.length, '.format-size declarations in SCSS').toBeGreaterThan(0);
+    for (const block of sizeBlocks) {
+      expect(block).toMatch(/var\(--document-viewer-muted-on-light-surface\)/);
+      expect(block).not.toMatch(/#999/i);
+    }
   });
 
   it(`meets ${WCAG_AA_NORMAL_TEXT}:1 on the picture-cards strip (including dark theme)`, () => {
@@ -116,20 +127,23 @@ describe('DocumentViewerComponent — format-size contrast (NXENG-806)', () => {
       fixture.detectChanges();
 
       const strip = fixture.nativeElement.querySelector('.picture-cards') as HTMLElement;
-      const sizeLabel = fixture.nativeElement.querySelector('.format-size') as HTMLElement;
+      const sizeLabels = fixture.nativeElement.querySelectorAll('.format-size');
       expect(strip).not.toBeNull();
-      expect(sizeLabel).not.toBeNull();
-      if (!strip || !sizeLabel) return;
-
-      const fg = parseRgb(getComputedStyle(sizeLabel).color);
-      expect(fg).not.toBeNull();
-      if (!fg) return;
+      expect(sizeLabels.length, '.format-size nodes in picture-cards').toBeGreaterThan(0);
+      if (!strip) return;
 
       const bg = opaqueBackground(strip);
-      const ratio = contrastRatio(fg, bg);
-      expect(ratio, `format-size on picture-cards (${theme ?? 'default'})`).toBeGreaterThanOrEqual(
-        WCAG_AA_NORMAL_TEXT,
-      );
+      for (const sizeLabel of sizeLabels) {
+        const fg = parseRgb(getComputedStyle(sizeLabel as HTMLElement).color);
+        expect(fg).not.toBeNull();
+        if (!fg) return;
+
+        const ratio = contrastRatio(fg, bg);
+        expect(
+          ratio,
+          `format-size on picture-cards (${theme ?? 'default'}, node ${sizeLabel.textContent?.trim() ?? ''})`,
+        ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
+      }
     }
   });
 });
