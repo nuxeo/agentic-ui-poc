@@ -62,8 +62,9 @@ Configuration has two parts:
 Since NXSAT-312 you ship both in **your own Marketplace package that depends on ours**. It
 contributes configuration fragments, and the server serves them after our defaults, in dependency
 order. Nothing is edited on the server and nothing is stored in the Nuxeo content repository. The
-application reads both at startup, before sign-in, so they are the same for every user and must hold
-nothing secret. Users see a change the next time they open the application. An edited
+application reads both at startup, before sign-in, so they are the same for every user (except on a
+demo server whose package turns on presales presets, where a preset applies per browser) and must
+hold nothing secret. Users see a change the next time they open the application. An edited
 `bootstrap.json` beside the bundle and the old manifest Note are not read, and nothing converts
 them. A generator scaffolds such a package: [the guide for
 extenders](../../libs/platform/AGENTS.md#2-start-with-a-generator) gives the three commands, and
