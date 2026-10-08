@@ -1,7 +1,8 @@
 <!--
   Fixture for panel-close-focus-ring.spec.ts. Mirrors document-detail.html properties panel
-  header (class="panel-close-btn" is asserted on the production template in
-  document-detail-panel-close-focus-ring.spec.ts).
+  header markup so document-detail.scss applies; Karma locates the close control by aria-label.
+  Production template wiring (panel-close-btn + closePropertiesPanel) and the standalone :focus
+  SCSS contract live in document-detail-panel-close-focus-ring.spec.ts (feature Vitest).
 -->
 <aside class="properties-panel">
   <div class="panel-header">

@@ -13,6 +13,9 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import { COMPILED_THEME_BASES } from '../theme/app-theme';
 
+/** Matches `document-detail.document-detail.close-panel` in `apps/nuxeo-ui/public/i18n/en.json`. */
+const FIXTURE_CLOSE_PANEL_ARIA_LABEL = 'Close panel';
+
 const WCAG_1411_MIN_RATIO = 3;
 
 function relativeLuminance([r, g, b]: [number, number, number]): number {
@@ -84,7 +87,14 @@ describe('Document detail panel close — keyboard focus indicator (NXENG-830)',
     document.body.appendChild(fixture.nativeElement);
     fixture.detectChanges();
     await fixture.whenStable();
-    const button = fixture.nativeElement.querySelector('.panel-close-btn') as HTMLButtonElement;
+    const button = fixture.nativeElement.querySelector(
+      `button[aria-label="${FIXTURE_CLOSE_PANEL_ARIA_LABEL}"]`,
+    ) as HTMLButtonElement;
+    expect(button)
+      .withContext(
+        'fixture must expose the properties panel close control by accessible name (production template wiring and panel-close-btn class are asserted in document-detail-panel-close-focus-ring.spec.ts)',
+      )
+      .toBeTruthy();
     return { fixture, button };
   }
 
