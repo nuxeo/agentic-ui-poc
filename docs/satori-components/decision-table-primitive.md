@@ -91,9 +91,12 @@ primitive differed. Rows were 48 px high, inside a 600 px scroll container, and 
 `OnPush`.
 
 - **Timing.** Each update ran synchronous change detection, then forced layout, then waited for the next
-  frame. Times are to that frame. Figures are medians of 5 runs (3 at 5,000 rows) at 1× and 4× CPU throttle.
-  The tables below use 4×, as a stand-in for a mid-range laptop; 1× is in the evidence. Angular 20
-  (zone.js) and Angular 22 (zoneless) numbers are **not comparable with each other**.
+  frame. Times are to that frame. Each figure is a median, at 1× and 4× CPU throttle, of:
+  - 5 runs for Angular 20 candidates A, B and C (3 at 5,000 rows);
+  - 3 runs for candidate D, from its re-measurement after the sticky-header fix (section 4.4);
+  - 3 runs at every size on Angular 22.
+    The tables below use 4×, as a stand-in for a mid-range laptop; 1× is in the evidence. Angular 20
+    (zone.js) and Angular 22 (zoneless) numbers are **not comparable with each other**.
 - **Scrolling.** The container was scrolled from top to bottom over 2 s, one step per animation frame, and
   the time between frames recorded.
 - **Bundle size.** All JS of a production build that bootstraps one candidate, gzip level 9, compared
@@ -198,10 +201,13 @@ figures as indicative.
     by hand.
   - E exposes 18 rows with no `aria-rowcount`: CDK 22's virtual table sets neither attribute, so a
     screen reader is told the list has 18 rows.
-- **Satori row states without virtualisation (C+R), over five runs at 50 and 5,000 rows.**
+- **Satori row states without virtualisation (C+R), over five runs at each of 50 and 5,000 rows.**
   - Exactly one row is in the tab sequence.
-  - 200 ArrowDown presses visit 200 distinct rows, and each row's accessible name is its own document's.
-  - Space selects the row and Enter activates it.
+  - At 5,000 rows, 200 ArrowDown presses from the first row visit 200 further distinct rows.
+  - At 50 rows, focus reaches the last row after 49 presses. The remaining presses keep it there, because
+    Satori clamps ArrowDown at the last rendered row.
+  - At both sizes, each row's accessible name is its own document's, and Space selects the row and Enter
+    activates it.
 - **Satori row states with virtualisation (E), at 5,000 rows.**
   - **Every row from the 17th on announced another document's name, in all 10 runs that checked it**:
     181 of 200 when focus held. The first wrong name came at press 17, exactly where the viewport starts
@@ -273,9 +279,11 @@ contracts.
      `MatTableDataSource` wired to `MatSort`, which would sort in the browser.
    - Validate the sort key against the sortable fields before sending it.
    - For `Root`, `Domain`, `Favorites` and `Collection`, the service ignores page index and sort today
-     (section 1). Either add paging and sort to `getNavTreeChildren` and `getCollectionMembers` first,
-     or have the component disable sorting and paging for a source that cannot honour them. Do not show
-     sort headers that change nothing.
+     (section 1). Those branches still request only `pageSize` entries, so anything past the first page
+     cannot be reached. **Paging support in `getNavTreeChildren` and `getCollectionMembers` is a
+     prerequisite** for any of these sources that can exceed one page; disabling paging is not a
+     fallback. Sorting alone may be disabled for a source that cannot honour it, and its headers then
+     render as plain, non-sortable headers rather than controls that change nothing.
 2. **Paging.**
    - Next is enabled by `hasNextPage`. Previous is enabled whenever the current page index is above
      zero; `hasNextPage` says nothing about it. Show "of N" only when `totalSize` is a real, non-negative
@@ -288,8 +296,11 @@ contracts.
    - Support single and multiple selection (checkbox), range selection with Shift+click from an anchor,
      and select-all on the page with an indeterminate header checkbox.
    - Keyboard: ArrowUp and ArrowDown move, Space toggles, Enter opens. On Angular 22 this comes from
-     Satori row states. Until then, build an `nxs` row directive with the same contract, so that adopting
-     Satori is a change of registration rather than of behaviour.
+     Satori row states. Until then, build an `nxs` row directive with the same contract.
+   - Adopting Satori then changes `nxs-document-list`'s own template and imports, swapping the `nxs`
+     directives for Satori's. It is not a registration change: `ExtensionComponentRegistry` registers
+     component types, and directives are compiled into the template. What stays the same is the
+     behaviour that users and the specs depend on, and nothing outside the component changes.
 4. **Columns.** `displayedColumns` is the resolved, ordered, visible descriptor list. Show, hide and
    reorder are changes to that array; no separate column API is needed.
 5. **Row states.**
