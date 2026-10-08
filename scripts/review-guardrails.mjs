@@ -5336,13 +5336,15 @@ function checkNoRootAbsoluteShippedAssetPaths() {
   const escape = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   /**
    * Leading form, for a `.ts` string literal; embedded form, for markup and CSS. A value opens
-   * after a quote, `url(`, an unquoted attribute's `=`, or a later `srcset` candidate's `,`.
+   * after a quote or `url(` only, so nothing inside a URL — a query's `?path=/images/x.svg` —
+   * can open one. A quote after `+` is the tail of a concatenation
+   * (`[src]="base + '/images/x.svg'"`), placed by whatever precedes it, as `isSuffix` decides
+   * for `.ts`.
    *
-   * The `=` and `,` of a query string (`…/render?path=/images/x.svg`) open nothing: an attribute
-   * name follows whitespace, and only a comma next to whitespace starts a candidate. A URL holds
-   * no whitespace. So a candidate written `1x,/images/x.svg`, with no space, is not caught. A
-   * quote after `+` is the tail of a concatenation (`[src]="base + '/images/x.svg'"`), placed by
-   * whatever precedes it, as `isSuffix` decides for `.ts`.
+   * Two shapes are deliberately not matched. An unquoted attribute value (`src=/images/x.svg`)
+   * cannot be committed: the pre-commit hook runs Prettier on every template, which quotes it.
+   * A later `srcset` candidate (`a.svg 1x, /images/x.svg 2x`) — nothing here uses `srcset`.
+   * Openers for both were tried, and each matched inside ordinary query strings.
    */
   const patternsFor = (names) => {
     const dirs = [...names].filter(([, dir]) => dir).map(([name]) => escape(name));
@@ -5353,10 +5355,7 @@ function checkNoRootAbsoluteShippedAssetPaths() {
     ].join('|');
     return {
       leading: new RegExp(`^/(?:${alternatives})`),
-      embedded: new RegExp(
-        `(?:(?<!\\+\\s*)["'\`]|[uU][rR][lL]\\(|(?<=\\s[^\\s=<>"'\`/]+\\s*)=|\\s,|,\\s)\\s*/(?:${alternatives})`,
-        'g',
-      ),
+      embedded: new RegExp(`(?:(?<!\\+\\s*)["'\`]|[uU][rR][lL]\\()\\s*/(?:${alternatives})`, 'g'),
     };
   };
   /**

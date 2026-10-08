@@ -1321,36 +1321,6 @@ expectGreen('a comment quoting the root-absolute form', 'checkNoRootAbsoluteShip
     '// url(/images/art.svg) would 404 when packaged\n.hero {\n  color: red; // not url(/images/art.svg)\n}\n',
 });
 
-// Unquoted attribute values are valid HTML, and resolve from the server root all the same.
-expectRed(
-  'an unquoted src attribute from the server root',
-  'checkNoRootAbsoluteShippedAssetPaths',
-  ASSETS_APP(),
-  (write) => write('apps/nuxeo-ui/src/app/login/login.html', '<img src=/images/art.svg alt="">\n'),
-  /login\.html:1 references a file the app ships/,
-);
-
-expectRed(
-  'an unquoted href to the favicon from the server root',
-  'checkNoRootAbsoluteShippedAssetPaths',
-  ASSETS_APP(),
-  (write) => write('apps/nuxeo-ui/src/index.html', '<link rel=icon href=/favicon.ico>\n'),
-  /index\.html:1 references a file the app ships/,
-);
-
-// Only the first srcset candidate follows the quote.
-expectRed(
-  'a later srcset candidate from the server root',
-  'checkNoRootAbsoluteShippedAssetPaths',
-  ASSETS_APP(),
-  (write) =>
-    write(
-      'apps/nuxeo-ui/src/app/login/login.html',
-      '<img srcset="images/art.svg 1x, /images/art.svg 2x" alt="" />\n',
-    ),
-  /login\.html:1 references a file the app ships/,
-);
-
 // CSS function names are case-insensitive.
 expectRed(
   'an upper-case URL() from the server root',
@@ -1433,8 +1403,23 @@ expectGreen(
   },
 );
 
-// `1x,` and `100w,` are ordinary query text too; only a comma next to whitespace starts a
-// candidate, and a URL holds no whitespace.
+// A relative URL with a query: nothing inside a URL opens a value.
+falsePositiveControls += 1;
+expectGreen(
+  'a shipped-looking path in a relative URL query',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.hero {\n  background: url(render?path=/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.css':
+      '.hero {\n  background: url(render?path=/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.html':
+      '<div style="background: url(render?path=/images/art.svg)"></div>\n',
+  },
+);
+
+// `1x,` and `100w,` are ordinary query text too.
 falsePositiveControls += 1;
 expectGreen(
   'a descriptor-like comma inside a URL query string',
