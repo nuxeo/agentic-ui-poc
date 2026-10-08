@@ -26,9 +26,14 @@
  * ## Staying compatible, without importing the design system
  *
  * The union must remain exactly upstream's `SatAvatarCategory`, because the values are
- * handed straight to `<sat-avatar [category]>`. That equality is asserted in **both**
- * directions in `avatar-colors.spec.ts`, which `beta:gate`'s `spec-typecheck` compiles, so
- * adding or removing a colour on either side is a type error.
+ * handed straight to `<sat-avatar [category]>`. Two checks hold it there:
+ *
+ * - A colour upstream does not accept fails every build, CI's included: the templates bind
+ *   `avatarColor(...)` to `[category]` under `strictTemplates`, so it is TS2322 in
+ *   `browse.html` and the other callers.
+ * - The exact equality, both directions, is `avatar-colors.spec.ts`, compiled with `tsc` by
+ *   the `spec-types` gate of `beta:gate`. That is the only check that sees upstream *adding*
+ *   a colour, which breaks nothing but leaves it unused.
  *
  * The assertion lives in the spec and not here because nothing in this library may import
  * a design-system package, not even a type: `libs/shared/satori-components` imports

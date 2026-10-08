@@ -5,7 +5,7 @@ import { avatarColor, type AvatarColor } from './avatar-colors';
 describe('avatarColor', () => {
   /**
    * Type-level, so Vitest itself proves nothing here: esbuild strips it. The failure is a
-   * `tsc` error from `beta:gate`'s `spec-typecheck`, and was seen as one by dropping
+   * `tsc` error from the `spec-types` gate, and was seen as one by dropping
    * `'orange'` from `AvatarColor` and, separately, adding `'grey'` to it.
    */
   it('is exactly the union <sat-avatar [category]> accepts', () => {
