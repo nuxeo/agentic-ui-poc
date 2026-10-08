@@ -99,8 +99,8 @@ function prefixOf(raw: Record<string, unknown>, name: string): string {
 }
 
 /**
- * One schema read with `fetch-schema: fields`, as `/config/schemas/<name>` answers it alone and
- * `/config/types/<type>` answers it among the type's: the same shape, vocabulary bindings
+ * One schema read with `fetch-schema: fields`, as `/config/types/<type>` answers it among the
+ * type's and `/config/schemas/<name>` answers it alone: the same shape, vocabulary bindings
  * included. `null` for any other body, a 204's empty one among them.
  */
 export function readSchema(raw: unknown): DocumentTypeSchema | null {
@@ -112,6 +112,17 @@ export function readSchema(raw: unknown): DocumentTypeSchema | null {
     prefix: prefixOf(raw, name),
     fields: isRecord(raw['fields']) ? readFields(raw['fields']) : {},
   };
+}
+
+/**
+ * A `/config/schemas/<name>` response. Stricter than a schema inside a type: it must be the schema
+ * asked for and carry a `fields` object, so a malformed answer is a failed read rather than a
+ * schema with no fields that would be kept for the session.
+ */
+export function readSchemaResponse(raw: unknown, name: string): DocumentTypeSchema | null {
+  if (!isRecord(raw) || !isRecord(raw['fields'])) return null;
+  const schema = readSchema(raw);
+  return schema?.name === name ? schema : null;
 }
 
 /**

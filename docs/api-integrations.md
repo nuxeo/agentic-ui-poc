@@ -1491,8 +1491,9 @@ schema of the type read, vocabulary constraints included — once per session, w
 carries it. Only those the layout could show are read: for the generated layout, the ones the
 panel does not already present; for a layout file, the ones whose prefix it names. So, with no
 layout file, a File that is collected, followed and has a thumbnail costs no extra read. An unknown schema answers 204 with
-no body; that, an error status, or a body that is not the schema asked for leaves only that
-schema out, is logged, and is asked for again by the next document that carries it.
+no body; that, an error status, a body that is not the schema asked for with a `fields` object,
+or no answer within 10 s (`LAYOUT_LOAD_TIMEOUT_MS`, since the other sections wait for it) leaves
+only that schema out, is logged, and is asked for again by the next document that carries it.
 
 A vocabulary-bound value is labelled from its own entry, read by id: one request per value the
 document shows, plus one for its parent in an `l10n…` vocabulary, which is labelled

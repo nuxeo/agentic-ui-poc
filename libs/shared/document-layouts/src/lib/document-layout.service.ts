@@ -41,7 +41,7 @@ import {
   generateLayout,
   prefixOfXpath,
   readDocumentType,
-  readSchema,
+  readSchemaResponse,
 } from './resolve-layout';
 
 /** As for the bootstrap and manifest reads: `HttpClient` has no timeout of its own. */
@@ -272,7 +272,10 @@ export class DocumentLayoutService {
     return cached;
   }
 
-  /** One schema, shared by every type and document that carries it. A failed read is not kept. */
+  /**
+   * One schema, shared by every type and document that carries it. A failed read is not kept.
+   * Timed out like the layout reads: the other sections wait for it.
+   */
   private schema(name: string): Observable<DocumentTypeSchema | null> {
     let cached = this.schemas.get(name);
     if (!cached) {
@@ -281,9 +284,10 @@ export class DocumentLayoutService {
           'fetch-schema': 'fields',
         })
         .pipe(
+          timeout(LAYOUT_LOAD_TIMEOUT_MS),
           map((raw) => {
-            const schema = readSchema(raw);
-            if (schema?.name !== name) throw new Error(`the response is not the ${name} schema`);
+            const schema = readSchemaResponse(raw, name);
+            if (!schema) throw new Error(`the response is not the ${name} schema`);
             return schema;
           }),
           catchError((error: unknown) => {

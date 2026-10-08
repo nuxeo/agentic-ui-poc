@@ -469,6 +469,51 @@ describe('DocumentLayoutService', () => {
       ).toHaveLength(2);
     });
 
+    it.each([
+      ['no fields', { name: 'externalEntity' }],
+      ['null fields', { name: 'externalEntity', fields: null }],
+      ['a list of fields', { name: 'externalEntity', fields: [] }],
+    ])(
+      'treats a schema answered with %s as a failed read, not an empty schema',
+      async (_, body) => {
+        const first = resolve('Claim', carrying('externalEntity'));
+        answerTypeAndIndex();
+        http.expectOne(SCHEMA('externalEntity')).flush(body);
+        expect(sectionIds(await first)).toEqual(['claim']);
+        expect(warnings).toContain(
+          '[agentic-ui-layouts] schema externalEntity not read: the response is not the externalEntity schema',
+        );
+
+        const second = resolve('Claim', carrying('externalEntity'));
+        http.expectOne(SCHEMA('externalEntity')).flush(EXTERNAL_ENTITY);
+        expect(sectionIds(await second)).toEqual(['claim', 'externalEntity']);
+      },
+    );
+
+    it('gives up on a schema read that never answers, cancels it, and shows the rest', async () => {
+      vi.useFakeTimers();
+      try {
+        const first = resolve('Claim', carrying('externalEntity', 'hxai'));
+        answerTypeAndIndex();
+        const stalled = http.expectOne(SCHEMA('externalEntity'));
+        http.expectOne(SCHEMA('hxai')).flush(HXAI);
+
+        await vi.advanceTimersByTimeAsync(LAYOUT_LOAD_TIMEOUT_MS);
+
+        expect(stalled.cancelled).toBe(true);
+        expect(sectionIds(await first)).toEqual(['claim', 'hxai']);
+        expect(warnings).toContain(
+          '[agentic-ui-layouts] schema externalEntity not read: no response within 10 s',
+        );
+
+        const second = resolve('Claim', carrying('externalEntity', 'hxai'));
+        http.expectOne(SCHEMA('externalEntity')).flush(EXTERNAL_ENTITY);
+        expect(sectionIds(await second)).toEqual(['claim', 'externalEntity', 'hxai']);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('lets a contributed file show a field of a facet schema the document carries', async () => {
       const layout = resolve('Claim', carrying('externalEntity', 'hxai'));
       answerTypeAndIndex('Claim/metadata');

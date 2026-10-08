@@ -8,6 +8,7 @@ import {
   readDocumentSchemas,
   readDocumentType,
   readSchema,
+  readSchemaResponse,
 } from './resolve-layout';
 
 /** Trimmed from a real `/config/types/Claim` response with `fetch-schema: fields`. */
@@ -192,6 +193,20 @@ describe('readSchema', () => {
     expect(readSchema(null)).toBeNull();
     expect(readSchema('')).toBeNull();
     expect(readSchema({ fields: {} })).toBeNull();
+  });
+
+  it('takes a response alone only for the schema asked for, with a fields object', () => {
+    expect(readSchemaResponse(DUBLINCORE, 'dublincore')).toEqual(readSchema(DUBLINCORE));
+    expect(readSchemaResponse({ name: 'marker', fields: {} }, 'marker')).toEqual({
+      name: 'marker',
+      prefix: 'marker',
+      fields: {},
+    });
+    expect(readSchemaResponse(DUBLINCORE, 'hxai')).toBeNull();
+    expect(readSchemaResponse({ name: 'marker' }, 'marker')).toBeNull();
+    expect(readSchemaResponse({ name: 'marker', fields: null }, 'marker')).toBeNull();
+    expect(readSchemaResponse({ name: 'marker', fields: [] }, 'marker')).toBeNull();
+    expect(readSchemaResponse(null, 'marker')).toBeNull();
   });
 });
 
