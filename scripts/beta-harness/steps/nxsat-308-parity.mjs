@@ -695,27 +695,93 @@ export default async function run(page, h, outDir) {
     return { status: res?.status() ?? 0, data: res ? await res.json().catch(noAnswer) : null };
   };
   const enc = (p) => p.split('/').map(encodeURIComponent).join('/');
-  const paged = await getJson(`/path${enc(PAGED.path)}/@children?pageSize=500`);
-  const deep6 = await getJson(`/path${enc(deepPath(DEEP_LEVELS))}`);
-  const aclNow = await getJson(`/path${enc(ACL.path)}/@acl`);
+  const childTitles = async (path) =>
+    ((await getJson(`/path${enc(path)}/@children?pageSize=50`)).data?.entries ?? []).map(
+      (e) => e.title,
+    );
   const localAces = (acl) =>
     ((acl?.acl ?? []).find((a) => a.name === 'local')?.ace ?? []).map(
       (a) => `${a.username}:${a.permission}`,
     );
+  const paged = await getJson(`/path${enc(PAGED.path)}/@children?pageSize=500`, {
+    properties: 'dublincore',
+  });
+  const pagedEntries = paged.data?.entries ?? [];
   const contract = await getJson(`/path${enc(VERSIONS.doc)}`, { 'fetch-document': 'versionLabel' });
-  const unversioned = await getJson(`/path${enc(VERSIONS.unversioned)}`);
-  const denied = await getJson(`/path${enc(DENIED.path)}`);
-  const media = await getJson(`/path${enc(MEDIA.path)}/@children?pageSize=10&properties=file`);
+  const unversioned = await getJson(`/path${enc(VERSIONS.unversioned)}`, {
+    'fetch-document': 'versionLabel',
+  });
+  const versionList = contract.data?.uid
+    ? await page.request
+        .post(`${api}/id/${contract.data.uid}/@op/Document.GetVersions`, {
+          headers: { 'Content-Type': 'application/json', 'fetch-document': 'versionLabel' },
+          data: { params: {}, context: {} },
+          failOnStatusCode: false,
+        })
+        .then((r) => r.json())
+        .catch(noAnswer)
+    : null;
+  const media = await getJson(`/path${enc(MEDIA.path)}/@children?pageSize=10`, {
+    properties: 'file',
+  });
   const mediaTypes = (media.data?.entries ?? [])
     .map((e) => `${e.title}:${e.properties?.['file:content']?.['mime-type']}`)
     .sort();
-  const fixtureOk =
-    (paged.data?.entries ?? []).length === PAGED.count &&
-    deep6.data?.title === deepTitle(DEEP_LEVELS) &&
-    sameSet(localAces(aclNow.data), ['parity-user:AddChildren', 'members:ReadWrite']) &&
-    contract.data?.versionLabel === VERSIONS.live &&
-    denied.status === 200 &&
-    JSON.stringify(mediaTypes) ===
+  const deepChildren = [];
+  for (let n = 1; n <= DEEP_LEVELS; n++) deepChildren.push(await childTitles(deepPath(n)));
+  const parityBasic = Buffer.from(`${ACL.user}:${process.env['PARITY_USER_PASS']}`).toString(
+    'base64',
+  );
+  const parityMe = await page.request
+    .get(`${api}/me`, {
+      headers: { Authorization: `Basic ${parityBasic}` },
+      failOnStatusCode: false,
+    })
+    .then((r) => r.json())
+    .catch(noAnswer);
+  // Every fixture a later step reads, so drift aborts here as precondition-not-met instead of
+  // surfacing later as what would look like a component defect.
+  const fixture = {
+    'paged has Paged item 001-125': sameSet(
+      pagedEntries.map((e) => e.title),
+      Array.from({ length: PAGED.count }, (_, i) => pagedTitle(i + 1)),
+    ),
+    'every paged item carries the search token':
+      pagedEntries.length === PAGED.count &&
+      pagedEntries.every((e) =>
+        String(e.properties?.['dc:description'] ?? '').includes(SEARCH.token),
+      ),
+    'the deep chain has its children at every level': deepChildren.every((titles, i) =>
+      sameSet(titles, [
+        `Deep L${i + 1} file`,
+        `Deep L${i + 1} side`,
+        ...(i + 1 < DEEP_LEVELS ? [deepTitle(i + 2)] : []),
+      ]),
+    ),
+    'the acl folder holds AddChildren and ReadWrite': sameSet(
+      localAces((await getJson(`/path${enc(ACL.path)}/@acl`)).data),
+      ['parity-user:AddChildren', 'members:ReadWrite'],
+    ),
+    'the acl memo holds WriteVersion': sameSet(
+      localAces((await getJson(`/path${enc(ACL.doc)}/@acl`)).data),
+      ['parity-user:WriteVersion'],
+    ),
+    'the contract is 1.0+ with versions 0.1, 0.2, 1.0':
+      contract.data?.versionLabel === VERSIONS.live &&
+      sameSet(
+        (versionList?.entries ?? []).map((e) => e.versionLabel),
+        VERSIONS.labels,
+      ),
+    'the unversioned memo exists with no version':
+      Boolean(unversioned.data?.uid) && ['0.0', ''].includes(unversioned.data?.versionLabel ?? ''),
+    'the restricted folder holds Secret memo': sameSet(await childTitles(DENIED.path), [
+      DENIED.doc,
+    ]),
+    'the empty folder is empty':
+      (await getJson(`/path${enc(EMPTY.path)}/@children`)).status === 200 &&
+      (await childTitles(EMPTY.path)).length === 0,
+    'the media folder holds the four viewer fixtures':
+      JSON.stringify(mediaTypes) ===
       JSON.stringify(
         [
           `${MEDIA.image}:image/png`,
@@ -723,13 +789,16 @@ export default async function run(page, h, outDir) {
           `${MEDIA.unknown}:application/octet-stream`,
           `${MEDIA.video}:video/webm`,
         ].sort(),
-      );
+      ),
+    'parity-user signs in with PARITY_USER_PASS': parityMe?.id === ACL.user,
+  };
+  const fixtureMisses = Object.entries(fixture)
+    .filter(([, ok]) => !ok)
+    .map(([name]) => name);
   h.requirePrecondition(
-    "the parity fixture's invariants hold: 125 paged children, the deep chain, the ACL, versions, media",
-    fixtureOk,
-    `paged=${(paged.data?.entries ?? []).length} deep6=${deep6.data?.title ?? deep6.status} ` +
-      `acl=${JSON.stringify(localAces(aclNow.data))} contract=${contract.data?.versionLabel} ` +
-      `media=${JSON.stringify(mediaTypes)} — run seed-parity-data.mjs against this Nuxeo first`,
+    `the parity fixture holds everything the steps read (${Object.keys(fixture).length} invariants)`,
+    fixtureMisses.length === 0,
+    `not met: ${JSON.stringify(fixtureMisses)} — run seed-parity-data.mjs against this Nuxeo first`,
   );
   await h.login();
   h.requirePrecondition(
@@ -1020,6 +1089,16 @@ export default async function run(page, h, outDir) {
 
   h.step('DocumentList — keyboard: Space selects, arrows move, every row has a name');
   const rowsK = await readRows(page, A.list.rows, A.list.title);
+  // The computed name, from the accessibility tree: an absent or empty aria-label says nothing about
+  // it, because a row can take its name from its cells. Read before any row is selected, since
+  // selection adds a state word to the name.
+  const rowNames = [];
+  for (let i = 0; i < Math.min(5, rowsK.length); i++) {
+    const snapshot = await rowLoc(i)
+      .ariaSnapshot()
+      .catch(() => '');
+    rowNames.push({ title: rowsK[i].title, name: snapshot.match(/^- row "([^"]*)"/)?.[1] ?? null });
+  }
   await rowLoc(0).focus();
   await page.keyboard.press('Space');
   await page.waitForTimeout(400);
@@ -1048,10 +1127,13 @@ export default async function run(page, h, outDir) {
     observed: `focus after ArrowDown is on ${JSON.stringify(focusedTitle)}`,
   });
   gap('list.row-name', {
-    correct: rowsK.length > 0 && rowsK.every((r) => r.name === null || r.name.includes(r.title)),
-    wrongObserved: rowsK.length > 0 && rowsK.every((r) => r.name === ''),
-    expect: "give each row an accessible name that includes the document's title",
-    observed: `aria-label of the first rows ${JSON.stringify(rowsK.slice(0, 3).map((r) => r.name))}`,
+    correct: rowNames.length === 5 && rowNames.every((r) => r.name?.includes(r.title)),
+    wrongObserved:
+      rowNames.length === 5 &&
+      rowNames.every((r) => r.name !== null && !r.name.includes(r.title)) &&
+      new Set(rowNames.map((r) => r.name)).size === 1,
+    expect: "give each row a computed accessible name that includes the document's title",
+    observed: `computed names of the first five rows ${JSON.stringify(rowNames.map((r) => r.name))}`,
   });
   const tabStops = rowsK.filter((r) => r.tabindex === '0').length;
   gap('list.roving-tabindex', {
@@ -1647,6 +1729,11 @@ export default async function run(page, h, outDir) {
       .innerText()
       .catch(() => '')
   ).replace(/\s+/g, ' ');
+  h.check(
+    `${LB} the permissions panel opens for a document, not only for a folder`,
+    docPanel.includes('ACL memo'),
+    `the panel read ${JSON.stringify(docPanel.slice(0, 120))}`,
+  );
   if (docPanel.includes('ACL memo')) {
     await A.permissions.showTab(page, 'Individual Users');
     const docRow = (await rowText()).find((t) => t.includes(ACL.userLabel)) ?? '';
@@ -1662,10 +1749,6 @@ export default async function run(page, h, outDir) {
       observed: `parity-user row reads ${JSON.stringify(docRow)}`,
     });
     await h.screenshot('permissions-writeversion-not-shown');
-  } else {
-    h.note(
-      `a document's permissions are not reachable on this surface; the panel read ${JSON.stringify(docPanel.slice(0, 120))}`,
-    );
   }
   mark('permissions', 'end');
 
@@ -1922,7 +2005,7 @@ export default async function run(page, h, outDir) {
 
   // ── 15. Failure: a permission-denied folder, as parity-user ──────────────────────────────────
   h.step('Failure — parity-user opens a folder they cannot read');
-  const basic = Buffer.from(`${ACL.user}:${process.env['PARITY_USER_PASS']}`).toString('base64');
+  const basic = parityBasic;
   // Basic auth decides identity on every Nuxeo REST call (the API keeps no session), so forcing
   // the header switches the browser to parity-user for everything the app requests from here on.
   await page.route('**/nuxeo/**', (route) =>
@@ -2071,7 +2154,10 @@ export default async function run(page, h, outDir) {
     // Knowledge Discovery operations; their packages are not installed on a stock throwaway.
     /automation\/Hyland(KnowledgeDiscovery|Ingest)\./,
     '/nuxeo/logout',
-    '/agentic-ui-config/',
+    // Under nx serve nothing answers the optional configuration files; the app tolerates it.
+    'HTTP 404 /agentic-ui-config/bootstrap.json',
+    'HTTP 404 /agentic-ui-config/manifest.json',
+    'HTTP 404 /agentic-ui-config/layouts.json',
     // The bridge classifies ACL principals by probing /group/ first; users answer 404 there.
     /HTTP 404 \/nuxeo\/api\/v1\/group\//,
     // Recorded above as the viewer.pdf gap, with this message as its context check.
