@@ -255,17 +255,16 @@ it alone. Under `nx serve`, pass the fragment to
 {
   "integrations": {
     "arender": {
-      "viewerOrigin": "https://arender.example.com",
-      "nuxeoInternalUrl": "http://nuxeo-auth-proxy/nuxeo"
+      "viewerOrigin": "https://arender.example.com"
     }
   }
 }
 ```
 
-| Property           | Required | Constraints                                                                                                                                                                                              |
-| ------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. Must be no less secure than the page framing it — see below.                                                                                                      |
-| `nuxeoInternalUrl` | no       | **Vestigial.** Addressed the retired sidecar flow; nothing reads it under NEV 2026, and it is not validated. Retained only because removing it is a breaking change to the published `AppARenderConfig`. |
+| Property           | Required | Constraints                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. Must be no less secure than the page framing it — see below.                                                                                                                                                                                                                                                                                                                               |
+| `nuxeoInternalUrl` | no       | **Vestigial — leave it out.** Addressed the retired sidecar flow. The browser still parses it into `AppARenderConfig`, but nothing uses it under NEV 2026 and it is not validated; the key is kept only because removing it is a breaking change to that published type. A bootstrap fragment is served before authentication, so a value here publishes an internal host name to anyone who can reach the server, for no effect. |
 
 Only `viewerOrigin` is mandatory, and it is validated in two places, so a missing or malformed value
 disables ARender rather than half-enabling it:
@@ -282,7 +281,8 @@ disables ARender rather than half-enabling it:
 
 `nuxeoInternalUrl` is **not** required and **not** validated. It is vestigial under NEV 2026, and
 requiring it would force a deployment that retired the sidecar to invent a dummy value or see the
-integration silently disable itself.
+integration silently disable itself. Do not set it: the fragment that would carry it is public, and
+nothing on the server or in the browser has a use for it.
 
 ### When is `http:` accepted for `viewerOrigin`?
 

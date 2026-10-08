@@ -5,13 +5,15 @@
  * It therefore holds only what the shell needs in order to reach the server and
  * paint a branded login page: where Nuxeo is, what the product is called, which
  * theme to start in, and where to find the runtime manifest. Everything a
- * customer changes after login belongs in the runtime manifest instead, so that
- * it inherits Nuxeo's versioning, audit and ACLs.
+ * customer changes after login belongs in the runtime manifest instead.
  *
- * The constants here are the **packaged defaults**. The deployed, editable copy
- * lives *beside* the application bundle rather than inside it: the marketplace
- * installer copies the `web` directory with `overwrite="true"`, so anything a
- * customer edits within the bundle is destroyed on the next upgrade.
+ * The constants here are the **compiled-in fallback**. The configuration
+ * endpoint in `nuxeo-agentic-core` answers `agentic-ui-config/bootstrap.json`
+ * with the `bootstrap` fragments every installed configuration package
+ * contributes, merged over our defaults, and that response is merged over
+ * these constants. Nothing is read from a file a customer edits on the server.
+ * The endpoint serves it before authentication, so a fragment must hold nothing
+ * sensitive.
  */
 
 /** CSS custom properties applied to `<html>` while a theme is active. */

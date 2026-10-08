@@ -63,7 +63,9 @@ reopened rather than quietly carried.
   404'd in every deployment**; corrected after independent review. Phase 1 also installed
   `bootstrap.json` there with `overwrite="false"`, which a 2026-10-07 rehearsal showed failing
   the upgrade after an edit; since NXSAT-317 the package installs only `bootstrap.example.json`,
-  and the customer copies it to `bootstrap.json`.
+  and the customer copies it to `bootstrap.json`. _Superseded 2026-10-07 (NXSAT-312): the package
+  installs no configuration file, nothing on disk there is read or served, and there is no
+  migration from it._
 - _Superseded by NXSAT-312: both halves are now package fragments served by `nuxeo-agentic-core`,
   and the Note below is no longer read._ Runtime manifest as a **Nuxeo document** at `/default-domain/config/agentic-ui`, so it
   inherits Nuxeo versioning, ACLs and per-tenant scoping. Eleven `InjectionToken` factories
@@ -600,10 +602,12 @@ Nothing here is a surprise later.
 9. ~~**The marketplace package has never been installed or upgraded on a real server.**~~
    **Rehearsed 2026-10-07** with `nuxeoctl mp-install` on a throwaway server, and the rehearsal
    **disproved** the design: after `bootstrap.json` was edited, an upgrade failed and left no
-   version installed (NXSAT-317). NXSAT-317 ships only `bootstrap.example.json` and never
-   installs the customer's file; the same rehearsal then passed for today's package → the fix,
-   with and without an edit, fixed → fixed, a fresh install, and remove → reinstall. R7 is Low
-   for that installer. **Still not rehearsed:** the Admin Center / Update Center path. The npm
+   version installed (NXSAT-317). NXSAT-317 ships only `bootstrap.example.json` and never installs
+   the customer's file; the same rehearsal then passed for today's package → the fix, with and
+   without an edit, fixed → fixed, a fresh install, and remove → reinstall. R7 is Low for that
+   installer. _Superseded 2026-10-07 (NXSAT-312): no configuration file is installed at all; the
+   rehearsal that matters now is upgrading ours with customer configuration packages installed,
+   which passed (R7)._ **Still not rehearsed:** the Admin Center / Update Center path. The npm
    `upgrade-rehearsal` gate remains a separate exercise and never covered this.
 10. **Independent validation has never run** for Phase 1 or Phase 2, and the multi-model
     review gate has never run at all.

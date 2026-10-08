@@ -1065,11 +1065,13 @@ Configuration keys `opensearch.addressList`, `opensearch.indexName`, `audit.open
 DSL and returns aggregation buckets as facets. **This is the source of the index-lag and
 `resultsCount` behaviour in §13.3** — the two topics are the same topic.
 
-ARender specifics: `ARENDER_CONFIG` defaults to `null`, so **ARender is off unless configured**.
-The compiled-in `localhost:9080` defaults were removed as a Sonar `S5332` finding — a shipped build
+ARender specifics: `ARENDER_CONFIG` defaults to `null`, so **ARender is off unless configured**. The
+compiled-in `localhost:9080` defaults were removed as a Sonar `S5332` finding — a shipped build
 pointed the viewer at the _user's own_ machine over plaintext. Configure
-`integrations.arender.viewerOrigin` and `.nuxeoInternalUrl` in the **bootstrap file**, never the
-runtime manifest. Annotations require a `file:content` blob, so Notes never show the viewer.
+`integrations.arender.viewerOrigin` in a **bootstrap fragment** of the configuration package, never
+the runtime manifest. Leave out `.nuxeoInternalUrl`: nothing uses it, and bootstrap is served before
+authentication, so it would publish an internal host name. Annotations require a `file:content`
+blob, so Notes never show the viewer.
 
 - [Docker Compose](https://docs.docker.com/compose/)
 - [OpenSearch documentation](https://opensearch.org/docs/latest/)
