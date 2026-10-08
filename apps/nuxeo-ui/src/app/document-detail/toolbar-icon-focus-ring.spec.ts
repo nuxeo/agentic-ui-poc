@@ -1,7 +1,7 @@
 /**
  * NXENG-808 / IBM 673904446 — document-detail header toolbar `mat-icon-button` keyboard focus
  * indicator (WCAG 2.1 SC 2.4.7 / 1.4.11). Material icon buttons suppress the default ring and
- * Karma loads `apps/nuxeo-ui/src/styles.scss` (see `angular.json`), which `@import`s
+ * Karma loads `apps/nuxeo-ui/src/styles.scss` (see `angular.json`), which `@use`s
  * `document-detail-header-toolbar-focus.scss` — the same path production uses.
  *
  * Same IBM `style_focus_visible` constraints as NXENG-789 / NXENG-773: standalone `:focus`
@@ -26,14 +26,31 @@ function relativeLuminance([r, g, b]: [number, number, number]): number {
   return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
 }
 
-function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
-  const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
+function contrastRatio(a: readonly number[], b: readonly number[]): number {
+  const [hi, lo] = [
+    relativeLuminance(a as [number, number, number]),
+    relativeLuminance(b as [number, number, number]),
+  ].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
 
-function rgb(css: string): [number, number, number] {
-  const parts = (css.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
-  return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
+function parseColor(value: string): { rgb: number[]; alpha: number } {
+  const match = /rgba?\(([^)]+)\)/.exec(value);
+  if (!match) {
+    throw new Error(`not a computed colour: "${value}"`);
+  }
+  const parts = match[1]
+    .split(/[,\s/]+/)
+    .filter(Boolean)
+    .map(Number);
+  return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
+}
+
+function compositeOver(
+  fg: { rgb: number[]; alpha: number },
+  backdrop: readonly number[],
+): number[] {
+  return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
 }
 
 /** Background painted by `.detail-header` in document-detail.scss. */
@@ -145,8 +162,11 @@ describe('Document detail toolbar icon button — keyboard focus indicator (NXEN
         expect(parseFloat(style.outlineOffset)).toBeGreaterThan(0);
 
         const headerBg = productionDetailHeaderBackground(fixture.nativeElement as HTMLElement);
+        const headerParsed = parseColor(headerBg);
+        const ring = parseColor(style.outlineColor);
+        const paintedRing = compositeOver(ring, headerParsed.rgb);
 
-        expect(contrastRatio(rgb(style.outlineColor), rgb(headerBg))).toBeGreaterThanOrEqual(
+        expect(contrastRatio(paintedRing, headerParsed.rgb)).toBeGreaterThanOrEqual(
           WCAG_1411_MIN_RATIO,
         );
       } finally {
