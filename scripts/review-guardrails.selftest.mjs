@@ -1321,6 +1321,59 @@ expectGreen('a comment quoting the root-absolute form', 'checkNoRootAbsoluteShip
     '// url(/images/art.svg) would 404 when packaged\n.hero {\n  color: red; // not url(/images/art.svg)\n}\n',
 });
 
+// Unquoted attribute values are valid HTML, and resolve from the server root all the same.
+expectRed(
+  'an unquoted src attribute from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) => write('apps/nuxeo-ui/src/app/login/login.html', '<img src=/images/art.svg alt="">\n'),
+  /login\.html:1 references a file the app ships/,
+);
+
+expectRed(
+  'an unquoted href to the favicon from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) => write('apps/nuxeo-ui/src/index.html', '<link rel=icon href=/favicon.ico>\n'),
+  /index\.html:1 references a file the app ships/,
+);
+
+// Only the first srcset candidate follows the quote.
+expectRed(
+  'a later srcset candidate from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.html',
+      '<img srcset="images/art.svg 1x, /images/art.svg 2x" alt="" />\n',
+    ),
+  /login\.html:1 references a file the app ships/,
+);
+
+// `url(` and its path on different lines; the path's own line is reported.
+expectRed(
+  'a multi-line stylesheet url() from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      '.hero {\n  background: url(\n    /images/art.svg\n  );\n}\n',
+    ),
+  /login\.scss:3 references a file the app ships/,
+);
+
+// A literal that only ends a URL is placed by what precedes it, so it is not root-absolute.
+falsePositiveControls += 1;
+expectGreen('a path appended to a base URL', 'checkNoRootAbsoluteShippedAssetPaths', {
+  ...ASSETS_APP(),
+  'libs/shared/x/src/lib/x.ts':
+    "const base = 'http://host/nuxeo/agentic-ui';\n" +
+    'export const a = `${base}/images/art.svg`;\n' +
+    "export const b = base + '/images/art.svg';\n",
+});
+
 // Blanking a trailing comment must not blank the code in front of it.
 expectRed(
   'a stylesheet url() followed by a trailing comment',

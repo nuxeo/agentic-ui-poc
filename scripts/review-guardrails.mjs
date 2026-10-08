@@ -5267,19 +5267,32 @@ function checkNoRootAbsoluteShippedAssetPaths() {
   }
 
   const escape = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  /** Leading form, for a `.ts` string literal; embedded form, for markup and CSS. */
+  /**
+   * Leading form, for a `.ts` string literal; embedded form, for markup and CSS. A value opens
+   * after a quote, `(`, an unquoted attribute's `=`, or a `srcset` candidate's `,`.
+   */
   const patternsFor = (names) => {
     const dirs = [...names].filter(([, dir]) => dir).map(([name]) => escape(name));
     const files = [...names].filter(([, dir]) => !dir).map(([name]) => escape(name));
     const alternatives = [
       ...(dirs.length ? [`(?:${dirs.join('|')})/`] : []),
-      ...(files.length ? [`(?:${files.join('|')})(?=$|[?#"'\`)])`] : []),
+      ...(files.length ? [`(?:${files.join('|')})(?=$|[\\s?#"'\`),>])`] : []),
     ].join('|');
     return {
       leading: new RegExp(`^/(?:${alternatives})`),
-      embedded: new RegExp(`["'\`(]\\s*/(?:${alternatives})`, 'g'),
+      embedded: new RegExp(`["'\`(=,]\\s*/(?:${alternatives})`, 'g'),
     };
   };
+  /**
+   * A literal that only ends a URL — a template's `${base}/images/x.svg`, or `base +
+   * '/images/x.svg'` — is not root-absolute: whatever precedes it decides where it points.
+   */
+  const isSuffix = (node) =>
+    ts.isTemplateMiddle(node) ||
+    ts.isTemplateTail(node) ||
+    (ts.isBinaryExpression(node.parent) &&
+      node.parent.operatorToken.kind === ts.SyntaxKind.PlusToken &&
+      node.parent.right === node);
   const everyApp = new Map([...shippedByApp.values()].flatMap((names) => [...names]));
   const patternsByApp = new Map(
     [...shippedByApp].map(([root, names]) => [root, patternsFor(names)]),
@@ -5314,7 +5327,7 @@ function checkNoRootAbsoluteShippedAssetPaths() {
         ) {
           const text = node.text;
           patterns.embedded.lastIndex = 0;
-          if (patterns.leading.test(text) || patterns.embedded.test(text)) {
+          if ((!isSuffix(node) && patterns.leading.test(text)) || patterns.embedded.test(text)) {
             const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
             hits.push({ line: line + 1, text });
           }
@@ -5334,9 +5347,12 @@ function checkNoRootAbsoluteShippedAssetPaths() {
               /(^|[^:(/])\/\/.*$/gm,
               (comment, lead) => lead + blank(comment.slice(lead.length)),
             );
-      for (const [index, line] of stripped.split('\n').entries()) {
-        patterns.embedded.lastIndex = 0;
-        if (patterns.embedded.test(line)) hits.push({ line: index + 1, text: line.trim() });
+      // The whole file, not line by line: `url(` and its path may sit on different lines. The
+      // reported line is the one the path itself is on.
+      const lines = stripped.split('\n');
+      for (const match of stripped.matchAll(patterns.embedded)) {
+        const line = stripped.slice(0, match.index + match[0].length).split('\n').length;
+        hits.push({ line, text: lines[line - 1].trim() });
       }
     }
 
