@@ -43,7 +43,7 @@ those features do not work, and the rest of the application does.
 
 The longer documents sort every change into four numbered layers:
 
-| Layer | In plain words                                                                                                  | Code?                  | Rebuild?            |
+| Layer | In plain words                                                                                                  | Code?                  | Rebuild the app?    |
 | ----- | --------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------- |
 | 0     | **Settings**: product name, colours, language, on-screen wording                                                | No                     | No                  |
 | 1     | **Arrangement**: which menu entries, buttons, tabs and columns appear, in what order, under what name, for whom | No                     | No                  |
@@ -54,33 +54,43 @@ On this page, layers 0 and 1 are "configuration" and layers 2 and 3 are "code".
 
 ## Where configuration lives today
 
-In two places, and both are a known problem:
+Configuration has two parts:
 
-1. **The settings** (bootstrap): the name, colours and default language.
+1. **The settings** (bootstrap): the name, logo, colours and default language.
 2. **The manifest**, which holds the wording and the whole arrangement.
 
 Since NXSAT-312 you ship both in **your own Marketplace package that depends on ours**. It
 contributes configuration fragments, and the server serves them after our defaults, in dependency
-order. Nothing is edited on the server and nothing is stored in the repository. The application
-reads both at startup, before sign-in, so they are the same for every user and must hold nothing
-secret. Users see a change the next time they open the application. An edited `bootstrap.json`
-beside the bundle and the old manifest Note are not read, and nothing converts them. A generator
-that scaffolds such a package is coming next; until then
-[deployment and troubleshooting](../30-engineering/13-deployment-and-troubleshooting.md) shows the
-package layout.
+order. Nothing is edited on the server and nothing is stored in the Nuxeo content repository. The
+application reads both at startup, before sign-in, so they are the same for every user (except on a
+demo server whose package turns on presales presets, where a preset applies per browser) and must
+hold nothing secret. Users see a change the next time they open the application. An edited
+`bootstrap.json` beside the bundle and the old manifest Note are not read, and nothing converts
+them. A generator scaffolds such a package: [the guide for
+extenders](../../libs/platform/AGENTS.md#2-start-with-a-generator) gives the three commands, and
+`config-packages/presales-demo` in this repository is a finished example. Until the developer
+package is published, run the generator from a clone of this repository as
+`npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`; the
+`@nuxeo-satori/platform:` form in that guide resolves from the published package, and in a clone
+only after `npx nx run platform:sync-generators`. What it writes is plain JSON, XML and a build
+script with no dependencies, so it can live in your own repository.
 
 ## What you can change without code
 
-| You want to…                                                                                                                   | Where                                         | Details                                                                                                         |
-| ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Change the product name and the browser-tab title                                                                              | settings fragment, `branding`                 | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
-| Change the colours, or add your own colour theme and make it the default                                                       | settings fragment, `themes`, `defaultThemeId` | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                             |
-| Choose the default language                                                                                                    | settings fragment, `defaultLanguage`          | [Our default settings](../../nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json)   |
-| Change on-screen wording — the same text in every language                                                                     | manifest fragment, `labels`                   | [Runbook, beat 4](../../docs/beta-demo-runbook.md#beat-4--relabel-the-product-2-min)                            |
-| Hide, reorder or rename a menu entry, toolbar button, tab, list column or bulk action                                          | manifest fragment, `extensions.overrides`     | [Extension reference, overrides](../../docs/extension-reference.md#per-id-overrides)                            |
-| Add a menu entry that opens an existing page                                                                                   | manifest fragment, `extensions.slots`         | [Runbook, beat 5](../../docs/beta-demo-runbook.md#beat-5--nav-hide-one-add-one-and-the-security-question-4-min) |
-| Show an entry only when a condition holds: the user can edit the document, is an administrator, has several documents selected | manifest fragment, a `rule` on the entry      | [Extension reference, rules](../../docs/extension-reference.md#4-rules--the-registered-predicates)              |
-| Choose which list columns are offered, and which start switched on                                                             | manifest fragment, `extensions.slots`         | [Runbook, beat 6](../../docs/beta-demo-runbook.md#beat-6--columns-3-min)                                        |
+| You want to…                                                                                                                   | Where                                                            | Details                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Change the product name and the browser-tab title                                                                              | settings fragment, `branding`                                    | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                                                    |
+| Change the colours, or add your own colour theme and make it the default                                                       | settings fragment, `themes`, `defaultThemeId`                    | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                                                    |
+| Put your logo in the header and on the sign-in page                                                                            | settings fragment, `branding.logo`                               | [Runbook, beat 3](../../docs/beta-demo-runbook.md#beat-3--rebrand-no-rebuild-3-min)                                                    |
+| Choose the default language                                                                                                    | settings fragment, `defaultLanguage`                             | [Our default settings](../../nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json)                          |
+| Change on-screen wording — the same text in every language                                                                     | manifest fragment, `labels`                                      | [Runbook, beat 4](../../docs/beta-demo-runbook.md#beat-4--relabel-the-product-2-min)                                                   |
+| Hide, reorder or rename a menu entry, toolbar button, tab, list column or bulk action                                          | manifest fragment, `extensions.overrides`                        | [Extension reference, overrides](../../docs/extension-reference.md#per-id-overrides)                                                   |
+| Add a menu entry that opens an existing page                                                                                   | manifest fragment, `extensions.slots`                            | [Runbook, beat 5](../../docs/beta-demo-runbook.md#beat-5--nav-hide-one-add-one-and-the-security-question-4-min)                        |
+| Show an entry only when a condition holds: the user can edit the document, is an administrator, has several documents selected | manifest fragment, a `rule` on the entry                         | [Extension reference, rules](../../docs/extension-reference.md#4-rules--the-registered-predicates)                                     |
+| Choose which list columns are offered, and which start switched on                                                             | manifest fragment, `extensions.slots`                            | [Runbook, beat 6](../../docs/beta-demo-runbook.md#beat-6--columns-3-min)                                                               |
+| Show a tab or toolbar action only on some document types, or only on documents with a facet                                    | manifest fragment, `app.rules.isType` or `app.rules.hasFacet`    | [Extension reference, document rules](../../docs/extension-reference.md#document-rules)                                                |
+| Choose which of a document type's own fields the Properties panel shows, in which order (read-only)                            | a layout file in the package, named by a `<layout>` contribution | [Extension reference, per-type layouts](../../docs/extension-reference.md#9b-per-type-layouts--which-properties-a-document-type-shows) |
+| Keep several demo configurations on one server and switch between them per browser                                             | settings fragment, `presales`                                    | [Extension reference, presales presets](../../docs/extension-reference.md#presales-presets)                                            |
 
 The conditions are a fixed list that ships with the product; adding your own is code. Every name
 that configuration can address is listed in the
@@ -114,12 +124,15 @@ shows Administration to administrators only:
 
 ## What it does not do today
 
-- **Change the logo.** Name and colours, yes; logo, no. A configurable logo is in review:
-  [pull request #307](https://github.com/nuxeo/agentic-ui-poc/pull/307).
-- **Vary the fields by document type.** The page shows and edits a fixed set of standard
-  fields, so the fields of your own document types are not shown or editable. Conditions on a
-  document's type exist (`app.rules.isType`), and a type can have its own View tab through the
-  `documentView` slot, but the properties and edit form are the same for every type.
+- **Change every mark.** The settings fragment's `branding.logo` replaces the header word mark
+  and the sign-in page logo
+  ([pull request #307](https://github.com/nuxeo/agentic-ui-poc/pull/307)). The small mark at the
+  top of the navigation rail and the "Content Innovation Cloud" title shown when the rail is
+  expanded belong to the Satori design system and stay, and so does the browser-tab icon.
+- **Edit the fields of your own document types.** The Properties panel shows a type's own fields,
+  generated from its schemas or arranged by a layout file in your package
+  ([extension reference, per-type layouts](../../docs/extension-reference.md#9b-per-type-layouts--which-properties-a-document-type-shows)),
+  but read-only. The edit form is the same standard fields for every type.
 - **Install from a public registry.** The Marketplace package has only been published to Nuxeo's
   pre-production Marketplace. The developer package your own code builds against,
   `@nuxeo-satori/platform`, is not on any npm registry yet.
@@ -135,7 +148,7 @@ shows Administration to administrators only:
   action that code has registered);
 - your own conditions, such as "the user is in the legal team";
 - changing what a shipped button does;
-- screens and fields specific to your document types.
+- screens specific to your document types, and a form that edits their own fields.
 
 Today a developer writes an Angular library against `@nuxeo-satori/platform`, starting from the
 code generators that ship with it, and adds it to an application built from our template app,
@@ -157,9 +170,9 @@ the package is not published yet, you build it from this repository. Publishing 
    [Nuxeo Agentic UI prompt library](https://github.com/nuxeo-sandbox/nuxeo-agentic-ui-prompts),
    started by Nuxeo presales. Its rule is that the agent reads our source but never changes it,
    and writes everything into your own Marketplace package that depends on `nuxeo-agentic-ui`.
-   Its branding prompt makes your package's installer overwrite our settings file; that prompt is
-   marked "Not tested yet", and this product does not yet support or test that route. Prompts are
-   collected there rather than in this repository.
+   Its branding prompt was written before NXSAT-312 and copies a settings file onto the server,
+   which is no longer read; put the same JSON in your package's `bootstrap.json` fragment instead.
+   Prompts are collected there rather than in this repository.
 
 ## Read more
 

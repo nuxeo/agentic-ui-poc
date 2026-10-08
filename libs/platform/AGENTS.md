@@ -44,6 +44,10 @@ schemas for your editor — and a `build.mjs` that refuses what the server would
 a repeated key, a fragment over 1 MiB, a missing asset) before anything reaches a server.
 `--presales` adds demo presets. Everything in a fragment is served without authentication.
 
+Working from a clone of the Satori repository instead of the installed package? There
+`generators.json` is a build output, so use `npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`,
+or run `npx nx run platform:sync-generators` once first.
+
 For Layer 2 — code — the other four:
 
 ```bash

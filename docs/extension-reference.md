@@ -73,7 +73,8 @@ defaults are always registered first. Everything at that path is served without 
 put nothing secret in a fragment.
 
 Scaffold that package rather than writing it by hand:
-`npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme` writes both
+`npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme` (from the published
+package; in a clone of this repository, `npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`) writes both
 declarations, starter fragments with JSON schemas for your editor, and a `build` target whose
 `build.mjs` refuses what the server would reject — JSON that does not parse, a repeated key, a
 fragment over 1 MiB, a missing asset — and writes the installable zip. `config-packages/presales-demo`
@@ -118,6 +119,11 @@ The Layer 1 configuration is the `extensions` key of a manifest fragment:
   }
 }
 ```
+
+Most examples later in this reference start at `overrides` or `slots`: they show the contents of
+this `extensions` key, and in a package's `manifest.json` they go inside it. At the top level of a
+fragment those keys are ignored without an error. The JSON schema the generator writes flags them in
+your editor; the package build does not.
 
 ### Presales presets
 
@@ -1098,7 +1104,9 @@ that is Layer 2 — see section 14.
   statement of slot state and is gated by `npm run beta:reference`; this prose is not.
 
 - **The two selection permission rules**, for the reason given in section 4.
-- **An in-app editor** for the manifest. It is edited as a Nuxeo Note.
+- **An in-app editor** for configuration. Configuration is the fragments in a configuration
+  package (section 1), so a change is a new version of that package, built and installed. On a
+  demo server, a preset (section 1) switches between configurations per browser.
 
 - **The permissions panel handles three permission levels, not Nuxeo's twelve.** The adopted
   upstream panel represents `Read`, `ReadWrite` and `Everything`, and ranks rows against exactly

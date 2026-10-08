@@ -123,13 +123,15 @@ Java/OSGi bundle, and installed into Nuxeo. Static assets are served by Nuxeo's 
 **no separate server to run and no new infrastructure** — which is a genuine operational
 advantage, and the reason the runtime cost delta for a customer is close to zero.
 
-The one subtlety that has already caused two defects: the customer-editable config must land inside
-the directory Tomcat actually serves, and the package must not own it. An earlier version installed
-to a path that is not a docBase and **would have 404'd on every install** — it was recorded complete
-before that was caught, which is why the phase-state gate now exists. The next installed the file
-itself with `overwrite="false"`, documented as upgrade-safe; the first real rehearsal showed an
-upgrade after a customer edit left **no version installed** (NXSAT-317). The package now ships only
-a sample, and that upgrade was rehearsed after the fix.
+Configuration is not a file on the server. A customer ships it in their own Marketplace package,
+which depends on ours; our Java bundle serves every package's fragments, and our package installs
+no configuration file (NXSAT-312). Upgrading ours with two customer packages installed was
+rehearsed and served the same configuration. Two earlier designs, both of which kept a
+customer-edited file on the server, each caused a defect. One installed to a path that is not a
+docBase and **would have 404'd on every install** — it was recorded complete before that was
+caught, which is why the phase-state gate now exists. The next installed the file itself with
+`overwrite="false"`, documented as upgrade-safe; the first real rehearsal showed an upgrade after a
+customer edit left **no version installed** (NXSAT-317).
 
 ---
 
