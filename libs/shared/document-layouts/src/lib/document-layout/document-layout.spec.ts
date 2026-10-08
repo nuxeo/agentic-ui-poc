@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateService } from '@ngx-translate/core';
 import { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
-import { Observable, of } from 'rxjs';
+import { Observable, Subject, of } from 'rxjs';
 
 import { DocumentLayoutService } from '../document-layout.service';
 import { LayoutSection, ResolvedLayout } from '../layout.model';
@@ -59,7 +59,13 @@ const layout = (overrides: Partial<ResolvedLayout> = {}): ResolvedLayout => ({
 describe('DocumentLayoutComponent', () => {
   let fixture: ComponentFixture<DocumentLayoutComponent>;
   let layoutFor: ReturnType<
-    typeof vi.fn<(type: string, mode: string) => Observable<ResolvedLayout | null>>
+    typeof vi.fn<
+      (
+        type: string,
+        mode: string,
+        schemas: readonly { name: string; prefix: string }[],
+      ) => Observable<ResolvedLayout | null>
+    >
   >;
   let vocabularyLabel: ReturnType<
     typeof vi.fn<(directory: string, id: string) => Observable<string | null>>
@@ -98,7 +104,20 @@ describe('DocumentLayoutComponent', () => {
 
   it('asks for the layout of the document type in the given mode', async () => {
     await render(claimDocument());
-    expect(layoutFor).toHaveBeenCalledWith('Claim', 'metadata');
+    expect(layoutFor).toHaveBeenCalledWith('Claim', 'metadata', []);
+  });
+
+  const carrying = (document: NuxeoDocument, ...names: string[]): NuxeoDocument =>
+    Object.assign(document, { schemas: names.map((name) => ({ name, prefix: name })) });
+
+  it('passes the schemas the document reports, its facets included, sorted by name', async () => {
+    await render(carrying(claimDocument(), 'dublincore', 'hxai', 'claim', 'externalEntity'));
+    expect(layoutFor).toHaveBeenCalledWith('Claim', 'metadata', [
+      { name: 'claim', prefix: 'claim' },
+      { name: 'dublincore', prefix: 'dublincore' },
+      { name: 'externalEntity', prefix: 'externalEntity' },
+      { name: 'hxai', prefix: 'hxai' },
+    ]);
   });
 
   it('renders each section with its heading and each field by its type', async () => {
@@ -237,6 +256,41 @@ describe('DocumentLayoutComponent', () => {
     await show(claimDocument({ 'claim:number': 'CLM-1b' }));
     expect(layoutFor).toHaveBeenCalledTimes(1);
     expect(value('claim:number')).toBe('CLM-1b');
+  });
+
+  it('asks again when the same document comes back carrying another facet schema', async () => {
+    await render(carrying(claimDocument(), 'claim'));
+    await show(carrying(claimDocument(), 'claim'));
+    expect(layoutFor).toHaveBeenCalledTimes(1);
+    await show(carrying(claimDocument(), 'claim', 'externalEntity'));
+    expect(layoutFor).toHaveBeenCalledTimes(2);
+    expect(layoutFor.mock.lastCall?.[2]).toEqual([
+      { name: 'claim', prefix: 'claim' },
+      { name: 'externalEntity', prefix: 'externalEntity' },
+    ]);
+  });
+
+  it("never shows the previous document's layout while this one's resolves", async () => {
+    const external: LayoutSection = {
+      id: 'externalEntity',
+      label: { keys: [], fallback: 'External entity' },
+      fields: [field('externalEntity:entityId', 'string')],
+    };
+    await render(
+      carrying(claimDocument(), 'claim', 'externalEntity'),
+      layout({ sections: [claimSection, external] }),
+    );
+    expect(host().querySelector('[data-section-id="externalEntity"]')).not.toBeNull();
+
+    const pending = new Subject<ResolvedLayout | null>();
+    layoutFor.mockReturnValue(pending);
+    await show({ ...carrying(claimDocument(), 'claim', 'hxai'), uid: 'c2' });
+    expect(host().querySelector('.document-layout')).toBeNull();
+
+    pending.next(layout());
+    fixture.detectChanges();
+    expect(host().querySelector('[data-section-id="claim"]')).not.toBeNull();
+    expect(host().querySelector('[data-section-id="externalEntity"]')).toBeNull();
   });
 
   it('asks for an entry only when a value names it, not again for the same values', async () => {

@@ -13,6 +13,7 @@ import {
   TimeoutError,
   catchError,
   combineLatest,
+  forkJoin,
   map,
   of,
   shareReplay,
@@ -27,8 +28,21 @@ import {
   readLayoutFile,
   readLayoutIndex,
 } from './layout-file';
-import { DocumentTypeDefinition, LayoutMode, ResolvedLayout } from './layout.model';
-import { applyLayoutFile, generateLayout, readDocumentType } from './resolve-layout';
+import {
+  DocumentSchemaRef,
+  DocumentTypeDefinition,
+  DocumentTypeSchema,
+  LayoutMode,
+  ResolvedLayout,
+} from './layout.model';
+import {
+  applyLayoutFile,
+  facetSchemasToRead,
+  generateLayout,
+  prefixOfXpath,
+  readDocumentType,
+  readSchema,
+} from './resolve-layout';
 
 /** As for the bootstrap and manifest reads: `HttpClient` has no timeout of its own. */
 export const LAYOUT_LOAD_TIMEOUT_MS = 10_000;
@@ -80,13 +94,18 @@ function warn(message: string): void {
 }
 
 /**
- * Resolves the layout a document type shows in a mode.
+ * Resolves the layout a document shows in a mode, from its type and its own schemas.
  *
  * The contributed files come from the configuration service: `layouts.json` names the types and
  * modes a package contributed, and each file is fetched the first time a document of that type
  * needs it. Both are read once per session — the server changes them only on install and
  * restart. The type's schemas come from `/config/types/<type>`, which, asked for
  * `fetch-schema: fields`, also names the vocabulary a field is bound to.
+ *
+ * A dynamic facet adds schemas to one document, not to its type, so no type read has them. The
+ * document's own read lists every schema it carries, and each one its type lacks is read from
+ * `/config/schemas/<name>`, in the same shape. The layout is resolved per document from those
+ * reads, each cached per type or per schema, never from a layout cached for the type.
  *
  * Tolerant, like the rest of the configuration: an unreachable or malformed index or file falls
  * back to the generated layout and says why in the console.
@@ -104,21 +123,69 @@ export class DocumentLayoutService {
   private index$: Observable<LayoutIndex> | null = null;
   private readonly files = new Map<string, Observable<LayoutFile | null>>();
   private readonly types = new Map<string, Observable<DocumentTypeDefinition | null>>();
+  private readonly schemas = new Map<string, Observable<DocumentTypeSchema | null>>();
   private readonly entries = new Map<string, Observable<VocabularyEntry | null>>();
 
-  /** The layout to render, or `null` when the type's schemas cannot be read. Never errors. */
-  layoutFor(type: string, mode: LayoutMode): Observable<ResolvedLayout | null> {
+  /**
+   * The layout to render for a document, or `null` when its type's schemas cannot be read.
+   * Never errors.
+   *
+   * `documentSchemas` are the schemas the document's own read reports. A facet schema that
+   * cannot be read is left out, and the rest of the layout still renders.
+   */
+  layoutFor(
+    type: string,
+    mode: LayoutMode,
+    documentSchemas: readonly DocumentSchemaRef[] = [],
+  ): Observable<ResolvedLayout | null> {
     return combineLatest([this.documentType(type), this.contributed(type, mode)]).pipe(
-      map(([definition, file]) => {
-        if (!definition) return null;
-        if (!file) return generateLayout(definition, mode);
-        const { layout, skipped } = applyLayoutFile(definition, mode, file);
-        for (const xpath of skipped) {
-          warn(`${type}/${mode} layout: field ${xpath} is not on the ${type} type; skipped`);
-        }
-        return layout;
+      switchMap(([definition, file]) =>
+        definition ? this.resolve(definition, mode, file, documentSchemas) : of(null),
+      ),
+    );
+  }
+
+  private resolve(
+    definition: DocumentTypeDefinition,
+    mode: LayoutMode,
+    file: LayoutFile | null,
+    documentSchemas: readonly DocumentSchemaRef[],
+  ): Observable<ResolvedLayout> {
+    const wanted = facetSchemasToRead(definition, documentSchemas, file);
+    const reads: Observable<readonly (DocumentTypeSchema | null)[]> = wanted.length
+      ? forkJoin(wanted.map(({ name }) => this.schema(name)))
+      : of([]);
+    return reads.pipe(
+      map((read) => {
+        const facets = read.filter((schema): schema is DocumentTypeSchema => schema !== null);
+        if (!file) return generateLayout(definition, mode, facets);
+        const unread = new Map(
+          wanted.filter((_, i) => !read[i]).map((ref) => [ref.prefix, ref.name]),
+        );
+        return this.apply(definition, mode, file, facets, unread);
       }),
     );
+  }
+
+  /** `unread`: the prefix of each facet schema the file names whose read failed, to its name. */
+  private apply(
+    definition: DocumentTypeDefinition,
+    mode: LayoutMode,
+    file: LayoutFile,
+    facets: readonly DocumentTypeSchema[],
+    unread: ReadonlyMap<string, string>,
+  ): ResolvedLayout {
+    const { name: type } = definition;
+    const { layout, skipped } = applyLayoutFile(definition, mode, file, facets);
+    for (const xpath of skipped) {
+      const schema = unread.get(prefixOfXpath(xpath));
+      warn(
+        schema
+          ? `${type}/${mode} layout: field ${xpath} skipped: schema ${schema} was not read`
+          : `${type}/${mode} layout: field ${xpath} is not on the ${type} type or this document's facets; skipped`,
+      );
+    }
+    return layout;
   }
 
   /**
@@ -201,6 +268,32 @@ export class DocumentLayoutService {
           shareReplay({ bufferSize: 1, refCount: false }),
         );
       this.types.set(type, cached);
+    }
+    return cached;
+  }
+
+  /** One schema, shared by every type and document that carries it. A failed read is not kept. */
+  private schema(name: string): Observable<DocumentTypeSchema | null> {
+    let cached = this.schemas.get(name);
+    if (!cached) {
+      cached = this.api
+        .get<unknown>(`/nuxeo/api/v1/config/schemas/${encodeURIComponent(name)}`, undefined, {
+          'fetch-schema': 'fields',
+        })
+        .pipe(
+          map((raw) => {
+            const schema = readSchema(raw);
+            if (schema?.name !== name) throw new Error(`the response is not the ${name} schema`);
+            return schema;
+          }),
+          catchError((error: unknown) => {
+            this.schemas.delete(name);
+            warn(`schema ${name} not read: ${describe(error)}`);
+            return of(null);
+          }),
+          shareReplay({ bufferSize: 1, refCount: false }),
+        );
+      this.schemas.set(name, cached);
     }
     return cached;
   }

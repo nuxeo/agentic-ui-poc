@@ -865,12 +865,23 @@ configuration package, as Nuxeo Web UI keeps a layout per type and mode. This bu
 mode, `metadata`: the Properties panel on document detail, beneath the packaged rows (title, tags,
 description and the Dublin Core vocabularies) and above Attachments. Read-only.
 
-**With no file, the layout is generated from the type's own schemas.** One section per schema,
+**With no file, the layout is generated from the type's own schemas,** and from those a dynamic
+facet adds to the document (next paragraph). One section per schema,
 fields by name, each value shown by its schema type. Schemas the panel and viewers already
 present are left out — `common`, `dublincore`, `uid`, `file`, `files`, `note`, `facetedTag`,
-`relatedtext`, `picture`, `image_metadata`, `iptc`, `video`, `audio` — so a stock File or Note shows
-nothing new, a Claim shows its `claim` schema, and a schema you add to File appears on File. A
-type never falls back to its parent type's file.
+`relatedtext`, `picture`, `image_metadata`, `iptc`, `video`, `audio`, and the `collectionMember`,
+`notification` and `thumbnail` schemas Nuxeo's own facets add to a document as it is collected,
+subscribed to and given content — so a stock File or Note shows nothing new, a Claim shows its
+`claim` schema, and a schema you add to File appears on File. A type never falls back to its
+parent type's file.
+
+**A schema a dynamic facet adds to one document gets a section on that document.** A facet added
+after creation (`Document.AddFacet`, or an integration such as HxAI's `Hxai`) brings schemas the
+type does not declare, so a File given `ExternalEntity` shows an `externalEntity` section and a
+File without it does not. Those sections come after the type's own, in schema-name order, so a
+facet never moves the sections every document of the type shows. Each such schema is read once
+per session; one that cannot be read is left out, with the reason in the console, and the rest of
+the layout still renders.
 
 **A file replaces the generated layout whole.** Only the fields it lists are shown, in its order;
 nothing generated is merged in. The type must match exactly.
@@ -908,11 +919,16 @@ nothing generated is merged in. The type must match exactly.
 | `sections[].labelKey` | Heading, as a translation key.                                                                                                |
 | `sections[].fields`   | Required list of `"<prefix>:<field>"`, or `{ "field", "label"?, "labelKey"? }`. Top-level fields only, each once per section. |
 
-A field the type does not have, an entry that is not `<prefix>:<field>`, or a field listed twice in
+A field neither the type nor the document's facets have, an entry that is not `<prefix>:<field>`, or a field listed twice in
 one section is skipped and the rest of the file applies; a file that is refused shows the generated layout instead. Both are logged in
 the browser console under `[agentic-ui-layouts]`, and the page never breaks. A schema with no prefix
 is addressed by its name, as Nuxeo does: `file:content`. Unknown keys are ignored without a message,
 so that a file written for a later version still loads.
+
+A file may name a field of a facet's schema, such as `externalEntity:origin` in a File layout. It
+shows on a document that carries the facet; on one that does not, it is skipped and logged as for
+any field the document lacks, so expect that message for every such document. If the facet's
+schema could not be read, the message says so instead of calling the field absent.
 
 How each value is shown is decided by its schema type — there is no widget name to set:
 
