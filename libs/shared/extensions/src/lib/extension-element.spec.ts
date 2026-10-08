@@ -1,32 +1,18 @@
-import {
-  filterEnabled as upstreamFilterEnabled,
-  sortByOrder as upstreamSortByOrder,
-} from '@alfresco/adf-extensions';
-
 import { filterEnabled, sortByOrder } from './extension-element';
 
 /**
  * Parity with `@alfresco/adf-extensions@9.0.0`.
  *
- * Every expected value below is the output upstream produced for that input, and the table runs
- * against upstream and against ours, so a case that does not hold for upstream is a wrong
- * expectation rather than a divergence.
+ * Every expected value below is the output upstream produced for that input. The table ran
+ * against upstream as well as ours until the dependency was dropped (NXSAT-308, commit
+ * `dae2336ec`), so the values are frozen upstream output, not expectations written from intuition.
  */
-const IMPLEMENTATIONS = [
-  {
-    source: '@alfresco/adf-extensions',
-    filterEnabled: upstreamFilterEnabled,
-    sortByOrder: upstreamSortByOrder,
-  },
-  { source: 'ours', filterEnabled, sortByOrder },
-];
-
 type Entry = { readonly id: string; readonly disabled?: boolean; readonly order?: number };
 
 /** For values a JSON manifest can hold and the descriptor type does not admit. */
 const loose = (value: Record<string, unknown>): Entry => value as unknown as Entry;
 
-describe.each(IMPLEMENTATIONS)('filterEnabled ($source)', ({ filterEnabled: keep }) => {
+describe('filterEnabled', () => {
   it.each([
     ['absent', loose({}), true],
     ['true', loose({ disabled: true }), false],
@@ -42,11 +28,11 @@ describe.each(IMPLEMENTATIONS)('filterEnabled ($source)', ({ filterEnabled: keep
     ['an empty object', loose({ disabled: {} }), false],
     ['an empty array', loose({ disabled: [] }), false],
   ])('disabled: %s, kept: %s', (_label, entry, kept) => {
-    expect(keep(entry)).toBe(kept);
+    expect(filterEnabled(entry)).toBe(kept);
   });
 });
 
-describe.each(IMPLEMENTATIONS)('sortByOrder ($source)', ({ sortByOrder: compare }) => {
+describe('sortByOrder', () => {
   const MAX = Number.MAX_SAFE_INTEGER;
 
   it.each([
@@ -72,7 +58,7 @@ describe.each(IMPLEMENTATIONS)('sortByOrder ($source)', ({ sortByOrder: compare 
       Number.NaN,
     ],
   ])('%s', (_label, a, b, expected) => {
-    expect(Object.is(compare(a, b), expected)).toBe(true);
+    expect(Object.is(sortByOrder(a, b), expected)).toBe(true);
   });
 
   it('sorts ascending, absent last, ties in registration order', () => {
@@ -90,7 +76,7 @@ describe.each(IMPLEMENTATIONS)('sortByOrder ($source)', ({ sortByOrder: compare 
       loose({ id: 'zero', order: 0 }),
     ];
 
-    expect([...entries].sort(compare).map((entry) => entry.id)).toEqual([
+    expect([...entries].sort(sortByOrder).map((entry) => entry.id)).toEqual([
       'negative',
       'null',
       'zero',
@@ -113,7 +99,7 @@ describe.each(IMPLEMENTATIONS)('sortByOrder ($source)', ({ sortByOrder: compare 
     const ids = (predicate: (entry: Entry) => boolean) =>
       entries.filter(predicate).map((entry) => entry.id);
 
-    expect([...entries].sort(compare).map((entry) => entry.id)).toEqual([
+    expect([...entries].sort(sortByOrder).map((entry) => entry.id)).toEqual([
       ...ids((entry) => entry.order === 0),
       ...ids((entry) => entry.order === 1),
       ...ids((entry) => entry.order === undefined),

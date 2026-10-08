@@ -107,6 +107,12 @@ across 190 sites — the same operation already done once, verified by running
 | Peers are declared                               | 10 peers; every specifier in the emitted `.d.ts` is a peer or a sibling entry point |
 | **`npm publish` is not refused**                 | `npm run beta:publishable` — a real `--dry-run` on a copy of the built bytes        |
 
+**No `@alfresco` package is a peer** since NXSAT-308. `@alfresco/adf-extensions` was one, for three
+functions the extension engine imported (`filterEnabled`, `sortByOrder`, `mergeObjects`); the engine
+now has its own, pinned case by case to 9.0.0's output. The peer was dropped with the import still in
+place first, and `beta:publishable` refused it — `Bundle imports "@alfresco/adf-extensions" but the
+built package.json declares it nowhere` — so the declared-imports check does guard the peer set.
+
 ### The row that was missing, and what it cost
 
 Every row above was true when written, and the package was still **impossible to
@@ -138,8 +144,10 @@ before being trusted.
 2. In `libs/platform/package.json`: remove `"private": true`, add `publishConfig`.
 3. If the scope changes, rename the 190 import specifiers and the `tsconfig.base.json`
    aliases, then `npm run beta:api -- --update`.
-4. Decide a version. It is `0.1.0`, hand-maintained and not tied to the app version.
-   A Beta wants `0.x` so the API can move without a major bump every sprint.
+4. Decide a version. It is `0.2.0`, hand-maintained and not tied to the app version. NXSAT-308
+   moved it from `0.1.0`: `CHANGELOG.md`'s Unreleased section holds breaking changes, and
+   `^0.1.0` admits only `0.1.x`. A Beta wants `0.x` so the API can move without a major bump
+   every sprint.
 5. `npm publish dist/libs/platform --dry-run` to confirm the tarball, then publish.
 
 `private: true` is what makes step 2 deliberate: `npm publish` refuses outright rather

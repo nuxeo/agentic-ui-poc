@@ -1,22 +1,15 @@
-import { mergeObjects as upstreamMergeObjects } from '@alfresco/adf-extensions';
-
 import { mergeObjects } from './extension-merge';
 
 /**
  * Parity with `mergeObjects` from `@alfresco/adf-extensions@9.0.0`.
  *
- * Every expected value in {@link PARITY} is the output upstream produced for those layers, and
- * the table runs against upstream and against ours, so a case that fails for upstream is a wrong
- * expectation rather than a divergence. The departures are a separate block that asserts what
- * upstream did and what we do instead.
+ * Every expected value in {@link PARITY} is the output upstream produced for those layers. The
+ * table ran against upstream as well as ours until the dependency was dropped (NXSAT-308, commit
+ * `dae2336ec`), so the values are frozen upstream output, not expectations written from intuition.
+ * The departures are a separate block; each records what upstream did instead.
  *
  * Inputs are deep-frozen, so a merge that writes to a layer throws rather than passing.
  */
-const IMPLEMENTATIONS = [
-  { source: '@alfresco/adf-extensions', merge: upstreamMergeObjects as typeof mergeObjects },
-  { source: 'ours', merge: mergeObjects },
-];
-
 type Layers = readonly Record<string, unknown>[];
 
 function deepFreeze<T>(value: T): T {
@@ -249,15 +242,15 @@ const PARITY: readonly (readonly [string, Layers, Record<string, unknown>])[] = 
   ],
 ];
 
-describe.each(IMPLEMENTATIONS)('mergeObjects ($source)', ({ merge }) => {
+describe('mergeObjects', () => {
   it.each(PARITY)('%s', (_label, layers, expected) => {
-    expectSame(merge(...deepFreeze(layers)), expected);
+    expectSame(mergeObjects(...deepFreeze(layers)), expected);
   });
 
   it('returns a new object and takes a value seen in one layer by reference', () => {
     const shared = { k: 1 };
     const layer = deepFreeze({ o: shared });
-    const merged = merge(layer);
+    const merged = mergeObjects(layer);
     expect(merged).not.toBe(layer);
     expect(merged['o']).toBe(shared);
     expect(Object.getPrototypeOf(merged)).toBe(Object.prototype);
@@ -268,7 +261,7 @@ describe.each(IMPLEMENTATIONS)('mergeObjects ($source)', ({ merge }) => {
       JSON.parse('{"constructor": {"prototype": {"polluted": 1}}}'),
       JSON.parse('{"constructor": {"prototype": {"more": 1}}}'),
     ]);
-    const merged = merge(...layers);
+    const merged = mergeObjects(...layers);
 
     // `toStrictEqual` compares `.constructor`, which is exactly the key under test.
     expect(JSON.stringify(merged)).toBe('{"constructor":{"prototype":{"polluted":1,"more":1}}}');
@@ -279,7 +272,7 @@ describe.each(IMPLEMENTATIONS)('mergeObjects ($source)', ({ merge }) => {
 });
 
 describe('mergeObjects, where it departs from upstream', () => {
-  describe('null or undefined meeting an object: upstream throws, the later value wins', () => {
+  describe('null or undefined meeting an object: upstream threw, the later value wins', () => {
     it.each([
       ['null over an object', [{ o: { k: 1 } }, { o: null }], { o: null }],
       ['undefined over an object', [{ o: { k: 1 } }, { o: undefined }], { o: undefined }],
@@ -311,30 +304,23 @@ describe('mergeObjects, where it departs from upstream', () => {
         { list: [{ id: 'null', v: 2 }] },
       ],
     ] as const)('%s', (_label, layers, expected) => {
-      const frozen = deepFreeze(layers as unknown as Layers);
-      expect(() => upstreamMergeObjects(...frozen)).toThrow(TypeError);
-      expectSame(mergeObjects(...frozen), expected);
+      // Upstream: `TypeError: Cannot convert undefined or null to object`, for every case.
+      expectSame(mergeObjects(...deepFreeze(layers as unknown as Layers)), expected);
     });
   });
 
-  describe('a __proto__ key: upstream re-prototypes the result, ours skips the key', () => {
+  describe('a __proto__ key: upstream re-prototyped the result, ours skips the key', () => {
+    // Upstream's result read `polluted === true` without owning it: its prototype had been
+    // replaced with a copy of the value. `Object.prototype` itself was never written.
     it.each([
       ['at the top level of one layer', [JSON.parse('{"__proto__": {"polluted": true}, "a": 1}')]],
       ['as a .$replace key', [JSON.parse('{"__proto__.$replace": {"polluted": true}, "a": 1}')]],
     ])('%s', (_label, layers) => {
-      const frozen = deepFreeze(layers as Layers);
+      const merged = mergeObjects(...deepFreeze(layers as Layers));
 
-      const theirs = upstreamMergeObjects(...frozen);
-      expect(theirs['polluted']).toBe(true);
-      expect(Object.hasOwn(theirs, 'polluted')).toBe(false);
-      expect(Object.getPrototypeOf(theirs)).not.toBe(Object.prototype);
-
-      const ours = mergeObjects(...frozen);
-      expectSame(ours, { a: 1 });
-      expect(ours['polluted']).toBeUndefined();
-      expect(Object.getPrototypeOf(ours)).toBe(Object.prototype);
-
-      // Neither writes Object.prototype itself.
+      expectSame(merged, { a: 1 });
+      expect(merged['polluted']).toBeUndefined();
+      expect(Object.getPrototypeOf(merged)).toBe(Object.prototype);
       expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
     });
 
@@ -344,13 +330,9 @@ describe('mergeObjects, where it departs from upstream', () => {
         JSON.parse('{"o": {"__proto__": {"polluted": true}}}'),
       ] as Layers);
 
-      const theirs = upstreamMergeObjects(...frozen) as { o: Record<string, unknown> };
-      expect(theirs.o['polluted']).toBe(true);
-      expect(Object.getPrototypeOf(theirs.o)).not.toBe(Object.prototype);
-
-      const ours = mergeObjects(...frozen) as { o: Record<string, unknown> };
-      expectSame(ours, { o: { k: 1 } });
-      expect(Object.getPrototypeOf(ours.o)).toBe(Object.prototype);
+      const merged = mergeObjects(...frozen) as { o: Record<string, unknown> };
+      expectSame(merged, { o: { k: 1 } });
+      expect(Object.getPrototypeOf(merged.o)).toBe(Object.prototype);
       expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
     });
   });
@@ -362,7 +344,7 @@ describe('mergeObjects, where it departs from upstream', () => {
         { list: [{ id: 'b' }] },
       ] as Layers);
 
-      expectSame(upstreamMergeObjects(...frozen), { list: [{ id: 'a' }, { id: 'b' }] });
+      // Upstream: { list: [{ id: 'a' }, { id: 'b' }] }
       expectSame(mergeObjects(...frozen), {
         list: [{ id: '__proto__', v: 1 }, { id: 'a' }, { id: 'b' }],
       });
@@ -375,10 +357,7 @@ describe('mergeObjects, where it departs from upstream', () => {
       ] as Layers);
 
       // Upstream found `Object` under `constructor`, merged the entry into it — dropping `$k` —
-      // and placed it among the matched entries.
-      expectSame(upstreamMergeObjects(...frozen), {
-        list: [{ id: 'a' }, { id: 'constructor' }, 'x'],
-      });
+      // and placed it among the matched entries: { list: [{ id: 'a' }, { id: 'constructor' }, 'x'] }
       expectSame(mergeObjects(...frozen), {
         list: [{ id: 'a' }, 'x', { id: 'constructor', $k: 1 }],
       });

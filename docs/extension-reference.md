@@ -203,12 +203,12 @@ slot the library has never heard of and showing the nine unchanged.
 
 ### Fields every descriptor honours
 
-| Field      | Meaning                                                           |
-| ---------- | ----------------------------------------------------------------- |
-| `id`       | Required. The address. An entry without one is dropped.           |
-| `order`    | Ascending. Absent sorts last. Packaged entries are spaced by ten. |
-| `disabled` | `true` removes the entry. Upstream ACA semantics.                 |
-| `rule`     | A rule ID, or a nested rule reference — see section 4.            |
+| Field      | Meaning                                                                                     |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| `id`       | Required. The address. An entry without one is dropped.                                     |
+| `order`    | Ascending. Absent sorts last; `null` sorts as `0`. Packaged entries are spaced by ten.      |
+| `disabled` | `true` removes the entry. ACA's semantics: any truthy value does, the string `"false"` too. |
+| `rule`     | A rule ID, or a nested rule reference — see section 4.                                      |
 
 Action descriptors (`bulk-actions`, and the other action slots when they are
 populated) honour four more:
@@ -1063,14 +1063,21 @@ not protect anything the API would otherwise return.
 
 ## 12. `$references` — layering your JSON over ours
 
-Semantics are ACA's, implemented by merging through `mergeObjects` from `@alfresco/adf-extensions`
-rather than reimplemented, so behaviour matches the upstream documentation.
+Semantics are ACA's. The merge is our own copy of `mergeObjects` from `@alfresco/adf-extensions`
+9.0.0, pinned case by case to its output, so behaviour matches the upstream documentation, apart
+from the last two items below.
 
 - Layers apply in the order `$references` lists them. **Later wins.**
 - `$`-prefixed keys are **metadata and do not merge** — `$references` from a referenced layer never
   leaks into the result.
 - Arrays of objects merge **by `id`**, so a layer patches one entry without restating the list.
-- `"<key>.$replace"` replaces instead of merging.
+- `"<key>.$replace"` replaces instead of merging, at any depth — `"rule.$replace"` inside an
+  override included.
+- A later scalar does **not** replace an earlier object: a number or boolean is ignored and a
+  string is spread into it. A later non-array is appended to an earlier array. Use `.$replace`.
+- `null` meeting an object, in either order, takes the later layer's value. ACA's merge threw
+  there, which broke every slot; `"rule": null` is how a later layer ungates an entry.
+- A `__proto__` key is ignored.
 - `$ignoreReferenceList` drops a layer even when it is referenced.
 - A layer that cannot be resolved is reported on `AppExtensionsService.missingLayers()`, not silently
   dropped, and the rest of the stack still applies.

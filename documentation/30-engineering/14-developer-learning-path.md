@@ -749,8 +749,8 @@ change**. Eight slots: `navbar` (14 packaged entries), `bulk-actions` (6), `tool
 - `overrides` honours exactly four keys — `order`, `label`, `rule`, `visible`. Anything else is
   silently dropped; `hiddenByDefault` must go through `slots`.
 
-`$references` layering uses `mergeObjects` from `@alfresco/adf-extensions` directly (Alfresco
-Content App semantics): later wins, `$`-prefixed keys do not merge, arrays of objects merge **by
+`$references` layering uses our own copy of ACA's `mergeObjects`, pinned to the output of
+`@alfresco/adf-extensions` 9.0.0 (Alfresco Content App semantics): later wins, `$`-prefixed keys do not merge, arrays of objects merge **by
 `id`**, `"<key>.$replace"` replaces, `$ignoreReferenceList` drops a layer.
 
 - **In-repo:** `docs/extension-reference.md`, `libs/platform/extension-reference.md`,
@@ -768,7 +768,7 @@ Estimated effort: **20 hours**.
 | ----------------------------------- | ----------------------- | -------------------- | ------------------------------------------------------------------ |
 | `@alfresco/adf-hx-content-services` | **7.20.0-automate.292** | GitHub Packages only | Exact pin. **Never a range** — `latest` is itself a prerelease.    |
 | `@alfresco/adf-core`                | **9.0.0**               | GitHub Packages      | Arrives transitively; brings Material; **eager**, +1.15 MB initial |
-| `@alfresco/adf-extensions`          | **9.0.0**               | public npm           | Only its neutral merge helpers are used                            |
+| `@alfresco/adf-extensions`          | **9.0.0**               | public npm           | Not imported since NXSAT-308; adf-core and adf-hx still need it    |
 | `@alfresco/js-api`                  | **10.0.0**              | devDependency        | Types-only peer; 7 MB avoided at runtime                           |
 | `@hylandsoftware/hxcs-js-client`    | **2.0.111**             | GitHub Packages      | The `Document` / HxPR model                                        |
 | `@hylandsoftware/satori-ui`         | **0.2.0** (`^0.2.0`)    | GitHub Packages      | Hyland design system; deliberately absent from the template        |
@@ -972,7 +972,7 @@ Estimated effort: **12 hours**.
 ### 19. Publishing the platform package — **Area**
 
 `libs/platform` is the only publishable library, built with `@nx/angular:package` (ng-packagr
-**20.3.2** underneath), published as `@nuxeo-satori/platform@0.1.0`.
+**20.3.2** underneath), published as `@nuxeo-satori/platform@0.2.0`.
 
 Topics: ng-packagr, the Angular Package Format, **secondary entry points** (five `ng-package.json`
 files: root plus `app-config`, `extensions`, `nuxeo-client`, `ui`), `sideEffects: false`,

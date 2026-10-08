@@ -261,8 +261,9 @@ document-detail tabs and toolbar actions but not browse columns. Reference and e
 objects — `NodeEntry`, `SiteEntry`, `RepositoryInfo` — describing a repository we do not
 talk to. Reusing it would put ACS types in the signature every customer rule is written
 against. The _shape_ is upstream's; the types are ours. Upstream's domain-neutral helpers
-(`mergeObjects`, `mergeArrays`, `filterEnabled`, `sortByOrder`, `getValue`) are used
-directly.
+were used directly until NXSAT-308, which replaced the three the engine needed —
+`mergeObjects`, `filterEnabled` and `sortByOrder` — with our own, pinned case by case to
+upstream's output.
 
 ---
 

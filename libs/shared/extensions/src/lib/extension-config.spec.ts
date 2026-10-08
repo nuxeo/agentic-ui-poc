@@ -154,6 +154,29 @@ describe('resolveExtensionLayers', () => {
     expect(missing).toEqual(['shared']);
   });
 
+  it('lets a later package clear an earlier one’s rule or order with null, in either direction', () => {
+    // Upstream's merge threw here, inside the computed every slot reads, so all of them rethrew.
+    const { config } = resolveExtensionLayers([
+      {
+        overrides: {
+          'app.navbar.trash': {
+            rule: { type: 'core.every', parameters: ['app.rules.isAdministrator'] },
+          },
+          'app.navbar.tasks': { order: null },
+        },
+      },
+      {
+        overrides: {
+          'app.navbar.trash': { rule: null },
+          'app.navbar.tasks': { order: 5 },
+        },
+      },
+    ]);
+
+    expect(config.overrides?.['app.navbar.trash']).toEqual({ rule: null });
+    expect(config.overrides?.['app.navbar.tasks']).toEqual({ order: 5 });
+  });
+
   it('keeps the other packages when one has malformed layer metadata', () => {
     const { config, applied, missing } = resolveExtensionLayers([
       { overrides: { 'app.navbar.trash': { label: 'Bin' } } },
