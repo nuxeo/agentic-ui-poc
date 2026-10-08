@@ -71,9 +71,9 @@ extenders](../../libs/platform/AGENTS.md#2-start-with-a-generator) gives the thr
 `config-packages/presales-demo` in this repository is a finished example. Until the developer
 package is published, run the generator from a clone of this repository as
 `npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`; the
-`@nuxeo-satori/platform:` form in that guide resolves only from the published package. What it
-writes is plain JSON, XML and a build script with no dependencies, so it can live in your own
-repository.
+`@nuxeo-satori/platform:` form in that guide resolves from the published package, and in a clone
+only after `npx nx run platform:sync-generators`. What it writes is plain JSON, XML and a build
+script with no dependencies, so it can live in your own repository.
 
 ## What you can change without code
 
