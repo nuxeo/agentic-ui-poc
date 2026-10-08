@@ -338,6 +338,18 @@ function suppressedFindings(body) {
   return found;
 }
 
+/** The characters outside `<…>`; no angle bracket survives, however the markup nests. */
+function textOutsideTags(html) {
+  let text = '';
+  let inTag = false;
+  for (const ch of html) {
+    if (ch === '<') inTag = true;
+    else if (ch === '>') inTag = false;
+    else if (!inTag) text += ch;
+  }
+  return text;
+}
+
 /**
  * The findings in a review body's "Previously missed (N)" block — defects Copilot found on a
  * later pass in code that had not changed since its last review.
@@ -380,10 +392,7 @@ export function previouslyMissedFindings(body) {
   const found = [];
   for (const match of section.matchAll(entry)) {
     if (found.length === declared) break;
-    const title = match[1]
-      .replace(/<[^>]*>|[<>]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const title = textOutsideTags(match[1]).replace(/\s+/g, ' ').trim();
     found.push({
       file: match[2].replace(/[\u200b-\u200d\u2060\ufeff]/g, '').trim(),
       line: Number(match[3]),
