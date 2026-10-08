@@ -145,16 +145,6 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
     return toolbarButton('Rotate left');
   }
 
-  it('focuses Rotate left with IBM-readable outline (NXENG-817 / IBM 922184956)', () => {
-    const button = rotateLeftButton();
-    expect(button.getAttribute('aria-label')).toBe('Rotate left');
-    const toolbar = fixture.nativeElement.querySelector('.viewer-toolbar') as HTMLElement | null;
-    expect(toolbar).withContext('expected .viewer-toolbar').not.toBeNull();
-    if (!toolbar) return;
-
-    assertFocusRingContrast(button, toolbar, 'Rotate left (NXENG-817)');
-  });
-
   it('wires the focus ring through --document-viewer-focus-on-light-surface on the viewer host', () => {
     const button = toggleFitButton();
     const host = fixture.nativeElement as HTMLElement;
@@ -211,6 +201,7 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
       if (!toolbar) return;
 
       assertFocusRingContrast(button, toolbar, label);
+      assertFocusRingContrast(rotateLeftButton(), toolbar, `${label} — Rotate left (NXENG-817)`);
 
       const backdrop = surfaceBehindPositiveOutlineRing(button);
       const stripBg = parseColor(getComputedStyle(toolbar).backgroundColor).rgb;
