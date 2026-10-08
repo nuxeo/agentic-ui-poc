@@ -112,12 +112,14 @@ and when any of its files sits outside the measurement — only `noStatements` b
 never a dated allowlist entry. `npm run beta:coverage` runs at the end of the SonarCloud workflow,
 after its test-with-coverage step.
 
-**The rule follows imports, so a shared barrel the library uses must be free of both packages
-too.** Two were not, and each was fixed in the file that carried the package:
-`@nuxeo-satori/platform/nuxeo-client`'s `avatar-colors.ts` imported a Satori type, and
-`@nuxeo-satori/platform/extensions` imported `@alfresco/adf-extensions`. `nxs-permissions-panel`
-is the first component to import `nuxeo-client`. Fix any new case the same way, rather than
-copying code into the library to dodge the rule.
+**`@nuxeo-satori/platform/nuxeo-client` and `@nuxeo-satori/platform/extensions` are importable**,
+because the dependency rule follows imports and neither barrel now reaches a banned package.
+Both once did: `nuxeo-client`'s `avatar-colors.ts` imported a Satori type, and `extensions` imported
+`@alfresco/adf-extensions`. Controls in `scripts/review-guardrails.selftest.mjs` run the rule over
+the real `libs/` tree and put each import back, so a regression in either barrel is red there.
+
+If another library is refused, fix the file that carries the package, rather than copying code
+into the library to dodge the rule.
 
 **Adding a component, with every gate staying green:**
 

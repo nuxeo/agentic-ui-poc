@@ -6047,9 +6047,9 @@ function satoriComponentsSources() {
 /**
  * No `@alfresco/*`, no `@hylandsoftware/*` — reached directly **or through anything it imports**.
  *
- * Transitive on purpose. `libs/shared/nuxeo-client` imports a Satori type in `avatar-colors.ts` and
- * `libs/shared/extensions` imports `@alfresco/adf-extensions`, so a component importing either
- * barrel would need both packages to compile while a direct-import check stayed green. A type-only
+ * Transitive on purpose. `libs/shared/nuxeo-client` once imported a Satori type in `avatar-colors.ts`
+ * and `libs/shared/extensions` imported `@alfresco/adf-extensions`, so a component importing either
+ * barrel needed both packages to compile while a direct-import check stayed green. A type-only
  * import counts: it still needs the package installed to compile. Stylesheets count too, because
  * `@use '@hylandsoftware/satori-ui/theme'` needs the package as much as an import does.
  */
