@@ -2,7 +2,8 @@ name: SonarCloud Analysis
 
 on:
   # PRs into an `integration/<ticket>` branch get the same analysis as PRs into `main`, and the
-  # push trigger gives the integration branch its own analysis for them to be compared against.
+  # push trigger gives the integration branch an analysis of its own. SonarCloud keeps that
+  # analysis as a long-lived branch only if the project's long-lived branch pattern matches it.
   pull_request:
     branches: [main, 'integration/**']
   push:
