@@ -193,6 +193,22 @@ function expectBoundVerbatim(sent: SentSearch, term: string) {
   ).toBe(term);
 }
 
+/**
+ * In hand-built NXQL, one literal must hold the whole term — decoded here rather than compared with
+ * the production escaper's output, so a broken escaper cannot vouch for itself — optionally followed
+ * by the `*` wildcard a builder appends. The structure checks alone pass a builder that truncates or
+ * replaces the term, as long as what is left matches nothing.
+ */
+function expectWholeTermInALiteral(sent: SentSearch, term: string) {
+  const literals = [...(sent.params.get('query') ?? '').matchAll(/'((?:[^'\\]|\\.)*)'/g)].map((m) =>
+    m[1].replace(/\\(.)/g, '$1'),
+  );
+  expect(
+    literals.some((literal) => literal === term || literal === `${term}*`),
+    `${sent.label}: no literal in the query holds the whole term; literals were ${JSON.stringify(literals)}`,
+  ).toBe(true);
+}
+
 test.describe('NXQL injection guard', () => {
   test('an apostrophe travels as data and Nuxeo accepts the query', async ({ signedIn: page }) => {
     for (const sent of await searchesSentFor(page, "O'Brien")) {
@@ -205,6 +221,7 @@ test.describe('NXQL injection guard', () => {
           sent.params.get('query'),
           `${sent.label}: the apostrophe was not escaped on its way into the literal`,
         ).toContain("'O\\'Brien");
+        expectWholeTermInALiteral(sent, "O'Brien");
       }
       expect(
         structureOf(sent),
@@ -231,6 +248,7 @@ test.describe('NXQL injection guard', () => {
       if (sent.endpoint === 'page-provider') {
         expectBoundVerbatim(sent, payload);
       } else {
+        expectWholeTermInALiteral(sent, payload);
         expect(
           structureOf(sent),
           `${sent.label}: the version and trash hygiene filters are no longer ANDed onto the query`,
