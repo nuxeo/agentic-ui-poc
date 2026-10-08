@@ -35,7 +35,7 @@
  *
  * Report-only is not "cannot fail":
  *
- *   - a location that could not be inspected — an unreadable lock or manifest, no installed tree,
+ *   - a location that could not be inspected — an unreadable lock, manifest or .npmrc, no installed tree,
  *     `npm ls` output that is not JSON, a directory under apps/, libs/ or tools/ that cannot be
  *     listed, a link that cannot be resolved, a source file that cannot be read — exits 2 in either
  *     mode. A gap in the list is not a short list;
@@ -319,8 +319,16 @@ const notes = [];
 
 {
   const npmrc = join(root, '.npmrc');
+  let text = null;
   if (existsSync(npmrc)) {
-    const lines = readFileSync(npmrc, 'utf8').split(/\r?\n/);
+    try {
+      text = readFileSync(npmrc, 'utf8');
+    } catch (error) {
+      gaps.push(`.npmrc: cannot read — ${error.message}`);
+    }
+  }
+  if (text !== null) {
+    const lines = text.split(/\r?\n/);
     lines.forEach((line, i) => {
       const text = line.trim();
       if (text.startsWith('#') || text.startsWith(';')) return;
@@ -530,14 +538,19 @@ function forbiddenDeclaration(name, spec) {
  * (`"name@^1.0.0"`), and a nested object is a scope rather than a pin, but either way the key names
  * a package npm will resolve — so both are reported.
  */
-function walkOverrides(node, path, visit) {
+function walkOverrides(node, path, visit, container = null) {
   if (!node || typeof node !== 'object') return;
   for (const [key, value] of Object.entries(node)) {
-    if (key === '.') continue;
+    // `"."` replaces the package whose object this is, so it is that package's entry — and its
+    // value may be an `npm:` alias onto a forbidden one while the container's own name is not.
+    if (key === '.') {
+      if (container !== null) visit(`${path}["."]`, container, value);
+      continue;
+    }
     const at = key.lastIndexOf('@');
     const name = at > 0 ? key.slice(0, at) : key;
     visit(`${path}.${key}`, name, value);
-    if (value && typeof value === 'object') walkOverrides(value, `${path}.${key}`, visit);
+    if (value && typeof value === 'object') walkOverrides(value, `${path}.${key}`, visit, name);
   }
 }
 

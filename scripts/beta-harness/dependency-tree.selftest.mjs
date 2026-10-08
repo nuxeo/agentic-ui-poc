@@ -286,6 +286,20 @@ control(
 );
 
 // 13. The `libs/platform` peer: the one place no lock entry represents.
+// npm's `"."` replaces the enclosing package itself, so an alias there swaps a harmless-looking
+// name for a forbidden one without either key naming it.
+control(
+  'manifest: an npm: alias in an override\'s "." entry is reported',
+  'fail',
+  `[manifest] package.json overrides.some-parent["."] = npm:${CORE}@9.0.0`,
+  fixture('manifest-override-self-alias', {
+    'package.json': {
+      ...cleanManifest(),
+      overrides: { 'some-parent': { '.': `npm:${CORE}@9.0.0` } },
+    },
+  }),
+);
+
 control(
   'manifest: a libs/*/package.json peer is reported',
   'fail',
@@ -405,9 +419,32 @@ control(
 // A subtree the walker cannot enter must not drop out of the scan as if it were clean: a silent
 // skip of an unreadable directory under libs/ takes every manifest and import beneath it out of a
 // blocking run's verdict.
+//
+// Two controls for one branch, because only one of them runs everywhere. A scan root that is not a
+// directory fails `readdirSync` with ENOTDIR for any user. A mode-000 directory is the realistic
+// case, but root reads straight through it, so that control is not registered under UID 0 — and
+// says so, rather than passing or failing for a reason that has nothing to do with the gate.
 /** Directories made unreadable for a control; restored before the workspace is removed. */
 const lockedDirs = [];
-{
+/** Controls not registered on this run, and why. Printed with the verdict, never counted. */
+const notRun = [];
+control(
+  'a scan root that cannot be listed is a gap, not a clean tree',
+  'gap',
+  ['CANNOT INSPECT', 'libs/: cannot list'],
+  fixture('gap-scan-root-not-a-directory', {
+    'libs/ui/package.json': undefined,
+    'libs/ui/src/index.ts': undefined,
+    'libs/ui/src/history.ts': undefined,
+    'libs/ui/src/theme.scss': undefined,
+    libs: 'a file where the libs/ directory should be\n',
+  }),
+);
+if (process.getuid?.() === 0) {
+  notRun.push(
+    'an unlistable directory under libs/ — running as root, which reads through mode 000; the scan-root control above covers the same branch',
+  );
+} else {
   const dir = fixture('gap-unlistable-dir', {
     'libs/locked/src/columns.ts': `import type { DataColumn } ${'from'} '${CORE}';\nexport type C = DataColumn;\n`,
   });
@@ -415,14 +452,18 @@ const lockedDirs = [];
   chmodSync(locked, 0o000);
   lockedDirs.push(locked);
   control(
-    process.getuid?.() === 0
-      ? 'an unlistable directory is a gap — CANNOT RUN AS ROOT, which reads through mode 000'
-      : 'an unlistable directory under libs/ is a gap, not a clean subtree',
+    'an unlistable directory under libs/ is a gap, not a clean subtree',
     'gap',
     ['CANNOT INSPECT', 'libs/locked/: cannot list'],
     dir,
   );
 }
+control(
+  'an unreadable .npmrc is a gap, not an absent mapping',
+  'gap',
+  ['CANNOT INSPECT', '.npmrc: cannot read'],
+  fixture('gap-npmrc-unreadable', { '.npmrc': undefined, '.npmrc/placeholder': '' }),
+);
 {
   const dir = fixture('gap-dangling-link');
   symlinkSync('./does-not-exist.ts', join(dir, 'apps', 'web', 'src', 'gone.ts'));
@@ -572,6 +613,7 @@ const negatives = results.filter((r) => r.expected !== 'pass').length;
 const positives = results.length - negatives;
 const split = `${negatives} negative (must report) + ${positives} positive (must stay quiet)`;
 console.log();
+for (const why of notRun) console.log(`NOT RUN ${why}`);
 if (failed.length === 0) {
   console.log(`dependency-tree selftest: pass — ${results.length} control(s): ${split}.`);
   process.exit(0);
