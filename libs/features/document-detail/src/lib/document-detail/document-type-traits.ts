@@ -1,5 +1,11 @@
 /**
- * Every decision document detail takes on a document's type, in one table.
+ * The type-name comparisons document detail makes about the document in focus, and about a
+ * section-tree node's icon, in one table.
+ *
+ * Not every type decision the page takes: it also calls the shared `nuxeo-client` predicates
+ * `isFolderishDocument` and `isCollectionDocument` (redirects) and `isBlobHoldingDocType` (main-blob
+ * fallback and retries), which other features use too and are not repeated here. Adding a type
+ * means checking those as well as this table.
  *
  * Two kinds of decision live here, and they are kept apart on purpose:
  *
