@@ -940,9 +940,9 @@ function checkAdfHxWorkaroundIds() {
  */
 function checkNoAdfHxInPublicApi() {
   // Scoped to the two heavy packages, deliberately. `@alfresco/adf-extensions` is also an
-  // `@alfresco` scope, but it is a small library this repo took as a production dependency by a
-  // Phase 2 decision, `libs/shared/extensions` imports two functions from it and re-exports
-  // nothing, so it leaks no type and moves no bundle. Failing on it would make the gate noise.
+  // `@alfresco` scope, but it is a small library that leaks no type and moves no bundle, and since
+  // NXSAT-308 nothing in `libs/` imports it at all: `libs/shared/extensions` owns the three
+  // functions it used to import. It remains installed only because adf-core and adf-hx need it.
   const ALFRESCO = /from\s+['"]@alfresco\/(adf-hx-content-services|adf-core)/;
 
   /**
@@ -6073,9 +6073,9 @@ function satoriComponentsStorybookStyles() {
 /**
  * No `@alfresco/*`, no `@hylandsoftware/*` — reached directly **or through anything it imports**.
  *
- * Transitive on purpose. `libs/shared/nuxeo-client` imports a Satori type in `avatar-colors.ts` and
- * `libs/shared/extensions` imports `@alfresco/adf-extensions`, so a component importing either
- * barrel would need both packages to compile while a direct-import check stayed green. A type-only
+ * Transitive on purpose. `libs/shared/nuxeo-client` once imported a Satori type in `avatar-colors.ts`
+ * and `libs/shared/extensions` imported `@alfresco/adf-extensions`, so a component importing either
+ * barrel needed both packages to compile while a direct-import check stayed green. A type-only
  * import counts: it still needs the package installed to compile. Stylesheets count too, because
  * `@use '@hylandsoftware/satori-ui/theme'` needs the package as much as an import does.
  *
