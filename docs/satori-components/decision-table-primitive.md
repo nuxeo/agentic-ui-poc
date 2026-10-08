@@ -30,12 +30,15 @@ files.
   one page of 50 (`getBrowseFolderContents(nuxeoPath, 50)`, `browse.ts:681`) and never pages. It sorts and
   filters those 50 rows in the browser (`toggleBrowseSort`, `browse.ts:561`). Its sort headers are
   `<th (click)>`: they cannot be reached by keyboard and carry no `aria-sort`.
-- **Server paging and sort already exist in the service.**
-  `BrowseService.getBrowseFolderContents(path, pageSize, { currentPageIndex, sort })` takes both. The
-  adf-hx bridge's query port calls it that way.
+- **Server paging and sort exist in the service, but only for ordinary folders.**
+  `BrowseService.getBrowseFolderContents(path, pageSize, { currentPageIndex, sort })` takes both, and the
+  adf-hx bridge's query port calls it that way. It forwards them only on the ordinary-folder branch
+  (`getChildren`). The `Root`/`Domain` branch (`getNavTreeChildren`) and the `Favorites`/`Collection`
+  branch (`getCollectionMembers`) take a page size and ignore the page index and sort. It returns
+  Nuxeo's `isNextPageAvailable` as `hasNextPage`.
 - **Nuxeo constrains paging and sort** (`AGENTS/11-beta-program.md` section 3, verified facts):
   - the total is known only when the result fits on one page, so a numbered pager is impossible and
-    `isNextPageAvailable` is what paging is built on;
+    `isNextPageAvailable` (the service's `hasNextPage`) is what paging is built on;
   - an unsupported `sortBy` returns HTTP 200 with **zero** entries, so sort keys must be validated before
     the request;
   - "folders first" is not a Nuxeo sort;
@@ -103,7 +106,10 @@ primitive differed. Rows were 48 px high, inside a 600 px scroll container, and 
 - **Environment.** Chromium 153 headless through Playwright 1.63, at 1440×900, on an Apple M4 Max running
   macOS 26.6. No Nuxeo was involved.
 
-Evidence: `~/Desktop/agentic-ui-evidence/NXSAT-308/spikes/table/`, outside the repository.
+Every figure this decision rests on is in section 4, so the record stands on its own. The raw per-run
+outputs and the spike source are in `~/Desktop/agentic-ui-evidence/NXSAT-308/spikes/table/`. They are
+outside the repository because the repo keeps evidence out of the tree (`CLAUDE.md`, "Evidence"), and the
+spike was required never to be committed. Reproducing it needs only what this section describes.
 
 ## 4. Results
 
@@ -182,7 +188,10 @@ figures as indicative.
 - **Keyboard access to sorting.**
   - A: none of the 7 sortable headers is reachable by Tab, and no header has `aria-sort`.
   - B and D: 7 of 7, but only because the spike wrote a `<button>` and `aria-sort` by hand in each header.
-  - C, C+R and E: 7 of 7 from `MatSortHeader` itself.
+  - C, C+R and E: 7 of 7, with `aria-sort`, from `MatSortHeader` itself.
+  - None of the candidates announces a sort change. Most screen readers do not announce a change to
+    `aria-sort`, so Material's guidance is to set `sortActionDescription` on each header and announce the
+    new order through `LiveAnnouncer` on `matSortChange`. The spike did neither. Section 7 requires both.
 - **What a screen reader is told at 5,000 rows.**
   - A, B, C and C+R expose a real table with 5,001 rows (a header row plus 5,000).
   - D exposes 18 rows. It reports 5,001 only because the spike added `aria-rowcount` and `aria-rowindex`
@@ -209,14 +218,16 @@ figures as indicative.
 
 ## 5. Why Material table
 
-- **Speed does not decide it.** At the sizes paging will render, every candidate is fast enough. 50
-  rows take at most 54 ms throttled, 500 rows at most 307 ms, and both scroll at 60 fps. The 1.2 to 1.4
-  times cost of C over A is real but well inside a frame budget at 50 rows.
+- **Speed does not decide it.** At the sizes paging will render, every candidate is fast enough. A page
+  render is a one-off on load or page change, not an animation frame. 50 rows take at most 54 ms
+  throttled, 500 rows at most 307 ms, and both scroll at 60 fps afterwards. C costs 1.2 to 1.4 times A
+  under throttling, which at 50 rows is about 10 ms. Unthrottled the two are equal: 12.0 ms and 12.4 ms.
 - **The things that do decide it all favour C:**
   - **Satori compatibility.** The row-state layer styles Material rows only. B and A would need
     `mat-row` attributes added by hand to look right.
-  - **Accessible sorting for free.** `MatSortHeader` provides focus, `aria-sort` and sort announcements.
-    A and B have to hand-write them and keep them correct.
+  - **Accessible sort headers out of the box.** `MatSortHeader` provides a focusable control, `aria-sort`
+    and the `sortActionDescription` hook. A and B have to hand-write all three. Announcing the change is
+    the component's job whichever primitive is chosen (section 7).
   - **Consistency.** The repo's history and administration tables are already `mat-table`, and the history
     tables already sort with `matSort`.
 - **Why not virtualise now.**
@@ -245,9 +256,11 @@ figures as indicative.
   `aria-rowcount` or `aria-rowindex`, and the row-states naming defect.
 - **Server paging, sorting or selection.** All three sit outside the primitive (section 7).
 
-**One guard keeps the choice reversible for customers: no Material table type in the public API.** Cell
-and column customisation goes through the `app.documentList.*` descriptors and cell renderers registered
-by ID. It must never go through `matColumnDef` or `MatCellDef` in a public signature. If a customer
+**One guard keeps the choice reversible for customers: no Material table type in the public API.** Today a
+column is an `ExtensionColumnDescriptor`, and a cell shows the value of its `field`; there is no
+cell-renderer contract. That contract is primitive-neutral and should stay so. If custom cell rendering
+is added, it must be a renderer resolved by ID through the existing component-by-ID registry
+(plan section 3). It must never be `matColumnDef` or `MatCellDef` in a public signature: once a customer
 writes a `matCellDef`, the primitive can no longer change without breaking them. This is the same rule as
 "adf-hx types never appear in our public API", and the federation-readiness rule on serializable
 contracts.
@@ -259,9 +272,13 @@ contracts.
    - `matSortChange` triggers a new request. Pass a plain array as the data source; never use
      `MatTableDataSource` wired to `MatSort`, which would sort in the browser.
    - Validate the sort key against the sortable fields before sending it.
+   - For `Root`, `Domain`, `Favorites` and `Collection`, the service ignores page index and sort today
+     (section 1). Either add paging and sort to `getNavTreeChildren` and `getCollectionMembers` first,
+     or have the component disable sorting and paging for a source that cannot honour them. Do not show
+     sort headers that change nothing.
 2. **Paging.**
-   - Next and Previous are driven by `isNextPageAvailable`. Show "of N" only when Nuxeo returned a real
-     total.
+   - Next and Previous are driven by `hasNextPage`. Show "of N" only when `totalSize` is a real,
+     non-negative total.
    - Keep the page size at 100 or less (today it is 50).
    - If a "load more" mode is added, cap the accumulated rows at 500, the largest size measured that
      stays smooth at 4× throttle.
@@ -281,11 +298,15 @@ contracts.
      - mark the checkbox `satRowStateSelectionControl` and the title link `satRowPrimaryAction`;
      - seed the `sat.table-with-row-states.row-description.*` translation keys.
    - Never set `recycleRows` while row states are in use.
-6. **Accessibility tests.** axe will not catch a regression of section 4.4, so the component spec and the
+6. **Sort announcements.** Set `sortActionDescription` on each sortable header, from the column's
+   translated label. On `matSortChange`, announce the new order through `LiveAnnouncer`, for example
+   "Sorted by Modified, descending", and announce clearing the sort too.
+7. **Accessibility tests.** axe will not catch a regression of section 4.4, so the component spec and the
    browse E2E must assert it directly:
    - every sortable header is reachable by Tab and has `aria-sort`;
+   - a sort change produces a `LiveAnnouncer` announcement naming the column and direction;
    - a keyboard walk keeps each row's accessible name equal to its own title.
-7. **Satori's keyboard model has gaps.** It has no Home, End or Page keys and no Shift+Arrow range. Add
+8. **Satori's keyboard model has gaps.** It has no Home, End or Page keys and no Shift+Arrow range. Add
    them in the `nxs` layer if the product wants them; do not assume Satori provides them.
 
 DAM is outside this decision. AssetGrid is a grid of cards, not this table, and whether it stays in

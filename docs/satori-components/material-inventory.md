@@ -33,8 +33,8 @@ own it. It also covers the two wrapper-only patterns, `MatSnackBar` toasts and i
 | Empty "none" text (inline)         | 17 (7)              | 12                     | none: stays text                                                                                                | none                             |
 | Upload controls (drop zone, input) | 7 (5)               | 6                      | `upload` (`[satUpload]`, `sat-upload-area`), `upload-field`                                                     | `nxs-upload`                     |
 | Upload queues                      | 2 (2)               | 1                      | `upload-field` file list (fit not verified)                                                                     | `nxs-upload`                     |
-| Cards and grid tiles               | 6 (6)               | 2, plus DocumentCards  | `interactive-card`, `card-surface`                                                                              | `nxs-card`                       |
-| Banners and inline notices         | 20 (11)             | 6                      | `banner`                                                                                                        | `nxs-banner`                     |
+| Cards and grid tiles               | 7 (7)               | 2, plus DocumentCards  | `interactive-card`, `card-surface`                                                                              | `nxs-card`                       |
+| Banners and inline notices         | 19 (11)             | 6                      | `banner`                                                                                                        | `nxs-banner`                     |
 | Chips (`mat-chip-set`/`-grid`)     | 18 (7)              | 16                     | **none**: `inline-chip` is not an input chip (section 3, item 1)                                                | **none**; owned by §5 J/K inputs |
 | Loading: existing skeletons        | 7 (3)               | 0                      | `ghost`                                                                                                         | `nxs-ghost`                      |
 | Loading: region-level spinners     | 56 (33)             | 20                     | `ghost` where the content shape is known                                                                        | `nxs-ghost` or `nxs-spinner`     |
@@ -191,17 +191,20 @@ Drop-on-list upload (plan section 5 I, Build) has no site today; no drop target 
 
 ### 4.5 Cards and grid tiles → `interactive-card`, `card-surface` → `nxs-card`
 
-| Site                                                                                          | What it is                                     | Scope        |
-| --------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------ |
-| `libs/features/browse/src/lib/browse/browse.html:433`, `:444`                                 | Browse grid view: `doc-card` with selection    | NXSAT-308    |
-| `libs/features/search/src/lib/search/search.html:262`                                         | Search grid view: `result-card` with selection | NXSAT-308    |
-| `libs/shared/adf-hx-bridge/src/lib/ui/hxp-document-cards/hxp-document-cards.component.html:3` | DocumentCards, promoted per plan section 5 A   | bridge       |
-| `libs/features/trash/src/lib/trash/trash.component.html:179`                                  | Trash grid view: `result-card`                 | NXSAT-326    |
-| `libs/features/assets/src/lib/asset-search-results/asset-search-results.component.html:118`   | Asset grid tile                                | DAM (§13 Q2) |
-| `apps/nuxeo-ui/src/app/features/contracts/contracts-page.component.html:207`                  | `mat-card` code sample                         | app          |
+| Site                                                                                          | What it is                                                                      | Scope        |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------ |
+| `libs/features/browse/src/lib/browse/browse.html:433`, `:444`                                 | Browse grid view: `doc-card` with selection                                     | NXSAT-308    |
+| `libs/features/search/src/lib/search/search.html:262`                                         | Search grid view: `result-card` with selection                                  | NXSAT-308    |
+| `libs/shared/adf-hx-bridge/src/lib/ui/hxp-document-cards/hxp-document-cards.component.html:3` | DocumentCards, promoted per plan section 5 A                                    | bridge       |
+| `libs/features/trash/src/lib/trash/trash.component.html:179`                                  | Trash grid view: `result-card`                                                  | NXSAT-326    |
+| `libs/features/tasks/src/lib/task-detail/task-detail.component.html:37`                       | Target-document panel: preview, title, path, type, download (`document-banner`) | NXSAT-327    |
+| `libs/features/assets/src/lib/asset-search-results/asset-search-results.component.html:118`   | Asset grid tile                                                                 | DAM (§13 Q2) |
+| `apps/nuxeo-ui/src/app/features/contracts/contracts-page.component.html:207`                  | `mat-card` code sample                                                          | app          |
 
 `interactive-card` carries a selection control slot (`satInteractiveCardSelectionControl`), title,
-subtitle, header action and actions, which is what each selectable grid tile here builds by hand.
+subtitle, header action and actions, which is what each selectable grid tile here builds by hand. The
+task-detail panel is named a banner in its class but is a summary of the task's target document, not a
+notice, so it is a card here rather than a `banner`.
 
 ### 4.6 Banners and inline notices → `banner` → `nxs-banner`
 
