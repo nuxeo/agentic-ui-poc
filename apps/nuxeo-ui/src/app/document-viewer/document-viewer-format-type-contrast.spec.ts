@@ -106,7 +106,7 @@ function assertFormatTypeOnCards(
     .toBeGreaterThanOrEqual(WCAG_AA_NORMAL_TEXT);
 }
 
-describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760, NXENG-801)', () => {
+describe('DocumentViewer format-type contrast by theme (NXENG-768, NXENG-760, NXENG-801, NXENG-806)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
