@@ -1,7 +1,8 @@
 /**
  * NXENG-808 — Header toolbar icon button focus ring (IBM 673904446).
  *
- *   NUXEO_DOC_UID=<any doc detail> EVIDENCE_PHASE=after \
+ *   NUXEO_DOC_UID=<non-trashed document where Add to collection is visible> \
+ *   EVIDENCE_PHASE=after \
  *   npm run evidence:collect -- NXENG-808 scripts/collect-evidence/NXENG-808.mjs
  */
 export const summary =
@@ -109,7 +110,11 @@ export const scenes = [
     criterion: 'AC-1',
     async run(page, h) {
       await h.login();
-      await h.requirePrecondition('NUXEO_DOC_UID is set', Boolean(DOC_UID), 'Set NUXEO_DOC_UID');
+      await h.requirePrecondition(
+        'NUXEO_DOC_UID is set',
+        Boolean(DOC_UID),
+        'Set NUXEO_DOC_UID to a non-trashed document where app.toolbar.addToCollection is visible',
+      );
       await h.goToDoc(DOC_UID);
       await h.expectVisible('detail header', '.detail-header');
       await h.expectVisible('Add to collection toolbar action', TOOLBAR_BTN);
