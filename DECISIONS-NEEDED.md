@@ -9,7 +9,8 @@ before implementation can continue.
 >
 > The injection guard no longer depends on `?q=` and is no longer blocked on this
 > decision. `apps/nuxeo-ui-e2e/src/search.spec.ts` drives `/#/search` through the search
-> drawer's full-text input and asserts the request that leaves on the wire. Until NXSAT-308
+> drawer's full-text input and asserts every search request Enter sends — the results request
+> and the drawer's baseline-count search are identical on the wire. Until NXSAT-308
 > it drove `/#/search-adf-hx`, the one production call site of `escapeHxqlLiteral`; that
 > route is deleted with adf-hx, so the specs moved first. `/#/search` sends the term to the
 > `default_search` page provider as the `ecm_fulltext` named parameter and Nuxeo binds it
