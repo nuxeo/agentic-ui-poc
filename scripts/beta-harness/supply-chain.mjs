@@ -305,6 +305,9 @@ function collectSource() {
         walk(full);
         continue;
       }
+      // A selftest writes fixture source as strings, re-introducing an import of a removed package
+      // on purpose to watch a guardrail go red. That is test data, not a dependency on the package.
+      if (/\.selftest\.mjs$/.test(full)) continue;
       if (/\.(ts|mjs|cjs|js|html|scss|css)$/.test(full)) text += readFileSync(full, 'utf8');
     }
   };
