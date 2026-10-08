@@ -5392,6 +5392,13 @@ const REAL_LIBS_WITH_PROBE = {
 };
 const AVATAR_COLORS = 'libs/shared/nuxeo-client/src/lib/constants/avatar-colors.ts';
 const EXTENSION_RULES = 'libs/shared/extensions/src/lib/extension-rules.ts';
+/**
+ * Interpolated into the control below, never spelled out in it. `supply-chain` reads a
+ * `from '<dep>'` anywhere under `scripts/` as a real import, and this dependency is excused there
+ * as unreferenced — a literal specifier in a fixture would make it look used, and that gate is
+ * right to refuse it.
+ */
+const ADF_EXTENSIONS = '@alfresco/adf-extensions';
 
 falsePositiveControls += 1;
 expectGreen(
@@ -5420,7 +5427,7 @@ expectRed(
   (write) =>
     write(
       EXTENSION_RULES,
-      "import type { RuleContext } from '@alfresco/adf-extensions';\n" + REAL_LIBS[EXTENSION_RULES],
+      `import type { RuleContext } from '${ADF_EXTENSIONS}';\n` + REAL_LIBS[EXTENSION_RULES],
     ),
   /extension-rules\.ts imports `@alfresco\/adf-extensions`, and the library reaches that file through .*probe\.ts -> libs\/shared\/extensions\/src\/index\.ts -> /,
 );
