@@ -431,6 +431,23 @@ function brokenReference(file) {
  */
 let pkgScripts = null;
 
+/** npm options that take no value, so the next word is still a candidate script name. */
+const NPM_FLAG_OPTIONS = new Set([
+  '-s',
+  '--silent',
+  '-q',
+  '--quiet',
+  '-d',
+  '--verbose',
+  '--if-present',
+  '--ignore-scripts',
+  '--foreground-scripts',
+  '-ws',
+  '--workspaces',
+  '--include-workspace-root',
+  '--json',
+  '--parseable',
+]);
 /** npm options that take the next word as their value when written without `=`. */
 const NPM_VALUE_OPTIONS = new Set([
   '-w',
@@ -440,21 +457,29 @@ const NPM_VALUE_OPTIONS = new Set([
   '--script-shell',
   '--loglevel',
   '--userconfig',
+  '--registry',
+  '--cache',
 ]);
 
 /**
- * The script name in the words after `npm run`, skipping the options before it with their
- * values — `--silent config:dev`, `--workspace docs test`, `--workspace=docs test`.
+ * The script name in the words after `npm run`, skipping the options before it —
+ * `--silent config:dev`, `--workspace docs test`, `--workspace=docs test`.
+ *
+ * An option it does not recognise returns `null`, so that command goes unchecked. Guessing its
+ * arity would either name the wrong word as the script or skip past a missing one, and npm's own
+ * option table is not a dependency of this repository.
  */
 function npmRunScript(words) {
   const tokens = words.split(/\s+/).filter(Boolean);
   for (let i = 0; i < tokens.length; i += 1) {
     const token = tokens[i];
-    if (token.startsWith('-')) {
-      if (!token.includes('=') && NPM_VALUE_OPTIONS.has(token)) i += 1;
+    if (!token.startsWith('-')) return /^[a-z0-9:._-]+/i.exec(token)?.[0] ?? null;
+    if (token.includes('=') || NPM_FLAG_OPTIONS.has(token)) continue;
+    if (NPM_VALUE_OPTIONS.has(token)) {
+      i += 1;
       continue;
     }
-    return /^[a-z0-9:._-]+/i.exec(token)?.[0] ?? null;
+    return null;
   }
   return null;
 }
@@ -466,6 +491,9 @@ for (const [words, want] of [
   ['--workspace docs test', 'test'],
   ['--workspace=docs test', 'test'],
   ['-w docs test', 'test'],
+  ['--registry https://registry.example/ test', 'test'],
+  ['--cache /tmp/npm-cache test', 'test'],
+  ['--some-future-option value test', null],
   ['beta:api -- --update', 'beta:api'],
   ['--silent', null],
 ]) {

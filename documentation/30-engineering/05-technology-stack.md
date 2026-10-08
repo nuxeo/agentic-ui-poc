@@ -10,6 +10,8 @@ audience: engineering
 # Technology Stack
 
 > **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> The `@hylandsoftware/satori-ui` row was refreshed at `d500aae` (NXSAT-308, #332); no other row
+> has been re-verified since `77265f9`, so the page markers stay there.
 > Source: `package.json`, `pom.xml`, `nx.json`, `angular.json`. Where a choice has a recorded
 > rationale, it is cited; where the rationale is not recorded, that is said.
 

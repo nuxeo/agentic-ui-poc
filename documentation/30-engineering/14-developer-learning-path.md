@@ -10,7 +10,8 @@ audience: engineering
 # Developer Learning Path — Building This Application Without AI Agents
 
 > **Last reviewed:** 2026-10-08 · **Repository:** `d500aae` (`feature/nxsat-308-satori-ui-0-2-1`)
-> Only the Angular and `dompurify` rows were re-verified at that commit — see Appendix A.
+> Only the `@hylandsoftware/satori-ui` row was re-verified at that commit; the Angular and
+> `dompurify` rows were at `b15d9cf` — see Appendix A.
 > **Purpose:** the complete list of technologies, versions and concepts a developer must know to
 > build, extend and operate Nuxeo Satori **by hand**, with no AI assistance of any kind.
 > **Sources:** `package.json`, `package-lock.json`, `pom.xml`, `nx.json`, `angular.json`,
