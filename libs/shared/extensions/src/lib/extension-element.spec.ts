@@ -61,7 +61,7 @@ describe('sortByOrder', () => {
     expect(Object.is(sortByOrder(a, b), expected)).toBe(true);
   });
 
-  it('sorts ascending, absent last, ties in registration order', () => {
+  it('sorts ascending, absent as MAX_SAFE_INTEGER (tied with it, before Infinity), ties stable', () => {
     const entries = [
       loose({ id: 'absent-1' }),
       loose({ id: 'twenty', order: 20 }),

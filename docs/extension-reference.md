@@ -203,12 +203,12 @@ slot the library has never heard of and showing the nine unchanged.
 
 ### Fields every descriptor honours
 
-| Field      | Meaning                                                                                     |
-| ---------- | ------------------------------------------------------------------------------------------- |
-| `id`       | Required. The address. An entry without one is dropped.                                     |
-| `order`    | Ascending. Absent sorts last; `null` sorts as `0`. Packaged entries are spaced by ten.      |
-| `disabled` | `true` removes the entry. ACA's semantics: any truthy value does, the string `"false"` too. |
-| `rule`     | A rule ID, or a nested rule reference — see section 4.                                      |
+| Field      | Meaning                                                                                                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`       | Required. The address. An entry without one is dropped.                                                                                                                             |
+| `order`    | Ascending. Absent sorts as `Number.MAX_SAFE_INTEGER` — after any ordinary number, tied with that value, before `Infinity`. `null` sorts as `0`. Packaged entries are spaced by ten. |
+| `disabled` | `true` removes the entry. ACA's semantics: any truthy value does, the string `"false"` too.                                                                                         |
+| `rule`     | A rule ID, or a nested rule reference — see section 4.                                                                                                                              |
 
 Action descriptors (`bulk-actions`, and the other action slots when they are
 populated) honour four more:
