@@ -1065,12 +1065,16 @@ not protect anything the API would otherwise return.
 
 Semantics are ACA's. The merge is our own copy of `mergeObjects` from `@alfresco/adf-extensions`
 9.0.0, pinned case by case to its output, so behaviour matches the upstream documentation, apart
-from the last two items below.
+from the `null` and `__proto__` items below, where ACA's merge threw or rewrote a prototype.
 
 - Layers apply in the order `$references` lists them. **Later wins.**
 - `$`-prefixed keys are **metadata and do not merge** — `$references` from a referenced layer never
-  leaks into the result.
+  leaks into the result. They are dropped at the top level and inside any object two layers both
+  set; inside a value only one layer sets, they are kept as written.
 - Arrays of objects merge **by `id`**, so a layer patches one entry without restating the list.
+  Entries with an `id` come first, in the earlier layer's order except that integer-like ids such as
+  `"2"` go ahead of the rest, ascending; then the earlier layer's entries without an `id`; then the
+  later layer's new entries.
 - `"<key>.$replace"` replaces instead of merging. Below the top level — `"rule.$replace"` inside an
   override — it takes effect only where an earlier layer set the same parent, and is otherwise kept
   as a literal key.
@@ -1078,7 +1082,9 @@ from the last two items below.
   string is spread into it. A later non-array is appended to an earlier array. Use `.$replace`.
 - `null` meeting an object, in either order, takes the later layer's value. ACA's merge threw
   there, which broke every slot; `"rule": null` is how a later layer ungates an entry.
-- A `__proto__` key is ignored.
+- A `__proto__` key never replaces an object's prototype. The merge skips it wherever it iterates
+  an object, and a slot or override id named `__proto__` is dropped when the layer is read; inside a
+  value taken whole it stays an ordinary data property.
 - `$ignoreReferenceList` drops a layer even when it is referenced.
 - A layer that cannot be resolved is reported on `AppExtensionsService.missingLayers()`, not silently
   dropped, and the rest of the stack still applies.

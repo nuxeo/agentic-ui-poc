@@ -276,6 +276,17 @@ describe('mergeObjects', () => {
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
     expect(({} as Record<string, unknown>)['more']).toBeUndefined();
   });
+
+  it('leaves a __proto__ key inside a value taken whole as an ordinary own property', () => {
+    // Same as upstream: nothing iterates a value only one layer sets, so nothing assigns its keys.
+    const layer = deepFreeze(JSON.parse('{"o": {"__proto__": {"polluted": true}}}'));
+    const merged = mergeObjects(layer) as { o: Record<string, unknown> };
+
+    expect(merged.o).toBe(layer.o);
+    expect(Object.hasOwn(merged.o, '__proto__')).toBe(true);
+    expect(Object.getPrototypeOf(merged.o)).toBe(Object.prototype);
+    expect(merged.o['polluted']).toBeUndefined();
+  });
 });
 
 describe('mergeObjects, where it departs from upstream', () => {
