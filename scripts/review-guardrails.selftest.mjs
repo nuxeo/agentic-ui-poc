@@ -5160,7 +5160,7 @@ expectRed(
       "import type { SatAvatarCategory } from '@hylandsoftware/satori-ui/avatar';\n" +
         REAL_LIBS[AVATAR_COLORS],
     ),
-  /avatar-colors\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through .*probe\.ts -> libs\/shared\/nuxeo-client\/src\/index\.ts -> /,
+  /avatar-colors\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through libs\/shared\/satori-components\/src\/.* -> libs\/shared\/nuxeo-client\/src\/index\.ts -> /,
 );
 
 expectRed(
@@ -5172,7 +5172,7 @@ expectRed(
       EXTENSION_RULES,
       "import type { RuleContext } from '@alfresco/adf-extensions';\n" + REAL_LIBS[EXTENSION_RULES],
     ),
-  /extension-rules\.ts imports `@alfresco\/adf-extensions`, and the library reaches that file through .*probe\.ts -> libs\/shared\/extensions\/src\/index\.ts -> /,
+  /extension-rules\.ts imports `@alfresco\/adf-extensions`, and the library reaches that file through libs\/shared\/satori-components\/src\/.* -> libs\/shared\/extensions\/src\/index\.ts -> /,
 );
 
 expectRed(
