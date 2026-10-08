@@ -27,13 +27,14 @@ export interface DocumentTypeTraits {
    */
   readonly picture: boolean;
   /**
-   * Nuxeo generates `vid:info` and a storyboard for a Video document only, so only a Video waits
-   * for them. A File holding an MP4 never receives either.
+   * Nuxeo generates `vid:info` and a storyboard for a Video document only, so a Video missing
+   * either is polled for it. A File holding an MP4 never receives them, so it is not.
    */
   readonly video: boolean;
   /**
-   * Asks for a preview when there is no main file. A container has nothing to preview, and the
-   * request would fail on every open.
+   * Asks for a preview when there is no main file. A container has nothing to preview. Every
+   * type that sets this `false` is folderish, and a folderish document with a path is redirected
+   * to Browse before its content is loaded, so this decides only for one without a path.
    */
   readonly preview: boolean;
   /** The icon a document of this type gets in the Publishing tab's section tree. */

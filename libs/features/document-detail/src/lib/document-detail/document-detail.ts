@@ -363,7 +363,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
    * Publish the focused document to the extension rule context.
    *
    * `app.rules.canWrite`, `canRemove`, `canAddChildren`, `canManagePermissions`,
-   * `hasDocument`, `isType`, `hasFacet` and the two trash rules all read
+   * `hasDocument`, `isType`, `hasFacet`, `isNote` and the two trash rules all read
    * `ExtensionRuleContext.document`. Nothing populated it before, so every one
    * of them answered `false` while the reference doc described them as working.
    * This page is the only surface with a single document in focus, so it is the

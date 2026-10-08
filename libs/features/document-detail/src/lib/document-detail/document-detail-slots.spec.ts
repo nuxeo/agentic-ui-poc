@@ -736,9 +736,12 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
         (el) => (el as HTMLElement).textContent?.trim() ?? '',
       );
 
+    /** The document viewer in the selected tab only, so the View tab's viewer cannot answer. */
     const viewerControls = (): boolean | undefined =>
       (
-        fixture.debugElement.query(By.directive(DocumentViewerComponent))?.componentInstance as
+        fixture.debugElement
+          .query(By.css('.mat-mdc-tab-body-active'))
+          ?.query(By.directive(DocumentViewerComponent))?.componentInstance as
           DocumentViewerComponent | undefined
       )?.showMainFileControls();
 
