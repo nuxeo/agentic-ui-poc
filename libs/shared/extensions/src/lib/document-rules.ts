@@ -19,6 +19,18 @@ function stringParameters(parameters: readonly unknown[]): string[] {
 }
 
 /**
+ * The document's type is one of `types`, matched exactly. `app.rules.isType` and
+ * `app.rules.isNote` both answer through this, so they cannot disagree about a Note.
+ */
+export function documentTypeIsOneOf(
+  document: NuxeoDocument | null,
+  types: readonly string[],
+): boolean {
+  const type = document?.type;
+  return type !== undefined && types.includes(type);
+}
+
+/**
  * The packaged document rules, as manifest-referenceable ids.
  *
  * These wrap the pure predicates already in
@@ -47,10 +59,8 @@ export const DOCUMENT_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEval
    * Nuxeo type names are case-sensitive. No parameters means no type matches, so a rule
    * misconfigured that way hides its entry rather than showing it everywhere.
    */
-  'app.rules.isType': (context, parameters) => {
-    const type = context.document?.type;
-    return type !== undefined && stringParameters(parameters).includes(type);
-  },
+  'app.rules.isType': (context, parameters) =>
+    documentTypeIsOneOf(context.document, stringParameters(parameters)),
   /** The focused document carries at least one facet in `parameters` — `["Folderish"]`. */
   'app.rules.hasFacet': (context, parameters) => {
     const facets = context.document?.facets ?? [];

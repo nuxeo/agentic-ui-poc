@@ -776,6 +776,32 @@ describe('DocumentDetailComponent — viewer, renditions and vocabularies', () =
 
       expect(mockDetailService.getFullDocument).not.toHaveBeenCalled();
     });
+
+    /**
+     * Nuxeo generates `vid:info` and the storyboard for a Video document only. A File holding an
+     * MP4 never receives either, so waiting for them would poll six times on every open.
+     */
+    describe('video metadata, by document type', () => {
+      const mp4 = { name: 'v.mp4', 'mime-type': 'video/mp4', length: 100, data: '/nuxeo/v' };
+      const info = { duration: 42, width: 640, height: 480, format: 'mp4' };
+
+      it.each<[string, string, boolean, Record<string, unknown>]>([
+        ['Video', 'no vid:info', true, {}],
+        ['File', 'no vid:info', false, {}],
+        ['Video', 'vid:info but no storyboard', true, { 'vid:info': info }],
+        ['File', 'vid:info but no storyboard', false, { 'vid:info': info }],
+      ])('a %s with %s polls: %s', (type, _label, polls, extra) => {
+        vi.useFakeTimers();
+        const video = doc({ type, properties: { 'file:content': mp4, ...extra } });
+        buildSync(video);
+        mockDetailService.getFullDocument.mockClear();
+        mockDetailService.getFullDocument.mockReturnValue(of(video));
+
+        vi.advanceTimersByTime(600);
+
+        expect(mockDetailService.getFullDocument.mock.calls.length > 0).toBe(polls);
+      });
+    });
   });
 
   describe('ARender previewer', () => {

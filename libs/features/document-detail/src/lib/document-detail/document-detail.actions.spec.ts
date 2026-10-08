@@ -615,6 +615,8 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       );
       await fixture.whenStable();
 
+      // No `note` flag: `app.rules.isNote` reads the document's type, which is not interface
+      // state, so this bag does not repeat it.
       expect(ruleContext.flags()).toEqual({
         favorite: true,
         locked: true,
@@ -622,8 +624,8 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
         inClipboard: false,
         hasVersion: true,
         aiEnabled: false,
-        note: true,
       });
+      expect(ruleContext.document()?.type).toBe('Note');
     });
 
     it('publishes a busy flag naming the operation in flight', async () => {

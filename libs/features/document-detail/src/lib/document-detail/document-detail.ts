@@ -188,6 +188,7 @@ import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/r
 import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
 import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-document-dialog';
 import { NoteEditorComponent } from '../note-editor/note-editor';
+import { documentTypeTraits, type PackagedDocumentView } from './document-type-traits';
 import {
   AddPermissionDialogComponent,
   AddPermissionDialogData,
@@ -362,7 +363,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
    * Publish the focused document to the extension rule context.
    *
    * `app.rules.canWrite`, `canRemove`, `canAddChildren`, `canManagePermissions`,
-   * `hasDocument`, `isType`, `hasFacet` and the two trash rules all read
+   * `hasDocument`, `isType`, `hasFacet`, `isNote` and the two trash rules all read
    * `ExtensionRuleContext.document`. Nothing populated it before, so every one
    * of them answered `false` while the reference doc described them as working.
    * This page is the only surface with a single document in focus, so it is the
@@ -393,7 +394,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       inClipboard: this.isInClipboard(),
       hasVersion: this.hasVersion(),
       aiEnabled: this.featureFlags.aiEnabled(),
-      note: this.isNoteDocument(),
       ...(busy ? { [`busy.${busy}`]: true } : {}),
     });
   });
@@ -447,6 +447,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         )
         .find((view) => this.componentRegistry.has(view.componentId ?? view.id)) ?? null,
   );
+
+  /** What this page does differently for the focused document's type. See `document-type-traits.ts`. */
+  private readonly typeTraits = computed(() => documentTypeTraits(this.doc()?.type));
+
+  /**
+   * The packaged View tab body for the focused document's type: what renders when no
+   * `documentView` entry takes the tab, and when the entry that did fails to load.
+   */
+  readonly packagedDocumentView = computed<PackagedDocumentView>(() => this.typeTraits().view);
 
   /** `document` last, so a manifest `inputs.document` cannot stand in for the one on screen. */
   readonly documentViewInputs = computed<Readonly<Record<string, unknown>>>(() => ({
@@ -672,7 +681,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return this.resolveMainContentMime(fc, d);
   });
 
-  readonly isNoteDocument = computed(() => this.doc()?.type === 'Note');
+  /** A document whose body is note text, edited in the note editor, with no main file. */
+  readonly isNoteDocument = computed(() => this.packagedDocumentView() === 'noteEditor');
   readonly hasPersistedMainBlob = computed(() => {
     const d = this.doc();
     return d ? documentHasPersistedMainBlob(d) : false;
@@ -830,7 +840,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   );
   readonly supportsImageKnowledgeEnrichment = computed(() => {
     const mime = this.fileMimeType();
-    return mime.startsWith('image/') || this.doc()?.type === 'Picture';
+    return mime.startsWith('image/') || this.typeTraits().picture;
   });
   readonly canIngestToContentLake = computed(() => needsContentLakeIngest(this.doc()));
   readonly showsContentLakeIngested = computed(
@@ -1782,7 +1792,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             this.loadPanelActivity();
           }
           this.loadBlob(doc);
-          if (this.freshNoteDocument && doc.type === 'Note') {
+          if (this.freshNoteDocument && documentTypeTraits(doc.type).view === 'noteEditor') {
             this.focusNoteEditor.set(true);
             this.freshNoteDocument = false;
           }
@@ -1945,21 +1955,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const traits = documentTypeTraits(doc.type);
     const fc = doc.properties['file:content'] as Record<string, unknown> | null;
     if (!fc) {
-      if (doc.type === 'Picture') {
+      if (traits.picture) {
         this.fetchMainBlob(doc, generation);
         return;
       }
-      const noPreviewTypes = [
-        'Collection',
-        'Folder',
-        'Workspace',
-        'Domain',
-        'Section',
-        'OrderedFolder',
-      ];
-      if (!noPreviewTypes.includes(doc.type)) {
+      if (traits.preview) {
         this.loadPreviewFallback(doc);
       } else {
         this.blobLoading.set(false);
@@ -1969,7 +1972,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     const mime = this.resolveMainContentMime(fc, doc);
 
-    if (doc.type === 'Picture' || (picViews?.length && !mime)) {
+    if (traits.picture || (picViews?.length && !mime)) {
       this.fetchMainBlob(doc, generation);
       return;
     }
@@ -2155,10 +2158,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private documentMetadataIncomplete(doc: NuxeoDocument): boolean {
-    if (doc.type === 'Picture') {
+    const traits = documentTypeTraits(doc.type);
+    if (traits.picture) {
       return this.pictureMetadataIncomplete(doc);
     }
-    if (doc.type === 'Video') {
+    if (traits.video) {
       return this.videoDocumentMetadataIncomplete(doc);
     }
     if (this.hasVideoContent(doc)) {
@@ -2168,7 +2172,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private hasVideoContent(doc: NuxeoDocument): boolean {
-    if (doc.type === 'Video') {
+    if (documentTypeTraits(doc.type).video) {
       return true;
     }
     const fc = doc.properties['file:content'] as Record<string, unknown> | null;
@@ -2187,7 +2191,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const raw = doc.properties['vid:info'] as Record<string, unknown> | undefined;
     if (!raw) {
       // File attachments with video MIME never receive vid:info from Nuxeo.
-      return doc.type === 'Video';
+      return documentTypeTraits(doc.type).video;
     }
 
     return !Object.values(raw).some(
@@ -2201,7 +2205,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     // File documents with a video attachment do not get server-side storyboards.
-    if (doc.type !== 'Video') {
+    if (!documentTypeTraits(doc.type).video) {
       return false;
     }
 
@@ -3034,7 +3038,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   sectionIcon(node: SectionNode): string {
-    return node.doc.type === 'SectionRoot' ? 'library_books' : 'folder';
+    return documentTypeTraits(node.doc.type).sectionIcon;
   }
 
   publishedPath(doc: NuxeoDocument): string {
