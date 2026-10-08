@@ -176,6 +176,7 @@ import {
   type VideoInfo,
   type VideoSource,
   provideTranslatedDatepickerIntl,
+  MatTabListKeydownDirective,
 } from '@nuxeo-satori/platform/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 import {
@@ -297,6 +298,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     MatButtonModule,
     MatProgressSpinnerModule,
     MatTabsModule,
+    MatTabListKeydownDirective,
     MatTooltipModule,
     MatMenuModule,
     MatSnackBarModule,
