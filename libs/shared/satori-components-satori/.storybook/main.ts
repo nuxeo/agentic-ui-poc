@@ -11,7 +11,7 @@ const config: StorybookConfig = {
   staticDirs: [
     {
       from: '../../../../node_modules/@hylandsoftware/satori-ui/i18n',
-      to: '/i18n/@hylandsoftware/satori-ui',
+      to: 'i18n/@hylandsoftware/satori-ui',
     },
   ],
   addons: [],
