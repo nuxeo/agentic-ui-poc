@@ -188,7 +188,7 @@ Easy to miss, and part of the product for a customer who forks:
 
 | Capability                                             | Where                                                                  |
 | ------------------------------------------------------ | ---------------------------------------------------------------------- |
-| A customer's agent can scaffold a conforming extension | 4 generators, shipped in the package                                   |
+| A customer's agent can scaffold a conforming extension | 5 generators, shipped in the package                                   |
 | …and verify its own work before human review           | `check-extension-library.mjs`, 5 checks                                |
 | …guided by a versioned knowledge base                  | `libs/platform/AGENTS.md` + the extension reference, shipped as assets |
 | Contract drift is detectable                           | `beta:reference` — fails in **both** directions                        |

@@ -3,7 +3,8 @@
  * needs before the user authenticates: where Nuxeo is, what the product is
  * called, which theme to start in, sign-in options and the integrations it
  * reaches. What the interface offers and how it is arranged belongs in the
- * runtime manifest (Layer 1), which is fetched beside this file.
+ * runtime manifest (Layer 1), which is fetched beside this file; the fields a
+ * document type shows are per-type layout files, indexed by `layouts.json`.
  *
  * The constants here are the **compiled-in fallback**. The configuration
  * endpoint in `nuxeo-agentic-core` answers `agentic-ui-config/bootstrap.json`
