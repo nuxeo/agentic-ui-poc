@@ -14,13 +14,16 @@ describe('DocumentDetailComponent — panel close focus ring (NXENG-830)', () =>
 
   it('wires panel-close-btn on the production properties panel close control', () => {
     const html = readFileSync(templatePath, 'utf8');
-    const closeBlock = html.match(
-      /<button[\s\S]*?class="panel-close-btn"[\s\S]*?closePropertiesPanel\(\)[\s\S]*?<\/button>/,
-    )?.[0];
-    expect(closeBlock, 'properties panel close button markup').toBeTruthy();
-    expect(closeBlock).toContain('mat-icon-button');
-    expect(closeBlock).toContain('(click)="closePropertiesPanel()"');
-    expect(closeBlock).toContain(
+    const clickIdx = html.indexOf('(click)="closePropertiesPanel()"');
+    expect(clickIdx, 'properties panel close button click handler').toBeGreaterThan(-1);
+    const tagStart = html.lastIndexOf('<button', clickIdx);
+    expect(tagStart, 'closePropertiesPanel must live on a button opening tag').toBeGreaterThan(-1);
+    const tagEnd = html.indexOf('>', clickIdx);
+    expect(tagEnd, 'close button opening tag must close').toBeGreaterThan(clickIdx);
+    const openingTag = html.slice(tagStart, tagEnd + 1);
+    expect(openingTag).toContain('class="panel-close-btn"');
+    expect(openingTag).toContain('mat-icon-button');
+    expect(openingTag).toContain(
       '[attr.aria-label]="\'document-detail.document-detail.close-panel\' | translate"',
     );
   });

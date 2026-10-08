@@ -10,10 +10,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { TranslateModule } from '@ngx-translate/core';
 
+import { testTranslateModule } from '../i18n/translate-testing';
 import { COMPILED_THEME_BASES } from '../theme/app-theme';
 
-/** Matches `document-detail.document-detail.close-panel` in `apps/nuxeo-ui/public/i18n/en.json`. */
+/** Resolved from `document-detail.document-detail.close-panel` via testTranslateModule. */
 const FIXTURE_CLOSE_PANEL_ARIA_LABEL = 'Close panel';
 
 const WCAG_1411_MIN_RATIO = 3;
@@ -51,7 +53,7 @@ function panelHeaderBackground(host: HTMLElement): string {
 
 @Component({
   standalone: true,
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule, TranslateModule],
   styleUrls: [
     '../../../../../libs/features/document-detail/src/lib/document-detail/document-detail.scss',
   ],
@@ -66,7 +68,7 @@ describe('Document detail panel close — keyboard focus indicator (NXENG-830)',
     originalTheme = document.documentElement.getAttribute('data-app-theme');
 
     await TestBed.configureTestingModule({
-      imports: [PanelCloseFocusHostComponent],
+      imports: [PanelCloseFocusHostComponent, testTranslateModule()],
       providers: [provideZonelessChangeDetection(), provideNoopAnimations()],
     }).compileComponents();
   });
