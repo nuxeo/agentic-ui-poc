@@ -3,7 +3,7 @@ import { observeMatTabListKeyboardA11y } from './mat-tab-list-keyboard-a11y';
 
 /**
  * Satisfies IBM Equal Access on Material tablists inside `mat-tab-group`.
- * Apply as `satoriMatTabListKeydown` on the group host.
+ * Apply as `libMatTabListKeydown` on the group host.
  */
 @Directive({
   selector: 'mat-tab-group[libMatTabListKeydown]',

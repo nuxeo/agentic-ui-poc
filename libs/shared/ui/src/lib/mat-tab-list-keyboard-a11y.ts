@@ -42,7 +42,7 @@ export function wireMatTabListKeyboardA11y(root: HTMLElement): (() => void) | nu
 export function observeMatTabListKeyboardA11y(root: HTMLElement): (() => void) | null {
   if (typeof MutationObserver === 'undefined') {
     const cleanup = wireMatTabListKeyboardA11y(root);
-    return cleanup ? cleanup : null;
+    return cleanup ?? null;
   }
 
   let tabListCleanup: (() => void) | null = null;
