@@ -771,7 +771,7 @@ Estimated effort: **20 hours**.
 | `@alfresco/adf-extensions`          | **9.0.0**               | public npm           | Only its neutral merge helpers are used                            |
 | `@alfresco/js-api`                  | **10.0.0**              | devDependency        | Types-only peer; 7 MB avoided at runtime                           |
 | `@hylandsoftware/hxcs-js-client`    | **2.0.111**             | GitHub Packages      | The `Document` / HxPR model                                        |
-| `@hylandsoftware/satori-ui`         | **0.2.0** (`^0.2.0`)    | GitHub Packages      | Hyland design system; deliberately absent from the template        |
+| `@hylandsoftware/satori-ui`         | **0.2.1** (`^0.2.1`)    | GitHub Packages      | Hyland design system; deliberately absent from the template        |
 
 Authentication for installs is `SATORI_GH_READONLY_TOKEN` with `read:packages` on **both** the
 `@alfresco` and `@hylandsoftware` orgs. `.npmrc` maps both scopes to `https://npm.pkg.github.com`
@@ -948,7 +948,7 @@ Estimated effort: **20 hours** for §17.1 and §17.2 together.
 | **Quill**                       | **2.0.3** (`^2.0.3`)        | `document-detail/note-editor` — 44 references | Delta model, toolbar modules, custom handlers, image insertion                                                                                                                                                                                                    |
 | **DOMPurify**                   | **3.4.16** (`^3.4.16`)      | Notes, comments, AI markdown, `nuxeo-client`  | Configuration, hooks, and _why_ sanitising on output is not enough                                                                                                                                                                                                |
 | **`@ngx-translate/core`**       | **17.0.0**                  | App and three features                        | Custom `TranslateLoader`. **Trap:** adf-core's `TranslationService` does _not_ use the ngx-translate loader interface — extend `AppTranslateLoader` and override `getTranslation`; swapping in adf-core's loader deletes the manifest-`labels` Layer 0 capability |
-| **`@hylandsoftware/satori-ui`** | **0.2.0**                   | `nuxeo-ui` only                               | `SatAvatar`, `SatBreadcrumbs`, `SatTag`, `sat.theme()`                                                                                                                                                                                                            |
+| **`@hylandsoftware/satori-ui`** | **0.2.1**                   | `nuxeo-ui` only                               | `SatAvatar`, `SatBreadcrumbs`, `SatTag`, `sat.theme()`                                                                                                                                                                                                            |
 | **`pdfjs-dist`**                | **6.2.108**                 | Preview                                       | Arrives with the adf-core peer set. Does not tree-shake out.                                                                                                                                                                                                      |
 | **`cropperjs`**                 | **1.6.2**                   | Assets                                        | Image cropping                                                                                                                                                                                                                                                    |
 | **`date-fns`**                  | **2.30.0**                  | Forms, via the Material adapter               | Note the `date-fns/locale` directory-import workaround in every Vite config                                                                                                                                                                                       |
@@ -1283,7 +1283,7 @@ the Angular and `dompurify` rows at `b15d9cf` and the rest at `e334b0f`.
 | `@alfresco/adf-core`                                                                       | 9.0.0                                    |
 | `@alfresco/adf-extensions`                                                                 | 9.0.0                                    |
 | `@alfresco/adf-hx-content-services`                                                        | 7.20.0-automate.292                      |
-| `@hylandsoftware/satori-ui`                                                                | 0.2.0 (`^0.2.0`)                         |
+| `@hylandsoftware/satori-ui`                                                                | 0.2.1 (`^0.2.1`)                         |
 | `@hylandsoftware/hxcs-js-client`                                                           | 2.0.111                                  |
 | `@ngx-translate/core`                                                                      | 17.0.0 (`^17.0.0`)                       |
 | `angular-oauth2-oidc`                                                                      | 19.0.0 (unused)                          |
