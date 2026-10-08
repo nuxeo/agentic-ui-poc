@@ -1105,14 +1105,15 @@ Estimated effort: **15 hours**.
 CodeQL runs through GitHub's **default setup** (repository settings), not a workflow, with the
 `security-extended` suite over `apps` and `libs`.
 
-#### 22.2 The local gate — twenty checks, not six
+#### 22.2 The local gate — twenty-six checks, not six
 
 `npm run beta:gate` runs, cheapest first, stopping at the first failure:
 
-`node` → `lockfile` → `supply-chain` → `code-scanning` → `guardrails` → `sanitizer-audit` →
-`sanitizer-selftest` → `assertions` → `lint` → `test` → `build` → `typecheck` → `spec-types` →
-`bundle` → `api-surface` → `publishability` → `fork-simulation` → `upgrade-rehearsal` →
-`reference-drift` → `customer-guardrails`
+`node` → `lockfile` → `lockfile-selftest` → `dependency-tree` → `dependency-tree-selftest` →
+`supply-chain` → `code-scanning` → `guardrails` → `guardrails-selftest` → `crowdin-selftest` →
+`sanitizer-audit` → `sanitizer-selftest` → `assertions` → `lint` → `test` → `build` → `typecheck`
+→ `spec-types` → `bundle` → `api-surface` → `publishability` → `fork-simulation` →
+`upgrade-rehearsal` → `reference-drift` → `agent-mirror` → `customer-guardrails`
 
 Each exists because of a specific failure that got through. The ones worth understanding in detail:
 `publishability` runs a real `npm publish --dry-run` and is the only thing that executes

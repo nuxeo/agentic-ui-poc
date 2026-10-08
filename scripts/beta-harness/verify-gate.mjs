@@ -82,6 +82,29 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/lockfile-integrity.selftest.mjs'],
   },
+  // NXSAT-308 criterion 3: none of adf-hx, adf-core, adf-extensions, js-api or hxcs-js-client in
+  // the lock, the installed tree, a manifest, `.npmrc` or an import. Next to `lockfile` because both
+  // read the dependency tree. REPORT-ONLY until the ADF removal commit flips `BLOCKING` in the
+  // script, so on main it is green while listing every finding — which is why it echoes on a pass:
+  // the list is the removal backlog. It still fails in report-only mode when a location cannot be
+  // read, and when the tree is clean but nobody flipped the switch.
+  {
+    id: 'dependency-tree',
+    label: 'Dependency tree (ADF removal)',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/dependency-tree.mjs'],
+    echoOnPass: true,
+  },
+  // Its negative controls. A report-only gate is green whatever it finds, so without these it could
+  // regress into a scanner that finds nothing and stay green until the day it became blocking.
+  {
+    id: 'dependency-tree-selftest',
+    label: 'Dependency tree controls',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/dependency-tree.selftest.mjs'],
+    // The negative/positive split is the evidence, so surface it on a pass too.
+    echoOnPass: true,
+  },
   // Phase 6 step 4 gate: SCA with teeth, next to `lockfile` because both read the dependency
   // tree — one asks whether it resolves, this one asks whether it is safe to ship.
   //

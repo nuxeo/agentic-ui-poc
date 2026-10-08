@@ -191,8 +191,8 @@ exists.
 1. **`test` does not typecheck.** Vitest strips types through esbuild. Only `build` and
    `typecheck` catch a TypeScript error, and they run late. A green `test` is not type
    safety.
-2. **Nothing except the `lockfile` gate reads `package-lock.json`.** CI was red for the
-   whole of Phase 2 while every local gate was green.
+2. **Nothing except the `lockfile` gate checks that `package-lock.json` will install.** CI
+   was red for the whole of Phase 2 while every local gate was green.
 
 ### The E2E suite needs the live stack
 

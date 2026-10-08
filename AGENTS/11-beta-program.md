@@ -663,6 +663,7 @@ Beyond the standing rules in `AGENTS.md`:
 | Verification gate       | `scripts/beta-harness/verify-gate.mjs`                      |
 | Node runtime preflight  | `scripts/beta-harness/node-version.mjs`                     |
 | Lockfile integrity gate | `scripts/beta-harness/lockfile-integrity.mjs`               |
+| Dependency-tree gate    | `scripts/beta-harness/dependency-tree.mjs` (report-only)    |
 | Assertion audit         | `scripts/beta-harness/assertion-audit.mjs`                  |
 | Coverage ratchet        | `scripts/beta-harness/coverage-gate.mjs`                    |
 | Phase state check       | `scripts/beta-harness/state-check.mjs`                      |

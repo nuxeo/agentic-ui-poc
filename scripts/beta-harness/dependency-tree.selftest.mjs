@@ -1,0 +1,537 @@
+#!/usr/bin/env node
+/**
+ * Controls for `dependency-tree.mjs` — proof that each of its five locations can actually fail.
+ *
+ * `CLAUDE.md`: *a gate is not evidence until you have seen it fail on purpose.* This one is
+ * report-only on main, so its own run in CI is green whatever it finds; without these controls it
+ * could regress into a scanner that finds nothing and nobody would see the difference until the
+ * removal commit made it blocking and it waved the packages through. Every control builds a
+ * throwaway repository under the OS temp directory and runs the real gate against it with
+ * `--root`, so nothing tracked is touched.
+ *
+ * Each negative control puts one package in exactly one location and runs in blocking mode. It
+ * asserts the exit code **and** the line naming that location, because a control that checks only
+ * the exit code cannot tell "red for my reason" from "red for an unrelated one". The fixture they
+ * all start from carries the things that must stay quiet — comments and strings naming the
+ * packages, a commented-out registry line, the `@hylandsoftware` mapping that stays, and an
+ * extraneous package that makes `npm ls` exit non-zero — so every red also shows those did not
+ * cause it.
+ *
+ * Package names never appear here in the shapes the `supply-chain` gate reads as a reference — a
+ * `from '…'`, `import(…)` or `node_modules/…` literal. That gate scans `scripts/` for those to
+ * decide whether a production dependency is used, so a fixture spelling one out would forge a
+ * reference and hide a genuinely unused dependency midway through the removal. Every such string
+ * is built by interpolation.
+ *
+ * Usage:  node scripts/beta-harness/dependency-tree.selftest.mjs
+ */
+
+import { execFile } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { availableParallelism, tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { promisify } from 'node:util';
+
+const run = promisify(execFile);
+const ROOT = resolve(import.meta.dirname, '..', '..');
+const GATE = join(ROOT, 'scripts', 'beta-harness', 'dependency-tree.mjs');
+const NM = 'node_modules';
+
+const HX = '@alfresco/adf-hx-content-services';
+const CORE = '@alfresco/adf-core';
+const EXT = '@alfresco/adf-extensions';
+const JS_API = '@alfresco/js-api';
+const HXCS = '@hylandsoftware/hxcs-js-client';
+const ALL = [HX, CORE, EXT, JS_API, HXCS];
+const VERSION = {
+  [HX]: '7.20.0-automate.292',
+  [CORE]: '9.0.0',
+  [EXT]: '9.0.0',
+  [JS_API]: '10.0.0',
+  [HXCS]: '2.0.111',
+};
+
+const workspace = mkdtempSync(join(tmpdir(), 'dependency-tree-selftest-'));
+
+// ------------------------------------------------------------------------------- fixtures ----
+
+const CLEAN_DEPENDENCIES = { 'left-pad': '1.3.0', 'is-even': '1.0.0' };
+const cleanManifest = () => ({
+  name: 'fixture',
+  version: '0.0.0',
+  dependencies: { ...CLEAN_DEPENDENCIES },
+});
+const cleanLock = () => ({
+  name: 'fixture',
+  version: '0.0.0',
+  lockfileVersion: 3,
+  requires: true,
+  packages: {
+    '': { name: 'fixture', version: '0.0.0', dependencies: { ...CLEAN_DEPENDENCIES } },
+    [`${NM}/left-pad`]: { version: '1.3.0' },
+    [`${NM}/is-even`]: { version: '1.0.0' },
+  },
+});
+
+/**
+ * The clean repository every control starts from. Everything in it must stay quiet, and the
+ * positive control below proves it does.
+ */
+const cleanFiles = () => ({
+  'package.json': cleanManifest(),
+  'package-lock.json': cleanLock(),
+  [`${NM}/left-pad/package.json`]: { name: 'left-pad', version: '1.3.0' },
+  // Invalid — installed at a version the manifest does not allow — so `npm ls` exits 1 on this
+  // tree, as it does on this repository's worktrees, and a green run proves the exit status is not
+  // what the gate reads. An extraneous package alone is not enough: npm 10 lists it as a problem
+  // and still exits 0.
+  [`${NM}/is-even/package.json`]: { name: 'is-even', version: '0.9.0' },
+  [`${NM}/is-odd/package.json`]: { name: 'is-odd', version: '3.0.1' },
+  '.npmrc':
+    '@hylandsoftware:registry=https://npm.pkg.github.com\n' +
+    `# @alfresco:registry=https://npm.pkg.github.com\n` +
+    `; @alfresco:registry=https://npm.pkg.github.com\n`,
+  'libs/ui/package.json': {
+    name: '@fixture/ui',
+    version: '0.0.0',
+    peerDependencies: { '@angular/core': '^20.0.0' },
+  },
+  'libs/ui/src/index.ts': `import { Component } from '@angular/core';\nexport { Component };\n`,
+  // Mentions in a comment and a string are not imports.
+  'libs/ui/src/history.ts':
+    `// This used to be: import { X } ${'from'} '${CORE}';\n` +
+    `/* and ${'require'}('${JS_API}') before that */\n` +
+    `export const RETIRED = ['${HX}', '${EXT}', '${HXCS}'];\n`,
+  'libs/ui/src/theme.scss': `// @use '${CORE}/theming';\n.a { color: red; }\n`,
+  'apps/web/src/main.ts': `import '@hylandsoftware/satori-ui';\n`,
+});
+
+/** Write a fixture repository: the clean files, with `changes` applied (`undefined` deletes). */
+function fixture(name, changes = {}) {
+  const dir = join(workspace, name);
+  const files = { ...cleanFiles(), ...changes };
+  for (const [rel, content] of Object.entries(files)) {
+    if (content === undefined) continue;
+    const path = join(dir, rel);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, typeof content === 'string' ? content : JSON.stringify(content, null, 2));
+  }
+  return dir;
+}
+
+function lockWith(entries) {
+  const lock = cleanLock();
+  Object.assign(lock.packages, entries);
+  return lock;
+}
+
+// -------------------------------------------------------------------------------- harness ----
+
+/** @type {{ name: string, expected: 'pass'|'fail'|'gap', because: (string|RegExp)[], dir: string, args: string[] }[]} */
+const controls = [];
+const EXIT = { pass: 0, fail: 1, gap: 2 };
+
+/**
+ * @param {string} name
+ * @param {'pass'|'fail'|'gap'} expected  `gap` is exit 2, "could not inspect"
+ * @param {string|RegExp|(string|RegExp)[]} because  what the output must contain
+ * @param {string} dir  fixture root
+ * @param {string[]} [args]  defaults to blocking mode with every importing file listed
+ */
+function control(name, expected, because, dir, args = ['--blocking', '--list-files']) {
+  controls.push({ name, expected, because: [because].flat(), dir, args });
+}
+
+async function runGate(dir, args) {
+  try {
+    const { stdout, stderr } = await run('node', [GATE, '--root', dir, ...args], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+    });
+    return { code: 0, out: `${stdout}${stderr}` };
+  } catch (error) {
+    return {
+      code: typeof error.code === 'number' ? error.code : -1,
+      out: `${error.stdout ?? ''}${error.stderr ?? ''}`,
+    };
+  }
+}
+
+const results = [];
+function judge(c, result) {
+  const wanted = EXIT[c.expected];
+  const codeOk = result.code === wanted;
+  const missing = c.because.filter((b) =>
+    b instanceof RegExp ? !b.test(result.out) : !result.out.includes(b),
+  );
+  const ok = codeOk && missing.length === 0;
+  results.push({ name: c.name, expected: c.expected, ok });
+  console.log(
+    `${ok ? 'ok  ' : 'FAIL'} ${c.name} — expected ${c.expected}, got exit ${result.code}`,
+  );
+  if (!ok) {
+    if (!codeOk) console.log(`       exit ${result.code}, wanted ${wanted}`);
+    for (const b of missing) console.log(`       output did not contain: ${b}`);
+    console.log(
+      result.out
+        .trimEnd()
+        .split('\n')
+        .map((l) => `       | ${l}`)
+        .join('\n'),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------- 1. lockfile ----
+
+// 1-5. Each package as a top-level lock entry, and nowhere else.
+for (const pkg of ALL) {
+  control(
+    `lockfile: ${pkg} as a top-level entry is reported`,
+    'fail',
+    `[lockfile] ${pkg}@${VERSION[pkg]} at ${NM}/${pkg}`,
+    fixture(`lock-top-${pkg.replace(/\W/g, '_')}`, {
+      'package-lock.json': lockWith({ [`${NM}/${pkg}`]: { version: VERSION[pkg] } }),
+    }),
+  );
+}
+
+// 6. Nested under an unrelated package — the shape a transitive dependency takes when it cannot be
+//    hoisted. A check on top-level keys only would miss it.
+control(
+  'lockfile: a nested entry under another package is reported',
+  'fail',
+  `[lockfile] ${JS_API}@10.0.0 at ${NM}/x/${NM}/${JS_API}`,
+  fixture('lock-nested', {
+    'package-lock.json': lockWith({
+      [`${NM}/x`]: { version: '1.0.0', dependencies: { [JS_API]: '10.0.0' } },
+      [`${NM}/x/${NM}/${JS_API}`]: { version: '10.0.0' },
+    }),
+  }),
+);
+
+// 7. An npm alias is keyed by the alias, so a key-only check misses it; the entry carries the name.
+control(
+  'lockfile: an npm alias of a package is reported',
+  'fail',
+  `[lockfile] ${CORE}@9.0.0 at ${NM}/core-alias (npm alias "core-alias")`,
+  fixture('lock-alias', {
+    'package-lock.json': lockWith({ [`${NM}/core-alias`]: { name: CORE, version: '9.0.0' } }),
+  }),
+);
+
+// -------------------------------------------------------------------------- 2. installed ----
+
+// 8. Installed but declared nowhere — extraneous. Only `npm ls` can see this, and npm exits 1 for it,
+//    so the finding has to come from the tree.
+control(
+  'installed: an extraneous top-level install is reported',
+  'fail',
+  `[installed] ${CORE}@9.0.0 at ${NM}/${CORE} [extraneous] — under <root>`,
+  fixture('installed-extraneous', {
+    [`${NM}/${CORE}/package.json`]: { name: CORE, version: '9.0.0' },
+  }),
+);
+
+// 9. Installed nested beneath a declared dependency, with no lock entry for it.
+control(
+  'installed: a nested install beneath a declared dependency is reported',
+  'fail',
+  `[installed] ${JS_API}@10.0.0 at ${NM}/x/${NM}/${JS_API} — under x`,
+  fixture('installed-nested', {
+    'package.json': { ...cleanManifest(), dependencies: { ...CLEAN_DEPENDENCIES, x: '1.0.0' } },
+    'package-lock.json': (() => {
+      const lock = lockWith({ [`${NM}/x`]: { version: '1.0.0' } });
+      lock.packages[''].dependencies.x = '1.0.0';
+      return lock;
+    })(),
+    [`${NM}/x/package.json`]: { name: 'x', version: '1.0.0', dependencies: { [JS_API]: '10.0.0' } },
+    [`${NM}/x/${NM}/${JS_API}/package.json`]: { name: JS_API, version: '10.0.0' },
+  }),
+);
+
+// -------------------------------------------------------------------------- 3. manifests ----
+
+// 10-12. The root manifest's three fields the plan names.
+control(
+  'manifest: a root dependency is reported',
+  'fail',
+  `[manifest] package.json dependencies.${HX} = ${VERSION[HX]}`,
+  fixture('manifest-root-dep', {
+    'package.json': {
+      ...cleanManifest(),
+      dependencies: { ...CLEAN_DEPENDENCIES, [HX]: VERSION[HX] },
+    },
+  }),
+);
+control(
+  'manifest: a root devDependency is reported',
+  'fail',
+  `[manifest] package.json devDependencies.${JS_API} = 10.0.0`,
+  fixture('manifest-root-dev', {
+    'package.json': { ...cleanManifest(), devDependencies: { [JS_API]: '10.0.0' } },
+  }),
+);
+control(
+  'manifest: a nested root override is reported',
+  'fail',
+  `[manifest] package.json overrides.some-parent.${EXT}@^9.0.0 = 9.0.0`,
+  fixture('manifest-root-override', {
+    'package.json': {
+      ...cleanManifest(),
+      overrides: { 'some-parent': { [`${EXT}@^9.0.0`]: '9.0.0' } },
+    },
+  }),
+);
+
+// 13. The `libs/platform` peer: the one place no lock entry represents.
+control(
+  'manifest: a libs/*/package.json peer is reported',
+  'fail',
+  `[manifest] libs/platform/package.json peerDependencies.${EXT} = ^9.0.0`,
+  fixture('manifest-libs-peer', {
+    'libs/platform/package.json': {
+      name: '@fixture/platform',
+      version: '0.1.0',
+      peerDependencies: { [EXT]: '^9.0.0' },
+    },
+  }),
+);
+
+// 14. Deeper than one level, and as an alias value — `libs/**`, not `libs/*`.
+control(
+  'manifest: a deep libs/**/package.json npm: alias is reported',
+  'fail',
+  `[manifest] libs/shared/deep/package.json dependencies.hxcs = npm:${HXCS}@2.0.111`,
+  fixture('manifest-libs-deep-alias', {
+    'libs/shared/deep/package.json': {
+      name: '@fixture/deep',
+      version: '0.0.0',
+      dependencies: { hxcs: `npm:${HXCS}@2.0.111` },
+    },
+  }),
+);
+
+// ------------------------------------------------------------------------------ 4. .npmrc ----
+
+control(
+  '.npmrc: an @alfresco registry mapping is reported',
+  'fail',
+  '[npmrc] .npmrc:4 @alfresco:registry=https://npm.pkg.github.com',
+  fixture('npmrc-mapping', {
+    '.npmrc': `${cleanFiles()['.npmrc']}@alfresco:registry=https://npm.pkg.github.com\n`,
+  }),
+);
+control(
+  '.npmrc: an indented mapping with spaces round = is reported',
+  'fail',
+  '[npmrc] .npmrc:1 @alfresco:registry = https://registry.npmjs.org/',
+  fixture('npmrc-spaced', { '.npmrc': '   @alfresco:registry = https://registry.npmjs.org/\n' }),
+);
+
+// ----------------------------------------------------------------------------- 5. imports ----
+
+control(
+  'import: a named import in libs/ is reported',
+  'fail',
+  `[import] libs/ui/src/columns.ts ${CORE}`,
+  fixture('import-named', {
+    'libs/ui/src/columns.ts': `import type { DataColumn } ${'from'} '${CORE}';\nexport type C = DataColumn;\n`,
+  }),
+);
+control(
+  'import: a subpath re-export in apps/ is reported',
+  'fail',
+  `[import] apps/web/src/barrel.ts ${HX}/ui`,
+  fixture('import-reexport', {
+    'apps/web/src/barrel.ts': `export * ${'from'} '${HX}/ui';\n`,
+  }),
+);
+control(
+  'import: a dynamic import() in a spec is reported',
+  'fail',
+  `[import] libs/ui/src/lazy.spec.ts ${EXT} (spec)`,
+  fixture('import-dynamic', {
+    'libs/ui/src/lazy.spec.ts': `const m = await ${'import'}('${EXT}');\nexport default m;\n`,
+  }),
+);
+control(
+  'import: a require() in a .cjs file is reported',
+  'fail',
+  `[import] libs/ui/tools/load.cjs ${HXCS}`,
+  fixture('import-require', {
+    'libs/ui/tools/load.cjs': `module.exports = ${'require'}('${HXCS}');\n`,
+  }),
+);
+control(
+  'import: a stylesheet @use is reported',
+  'fail',
+  `[import] libs/ui/src/styles.scss ${CORE}/theming`,
+  fixture('import-scss', { 'libs/ui/src/styles.scss': `@use '${CORE}/theming' as adf;\n` }),
+);
+
+// ------------------------------------------------------------------- 6. the gate's own rules ----
+
+// Report-only must not be "cannot fail": a clean tree means the removal landed, and the gate has to
+// be flipped to blocking in the same change.
+control(
+  'report-only on a clean tree fails and names the switch',
+  'fail',
+  ['the tree is clean but the gate is still report-only', 'Set BLOCKING = true'],
+  fixture('report-only-clean'),
+  ['--report-only'],
+);
+
+// An inspection gap is exit 2 in report-only mode too — a gap in the list is not a short list.
+control(
+  'report-only: an unreadable lock is a gap, not a pass',
+  'gap',
+  ['CANNOT INSPECT', 'package-lock.json: cannot read'],
+  fixture('gap-lock', { 'package-lock.json': '{ "packages": ' }),
+  ['--report-only'],
+);
+control(
+  'no installed tree is a gap, not a clean tree',
+  'gap',
+  ['CANNOT INSPECT', 'node_modules/ is absent'],
+  fixture('gap-no-install', {
+    [`${NM}/left-pad/package.json`]: undefined,
+    [`${NM}/is-even/package.json`]: undefined,
+    [`${NM}/is-odd/package.json`]: undefined,
+  }),
+);
+
+// ------------------------------------------------------------------------- positive controls ----
+
+control(
+  'clean fixture passes in blocking mode, with npm ls exiting non-zero',
+  'pass',
+  ['dependency-tree: pass', 'npm ls exited 1'],
+  fixture('clean'),
+);
+
+// Exact names, not prefixes: a check loosened to `startsWith` or `includes` goes red here.
+control(
+  'lookalike names stay quiet in every location',
+  'pass',
+  'dependency-tree: pass',
+  fixture('lookalikes', {
+    'package.json': {
+      ...cleanManifest(),
+      dependencies: { ...CLEAN_DEPENDENCIES, [`${CORE}-shim`]: '1.0.0' },
+      devDependencies: { [`${JS_API}-types`]: '1.0.0' },
+    },
+    'package-lock.json': lockWith({
+      [`${NM}/${CORE}-shim`]: { version: '1.0.0' },
+      [`${NM}/${JS_API}-types`]: { version: '1.0.0' },
+      [`${NM}/x/${NM}/${HXCS}-lite`]: { version: '1.0.0' },
+    }),
+    [`${NM}/${CORE}-shim/package.json`]: { name: `${CORE}-shim`, version: '1.0.0' },
+    '.npmrc': '@alfresco-labs:registry=https://npm.pkg.github.com\n',
+    'libs/ui/src/near.ts': `import { a } ${'from'} '${EXT}x';\nimport { b } ${'from'} '${HX}-legacy/ui';\nexport { a, b };\n`,
+  }),
+);
+
+// The removal backlog itself: report-only with findings is green, and says what it found.
+control(
+  'report-only with findings exits 0 and lists them',
+  'pass',
+  [
+    /dependency-tree: REPORT-ONLY — \d+ finding\(s\) across 5 of the 5 packages/,
+    `[lockfile] ${CORE}@9.0.0 at ${NM}/${CORE}`,
+    `[manifest] libs/platform/package.json peerDependencies.${EXT} = ^9.0.0`,
+    '[npmrc] .npmrc:4 @alfresco:registry=',
+    '[import] libs/ui — 1 file(s), 1 non-spec',
+  ],
+  fixture('report-only-findings', {
+    'package-lock.json': lockWith(
+      Object.fromEntries(ALL.map((pkg) => [`${NM}/${pkg}`, { version: VERSION[pkg] }])),
+    ),
+    'libs/platform/package.json': {
+      name: '@fixture/platform',
+      version: '0.1.0',
+      peerDependencies: { [EXT]: '^9.0.0' },
+    },
+    '.npmrc': `${cleanFiles()['.npmrc']}@alfresco:registry=https://npm.pkg.github.com\n`,
+    'libs/ui/src/columns.ts': `import type { DataColumn } ${'from'} '${CORE}';\nexport type C = DataColumn;\n`,
+  }),
+  ['--report-only'],
+);
+
+// ------------------------------------------------------------------------------- run them ----
+
+const limit = Math.max(2, Math.min(8, Math.floor(availableParallelism() / 2)));
+const outcomes = new Array(controls.length);
+let next = 0;
+await Promise.all(
+  Array.from({ length: limit }, async () => {
+    while (next < controls.length) {
+      const i = next++;
+      outcomes[i] = await runGate(controls[i].dir, controls[i].args);
+    }
+  }),
+);
+controls.forEach((c, i) => judge(c, outcomes[i]));
+
+// ------------------------------------------------------------- 7. the real repository ----
+//
+// Last and sequential, because the second depends on the first. Together they are what makes the
+// gate's green on main mean something: the repository's own run is green as configured, AND the
+// same tree in blocking mode is red whenever that run listed anything. On today's main — every
+// package present — the second is the plan's "red run against the pre-removal lockfile". After the
+// removal it becomes a positive control, without this file changing.
+{
+  const asConfigured = await runGate(ROOT, ['--json']);
+  let report = null;
+  try {
+    report = JSON.parse(asConfigured.out);
+  } catch {
+    /* judged below */
+  }
+  judge(
+    {
+      name: 'real repository, mode as configured: exits 0',
+      expected: 'pass',
+      because: [/"verdict": "(REPORT-ONLY|pass) —/],
+    },
+    asConfigured,
+  );
+  if (report) {
+    const total = report.total;
+    judge(
+      {
+        name: `real repository, forced blocking: red iff the configured run found anything (it found ${total})`,
+        expected: total > 0 ? 'fail' : 'pass',
+        because: [
+          total > 0 ? `dependency-tree: FAIL — ${total} finding(s)` : 'dependency-tree: pass',
+        ],
+      },
+      await runGate(ROOT, ['--blocking']),
+    );
+  } else {
+    results.push({ name: 'real repository, forced blocking', expected: 'fail', ok: false });
+    console.log(
+      'FAIL real repository, forced blocking — the configured run printed no JSON report to compare with',
+    );
+  }
+}
+
+rmSync(workspace, { recursive: true, force: true });
+
+const failed = results.filter((r) => !r.ok);
+// The split is reported rather than a total, because only the negative controls prove the gate
+// can fail; the positive ones prove it does not cry wolf.
+const negatives = results.filter((r) => r.expected !== 'pass').length;
+const positives = results.length - negatives;
+const split = `${negatives} negative (must report) + ${positives} positive (must stay quiet)`;
+console.log();
+if (failed.length === 0) {
+  console.log(`dependency-tree selftest: pass — ${results.length} control(s): ${split}.`);
+  process.exit(0);
+}
+console.error(
+  `dependency-tree selftest: FAIL — ${failed.length} of ${results.length} control(s) (${split}) did not behave as specified:`,
+);
+for (const f of failed) console.error(`  - ${f.name} (expected ${f.expected})`);
+process.exit(1);

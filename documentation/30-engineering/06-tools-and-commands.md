@@ -54,7 +54,7 @@ Recovery: restore a known-good lock, merge only the new entries, run
 
 | Command                                                 | Purpose                                                      |
 | ------------------------------------------------------- | ------------------------------------------------------------ |
-| `npm run beta:gate -- --phase <id>`                     | All 17 gates, cheapest first, stop at first failure          |
+| `npm run beta:gate -- --phase <id>`                     | Every gate (26), cheapest first, stop at first failure       |
 | `npm run beta:supply-chain`                             | SCA: production audit, dated acceptances, unimported deps    |
 | `npm run beta:code-scanning`                            | Reads the CodeQL alerts; fails if the ref was never analysed |
 | `npm run beta:gate -- --gates lockfile,guardrails,lint` | Fast inner loop                                              |
@@ -62,30 +62,33 @@ Recovery: restore a known-good lock, merge only the new entries, run
 | `npm run beta:gate -- --base <ref>`                     | Change the affected-calculation base (default `origin/main`) |
 | `npm run beta:gate -- --tail <n>`                       | Lines of failing output to show (default 40)                 |
 
-Verdicts: `pass` (all 15), `pass-partial` (a filtered run — **not** a phase gate),
+Verdicts: `pass` (every gate), `pass-partial` (a filtered run — **not** a phase gate),
 `fail`. A report is written under `~/Desktop/agentic-ui-evidence/beta/gates/`.
 
 ### Individual gates
 
-| Command                                                                | Asserts                                                   | Exit                     |
-| ---------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------ |
-| `npm run beta:api`                                                     | Published `.d.ts` matches the snapshot                    | 1 on drift               |
-| `npm run beta:api -- --update`                                         | Re-record the snapshot                                    | Review the diff          |
-| `npm run beta:publishable`                                             | 7 checks incl. a real `npm publish --dry-run`             | 1, or 2 if `dist` absent |
-| `npm run beta:fork`                                                    | Template compiles against the built package               | 1                        |
-| `npm run beta:upgrade`                                                 | A Layer 0/1/2 customisation survives a version bump       | 1, or 2 if `dist` absent |
-| `node scripts/beta-harness/upgrade-rehearsal.mjs --break-slot toolbar` | **Negative control** — proves the slot check is sensitive | 1 by design              |
-| `npm run beta:bundle`                                                  | No banned symbols; required assets present and non-empty  | 1                        |
-| `npm run beta:reference`                                               | Extension reference agrees with the code, both directions | 1                        |
-| `npm run beta:customer-guardrails`                                     | The shipped guardrail, against our reference library      | 1                        |
-| `npm run beta:audit`                                                   | Every evidence assertion can fail                         | 1                        |
-| `npm run beta:coverage`                                                | Ratchet: no regression, no orphan, no unratcheted project | 1                        |
-| `npm run beta:coverage -- --run`                                       | Run the tests first                                       |                          |
-| `npm run beta:coverage -- --update-baseline`                           | Re-record; prunes orphans                                 |                          |
-| `node scripts/beta-harness/lockfile-integrity.mjs`                     | Every dependency edge resolves in the lock                | 1                        |
-| `node scripts/beta-harness/lockfile-integrity.mjs --lock <path>`       | Check a copy                                              |                          |
-| `npm run review:guardrails`                                            | The 10 repo invariants                                    | 1                        |
-| `npm run review:preflight`                                             | guardrails + affected lint + affected test                | 1                        |
+| Command                                                                | Asserts                                                              | Exit                                                                                                                   |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `npm run beta:api`                                                     | Published `.d.ts` matches the snapshot                               | 1 on drift                                                                                                             |
+| `npm run beta:api -- --update`                                         | Re-record the snapshot                                               | Review the diff                                                                                                        |
+| `npm run beta:publishable`                                             | 7 checks incl. a real `npm publish --dry-run`                        | 1, or 2 if `dist` absent                                                                                               |
+| `npm run beta:fork`                                                    | Template compiles against the built package                          | 1                                                                                                                      |
+| `npm run beta:upgrade`                                                 | A Layer 0/1/2 customisation survives a version bump                  | 1, or 2 if `dist` absent                                                                                               |
+| `node scripts/beta-harness/upgrade-rehearsal.mjs --break-slot toolbar` | **Negative control** — proves the slot check is sensitive            | 1 by design                                                                                                            |
+| `npm run beta:bundle`                                                  | No banned symbols; required assets present and non-empty             | 1                                                                                                                      |
+| `npm run beta:reference`                                               | Extension reference agrees with the code, both directions            | 1                                                                                                                      |
+| `npm run beta:customer-guardrails`                                     | The shipped guardrail, against our reference library                 | 1                                                                                                                      |
+| `npm run beta:audit`                                                   | Every evidence assertion can fail                                    | 1                                                                                                                      |
+| `npm run beta:coverage`                                                | Ratchet: no regression, no orphan, no unratcheted project            | 1                                                                                                                      |
+| `npm run beta:coverage -- --run`                                       | Run the tests first                                                  |                                                                                                                        |
+| `npm run beta:coverage -- --update-baseline`                           | Re-record; prunes orphans                                            |                                                                                                                        |
+| `node scripts/beta-harness/lockfile-integrity.mjs`                     | Every dependency edge resolves in the lock                           | 1                                                                                                                      |
+| `node scripts/beta-harness/lockfile-integrity.mjs --lock <path>`       | Check a copy                                                         |                                                                                                                        |
+| `npm run beta:dependency-tree`                                         | No ADF package in lock, installed tree, manifests, `.npmrc`, imports | 1 when blocking; **report-only** (exit 0, lists findings) until the ADF removal commit; 2 if a location cannot be read |
+| `npm run beta:dependency-tree -- --blocking --list-files`              | Preview the blocking verdict, every importing file listed            |                                                                                                                        |
+| `npm run beta:dependency-tree-selftest`                                | The gate's negative and positive controls                            | 1                                                                                                                      |
+| `npm run review:guardrails`                                            | The 10 repo invariants                                               | 1                                                                                                                      |
+| `npm run review:preflight`                                             | guardrails + affected lint + affected test                           | 1                                                                                                                      |
 
 ---
 
