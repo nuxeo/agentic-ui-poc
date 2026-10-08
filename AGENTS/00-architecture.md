@@ -112,14 +112,14 @@ and when any of its files sits outside the measurement — only `noStatements` b
 never a dated allowlist entry. `npm run beta:coverage` runs at the end of the SonarCloud workflow,
 after its test-with-coverage step.
 
-**Two shared barrels fail the dependency rule today**, because it follows imports:
+**`@nuxeo-satori/platform/nuxeo-client` and `@nuxeo-satori/platform/extensions` are importable**,
+because the dependency rule follows imports and neither barrel now reaches a banned package.
+Both once did: `nuxeo-client`'s `avatar-colors.ts` imported a Satori type, and `extensions` imported
+`@alfresco/adf-extensions`. Controls in `scripts/review-guardrails.selftest.mjs` run the rule over
+the real `libs/` tree and put each import back, so a regression in either barrel is red there.
 
-- `@nuxeo-satori/platform/nuxeo-client` — `lib/constants/avatar-colors.ts` imports the
-  `SatAvatarCategory` type from `@hylandsoftware/satori-ui/avatar`.
-- `@nuxeo-satori/platform/extensions` — imports `@alfresco/adf-extensions`, until the NXSAT-308
-  reimplementation of `filterEnabled`, `sortByOrder` and `mergeObjects` lands.
-
-Fix the file that carries the package, rather than copying code into the library to dodge the rule.
+If another library is refused, fix the file that carries the package, rather than copying code
+into the library to dodge the rule.
 
 **Adding a component, with every gate staying green:**
 

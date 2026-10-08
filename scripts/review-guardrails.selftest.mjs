@@ -37,7 +37,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -5047,6 +5047,75 @@ expectGreen(
       imports: "import { clean } from '@nuxeo-satori/platform/nuxeo-client';",
     }),
   }),
+);
+
+/**
+ * The real `nuxeo-client` and `extensions` barrels, not stand-ins.
+ *
+ * A fixture that stubs a library proves the walk, not that the shipped library is clean, and the
+ * walk skips an alias whose target is absent — so the fixture carries every non-spec source in
+ * `libs/` and the real `tsconfig.base.json`. The two red controls after it re-introduce the
+ * imports each barrel once carried, two hops deep, so the green cannot come from a walk that never
+ * entered either library.
+ */
+const REAL_LIBS = (() => {
+  const listed = spawnSync('git', ['ls-files', '-z', 'libs', 'tsconfig.base.json'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (listed.status !== 0) throw new Error(`git ls-files failed: ${listed.stderr}`);
+  const files = {};
+  for (const file of listed.stdout.split('\0')) {
+    if (
+      file === 'tsconfig.base.json' ||
+      (/\.(ts|mts|scss)$/.test(file) && !/\.(spec|test)\.ts$/.test(file))
+    ) {
+      files[file] = readFileSync(join(ROOT, file), 'utf8');
+    }
+  }
+  return files;
+})();
+const NXS_PROBE = `${NXS_ROOT}/src/lib/probe/probe.ts`;
+const REAL_LIBS_WITH_PROBE = {
+  ...REAL_LIBS,
+  [NXS_PROBE]:
+    "import { avatarColor } from '@nuxeo-satori/platform/nuxeo-client';\n" +
+    "import { ExtensionRuleRegistry } from '@nuxeo-satori/platform/extensions';\n" +
+    'export const probe = [avatarColor, ExtensionRuleRegistry];\n',
+};
+const AVATAR_COLORS = 'libs/shared/nuxeo-client/src/lib/constants/avatar-colors.ts';
+const EXTENSION_RULES = 'libs/shared/extensions/src/lib/extension-rules.ts';
+
+falsePositiveControls += 1;
+expectGreen(
+  'the real nuxeo-client and extensions barrels',
+  'checkSatoriComponentsDependencies',
+  REAL_LIBS_WITH_PROBE,
+);
+
+expectRed(
+  'the real nuxeo-client barrel reaching a Satori type again',
+  'checkSatoriComponentsDependencies',
+  REAL_LIBS_WITH_PROBE,
+  (write) =>
+    write(
+      AVATAR_COLORS,
+      "import type { SatAvatarCategory } from '@hylandsoftware/satori-ui/avatar';\n" +
+        REAL_LIBS[AVATAR_COLORS],
+    ),
+  /avatar-colors\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through .*probe\.ts -> libs\/shared\/nuxeo-client\/src\/index\.ts -> /,
+);
+
+expectRed(
+  'the real extensions barrel reaching adf-extensions again',
+  'checkSatoriComponentsDependencies',
+  REAL_LIBS_WITH_PROBE,
+  (write) =>
+    write(
+      EXTENSION_RULES,
+      "import type { RuleContext } from '@alfresco/adf-extensions';\n" + REAL_LIBS[EXTENSION_RULES],
+    ),
+  /extension-rules\.ts imports `@alfresco\/adf-extensions`, and the library reaches that file through .*probe\.ts -> libs\/shared\/extensions\/src\/index\.ts -> /,
 );
 
 expectRed(
