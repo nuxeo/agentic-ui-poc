@@ -21,7 +21,7 @@
       (click)="goBack()"
       [attr.aria-label]="'document-detail.document-detail.go-back' | translate"
     >
-      <mat-icon>arrow_back</mat-icon>
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
     </button>
     <div class="header-info">
       <div class="header-title" role="heading" aria-level="1">{{ doc()!.title }}</div>
