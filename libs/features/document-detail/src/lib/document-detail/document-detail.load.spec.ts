@@ -442,7 +442,7 @@ describe('DocumentDetailComponent — load chain', () => {
       expect(component.previewUrl()).not.toBeNull();
     });
 
-    it('treats a Picture main file as an image whatever its mime type', async () => {
+    it('fetches a Picture main file as a blob, not as text, whatever its mime type', async () => {
       mockDetailService.fetchBlob.mockReturnValue(
         of(new Blob(['line one'], { type: 'text/plain' })),
       );
