@@ -21,12 +21,12 @@ promise checkable rather than aspirational.
 
 ## 1. The four layers
 
-| Layer                      | What the customer writes                                                    | Build needed           | Survives upgrade                                  |
-| -------------------------- | --------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------- |
-| **0 — Configuration**      | JSON + CSS custom properties: theme tokens, branding, languages             | No                     | Yes — the package never installs `bootstrap.json` |
-| **1 — Declarative wiring** | JSON referencing components, rules, actions and routes **by registered ID** | No                     | Yes — it is a fragment in the customer's package  |
-| **2 — Customer code**      | A TypeScript library against `@nuxeo-satori/platform`                       | Yes, in **their** repo | Yes — npm semver                                  |
-| **3 — Agent harness**      | Prompts. The generators and guardrails ship inside the package              | Yes, in their repo     | Yes                                               |
+| Layer                      | What the customer writes                                                    | App rebuild needed     | Survives upgrade                                 |
+| -------------------------- | --------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------ |
+| **0 — Configuration**      | JSON + CSS custom properties: theme tokens, branding, languages             | No                     | Yes — it is a fragment in the customer's package |
+| **1 — Declarative wiring** | JSON referencing components, rules, actions and routes **by registered ID** | No                     | Yes — it is a fragment in the customer's package |
+| **2 — Customer code**      | A TypeScript library against `@nuxeo-satori/platform`                       | Yes, in **their** repo | Yes — npm semver                                 |
+| **3 — Agent harness**      | Prompts. The generators and guardrails ship inside the package              | Yes, in their repo     | Yes                                              |
 
 Layers 0 and 1 are expected to absorb most customer requests and need no build of the application:
 the customer's configuration package is zipped by a dependency-free script and installed.
