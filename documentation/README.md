@@ -4,7 +4,7 @@ parent: null
 order: 0
 last_reviewed: 2026-10-08
 repo_commit: fb97d44
-branch: feature/adf-hx-browse-poc
+branch: feature/nxsat-308-dependency-tree-gate
 audience: all
 ---
 

@@ -3,7 +3,7 @@ title: Developer Learning Path (No-Agent)
 parent: Engineering
 order: 14
 last_reviewed: 2026-10-08
-repo_commit: 5abcd50
+repo_commit: 89cfd7b
 audience: engineering
 ---
 
