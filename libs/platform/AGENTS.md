@@ -223,9 +223,30 @@ of them named the new IDs.
 
 ## 6. Where things live
 
-| What                                             | Where                                                            |
-| ------------------------------------------------ | ---------------------------------------------------------------- |
-| Every addressable ID, and each slot's real state | `extension-reference.md`                                         |
-| The published API surface                        | `@nuxeo-satori/platform` type declarations                       |
-| Entry points                                     | `@nuxeo-satori/platform/{extensions,app-config,nuxeo-client,ui}` |
-| Your contributions                               | your own library, `provideSatoriExtensions()`                    |
+| What                                             | Where                                                                       |
+| ------------------------------------------------ | --------------------------------------------------------------------------- |
+| Every addressable ID, and each slot's real state | `extension-reference.md`                                                    |
+| The published API surface                        | `@nuxeo-satori/platform` type declarations                                  |
+| Entry points                                     | `@nuxeo-satori/platform/{extensions,app-config,components,nuxeo-client,ui}` |
+| Your contributions                               | your own library, `provideSatoriExtensions()`                               |
+
+## 7. The `nxs-` components
+
+`@nuxeo-satori/platform/components` is the Nuxeo-owned component library: `nxs-` selectors,
+built on Angular Material, with no ADF and no Satori import, so it installs without GitHub
+Packages access. Compose its components inside your own Layer 2 components:
+
+```ts
+import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
+```
+
+```html
+<nxs-empty-state icon="inbox" [heading]="'acme.claims.empty' | translate" />
+```
+
+- **Text inputs take text you have already translated.** The library ships no catalogue, so
+  bind every heading, message and label through your own translate pipe.
+- **Import only the entry point.** A path past it fails the shipped guardrail like any other
+  deep import.
+- **It is new and growing.** The type declarations are the list of what exists; do not take
+  a component's existence from this file.

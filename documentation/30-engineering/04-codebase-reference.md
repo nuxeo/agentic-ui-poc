@@ -145,17 +145,17 @@ format in [`docs/extension-reference.md`](../../docs/extension-reference.md) §9
 
 ## 6. `libs/platform` — the publishable package
 
-Owns no logic. Wraps four shared libraries as entry points and ships the customer-facing assets.
+Owns no logic. Wraps five shared libraries as entry points and ships the customer-facing assets.
 
-| Path                                                      | Responsibility                                                                                                            |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `package.json`                                            | Name, version, **10 peers**, `private: true`, `generators` field                                                          |
-| `ng-package.json`                                         | ng-packagr config + assets: README, AGENTS.md, extension reference, `guardrails/**`, `generators/**`                      |
-| `tsconfig.lib.json`                                       | **The entire compiler configuration**, not overrides. Two defects came from options being _absent_                        |
-| `{app-config,extensions,nuxeo-client,ui}/ng-package.json` | The four secondary entry points, pointing at `../../shared/*/src/index.ts`                                                |
-| `guardrails/check-extension-library.mjs`                  | The 5 customer checks, shipped in the tarball                                                                             |
-| `AGENTS.md`                                               | ~180 lines of customer procedure, shipped                                                                                 |
-| `project.json`                                            | `build` depends on `sync-docs` **and** `sync-generators`, which must precede ng-packagr because it clears its destination |
+| Path                                                                 | Responsibility                                                                                                            |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `package.json`                                                       | Name, version, **10 peers**, `private: true`, `generators` field                                                          |
+| `ng-package.json`                                                    | ng-packagr config + assets: README, AGENTS.md, extension reference, `guardrails/**`, `generators/**`                      |
+| `tsconfig.lib.json`                                                  | **The entire compiler configuration**, not overrides. Two defects came from options being _absent_                        |
+| `{app-config,components,extensions,nuxeo-client,ui}/ng-package.json` | The five secondary entry points, pointing at `../../shared/*/src/index.ts`                                                |
+| `guardrails/check-extension-library.mjs`                             | The 5 customer checks, shipped in the tarball                                                                             |
+| `AGENTS.md`                                                          | ~180 lines of customer procedure, shipped                                                                                 |
+| `project.json`                                                       | `build` depends on `sync-docs` **and** `sync-generators`, which must precede ng-packagr because it clears its destination |
 
 ---
 

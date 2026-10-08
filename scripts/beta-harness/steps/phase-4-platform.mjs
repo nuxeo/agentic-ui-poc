@@ -40,7 +40,7 @@
  * - Step 9: the published `.d.ts` carries nullable types. A direct regression guard
  *   for the defect where the package was compiled without `strictNullChecks` and
  *   shipped 27 wrongly non-nullable public types.
- * - Step 10: the `exports` map advertises five entry points and every `types` file
+ * - Step 10: the `exports` map advertises six entry points and every `types` file
  *   it names exists. An entry pointing at a missing file is an unresolvable import
  *   for a customer, which is how `ng-packagr-lite` shipped four broken subpaths.
  * - Step 11: `private: true` survives into the built artifact, so an accidental
@@ -289,13 +289,13 @@ export default async function run(page, h) {
   );
 
   // ---------------------------------------------------------------------------
-  h.step('The exports map advertises five entry points, all resolvable');
+  h.step('The exports map advertises six entry points, all resolvable');
 
   const pkg = JSON.parse(readFileSync(join(DIST, 'package.json'), 'utf8'));
   const subpaths = Object.keys(pkg.exports ?? {}).filter((k) => k !== './package.json');
   h.check(
-    'five entry points are exported',
-    subpaths.length === 5,
+    'six entry points are exported',
+    subpaths.length === 6,
     `found ${subpaths.length}: ${subpaths.join(', ')}`,
   );
 

@@ -261,6 +261,20 @@ It also fails on:
   `new` and then excluded from every check, so a new library's coverage could fall to zero
   silently.
 
+### Hard floors, and where it runs
+
+A project named in `FLOORS` is held to a fixed floor on every run instead of the ratchet:
+`satori-components`, the `nxs-` library NXSAT-308 builds new, at 90% of lines from its first
+commit. The floor also fails when that project was not measured, and when any of its files sits
+outside the measurement — v8 lists a file no spec imports with an empty statement map, so it
+cannot lower a percentage. Only `noStatements` files are excused, never a dated allowlist entry.
+Seen red three ways before it was trusted: an untested function (83.33%), an untested component
+file (the percentage stayed at 100%; the floor did not), and that file with a dated allowlist entry.
+
+The gate runs at the end of the SonarCloud workflow, reading the `coverage-final.json` files its
+test-with-coverage step already wrote. Before that it ran in no workflow and was not in
+`beta:gate`, so nothing enforced it.
+
 ### A defect in the numbers — fixed 2026-08-24
 
 `tasks` and `assets` have **zero spec files** and were recorded at **100%**. Their coverage

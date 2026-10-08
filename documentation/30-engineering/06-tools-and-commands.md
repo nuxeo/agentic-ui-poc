@@ -79,7 +79,7 @@ Verdicts: `pass` (all 15), `pass-partial` (a filtered run — **not** a phase ga
 | `npm run beta:reference`                                               | Extension reference agrees with the code, both directions | 1                        |
 | `npm run beta:customer-guardrails`                                     | The shipped guardrail, against our reference library      | 1                        |
 | `npm run beta:audit`                                                   | Every evidence assertion can fail                         | 1                        |
-| `npm run beta:coverage`                                                | Ratchet: no regression, no orphan, no unratcheted project | 1                        |
+| `npm run beta:coverage`                                                | Ratchet (no regression/orphan/unratcheted); `FLOORS` met  | 1                        |
 | `npm run beta:coverage -- --run`                                       | Run the tests first                                       |                          |
 | `npm run beta:coverage -- --update-baseline`                           | Re-record; prunes orphans                                 |                          |
 | `node scripts/beta-harness/lockfile-integrity.mjs`                     | Every dependency edge resolves in the lock                | 1                        |

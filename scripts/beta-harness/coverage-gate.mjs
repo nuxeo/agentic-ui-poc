@@ -27,14 +27,20 @@
  * Unmeasurable is neither a pass nor a fail: it is *untested*. A baseline entry for one
  * **fails** this gate, because the entry is itself the defect.
  *
+ * ## Hard floors, beside the ratchet
+ *
+ * A project named in `FLOORS` must clear its floor on every run, from its first commit, rather
+ * than enter at whatever it measures. That is for code written against the bar rather than
+ * catching up to it — `satori-components`, the `nxs-` library NXSAT-308 builds new.
+ *
  * Usage:
  *   node scripts/beta-harness/coverage-gate.mjs                    # check the ratchet
  *   node scripts/beta-harness/coverage-gate.mjs --update-baseline  # re-record after a rise
  *   node scripts/beta-harness/coverage-gate.mjs --run              # run the tests first
  *   node scripts/beta-harness/coverage-gate.mjs --json
  *
- * Exit 1 if any project's line coverage dropped by more than the tolerance, or if
- * --update-baseline is needed and has not been given.
+ * Exit 1 if any project's line coverage dropped by more than the tolerance, if a floor in
+ * `FLOORS` is not met, or if --update-baseline is needed and has not been given.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -104,6 +110,23 @@ const OUT_OF_SCOPE = Object.freeze({
  * without a line of production code changing. That is the exact reason the bar is scope-aware and
  * the scope lives in the plan rather than here: changing this map is not how scope gets decided.
  */
+
+/**
+ * Per-project line-coverage floors, enforced on every run and separate from the ratchet.
+ *
+ * The number is NXENG-615's "Unit tests coverage > 90%", the bar `TARGET` already reports
+ * against. A floor project is also held to two things the ratchet excuses:
+ *
+ * - **It must be measured this run.** No report, or a report that measures nothing, is a failed
+ *   floor rather than "outside the affected set".
+ * - **None of its files may sit outside the measurement.** v8 lists a file no spec imports with
+ *   an empty statement map, so it cannot lower the percentage. The ratchet accepts a dated
+ *   allowlist entry for that; a floor that did the same could be met by not testing a new
+ *   component at all. Only `noStatements` entries — files with nothing to execute — are excused.
+ */
+const FLOORS = Object.freeze({
+  'satori-components': TARGET,
+});
 
 /** @param {string} project */
 function inBetaScope(project) {
@@ -378,6 +401,33 @@ const staleAllowlist = [
   ...[...noStatementsAllowlist].filter((f) => !unmeasuredNow.has(f)),
 ];
 
+/** @type {{ project: string, floor: number, why: string }[]} */
+const floorFailures = [];
+for (const [project, floor] of Object.entries(FLOORS)) {
+  const fails = (why) => floorFailures.push({ project, floor, why });
+  if (!projects.some((p) => p.name === project && p.kind === 'vitest')) {
+    fails('there is no Vitest project of that name, so the floor guards nothing');
+    continue;
+  }
+  const empty = vacuous.find((v) => v.project === project);
+  if (empty) {
+    fails(`its coverage report measures nothing (${empty.why})`);
+    continue;
+  }
+  const m = measured.find((x) => x.project === project);
+  if (!m) {
+    fails('it has no coverage report this run, so the floor was not measured');
+    continue;
+  }
+  if (m.lines < floor) {
+    fails(`${m.lines}% of lines covered (${m.sCovered} of ${m.sTotal} statements)`);
+  }
+  for (const u of m.unmeasured ?? []) {
+    if (noStatementsAllowlist.has(u.file)) continue;
+    fails(`${u.file} contributes no statements [${u.why}] — no spec reaches it`);
+  }
+}
+
 if (updateBaseline) {
   const merged = { ...baseline.projects };
   for (const m of measured) merged[m.project] = entryFor(m);
@@ -419,6 +469,7 @@ report();
  */
 process.exit(
   stale.length ||
+    floorFailures.length ||
     regressions.length ||
     orphaned.length ||
     unratcheted.length ||
@@ -745,6 +796,7 @@ function report() {
           // would have let an evidence manifest record a clean pass while the gate had failed.
           ok:
             stale.length === 0 &&
+            floorFailures.length === 0 &&
             regressions.length === 0 &&
             orphaned.length === 0 &&
             unratcheted.length === 0 &&
@@ -754,6 +806,7 @@ function report() {
             staleAllowlist.length === 0,
           stale,
           target: TARGET,
+          floors: { configured: FLOORS, failures: floorFailures },
           rows,
           meetingTarget: rows.filter((r) => r.target <= 0).map((r) => r.project),
           // Scope-aware view of the bar. `meetingTarget` above counts every project,
@@ -959,9 +1012,12 @@ function report() {
     for (const f of staleAllowlist) console.log(`    ${f}`);
   }
 
+  reportFloors();
+
   console.log('');
   if (
     stale.length ||
+    floorFailures.length ||
     orphaned.length ||
     unratcheted.length ||
     falseCredit.length ||
@@ -971,6 +1027,7 @@ function report() {
   ) {
     const parts = [];
     if (stale.length) parts.push(`${stale.length} stale coverage report(s)`);
+    if (floorFailures.length) parts.push(`${floorFailures.length} unmet coverage floor(s)`);
     if (orphaned.length) parts.push(`${orphaned.length} orphaned baseline entr(ies)`);
     if (unratcheted.length) parts.push(`${unratcheted.length} unratcheted project(s)`);
     if (falseCredit.length) parts.push(`${falseCredit.length} unmeasurable baseline entr(ies)`);
@@ -1056,6 +1113,33 @@ function report() {
   } else {
     console.log(`coverage-gate: pass — no project regressed by more than ${TOLERANCE}pp.`);
     reportBetaBar(rows);
+  }
+}
+
+/** The `FLOORS` verdict, printed on every run so a met floor is visible as well as a missed one. */
+function reportFloors() {
+  const projectsWithFloors = Object.keys(FLOORS);
+  if (projectsWithFloors.length === 0) return;
+  console.log('\n  Hard floors — must be met on every run, not ratcheted:');
+  for (const project of projectsWithFloors) {
+    const failures = floorFailures.filter((f) => f.project === project);
+    const m = measured.find((x) => x.project === project);
+    if (failures.length === 0) {
+      console.log(
+        `    ${project.padEnd(24)} ${String(m.lines).padStart(6)}%  meets ${FLOORS[project]}% ` +
+          `(${m.sCovered} of ${m.sTotal} statements, no file outside the measurement)`,
+      );
+      continue;
+    }
+    console.log(`    ${project.padEnd(24)} FAIL — floor ${FLOORS[project]}%:`);
+    for (const f of failures) console.log(`      - ${f.why}`);
+  }
+  if (floorFailures.length) {
+    console.log(
+      '\n  Write the missing tests. A floor project cannot take a dated allowlist entry or a\n' +
+        '  lower baseline: the floor applies from its first commit, so each component brings\n' +
+        '  its specs with it.',
+    );
   }
 }
 

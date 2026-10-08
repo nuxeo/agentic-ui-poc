@@ -268,13 +268,15 @@ directly.
 
 ## 6. Layer 2 — `@nuxeo-satori/platform`
 
-One publishable library, four secondary entry points, 347 kB tarball of 25 files.
+One publishable library, five secondary entry points; `npm pack --dry-run` on the build gives a
+556 kB tarball of 70 files (measured 2026-10-08).
 
 | Entry point                           | Wraps                                                                 |
 | ------------------------------------- | --------------------------------------------------------------------- |
 | `@nuxeo-satori/platform`              | Root — `PLATFORM_ENTRY_POINTS`, shared types                          |
 | `@nuxeo-satori/platform/extensions`   | The registries, `provideSatoriExtensions`, `ExtensionOutletComponent` |
 | `@nuxeo-satori/platform/app-config`   | Layer 0 loader and tokens                                             |
+| `@nuxeo-satori/platform/components`   | `nxs-` components — Material-backed, no ADF or Satori import          |
 | `@nuxeo-satori/platform/nuxeo-client` | Services and models                                                   |
 | `@nuxeo-satori/platform/ui`           | Shared presentational components                                      |
 

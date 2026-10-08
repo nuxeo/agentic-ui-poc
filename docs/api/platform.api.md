@@ -15,7 +15,7 @@ of backwards compatibility.
 2 exported symbol(s).
 
 ```ts
-const PLATFORM_ENTRY_POINTS: readonly ["app-config", "extensions", "nuxeo-client", "ui"];
+const PLATFORM_ENTRY_POINTS: readonly ["app-config", "components", "extensions", "nuxeo-client", "ui"];
 type PlatformEntryPoint = (typeof PLATFORM_ENTRY_POINTS)[number];
 ```
 
@@ -185,6 +185,21 @@ function mergeRuntimeManifest(base: AppRuntimeManifest, patch: unknown): AppRunt
 function resolveBootstrapConfigUrl(baseUri: string): string;
 function resolveManifestConfigUrl(bootstrapUrl: string): string;
 function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeConfig;
+```
+
+## @nuxeo-satori/platform/components
+
+1 exported symbol(s).
+
+```ts
+class NxsEmptyStateComponent {
+    readonly heading: _angular_core.InputSignal<string>;
+    readonly message: _angular_core.InputSignal<string>;
+    readonly icon: _angular_core.InputSignal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsEmptyStateComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
+    }
+}
 ```
 
 ## @nuxeo-satori/platform/extensions

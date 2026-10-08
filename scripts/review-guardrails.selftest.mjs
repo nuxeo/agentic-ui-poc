@@ -4997,6 +4997,317 @@ expectGreen(
   ),
 );
 
+/* ---------------- libs/shared/satori-components (NXSAT-308) ---------------- */
+
+const NXS_ROOT = 'libs/shared/satori-components';
+const NXS_COMPONENT = `${NXS_ROOT}/src/lib/thing/thing.component.ts`;
+const NXS_STYLES = `${NXS_ROOT}/src/lib/thing/thing.component.scss`;
+const nxsComponent = ({ imports = '', config = "selector: 'nxs-thing', standalone: true," } = {}) =>
+  `import { Component } from '@angular/core';\n${imports}\n` +
+  `@Component({\n  ${config}\n  templateUrl: './thing.component.html',\n` +
+  `  styleUrl: './thing.component.scss',\n})\nexport class NxsThingComponent {}\n`;
+
+/** A correct library: one standalone component behind its barrel, published and aliased. */
+const NXS_LIB = (extra = {}, paths = {}) => ({
+  'tsconfig.base.json': `${JSON.stringify(
+    {
+      compilerOptions: {
+        paths: {
+          '@nuxeo-satori/platform/components': [`${NXS_ROOT}/src/index.ts`],
+          '@nuxeo-satori/platform/nuxeo-client': ['libs/shared/nuxeo-client/src/index.ts'],
+          ...paths,
+        },
+      },
+    },
+    null,
+    2,
+  )}\n`,
+  'libs/platform/components/ng-package.json':
+    '{ "lib": { "entryFile": "../../shared/satori-components/src/index.ts" } }\n',
+  [`${NXS_ROOT}/src/index.ts`]: "export { NxsThingComponent } from './lib/thing/thing.component';\n",
+  [NXS_COMPONENT]: nxsComponent(),
+  [`${NXS_ROOT}/src/lib/thing/thing.component.html`]: '<p>{{ 1 }}</p>\n',
+  [NXS_STYLES]: ':host {\n  display: block;\n}\n',
+  'libs/shared/nuxeo-client/src/index.ts': "export * from './lib/clean';\n",
+  'libs/shared/nuxeo-client/src/lib/clean.ts': 'export const clean = 1;\n',
+  ...extra,
+});
+
+// checkSatoriComponentsDependencies
+
+expectGreen('a library importing only Angular', 'checkSatoriComponentsDependencies', NXS_LIB());
+
+// A workspace import is followed, not refused: a clean shared library is fine to depend on.
+falsePositiveControls += 1;
+expectGreen(
+  'a library importing a clean workspace library',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({
+      imports: "import { clean } from '@nuxeo-satori/platform/nuxeo-client';",
+    }),
+  }),
+);
+
+expectRed(
+  'a direct satori-ui import',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({
+      imports: "import { SatAvatar } from '@hylandsoftware/satori-ui/avatar';",
+    }),
+  }),
+  null,
+  /thing\.component\.ts imports `@hylandsoftware\/satori-ui\/avatar`\. .*`\/components-satori` entry point/,
+);
+
+expectRed(
+  'a direct adf-core import',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({ imports: "import { FileSizePipe } from '@alfresco/adf-core';" }),
+  }),
+  null,
+  /thing\.component\.ts imports `@alfresco\/adf-core`\. .*ADF leaves the dependency tree/,
+);
+
+expectRed(
+  'a direct hxcs-js-client import',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({
+      imports: "import type { Document } from '@hylandsoftware/hxcs-js-client';",
+    }),
+  }),
+  null,
+  /thing\.component\.ts imports `@hylandsoftware\/hxcs-js-client`\. .*HxCS client exists only for the adf-hx bridge/,
+);
+
+expectRed(
+  'a dynamic import of an ADF package',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/lazy.ts`]: "export const load = () => import('@alfresco/adf-core');\n",
+  }),
+  null,
+  /lazy\.ts imports `@alfresco\/adf-core`/,
+);
+
+// The shape that exists on main today: nuxeo-client's avatar-colors.ts imports a Satori TYPE.
+expectRed(
+  'a type-only Satori import one workspace hop away',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({
+      imports: "import { clean } from '@nuxeo-satori/platform/nuxeo-client';",
+    }),
+    'libs/shared/nuxeo-client/src/lib/clean.ts':
+      "import type { SatAvatarCategory } from '@hylandsoftware/satori-ui/avatar';\n" +
+      'export const clean: SatAvatarCategory | 1 = 1;\n',
+  }),
+  null,
+  /nuxeo-client\/src\/lib\/clean\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through .*thing\.component\.ts -> libs\/shared\/nuxeo-client\/src\/index\.ts -> libs\/shared\/nuxeo-client\/src\/lib\/clean\.ts\./,
+);
+
+expectRed(
+  'a Satori theme in a component stylesheet',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({ [NXS_STYLES]: "@use '@hylandsoftware/satori-ui/theme' as sat;\n" }),
+  null,
+  /thing\.component\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a Satori import in a library spec',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.component.spec.ts`]:
+      "import { SatTag } from '@hylandsoftware/satori-ui/tag';\n",
+  }),
+  null,
+  /thing\.component\.spec\.ts imports `@hylandsoftware\/satori-ui\/tag`/,
+);
+
+expectRed(
+  'no library sources at all',
+  'checkSatoriComponentsDependencies',
+  { 'libs/shared/ui/src/index.ts': 'export {};\n' },
+  null,
+  /asserted nothing/,
+);
+
+// checkSatoriComponentsEntryPoint
+
+const NXS_CONSUMER = 'libs/features/x/src/lib/x.ts';
+
+expectGreen(
+  'a consumer importing through the entry point',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    [NXS_CONSUMER]: "import { NxsThingComponent } from '@nuxeo-satori/platform/components';\n",
+  }),
+);
+
+expectRed(
+  'a subpath under the entry specifier',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    [NXS_CONSUMER]:
+      "import { NxsThingComponent } from '@nuxeo-satori/platform/components/lib/thing/thing.component';\n",
+  }),
+  null,
+  /x\.ts imports `@nuxeo-satori\/platform\/components\/lib\/thing\/thing\.component`, which reaches into libs\/shared\/satori-components past its entry point/,
+);
+
+expectRed(
+  'a relative path into the library',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    [NXS_CONSUMER]:
+      "import { NxsThingComponent } from '../../../../shared/satori-components/src/lib/thing/thing.component';\n",
+  }),
+  null,
+  /x\.ts imports `\.\.\/\.\.\/\.\.\/\.\.\/shared\/satori-components\/src\/lib\/thing\/thing\.component`, which reaches into/,
+);
+
+expectRed(
+  'a second alias into the library',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({}, { '@agentic-ui/shared/satori-components/*': [`${NXS_ROOT}/src/*`] }),
+  null,
+  /alias `@agentic-ui\/shared\/satori-components\/\*` points into libs\/shared\/satori-components/,
+);
+
+expectRed(
+  'the entry alias pointing past the barrel',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB(
+    {},
+    { '@nuxeo-satori/platform/components': [`${NXS_ROOT}/src/lib/thing/thing.component.ts`] },
+  ),
+  null,
+  /must map `@nuxeo-satori\/platform\/components` to exactly `libs\/shared\/satori-components\/src\/index\.ts`/,
+);
+
+expectRed(
+  'the published ng-package pointing past the barrel',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'libs/platform/components/ng-package.json':
+      '{ "lib": { "entryFile": "../../shared/satori-components/src/lib/thing/thing.component.ts" } }\n',
+  }),
+  null,
+  /ng-package\.json must publish `libs\/shared\/satori-components\/src\/index\.ts`/,
+);
+
+expectRed(
+  'no barrel at all',
+  'checkSatoriComponentsEntryPoint',
+  { [NXS_COMPONENT]: nxsComponent() },
+  null,
+  /has no entry point and the no-deep-imports rule asserted nothing/,
+);
+
+// checkSatoriComponentsFederationReadiness
+
+expectGreen('a standalone component', 'checkSatoriComponentsFederationReadiness', NXS_LIB());
+
+// An explicitly provided service is the pattern the rule asks for, so it must not be flagged.
+falsePositiveControls += 1;
+expectGreen(
+  'an @Injectable with no providedIn',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.service.ts`]:
+      "import { Injectable } from '@angular/core';\n@Injectable()\nexport class ThingService {}\n",
+  }),
+);
+
+// A test host is not part of the library.
+falsePositiveControls += 1;
+expectGreen(
+  'a spec host component and a root service in a spec',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.component.spec.ts`]:
+      "import { Component, Injectable } from '@angular/core';\n" +
+      "@Component({ template: '' })\nclass Host {}\n" +
+      "@Injectable({ providedIn: 'root' })\nclass Fake {}\n",
+  }),
+);
+
+expectRed(
+  'an NgModule in the library',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.module.ts`]:
+      "import { NgModule } from '@angular/core';\n@NgModule({})\nexport class ThingModule {}\n",
+  }),
+  null,
+  /thing\.module\.ts:2 declares an @NgModule/,
+);
+
+expectRed(
+  'a component with standalone: false',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({ config: "selector: 'nxs-thing', standalone: false," }),
+  }),
+  null,
+  /thing\.component\.ts:3 @Component does not say `standalone: true`/,
+);
+
+expectRed(
+  'a component that leaves standalone to the default',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({ [NXS_COMPONENT]: nxsComponent({ config: "selector: 'nxs-thing'," }) }),
+  null,
+  /@Component does not say `standalone: true`/,
+);
+
+expectRed(
+  'a root-provided service',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.service.ts`]:
+      "import { Injectable } from '@angular/core';\n" +
+      "@Injectable({ providedIn: 'root' })\nexport class ThingService {}\n",
+  }),
+  null,
+  /thing\.service\.ts:2 uses `providedIn`/,
+);
+
+expectRed(
+  'a root-provided InjectionToken',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.token.ts`]:
+      "import { InjectionToken } from '@angular/core';\n" +
+      "export const THING = new InjectionToken<number>('thing', {\n" +
+      "  providedIn: 'platform',\n  factory: () => 1,\n});\n",
+  }),
+  null,
+  /thing\.token\.ts:3 uses `providedIn`/,
+);
+
+expectRed(
+  'no non-spec library sources',
+  'checkSatoriComponentsFederationReadiness',
+  { [`${NXS_ROOT}/src/lib/thing/thing.component.spec.ts`]: 'export {};\n' },
+  null,
+  /federation-readiness rules asserted nothing/,
+);
+
+// checkNoProseInComponentInputs scans `nxs-` elements too, or the library's own selector prefix
+// would be the one place hard-coded English could hide.
+expectRed(
+  'prose in an input on an nxs- component',
+  'checkNoProseInComponentInputs',
+  { 'libs/features/x/src/lib/x.html': '<nxs-empty-state heading="Nothing here"></nxs-empty-state>\n' },
+  null,
+  /sets `heading="Nothing here"` on `<nxs-empty-state>`/,
+);
+
 /* ---------------- report ---------------- */
 
 const total = negative + positive;

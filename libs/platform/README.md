@@ -10,6 +10,7 @@ extensibility contract, the Nuxeo client, shared UI components, and bootstrap co
 | `@nuxeo-satori/platform`              | Package metadata and entry point list                     |
 | `@nuxeo-satori/platform/extensions`   | Layer 1/2 — slots, rules, actions, component registration |
 | `@nuxeo-satori/platform/app-config`   | Layer 0 — bootstrap config and runtime manifest           |
+| `@nuxeo-satori/platform/components`   | `nxs-` components, Material-backed, no Satori import      |
 | `@nuxeo-satori/platform/nuxeo-client` | Nuxeo REST services and document models                   |
 | `@nuxeo-satori/platform/ui`           | Shared components and dialogs                             |
 
@@ -28,6 +29,8 @@ libs/platform/
     ng-package.json
   app-config/
     ng-package.json
+  components/
+    ng-package.json
   nuxeo-client/
     ng-package.json
   ui/
@@ -37,7 +40,7 @@ libs/platform/
 **The sources are not here.** Each secondary entry point's `ng-package.json` points its
 `entryFile` at the existing `libs/shared/*/src/index.ts` sources. ng-packagr accepts this
 — proven by probe before use — so the 200+ files in `libs/shared/{extensions, app-config,
-nuxeo-client, ui}` did not need to be moved.
+nuxeo-client, ui, satori-components}` did not need to be moved.
 
 ## Building
 
@@ -129,7 +132,7 @@ which this codebase already consumes.
 ## Publish readiness
 
 - [x] Builds to `dist/`
-- [x] All 5 entry points resolve through the exports map
+- [x] All 6 entry points resolve through the exports map
 - [x] Installable from tarball
 - [x] Typechecks from installed `.d.ts` (verified via probe, not assumed)
 - [x] API surface pinned and gated

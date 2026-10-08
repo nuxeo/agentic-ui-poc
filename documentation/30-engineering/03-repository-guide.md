@@ -115,7 +115,7 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 > their coverage reports contain 0 total statements, so the summariser computes 0/0 as 100%.
 > `core` has the same shape. Of 17 measured projects, 6 read as ≥90% and **3 genuinely are**.
 
-### Shared libraries — 11, 39,880 lines
+### Shared libraries — 12, 40,077 lines
 
 | Library              |  Lines | Specs | Responsibility                                                                                                                   |
 | -------------------- | -----: | ----: | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -130,12 +130,13 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 | `ke-client`          |    734 |     1 | Knowledge Enrichment client                                                                                                      |
 | `ai-client`          |    457 | **0** | The 12 `AI.*` operations. Thin HTTP client                                                                                       |
 | `util`               |    108 |     0 | Small helpers                                                                                                                    |
+| `satori-components`  |    197 |     1 | The `nxs-` components replacing adf-hx. **Published** as `@nuxeo-satori/platform/components` (NXSAT-308, 2026-10-08)             |
 
 ### The other three
 
 | Library                                                                    | Purpose                                                                                                                                                  |
 | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`libs/platform`](../../libs/platform)                                     | `@nuxeo-satori/platform` — the publishable package. Owns nothing; wraps 4 shared libs as entry points, ships docs, generators and the customer guardrail |
+| [`libs/platform`](../../libs/platform)                                     | `@nuxeo-satori/platform` — the publishable package. Owns nothing; wraps 5 shared libs as entry points, ships docs, generators and the customer guardrail |
 | [`libs/core`](../../libs/core)                                             | 233 lines of primitives                                                                                                                                  |
 | [`libs/extensions/acme-extensions`](../../libs/extensions/acme-extensions) | The **reference customer** Layer 2 library — 7 registered IDs. Also the subject of `beta:customer-guardrails`                                            |
 
