@@ -238,10 +238,7 @@
 
             @if (loading()) {
               <div class="browse-loading">
-                <mat-spinner
-                  diameter="36"
-                  [attr.aria-label]="'browse.browse.loading' | translate"
-                />
+                <nxs-spinner diameter="36" [label]="'browse.browse.loading' | translate" />
               </div>
             } @else if (error()) {
               <div class="browse-error">
@@ -260,42 +257,13 @@
               <!-- List view -->
               <div class="browse-list-container">
                 @if (columnPanelOpen()) {
-                  <button
-                    type="button"
-                    class="col-panel-backdrop"
-                    [attr.aria-label]="'browse.browse.close-column-picker' | translate"
-                    (click)="closeColumnPanel()"
-                  ></button>
-                  <div
-                    #columnPanel
-                    class="col-panel"
-                    role="dialog"
-                    aria-modal="true"
-                    [attr.aria-label]="'browse.browse.column-settings' | translate"
-                    tabindex="-1"
-                    (keydown.escape)="closeColumnPanel()"
-                  >
-                    <p class="col-panel-title">{{ 'browse.browse.column-settings' | translate }}</p>
-                    <div class="col-panel-list">
-                      @for (col of pendingColumns(); track col.key) {
-                        <mat-checkbox
-                          class="col-panel-option"
-                          [checked]="isPendingColumn(col.key)"
-                          [disabled]="col.key === 'title'"
-                          (change)="togglePendingColumn(col.key)"
-                          >{{ col | descriptorLabel }}</mat-checkbox
-                        >
-                      }
-                    </div>
-                    <div class="col-panel-actions">
-                      <button mat-button (click)="resetColumns()">
-                        {{ 'browse.browse.reset' | translate }}
-                      </button>
-                      <button mat-flat-button color="primary" (click)="applyColumns()">
-                        {{ 'browse.browse.done' | translate }}
-                      </button>
-                    </div>
-                  </div>
+                  <nxs-column-picker
+                    [columns]="pickerColumns()"
+                    [required]="requiredColumnKeys"
+                    [defaults]="defaultColumnKeys()"
+                    (apply)="applyColumns($event)"
+                    (dismiss)="closeColumnPanel()"
+                  />
                 }
                 <div class="browse-table-wrapper">
                   <table class="browse-table">
@@ -491,10 +459,7 @@
             <div class="permissions-container">
               @if (permissionsLoading()) {
                 <div class="browse-loading">
-                  <mat-spinner
-                    diameter="24"
-                    [attr.aria-label]="'browse.browse.loading' | translate"
-                  />
+                  <nxs-spinner diameter="24" [label]="'browse.browse.loading' | translate" />
                 </div>
               } @else {
                 <!-- Permissions defined locally -->
@@ -806,10 +771,7 @@
 
               @if (auditLoading()) {
                 <div class="browse-loading">
-                  <mat-spinner
-                    diameter="24"
-                    [attr.aria-label]="'browse.browse.loading' | translate"
-                  />
+                  <nxs-spinner diameter="24" [label]="'browse.browse.loading' | translate" />
                 </div>
               } @else if (filteredAuditEntries().length === 0) {
                 <div class="history-empty">
@@ -1160,10 +1122,7 @@
           <div class="panel-body">
             @if (activityLoading()) {
               <div class="panel-loading">
-                <mat-spinner
-                  diameter="20"
-                  [attr.aria-label]="'browse.browse.loading' | translate"
-                />
+                <nxs-spinner diameter="20" [label]="'browse.browse.loading' | translate" />
               </div>
             } @else {
               @for (entry of activityEntries(); track entry.id) {

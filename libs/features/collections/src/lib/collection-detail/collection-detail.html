@@ -158,9 +158,9 @@
         <div class="tab-content">
           @if (loading()) {
             <div class="tab-loading">
-              <mat-spinner
+              <nxs-spinner
                 diameter="36"
-                [attr.aria-label]="'collections.collection-detail.loading' | translate"
+                [label]="'collections.collection-detail.loading' | translate"
               />
             </div>
           } @else if (error()) {
@@ -525,9 +525,9 @@
           <!-- Table -->
           @if (auditLoading()) {
             <div class="history-loading">
-              <mat-spinner
+              <nxs-spinner
                 diameter="32"
-                [attr.aria-label]="'collections.collection-detail.loading' | translate"
+                [label]="'collections.collection-detail.loading' | translate"
               />
             </div>
           } @else if (filteredAuditEntries().length === 0) {

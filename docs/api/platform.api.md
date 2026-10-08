@@ -189,15 +189,47 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-1 exported symbol(s).
+4 exported symbol(s).
 
 ```ts
+class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
+    readonly columns: _angular_core.InputSignal<readonly NxsPickableColumn[]>;
+    readonly required: _angular_core.InputSignal<readonly string[]>;
+    readonly defaults: _angular_core.InputSignal<readonly string[]>;
+    readonly apply: _angular_core.OutputEmitterRef<readonly string[]>;
+    readonly dismiss: _angular_core.OutputEmitterRef<void>;
+    protected readonly chosen: _angular_core.Signal<readonly string[]>;
+    ngAfterViewInit(): void;
+    ngOnDestroy(): void;
+    protected isChosen(key: string): boolean;
+    protected isRequired(key: string): boolean;
+    protected toggle(key: string): void;
+    protected reset(): void;
+    protected commit(): void;
+    protected cancel(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsColumnPickerComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsColumnPickerComponent, "nxs-column-picker", never, { "columns": { "alias": "columns"; "required": true; "isSignal": true; }; "required": { "alias": "required"; "required": false; "isSignal": true; }; "defaults": { "alias": "defaults"; "required": false; "isSignal": true; }; }, { "apply": "apply"; "dismiss": "dismiss"; }, never, never, true, never>;
+    }
+}
 class NxsEmptyStateComponent {
     readonly heading: _angular_core.InputSignal<string>;
     readonly message: _angular_core.InputSignal<string>;
     readonly icon: _angular_core.InputSignal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsEmptyStateComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
+    }
+}
+interface NxsPickableColumn {
+    readonly key: string;
+    readonly label: string;
+    readonly visible: boolean;
+    }
+}
+class NxsSpinnerComponent {
+    readonly diameter: _angular_core.InputSignalWithTransform<number, unknown>;
+    readonly label: _angular_core.InputSignal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsSpinnerComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsSpinnerComponent, "nxs-spinner", never, { "diameter": { "alias": "diameter"; "required": false; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
 }
 ```

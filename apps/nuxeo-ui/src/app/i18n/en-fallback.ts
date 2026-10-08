@@ -302,6 +302,8 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'nav.loading': 'Loading',
   'nav.refresh': 'Refresh',
   'nav.tree.toggle': 'Toggle {{ name }}',
+  'nxs.column-picker.close': 'Close column picker',
+  'nxs.column-picker.title': 'Column Settings',
   'permissions.add-permission-dialog.hi-could-you-comment-on-this':
     'Hi! Could you comment on this document and...',
   'permissions.add-permission-dialog.search-for-users-and-groups': 'Search for users and groups',

@@ -201,6 +201,7 @@ import {
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -287,6 +288,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   selector: 'lib-document-detail',
   standalone: true,
   imports: [
+    NxsSpinnerComponent,
     CdkAriaLive,
     DescriptorLabelPipe,
     TranslatePipe,

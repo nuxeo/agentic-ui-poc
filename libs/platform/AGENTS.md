@@ -244,8 +244,11 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 <nxs-empty-state icon="inbox" [heading]="'acme.claims.empty' | translate" />
 ```
 
-- **Text inputs take text you have already translated.** The library ships no catalogue, so
-  bind every heading, message and label through your own translate pipe.
+- **Text inputs take text you have already translated.** Bind every heading, message, label and
+  column name you pass through your own translate pipe.
+- **A component's own controls use `nxs.*` keys.** The column picker's Done and Reset, for
+  example. Without the Satori catalogue, `providePlatformEnglishFallback()` (README,
+  "Translations") renders them in English; add the same keys to your catalogue to translate them.
 - **Import only the entry point.** A path past it fails the shipped guardrail like any other
   deep import.
 - **It is new and growing.** The type declarations are the list of what exists; do not take

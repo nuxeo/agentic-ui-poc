@@ -217,7 +217,7 @@ describe('BrowseComponent — rendered document list', () => {
     const component = await render();
 
     expect(component.loading()).toBe(true);
-    expect(query('.browse-loading mat-spinner')).not.toBeNull();
+    expect(query('.browse-loading nxs-spinner')).not.toBeNull();
     expect(rowTitles()).toEqual([]);
   });
 
@@ -436,27 +436,42 @@ describe('BrowseComponent — rendered document list', () => {
     expect(query('.result-count')?.textContent).toContain('2 results');
   });
 
+  /** A checkbox in the open column picker, by its visible label. */
+  function pickerCheckbox(label: string): HTMLInputElement {
+    const option = [
+      ...fixture.nativeElement.querySelectorAll('nxs-column-picker mat-checkbox'),
+    ].find((el) => (el as HTMLElement).textContent?.trim() === label) as HTMLElement | undefined;
+    const input = option?.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+    if (!input) throw new Error(`no picker checkbox labelled ${label}`);
+    return input;
+  }
+
+  function pickerButton(text: string): HTMLButtonElement {
+    const button = [...fixture.nativeElement.querySelectorAll('nxs-column-picker button')].find(
+      (el) => (el as HTMLElement).textContent?.trim() === text,
+    ) as HTMLButtonElement;
+    if (!button) throw new Error(`no picker button reading ${text}`);
+    return button;
+  }
+
   it('adds a column to the rendered header when the user switches it on in the picker', async () => {
     browse.getBrowseFolderContents.mockReturnValue(
       of({ folder, entries: [doc({ uid: 'c-1', title: 'Readme.md' })], totalSize: 1 }),
     );
 
-    const component = await render();
+    await render();
     expect(headerLabels()).toEqual(['Title', 'Modified', 'Last Contributor']);
 
     (query('.gear-btn') as HTMLButtonElement).click();
     await settle();
-    expect(query('.col-panel')).not.toBeNull();
+    expect(query('nxs-column-picker [role="dialog"]')).not.toBeNull();
 
-    component.togglePendingColumn('type');
+    pickerCheckbox('Type').click();
     await settle();
-    const done = [...fixture.nativeElement.querySelectorAll('.col-panel-actions button')].find(
-      (el) => (el as HTMLElement).textContent?.trim() === 'Done',
-    ) as HTMLButtonElement;
-    done.click();
+    pickerButton('Done').click();
     await settle();
 
-    expect(query('.col-panel')).toBeNull();
+    expect(query('nxs-column-picker')).toBeNull();
     expect(headerLabels()).toEqual(['Title', 'Type', 'Modified', 'Last Contributor']);
     expect(JSON.parse(localStorage.getItem('browse_column_settings') ?? '[]')).toContain('type');
   });
@@ -469,9 +484,10 @@ describe('BrowseComponent — rendered document list', () => {
     const component = await render();
     (query('.gear-btn') as HTMLButtonElement).click();
     await settle();
-    component.togglePendingColumn('type');
+    pickerCheckbox('Type').click();
+    await settle();
 
-    component.onEscape();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await settle();
 
     expect(component.columnPanelOpen()).toBe(false);
@@ -480,13 +496,18 @@ describe('BrowseComponent — rendered document list', () => {
   });
 
   it('refuses to switch off the Title column, which every row is keyed on', async () => {
-    const component = await render();
-    (query('.gear-btn') as HTMLButtonElement)?.click();
-    component.pendingColumns.set(component.columns().map((c) => ({ ...c })));
+    browse.getBrowseFolderContents.mockReturnValue(
+      of({ folder, entries: [doc({ uid: 'c-1', title: 'Readme.md' })], totalSize: 1 }),
+    );
 
-    component.togglePendingColumn('title');
+    await render();
+    (query('.gear-btn') as HTMLButtonElement).click();
+    await settle();
 
-    expect(component.isPendingColumn('title')).toBe(true);
+    expect(pickerCheckbox('Title').disabled).toBe(true);
+    pickerButton('Done').click();
+    await settle();
+    expect(headerLabels()).toContain('Title');
   });
 
   it('publishes the browsed folder as the clipboard paste target', async () => {

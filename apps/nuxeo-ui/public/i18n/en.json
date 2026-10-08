@@ -1466,6 +1466,7 @@
       "clear": "Clear",
       "close": "Close",
       "filters": "Filters",
+      "loading": "Loading pictures",
       "no-pictures-found": "No pictures found.",
       "picture-documents": "Picture documents",
       "quick-search": "Quick Search",
@@ -1821,6 +1822,14 @@
     "markdown": "Markdown",
     "plain": "Text",
     "xml": "XML"
+  },
+  "nxs": {
+    "column-picker": {
+      "close": "Close column picker",
+      "done": "Done",
+      "reset": "Reset",
+      "title": "Column Settings"
+    }
   },
   "permission": {
     "everything": "Manage everything",

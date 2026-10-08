@@ -125,8 +125,11 @@ Fix the file that carries the package, rather than copying code into the library
 
 1. `src/lib/<name>/<name>.component.{ts,html,scss,spec.ts}` — selector `nxs-<name>`, class
    `Nxs<Name>Component`, `standalone: true`, `templateUrl`, theme tokens only.
-2. Text inputs take already-translated strings; the library ships no catalogue.
-   `checkNoProseInComponentInputs` scans `nxs-` elements, so a caller must bind them.
+2. Text inputs take already-translated strings; `checkNoProseInComponentInputs` scans `nxs-`
+   elements, so a caller must bind them. Text the component owns — its own buttons and accessible
+   names — is an `nxs.<name>.*` key in `apps/nuxeo-ui/public/i18n/en.json` with context in
+   `en.context.json`, in `en-fallback.ts` too if it names a control, and then
+   `node tools/i18n/platform-english.mjs` so the package carries its English.
 3. The spec covers the empty and error paths and keeps the library at 90% or more:
    `npx nx test satori-components --coverage.enabled=true`, then `npm run beta:coverage`.
 4. Export it from `src/index.ts`, run `npm run beta:api -- --update` and review the

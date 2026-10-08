@@ -486,30 +486,21 @@ describe('SearchComponent', () => {
   });
 
   describe('column management', () => {
-    it('should toggle pending column on', () => {
-      component.pendingColumnKeys.set(['name']);
-      component.togglePendingColumn('modified');
-      expect(component.pendingColumnKeys()).toContain('modified');
+    it('offers every column to the picker, ticked as it is shown now', () => {
+      component.visibleColumnKeys.set(['name', 'type']);
+      const columns = component.pickerColumns();
+      expect(columns.map((c) => c.key)).toContain('author');
+      expect(columns.find((c) => c.key === 'type')?.visible).toBe(true);
+      expect(columns.find((c) => c.key === 'author')?.visible).toBe(false);
     });
 
-    it('should toggle pending column off', () => {
-      component.pendingColumnKeys.set(['name', 'modified']);
-      component.togglePendingColumn('modified');
-      expect(component.pendingColumnKeys()).not.toContain('modified');
-      expect(component.pendingColumnKeys()).toContain('name');
-    });
-
-    it('should check if column is pending', () => {
-      component.pendingColumnKeys.set(['name', 'modified']);
-      expect(component.isPendingColumn('name')).toBe(true);
-      expect(component.isPendingColumn('author')).toBe(false);
+    it('gives the picker translated labels, not keys', () => {
+      expect(component.pickerColumns().find((c) => c.key === 'name')?.label).toBe('Title');
     });
 
     it('should open column panel', () => {
-      component.visibleColumnKeys.set(['name', 'type']);
       component.openColumnPanel();
       expect(component.columnPanelOpen()).toBe(true);
-      expect(component.pendingColumnKeys()).toEqual(['name', 'type']);
     });
 
     it('should close column panel', () => {
@@ -518,18 +509,14 @@ describe('SearchComponent', () => {
       expect(component.columnPanelOpen()).toBe(false);
     });
 
-    it('should reset columns to default', () => {
-      component.pendingColumnKeys.set(['name', 'type', 'state']);
-      component.resetColumns();
-      expect(component.pendingColumnKeys()).toEqual(['name', 'modified', 'contributor']);
+    it('resets to the default columns', () => {
+      expect(component.defaultColumnKeys).toEqual(['name', 'modified', 'contributor']);
     });
 
-    it('should apply column changes', () => {
-      component.pendingColumnKeys.set(['name', 'modified', 'state']);
-      component.applyColumns();
-      expect(component.visibleColumnKeys()).toContain('name');
-      expect(component.visibleColumnKeys()).toContain('modified');
-      expect(component.visibleColumnKeys()).toContain('state');
+    it('should apply column changes and close the panel', () => {
+      component.columnPanelOpen.set(true);
+      component.applyColumns(['name', 'modified', 'state']);
+      expect(component.visibleColumnKeys()).toEqual(['name', 'modified', 'state']);
       expect(component.columnPanelOpen()).toBe(false);
     });
   });
