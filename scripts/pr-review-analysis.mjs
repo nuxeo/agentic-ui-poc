@@ -381,7 +381,6 @@ export function previouslyMissedFindings(body) {
   for (const match of section.matchAll(entry)) {
     if (found.length === declared) break;
     const title = match[1]
-      .replace(/<picture\b[\s\S]*?<\/picture\s*>/gi, '')
       .replace(/<[^>]*>|[<>]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
