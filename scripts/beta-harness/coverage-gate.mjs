@@ -317,6 +317,10 @@ for (const [project, floor] of Object.entries(FLOORS)) {
     fails('it has no coverage report this run, so the floor was not measured');
     continue;
   }
+  if (stale.some((t) => t.project === project)) {
+    fails('its coverage report is older than its source, so the floor was measured on old code');
+    continue;
+  }
   // Compared on the counts: `m.lines` is rounded, and 89.996% must not round its way to 90.
   if (m.sCovered * 100 < floor * m.sTotal) {
     const truncated = Math.floor((m.sCovered / m.sTotal) * 10000) / 100;

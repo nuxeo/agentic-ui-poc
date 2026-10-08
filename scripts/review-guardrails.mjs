@@ -6112,7 +6112,8 @@ function checkSatoriComponentsDependencies() {
       // A package URL starts with `@`; `sass:` is a built-in module.
       if (use[1].startsWith('@') || use[1].startsWith('sass:')) continue;
       const base = toPosixRel(join(dirname(styleFile), use[1]));
-      const name = base.split('/').pop();
+      // `theme` and `theme.scss` name the same partial, `_theme.scss`.
+      const name = base.split('/').pop().replace(/\.scss$/, '');
       const dir = dirname(base);
       for (const candidate of [
         base,
@@ -6295,6 +6296,12 @@ function checkSatoriComponentsFederationReadiness() {
       return callee.getText(source);
     };
 
+    // A metadata key may be quoted (`'providedIn': 'root'`); compare the name, not its spelling.
+    const keyOf = (property) =>
+      ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)
+        ? property.name.text
+        : property.name.getText(source);
+
     const visit = (node) => {
       if (ts.isDecorator(node) && ts.isCallExpression(node.expression)) {
         const name = decoratorName(node.expression.expression);
@@ -6309,7 +6316,7 @@ function checkSatoriComponentsFederationReadiness() {
           const standalone =
             config && ts.isObjectLiteralExpression(config)
               ? config.properties.find(
-                  (p) => ts.isPropertyAssignment(p) && p.name.getText(source) === 'standalone',
+                  (p) => ts.isPropertyAssignment(p) && keyOf(p) === 'standalone',
                 )
               : undefined;
           if (!standalone || standalone.initializer.kind !== ts.SyntaxKind.TrueKeyword) {
@@ -6322,7 +6329,7 @@ function checkSatoriComponentsFederationReadiness() {
       }
       if (
         (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) &&
-        node.name.getText(source) === 'providedIn'
+        keyOf(node) === 'providedIn'
       ) {
         fail(
           `${file}:${lineOf(node)} uses \`providedIn\`. A provided-in singleton becomes two ` +

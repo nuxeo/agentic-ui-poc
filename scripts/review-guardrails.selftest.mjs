@@ -5138,6 +5138,17 @@ expectRed(
 );
 
 expectRed(
+  'a Satori theme behind a local Sass @use with its .scss extension',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]: "@use 'theme.scss';\n",
+    [`${NXS_ROOT}/src/lib/thing/_theme.scss`]: "@use '@hylandsoftware/satori-ui/theme' as sat;\n",
+  }),
+  null,
+  /thing\/_theme\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
   'a Satori theme in a component stylesheet',
   'checkSatoriComponentsDependencies',
   NXS_LIB({ [NXS_STYLES]: "@use '@hylandsoftware/satori-ui/theme' as sat;\n" }),
@@ -5327,6 +5338,26 @@ expectRed(
   }),
   null,
   /thing\.service\.ts:2 uses `providedIn`/,
+);
+
+expectRed(
+  'a root-provided service with a quoted key',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.service.ts`]:
+      "import { Injectable } from '@angular/core';\n" +
+      "@Injectable({ 'providedIn': 'root' })\nexport class ThingService {}\n",
+  }),
+  null,
+  /thing\.service\.ts:2 uses `providedIn`/,
+);
+
+// A quoted `'standalone': true` is still standalone.
+falsePositiveControls += 1;
+expectGreen(
+  'a component whose standalone key is quoted',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({ [NXS_COMPONENT]: nxsComponent({ config: "selector: 'nxs-thing', 'standalone': true," }) }),
 );
 
 expectRed(
