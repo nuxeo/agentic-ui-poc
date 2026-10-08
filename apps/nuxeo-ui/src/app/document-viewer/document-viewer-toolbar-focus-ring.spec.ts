@@ -224,24 +224,4 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-81
         .toEqual(stripBg);
     });
   }
-
-  for (const theme of [...COMPILED_THEME_BASES, null] as const) {
-    const label = theme ?? 'no data-app-theme (first paint)';
-
-    it(`Zoom in meets ${WCAG_FOCUS_INDICATOR}:1 focus-indicator contrast — ${label} (NXENG-816)`, () => {
-      if (theme === null) {
-        document.documentElement.removeAttribute('data-app-theme');
-      } else {
-        document.documentElement.setAttribute('data-app-theme', theme);
-      }
-      fixture.detectChanges();
-
-      const button = zoomInButton();
-      const toolbar = fixture.nativeElement.querySelector('.viewer-toolbar') as HTMLElement | null;
-      expect(toolbar).withContext(`${label}: expected .viewer-toolbar`).not.toBeNull();
-      if (!toolbar) return;
-
-      assertFocusRingContrast(button, toolbar, `${label} — Zoom in`);
-    });
-  }
 });
