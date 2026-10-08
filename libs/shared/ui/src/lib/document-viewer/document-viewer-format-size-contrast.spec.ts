@@ -2,8 +2,9 @@
  * NXENG-806 — SCSS contract for `.format-size` on the fixed light picture-cards strip
  * (IBM Issue ID 626137632; was hardcoded #999 ~2.85:1).
  *
- * Runtime WCAG 2.1 SC 1.4.3 contrast is owned by the Karma theme matrix in
- * `apps/nuxeo-ui/.../document-viewer-format-type-contrast.spec.ts` (see docs/accessibility.md).
+ * Per-theme contrast regression cross-check:
+ * `apps/nuxeo-ui/.../document-viewer-format-type-contrast.spec.ts`. Published WCAG 2.1 AA
+ * conformance: `npm run beta:evidence -- phase-6-a11y` (docs/accessibility.md).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
