@@ -10,7 +10,8 @@ audience: engineering
 # The Development Harness and its Gates
 
 > **Last reviewed:** 2026-10-05 · **Repository:** `b32d4c8` — the revision that implements the
-> 24-gate set and the 23-control lockfile suite described below
+> 24-gate set and the 23-control lockfile suite described below. The `dependency-tree` pair
+> (gates 4 and 5) was added on 2026-10-08; the rest of the page was not re-reviewed then
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).
 
