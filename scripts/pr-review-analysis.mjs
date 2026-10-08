@@ -346,9 +346,11 @@ function suppressedFindings(body) {
  * carry ordinary threads, which is exactly when the summary body is skipped as a restatement. So
  * before this parser they were dropped twice over: absent from the record, and absent from
  * `roundFindings`, which let a round whose only findings were previously missed read clean.
- * Six of #333's reviews carry one.
+ * Ten of #333's sixteen Copilot reviews carry one, holding 38 findings the harvest had never
+ * recorded.
  *
- * The shape, from review 5454141630 on #333 (`scripts/fixtures/copilot-review-previously-missed.txt`):
+ * The shape, from review 5454141630 on #333
+ * (`scripts/fixtures/copilot-review-previously-missed.txt`):
  *
  *     <summary><strong>Previously missed (4)</strong></summary>
  *     In code that hasn't changed since last review
