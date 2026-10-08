@@ -21,11 +21,8 @@ describe('Document detail Go back label in name (NXENG-826)', () => {
     expect(backButton).toContain(
       '[attr.aria-label]="\'document-detail.document-detail.go-back\' | translate"',
     );
-    expect(backButton).toMatch(/<mat-icon\s+fontIcon="arrow_back"><\/mat-icon>/);
-    const backButtonWithoutComments = backButton!.replace(/<!--[\s\S]*?-->/g, '');
-    expect(
-      backButtonWithoutComments,
-      'Material ligature must not appear as DOM text (fontIcon uses ::before)',
-    ).not.toMatch(/>\s*arrow_back\s*</);
+    const iconMarkup = backButton!.match(/<mat-icon[\s\S]*?<\/mat-icon>/)?.[0];
+    expect(iconMarkup, 'header back mat-icon').toBeTruthy();
+    expect(iconMarkup).toBe('<mat-icon fontIcon="arrow_back"></mat-icon>');
   });
 });
