@@ -165,12 +165,17 @@ function inline(text, relPath = '') {
 
   s = esc(s);
   // Markdown links → Confluence external links. Repo-relative links are rewritten to the
-  // GitHub blob URL so they resolve for a reader who is not looking at a clone.
+  // GitHub URL (`/blob/` or `/tree/`) so they resolve for a reader who is not looking at a clone.
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
     if (/^https?:/.test(href)) return `<a href="${esc(href)}">${label}</a>`;
 
     // `href` has been through `esc()` with the rest of the line, so undo it before resolving.
-    const link = docLinkTarget(unesc(href), relPath, { pageTitles, branch: manifest.branch });
+    const link = docLinkTarget(unesc(href), relPath, {
+      pageTitles,
+      branch: manifest.branch,
+      isDirectory: (p) =>
+        statSync(resolve(ROOT, p), { throwIfNoEntry: false })?.isDirectory() ?? false,
+    });
 
     // Another page in this set → a real Confluence page link, resolved by title.
     if (link.kind === 'page') {

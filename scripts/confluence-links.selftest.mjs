@@ -12,7 +12,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { docLinkTarget } from './confluence-links.mjs';
 
@@ -22,8 +22,11 @@ const pageTitles = new Map([
   ['20-product/00-the-short-version.md', 'The short version'],
   ['30-engineering/04-codebase-reference.md', 'Codebase reference'],
 ]);
-const ctx = { pageTitles, branch: 'main' };
+const isDirectory = (p) =>
+  statSync(join(ROOT, p), { throwIfNoEntry: false })?.isDirectory() ?? false;
+const ctx = { pageTitles, branch: 'main', isDirectory };
 const BLOB = 'https://github.com/nuxeo/agentic-ui-poc/blob/main';
+const TREE = 'https://github.com/nuxeo/agentic-ui-poc/tree/main';
 
 const CONTROLS = [
   [
@@ -42,7 +45,12 @@ const CONTROLS = [
   [
     '"." on a section page is the section directory under documentation/',
     ['.', '30-engineering/03-repository-guide.md'],
-    { kind: 'url', url: `${BLOB}/documentation/30-engineering` },
+    { kind: 'url', url: `${TREE}/documentation/30-engineering` },
+  ],
+  [
+    'repository directory is a /tree/ route',
+    ['../../scripts/beta-harness/', '30-engineering/08-dev-harness-and-gates.md'],
+    { kind: 'url', url: `${TREE}/scripts/beta-harness` },
   ],
   [
     'non-page file under documentation/ keeps its prefix',
@@ -90,6 +98,15 @@ try {
 if (!escapes) failed += 1;
 console.log(`${escapes ? 'ok  ' : 'FAIL'} a link resolving outside the repository is an error`);
 
+let absolute = false;
+try {
+  docLinkTarget('/scripts/x.mjs', '30-engineering/x.md', ctx);
+} catch {
+  absolute = true;
+}
+if (!absolute) failed += 1;
+console.log(`${absolute ? 'ok  ' : 'FAIL'} an absolute-path link is an error, not a guess`);
+
 const { branch } = JSON.parse(readFileSync(join(ROOT, 'documentation', 'MANIFEST.json'), 'utf8'));
 let defaultBranch = null;
 try {
@@ -112,7 +129,7 @@ console.log(
     (defaultBranch ? '' : ' (origin/HEAD not set; assumed)'),
 );
 
-const total = CONTROLS.length + 2;
+const total = CONTROLS.length + 3;
 console.log();
 if (failed === 0) console.log(`confluence-links selftest: pass — ${total} control(s).`);
 else {

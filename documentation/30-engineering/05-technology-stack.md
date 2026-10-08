@@ -3,7 +3,7 @@ title: Technology Stack
 parent: Engineering
 order: 5
 last_reviewed: 2026-10-08
-repo_commit: 5abcd50
+repo_commit: 2898046
 audience: engineering
 ---
 

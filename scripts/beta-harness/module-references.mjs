@@ -1,14 +1,25 @@
 /**
  * Which packages the repository's source really references — parsed specifiers, never prose.
  *
- * Used by the supply-chain gate's unreferenced-dependency check, and kept in its own module so
- * `module-references.selftest.mjs` can exercise it without running the whole gate.
+ * Used by the supply-chain gate's unreferenced-dependency check. Its controls live here too, as
+ * `selfCheck()`, and `supply-chain.mjs` runs them on every gate run before trusting the result.
  *
  * The regex this replaced accepted a backtick as a quote and read comments as code, so a JSDoc
  * line saying ``from `@alfresco/adf-extensions` `` counted as an import and kept the gate green
  * for a package nothing imported.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import ts from 'typescript';
 
@@ -72,20 +83,22 @@ function maskStylesheet(text) {
 
 /**
  * `@use`, `@forward` and `@import` targets in a stylesheet — only at a statement start, never in a
- * comment, and never inside a string. Every target of a statement, not the first: Sass takes
- * `@import 'a', 'b';` and CSS takes an unquoted `url(...)`.
+ * comment, and never inside a string. Every target of an `@import`, not the first: Sass takes
+ * `@import 'a', 'b';` and CSS takes an unquoted `url(...)`. Only the first of a `@use` or
+ * `@forward`, whose later strings are configuration: `@use 'theme' with ($label: 'x')`.
  * @param {string} text
  */
 export function styleSpecifiers(text) {
   const mask = maskStylesheet(text);
-  const statement = /(?:^|[;{}])\s*@(?:use|forward|import)\b([^;{}]*)/dg;
+  const statement = /(?:^|[;{}])\s*@(use|forward|import)\b([^;{}]*)/dg;
   const target = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"\n]*)\3/dg;
   const found = [];
   for (const s of mask.matchAll(statement)) {
-    const [from, to] = s.indices[1];
+    const [from, to] = s.indices[2];
     for (const t of mask.slice(from, to).matchAll(target)) {
       const span = t.indices[2] ?? t.indices[4];
       found.push(text.slice(from + span[0], from + span[1]).replace(/^~/, ''));
+      if (s[1] !== 'import') break;
     }
   }
   return found;
@@ -101,6 +114,9 @@ export function styleSpecifiers(text) {
  * `package.json` is deliberately NOT included. An earlier version read it, and every dependency
  * then matched its own declaration (`"tslib": "^2.8.1"` contains `"tslib"`), so the check found
  * nothing and every exception looked unnecessary. The file under test cannot also be evidence.
+ *
+ * Symbolic links are not followed: a tracked `apps/vendor -> ../node_modules` would otherwise
+ * make installed packages count as our source and every dependency look referenced.
  * @param {string} root
  * @param {string[]} [dirs]
  */
@@ -111,7 +127,9 @@ export function collectReferences(root, dirs = ['apps', 'libs', 'tools', 'script
     for (const entry of readdirSync(dir)) {
       if (/^(node_modules|dist|coverage|\.nx|\.git)$/.test(entry)) continue;
       const full = join(dir, entry);
-      if (statSync(full).isDirectory()) {
+      const stat = lstatSync(full);
+      if (stat.isSymbolicLink()) continue;
+      if (stat.isDirectory()) {
         walk(full);
         continue;
       }
@@ -145,8 +163,8 @@ export function referenced(dep, refs) {
 const DEP = 'fixture-dep';
 
 /**
- * `[name, kind, text, expected]`. Ten of the thirteen `false` rows were `true` under the regex this
- * replaced, and five of the eleven `true` rows were `false` under it: it never saw a triple-slash
+ * `[name, kind, text, expected]`. Ten of the first thirteen `false` rows were `true` under the regex
+ * this replaced, and five of the eleven `true` rows were `false` under it: it never saw a triple-slash
  * type reference, and no stylesheet import at the start of a line, because `\b@use` needs a word
  * character before the `@`. The `true` rows also keep the parser from passing the `false` ones by
  * finding nothing at all.
@@ -165,6 +183,7 @@ const CONTROLS = [
   ['stylesheet string', 'style', `.a { content: "@import '${DEP}'"; }\n`, false],
   ['statement start inside a string', 'style', `.a { content: "; @import '${DEP}/x';"; }\n`, false],
   ['commented-out import target', 'style', `@import 'a', /* '${DEP}' */ 'b';\n`, false],
+  ['@use configuration value', 'style', `@use 'theme' with ($label: '${DEP}');\n`, false],
   [
     'build path of a longer name',
     'build',
@@ -203,10 +222,33 @@ export function selfCheck() {
     const got = referenced(DEP, refs);
     if (got !== expected) failures.push(`${name}: referenced=${got}, expected ${expected}`);
   }
+  failures.push(...symlinkControl());
   return failures;
 }
 
+/**
+ * On disk, because the walk is the subject: a real file importing `other-dep` must be found, and
+ * a symlinked directory full of `fixture-dep` imports must not.
+ * @returns {string[]}
+ */
+function symlinkControl() {
+  const root = mkdtempSync(join(tmpdir(), 'module-references-'));
+  try {
+    mkdirSync(join(root, 'apps'));
+    mkdirSync(join(root, 'outside'));
+    writeFileSync(join(root, 'apps', 'real.ts'), "import 'other-dep';\n");
+    writeFileSync(join(root, 'outside', 'vendor.ts'), `import '${DEP}';\n`);
+    symlinkSync(join(root, 'outside'), join(root, 'apps', 'vendor'), 'dir');
+    const refs = collectReferences(root, ['apps']);
+    if (!referenced('other-dep', refs)) return ['symlink walk: the real file was not read'];
+    if (referenced(DEP, refs)) return ['symlink walk: a symlinked directory counted as source'];
+    return [];
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
 export const CONTROL_COUNT = {
-  negative: CONTROLS.filter((c) => !c[3]).length,
+  negative: CONTROLS.filter((c) => !c[3]).length + 1,
   positive: CONTROLS.filter((c) => c[3]).length,
 };
