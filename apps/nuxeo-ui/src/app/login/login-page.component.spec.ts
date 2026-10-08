@@ -332,7 +332,22 @@ describe('LoginPageComponent', () => {
       return;
     }
     expect(img.getAttribute('alt')).toBe('');
-    expect(img.getAttribute('src')).toContain('/images/Login-background.svg');
+    expect(img.getAttribute('src')).toContain('images/Login-background.svg');
+  });
+
+  /**
+   * NXSAT-318. The Marketplace package serves the app from `/nuxeo/agentic-ui/`, and a
+   * root-absolute `/images/…` resolves to the server root there and 404s. This suite runs under
+   * base href `/`, where both forms resolve to the same URL, so the packaged base is spelled out.
+   */
+  it('resolves the hero art against a packaged base href (NXSAT-318)', () => {
+    const img = fixture.nativeElement.querySelector('img.login-hero-image') as HTMLImageElement;
+    const src = img.getAttribute('src') ?? '';
+
+    expect(new URL(src, 'http://nuxeo.test/nuxeo/agentic-ui/').pathname).toBe(
+      '/nuxeo/agentic-ui/images/Login-background.svg',
+    );
+    expect(new URL(src, 'http://nuxeo.test/').pathname).toBe('/images/Login-background.svg');
   });
 
   it('fills the hero box without expanding it from intrinsic image size (NXENG-751)', () => {
