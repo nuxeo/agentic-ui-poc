@@ -10,18 +10,6 @@ export const summary =
 const DOC_UID = process.env['NUXEO_DOC_UID']?.trim();
 const TOOLBAR_BTN = '[data-action-id="app.toolbar.addToCollection"]';
 
-async function openDocumentDetail(page, h) {
-  if (DOC_UID) {
-    await h.goToDoc(DOC_UID);
-    return;
-  }
-  await h.goTo('/#/browse?path=%2Fdefault-domain%2Fworkspaces');
-  const row = page.locator('table tbody tr, .mat-mdc-row').first();
-  await row.waitFor({ state: 'visible', timeout: 60000 });
-  await row.click();
-  await page.waitForURL(/#\/doc\//, { timeout: 60000 });
-}
-
 export const scenes = [
   {
     act: 1,
@@ -30,7 +18,8 @@ export const scenes = [
     criterion: 'AC-1',
     async run(page, h) {
       await h.login();
-      await openDocumentDetail(page, h);
+      await h.requirePrecondition('NUXEO_DOC_UID is set', Boolean(DOC_UID), 'Set NUXEO_DOC_UID');
+      await h.goToDoc(DOC_UID);
       await h.expectVisible('detail header', '.detail-header');
       await h.expectVisible('Add to collection toolbar action', TOOLBAR_BTN);
       await h.shot('header-context', { highlight: TOOLBAR_BTN, label: 'Header toolbar' });
