@@ -369,7 +369,11 @@ sat-breadcrumbs {
   }
 }
 
-.sub-tab:focus,
+.sub-tab:focus {
+  outline: 2px solid var(--document-detail-properties-label-muted);
+  outline-offset: -2px;
+}
+
 .panel-close-btn.mat-mdc-icon-button:focus {
   outline: 2px solid var(--document-detail-properties-label-muted);
   outline-offset: -2px;

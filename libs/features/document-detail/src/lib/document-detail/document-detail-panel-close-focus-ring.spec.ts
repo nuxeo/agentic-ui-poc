@@ -27,7 +27,8 @@ describe('DocumentDetailComponent — panel close focus ring (NXENG-830)', () =>
 
   it('declares a standalone :focus ring on the properties panel close control', () => {
     const scss = readFileSync(scssPath, 'utf8');
-    expect(scss).toMatch(/\.panel-close-btn\.mat-mdc-icon-button:focus/);
+    expect(scss).toMatch(/\.panel-close-btn\.mat-mdc-icon-button:focus\s*\{/);
+    expect(scss).not.toMatch(/\.panel-close-btn\.mat-mdc-icon-button:focus,\s/);
     expect(scss).toMatch(
       /\.panel-close-btn\.mat-mdc-icon-button:focus[\s\S]*outline:\s*2px\s+solid\s+var\(--document-detail-properties-label-muted\)/,
     );
