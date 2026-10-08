@@ -1,0 +1,29 @@
+{
+  "name": "satori-components-satori",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/satori-components-satori/src",
+  "prefix": "nxs",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:ui"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": ["{workspaceRoot}/dist/out-tsc/libs/shared/satori-components-satori"],
+      "options": {
+        "command": "ngc -p libs/shared/satori-components-satori/tsconfig.lib.json --outDir dist/out-tsc/libs/shared/satori-components-satori"
+      }
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/shared/satori-components-satori"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}
