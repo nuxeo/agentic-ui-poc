@@ -1,6 +1,7 @@
 /**
- * NXENG-799 / NXENG-817 — Image toolbar icon buttons (Toggle fit, Rotate left, …) must show a
- * keyboard focus indicator (IBM `style_focus_visible` / issue 922184956, WCAG 2.4.7 / 1.4.11).
+ * NXENG-799 / NXENG-816 / NXENG-817 — Image toolbar icon buttons (Toggle fit, Zoom in, Rotate
+ * left, …) must show a keyboard focus indicator on the light toolbar strip (IBM
+ * `style_focus_visible` / 922184956, WCAG 2.4.7 / 1.4.11).
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -93,7 +94,7 @@ function assertFocusRingContrast(
     .toBeGreaterThanOrEqual(WCAG_FOCUS_INDICATOR);
 }
 
-describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
+describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-816 / NXENG-817)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
@@ -114,10 +115,12 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
   });
 
   afterEach(() => {
-    const button = fixture.nativeElement.querySelector(
-      '.viewer-toolbar button[aria-label="Toggle fit"]',
-    ) as HTMLButtonElement | null;
-    button?.blur();
+    for (const label of ['Toggle fit', 'Zoom in', 'Rotate left']) {
+      const button = fixture.nativeElement.querySelector(
+        `.viewer-toolbar button[aria-label="${label}"]`,
+      ) as HTMLButtonElement | null;
+      button?.blur();
+    }
     fixture.nativeElement.remove();
     (fixture.nativeElement as HTMLElement).style.removeProperty(
       '--document-viewer-focus-on-light-surface',
@@ -129,16 +132,20 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
     }
   });
 
-  function toolbarButton(ariaLabel: string): HTMLButtonElement {
+  function toolbarButton(accessibleName: string): HTMLButtonElement {
     const button = fixture.nativeElement.querySelector(
-      `.viewer-toolbar button[aria-label="${ariaLabel}"]`,
+      `.viewer-toolbar button[aria-label="${accessibleName}"]`,
     ) as HTMLButtonElement | null;
-    expect(button).withContext(`expected ${ariaLabel} toolbar button`).not.toBeNull();
+    expect(button).withContext(`expected ${accessibleName} toolbar button`).not.toBeNull();
     return button!;
   }
 
   function toggleFitButton(): HTMLButtonElement {
     return toolbarButton('Toggle fit');
+  }
+
+  function zoomInButton(): HTMLButtonElement {
+    return toolbarButton('Zoom in');
   }
 
   function rotateLeftButton(): HTMLButtonElement {
@@ -201,6 +208,7 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
       if (!toolbar) return;
 
       assertFocusRingContrast(button, toolbar, label);
+      assertFocusRingContrast(zoomInButton(), toolbar, `${label} — Zoom in (NXENG-816)`);
 
       const rotate = rotateLeftButton();
       assertFocusRingContrast(rotate, toolbar, `${label} — Rotate left`);

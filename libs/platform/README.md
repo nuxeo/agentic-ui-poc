@@ -56,7 +56,7 @@ Installable from a **tarball** or **local path** today:
 
 ```bash
 npm pack ./dist/libs/platform --pack-destination /tmp
-npm install /tmp/nuxeo-satori-platform-0.1.0.tgz
+npm install /tmp/nuxeo-satori-platform-0.2.0.tgz
 ```
 
 Once installed:
