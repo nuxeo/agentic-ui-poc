@@ -1071,8 +1071,9 @@ from the last two items below.
 - `$`-prefixed keys are **metadata and do not merge** — `$references` from a referenced layer never
   leaks into the result.
 - Arrays of objects merge **by `id`**, so a layer patches one entry without restating the list.
-- `"<key>.$replace"` replaces instead of merging, at any depth — `"rule.$replace"` inside an
-  override included.
+- `"<key>.$replace"` replaces instead of merging. Below the top level — `"rule.$replace"` inside an
+  override — it takes effect only where an earlier layer set the same parent, and is otherwise kept
+  as a literal key.
 - A later scalar does **not** replace an earlier object: a number or boolean is ignored and a
   string is spread into it. A later non-array is appended to an earlier array. Use `.$replace`.
 - `null` meeting an object, in either order, takes the later layer's value. ACA's merge threw

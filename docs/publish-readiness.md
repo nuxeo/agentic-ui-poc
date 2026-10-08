@@ -111,7 +111,8 @@ across 190 sites — the same operation already done once, verified by running
 functions the extension engine imported (`filterEnabled`, `sortByOrder`, `mergeObjects`); the engine
 now has its own, pinned case by case to 9.0.0's output. The peer was dropped with the import still in
 place first, and `beta:publishable` refused it — `Bundle imports "@alfresco/adf-extensions" but the
-built package.json declares it nowhere` — so the declared-imports check does guard the peer set.
+built package.json declares it nowhere` — so the declared-imports check catches a peer dropped while
+something still imports it. It cannot tell you a peer is no longer needed.
 
 ### The row that was missing, and what it cost
 

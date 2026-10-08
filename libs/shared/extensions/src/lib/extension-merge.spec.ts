@@ -94,6 +94,13 @@ const PARITY: readonly (readonly [string, Layers, Record<string, unknown>])[] = 
     ],
     { overrides: { 'app.x': { rule: 'app.rules.y' } } },
   ],
+  [
+    // Added after the upstream row was removed; upstream's output for these layers was taken by
+    // running 9.0.0 directly.
+    'a nested .$replace with nothing to replace is kept as a literal key',
+    [{ overrides: {} }, { overrides: { 'app.x': { 'rule.$replace': 'y' } } }],
+    { overrides: { 'app.x': { 'rule.$replace': 'y' } } },
+  ],
   ['a $ key with the suffix is still skipped', [{}, { '$meta.$replace': 1 }], {}],
   [
     'the suffix twice: only the first is removed, so a different source key is read',

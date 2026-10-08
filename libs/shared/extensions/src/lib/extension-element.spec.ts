@@ -92,8 +92,8 @@ describe('sortByOrder', () => {
   });
 
   it('keeps registration order among many equal keys', () => {
-    // Long enough that a sort could not get it right by staying on an insertion-sort path.
-    const entries = Array.from({ length: 40 }, (_, i) =>
+    // Long enough that V8's TimSort merges runs instead of insertion-sorting the whole array.
+    const entries = Array.from({ length: 200 }, (_, i) =>
       loose({ id: `e${i}`, ...(i % 3 === 0 ? {} : { order: i % 2 }) }),
     );
     const ids = (predicate: (entry: Entry) => boolean) =>
