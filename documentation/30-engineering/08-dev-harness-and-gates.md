@@ -45,15 +45,16 @@ described below has a recorded negative control.
 
 ---
 
-## 2. The 26 gates
+## 2. The gates
 
 ```bash
-npm run beta:gate -- --phase <id>                      # all 26, cheapest first, stop at first failure
+npm run beta:gate -- --phase <id>                      # every gate, cheapest first, stop at first failure
 npm run beta:gate -- --gates lockfile,guardrails,lint  # fast inner loop
 ```
 
-The authoritative count is the verdict line `beta:gate` prints, not this heading. The table below
-listed 17 while `ALL_GATES` held 23, having been written before the self-test gates existed.
+The authoritative count is the verdict line `beta:gate` prints — 26 on 2026-10-08 — which is why
+the heading no longer carries one. The table below listed 17 while `ALL_GATES` held 23, having been
+written before the self-test gates existed, and every heading count so far has broken the links to it.
 
 Ordered deliberately: a lint error usually explains the test failure that would follow, and
 running the full set on a known-broken tree wastes minutes per iteration.
@@ -64,7 +65,7 @@ running the full set on a known-broken tree wastes minutes per iteration.
 | 2   | `lockfile`                 | Every non-optional dependency edge resolves **within the lock**                                                                                                                                                                                             | The failure the other gates structurally cannot see. `npm ci --dry-run` only demands what the current platform resolves, so on macOS it never looks at the pruned Linux subtree                                                                   |
 | 3   | `lockfile-selftest`        | The lockfile gate's own 23 controls — 14 negative, 9 positive                                                                                                                                                                                               | That gate has been wrong in both directions — names-not-versions, then waiving every `brace-expansion` major off a `^5.0.0`-scoped override — and both were found by a human reading it, not by anything that ran                                 |
 | 4   | `dependency-tree`          | None of adf-hx, adf-core, adf-extensions, js-api or hxcs-js-client in the lock, the installed tree (`npm ls`), any manifest, `.npmrc` or an import under `apps/`/`libs/`. **Report-only** until the ADF removal commit sets `BLOCKING = true` in the script | NXSAT-308 criterion 3, "checked in CI". Report-only because all five are on `main` by construction and a permanently red gate gets bypassed — but it still fails on an uninspectable location, and on a clean tree whose switch was never flipped |
-| 5   | `dependency-tree-selftest` | The dependency-tree gate's own 29 controls — 25 negative, 4 positive                                                                                                                                                                                        | A report-only gate passes whatever it finds, so without controls it could regress into finding nothing and stay green until the day it became blocking                                                                                            |
+| 5   | `dependency-tree-selftest` | The dependency-tree gate's own controls, each negative one a single package in a single location; the run prints the negative/positive split                                                                                                                | A report-only gate passes whatever it finds, so without controls it could regress into finding nothing and stay green until the day it became blocking                                                                                            |
 | 6   | `supply-chain`             | No production `high`/`critical`; every acceptance is dated and unexpired; no unimported production dependency                                                                                                                                               | SCA was a human running `npm audit` and writing the number into a document. It also found `cors` and `dotenv` — two unused production dependencies nobody had recorded                                                                            |
 | 7   | `code-scanning`            | The ref **was analysed**, and no CodeQL alert is unaccounted for                                                                                                                                                                                            | SAST was already running and finding 21 alerts, 6 high, that nobody read. The gap was never the tool — it was that no process consumed the output                                                                                                 |
 | 8   | `guardrails`               | 11 repo invariants — see §3                                                                                                                                                                                                                                 |                                                                                                                                                                                                                                                   |

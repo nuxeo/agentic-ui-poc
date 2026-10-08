@@ -269,7 +269,7 @@ document — which is what its own title says.
 ### Demonstrated
 
 - **The gates catch real defects.** The ledger in
-  [Dev Harness & Gates §2](08-dev-harness-and-gates.md#2-the-15-gates) lists nine live
+  [Dev Harness & Gates §2](08-dev-harness-and-gates.md#2-the-gates) lists nine live
   defects found by gates, several of which had passed every other check.
 - **Knowledge compounds.** `AGENTS/08-bug-patterns.md` is 413 lines of bugs already made.
   The counterfactual is a team re-making them.

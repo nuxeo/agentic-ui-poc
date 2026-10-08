@@ -27,7 +27,7 @@
  */
 
 import { execFile } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -402,6 +402,51 @@ control(
   }),
 );
 
+// A subtree the walker cannot enter must not drop out of the scan as if it were clean: a silent
+// skip of an unreadable directory under libs/ takes every manifest and import beneath it out of a
+// blocking run's verdict.
+/** Directories made unreadable for a control; restored before the workspace is removed. */
+const lockedDirs = [];
+{
+  const dir = fixture('gap-unlistable-dir', {
+    'libs/locked/src/columns.ts': `import type { DataColumn } ${'from'} '${CORE}';\nexport type C = DataColumn;\n`,
+  });
+  const locked = join(dir, 'libs', 'locked');
+  chmodSync(locked, 0o000);
+  lockedDirs.push(locked);
+  control(
+    process.getuid?.() === 0
+      ? 'an unlistable directory is a gap — CANNOT RUN AS ROOT, which reads through mode 000'
+      : 'an unlistable directory under libs/ is a gap, not a clean subtree',
+    'gap',
+    ['CANNOT INSPECT', 'libs/locked/: cannot list'],
+    dir,
+  );
+}
+{
+  const dir = fixture('gap-dangling-link');
+  symlinkSync('./does-not-exist.ts', join(dir, 'apps', 'web', 'src', 'gone.ts'));
+  control(
+    'a link that cannot be resolved is a gap, not a skipped file',
+    'gap',
+    ['CANNOT INSPECT', 'apps/web/src/gone.ts: cannot resolve link'],
+    dir,
+  );
+}
+{
+  // Followed rather than skipped: a symlinked directory is source the build would compile.
+  const dir = fixture('import-through-symlink', {
+    'vendor/shared/columns.ts': `import type { DataColumn } ${'from'} '${CORE}';\nexport type C = DataColumn;\n`,
+  });
+  symlinkSync(join('..', 'vendor', 'shared'), join(dir, 'libs', 'linked'));
+  control(
+    'import: a file reached through a symlinked directory is reported',
+    'fail',
+    `[import] libs/linked/columns.ts ${CORE}`,
+    dir,
+  );
+}
+
 // ------------------------------------------------------------------------- positive controls ----
 
 control(
@@ -517,6 +562,7 @@ controls.forEach((c, i) => judge(c, outcomes[i]));
   }
 }
 
+for (const dir of lockedDirs) chmodSync(dir, 0o755);
 rmSync(workspace, { recursive: true, force: true });
 
 const failed = results.filter((r) => !r.ok);

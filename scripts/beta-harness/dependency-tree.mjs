@@ -36,8 +36,9 @@
  * Report-only is not "cannot fail":
  *
  *   - a location that could not be inspected — an unreadable lock or manifest, no installed tree,
- *     `npm ls` output that is not JSON — exits 2 in either mode. A gap in the list is not a short
- *     list;
+ *     `npm ls` output that is not JSON, a directory under apps/, libs/ or tools/ that cannot be
+ *     listed, a link that cannot be resolved, a source file that cannot be read — exits 2 in either
+ *     mode. A gap in the list is not a short list;
  *   - report-only on a tree with **no** findings exits 1. A clean tree means the removal has
  *     landed, and a gate left report-only after that would let the packages come back unseen, so
  *     the commit that removes the last finding is made to flip `BLOCKING` in the same change.
@@ -64,7 +65,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 
@@ -342,7 +343,13 @@ const notes = [];
     walkFiles(d, (f) => CODE_FILE.test(f) || STYLE_FILE.test(f)),
   );
   for (const rel of files) {
-    const text = readFileSync(join(root, rel), 'utf8');
+    let text;
+    try {
+      text = readFileSync(join(root, rel), 'utf8');
+    } catch (error) {
+      gaps.push(`${rel}: cannot read — ${error.message}`);
+      continue;
+    }
     const specifiers = CODE_FILE.test(rel) ? codeSpecifiers(text) : styleSpecifiers(text);
     const hits = new Map();
     for (const specifier of specifiers) {
@@ -551,21 +558,44 @@ function styleSpecifiers(text) {
   );
 }
 
-/** Files under `dir` (relative to root) that `keep` accepts, as root-relative paths. */
+/**
+ * Files under `dir` (relative to root) that `keep` accepts, as root-relative paths.
+ *
+ * A directory that cannot be listed, or a link that cannot be resolved, is a gap rather than a
+ * skip: everything beneath it would otherwise drop out of the scan, and a blocking run would read
+ * the missing subtree as a clean one. Symlinked directories are followed, once each by real path.
+ */
 function walkFiles(dir, keep) {
   const out = [];
+  const seen = new Set();
   const visit = (rel) => {
     let entries;
     try {
+      const real = realpathSync(join(root, rel));
+      if (seen.has(real)) return;
+      seen.add(real);
       entries = readdirSync(join(root, rel), { withFileTypes: true });
-    } catch {
+    } catch (error) {
+      gaps.push(`${rel}/: cannot list — ${error.message}`);
       return;
     }
     for (const entry of entries) {
       const child = join(rel, entry.name);
-      if (entry.isDirectory()) {
+      let isDirectory = entry.isDirectory();
+      let isFile = entry.isFile();
+      if (entry.isSymbolicLink()) {
+        try {
+          const target = statSync(join(root, child));
+          isDirectory = target.isDirectory();
+          isFile = target.isFile();
+        } catch (error) {
+          gaps.push(`${child}: cannot resolve link — ${error.message}`);
+          continue;
+        }
+      }
+      if (isDirectory) {
         if (!SKIP_DIRS.has(entry.name)) visit(child);
-      } else if (entry.isFile() && keep(child)) {
+      } else if (isFile && keep(child)) {
         out.push(child);
       }
     }
