@@ -518,7 +518,7 @@
       "coming-soon": "Demnächst verfügbar"
     },
     "preset": {
-      "badge": "Voreinstellung: {{ label }}"
+      "badge": "Preset: {{ label }}"
     },
     "profile-page": {
       "change-password": "Passwort ändern",
@@ -1514,9 +1514,9 @@
     "workflow-started-on-document": "Sie haben für dieses Dokument einen Workflow „{{ workflow }}“ gestartet."
   },
   "document-layouts": {
-    "no": "Nein",
-    "sections": "Eigenschaftsbereiche",
-    "yes": "Ja"
+    "no": "No",
+    "sections": "Property sections",
+    "yes": "Yes"
   },
   "drawer": {
     "administration-analytics": "Analysen",

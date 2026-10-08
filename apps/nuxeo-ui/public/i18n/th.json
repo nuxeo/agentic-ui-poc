@@ -518,7 +518,7 @@
       "coming-soon": "เร็วๆ นี้"
     },
     "preset": {
-      "badge": "พรีเซ็ต: {{ label }}"
+      "badge": "Preset: {{ label }}"
     },
     "profile-page": {
       "change-password": "เปลี่ยนรหัสผ่าน",
@@ -1514,9 +1514,9 @@
     "workflow-started-on-document": "คุณได้เริ่มเวิร์กโฟลว์ {{ workflow }} ในเอกสารนี้แล้ว"
   },
   "document-layouts": {
-    "no": "ไม่ใช่",
-    "sections": "ส่วนของคุณสมบัติ",
-    "yes": "ใช่"
+    "no": "No",
+    "sections": "Property sections",
+    "yes": "Yes"
   },
   "drawer": {
     "administration-analytics": "การวิเคราะห์",

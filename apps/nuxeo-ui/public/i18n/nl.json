@@ -518,7 +518,7 @@
       "coming-soon": "Binnenkort beschikbaar"
     },
     "preset": {
-      "badge": "Voorinstelling: {{ label }}"
+      "badge": "Preset: {{ label }}"
     },
     "profile-page": {
       "change-password": "Wachtwoord wijzigen",
@@ -1514,9 +1514,9 @@
     "workflow-started-on-document": "U hebt een werkstroom {{ workflow }} gestart voor dit document."
   },
   "document-layouts": {
-    "no": "Nee",
-    "sections": "Eigenschapssecties",
-    "yes": "Ja"
+    "no": "No",
+    "sections": "Property sections",
+    "yes": "Yes"
   },
   "drawer": {
     "administration-analytics": "Analyses",
