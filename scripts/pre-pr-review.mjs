@@ -435,7 +435,8 @@ function falseClaim(file) {
   const text = read(file);
   pkgScripts ??= Object.keys(JSON.parse(read('package.json')).scripts ?? {});
 
-  for (const m of text.matchAll(/npm run ([a-z0-9:._-]+)/gi)) {
+  // Options before the script name (`npm run --silent config:dev`) are not the script name.
+  for (const m of text.matchAll(/npm run (?:--?[a-z][a-z-]*\s+)*([a-z0-9:._][a-z0-9:._-]*)/gi)) {
     if (!pkgScripts.includes(m[1])) {
       report(
         file,
