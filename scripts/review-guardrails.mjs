@@ -6007,7 +6007,7 @@ function resolveSpecifier(fromFile, specifier, paths) {
       const [prefix, suffix] = [alias.slice(0, star), alias.slice(star + 1)];
       if (specifier.startsWith(prefix) && specifier.endsWith(suffix)) {
         const middle = specifier.slice(prefix.length, specifier.length - suffix.length);
-        targets = aliasTargets.map((target) => target.replace('*', middle));
+        targets = aliasTargets.map((target) => target.replaceAll('*', middle));
         break;
       }
     }
@@ -6015,7 +6015,9 @@ function resolveSpecifier(fromFile, specifier, paths) {
   }
   for (const target of targets) {
     const base = toPosixRel(join(target)).replace(/^\.\//, '');
-    for (const candidate of [base, `${base}.ts`, `${base}.mts`, `${base}/index.ts`]) {
+    // TypeScript maps an explicit `.js`/`.mjs` specifier back to its `.ts`/`.mts` source.
+    const source = base.replace(/\.js$/, '.ts').replace(/\.mjs$/, '.mts');
+    for (const candidate of [source, base, `${base}.ts`, `${base}.mts`, `${base}/index.ts`]) {
       if (fileExists(candidate) && statSync(join(repoRoot, candidate)).isFile()) return candidate;
     }
   }
@@ -6106,7 +6108,9 @@ function checkSatoriComponentsDependencies() {
         report([...chain, styleFile], use[1], why);
         continue;
       }
-      if (!use[1].startsWith('.')) continue;
+      // Sass resolves a bare URL (`@use 'theme'`) against the current file first, like `./theme`.
+      // A package URL starts with `@`; `sass:` is a built-in module.
+      if (use[1].startsWith('@') || use[1].startsWith('sass:')) continue;
       const base = toPosixRel(join(dirname(styleFile), use[1]));
       const name = base.split('/').pop();
       const dir = dirname(base);
@@ -6262,9 +6266,38 @@ function checkSatoriComponentsFederationReadiness() {
   for (const file of sources) {
     const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
     const lineOf = (node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+
+    // Local name -> `@angular/core` export, so `import { Component as C }` and
+    // `import * as ng` classify the same as a plain `@Component`.
+    const angularNames = new Map();
+    const angularNamespaces = new Set();
+    for (const statement of source.statements) {
+      if (!ts.isImportDeclaration(statement)) continue;
+      if (statement.moduleSpecifier.text !== '@angular/core') continue;
+      const bindings = statement.importClause?.namedBindings;
+      if (!bindings) continue;
+      if (ts.isNamespaceImport(bindings)) angularNamespaces.add(bindings.name.text);
+      else {
+        for (const element of bindings.elements) {
+          angularNames.set(element.name.text, (element.propertyName ?? element.name).text);
+        }
+      }
+    }
+    const decoratorName = (callee) => {
+      if (ts.isIdentifier(callee)) return angularNames.get(callee.text) ?? callee.text;
+      if (
+        ts.isPropertyAccessExpression(callee) &&
+        ts.isIdentifier(callee.expression) &&
+        angularNamespaces.has(callee.expression.text)
+      ) {
+        return callee.name.text;
+      }
+      return callee.getText(source);
+    };
+
     const visit = (node) => {
       if (ts.isDecorator(node) && ts.isCallExpression(node.expression)) {
-        const name = node.expression.expression.getText(source);
+        const name = decoratorName(node.expression.expression);
         if (name === 'NgModule') {
           fail(
             `${file}:${lineOf(node)} declares an @NgModule. The component library is standalone ` +

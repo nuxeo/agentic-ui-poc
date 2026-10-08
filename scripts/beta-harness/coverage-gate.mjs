@@ -228,6 +228,69 @@ if (measured.length === 0) {
   process.exit(1);
 }
 
+/**
+ * Uninstrumented source files, checked against a dated allowlist.
+ *
+ * See `findUninstrumented()` for what this catches and why the percentage alone could not.
+ * The allowlist is dated on purpose: an undated exception is indistinguishable from an
+ * oversight six weeks later, and this repository has already had gates whose exceptions
+ * outlived their reasons.
+ *
+ * Three failure modes, all blocking:
+ *   1. a file is uninstrumented and not in the allowlist  — new untested code
+ *   2. a file is uninstrumented and its entry has expired — accepted debt, now due
+ *   3. the allowlist names a file that is now instrumented or gone — stale entry, so the
+ *      file is deleted from the list rather than left as false reassurance
+ */
+const uninstrumentedAllowlistPath = resolve(
+  repoRoot,
+  '.ai/state/coverage-uninstrumented-allowlist.json',
+);
+const rawAllowlist = existsSync(uninstrumentedAllowlistPath)
+  ? JSON.parse(await readFile(uninstrumentedAllowlistPath, 'utf8'))
+  : {};
+/** Dated debt: files with real code that no test reaches. */
+const datedAllowlist = rawAllowlist.files ?? {};
+/**
+ * Permanent exemptions for files that genuinely contain no executable statements — pure type
+ * declarations, `export *` barrels, constant tables. A deadline for these would be a lie, since
+ * there is nothing to test. Self-policing: if one ever gains a statement its entry is stale, so
+ * the list cannot quietly become a dumping ground.
+ */
+const noStatementsAllowlist = new Set(Object.keys(rawAllowlist.noStatements ?? {}));
+
+/**
+ * Computed before either baseline write, so `--update-baseline` can reset the ratchet without
+ * resetting a floor: a write still exits 1 when a floor is not met.
+ *
+ * @type {{ project: string, floor: number, why: string }[]}
+ */
+const floorFailures = [];
+for (const [project, floor] of Object.entries(FLOORS)) {
+  const fails = (why) => floorFailures.push({ project, floor, why });
+  if (!projects.some((p) => p.name === project && p.kind === 'vitest')) {
+    fails('there is no Vitest project of that name, so the floor guards nothing');
+    continue;
+  }
+  const empty = vacuous.find((v) => v.project === project);
+  if (empty) {
+    fails(`its coverage report measures nothing (${empty.why})`);
+    continue;
+  }
+  const m = measured.find((x) => x.project === project);
+  if (!m) {
+    fails('it has no coverage report this run, so the floor was not measured');
+    continue;
+  }
+  if (m.lines < floor) {
+    fails(`${m.lines}% of lines covered (${m.sCovered} of ${m.sTotal} statements)`);
+  }
+  for (const u of m.unmeasured ?? []) {
+    if (noStatementsAllowlist.has(u.file)) continue;
+    fails(`${u.file} contributes no statements [${u.why}] — no spec reaches it`);
+  }
+}
+
 const baseline = existsSync(baselinePath) ? JSON.parse(await readFile(baselinePath, 'utf8')) : null;
 
 if (!baseline) {
@@ -239,6 +302,7 @@ if (!baseline) {
     process.exit(1);
   }
   await write(measured, 'initial baseline');
+  exitOnFloorFailures();
   process.exit(0);
 }
 
@@ -342,37 +406,6 @@ const orphaned = baselineNames.filter((p) => !projectNames.has(p));
  */
 const falseCredit = vacuous.filter((v) => baselineNames.includes(v.project));
 
-/**
- * Uninstrumented source files, checked against a dated allowlist.
- *
- * See `findUninstrumented()` for what this catches and why the percentage alone could not.
- * The allowlist is dated on purpose: an undated exception is indistinguishable from an
- * oversight six weeks later, and this repository has already had gates whose exceptions
- * outlived their reasons.
- *
- * Three failure modes, all blocking:
- *   1. a file is uninstrumented and not in the allowlist  — new untested code
- *   2. a file is uninstrumented and its entry has expired — accepted debt, now due
- *   3. the allowlist names a file that is now instrumented or gone — stale entry, so the
- *      file is deleted from the list rather than left as false reassurance
- */
-const uninstrumentedAllowlistPath = resolve(
-  repoRoot,
-  '.ai/state/coverage-uninstrumented-allowlist.json',
-);
-const rawAllowlist = existsSync(uninstrumentedAllowlistPath)
-  ? JSON.parse(await readFile(uninstrumentedAllowlistPath, 'utf8'))
-  : {};
-/** Dated debt: files with real code that no test reaches. */
-const datedAllowlist = rawAllowlist.files ?? {};
-/**
- * Permanent exemptions for files that genuinely contain no executable statements — pure type
- * declarations, `export *` barrels, constant tables. A deadline for these would be a lie, since
- * there is nothing to test. Self-policing: if one ever gains a statement its entry is stale, so
- * the list cannot quietly become a dumping ground.
- */
-const noStatementsAllowlist = new Set(Object.keys(rawAllowlist.noStatements ?? {}));
-
 const todayArg = argv[argv.indexOf('--today') + 1];
 const today =
   argv.includes('--today') && todayArg ? todayArg : new Date().toISOString().slice(0, 10);
@@ -401,33 +434,6 @@ const staleAllowlist = [
   ...[...noStatementsAllowlist].filter((f) => !unmeasuredNow.has(f)),
 ];
 
-/** @type {{ project: string, floor: number, why: string }[]} */
-const floorFailures = [];
-for (const [project, floor] of Object.entries(FLOORS)) {
-  const fails = (why) => floorFailures.push({ project, floor, why });
-  if (!projects.some((p) => p.name === project && p.kind === 'vitest')) {
-    fails('there is no Vitest project of that name, so the floor guards nothing');
-    continue;
-  }
-  const empty = vacuous.find((v) => v.project === project);
-  if (empty) {
-    fails(`its coverage report measures nothing (${empty.why})`);
-    continue;
-  }
-  const m = measured.find((x) => x.project === project);
-  if (!m) {
-    fails('it has no coverage report this run, so the floor was not measured');
-    continue;
-  }
-  if (m.lines < floor) {
-    fails(`${m.lines}% of lines covered (${m.sCovered} of ${m.sTotal} statements)`);
-  }
-  for (const u of m.unmeasured ?? []) {
-    if (noStatementsAllowlist.has(u.file)) continue;
-    fails(`${u.file} contributes no statements [${u.why}] — no spec reaches it`);
-  }
-}
-
 if (updateBaseline) {
   const merged = { ...baseline.projects };
   for (const m of measured) merged[m.project] = entryFor(m);
@@ -449,6 +455,7 @@ if (updateBaseline) {
         ? `, pruned ${vacuous.length} unmeasurable entr(ies): ${vacuous.map((v) => v.project).join(', ')}`
         : ''),
   );
+  exitOnFloorFailures();
   process.exit(0);
 }
 
@@ -1114,6 +1121,14 @@ function report() {
     console.log(`coverage-gate: pass — no project regressed by more than ${TOLERANCE}pp.`);
     reportBetaBar(rows);
   }
+}
+
+/** After a baseline write: a floor is not something `--update-baseline` can record its way past. */
+function exitOnFloorFailures() {
+  if (floorFailures.length === 0) return;
+  reportFloors();
+  console.log(`\ncoverage-gate: FAIL — ${floorFailures.length} unmet coverage floor(s).`);
+  process.exit(1);
 }
 
 /** The `FLOORS` verdict, printed on every run so a met floor is visible as well as a missed one. */

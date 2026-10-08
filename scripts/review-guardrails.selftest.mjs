@@ -5109,6 +5109,34 @@ expectRed(
   /nuxeo-client\/src\/lib\/clean\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through .*thing\.component\.ts -> libs\/shared\/nuxeo-client\/src\/index\.ts -> libs\/shared\/nuxeo-client\/src\/lib\/clean\.ts\./,
 );
 
+// TypeScript maps an explicit `.js` specifier back to the `.ts` source; the walk must too.
+expectRed(
+  'a Satori import behind a `.js` re-export one workspace hop away',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({
+      imports: "import { clean } from '@nuxeo-satori/platform/nuxeo-client';",
+    }),
+    'libs/shared/nuxeo-client/src/index.ts': "export * from './lib/clean.js';\n",
+    'libs/shared/nuxeo-client/src/lib/clean.ts':
+      "import { SatTag } from '@hylandsoftware/satori-ui/tag';\nexport const clean = SatTag;\n",
+  }),
+  null,
+  /nuxeo-client\/src\/lib\/clean\.ts imports `@hylandsoftware\/satori-ui\/tag`/,
+);
+
+// Sass resolves a bare `@use 'theme'` against the current file first.
+expectRed(
+  'a Satori theme behind a bare local Sass @use',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]: "@use 'theme';\n",
+    [`${NXS_ROOT}/src/lib/thing/_theme.scss`]: "@use '@hylandsoftware/satori-ui/theme' as sat;\n",
+  }),
+  null,
+  /thing\/_theme\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
 expectRed(
   'a Satori theme in a component stylesheet',
   'checkSatoriComponentsDependencies',
@@ -5255,6 +5283,30 @@ expectRed(
   }),
   null,
   /thing\.component\.ts:3 @Component does not say `standalone: true`/,
+);
+
+expectRed(
+  'an aliased Component decorator with standalone: false',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [NXS_COMPONENT]:
+      "import { Component as C } from '@angular/core';\n" +
+      "@C({ selector: 'nxs-thing', standalone: false, templateUrl: './thing.component.html' })\n" +
+      'export class NxsThingComponent {}\n',
+  }),
+  null,
+  /thing\.component\.ts:2 @Component does not say `standalone: true`/,
+);
+
+expectRed(
+  'an NgModule through a namespace import',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.module.ts`]:
+      "import * as ng from '@angular/core';\n@ng.NgModule({})\nexport class ThingModule {}\n",
+  }),
+  null,
+  /thing\.module\.ts:2 declares an @NgModule/,
 );
 
 expectRed(
