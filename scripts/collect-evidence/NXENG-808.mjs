@@ -129,6 +129,9 @@ export const scenes = [
     hold: 2000,
     spotlight: { selector: TOOLBAR_BTN, label: 'Add to collection' },
     async run(page, h) {
+      h.note(
+        'Focus visibility verdict: a11y-scout journey document-detail (keyboard/focusChecks), not this capture.',
+      );
       const nav = await tabToToolbarAddToCollection(page);
       h.check('Tab reached Add to collection', nav.ok, `steps=${nav.steps}`);
 
@@ -143,11 +146,8 @@ export const scenes = [
         };
       }, TOOLBAR_BTN);
 
-      h.check('focus on toolbar icon button', style?.active === true, String(style?.active));
-      h.check(
-        'visible outline',
-        style != null && style.outlineStyle !== 'none' && style.outlineWidth !== '0px',
-        style ? `${style.outlineStyle} ${style.outlineWidth}` : 'missing button',
+      h.note(
+        `observed focus on toolbar icon button: active=${style?.active} outline=${style?.outlineStyle} ${style?.outlineWidth}`,
       );
       await h.shot('toolbar-focused', { highlight: TOOLBAR_BTN, label: 'Toolbar button focused' });
     },
@@ -158,6 +158,9 @@ export const scenes = [
     intent: 'Ring visible against .detail-header background (WCAG 1.4.11)',
     criterion: 'AC-2',
     async run(page, h) {
+      h.note(
+        'WCAG 1.4.11 contrast verdict: a11y-scout focusChecks on journey document-detail, not this capture.',
+      );
       const nav = await tabToToolbarAddToCollection(page);
       h.check('Tab reached Add to collection', nav.ok, `steps=${nav.steps}`);
 
@@ -165,14 +168,12 @@ export const scenes = [
         const el = document.querySelector(sel);
         return el ? getComputedStyle(el).outlineWidth : null;
       }, TOOLBAR_BTN);
-      h.check('2px outline', w === '2px', w ?? 'missing');
-
       const contrast = await focusRingContrastOnHeader(page);
-      h.check(
-        `outline vs header ≥ ${WCAG_1411_MIN_RATIO}:1`,
-        contrast.ok,
-        contrast.reason ??
-          `${contrast.contrast}:1 (${contrast.outlineColor} on ${contrast.headerBackground})`,
+      h.note(`observed outline width: ${w ?? 'missing'}`);
+      h.note(
+        contrast.reason
+          ? `observed contrast (informational): ${contrast.reason}`
+          : `observed contrast (informational): ${contrast.contrast}:1 (${contrast.outlineColor} on ${contrast.headerBackground})`,
       );
 
       await h.expectNoConsoleErrors('header toolbar', [

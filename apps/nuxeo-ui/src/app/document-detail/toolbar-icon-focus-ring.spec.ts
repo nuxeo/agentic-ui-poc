@@ -5,66 +5,17 @@
  * `document-detail-header-toolbar-focus.scss` — the same path production uses.
  *
  * Same IBM `style_focus_visible` constraints as NXENG-789 / NXENG-773: standalone `:focus`
- * selector on the focused control. Contrast is measured against the rendered `.detail-header`
- * background from production SCSS, not a duplicated colour.
+ * selector on the focused control, token wiring, and outline width/style when focused.
+ *
+ * What these tests do NOT cover: focus visibility or 1.4.11 contrast on a live route.
+ * That verdict belongs to a11y-scout (`docs/accessibility.md`); the NXENG-808 evidence script
+ * records measurements without duplicating it.
  */
 import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-
-import { COMPILED_THEME_BASES } from '../theme/app-theme';
-
-const WCAG_1411_MIN_RATIO = 3;
-
-function relativeLuminance([r, g, b]: [number, number, number]): number {
-  const channel = (v: number): number => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
-}
-
-function contrastRatio(a: readonly number[], b: readonly number[]): number {
-  const [hi, lo] = [
-    relativeLuminance(a as [number, number, number]),
-    relativeLuminance(b as [number, number, number]),
-  ].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
-
-function parseColor(value: string): { rgb: number[]; alpha: number } {
-  const match = /rgba?\(([^)]+)\)/.exec(value);
-  if (!match) {
-    throw new Error(`not a computed colour: "${value}"`);
-  }
-  const parts = match[1]
-    .split(/[,\s/]+/)
-    .filter(Boolean)
-    .map(Number);
-  return { rgb: parts.slice(0, 3), alpha: parts.length > 3 ? parts[3] : 1 };
-}
-
-function compositeOver(
-  fg: { rgb: number[]; alpha: number },
-  backdrop: readonly number[],
-): number[] {
-  return fg.rgb.map((c, i) => Math.round(c * fg.alpha + backdrop[i] * (1 - fg.alpha)));
-}
-
-/** Background painted by `.detail-header` in document-detail.scss. */
-function productionDetailHeaderBackground(host: HTMLElement): string {
-  const header = host.querySelector('.detail-header');
-  expect(header)
-    .withContext('fixture must render the detail header styled by document-detail.scss')
-    .toBeTruthy();
-  const bg = getComputedStyle(header as Element).backgroundColor;
-  expect(bg)
-    .withContext('detail header must declare a non-transparent background')
-    .not.toMatch(/rgba\(0, 0, 0, 0\)|transparent/);
-  return bg;
-}
 
 @Component({
   standalone: true,
@@ -78,23 +29,11 @@ function productionDetailHeaderBackground(host: HTMLElement): string {
 class ToolbarIconFocusHostComponent {}
 
 describe('Document detail toolbar icon button — keyboard focus indicator (NXENG-808)', () => {
-  let originalTheme: string | null;
-
   beforeEach(async () => {
-    originalTheme = document.documentElement.getAttribute('data-app-theme');
-
     await TestBed.configureTestingModule({
       imports: [ToolbarIconFocusHostComponent],
       providers: [provideZonelessChangeDetection(), provideNoopAnimations()],
     }).compileComponents();
-  });
-
-  afterEach(() => {
-    if (originalTheme === null) {
-      document.documentElement.removeAttribute('data-app-theme');
-    } else {
-      document.documentElement.setAttribute('data-app-theme', originalTheme);
-    }
   });
 
   async function mount(): Promise<{
@@ -111,14 +50,6 @@ describe('Document detail toolbar icon button — keyboard focus indicator (NXEN
     ) as HTMLButtonElement;
     const header = fixture.nativeElement.querySelector('.detail-header') as HTMLElement;
     return { fixture, button, header };
-  }
-
-  function applyTheme(theme: (typeof COMPILED_THEME_BASES)[number] | null): void {
-    if (theme === null) {
-      document.documentElement.removeAttribute('data-app-theme');
-    } else {
-      document.documentElement.setAttribute('data-app-theme', theme);
-    }
   }
 
   it('draws no outline while unfocused', async () => {
@@ -146,35 +77,6 @@ describe('Document detail toolbar icon button — keyboard focus indicator (NXEN
       fixture.nativeElement.remove();
     }
   });
-
-  for (const theme of [...COMPILED_THEME_BASES, null] as const) {
-    const label = theme ?? 'no data-app-theme (first paint)';
-
-    it(`meets ${WCAG_1411_MIN_RATIO}:1 against the production detail-header background — ${label}`, async () => {
-      applyTheme(theme);
-      const { fixture, button } = await mount();
-      try {
-        button.focus();
-        const style = getComputedStyle(button);
-
-        expect(style.outlineStyle).not.toBe('none');
-        expect(parseFloat(style.outlineWidth)).toBeGreaterThan(0);
-        expect(parseFloat(style.outlineOffset)).toBeGreaterThan(0);
-
-        const headerBg = productionDetailHeaderBackground(fixture.nativeElement as HTMLElement);
-        const headerParsed = parseColor(headerBg);
-        const ring = parseColor(style.outlineColor);
-        const paintedRing = compositeOver(ring, headerParsed.rgb);
-
-        expect(contrastRatio(paintedRing, headerParsed.rgb)).toBeGreaterThanOrEqual(
-          WCAG_1411_MIN_RATIO,
-        );
-      } finally {
-        button.blur();
-        fixture.nativeElement.remove();
-      }
-    });
-  }
 
   it('declares a standalone :focus rule that IBM style_focus_visible can read', async () => {
     const { fixture, button } = await mount();
