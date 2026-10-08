@@ -1,5 +1,6 @@
 import { Component, input, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -39,6 +40,7 @@ import {
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
 import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
+import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
 
 import { DocumentDetailComponent } from './document-detail';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
@@ -693,6 +695,144 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
 
       expect(viewBody().querySelector('lib-document-viewer')).toBeTruthy();
       expect(viewBody().textContent).not.toContain('CLAIM VIEW');
+    });
+  });
+
+  /**
+   * Which packaged piece each document type gets, pinned against the rendered template before
+   * the type checks moved out of `document-detail.ts`, and run unchanged after. A Note opens on
+   * the note editor; every other type, Picture and Video included, opens on the document viewer,
+   * which picks its presentation from the loaded content rather than from the type.
+   */
+  describe('packaged view per document type', () => {
+    function viewBody(): HTMLElement {
+      const body = fixture.nativeElement.querySelector('.mat-mdc-tab-body-active') as HTMLElement;
+      if (!body) throw new Error('no active tab body');
+      return body;
+    }
+
+    async function openTab(label: string): Promise<void> {
+      const tab = [...fixture.nativeElement.querySelectorAll('.mat-mdc-tab')].find((el) =>
+        (el as HTMLElement).textContent?.includes(label),
+      ) as HTMLElement;
+      tab.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    async function settleLoad(): Promise<void> {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    const note = (): NuxeoDocument =>
+      doc({ type: 'Note', properties: { 'note:note': 'hello', 'note:mime_type': 'text/plain' } });
+
+    const propLabels = (): string[] =>
+      [...fixture.nativeElement.querySelectorAll('aside.properties-panel .prop-label')].map(
+        (el) => (el as HTMLElement).textContent?.trim() ?? '',
+      );
+
+    /** The document viewer in the selected tab only, so the View tab's viewer cannot answer. */
+    const viewerControls = (): boolean | undefined =>
+      (
+        fixture.debugElement
+          .query(By.css('.mat-mdc-tab-body-active'))
+          ?.query(By.directive(DocumentViewerComponent))?.componentInstance as
+          DocumentViewerComponent | undefined
+      )?.showMainFileControls();
+
+    const file = (name: string, mimeType: string) => ({
+      'file:content': { name, 'mime-type': mimeType, length: 1 },
+    });
+
+    it.each<['lib-note-editor' | 'lib-document-viewer', string, Record<string, unknown>]>([
+      ['lib-note-editor', 'Note', { 'note:note': 'hello', 'note:mime_type': 'text/plain' }],
+      ['lib-document-viewer', 'File', file('a.pdf', 'application/pdf')],
+      ['lib-document-viewer', 'Picture', file('a.png', 'image/png')],
+      ['lib-document-viewer', 'Video', file('v.mp4', 'video/mp4')],
+      ['lib-document-viewer', 'Audio', file('a.mp3', 'audio/mpeg')],
+      ['lib-document-viewer', 'Claim', {}],
+    ])('renders %s for a %s', async (expected, type, properties) => {
+      await render({}, doc({ type, properties }));
+
+      const other = expected === 'lib-note-editor' ? 'lib-document-viewer' : 'lib-note-editor';
+      expect(viewBody().querySelector(expected)).toBeTruthy();
+      expect(viewBody().querySelector(other)).toBeNull();
+      expect(viewBody().querySelector('.document-view-outlet')).toBeNull();
+    });
+
+    it('shows the note format row for a Note only', async () => {
+      await render({}, note());
+      expect(propLabels()).toContain('Format');
+
+      await render({}, doc({ type: 'File' }));
+      expect(propLabels()).not.toContain('Format');
+    });
+
+    it('offers the main-file controls on a File but not on a Note in the Annotations tab', async () => {
+      await render({}, doc({ type: 'File' }));
+      await openTab('Annotations');
+      expect(viewerControls()).toBe(true);
+
+      await render({}, note());
+      await openTab('Annotations');
+      expect(viewerControls()).toBe(false);
+    });
+
+    it('labels the pencil "Edit properties" on a Note and "Edit" elsewhere', async () => {
+      await render({}, note());
+      expect(actionIds()).toContain('app.toolbar.editProperties');
+      expect(actionIds()).not.toContain('app.toolbar.edit');
+
+      await render({}, doc({ type: 'File' }));
+      expect(actionIds()).toContain('app.toolbar.edit');
+      expect(actionIds()).not.toContain('app.toolbar.editProperties');
+    });
+
+    it.each<[string, unknown]>([
+      ['app.rules.isType', { type: 'app.rules.isType', parameters: ['Note'] }],
+      ['app.rules.isNote', 'app.rules.isNote'],
+    ])('lets a contributed view gated by %s replace the Note editor', async (_label, rule) => {
+      await render(
+        {
+          slots: {
+            documentView: [
+              { id: 'acme.documentView.notes', componentId: 'acme.views.claim', rule },
+            ],
+          },
+        },
+        note(),
+      );
+
+      expect(viewBody().textContent).toContain('CLAIM VIEW');
+      expect(viewBody().querySelector('lib-note-editor')).toBeNull();
+      expect(viewBody().querySelector('lib-document-viewer')).toBeNull();
+    });
+
+    /** The fallback is the packaged view for the type, not the generic viewer. */
+    it('falls back to the Note editor when a contributed Note view fails to load', async () => {
+      await render(
+        {
+          slots: {
+            documentView: [
+              {
+                id: 'acme.documentView.notes',
+                componentId: 'acme.views.broken',
+                rule: { type: IS_TYPE_RULE, parameters: ['Note'] },
+              },
+            ],
+          },
+        },
+        note(),
+      );
+      await settleLoad();
+
+      expect(viewBody().querySelector('lib-note-editor')).toBeTruthy();
+      expect(viewBody().querySelector('lib-document-viewer')).toBeNull();
     });
   });
 });

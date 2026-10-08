@@ -405,54 +405,55 @@
         </ng-template>
 
         <ng-template #packagedViewContent>
-          @if (isNoteDocument()) {
-            <lib-note-editor
-              [content]="noteEditorBody()"
-              [mimeType]="mimeType()"
-              [uploadParentPath]="noteImageUploadParentPath()"
-              [loading]="viewerLoading()"
-              [saving]="noteSaving()"
-              [autoFocus]="focusNoteEditor()"
-              [readOnly]="!canWriteDoc()"
-              (saveNote)="saveNote($event)"
-              (focused)="focusNoteEditor.set(false)"
-            />
-          } @else {
-            <lib-document-viewer
-              [blobUrl]="blobUrl()"
-              [rawBlobUrl]="rawBlobUrl()"
-              [blobType]="mainBlobType()"
-              [mimeType]="mimeType()"
-              [fileName]="fileName()"
-              [fileSize]="fileSize()"
-              [loading]="viewerLoading()"
-              [noteContent]="noteContent()"
-              [noteHtml]="noteHtml()"
-              [videoSources]="videoSources()"
-              [storyboard]="storyboard()"
-              [posterUrl]="posterUrl()"
-              [hasPdfRendition]="hasPdfRendition()"
-              [previewUrl]="previewUrl()"
-              [pictureInfo]="pictureInfo()"
-              [pictureViews]="pictureViews()"
-              [exifData]="exifData()"
-              [iptcData]="iptcData()"
-              [videoInfo]="videoInfo()"
-              [arenderUrl]="arenderUrl()"
-              [arenderReloadId]="arenderReloadId()"
-              [viewerDocUid]="doc()?.uid ?? ''"
-              [annotationsTab]="false"
-              [showMainFileControls]="
-                !isNoteDocument() && !!fileName() && canWriteDoc() && !isTrashed()
-              "
-              [mainFileActionInProgress]="actionInProgress()"
-              (downloadClicked)="download()"
-              (previewClicked)="previewMainBlob()"
-              (openWithDriveClicked)="openDriveDialog()"
-              (formatDownload)="downloadPictureFormat($event)"
-              (replaceMainFileClicked)="openReplaceMainFileDialog()"
-              (removeMainFileClicked)="openRemoveMainFileDialog()"
-            />
+          @switch (packagedDocumentView()) {
+            @case ('noteEditor') {
+              <lib-note-editor
+                [content]="noteEditorBody()"
+                [mimeType]="mimeType()"
+                [uploadParentPath]="noteImageUploadParentPath()"
+                [loading]="viewerLoading()"
+                [saving]="noteSaving()"
+                [autoFocus]="focusNoteEditor()"
+                [readOnly]="!canWriteDoc()"
+                (saveNote)="saveNote($event)"
+                (focused)="focusNoteEditor.set(false)"
+              />
+            }
+            @default {
+              <lib-document-viewer
+                [blobUrl]="blobUrl()"
+                [rawBlobUrl]="rawBlobUrl()"
+                [blobType]="mainBlobType()"
+                [mimeType]="mimeType()"
+                [fileName]="fileName()"
+                [fileSize]="fileSize()"
+                [loading]="viewerLoading()"
+                [noteContent]="noteContent()"
+                [noteHtml]="noteHtml()"
+                [videoSources]="videoSources()"
+                [storyboard]="storyboard()"
+                [posterUrl]="posterUrl()"
+                [hasPdfRendition]="hasPdfRendition()"
+                [previewUrl]="previewUrl()"
+                [pictureInfo]="pictureInfo()"
+                [pictureViews]="pictureViews()"
+                [exifData]="exifData()"
+                [iptcData]="iptcData()"
+                [videoInfo]="videoInfo()"
+                [arenderUrl]="arenderUrl()"
+                [arenderReloadId]="arenderReloadId()"
+                [viewerDocUid]="doc()?.uid ?? ''"
+                [annotationsTab]="false"
+                [showMainFileControls]="!!fileName() && canWriteDoc() && !isTrashed()"
+                [mainFileActionInProgress]="actionInProgress()"
+                (downloadClicked)="download()"
+                (previewClicked)="previewMainBlob()"
+                (openWithDriveClicked)="openDriveDialog()"
+                (formatDownload)="downloadPictureFormat($event)"
+                (replaceMainFileClicked)="openReplaceMainFileDialog()"
+                (removeMainFileClicked)="openRemoveMainFileDialog()"
+              />
+            }
           }
         </ng-template>
 

@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { DOCUMENT_RULE_EVALUATORS } from './document-rules';
+import { SURFACE_RULE_EVALUATORS } from './surface-rules';
 import {
   EMPTY_EXTENSION_RULE_CONTEXT,
   ExtensionRuleRegistry,
@@ -45,6 +46,7 @@ describe('document type rules', () => {
     TestBed.configureTestingModule({});
     registry = TestBed.inject(ExtensionRuleRegistry);
     registry.registerRules(DOCUMENT_RULE_EVALUATORS);
+    registry.registerRules(SURFACE_RULE_EVALUATORS);
   });
 
   describe('app.rules.isType', () => {
@@ -95,6 +97,39 @@ describe('document type rules', () => {
       expect(registry.evaluate('app.rules.hasFacet', folder)).toBe(false);
       expect(registry.evaluate(hasFacet(true, ['Folderish']), folder)).toBe(false);
       expect(registry.evaluate(notAList('app.rules.hasFacet', 'Folderish'), folder)).toBe(false);
+    });
+  });
+
+  describe('app.rules.isNote', () => {
+    const withFlags = (document: NuxeoDocument | null, flags: Record<string, boolean>) => ({
+      ...on(document),
+      flags,
+    });
+
+    it.each<[string, NuxeoDocument | null]>([
+      ['a Note', doc('Note')],
+      ['a File', doc('File')],
+      ['a type named like it in another case', doc('note')],
+      ['a subtype-looking name', doc('NoteTemplate')],
+      ['no document', null],
+    ])('answers as isType(["Note"]) for %s', (_label, document) => {
+      expect(registry.evaluate('app.rules.isNote', on(document))).toBe(
+        registry.evaluate(isType('Note'), on(document)),
+      );
+    });
+
+    it('is true for a Note and false otherwise', () => {
+      expect(registry.evaluate('app.rules.isNote', on(doc('Note')))).toBe(true);
+      expect(registry.evaluate('app.rules.isNote', on(doc('File')))).toBe(false);
+      expect(registry.evaluate('app.rules.isNote', on(null))).toBe(false);
+    });
+
+    // The rule used to read `flags.note`; a stale or forged flag must not decide it now.
+    it('reads the document, not a note flag', () => {
+      expect(registry.evaluate('app.rules.isNote', withFlags(doc('File'), { note: true }))).toBe(
+        false,
+      );
+      expect(registry.evaluate('app.rules.isNote', withFlags(doc('Note'), {}))).toBe(true);
     });
   });
 
