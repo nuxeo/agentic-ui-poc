@@ -61,15 +61,15 @@ Configuration has two parts:
 
 Since NXSAT-312 you ship both in **your own Marketplace package that depends on ours**. It
 contributes configuration fragments, and the server serves them after our defaults, in dependency
-order. Nothing is edited on the server and nothing is stored in the repository. The application
-reads both at startup, before sign-in, so they are the same for every user and must hold nothing
-secret. Users see a change the next time they open the application. An edited `bootstrap.json`
-beside the bundle and the old manifest Note are not read, and nothing converts them. A generator
-scaffolds such a package:
-[the guide for extenders](../../libs/platform/AGENTS.md#2-start-with-a-generator) gives the three
-commands, and `config-packages/presales-demo` in this repository is a finished example. Until the
-developer package is published, run the generator from a clone of this repository; what it writes
-is plain JSON, XML and a build script with no dependencies, so it can live in your own repository.
+order. Nothing is edited on the server and nothing is stored in the Nuxeo content repository. The
+application reads both at startup, before sign-in, so they are the same for every user and must hold
+nothing secret. Users see a change the next time they open the application. An edited
+`bootstrap.json` beside the bundle and the old manifest Note are not read, and nothing converts
+them. A generator scaffolds such a package: [the guide for
+extenders](../../libs/platform/AGENTS.md#2-start-with-a-generator) gives the three commands, and
+`config-packages/presales-demo` in this repository is a finished example. Until the developer
+package is published, run the generator from a clone of this repository; what it writes is plain
+JSON, XML and a build script with no dependencies, so it can live in your own repository.
 
 ## What you can change without code
 
