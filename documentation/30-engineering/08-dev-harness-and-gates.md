@@ -11,7 +11,7 @@ audience: engineering
 
 > **Last reviewed:** 2026-10-08 · **Repository:** `d8079db` plus the `dependency-tree` pair
 > (gates 4 and 5) that NXSAT-308 adds — 26 gates. That review covered the gate inventory (§2 and
-> §7); figures elsewhere on the page carry the dates they were measured on and were not re-measured
+> §7); figures elsewhere on the page carry the dates they were measured on and were not re-measured.
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).
 

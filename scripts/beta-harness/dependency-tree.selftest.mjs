@@ -87,10 +87,13 @@ const cleanFiles = () => ({
   // and still exits 0.
   [`${NM}/is-even/package.json`]: { name: 'is-even', version: '0.9.0' },
   [`${NM}/is-odd/package.json`]: { name: 'is-odd', version: '3.0.1' },
+  // A mapping is a line that starts with the key. A comment naming it, and a value merely
+  // containing it, are not mappings.
   '.npmrc':
     '@hylandsoftware:registry=https://npm.pkg.github.com\n' +
     `# @alfresco:registry=https://npm.pkg.github.com\n` +
-    `; @alfresco:registry=https://npm.pkg.github.com\n`,
+    `; @alfresco:registry=https://npm.pkg.github.com\n` +
+    `init-license=moved off @alfresco:registry=https://npm.pkg.github.com\n`,
   'libs/ui/package.json': {
     name: '@fixture/ui',
     version: '0.0.0',
@@ -351,7 +354,7 @@ control(
 control(
   '.npmrc: an @alfresco registry mapping is reported',
   'fail',
-  '[npmrc] .npmrc:4 @alfresco:registry=https://npm.pkg.github.com',
+  '[npmrc] .npmrc:5 @alfresco:registry=https://npm.pkg.github.com',
   fixture('npmrc-mapping', {
     '.npmrc': `${cleanFiles()['.npmrc']}@alfresco:registry=https://npm.pkg.github.com\n`,
   }),
@@ -524,6 +527,24 @@ control(
 {
   const dir = fixture('gap-dangling-link');
   symlinkSync('./does-not-exist.ts', join(dir, 'apps', 'web', 'src', 'gone.ts'));
+  {
+    // The scan root itself: `existsSync` follows the link and says "no libs/", which reads as an
+    // empty tree.
+    const dir = fixture('gap-dangling-scan-root', {
+      'libs/ui/package.json': undefined,
+      'libs/ui/src/index.ts': undefined,
+      'libs/ui/src/history.ts': undefined,
+      'libs/ui/src/theme.scss': undefined,
+    });
+    rmSync(join(dir, 'libs'), { recursive: true, force: true });
+    symlinkSync('./moved-away', join(dir, 'libs'));
+    control(
+      'a scan root that is a dangling link is a gap, not an absent directory',
+      'gap',
+      ['CANNOT INSPECT', 'libs: cannot resolve link'],
+      dir,
+    );
+  }
   control(
     'a link that cannot be resolved is a gap, not a skipped file',
     'gap',
@@ -584,7 +605,7 @@ control(
     /dependency-tree: REPORT-ONLY — \d+ finding\(s\) across 5 of the 5 packages/,
     `[lockfile] ${CORE}@9.0.0 at ${NM}/${CORE}`,
     `[manifest] libs/platform/package.json peerDependencies.${EXT} = ^9.0.0`,
-    '[npmrc] .npmrc:4 @alfresco:registry=',
+    '[npmrc] .npmrc:5 @alfresco:registry=',
     '[import] libs/ui — 1 file(s), 1 non-spec',
   ],
   fixture('report-only-findings', {

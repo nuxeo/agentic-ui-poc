@@ -67,7 +67,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 
@@ -630,7 +630,18 @@ function walkFiles(dir, keep) {
       }
     }
   };
-  if (existsSync(join(root, dir))) visit(dir);
+  // `existsSync` follows links, so a dangling `libs` link reads as "no libs/" and would be skipped.
+  let top;
+  try {
+    top = lstatSync(join(root, dir));
+  } catch {
+    return out;
+  }
+  if (top.isSymbolicLink() && !existsSync(join(root, dir))) {
+    gaps.push(`${dir}: cannot resolve link — its target does not exist`);
+    return out;
+  }
+  visit(dir);
   return out.sort();
 }
 
