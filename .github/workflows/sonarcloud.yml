@@ -1,10 +1,12 @@
 name: SonarCloud Analysis
 
 on:
+  # PRs into an `integration/<ticket>` branch get the same analysis as PRs into `main`, and the
+  # push trigger gives the integration branch its own analysis for them to be compared against.
   pull_request:
-    branches: [main]
+    branches: [main, 'integration/**']
   push:
-    branches: [main, 'feature/**', 'fix/**']
+    branches: [main, 'feature/**', 'fix/**', 'integration/**']
   workflow_dispatch:
 
 concurrency:
