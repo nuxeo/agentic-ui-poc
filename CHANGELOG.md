@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+`@nuxeo-satori/platform` is versioned `0.2.0` from here (`libs/platform/package.json`, previously
+`0.1.0`). This section holds breaking changes made since `0.1.0`, and `^0.1.0` admits only `0.1.x`,
+so the next publish has to be a minor. Nothing has been published yet.
+
+### Removed (`@nuxeo-satori/platform`) — a peer dependency
+
+- **`@alfresco/adf-extensions` is no longer a peer dependency.** The extension engine used three of
+  its functions — `filterEnabled`, `sortByOrder` and `mergeObjects` — and now has its own, pinned
+  case by case to the output 9.0.0 produced (`extension-element.spec.ts` and
+  `extension-merge.spec.ts` in `libs/shared/extensions`). No export changes. A consumer no longer
+  has to install the package, and can remove it unless its own code imports it.
+
+### Fixed (`@nuxeo-satori/platform/extensions`)
+
+- Two extension layers that set the same key to `null` and to an object, in either order, no
+  longer break every slot. The `$references` merge (`mergeExtensionConfigs`) threw `TypeError`
+  there — so `"rule": null` after a nested rule, or any `order` after `"order": null`, made every
+  slot's `resolve()` rethrow — and now the later layer's value is used.
+- A `__proto__` key in an extension layer — a slot id, an override id, or any key the merge
+  reaches — is ignored instead of replacing an object's prototype, and an entry whose `id` is
+  `__proto__` or names an `Object.prototype` member (`constructor`, `toString`) merges by id like
+  any other.
+
 ### Changed — BREAKING (`@nuxeo-satori/platform/nuxeo-client`)
 
 Four exported functions gained a **required** `locale: string` parameter. Each previously
