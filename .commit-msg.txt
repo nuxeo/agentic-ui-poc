@@ -1,3 +1,0 @@
-fix(NXENG-812): lock viewer info-label contrast regression
-
-Picture metadata labels on the fixed light strip used #777 (4.48:1, IBM 716638997). Pin the scoped host token in unit tests across palettes so the failure cannot return.
