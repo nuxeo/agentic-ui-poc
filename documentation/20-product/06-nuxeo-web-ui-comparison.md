@@ -14,7 +14,8 @@ audience: product
 ## A caveat that governs this whole page
 
 **This repository contains Satori, not the Web UI.** Every claim about Satori below is
-traceable to code at `77265f9`. Claims about the Web UI come from
+traceable to code at `77265f9`, except a claim that names a later ticket (such as NXSAT-312 or
+NXSAT-317), which was checked against the code that ticket merged. Claims about the Web UI come from
 [RFC §2](https://hyland.atlassian.net/wiki/spaces/~71202090f2a61ef96d4f57a5104efe296c1f5b/pages/4256993484)
 and from the team's own six weeks of Web UI maintenance recorded in Confluence — they are
 **second-hand here** and are marked where they are load-bearing.
@@ -48,7 +49,7 @@ and that is worth saying to a prospect rather than hiding.
 | **Target user**                         | Any Nuxeo user                                       | Enterprise customers needing a branded, extended UI                                                                                                                                                                                                                                             | RFC §2                                                              |
 | **Feature breadth**                     | Broader — the mature product                         | Narrower by design: browse, tree, search, document detail, metadata, permissions, versions, upload, CRUD. **Workflow out of Beta scope**                                                                                                                                                        | Verified                                                            |
 | **Customisation model**                 | Studio-driven + source modification                  | **Four layers**: config → manifest → customer library → agent harness                                                                                                                                                                                                                           | Verified                                                            |
-| **Customisation without a rebuild**     | Limited                                              | **Layers 0 and 1 need no build at all**                                                                                                                                                                                                                                                         | Verified (`phase-1-config` 39 checks, `phase-2-registry` 46 checks) |
+| **Customisation without a rebuild**     | Limited                                              | **Layers 0 and 1 need no rebuild of the application**: the configuration package is zipped by a dependency-free script, installed, and applied when Nuxeo restarts (NXSAT-312)                                                                                                                  | Verified (`phase-1-config` 39 checks, `phase-2-registry` 46 checks) |
 | **Does customisation survive upgrade?** | A known pain point                                   | **Yes, rehearsed** — customisation ships in the customer's own Marketplace package, and upgrading ours reinstalls it with byte-identical configuration (NXSAT-312); nothing is edited on the server. `beta:upgrade` separately rehearses the npm package upgrade, not the marketplace installer | Satori: verified. Web UI: **Not verified**                          |
 | **Support boundary**                    | Blurs once source is modified                        | Customer code lives in **their** repo against a versioned API                                                                                                                                                                                                                                   | Verified in design; **no customer has exercised it**                |
 | **Extensibility surface**               | —                                                    | **52 registered IDs**, drift-gated in both directions                                                                                                                                                                                                                                           | Verified                                                            |
@@ -70,9 +71,10 @@ The honest answer differs by case.
 A customer who wants a **branded, customised content experience** and is currently either
 fighting Polymer or considering a headless rebuild. For them:
 
-- Rebranding is a JSON + CSS-variable change with no build (Layer 0).
-- Adding, hiding, relabelling or reordering navigation and actions is a manifest edit with no
-  build (Layer 1).
+- Rebranding is a JSON + CSS-variable change in their configuration package, with no rebuild of
+  the application (Layer 0).
+- Adding, hiding, relabelling or reordering navigation and actions is a manifest edit in the same
+  package (Layer 1).
 - A genuinely new component is their own library against a versioned API — **their repo,
   their build, their support boundary** — instead of a fork of ours.
 - Their customisation survives our upgrades, and that promise is tested by a gate rather

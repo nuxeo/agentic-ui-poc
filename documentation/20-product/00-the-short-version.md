@@ -54,7 +54,7 @@ On this page, layers 0 and 1 are "configuration" and layers 2 and 3 are "code".
 
 ## Where configuration lives today
 
-In two places:
+Configuration has two parts:
 
 1. **The settings** (bootstrap): the name, colours and default language.
 2. **The manifest**, which holds the wording and the whole arrangement.
