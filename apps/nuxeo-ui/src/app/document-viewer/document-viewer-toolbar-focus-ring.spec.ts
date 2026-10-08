@@ -1,6 +1,6 @@
 /**
- * NXENG-799 — Toggle fit and sibling toolbar icon buttons must show a keyboard focus
- * indicator on the image toolbar strip (IBM `style_focus_visible`, WCAG 2.4.7 / 1.4.11).
+ * NXENG-799 / NXENG-817 — Image toolbar icon buttons (Toggle fit, Rotate left, …) must show a
+ * keyboard focus indicator (IBM `style_focus_visible` / issue 922184956, WCAG 2.4.7 / 1.4.11).
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -129,13 +129,31 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799)', () => {
     }
   });
 
-  function toggleFitButton(): HTMLButtonElement {
+  function toolbarButton(ariaLabel: string): HTMLButtonElement {
     const button = fixture.nativeElement.querySelector(
-      '.viewer-toolbar button[aria-label="Toggle fit"]',
+      `.viewer-toolbar button[aria-label="${ariaLabel}"]`,
     ) as HTMLButtonElement | null;
-    expect(button).withContext('expected Toggle fit toolbar button').not.toBeNull();
+    expect(button).withContext(`expected ${ariaLabel} toolbar button`).not.toBeNull();
     return button!;
   }
+
+  function toggleFitButton(): HTMLButtonElement {
+    return toolbarButton('Toggle fit');
+  }
+
+  function rotateLeftButton(): HTMLButtonElement {
+    return toolbarButton('Rotate left');
+  }
+
+  it('focuses Rotate left with IBM-readable outline (NXENG-817 / IBM 922184956)', () => {
+    const button = rotateLeftButton();
+    expect(button.getAttribute('aria-label')).toBe('Rotate left');
+    const toolbar = fixture.nativeElement.querySelector('.viewer-toolbar') as HTMLElement | null;
+    expect(toolbar).withContext('expected .viewer-toolbar').not.toBeNull();
+    if (!toolbar) return;
+
+    assertFocusRingContrast(button, toolbar, 'Rotate left (NXENG-817)');
+  });
 
   it('wires the focus ring through --document-viewer-focus-on-light-surface on the viewer host', () => {
     const button = toggleFitButton();

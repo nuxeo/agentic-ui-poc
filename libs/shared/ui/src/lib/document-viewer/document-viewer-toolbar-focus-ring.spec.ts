@@ -1,6 +1,6 @@
 /**
- * NXENG-799 — image toolbar icon buttons must show a keyboard focus indicator (IBM
- * `style_focus_visible`, WCAG 2.4.7). Material suppresses the default ring.
+ * NXENG-799 / NXENG-817 — image toolbar icon buttons must show a keyboard focus indicator (IBM
+ * `style_focus_visible` / 922184956, WCAG 2.4.7). Material suppresses the default ring.
  *
  * Computed focus visibility and per-theme contrast:
  * `apps/nuxeo-ui/.../document-viewer-toolbar-focus-ring.spec.ts`.
