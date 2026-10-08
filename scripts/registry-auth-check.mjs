@@ -15,8 +15,10 @@
  * ## What this does
  *
  * 1. A negative control: one GitHub Packages dependency, installed with a token that is not a
- *    token, must be refused with an auth error and be classified as one. Run first and every time,
- *    so the classifier below is seen failing against the real registry rather than trusted.
+ *    token, must be refused with an auth error and be classified as one. Run before the cold
+ *    install on every run that gets that far — a missing token or a lock with no GitHub Packages
+ *    entries fails before either — so the classifier is seen failing against the real registry
+ *    rather than trusted.
  * 2. `npm ci` of the real lock in a scratch directory, with an empty cache, `--prefer-online`, and
  *    the user and global npm config replaced by empty files — a developer's `~/.npmrc` commonly
  *    carries a GitHub Packages token of its own, and would otherwise make a local run green on

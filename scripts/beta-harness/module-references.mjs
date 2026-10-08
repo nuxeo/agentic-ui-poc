@@ -41,8 +41,9 @@ export function codeSpecifiers(text) {
  *
  * A scanner rather than a regex, because neither construct can be found without knowing whether
  * you are inside the other: the `//` in `$marker: "//"` is not a comment, and the `;` and
- * `@import` in `content: "; @import 'x'"` are not a statement. An unquoted `url(...)` is copied
- * verbatim to its `)`, so the `//` in `url(//cdn/x)` or `url(http://cdn/x)` is not a comment.
+ * `@import` in `content: "; @import 'x'"` are not a statement. An unquoted `url(...)` is masked
+ * like a string up to its `)`, so neither the `//` in `url(http://cdn/x)` nor the `;` in
+ * `url(data:text/css;base64,…)` is read as syntax.
  * @param {string} text
  */
 function maskStylesheet(text) {
@@ -65,8 +66,8 @@ function maskStylesheet(text) {
     }
     if (!inUrl && /url\(\s*$/i.test(out) && !/["'\s]/.test(c)) inUrl = true;
     if (inUrl) {
-      out += c;
       if (c === ')') inUrl = false;
+      out += c === ')' || c === '\n' ? c : '_';
       continue;
     }
     if (c === '"' || c === "'") {
@@ -216,6 +217,12 @@ const CONTROLS = [
     'second target after an absolute url()',
     'style',
     `@import url(http://cdn.example/x.css), '${DEP}/y';\n`,
+    true,
+  ],
+  [
+    'second target after a data: url()',
+    'style',
+    `@import url(data:text/css;base64,abc), '${DEP}/y';\n`,
     true,
   ],
   ['build asset path', 'build', `{ "input": "node_modules/${DEP}/assets" }`, true],
