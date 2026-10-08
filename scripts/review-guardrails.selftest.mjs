@@ -1351,6 +1351,31 @@ expectRed(
   /login\.html:1 references a file the app ships/,
 );
 
+expectRed(
+  'a srcset candidate right after a descriptor and a comma',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.html',
+      '<img srcset="images/art.svg 1x,/images/art.svg 2x" alt="" />\n',
+    ),
+  /login\.html:1 references a file the app ships/,
+);
+
+// CSS function names are case-insensitive.
+expectRed(
+  'an upper-case URL() from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.css',
+      '.hero {\n  background: URL(/images/art.svg);\n}\n',
+    ),
+  /login\.css:2 references a file the app ships/,
+);
+
 // `url(` and its path on different lines; the path's own line is reported.
 expectRed(
   'a multi-line stylesheet url() from the server root',
@@ -1399,6 +1424,24 @@ expectGreen(
       '.a {\n  background: url(//cdn.example/x.png), url("https://cdn.example/y.png");\n}\n' +
       "/* url(/images/art.svg) */\n.b {\n  content: '//'; // url(/images/art.svg)\n}\n",
     'apps/nuxeo-ui/src/styles.css': '.c {\n  background: url(//cdn.example/x.png);\n}\n',
+  },
+);
+
+// A query string carries a path to another host; its `=` and `,` do not open a value.
+falsePositiveControls += 1;
+expectGreen(
+  'a shipped-looking path inside a URL query string',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.a {\n  background: url("https://cdn.example/render?path=/images/art.svg");\n}\n' +
+      '.b {\n  background: url(https://cdn.example/render?a=1,/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.html':
+      '<img src="https://cdn.example/render?path=/images/art.svg" alt="" />\n' +
+      '<img src=https://cdn.example/render?path=/images/art.svg alt="" />\n',
+    'libs/shared/x/src/lib/x.ts':
+      "export const u = 'https://cdn.example/render?path=/images/art.svg&b=1,/images/art.svg';\n",
   },
 );
 

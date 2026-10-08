@@ -5336,7 +5336,11 @@ function checkNoRootAbsoluteShippedAssetPaths() {
   const escape = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   /**
    * Leading form, for a `.ts` string literal; embedded form, for markup and CSS. A value opens
-   * after a quote, `(`, an unquoted attribute's `=`, or a `srcset` candidate's `,`.
+   * after a quote, `url(`, an unquoted attribute's `=`, or a later `srcset` candidate's `,`.
+   *
+   * The `=` and `,` of a query string (`…/render?path=/images/x.svg`) open nothing: an attribute
+   * name follows whitespace, and a candidate's comma sits next to whitespace or a `1x`/`100w`
+   * descriptor. A URL contains neither whitespace nor a descriptor.
    */
   const patternsFor = (names) => {
     const dirs = [...names].filter(([, dir]) => dir).map(([name]) => escape(name));
@@ -5347,7 +5351,10 @@ function checkNoRootAbsoluteShippedAssetPaths() {
     ].join('|');
     return {
       leading: new RegExp(`^/(?:${alternatives})`),
-      embedded: new RegExp(`["'\`(=,]\\s*/(?:${alternatives})`, 'g'),
+      embedded: new RegExp(
+        `(?:["'\`]|[uU][rR][lL]\\(|(?<=\\s[^\\s=<>"'\`/]+\\s*)=|\\s,|,\\s|\\d[wx],)\\s*/(?:${alternatives})`,
+        'g',
+      ),
     };
   };
   /**
