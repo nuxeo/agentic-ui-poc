@@ -206,8 +206,9 @@ and an empty panel.
 
 The wrapping rule — _adf-hx types never appear in our public API_ — is **enforced, not just
 documented**: `scripts/review-guardrails.mjs` fails the build if an `@alfresco/adf-hx-`* import is
-reachable from a library's public barrel. `@alfresco/adf-extensions` is a deliberate exception and
-is a declared peer dependency, so customers do install that one.
+reachable from a library's public barrel. `@alfresco/adf-extensions` was the deliberate exception,
+as a declared peer, until NXSAT-308 gave the platform its own copies of the three functions it used,
+so customers install no `@alfresco` package at all.
 
 ---
 
@@ -259,12 +260,12 @@ The interesting engineering detail, and it is worth reading aloud from
 
 |                           |                                                                                                                                                                                                              |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Customer depends on       | `@nuxeo-satori/platform` + peers: Angular 20.3, Material/CDK 20.2, `@alfresco/adf-extensions ^9`, `@hylandsoftware/satori-ui ^0.2`, `rxjs ^7.8`                                                              |
+| Customer depends on       | `@nuxeo-satori/platform` + peers: Angular 20.3, Material/CDK 20.2, `@hylandsoftware/satori-ui ^0.2`, `@ngx-translate/core ^17`, `rxjs ^7.8`                                                                  |
 | Customer **cannot** reach | `libs/shared/adf-hx-bridge` is **internal** — not published, no build target, absent from the package. All twelve API ports, the Nuxeo↔Hx mappers and all thirteen of our `hxp-`* components are unreachable |
 
 **The line for leadership:** adf-hx is an implementation detail of the product, not part of the
 customer contract. Customers get the Layer 0/1/2 extensibility surface and are insulated from
-adf-hx entirely — except `@alfresco/adf-extensions`, which they install as a peer.
+adf-hx entirely.
 
 ---
 
