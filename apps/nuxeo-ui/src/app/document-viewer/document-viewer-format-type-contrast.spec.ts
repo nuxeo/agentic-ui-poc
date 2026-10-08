@@ -1,7 +1,8 @@
 /**
- * NXENG-768 / NXENG-760 — strip text on themed `.picture-cards` must consume mat-sys tokens and meet
- * WCAG 2.1 SC 1.4.3 under every compiled palette and when CSS fallbacks apply (unset/invalid tokens).
- * Karma loads `apps/nuxeo-ui/src/styles.scss`, so `data-app-theme` resolves real token pairs.
+ * NXENG-768 / NXENG-760 / NXENG-806 — strip text on themed `.picture-cards` (including `.format-size`)
+ * must consume mat-sys tokens and meet WCAG 2.1 SC 1.4.3 under every compiled palette and when CSS
+ * fallbacks apply (unset/invalid tokens). Karma loads `apps/nuxeo-ui/src/styles.scss`, so
+ * `data-app-theme` resolves real token pairs.
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
