@@ -118,9 +118,9 @@ npx nx run satori-components:build-storybook:satori # the same under Satori's th
 
 The default build needs **no GitHub Packages token**: it themes with plain `mat.theme`
 (`.storybook/material-theme.scss`), and `checkSatoriComponentsDependencies` covers `.storybook/*.ts`
-and the default configuration's `styles` as well as `src/`. CI builds it with `@hylandsoftware` and
-`@alfresco` removed from `node_modules`, so an accidental Satori import fails the build rather than
-compiling. Only the opt-in `:satori` configuration reaches `@hylandsoftware/satori-ui`, for its theme.
+and the default configuration's `styles` as well as `src/`. Whenever the library is affected, CI
+builds it with `@hylandsoftware` and `@alfresco` removed from `node_modules`, so an accidental
+Satori import fails the build rather than compiling. Only the opt-in `:satori` configuration reaches `@hylandsoftware/satori-ui`, for its theme.
 `typecheck` type-checks the stories too. Where the static build is hosted is not decided.
 
 **Coverage: a hard 90% line floor** (`FLOORS` in `scripts/beta-harness/coverage-gate.mjs`), from
