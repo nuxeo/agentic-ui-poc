@@ -26,15 +26,14 @@
  * ## Staying compatible, without importing the design system
  *
  * The union must remain exactly upstream's `SatAvatarCategory`, because the values are
- * handed straight to `<sat-avatar [category]>`. That equality is asserted in **both**
- * directions in `avatar-colors.spec.ts`, which `beta:gate`'s `spec-typecheck` compiles, so
- * adding or removing a colour on either side is a type error.
+ * handed straight to `<sat-avatar [category]>`. The two-way assertion that holds it there is
+ * in `apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts`, which imports both types
+ * and is compiled by every build, CI's included.
  *
- * The assertion lives in the spec and not here because nothing in this library may import
- * a design-system package, not even a type: `libs/shared/satori-components` imports
- * `@nuxeo-satori/platform/nuxeo-client`, and its guardrail follows imports transitively
- * and rejects any `@hylandsoftware/*` it reaches. The spec is outside the barrel's import
- * graph and outside the library build.
+ * It is not here because this library's shipped sources may not import a design-system
+ * package, not even a type: `libs/shared/satori-components` imports
+ * `@nuxeo-satori/platform/nuxeo-client`, and its guardrail follows imports from the barrel
+ * transitively and rejects any `@hylandsoftware/*` it reaches.
  */
 export type AvatarColor =
   'purple' | 'blue' | 'pink' | 'teal' | 'yellow' | 'green' | 'red' | 'orange';
