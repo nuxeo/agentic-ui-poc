@@ -1351,18 +1351,6 @@ expectRed(
   /login\.html:1 references a file the app ships/,
 );
 
-expectRed(
-  'a srcset candidate right after a descriptor and a comma',
-  'checkNoRootAbsoluteShippedAssetPaths',
-  ASSETS_APP(),
-  (write) =>
-    write(
-      'apps/nuxeo-ui/src/app/login/login.html',
-      '<img srcset="images/art.svg 1x,/images/art.svg 2x" alt="" />\n',
-    ),
-  /login\.html:1 references a file the app ships/,
-);
-
 // CSS function names are case-insensitive.
 expectRed(
   'an upper-case URL() from the server root',
@@ -1443,6 +1431,43 @@ expectGreen(
     'libs/shared/x/src/lib/x.ts':
       "export const u = 'https://cdn.example/render?path=/images/art.svg&b=1,/images/art.svg';\n",
   },
+);
+
+// `1x,` and `100w,` are ordinary query text too; only a comma next to whitespace starts a
+// candidate, and a URL holds no whitespace.
+falsePositiveControls += 1;
+expectGreen(
+  'a descriptor-like comma inside a URL query string',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.a {\n  background: url(https://cdn.example/render?size=1x,/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.html':
+      '<img src="https://cdn.example/render?variant=100w,/images/art.svg" alt="" />\n',
+    'libs/shared/x/src/lib/x.ts':
+      "export const u = 'https://cdn.example/render?size=1x,/images/art.svg';\n",
+  },
+);
+
+// An Angular binding that concatenates a path onto a base: the quoted tail is a suffix.
+falsePositiveControls += 1;
+expectGreen(
+  'a path concatenated onto a base in a template binding',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.html': `<img [src]="assetBase + '/images/art.svg'" alt="" />\n`,
+  },
+);
+
+expectRed(
+  'a bound string literal from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write('apps/nuxeo-ui/src/app/login/login.html', `<img [src]="'/images/art.svg'" alt="" />\n`),
+  /login\.html:1 references a file the app ships/,
 );
 
 // A literal that only ends a URL is placed by what precedes it, so it is not root-absolute.

@@ -5339,8 +5339,10 @@ function checkNoRootAbsoluteShippedAssetPaths() {
    * after a quote, `url(`, an unquoted attribute's `=`, or a later `srcset` candidate's `,`.
    *
    * The `=` and `,` of a query string (`…/render?path=/images/x.svg`) open nothing: an attribute
-   * name follows whitespace, and a candidate's comma sits next to whitespace or a `1x`/`100w`
-   * descriptor. A URL contains neither whitespace nor a descriptor.
+   * name follows whitespace, and only a comma next to whitespace starts a candidate. A URL holds
+   * no whitespace. So a candidate written `1x,/images/x.svg`, with no space, is not caught. A
+   * quote after `+` is the tail of a concatenation (`[src]="base + '/images/x.svg'"`), placed by
+   * whatever precedes it, as `isSuffix` decides for `.ts`.
    */
   const patternsFor = (names) => {
     const dirs = [...names].filter(([, dir]) => dir).map(([name]) => escape(name));
@@ -5352,7 +5354,7 @@ function checkNoRootAbsoluteShippedAssetPaths() {
     return {
       leading: new RegExp(`^/(?:${alternatives})`),
       embedded: new RegExp(
-        `(?:["'\`]|[uU][rR][lL]\\(|(?<=\\s[^\\s=<>"'\`/]+\\s*)=|\\s,|,\\s|\\d[wx],)\\s*/(?:${alternatives})`,
+        `(?:(?<!\\+\\s*)["'\`]|[uU][rR][lL]\\(|(?<=\\s[^\\s=<>"'\`/]+\\s*)=|\\s,|,\\s)\\s*/(?:${alternatives})`,
         'g',
       ),
     };
