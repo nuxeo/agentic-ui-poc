@@ -480,7 +480,9 @@ function npmRunScript(words) {
     if (!token.startsWith('-')) return /^[a-z0-9:._-]+/i.exec(token)?.[0] ?? null;
     const name = token.split('=')[0];
     if (NPM_MANIFEST_OPTIONS.has(name)) return null;
-    if (token.includes('=') || NPM_FLAG_OPTIONS.has(token)) continue;
+    if (NPM_FLAG_OPTIONS.has(token)) continue;
+    if (token.includes('=') && (NPM_FLAG_OPTIONS.has(name) || NPM_VALUE_OPTIONS.has(name)))
+      continue;
     if (NPM_VALUE_OPTIONS.has(token)) {
       i += 1;
       continue;
@@ -503,6 +505,8 @@ for (const [words, want] of [
   ['--registry https://registry.example/ test', 'test'],
   ['--cache /tmp/npm-cache test', 'test'],
   ['--some-future-option value test', null],
+  ['--some-future-option=value test', null],
+  ['--json=false test', 'test'],
   ['beta:api -- --update', 'beta:api'],
   ['--silent', null],
 ]) {
