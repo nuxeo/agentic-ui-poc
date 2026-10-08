@@ -1,7 +1,8 @@
 /**
  * NXENG-808 / IBM 673904446 — document-detail header toolbar `mat-icon-button` keyboard focus
  * indicator (WCAG 2.1 SC 2.4.7 / 1.4.11). Material icon buttons suppress the default ring and
- * there is no global `:focus-visible` fallback in `styles.scss`.
+ * Karma loads `apps/nuxeo-ui/src/styles.scss` (see `angular.json`), which `@import`s
+ * `document-detail-header-toolbar-focus.scss` — the same path production uses.
  *
  * Same IBM `style_focus_visible` constraints as NXENG-789 / NXENG-773: standalone `:focus`
  * selector on the focused control. Contrast is measured against the rendered `.detail-header`
@@ -53,7 +54,6 @@ function productionDetailHeaderBackground(host: HTMLElement): string {
   imports: [MatButtonModule, MatIconModule],
   styleUrls: [
     '../../../../../libs/features/document-detail/src/lib/document-detail/document-detail.scss',
-    './document-detail-header-toolbar-focus.scss',
     './toolbar-icon-focus-ring.fixture.scss',
   ],
   templateUrl: './toolbar-icon-focus-ring.spec.html',
