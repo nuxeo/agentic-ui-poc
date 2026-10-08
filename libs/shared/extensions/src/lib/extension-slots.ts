@@ -74,6 +74,6 @@ export interface ExtensionElement {
   readonly id: string;
   /** Dropped from the resolved list when true. */
   readonly disabled?: boolean;
-  /** Ascending. Absent sorts as `Number.MAX_SAFE_INTEGER`, after any ordinary number, stably. */
+  /** Ascending. Absent sorts last, stably. */
   readonly order?: number;
 }

@@ -1,12 +1,14 @@
-import { mergeObjects } from './extension-merge';
+import { mergeObjects } from '@alfresco/adf-extensions';
+
 import type { ExtensionElement, ExtensionSlotId } from './extension-slots';
 import type { ExtensionOverride } from './extension-slot-registry.service';
 
 /**
  * The Layer 1 half of the runtime manifest, as a customer writes it.
  *
- * `$`-prefixed keys are **metadata and do not merge** — that is ACA's rule, and
- * `mergeObjects` reproduces it exactly (see `extension-merge.ts`). So `$references`
+ * `$`-prefixed keys are **metadata and do not merge** — that is upstream's rule
+ * and we inherit it verbatim by merging through `mergeObjects` from
+ * `@alfresco/adf-extensions` rather than reimplementing it. So `$references`
  * itself never leaks from a referenced layer into the merged result, and a layer
  * can carry `$name`/`$version` for diagnostics without polluting configuration.
  */
@@ -45,15 +47,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Merge configuration layers left to right, later winning.
  *
- * A thin wrapper over `mergeObjects`, which reproduces ACA's merge and is pinned to it case by
- * case in `extension-merge.spec.ts`:
+ * A thin wrapper over upstream `mergeObjects`, kept as a named export so the
+ * semantics are testable and documented in one place:
  *
  * - arrays of objects merge **by `id`**, so a layer patches one toolbar entry
  *   without restating the toolbar;
  * - `"<key>.$replace"` replaces rather than merges, for the cases where a
  *   customer genuinely wants to drop our list;
- * - `$`-prefixed keys are skipped at the top level, and inside any object that
- *   two layers both set.
+ * - `$`-prefixed keys are skipped entirely.
  */
 export function mergeExtensionConfigs(...layers: readonly ExtensionConfig[]): ExtensionConfig {
   const present = layers.filter((layer) => isRecord(layer));
@@ -154,8 +155,7 @@ export function readExtensionConfig(raw: unknown): ExtensionConfig {
   if (isRecord(slots)) {
     const readSlots: Record<string, ExtensionElement[]> = {};
     for (const [slotId, entries] of Object.entries(slots)) {
-      // Assigning it would replace the object's prototype, the thing `mergeObjects` refuses too.
-      if (!Array.isArray(entries) || slotId === '__proto__') continue;
+      if (!Array.isArray(entries)) continue;
       readSlots[slotId] = entries.filter(
         (entry): entry is ExtensionElement =>
           isRecord(entry) && typeof entry['id'] === 'string' && entry['id'].trim() !== '',
@@ -168,9 +168,7 @@ export function readExtensionConfig(raw: unknown): ExtensionConfig {
   if (isRecord(overrides)) {
     const readOverrides: Record<string, ExtensionOverride> = {};
     for (const [id, override] of Object.entries(overrides)) {
-      if (isRecord(override) && id !== '__proto__') {
-        readOverrides[id] = override as ExtensionOverride;
-      }
+      if (isRecord(override)) readOverrides[id] = override as ExtensionOverride;
     }
     config['overrides'] = readOverrides;
   }

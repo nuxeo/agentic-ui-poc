@@ -2,16 +2,14 @@
 title: Technology Stack
 parent: Engineering
 order: 5
-last_reviewed: 2026-10-08
-repo_commit: 5abcd50
+last_reviewed: 2026-08-24
+repo_commit: 77265f9
 audience: engineering
 ---
 
 # Technology Stack
 
-> **Last reviewed:** 2026-10-08 · **Repository:** `5abcd50` (`feature/nxsat-308-replace-adf-extensions`)
-> Only the `@alfresco/adf-extensions` row was re-verified at that commit; the rest of the page as of
-> 2026-08-24 · `77265f9`.
+> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
 > Source: `package.json`, `pom.xml`, `nx.json`, `angular.json`. Where a choice has a recorded
 > rationale, it is cited; where the rationale is not recorded, that is said.
 
@@ -28,7 +26,7 @@ audience: engineering
 | **Angular signals**                      | 20.x                                | UI state                                               | Components                                       | Convention: `signal()` for mutable UI state, **never** `BehaviorSubject`. No global store                                                                                                                |
 | **`@alfresco/adf-hx-content-services`**  | **7.20.0-automate.292** (exact pin) | Real content components + 12 overridable API ports     | `adf-hx-bridge`, browse, search                  | **The strategic dependency.** Shares component investment with Alfresco. All 12 ports are overridable injection tokens — verified in the published artifact, and the mechanism the whole plan depends on |
 | **`@alfresco/adf-core`**                 | 9.0.0                               | adf-hx's runtime dependency                            | Transitively                                     | Not chosen — arrives with adf-hx. **Eager**, costing +1.15 MB initial bundle                                                                                                                             |
-| **`@alfresco/adf-extensions`**           | 9.0.0                               | adf-core's and adf-hx's runtime dependency             | Transitively                                     | Not imported by our source since NXSAT-308: `libs/shared/extensions` owns the three helpers it used, pinned to 9.0.0's output. Its `RuleContext` was never used — it is typed on ACS objects             |
+| **`@alfresco/adf-extensions`**           | 9.0.0                               | Domain-neutral extension helpers                       | `libs/shared/extensions`                         | Only its neutral parts (`mergeObjects`, `mergeArrays`, `filterEnabled`, `sortByOrder`, `getValue`). Its `RuleContext` is **deliberately not used** — it is typed on Alfresco Content Services objects    |
 | **`@hylandsoftware/satori-ui`**          | ^0.2.0                              | Hyland design system                                   | `nuxeo-ui` only                                  | First-party design system. **Deliberately absent from the customer template** so a fork brings its own                                                                                                   |
 | **`@hylandsoftware/hxcs-js-client`**     | 2.0.111                             | HxCS contracts                                         | `adf-hx-bridge`                                  | The contracts the bridge implements. Largely `import type`                                                                                                                                               |
 | **Angular Material**                     | ~20.2                               | UI components                                          | `nuxeo-ui`, feature libs                         | adf-hx imports 48 Material sites itself, so it is unavoidable. Not in the template                                                                                                                       |

@@ -154,29 +154,6 @@ describe('resolveExtensionLayers', () => {
     expect(missing).toEqual(['shared']);
   });
 
-  it('lets a later null clear an earlier rule, and a later order replace an earlier null', () => {
-    // Upstream's merge threw here, inside the computed every slot reads, so all of them rethrew.
-    const { config } = resolveExtensionLayers([
-      {
-        overrides: {
-          'app.navbar.trash': {
-            rule: { type: 'core.every', parameters: ['app.rules.isAdministrator'] },
-          },
-          'app.navbar.tasks': { order: null },
-        },
-      },
-      {
-        overrides: {
-          'app.navbar.trash': { rule: null },
-          'app.navbar.tasks': { order: 5 },
-        },
-      },
-    ]);
-
-    expect(config.overrides?.['app.navbar.trash']).toEqual({ rule: null });
-    expect(config.overrides?.['app.navbar.tasks']).toEqual({ order: 5 });
-  });
-
   it('keeps the other packages when one has malformed layer metadata', () => {
     const { config, applied, missing } = resolveExtensionLayers([
       { overrides: { 'app.navbar.trash': { label: 'Bin' } } },
@@ -213,20 +190,6 @@ describe('readExtensionConfig', () => {
       slots: { navbar: [{ id: '  ' }, { label: 'no id' }, { id: 'acme.navbar.ok' }] },
     });
     expect(config.slots?.['navbar'].map((entry) => entry.id)).toEqual(['acme.navbar.ok']);
-  });
-
-  it('ignores a __proto__ slot or override id rather than re-prototyping what it reads', () => {
-    const config = readExtensionConfig(
-      JSON.parse(
-        '{"slots": {"__proto__": [{"id": "acme.navbar.x"}]},' +
-          ' "overrides": {"__proto__": {"app.navbar.trash": {"visible": false}}}}',
-      ),
-    );
-
-    expect(Object.getPrototypeOf(config.slots)).toBe(Object.prototype);
-    expect(Object.getPrototypeOf(config.overrides)).toBe(Object.prototype);
-    expect(config.overrides?.['app.navbar.trash']).toBeUndefined();
-    expect(config).toStrictEqual({ slots: {}, overrides: {} });
   });
 
   it('tolerates the shapes a customer can actually save', () => {

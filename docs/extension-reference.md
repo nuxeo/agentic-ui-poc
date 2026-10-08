@@ -203,12 +203,12 @@ slot the library has never heard of and showing the nine unchanged.
 
 ### Fields every descriptor honours
 
-| Field      | Meaning                                                                                                                                                                             |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`       | Required. The address. An entry without one is dropped.                                                                                                                             |
-| `order`    | Ascending. Absent sorts as `Number.MAX_SAFE_INTEGER` — after any ordinary number, tied with that value, before `Infinity`. `null` sorts as `0`. Packaged entries are spaced by ten. |
-| `disabled` | `true` removes the entry. ACA's semantics: any truthy value does, the string `"false"` too.                                                                                         |
-| `rule`     | A rule ID, or a nested rule reference — see section 4.                                                                                                                              |
+| Field      | Meaning                                                           |
+| ---------- | ----------------------------------------------------------------- |
+| `id`       | Required. The address. An entry without one is dropped.           |
+| `order`    | Ascending. Absent sorts last. Packaged entries are spaced by ten. |
+| `disabled` | `true` removes the entry. Upstream ACA semantics.                 |
+| `rule`     | A rule ID, or a nested rule reference — see section 4.            |
 
 Action descriptors (`bulk-actions`, and the other action slots when they are
 populated) honour four more:
@@ -1063,28 +1063,14 @@ not protect anything the API would otherwise return.
 
 ## 12. `$references` — layering your JSON over ours
 
-Semantics are ACA's. The merge is our own copy of `mergeObjects` from `@alfresco/adf-extensions`
-9.0.0, pinned case by case to its output, so behaviour matches the upstream documentation, apart
-from the `null` and `__proto__` items below, where ACA's merge threw or rewrote a prototype.
+Semantics are ACA's, implemented by merging through `mergeObjects` from `@alfresco/adf-extensions`
+rather than reimplemented, so behaviour matches the upstream documentation.
 
 - Layers apply in the order `$references` lists them. **Later wins.**
 - `$`-prefixed keys are **metadata and do not merge** — `$references` from a referenced layer never
-  leaks into the result. They are dropped at the top level and inside any object two layers both
-  set; inside a value only one layer sets, they are kept as written.
+  leaks into the result.
 - Arrays of objects merge **by `id`**, so a layer patches one entry without restating the list.
-  Entries with an `id` come first, in the earlier layer's order except that integer-like ids such as
-  `"2"` go ahead of the rest, ascending; then the earlier layer's entries without an `id`; then the
-  later layer's new entries.
-- `"<key>.$replace"` replaces instead of merging. Below the top level — `"rule.$replace"` inside an
-  override — it takes effect only where an earlier layer set the same parent, and is otherwise kept
-  as a literal key.
-- A later scalar does **not** replace an earlier object: a number or boolean is ignored and a
-  string is spread into it. A later non-array is appended to an earlier array. Use `.$replace`.
-- `null` meeting an object, in either order, takes the later layer's value. ACA's merge threw
-  there, which broke every slot; `"rule": null` is how a later layer ungates an entry.
-- A `__proto__` key never replaces an object's prototype. The merge skips it wherever it iterates
-  an object, and a slot or override id named `__proto__` is dropped when the layer is read; inside a
-  value taken whole it stays an ordinary data property.
+- `"<key>.$replace"` replaces instead of merging.
 - `$ignoreReferenceList` drops a layer even when it is referenced.
 - A layer that cannot be resolved is reported on `AppExtensionsService.missingLayers()`, not silently
   dropped, and the rest of the stack still applies.

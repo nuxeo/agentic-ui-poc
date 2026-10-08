@@ -10,9 +10,8 @@ support ticket. This skill converts one of them into something a manifest can
 address.
 
 Context: `AGENTS/11-beta-program.md` sections 2 and 7, `.cursor/rules/beta-program.mdc`.
-Framework: our own, in `libs/shared/extensions`. It follows ACA's extension model and
-reproduces `@alfresco/adf-extensions` 9.0.0's merge and ordering semantics without
-importing it, so this work needs no privileged registry access.
+Framework: `@alfresco/adf-extensions` — public npm, stable 9.0.0, runtime
+dependency `tslib` only, so this work needs no privileged registry access.
 
 ## 1. Decide the layer
 
