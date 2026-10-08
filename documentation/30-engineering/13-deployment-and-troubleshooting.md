@@ -2,15 +2,17 @@
 title: Deployment & Troubleshooting
 parent: Engineering
 order: 13
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: 2898046
 audience: engineering
 ---
 
 # Deployment & Troubleshooting
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
-> Packaging detail: [`NUXEO_MARKETPLACE_GUIDE.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/NUXEO_MARKETPLACE_GUIDE.md)
+> **Last reviewed:** 2026-10-08 · **Repository:** `2898046` (`feature/nxsat-308-ci-cold-cache-tooling`)
+> Only the repository links were re-verified at that commit: made relative rather than pinned to
+> `feature/adf-hx-browse-poc`, every target present. The rest of the page as of 2026-08-24 · `77265f9`.
+> Packaging detail: [`NUXEO_MARKETPLACE_GUIDE.md`](../../NUXEO_MARKETPLACE_GUIDE.md)
 
 ---
 
@@ -157,13 +159,13 @@ anything placed there is never served.** An earlier version shipped `nxserver/we
 
 ## 3. Local development stack
 
-| Component          | How                                                                                                                                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Nuxeo + OpenSearch | Docker, container `nuxeo`, port 8080. See [`docs/opensearch-setup.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/opensearch-setup.md)                                                                                |
-| Server-side config | [`nuxeo-conf/`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/nuxeo-conf) — read its README                                                                                                                                   |
-| The app            | `npx nx serve nuxeo-ui` → `:4200`, proxying `/nuxeo` → `:8080`                                                                                                                                                                                         |
-| ARender            | `docker compose -f arender-docker-compose.yml --env-file .env.arender up -d`. nginx auth proxy + UI + document-service-broker. [`docs/arender-setup.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/arender-setup.md) |
-| Mailpit            | `docker compose -f mailpit-docker-compose.yml up -d` — local SMTP for permission notifications                                                                                                                                                         |
+| Component          | How                                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nuxeo + OpenSearch | Docker, container `nuxeo`, port 8080. See [`docs/opensearch-setup.md`](../../docs/opensearch-setup.md)                                                                                |
+| Server-side config | [`nuxeo-conf/`](../../nuxeo-conf) — read its README                                                                                                                                   |
+| The app            | `npx nx serve nuxeo-ui` → `:4200`, proxying `/nuxeo` → `:8080`                                                                                                                        |
+| ARender            | `docker compose -f arender-docker-compose.yml --env-file .env.arender up -d`. nginx auth proxy + UI + document-service-broker. [`docs/arender-setup.md`](../../docs/arender-setup.md) |
+| Mailpit            | `docker compose -f mailpit-docker-compose.yml up -d` — local SMTP for permission notifications                                                                                        |
 
 Verify with `npm run beta:backend`.
 
@@ -235,8 +237,8 @@ Deliberately deferred. `private: true` is the last thing standing between a mist
 - Scope and registry are **decided**: `@nuxeo/satori-platform` on
   `https://packages.nuxeo.com/repository/npm-public/` — the registry `nuxeo-elements` already
   publishes to.
-- Runbook: [`docs/publishing-to-nuxeo-registry.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/publishing-to-nuxeo-registry.md)
-- Readiness and what is deliberately not done: [`docs/publish-readiness.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/publish-readiness.md)
+- Runbook: [`docs/publishing-to-nuxeo-registry.md`](../../docs/publishing-to-nuxeo-registry.md)
+- Readiness and what is deliberately not done: [`docs/publish-readiness.md`](../../docs/publish-readiness.md)
 
 Before publishing, `npm run beta:publishable` must pass. It runs a real `npm publish --dry-run`,
 which is **the only check that executes `prepublishOnly`** — and for the whole of Phase 4 the

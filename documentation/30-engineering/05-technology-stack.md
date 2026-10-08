@@ -12,6 +12,8 @@ audience: engineering
 > **Last reviewed:** 2026-10-08 · **Repository:** `5abcd50` (`feature/nxsat-308-replace-adf-extensions`)
 > Only the `@alfresco/adf-extensions` row was re-verified at that commit; the rest of the page as of
 > 2026-08-24 · `77265f9`.
+> The repository link to `.npmrc` was made relative on 2026-10-08 at `2898046` (`feature/nxsat-308-ci-cold-cache-tooling`),
+> rather than pinned to `feature/adf-hx-browse-poc`.
 > Source: `package.json`, `pom.xml`, `nx.json`, `angular.json`. Where a choice has a recorded
 > rationale, it is cited; where the rationale is not recorded, that is said.
 
@@ -110,7 +112,7 @@ Consequences carried in this repository:
 
 ## Registry configuration
 
-[`.npmrc`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/.npmrc) maps
+[`.npmrc`](../../.npmrc) maps
 **both** `@alfresco` and `@hylandsoftware` to GitHub Packages. All four Alfresco packages we need
 download from there — verified twice by fetching the tarballs with only that mapping present.
 
