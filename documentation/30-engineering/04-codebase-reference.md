@@ -2,14 +2,16 @@
 title: Codebase Reference
 parent: Engineering
 order: 4
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: fb97d44
 audience: engineering
 ---
 
 # Codebase Reference — file and folder responsibilities
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-08 · **Repository:** `fb97d44` (`feature/nxsat-308-dependency-tree-gate`)
+> Only the `verify-gate.mjs` and harness-script rows were re-verified at that commit; the rest of the
+> page was last reviewed on 2026-08-24 at `77265f9`.
 > Directory-level view: [Repository Guide](03-repository-guide.md).
 >
 > **What is excluded, and why:** `node_modules/`, `dist/`, `coverage/`, `.angular/`, `.nx/`,

@@ -3,14 +3,14 @@ title: Dev Harness & Gates
 parent: Engineering
 order: 8
 last_reviewed: 2026-10-08
-repo_commit: d8079db
+repo_commit: fb97d44
 audience: engineering
 ---
 
 # The Development Harness and its Gates
 
-> **Last reviewed:** 2026-10-08 · **Repository:** `d8079db` plus the `dependency-tree` pair
-> (gates 4 and 5) that NXSAT-308 adds — 26 gates. That review covered the gate inventory (§2 and
+> **Last reviewed:** 2026-10-08 · **Repository:** `fb97d44` (`feature/nxsat-308-dependency-tree-gate`) — 26 gates, including the
+> `dependency-tree` pair (gates 4 and 5) that NXSAT-308 adds. That review covered the gate inventory (§2 and
 > §7); figures elsewhere on the page carry the dates they were measured on and were not re-measured.
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).

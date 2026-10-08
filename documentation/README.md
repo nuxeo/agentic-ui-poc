@@ -2,16 +2,17 @@
 title: Nuxeo Satori — Documentation Home
 parent: null
 order: 0
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: fb97d44
 branch: feature/adf-hx-browse-poc
 audience: all
 ---
 
 # Nuxeo Satori — Documentation Home
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9` on `feature/adf-hx-browse-poc`
-> (111 commits ahead of `main`, draft PR #145)
+> **Last reviewed:** 2026-10-08 · **Repository:** `fb97d44` (`feature/nxsat-308-dependency-tree-gate`)
+> Only the Dev Harness & Gates row was re-verified at that commit; the rest of the index was last
+> reviewed on 2026-08-24 at `77265f9` on `feature/adf-hx-browse-poc`.
 
 This is the authoritative documentation set for **Nuxeo Satori** — the Angular content
 management UI being converted into a customer-shippable Beta on real `adf-hx` components,

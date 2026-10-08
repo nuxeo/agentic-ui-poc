@@ -2,14 +2,16 @@
 title: Tools & Commands
 parent: Engineering
 order: 6
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: fb97d44
 audience: engineering
 ---
 
 # Tools & Commands — complete reference
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-08 · **Repository:** `fb97d44` (`feature/nxsat-308-dependency-tree-gate`)
+> Only §3 (the gate and the dependency-tree commands) was re-verified at that commit; the rest of the
+> page was last reviewed on 2026-08-24 at `77265f9`.
 > Source of truth: the `scripts` block in [`package.json`](../../package.json). If a command
 > here does not exist, this page is wrong — fix it.
 

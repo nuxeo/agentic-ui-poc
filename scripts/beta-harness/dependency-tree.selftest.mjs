@@ -106,7 +106,10 @@ const cleanFiles = () => ({
     `// This used to be: import { X } ${'from'} '${CORE}';\n` +
     `/* and ${'require'}('${JS_API}') before that */\n` +
     `export const RETIRED = ['${HX}', '${EXT}', '${HXCS}'];\n`,
-  'libs/ui/src/theme.scss': `// @use '${CORE}/theming';\n.a { color: red; }\n`,
+  // A commented-out @use, and @import text inside a string value: neither is an import.
+  'libs/ui/src/theme.scss':
+    `// @use '${CORE}/theming';\n.a { color: red; }\n` +
+    `.a::before { content: "@import '${CORE}/theming';"; }\n`,
   'apps/web/src/main.ts': `import '@hylandsoftware/satori-ui';\n`,
 });
 
@@ -407,6 +410,15 @@ control(
       `];\n`,
   }),
 );
+// Only node_modules and .git are skipped by name; a source directory called `tmp` is source.
+control(
+  'import: a file under a source directory named tmp is reported',
+  'fail',
+  `[import] libs/ui/src/tmp/legacy.ts ${HXCS}`,
+  fixture('import-under-tmp', {
+    'libs/ui/src/tmp/legacy.ts': `import type { Document } ${'from'} '${HXCS}';\nexport type D = Document;\n`,
+  }),
+);
 control(
   'import: a require() in a .cjs file is reported',
   'fail',
@@ -553,6 +565,16 @@ control(
   ['CANNOT INSPECT', 'libs/ui/package.json: is an array, not a JSON object'],
   fixture('gap-manifest-array', { 'libs/ui/package.json': '[]\n' }),
 );
+{
+  const dir = fixture('gap-npmrc-dangling-link', { '.npmrc': undefined });
+  symlinkSync('./npmrc-that-moved', join(dir, '.npmrc'));
+  control(
+    'a dangling .npmrc link is a gap, not an absent .npmrc',
+    'gap',
+    ['CANNOT INSPECT', '.npmrc: cannot read'],
+    dir,
+  );
+}
 control(
   'an unreadable .npmrc is a gap, not an absent mapping',
   'gap',

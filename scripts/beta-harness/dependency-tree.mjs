@@ -92,17 +92,12 @@ const FORBIDDEN = Object.freeze([
 const SCRIPT = 'scripts/beta-harness/dependency-tree.mjs';
 const MANIFEST_DIRS = ['apps', 'libs', 'tools'];
 const IMPORT_DIRS = ['apps', 'libs'];
-/** Build output and installed packages are not ours to scan; `.git` is not source. */
-const SKIP_DIRS = new Set([
-  'node_modules',
-  'dist',
-  'coverage',
-  '.angular',
-  '.nx',
-  'out-tsc',
-  'tmp',
-  '.git',
-]);
+/**
+ * Installed packages are not ours to scan and `.git` is not source. Nothing else is skipped by name:
+ * build output lives at the repository root, outside the scanned trees, and a source directory
+ * called `tmp` or `dist` under `src/` is source like any other.
+ */
+const SKIP_DIRS = new Set(['node_modules', '.git']);
 const CODE_FILE = /\.(?:[cm]?[jt]sx?)$/;
 const STYLE_FILE = /\.(?:s[ac]ss|css|less)$/;
 const SPEC_FILE = /\.(?:spec|test)\.[cm]?[jt]sx?$/;
@@ -334,7 +329,15 @@ const notes = [];
 {
   const npmrc = join(root, '.npmrc');
   let text = null;
-  if (existsSync(npmrc)) {
+  // lstat, not existsSync: a dangling `.npmrc` link is an entry that cannot be read, not an absence.
+  let present = false;
+  try {
+    lstatSync(npmrc);
+    present = true;
+  } catch {
+    /* no .npmrc at all, which is a clean answer */
+  }
+  if (present) {
     try {
       text = readFileSync(npmrc, 'utf8');
     } catch (error) {
@@ -582,10 +585,11 @@ function styleSpecifiers(text, rel) {
   const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
   // Every target in the statement, not the first: Sass takes `@import 'a', 'b';` and CSS takes an
   // unquoted `url(...)`. A statement runs to `;`, which may be lines away; the indented `.sass`
-  // syntax has no `;`, so there it runs to the end of the line.
+  // syntax has no `;`, so there it runs to the end of the line. And only at a statement start —
+  // the file's, or after `;`, `{` or `}` — so `content: "@import '…'"` is a string, not an import.
   const statement = rel.endsWith('.sass')
-    ? /@(?:use|forward|import)\b([^\n]*)/g
-    : /@(?:use|forward|import)\b([^;]*)/g;
+    ? /(?:^|\n)[ \t]*@(?:use|forward|import)\b([^\n]*)/g
+    : /(?:^|[;{}])\s*@(?:use|forward|import)\b([^;]*)/g;
   const target = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"]+)\3/g;
   return [...code.matchAll(statement)].flatMap((s) =>
     [...s[1].matchAll(target)].map((t) => (t[2] ?? t[4]).replace(/^~/, '')),
