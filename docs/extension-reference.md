@@ -431,12 +431,18 @@ label that renders.
 | `app.rules.isInClipboard` | The focused document is in the clipboard           |
 | `app.rules.hasVersion`    | The focused document has at least one version      |
 | `app.rules.isAiEnabled`   | The AI feature flag is on                          |
-| `app.rules.isNote`        | The focused document is a Note                     |
+| `app.rules.isNote`        | The focused document's type is `Note`              |
 | `app.rules.isNotBusy`     | None of the named operations is in flight          |
 
 Only the positive form of each is registered. The negative half is an ordinary
 composite a manifest can write for itself:
 `{ "type": "core.not", "parameters": ["app.rules.isFavorite"] }`.
+
+`app.rules.isNote` is the exception in this table: it reads the focused document, not
+something the surface published, and answers exactly as
+`{ "type": "app.rules.isType", "parameters": ["Note"] }`. It used to read a `note` flag
+that document detail derived from that same document, so its answer is unchanged on every
+surface. It stays registered by `SURFACE_RULE_EVALUATORS`.
 
 `app.rules.isNotBusy` takes the operation names as parameters, because an
 operation name is data rather than contract:
@@ -850,9 +856,14 @@ What this slot does **not** do:
 - **Only the View tab.** The other tabs, the toolbar and the properties panel are
   unchanged by any `documentView` entry. Which properties the panel shows per type is a
   layout file, section 9b, not this slot.
-- **The packaged views are not entries.** The note editor and document viewer are still
-  host markup, so a manifest cannot hide or reorder them — only outrank them with an
-  entry of your own. Making them registered entries is a follow-up.
+- **The packaged views are not entries.** Which one renders is decided per document type
+  by a single table inside document detail: a Note gets the note editor, and every other
+  type — File, Picture, Video, Audio, your own — gets the document viewer, which picks its
+  presentation from the content (mime type, picture views, transcoded videos), not the
+  type. That packaged view is also the fallback when your entry's component fails to load,
+  so a broken Note view falls back to the note editor. A manifest cannot hide or reorder
+  the packaged views — only outrank them with an entry of your own. Registering them as
+  entries would publish new ids and is a separate decision.
 - **Like every slot, it is not a security control.** Whatever your component reads is
   still gated by Nuxeo server-side.
 

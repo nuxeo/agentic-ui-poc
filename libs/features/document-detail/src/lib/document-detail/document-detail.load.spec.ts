@@ -405,18 +405,94 @@ describe('DocumentDetailComponent — load chain', () => {
       expect(mockDetailService.fetchBlob).toHaveBeenCalled();
     });
 
-    it('does not attempt a preview for a container type with no content', async () => {
-      // Section is in `noPreviewTypes`; asking for a preview would 404 on every open.
-      await build(doc({ type: 'Section', path: '/default-domain/sections/s1', properties: {} }));
+    /**
+     * Every container type is folderish, and a folderish document with a path is redirected to
+     * browse before `loadBlob` runs, so these use an empty path: it is the only way the branch is
+     * reached. With a path this test passed without ever getting there.
+     */
+    it.each(['Folder', 'Workspace', 'Domain', 'Section', 'OrderedFolder'])(
+      'does not attempt a preview for a %s with no content',
+      async (type) => {
+        await build(
+          doc({
+            type,
+            path: '',
+            properties: {},
+            contextParameters: { preview: { url: '/nuxeo/preview/x' } },
+          }),
+        );
 
-      expect(component.blobLoading()).toBe(false);
-      expect(mockDetailService.fetchBlob).not.toHaveBeenCalled();
-    });
+        expect(component.doc()?.type).toBe(type);
+        expect(component.blobLoading()).toBe(false);
+        expect(component.previewUrl()).toBeNull();
+        expect(mockDetailService.fetchBlob).not.toHaveBeenCalled();
+      },
+    );
 
     it('falls back to a preview for a non-container type with no content', async () => {
-      await build(doc({ type: 'File', properties: {} }));
+      await build(
+        doc({
+          type: 'File',
+          properties: {},
+          contextParameters: { preview: { url: '/nuxeo/preview/x' } },
+        }),
+      );
       // The fallback path runs rather than leaving the viewer stuck loading.
       expect(component.blobLoading()).toBe(false);
+      expect(component.previewUrl()).not.toBeNull();
+    });
+
+    it('treats a Picture main file as an image whatever its mime type', async () => {
+      mockDetailService.fetchBlob.mockReturnValue(
+        of(new Blob(['line one'], { type: 'text/plain' })),
+      );
+      await build(
+        doc({
+          type: 'Picture',
+          properties: { 'file:content': fileContent('text/plain', 'a.txt') },
+        }),
+      );
+      await fixture.whenStable();
+
+      expect(component.blobUrl()).not.toBeNull();
+      expect(component.noteContent()).toBeNull();
+    });
+
+    it('reads a text main file as text on a File', async () => {
+      mockDetailService.fetchBlob.mockReturnValue(
+        of(new Blob(['line one'], { type: 'text/plain' })),
+      );
+      await build(doc({ properties: { 'file:content': fileContent('text/plain', 'a.txt') } }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(component.noteContent()).toBe('line one');
+      expect(component.blobUrl()).toBeNull();
+    });
+
+    it('fetches a Picture main file rather than its PDF rendition', async () => {
+      await build(
+        doc({
+          type: 'Picture',
+          properties: { 'file:content': fileContent('application/postscript', 'a.eps') },
+          contextParameters: { renditions: [{ name: 'pdf' }] },
+        }),
+      );
+
+      expect(mockDetailService.fetchBlob).toHaveBeenCalledWith('doc-1');
+      expect(mockDetailService.fetchPdfRendition).not.toHaveBeenCalled();
+    });
+
+    it('shows the PDF rendition of a custom type with an unpreviewable main file', async () => {
+      await build(
+        doc({
+          type: 'Claim',
+          properties: { 'file:content': fileContent('application/postscript', 'a.eps') },
+          contextParameters: { renditions: [{ name: 'pdf' }] },
+        }),
+      );
+
+      expect(mockDetailService.fetchPdfRendition).toHaveBeenCalledWith('doc-1');
+      expect(mockDetailService.fetchBlob).not.toHaveBeenCalled();
     });
 
     it('extracts picture metadata when picture:views are present', async () => {
@@ -469,6 +545,37 @@ describe('DocumentDetailComponent — load chain', () => {
         doc({ type: 'Video', properties: { 'file:content': fileContent('video/mp4', 'v.mp4') } }),
       );
       expect(mockDetailService.fetchBlob).toHaveBeenCalled();
+    });
+  });
+
+  describe('per-type decisions outside the viewer', () => {
+    it.each<[string, string, boolean]>([
+      ['Picture', 'application/octet-stream', true],
+      ['File', 'image/png', true],
+      ['File', 'application/pdf', false],
+      ['Claim', 'application/octet-stream', false],
+    ])('offers image enrichment on a %s holding %s: %s', async (type, mime, expected) => {
+      await build(doc({ type, properties: { 'file:content': fileContent(mime, 'f.bin') } }));
+
+      expect(component.supportsImageKnowledgeEnrichment()).toBe(expected);
+    });
+
+    describe('focusing the editor of a note just created', () => {
+      afterEach(() => history.replaceState(null, ''));
+
+      it('focuses the note editor when the new document is a Note', async () => {
+        history.replaceState({ freshNote: true }, '');
+        await build(doc({ type: 'Note', properties: { 'note:note': '' } }));
+
+        expect(component.focusNoteEditor()).toBe(true);
+      });
+
+      it('does not focus anything when the new document is not a Note', async () => {
+        history.replaceState({ freshNote: true }, '');
+        await build(doc({ type: 'File' }));
+
+        expect(component.focusNoteEditor()).toBe(false);
+      });
     });
   });
 
