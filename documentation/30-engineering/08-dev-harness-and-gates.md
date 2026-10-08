@@ -10,8 +10,8 @@ audience: engineering
 # The Development Harness and its Gates
 
 > **Last reviewed:** 2026-10-08 · **Repository:** `2898046` (`feature/nxsat-308-ci-cold-cache-tooling`)
-> for §3 and the `supply-chain` and `guardrails` rows of §2, re-verified against `GUARDRAILS` and
-> `supply-chain.mjs` at that commit. The rest was last reviewed on 2026-10-05 at `b32d4c8`, the
+> for §3, §8, the `supply-chain` and `guardrails` rows of §2 and the CI-only rows of §7, re-verified
+> against `GUARDRAILS`, `supply-chain.mjs` and `.github/workflows/` at that commit. The rest was last reviewed on 2026-10-05 at `b32d4c8`, the
 > revision that implements the 24-gate set and the 23-control lockfile suite described below.
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).
@@ -333,23 +333,25 @@ Two consequences worth separating, from `nx graph`:
 
 ## 7. What runs where
 
-| Gate                                                            | Local gate | PR CI | Notes                                                                                                                                                       |
-| --------------------------------------------------------------- | :--------: | :---: | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| node                                                            |     ✅     |   —   | `setup-node` pins the runner to `node-version: 20`, which is the stronger equivalent                                                                        |
-| lockfile, lockfile-selftest                                     |     ✅     |  ✅   | Added 2026-10-05. `npm ci` proves the lock installs on Linux but says nothing about the gate still being able to report, and that half had been wrong twice |
-| supply-chain                                                    |     ✅     |  ✅   | Added to CI 2026-08-24                                                                                                                                      |
-| code-scanning                                                   |     ✅     |   —   | CodeQL **analysis** runs as its own workflow; the gate that reads the alerts needs `gh` and a token, so it runs locally                                     |
-| guardrails, guardrails-selftest, crowdin-selftest               |     ✅     |  ✅   | The self-tests are the basis for trusting the guardrails, so running them is not optional                                                                   |
-| sanitizer-audit, sanitizer-selftest                             |     ✅     |  ✅   | Both were in ALL_GATES and in `review:preflight` while CI invoked neither — "registered as a gate" meant local-only                                         |
-| assertions, reference-drift, customer-guardrails                |     ✅     |  ✅   | Added to CI 2026-08-24                                                                                                                                      |
-| lint, test, build, typecheck                                    |     ✅     |  ✅   |                                                                                                                                                             |
-| spec-types                                                      |     ✅     |   —   | Not in `ci.yml`. A spec type error reaches `main` unless someone ran the local gate                                                                         |
-| bundle                                                          |     ✅     |  ⚠️   | **Only when `nuxeo-ui` is affected** — it needs the production build. Added to CI 2026-08-24                                                                |
-| api-surface, publishability, fork-simulation, upgrade-rehearsal |     ✅     |  ✅   | Run unconditionally — they catch the expensive class                                                                                                        |
-| agent-mirror                                                    |     ✅     |   —   | Not in `ci.yml`, so `.claude`/`.agent` drift from `.cursor/` is caught only locally                                                                         |
-| **E2E**                                                         |     ✅     |  ❌   | Needs Docker Nuxeo + a served app. **A real limitation**                                                                                                    |
-| **Phase evidence**                                              |     ✅     |  ❌   | Needs a live backend                                                                                                                                        |
-| Bundle **size** ceiling                                         |     —      |  ✅   | 6 MiB total shipped JS+CSS. CI-only, so it has no local equivalent                                                                                          |
+| Gate                                                            | Local gate | PR CI | Notes                                                                                                                                                                                                                         |
+| --------------------------------------------------------------- | :--------: | :---: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| node                                                            |     ✅     |   —   | `setup-node` pins the runner to `node-version: 20`, which is the stronger equivalent                                                                                                                                          |
+| lockfile, lockfile-selftest                                     |     ✅     |  ✅   | Added 2026-10-05. `npm ci` proves the lock installs on Linux but says nothing about the gate still being able to report, and that half had been wrong twice                                                                   |
+| supply-chain                                                    |     ✅     |  ✅   | Added to CI 2026-08-24                                                                                                                                                                                                        |
+| code-scanning                                                   |     ✅     |   —   | CodeQL **analysis** runs as its own workflow; the gate that reads the alerts needs `gh` and a token, so it runs locally                                                                                                       |
+| guardrails, guardrails-selftest, crowdin-selftest               |     ✅     |  ✅   | The self-tests are the basis for trusting the guardrails, so running them is not optional                                                                                                                                     |
+| sanitizer-audit, sanitizer-selftest                             |     ✅     |  ✅   | Both were in ALL_GATES and in `review:preflight` while CI invoked neither — "registered as a gate" meant local-only                                                                                                           |
+| assertions, reference-drift, customer-guardrails                |     ✅     |  ✅   | Added to CI 2026-08-24                                                                                                                                                                                                        |
+| lint, test, build, typecheck                                    |     ✅     |  ✅   |                                                                                                                                                                                                                               |
+| spec-types                                                      |     ✅     |   —   | Not in `ci.yml`. A spec type error reaches `main` unless someone ran the local gate                                                                                                                                           |
+| bundle                                                          |     ✅     |  ⚠️   | **Only when `nuxeo-ui` is affected** — it needs the production build. Added to CI 2026-08-24                                                                                                                                  |
+| api-surface, publishability, fork-simulation, upgrade-rehearsal |     ✅     |  ✅   | Run unconditionally — they catch the expensive class                                                                                                                                                                          |
+| agent-mirror                                                    |     ✅     |   —   | Not in `ci.yml`, so `.claude`/`.agent` drift from `.cursor/` is caught only locally                                                                                                                                           |
+| **E2E**                                                         |     ✅     |  ❌   | Needs Docker Nuxeo + a served app. **A real limitation**                                                                                                                                                                      |
+| **Phase evidence**                                              |     ✅     |  ❌   | Needs a live backend                                                                                                                                                                                                          |
+| Registry auth, cold cache                                       |     —      |  ⚠️   | Its own workflow, `registry-auth.yml`: daily, and on PRs touching `package.json`, `package-lock.json` or `.npmrc`. Not a local gate — it needs the token and a ~75 s uncached install; run it with `npm run ci:registry-auth` |
+| review-harvest and Confluence link controls                     |     —      |  ✅   | Offline selftests for two tools that otherwise run only with credentials CI does not have                                                                                                                                     |
+| Bundle **size** ceiling                                         |     —      |  ✅   | 6 MiB total shipped JS+CSS. CI-only, so it has no local equivalent                                                                                                                                                            |
 
 **CI runs 20 of the 24**, one of them (`bundle`) conditionally. The four it does not run are
 `node`, `code-scanning`, `spec-types` and `agent-mirror`. Read that from `ci.yml` against
@@ -358,23 +360,32 @@ Earlier on 2026-08-24 CI ran **8 of the then-15**, so "green locally" and "green
 different claims and neither disclosed it; four were added that day with `supply-chain`, the
 sanitizer pair followed, and `lockfile` with its controls on 2026-10-05.
 
-`beta:audit-selftest` also runs in CI and is **not** in `ALL_GATES`, so it is not counted above —
+`beta:audit-selftest`, `review:analysis-selftest` and `docs:links-selftest` also run in CI and are
+**not** in `ALL_GATES`, so they are not counted above —
 CI is not a strict subset of the local gate set in either direction.
 
 ---
 
-## 8. GitHub Actions — 9 workflows
+## 8. GitHub Actions — 16 workflows
 
-| Workflow                | Trigger                                  | Does                                                                                  |
-| ----------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------- |
-| `ci.yml`                | push to `main`/`feature/**`/`fix/**`, PR | guardrails, static gates, lint, test, typecheck, published-package gates, bundle size |
-| `build-marketplace.yml` | PR, manual                               | Maven build of the marketplace package (3 jobs); publishes to preprod only on request |
-| `release.yml`           | manual                                   | Release                                                                               |
-| `changelog.yml`         | push, manual                             | Changelog generation                                                                  |
-| `dead-code.yml`         | weekly, Mon 06:00 UTC                    | Dead-code sweep                                                                       |
-| `staleness-check.yml`   | scheduled, manual                        | Flags `AGENTS/01-services.md` drifting from the service inventory                     |
-| `stale.yml`             | scheduled, manual                        | Stale issues/PRs                                                                      |
-| `pr-auto-fix.yml`       | PR review, issue comment                 | Applies review feedback                                                               |
+| Workflow                | Trigger                                                                                                            | Does                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`                | push to `main`/`feature/**`/`fix/**`, PR                                                                           | guardrails, static gates, tooling controls, lint, test, typecheck, published-package gates, bundle size          |
+| `registry-auth.yml`     | daily 05:17 UTC, manual; PR and push to `main` touching `package.json`, `package-lock.json`, `.npmrc` or the check | Cold-cache `npm ci` against GitHub Packages — fails on a revoked token that `ci.yml`'s cached install cannot see |
+| `a11y.yml`              | push to `main`/`feature/**`/`fix/**`, PR, manual, reusable                                                         | Static accessibility scan of the templates                                                                       |
+| `codeql.yml`            | push to `main`, PR, weekly Fri 06:22 UTC                                                                           | CodeQL SAST — the analysis the `code-scanning` gate reads                                                        |
+| `sonarcloud.yml`        | push to `main`/`feature/**`/`fix/**`, PR, manual                                                                   | Coverage and SonarCloud quality gate                                                                             |
+| `dependency-review.yml` | PR                                                                                                                 | Dependency changes reviewed against known advisories                                                             |
+| `build-marketplace.yml` | PR, manual                                                                                                         | Maven build of the marketplace package (3 jobs); publishes to preprod only on request                            |
+| `release.yml`           | manual                                                                                                             | Release                                                                                                          |
+| `changelog.yml`         | push, manual                                                                                                       | Changelog generation                                                                                             |
+| `crowdin-push.yaml`     | push to `main` touching an English catalogue or context file, manual                                               | Uploads sources and translator context to Crowdin                                                                |
+| `crowdin-pull.yaml`     | daily 00:00 UTC, manual                                                                                            | Downloads translations and opens a pull request                                                                  |
+| `crowdin-status.yaml`   | manual                                                                                                             | Reports the Crowdin project state                                                                                |
+| `dead-code.yml`         | weekly, Mon 06:00 UTC                                                                                              | Dead-code sweep                                                                                                  |
+| `staleness-check.yml`   | scheduled, manual                                                                                                  | Flags `AGENTS/01-services.md` drifting from the service inventory                                                |
+| `stale.yml`             | scheduled, manual                                                                                                  | Stale issues/PRs                                                                                                 |
+| `pr-auto-fix.yml`       | PR review, issue comment                                                                                           | Applies review feedback                                                                                          |
 
 `staleness-check.yml` is the interesting one: it is a **documentation** gate — an automated
 check that a knowledge-base file still matches the code it describes.

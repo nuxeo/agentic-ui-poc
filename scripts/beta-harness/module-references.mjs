@@ -25,17 +25,70 @@ export function codeSpecifiers(text) {
 }
 
 /**
- * `@use`, `@forward` and `@import` targets in a stylesheet, with comments stripped first and only
- * at a statement start, so `content: "@import 'x'"` is a string rather than an import.
+ * `text` with comments blanked to spaces and string contents to `_`, quotes and newlines kept, so
+ * every offset still maps to `text`.
+ *
+ * A scanner rather than a regex, because neither construct can be found without knowing whether
+ * you are inside the other: the `//` in `$marker: "//"` is not a comment, and the `;` and
+ * `@import` in `content: "; @import 'x'"` are not a statement. `//` directly after `url(` is a
+ * protocol-relative URL, not a comment.
+ * @param {string} text
+ */
+function maskStylesheet(text) {
+  let out = '';
+  let quote = null;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (quote) {
+      if (c === '\\' && i + 1 < text.length) {
+        out += text[i + 1] === '\n' ? '_\n' : '__';
+        i += 1;
+      } else if (c === quote || c === '\n') {
+        quote = null;
+        out += c;
+      } else {
+        out += '_';
+      }
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      out += c;
+      continue;
+    }
+    const block = c === '/' && text[i + 1] === '*';
+    const line = c === '/' && text[i + 1] === '/' && !/url\(\s*$/i.test(out);
+    if (block || line) {
+      const end = block ? text.indexOf('*/', i + 2) : text.indexOf('\n', i);
+      const stop = end === -1 ? text.length : block ? end + 2 : end;
+      out += text.slice(i, stop).replace(/[^\n]/g, ' ');
+      i = stop - 1;
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+
+/**
+ * `@use`, `@forward` and `@import` targets in a stylesheet — only at a statement start, never in a
+ * comment, and never inside a string. Every target of a statement, not the first: Sass takes
+ * `@import 'a', 'b';` and CSS takes an unquoted `url(...)`.
  * @param {string} text
  */
 export function styleSpecifiers(text) {
-  const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
-  const statement = /(?:^|[;{}])\s*@(?:use|forward|import)\b([^;]*)/g;
-  const target = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"]+)\3/g;
-  return [...code.matchAll(statement)].flatMap((s) =>
-    [...s[1].matchAll(target)].map((t) => (t[2] ?? t[4]).replace(/^~/, '')),
-  );
+  const mask = maskStylesheet(text);
+  const statement = /(?:^|[;{}])\s*@(?:use|forward|import)\b([^;{}]*)/dg;
+  const target = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"\n]*)\3/dg;
+  const found = [];
+  for (const s of mask.matchAll(statement)) {
+    const [from, to] = s.indices[1];
+    for (const t of mask.slice(from, to).matchAll(target)) {
+      const span = t.indices[2] ?? t.indices[4];
+      found.push(text.slice(from + span[0], from + span[1]).replace(/^~/, ''));
+    }
+  }
+  return found;
 }
 
 /**
@@ -92,10 +145,11 @@ export function referenced(dep, refs) {
 const DEP = 'fixture-dep';
 
 /**
- * `[name, kind, text, expected]`. Nine of the eleven `false` rows were `true` under the regex this
- * replaced, and three of the `true` rows were `false` under it: it never saw a triple-slash type
- * reference, and `\b@use` cannot match because `\b` needs a word character before the `@`. The
- * `true` rows also keep the parser from passing the `false` ones by finding nothing at all.
+ * `[name, kind, text, expected]`. Ten of the thirteen `false` rows were `true` under the regex this
+ * replaced, and five of the eleven `true` rows were `false` under it: it never saw a triple-slash
+ * type reference, and no stylesheet import at the start of a line, because `\b@use` needs a word
+ * character before the `@`. The `true` rows also keep the parser from passing the `false` ones by
+ * finding nothing at all.
  * @type {[string, 'code' | 'style' | 'build', string, boolean][]}
  */
 const CONTROLS = [
@@ -109,6 +163,8 @@ const CONTROLS = [
   ['stylesheet line comment', 'style', `// @use '${DEP}';\n.a { color: red; }\n`, false],
   ['stylesheet block comment', 'style', `/* @import '${DEP}/x'; */\n`, false],
   ['stylesheet string', 'style', `.a { content: "@import '${DEP}'"; }\n`, false],
+  ['statement start inside a string', 'style', `.a { content: "; @import '${DEP}/x';"; }\n`, false],
+  ['commented-out import target', 'style', `@import 'a', /* '${DEP}' */ 'b';\n`, false],
   [
     'build path of a longer name',
     'build',
@@ -128,6 +184,8 @@ const CONTROLS = [
   ['triple-slash types', 'code', `/// <reference types="${DEP}" />\n`, true],
   ['stylesheet @use subpath', 'style', `@use '${DEP}/theme' as t;\n`, true],
   ['stylesheet @import with ~', 'style', `.a {}\n@import '~${DEP}/x';\n`, true],
+  ['// inside a string is not a comment', 'style', `$marker: "//"; @use '${DEP}/theming';\n`, true],
+  ['second target after a url()', 'style', `@import url(//cdn.example/x.css), '${DEP}/y';\n`, true],
   ['build asset path', 'build', `{ "input": "node_modules/${DEP}/assets" }`, true],
 ];
 
