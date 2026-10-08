@@ -1,0 +1,16 @@
+import type { Meta, StoryObj } from '@storybook/angular';
+
+import { <%= className %> } from './<%= fileName %>.component';
+
+/** `<%= componentId %>`. The text below stands in for what a caller binds through its translate pipe. */
+const meta: Meta<<%= className %>> = {
+  title: 'Components/<%= title %>',
+  component: <%= className %>,
+  args: { heading: '<%= title %>'<% if (isDocumentView) { %>, document: null<% } %> },
+};
+
+export default meta;
+
+type Story = StoryObj<<%= className %>>;
+
+export const Default: Story = {};

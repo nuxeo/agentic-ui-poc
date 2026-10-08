@@ -1,0 +1,23 @@
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';<% if (isDocumentView) { %>
+import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';<% } %>
+
+/**
+ * `<%= componentId %>`, registered by `provideNxsComponents()` for the `<%= slot %>` slot.
+ *
+ * Text arrives already translated — the library ships no catalogue — so a caller binds
+ * `[heading]="'acme.thing.heading' | translate"`, and a manifest entry passes it in `inputs`.
+ */
+@Component({
+  selector: 'nxs-<%= fileName %>',
+  standalone: true,
+  templateUrl: './<%= fileName %>.component.html',
+  styleUrl: './<%= fileName %>.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'nxs-<%= fileName %>' },
+})
+export class <%= className %> {
+  /** What this shows, in one line. */
+  readonly heading = input.required<string>();<% if (isDocumentView) { %>
+  /** The focused document. The `documentView` host sets it; nothing else should. */
+  readonly document = input<NuxeoDocument | null>(null);<% } %>
+}

@@ -151,7 +151,18 @@ the real `libs/` tree and put each import back, so a regression in either barrel
 If another library is refused, fix the file that carries the package, rather than copying code
 into the library to dodge the rule.
 
-**Adding a component, with every gate staying green:**
+**Adding a component, with every gate staying green.** Start from the generator, which does
+steps 1–5 for a component a slot will place:
+
+```bash
+npx nx g ./tools/satori-generators:satori-component claim-summary --slot=documentView
+```
+
+It writes the component, a spec that asserts the registration and renders it through the slot,
+a story, the barrel export, the `nxs.<slot>.<name>` registration in `provideNxsComponents()` and
+its row in `docs/extension-reference.md` §6a, each through a marker comment it refuses to guess
+past. It is internal (`x-satori-internal` in `generators.json`): `nxs-` is our prefix, so it is
+not shipped in the package; customers use `extension-component`. By hand, the steps are:
 
 1. `src/lib/<name>/<name>.component.{ts,html,scss,spec.ts}` — selector `nxs-<name>`, class
    `Nxs<Name>Component`, `standalone: true`, `templateUrl`, theme tokens only.

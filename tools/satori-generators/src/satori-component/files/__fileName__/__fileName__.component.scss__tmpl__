@@ -1,0 +1,16 @@
+:host {
+  display: block;
+  padding: 16px;
+  color: var(--mat-sys-on-surface);
+}
+
+.nxs-<%= fileName %>__heading {
+  margin: 0;
+  font: var(--mat-sys-title-medium);
+}<% if (isDocumentView) { %>
+
+.nxs-<%= fileName %>__title {
+  margin: 4px 0 0;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}<% } %>

@@ -1,0 +1,4 @@
+<p class="nxs-<%= fileName %>__heading">{{ heading() }}</p><% if (isDocumentView) { %>
+@if (document(); as doc) {
+  <p class="nxs-<%= fileName %>__title">{{ doc.title }}</p>
+}<% } %>
