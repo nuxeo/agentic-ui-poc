@@ -207,8 +207,8 @@ at 29.8% — so a gate at 90% would be red until Phase 6, get bypassed, and then
 ignored. Instead `beta:coverage` records each project in
 `.ai/state/coverage-baseline.json` and fails when one goes **backwards** by more
 than 0.5pp, printing how far each still is from 90%. A project named in `FLOORS` is held to a
-fixed floor instead — `satori-components` at 90% from its first commit, with no file allowed outside
-the measurement.
+fixed floor instead — `satori-components` at 90% of lines from its first commit, with no file
+allowed outside the measurement and no stale report, including one that counts a deleted file.
 
 ```bash
 npm run beta:coverage -- --run               # run the tests, then check the ratchet

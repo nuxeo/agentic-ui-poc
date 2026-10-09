@@ -2,14 +2,18 @@
 title: Extensibility Contract
 parent: Engineering
 order: 7
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # The Extensibility Contract — four layers
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only the entry-point count and the `@nuxeo-satori/platform/components` row in §6 were
+> re-verified at that commit, and "Our rule context is deliberately not upstream's" in §5 at
+> `5abcd50` (`feature/nxsat-308-replace-adf-extensions`); the tarball figure in §6 carries its own
+> date. The rest of the page as of 2026-08-24 · `77265f9`.
 > Customer-facing companion: [`docs/extension-reference.md`](../../docs/extension-reference.md),
 > which is drift-gated by `npm run beta:reference`.
 
@@ -261,8 +265,9 @@ document-detail tabs and toolbar actions but not browse columns. Reference and e
 objects — `NodeEntry`, `SiteEntry`, `RepositoryInfo` — describing a repository we do not
 talk to. Reusing it would put ACS types in the signature every customer rule is written
 against. The _shape_ is upstream's; the types are ours. Upstream's domain-neutral helpers
-(`mergeObjects`, `mergeArrays`, `filterEnabled`, `sortByOrder`, `getValue`) are used
-directly.
+were used directly until NXSAT-308, which replaced the three the engine needed —
+`mergeObjects`, `filterEnabled` and `sortByOrder` — with our own, pinned case by case to
+upstream's output.
 
 ---
 

@@ -37,7 +37,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 
@@ -5049,6 +5049,82 @@ expectGreen(
   }),
 );
 
+/**
+ * The real `nuxeo-client` and `extensions` barrels, not stand-ins.
+ *
+ * A fixture that stubs a library proves the walk, not that the shipped library is clean, and the
+ * walk skips an alias whose target is absent — so the fixture carries every non-spec source in
+ * `libs/` and the real `tsconfig.base.json`. The two red controls after it re-introduce the
+ * imports each barrel once carried, two hops deep, so the green cannot come from a walk that never
+ * entered either library.
+ */
+const REAL_LIBS = (() => {
+  const listed = spawnSync('git', ['ls-files', '-z', 'libs', 'tsconfig.base.json'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (listed.status !== 0) throw new Error(`git ls-files failed: ${listed.stderr}`);
+  const files = {};
+  for (const file of listed.stdout.split('\0')) {
+    if (
+      file === 'tsconfig.base.json' ||
+      (/\.(ts|mts|scss)$/.test(file) && !/\.(spec|test)\.ts$/.test(file))
+    ) {
+      files[file] = readFileSync(join(ROOT, file), 'utf8');
+    }
+  }
+  return files;
+})();
+const NXS_PROBE = `${NXS_ROOT}/src/lib/probe/probe.ts`;
+const REAL_LIBS_WITH_PROBE = {
+  ...REAL_LIBS,
+  [NXS_PROBE]:
+    "import { avatarColor } from '@nuxeo-satori/platform/nuxeo-client';\n" +
+    "import { ExtensionRuleRegistry } from '@nuxeo-satori/platform/extensions';\n" +
+    'export const probe = [avatarColor, ExtensionRuleRegistry];\n',
+};
+const AVATAR_COLORS = 'libs/shared/nuxeo-client/src/lib/constants/avatar-colors.ts';
+const EXTENSION_RULES = 'libs/shared/extensions/src/lib/extension-rules.ts';
+/**
+ * Interpolated into the control below, never spelled out in it. `supply-chain` reads a
+ * `from '<dep>'` anywhere under `scripts/` as a real import, and this dependency is excused there
+ * as unreferenced — a literal specifier in a fixture would make it look used, and that gate is
+ * right to refuse it.
+ */
+const ADF_EXTENSIONS = '@alfresco/adf-extensions';
+
+falsePositiveControls += 1;
+expectGreen(
+  'the real nuxeo-client and extensions barrels',
+  'checkSatoriComponentsDependencies',
+  REAL_LIBS_WITH_PROBE,
+);
+
+expectRed(
+  'the real nuxeo-client barrel reaching a Satori type again',
+  'checkSatoriComponentsDependencies',
+  REAL_LIBS_WITH_PROBE,
+  (write) =>
+    write(
+      AVATAR_COLORS,
+      "import type { SatAvatarCategory } from '@hylandsoftware/satori-ui/avatar';\n" +
+        REAL_LIBS[AVATAR_COLORS],
+    ),
+  /avatar-colors\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through .*probe\.ts -> libs\/shared\/nuxeo-client\/src\/index\.ts -> /,
+);
+
+expectRed(
+  'the real extensions barrel reaching adf-extensions again',
+  'checkSatoriComponentsDependencies',
+  REAL_LIBS_WITH_PROBE,
+  (write) =>
+    write(
+      EXTENSION_RULES,
+      `import type { RuleContext } from '${ADF_EXTENSIONS}';\n` + REAL_LIBS[EXTENSION_RULES],
+    ),
+  /extension-rules\.ts imports `@alfresco\/adf-extensions`, and the library reaches that file through .*probe\.ts -> libs\/shared\/extensions\/src\/index\.ts -> /,
+);
+
 expectRed(
   'a direct satori-ui import',
   'checkSatoriComponentsDependencies',
@@ -5167,6 +5243,172 @@ expectRed(
   /thing\.component\.spec\.ts imports `@hylandsoftware\/satori-ui\/tag`/,
 );
 
+/** A library component whose metadata, after `templateUrl`, is exactly `metadata`. */
+const nxsComponentWith = (metadata, preamble = '') =>
+  `import { Component } from '@angular/core';\n${preamble}@Component({\n  selector: 'nxs-thing',\n` +
+  `  standalone: true,\n  templateUrl: './thing.component.html',\n${metadata}\n})\n` +
+  'export class NxsThingComponent {}\n';
+const SATORI_THEME = "@use '@hylandsoftware/satori-ui/theme' as sat;\n";
+
+// Every spelling Angular accepts for a stylesheet path is followed.
+for (const [how, metadata] of [
+  ['a quoted styleUrl key', "  'styleUrl': './thing.component.scss',"],
+  ['a double-quoted styleUrls key', '  "styleUrls": [\'./thing.component.scss\'],'],
+  ['a computed styleUrl key', "  ['styleUrl']: './thing.component.scss',"],
+  ['a backtick styleUrl path', '  styleUrl: `./thing.component.scss`,'],
+  ['a backtick path in styleUrls', '  styleUrls: [`./thing.component.scss`],'],
+]) {
+  expectRed(
+    `a Satori theme in a stylesheet named by ${how}`,
+    'checkSatoriComponentsDependencies',
+    NXS_LIB({ [NXS_COMPONENT]: nxsComponentWith(metadata), [NXS_STYLES]: SATORI_THEME }),
+    null,
+    /thing\.component\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+  );
+}
+
+// A path the guardrail cannot read statically fails, rather than passing a stylesheet unread.
+expectRed(
+  'a stylesheet named by a constant',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponentWith(
+      '  styleUrl: STYLE,',
+      "const STYLE = './thing.component.scss';\n",
+    ),
+  }),
+  null,
+  /thing\.component\.ts:7 `styleUrl` is not a string literal, so the stylesheet it names was not checked/,
+);
+
+expectRed(
+  'component metadata spread from a constant',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponentWith(
+      '  ...STYLES,',
+      "const STYLES = { styleUrl: './thing.component.scss' };\n",
+    ),
+  }),
+  null,
+  /thing\.component\.ts:7 @Component metadata is not an object literal the guardrail can read/,
+);
+
+// The app builds the library's components with `inlineStyleLanguage: scss`.
+expectRed(
+  'a Satori theme in inline styles',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponentWith(
+      "  styles: [`@use '@hylandsoftware/satori-ui/theme' as sat;`],",
+    ),
+  }),
+  null,
+  /thing\.component\.ts \(inline styles\) imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'decorators without metadata objects, and a styles key outside any decorator',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]:
+      "import { Component, HostListener, Input } from '@angular/core';\n" +
+      'const theme = { styles: [String(1)] };\n' +
+      "@Component({\n  selector: 'nxs-thing',\n  standalone: true,\n" +
+      "  templateUrl: './thing.component.html',\n  styleUrl: './thing.component.scss',\n})\n" +
+      "export class NxsThingComponent {\n  @Input('alias') value = theme;\n" +
+      "  @HostListener('click', ['$event']) onClick(): void {}\n}\n",
+  }),
+);
+
+// The package ban is on the specifier, whatever a tsconfig alias maps it to.
+expectRed(
+  'a Satori specifier a tsconfig alias maps to a workspace file',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB(
+    {
+      [NXS_COMPONENT]: nxsComponent({
+        imports: "import { SatTag } from '@hylandsoftware/satori-ui/tag';",
+      }),
+      'libs/shared/shims/src/satori-tag.ts': 'export const SatTag = 1;\n',
+    },
+    { '@hylandsoftware/satori-ui/tag': ['libs/shared/shims/src/satori-tag.ts'] },
+  ),
+  null,
+  /thing\.component\.ts imports `@hylandsoftware\/satori-ui\/tag`\. .*`\/components-satori` entry point/,
+);
+
+// A project's own tsconfig `paths` is followed too, against the directory that declares it.
+expectRed(
+  'a Satori import behind a project-level tsconfig alias',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({ imports: "import { dirty } from '@shim/dirty';" }),
+    [`${NXS_ROOT}/tsconfig.json`]: `${JSON.stringify({
+      extends: '../../../tsconfig.base.json',
+      compilerOptions: { paths: { '@shim/dirty': ['../other/src/dirty.ts'] } },
+    })}\n`,
+    'libs/shared/other/src/dirty.ts':
+      "import { SatTag } from '@hylandsoftware/satori-ui/tag';\nexport const dirty = SatTag;\n",
+  }),
+  null,
+  /other\/src\/dirty\.ts imports `@hylandsoftware\/satori-ui\/tag`, and the library reaches that file through/,
+);
+
+// Sass's own resolution order: file, `_` partial, then `index` or `_index`, as .scss or .sass.
+expectRed(
+  'a Satori theme behind a non-partial Sass directory index',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]: "@use './theme';\n",
+    [`${NXS_ROOT}/src/lib/thing/theme/index.scss`]: SATORI_THEME,
+  }),
+  null,
+  /thing\/theme\/index\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a Satori theme behind an indented-syntax Sass partial',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]: "@use 'theme';\n",
+    [`${NXS_ROOT}/src/lib/thing/_theme.sass`]: "@use '@hylandsoftware/satori-ui/theme' as sat\n",
+  }),
+  null,
+  /thing\/_theme\.sass imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a Satori theme through a pkg: URL',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({ [NXS_STYLES]: "@use 'pkg:@hylandsoftware/satori-ui/theme' as sat;\n" }),
+  null,
+  /thing\.component\.scss imports `pkg:@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a Satori theme second in an @import list',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]: "@import 'local', '@hylandsoftware/satori-ui/theme';\n",
+    [`${NXS_ROOT}/src/lib/thing/_local.scss`]: ':root {\n  display: block;\n}\n',
+  }),
+  null,
+  /thing\.component\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a Satori theme loaded with meta.load-css',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]:
+      "@use 'sass:meta';\n:host {\n  @include meta.load-css('@hylandsoftware/satori-ui/theme');\n}\n",
+  }),
+  null,
+  /thing\.component\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
 expectRed(
   'no library sources at all',
   'checkSatoriComponentsDependencies',
@@ -5237,6 +5479,84 @@ expectRed(
   }),
   null,
   /ng-package\.json must publish `libs\/shared\/satori-components\/src\/index\.ts`/,
+);
+
+// A project's own tsconfig `paths` is an alias like any other. Its targets resolve against its
+// `baseUrl` — its own, else the one it inherits — or, with none, its own directory.
+const projectTsconfig = (compilerOptions) =>
+  `${JSON.stringify({ extends: '../../../tsconfig.base.json', compilerOptions })}\n`;
+
+expectRed(
+  'a project-level alias into the library, against its own baseUrl',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'libs/features/x/tsconfig.json': projectTsconfig({
+      baseUrl: '../../..',
+      paths: { '@x/thing': [`${NXS_ROOT}/src/lib/thing/thing.component.ts`] },
+    }),
+  }),
+  null,
+  /libs\/features\/x\/tsconfig\.json alias `@x\/thing` points into libs\/shared\/satori-components/,
+);
+
+expectRed(
+  'a project-level alias into the library, against an inherited baseUrl',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'tsconfig.base.json': `${JSON.stringify({
+      compilerOptions: {
+        baseUrl: '.',
+        paths: { '@nuxeo-satori/platform/components': [`${NXS_ROOT}/src/index.ts`] },
+      },
+    })}\n`,
+    'libs/features/x/tsconfig.json': projectTsconfig({
+      paths: { '@x/thing': [`${NXS_ROOT}/src/lib/thing/thing.component.ts`] },
+    }),
+  }),
+  null,
+  /libs\/features\/x\/tsconfig\.json alias `@x\/thing` points into libs\/shared\/satori-components/,
+);
+
+expectRed(
+  'a consumer reaching into the library through a project-level wildcard alias',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'libs/features/x/tsconfig.json': projectTsconfig({ paths: { '@libs/*': ['../../*'] } }),
+    [NXS_CONSUMER]:
+      "import { NxsThingComponent } from '@libs/shared/satori-components/src/lib/thing/thing.component';\n",
+  }),
+  null,
+  /x\.ts imports `@libs\/shared\/satori-components\/src\/lib\/thing\/thing\.component`, which reaches into/,
+);
+
+expectRed(
+  'a project-level entry alias pointing past the barrel',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'libs/features/x/tsconfig.json': projectTsconfig({
+      paths: {
+        '@nuxeo-satori/platform/components': [
+          '../../shared/satori-components/src/lib/thing/thing.component.ts',
+        ],
+      },
+    }),
+  }),
+  null,
+  /libs\/features\/x\/tsconfig\.json maps `@nuxeo-satori\/platform\/components` to \["libs\/shared\/satori-components\/src\/lib\/thing\/thing\.component\.ts"\]/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a project tsconfig re-declaring the entry alias',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'libs/features/x/tsconfig.json': projectTsconfig({
+      paths: {
+        '@nuxeo-satori/platform/components': ['../../shared/satori-components/src/index.ts'],
+      },
+    }),
+    [NXS_CONSUMER]: "import { NxsThingComponent } from '@nuxeo-satori/platform/components';\n",
+  }),
 );
 
 expectRed(
@@ -5347,6 +5667,18 @@ expectRed(
     [`${NXS_ROOT}/src/lib/thing/thing.service.ts`]:
       "import { Injectable } from '@angular/core';\n" +
       "@Injectable({ 'providedIn': 'root' })\nexport class ThingService {}\n",
+  }),
+  null,
+  /thing\.service\.ts:2 uses `providedIn`/,
+);
+
+expectRed(
+  'a root-provided service with a computed key',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.service.ts`]:
+      "import { Injectable } from '@angular/core';\n" +
+      "@Injectable({ ['providedIn']: 'root' })\nexport class ThingService {}\n",
   }),
   null,
   /thing\.service\.ts:2 uses `providedIn`/,
