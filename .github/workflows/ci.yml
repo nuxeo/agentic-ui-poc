@@ -1,13 +1,17 @@
 name: CI
 
 on:
+  # `integration/<ticket>` branches collect a ticket's PRs and reach `main` as one PR (see
+  # AGENTS/06-git-workflow.md), so a PR into one needs the same gate as a PR into `main`.
+  # nx-set-shas diffs a PR against its own base branch, so the affected set is the sub-PR's
+  # change, not the whole integration branch.
   pull_request:
-    branches: [main]
+    branches: [main, 'integration/**']
   # Long-lived feature branches are validated on push as well as on PR, so work in
   # progress is never only "green on my machine". nx-set-shas falls back to comparing
   # against the default branch when a push has no previous successful run to diff from.
   push:
-    branches: [main, 'feature/**', 'fix/**']
+    branches: [main, 'feature/**', 'fix/**', 'integration/**']
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -92,6 +96,12 @@ jobs:
       # to point out that the gate guarding a shipped XSS-adjacent defect could not block a
       # merge. Registering a check in ALL_GATES is not the same as running it.
       - name: Static beta gates (evidence, reference drift, customer guardrails, supply chain, sanitizers, lockfile controls)
+        env:
+          # The sanitizer budget ratchet compares against the merge base with `origin/main` by
+          # default. A PR into an integration branch must be ratcheted against that branch, or a
+          # budget change already accepted there is charged again to every later sub-PR. Empty on
+          # push, where the default applies; `origin/main` on a PR into `main`, as before.
+          SANITIZER_AUDIT_BASE_REF: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '' }}
         run: |
           set -euo pipefail
           # The lockfile gate and its controls. `npm ci` above already proves this lock installs
