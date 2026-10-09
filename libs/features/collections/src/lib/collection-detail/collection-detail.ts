@@ -80,13 +80,20 @@ import {
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { NxsFolderHeaderComponent, NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
+import {
+  NxsErrorStateComponent,
+  NxsFolderHeaderComponent,
+  NxsSpinnerComponent,
+  nxsErrorStatus,
+  type NxsErrorStatus,
+} from '@nuxeo-satori/platform/components';
 
 @Component({
   selector: 'lib-collection-detail',
   standalone: true,
   providers: [provideTranslatedDatepickerIntl()],
   imports: [
+    NxsErrorStateComponent,
     NxsFolderHeaderComponent,
     NxsSpinnerComponent,
     TranslatePipe,
@@ -140,6 +147,8 @@ export class CollectionDetailComponent {
   readonly members = signal<NuxeoDocument[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  /** Which error state `error` shows: the status of the member request that failed. */
+  readonly errorStatus = signal<NxsErrorStatus>(500);
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, string | null>>({});
   /** Batch token for thumbnail loads, so a superseded response cannot write. */
@@ -357,11 +366,12 @@ export class CollectionDetailComponent {
           this.loading.set(false);
           this.loadThumbnails(res.entries);
         },
-        error: () => {
+        error: (err: unknown) => {
           // Guarded too, and it has to clear `loading` only for the request that still owns it — a
           // stale failure would otherwise show an error over a newer collection's results. The
           // superseding call already set `loading` true for itself.
           if (generation !== this.memberGeneration || requestedUid !== this.collectionUid) return;
+          this.errorStatus.set(nxsErrorStatus(err));
           this.error.set(
             this.translate.instant('collections.message.failed-to-load-collection-contents'),
           );
