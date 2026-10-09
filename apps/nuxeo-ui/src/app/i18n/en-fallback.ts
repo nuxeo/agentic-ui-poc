@@ -252,6 +252,7 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'document-detail.note-editor.text-style': 'Text style',
   'document-detail.note-editor.underline': 'Underline',
   'document-detail.note-image-picker-dialog.close': 'Close',
+  'document-detail.note-image-picker-dialog.loading': 'Loading pictures',
   'document-detail.note-image-picker-dialog.picture-documents': 'Picture documents',
   'document-detail.note-image-picker-dialog.select-all': 'Select all',
   'document-layouts.sections': 'Property sections',
