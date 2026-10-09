@@ -195,7 +195,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 const NXS_PERMISSIONS_PANEL_ID = "nxs.components.permissionsPanel";
 class NxsEmptyStateComponent {
     readonly heading: _angular_core.InputSignal<string>;
-    readonly headingLevel: _angular_core.InputSignal<1 | 3 | 2 | 4 | 5 | 6>;
+    readonly headingLevel: _angular_core.InputSignal<1 | 2 | 3 | 4 | 5 | 6>;
     readonly message: _angular_core.InputSignal<string>;
     readonly icon: _angular_core.InputSignal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsEmptyStateComponent, never>;
