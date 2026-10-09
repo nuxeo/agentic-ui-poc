@@ -699,8 +699,8 @@ so `slots.toolbar` can move a packaged action between the two.
 
 | ID                                | Label                 | Icon                   | Order | Overflow | Shown when                              |
 | --------------------------------- | --------------------- | ---------------------- | ----- | -------- | --------------------------------------- |
-| `app.toolbar.edit`                | Edit                  | `edit`                 | 10    | no       | not trashed, writable and not a Note    |
-| `app.toolbar.editProperties`      | Edit properties       | `edit`                 | 10    | no       | not trashed, writable and a Note        |
+| `app.toolbar.edit`                | Edit                  | `edit`                 | 10    | no       | not trashed, writable¹ and not a Note   |
+| `app.toolbar.editProperties`      | Edit properties       | `edit`                 | 10    | no       | not trashed, writable¹ and a Note       |
 | `app.toolbar.addToCollection`     | Add to collection     | `library_add`          | 20    | no       | not trashed                             |
 | `app.toolbar.delete`              | Delete                | `delete`               | 30    | no       | not trashed and `app.rules.canRemove`   |
 | `app.toolbar.lock`                | Lock                  | `lock`                 | 40    | no       | not trashed, writable and not locked    |
@@ -716,13 +716,20 @@ so `slots.toolbar` can move a packaged action between the two.
 | `app.toolbar.export`              | Export                | `download`             | 100   | yes      | always                                  |
 | `app.toolbar.startProcess`        | Start Process         | `play_circle`          | 110   | yes      | not trashed                             |
 
+¹ For Edit and Edit properties, writable also means **not `Immutable`** — the rule is
+`app.rules.canWrite` and `core.not` over `app.rules.hasFacet` with `["Immutable"]`. Nuxeo
+marks versions and publications `Immutable`. A version's `permissions` enricher still lists
+`Write` while the server refuses to modify it, so `app.rules.canWrite` alone would offer
+Edit on a version; Web UI hides Edit on every `Immutable` document.
+
 `app.toolbar.export` is the one entry with no `rule`, deliberately: it was
 outside the trashed-document guard in the markup this replaced, and exporting a
 trashed document still works.
 
 The document-specific header controls that are **not** in this table —
-attachments, Knowledge Enrichment, the trashed-document restore banner — remain
-markup. They are conditional on document shape rather than on user intent, and
+attachments, Knowledge Enrichment, the trashed-document restore banner, the
+version banner and its Restore button — remain markup. They are conditional on
+document shape rather than on user intent, and
 extracting them would have changed behaviour rather than made it addressable.
 
 Adding your own works exactly as for `bulk-actions`: a descriptor decides where
