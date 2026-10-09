@@ -92,6 +92,7 @@ import {
   canWriteDocument,
   canRemoveDocument,
   canViewDocumentAuditLog,
+  hasDocumentPermission,
   mergeDocumentPermissionsContext,
   auditActivityLabel,
   resolveAcePrincipal,
@@ -258,6 +259,22 @@ const KE_MESSAGE_KEYS: Record<KeUiAction, { start: string; success: string; fail
   },
 };
 
+/** The permission Nuxeo checks for creating and restoring versions. */
+const WRITE_VERSION = 'WriteVersion';
+const VERSIONABLE_FACET = 'Versionable';
+
+/**
+ * The message for a refused restore. 403 is also what Nuxeo answers when another user holds
+ * the lock, which removes `WriteVersion` from everyone but its owner and administrators.
+ */
+function restoreVersionErrorKey(err: unknown): string {
+  if (isPermissionDeniedError(err)) return 'document-detail.message.restore-version-forbidden';
+  if ((err as { status?: number })?.status === 409) {
+    return 'document-detail.message.restore-version-conflict';
+  }
+  return 'document-detail.message.failed-to-restore-version';
+}
+
 const MIME_BY_EXTENSION: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
@@ -321,7 +338,11 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   ],
   providers: [provideTranslatedDatepickerIntl(), provideNativeDateAdapter()],
   templateUrl: './document-detail.html',
-  styleUrls: ['./document-detail.scss', './document-detail-panel-close-focus.scss'],
+  styleUrls: [
+    './document-detail.scss',
+    './document-detail-panel-close-focus.scss',
+    './document-detail-version-banner.scss',
+  ],
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly translate = inject(TranslateService);
@@ -931,9 +952,39 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return !acls.some((a) => a.name === 'inherited');
   });
 
-  readonly canManagePermissions = computed(() => canManageDocumentPermissions(this.doc()));
-  readonly canWriteDoc = computed(() => canWriteDocument(this.doc()));
+  /**
+   * The page is showing a version rather than the live document.
+   *
+   * A version's `permissions` enricher repeats the live document's — `Write`, `WriteSecurity`
+   * and the rest — while the server refuses to modify it, so the enricher alone would render
+   * every edit control. The write gates below therefore also ask this.
+   */
+  readonly isVersionView = computed(() => this.doc()?.isVersion === true);
+
+  readonly canManagePermissions = computed(
+    () => !this.isVersionView() && canManageDocumentPermissions(this.doc()),
+  );
+  readonly canWriteDoc = computed(() => !this.isVersionView() && canWriteDocument(this.doc()));
   readonly canRemoveDoc = computed(() => canRemoveDocument(this.doc()));
+
+  /** `Document.RestoreVersion` is checked against `WriteVersion`, not `Write`. */
+  readonly canRestoreVersion = computed(
+    () => this.isVersionView() && hasDocumentPermission(this.doc(), WRITE_VERSION),
+  );
+
+  /**
+   * Web UI's gate for Create Version, except that Web UI also refuses a record: `NuxeoDocument`
+   * does not carry the server's `isRecord` field, so that half is not checked here.
+   */
+  readonly canCreateVersion = computed(() => {
+    const d = this.doc();
+    return (
+      !!d &&
+      !d.isVersion &&
+      (d.facets ?? []).includes(VERSIONABLE_FACET) &&
+      hasDocumentPermission(d, WRITE_VERSION)
+    );
+  });
 
   permissionLabel(permission: string): string {
     return permissionRightLabel(permission, (key) => this.translate.instant(key));
@@ -3941,7 +3992,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // ── Versioning ──
 
   openCreateVersionDialog(): void {
-    if (!this.requireWritePermission()) return;
+    if (!this.canCreateVersion()) {
+      this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
+      return;
+    }
     const ref = this.dialog.open(CreateVersionDialogComponent, {
       width: '600px',
       maxWidth: '95vw',
@@ -3970,10 +4024,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.versionDropdownOpen.update((v) => !v);
   }
 
+  /** The live document whose versions the list shows — itself, or the one a version belongs to. */
+  private liveDocumentUid(): string {
+    const d = this.doc();
+    return (d?.isVersion && d.versionableId) || this.docUid;
+  }
+
   loadVersions(): void {
     if (!this.docUid) return;
     this.versionsLoading.set(true);
-    this.detailService.getVersions(this.docUid).subscribe({
+    this.detailService.getVersions(this.liveDocumentUid()).subscribe({
       next: (res) => {
         this.versions.set(res.entries ?? []);
         this.versionsLoading.set(false);
@@ -3989,26 +4049,74 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return `${major}.${minor}`;
   }
 
+  /** Open a version read-only. Choosing one from the list never restores it. */
+  openVersion(version: NuxeoDocument): void {
+    this.versionDropdownOpen.set(false);
+    if (version.uid !== this.docUid) this.navigateToDoc(version.uid);
+  }
+
+  /** Leave a version for the live document it belongs to. */
+  showLatestVersion(): void {
+    this.versionDropdownOpen.set(false);
+    const liveUid = this.liveDocumentUid();
+    if (liveUid !== this.docUid) this.navigateToDoc(liveUid);
+  }
+
+  /** Restoring replaces the live document's content, so it is confirmed first. */
+  confirmRestoreVersion(): void {
+    const version = this.doc();
+    if (!version || !this.canRestoreVersion() || this.actionInProgress()) return;
+    const label = this.versionString(version);
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        data: {
+          title: this.translate.instant('document-detail.version-restore-confirm-title'),
+          message: this.translate.instant('document-detail.version-restore-confirm-message', {
+            version: label,
+          }),
+          confirmLabel: this.translate.instant('document-detail.version-restore', {
+            version: label,
+          }),
+        } as ConfirmDialogData,
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (confirmed) this.restoreVersion(version);
+      });
+  }
+
   restoreVersion(version: NuxeoDocument): void {
-    if (!this.requireWritePermission()) return;
+    if (!hasDocumentPermission(version, WRITE_VERSION)) {
+      this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
+      return;
+    }
     this.versionDropdownOpen.set(false);
     this.actionInProgress.set('restore');
-    this.detailService.restoreVersion(version.uid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast(
-          this.translate.instant('document-detail.restored-to-version', {
-            version: this.versionString(version),
-          }),
-        );
-        this.loadDocument(this.docUid);
-        this.versionsLoaded = false;
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast(this.translate.instant('document-detail.message.failed-to-restore-version'));
-      },
-    });
+    this.detailService
+      .restoreVersion(version.uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast(
+            this.translate.instant('document-detail.restored-to-version', {
+              version: this.versionString(version),
+            }),
+          );
+          const liveUid = version.versionableId;
+          if (liveUid && liveUid !== this.docUid) {
+            this.navigateToDoc(liveUid);
+          } else {
+            this.versionsLoaded = false;
+            this.loadDocument(this.docUid);
+          }
+        },
+        error: (err: unknown) => {
+          this.actionInProgress.set(null);
+          this.toast(this.translate.instant(restoreVersionErrorKey(err)));
+        },
+      });
   }
 
   // ── Publish ──

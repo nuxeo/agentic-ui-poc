@@ -1,0 +1,432 @@
+import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import {
+  ActivatedRoute,
+  convertToParamMap,
+  provideRouter,
+  Router,
+  withDisabledInitialNavigation,
+} from '@angular/router';
+import { Observable, of, throwError } from 'rxjs';
+import { type MockInstance, vi } from 'vitest';
+
+import { AppConfigService } from '@nuxeo-satori/platform/app-config';
+import {
+  EXTENSION_SLOTS,
+  PACKAGED_DOCUMENT_TABS,
+  PACKAGED_DOCUMENT_TOOLBAR_ACTIONS,
+  provideSatoriExtensions,
+} from '@nuxeo-satori/platform/extensions';
+import {
+  ARenderService,
+  BrowseService,
+  CURRENT_USERNAME,
+  DirectoryService,
+  DocumentDetailService,
+  NuxeoApiBase,
+  TagService,
+  TaskService,
+  WorkflowService,
+  type NuxeoDocument,
+} from '@nuxeo-satori/platform/nuxeo-client';
+import { ConfirmDialogComponent } from '@nuxeo-satori/platform/ui';
+import {
+  AiChatService,
+  AiFeatureFlagService,
+  AiGatewayService,
+} from '@agentic-ui/shared/ai-client';
+import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
+import { testTranslateModule } from '@agentic-ui/testing/i18n';
+
+import { DocumentDetailComponent } from './document-detail';
+
+/**
+ * NXSAT-332 — the versions list, the version view and restore, against the **rendered**
+ * template.
+ *
+ * The defect lived in a template binding — each version's `(click)` was `restoreVersion(v)` —
+ * and the sibling specs stub the template out, which is how it went unnoticed: their restore
+ * test called the method directly and so asserted the very behaviour that destroyed work.
+ * Only a real click can tell "opens" from "restores".
+ */
+
+(globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver ??= class {
+  observe(): void {
+    /* no-op */
+  }
+  unobserve(): void {
+    /* no-op */
+  }
+  disconnect(): void {
+    /* no-op */
+  }
+};
+
+/** What the server's `permissions` enricher reports to a `ReadWrite` user — on a version too. */
+const WRITER = ['Read', 'Write', 'WriteVersion', 'ReadWrite', 'Remove', 'WriteSecurity'];
+
+function live(over: Partial<NuxeoDocument> = {}): NuxeoDocument {
+  return {
+    uid: 'doc-live',
+    title: 'Contract',
+    type: 'File',
+    path: '/default-domain/workspaces/ws/contract',
+    state: 'project',
+    lastModified: '2026-10-09T10:00:00.000Z',
+    isCheckedOut: true,
+    isVersion: false,
+    facets: ['Versionable', 'Commentable'],
+    properties: { 'uid:major_version': 0, 'uid:minor_version': 2 },
+    contextParameters: { permissions: WRITER },
+    ...over,
+  };
+}
+
+function version(minor: number, over: Partial<NuxeoDocument> = {}): NuxeoDocument {
+  return live({
+    uid: `v-0-${minor}`,
+    isCheckedOut: false,
+    isVersion: true,
+    versionableId: 'doc-live',
+    facets: ['Immutable', 'Versionable', 'Commentable'],
+    properties: { 'uid:major_version': 0, 'uid:minor_version': minor },
+    ...over,
+  });
+}
+
+const emptyKe = (): Observable<KeEnrichmentResult> =>
+  of({ textClassification: { result: '' } } as KeEnrichmentResult);
+
+const mockDetailService = {
+  getFullDocument: vi.fn((): Observable<NuxeoDocument> => of(live())),
+  fetchBlob: vi.fn((): Observable<Blob> => of(new Blob(['x'], { type: 'text/plain' }))),
+  fetchBlobByXpath: vi.fn((): Observable<Blob> => of(new Blob(['x']))),
+  fetchThumbnail: vi.fn((): Observable<Blob> => of(new Blob(['x'], { type: 'image/png' }))),
+  fetchPdfRendition: vi.fn((): Observable<Blob> =>
+    of(new Blob(['x'], { type: 'application/pdf' })),
+  ),
+  getAllComments: vi.fn((): Observable<{ entries: unknown[] }> => of({ entries: [] })),
+  getVersions: vi.fn((_uid: string): Observable<{ entries: NuxeoDocument[] }> =>
+    of({ entries: [version(2), version(1)] }),
+  ),
+  getPublishedVersions: vi.fn((): Observable<{ entries: unknown[] }> => of({ entries: [] })),
+  getSectionTree: vi.fn((): Observable<{ entries: unknown[] }> => of({ entries: [] })),
+  getRunnableWorkflows: vi.fn((): Observable<unknown[]> => of([])),
+  getAuditLog: vi.fn((): Observable<Record<string, unknown>> =>
+    of({ entries: [], resultsCount: 0 }),
+  ),
+  getDocumentPermissions: vi.fn((): Observable<NuxeoDocument> => of(live())),
+  restoreVersion: vi.fn((_uid: string): Observable<unknown> => of(live({ isCheckedOut: false }))),
+};
+
+let dialogResult: unknown = undefined;
+const mockDialog = {
+  open: vi.fn((_component: unknown, _config?: { data?: unknown }) => ({
+    afterClosed: () => of(dialogResult),
+  })),
+};
+
+const snack = vi.fn();
+
+describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
+  let fixture: ComponentFixture<DocumentDetailComponent>;
+  let navigateByUrl: MockInstance<Router['navigateByUrl']>;
+
+  (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:mock/1');
+  (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn();
+
+  async function render(focused: NuxeoDocument): Promise<void> {
+    mockDetailService.getFullDocument.mockReturnValue(of(focused));
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [DocumentDetailComponent, testTranslateModule()],
+      providers: [
+        provideZonelessChangeDetection(),
+        provideRouter([], withDisabledInitialNavigation()),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(convertToParamMap({ uid: focused.uid })),
+            queryParamMap: of(convertToParamMap({})),
+            snapshot: { queryParamMap: convertToParamMap({}) },
+          },
+        },
+        { provide: DocumentDetailService, useValue: mockDetailService },
+        { provide: BrowseService, useValue: { updateDocument: vi.fn(() => of(live())) } },
+        {
+          provide: DirectoryService,
+          useValue: {
+            getEventTypes: vi.fn(() => of([])),
+            getEventCategories: vi.fn(() => of([])),
+            getEntries: vi.fn(() => of([])),
+            getAllL10nEntries: vi.fn(() => of([])),
+          },
+        },
+        { provide: KeClientService, useValue: { enrich: emptyKe } },
+        { provide: TaskService, useValue: { getDocumentTasks: vi.fn(() => of([])) } },
+        { provide: WorkflowService, useValue: { getDocumentWorkflows: vi.fn(() => of([])) } },
+        {
+          provide: ARenderService,
+          useValue: { isAvailable: vi.fn(() => of(false)), getPreviewerUrl: vi.fn(() => of(null)) },
+        },
+        { provide: TagService, useValue: { searchTags: vi.fn(() => of([])) } },
+        {
+          provide: AiGatewayService,
+          useValue: { summarize: vi.fn(() => of(null)), classify: vi.fn(() => of(null)) },
+        },
+        { provide: AiChatService, useValue: { openPanel: vi.fn() } },
+        { provide: AiFeatureFlagService, useValue: { aiEnabled: signal(false) } },
+        {
+          provide: NuxeoApiBase,
+          useValue: {
+            nxqlSearch: vi.fn(() => of({ entries: [] })),
+            get: vi.fn(() => of({ schemas: [] })),
+          },
+        },
+        { provide: CURRENT_USERNAME, useValue: () => 'tester' },
+        { provide: AppConfigService, useValue: { manifest: signal({ extensionLayers: [] }) } },
+        provideSatoriExtensions({
+          slots: {
+            [EXTENSION_SLOTS.toolbar]: PACKAGED_DOCUMENT_TOOLBAR_ACTIONS,
+            [EXTENSION_SLOTS.tabs]: PACKAGED_DOCUMENT_TABS,
+          },
+        }),
+      ],
+    })
+      // The real template imports the Material modules, whose own `MatDialog` and
+      // `MatSnackBar` would otherwise shadow a root-level mock.
+      .overrideProvider(MatDialog, { useValue: mockDialog })
+      .overrideProvider(MatSnackBar, { useValue: { open: snack } })
+      .compileComponents();
+
+    navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    fixture = TestBed.createComponent(DocumentDetailComponent);
+    await settle();
+  }
+
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  function el<T extends HTMLElement = HTMLElement>(selector: string): T | null {
+    return fixture.nativeElement.querySelector(selector) as T | null;
+  }
+
+  async function click(selector: string): Promise<void> {
+    const target = el(selector);
+    expect(target, `${selector} is rendered`).toBeTruthy();
+    target?.click();
+    await settle();
+  }
+
+  async function openVersionsList(): Promise<void> {
+    await click('.version-select');
+  }
+
+  function versionItem(label: string): HTMLElement | undefined {
+    return [...fixture.nativeElement.querySelectorAll('.version-dropdown-item')].find(
+      (item) =>
+        (item as HTMLElement).querySelector('.version-dropdown-label')?.textContent?.trim() ===
+        label,
+    ) as HTMLElement | undefined;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dialogResult = undefined;
+    mockDetailService.getVersions.mockReturnValue(of({ entries: [version(2), version(1)] }));
+    mockDetailService.restoreVersion.mockReturnValue(of(live({ isCheckedOut: false })));
+  });
+
+  afterEach(() => fixture?.destroy());
+
+  describe('the versions list', () => {
+    it('opens the version a user clicks, and restores nothing', async () => {
+      await render(live());
+      await openVersionsList();
+
+      versionItem('0.1')?.click();
+      await settle();
+
+      expect(mockDetailService.restoreVersion).not.toHaveBeenCalled();
+      expect(navigateByUrl).toHaveBeenCalledWith('/doc/v-0-1');
+    });
+
+    it('lets a user who cannot write open a version too', async () => {
+      await render(live({ contextParameters: { permissions: ['Read', 'ReadVersion'] } }));
+      await openVersionsList();
+
+      expect(versionItem('0.1')?.tagName).toBe('BUTTON');
+      versionItem('0.1')?.click();
+      await settle();
+
+      expect(navigateByUrl).toHaveBeenCalledWith('/doc/v-0-1');
+    });
+
+    it("lists the live document's versions while a version is open, and leads back to it", async () => {
+      await render(version(1));
+      await openVersionsList();
+
+      expect(mockDetailService.getVersions).toHaveBeenCalledWith('doc-live');
+      expect(versionItem('0.1')?.getAttribute('aria-current')).toBe('true');
+      expect(versionItem('0.2')?.getAttribute('aria-current')).toBeNull();
+
+      await click('.version-dropdown-latest');
+      expect(navigateByUrl).toHaveBeenCalledWith('/doc/doc-live');
+    });
+  });
+
+  describe('viewing a version', () => {
+    it('names the version in a banner and offers a way back to the latest', async () => {
+      await render(version(1));
+
+      expect(el('.version-banner')?.textContent).toContain("You're viewing the 0.1 version.");
+      await click('.version-banner-latest');
+      expect(navigateByUrl).toHaveBeenCalledWith('/doc/doc-live');
+    });
+
+    it('is read-only even though the permissions enricher reports Write', async () => {
+      await render(version(1));
+      const component = fixture.componentInstance;
+
+      expect(component.canWriteDoc()).toBe(false);
+      expect(component.canManagePermissions()).toBe(false);
+      expect(el('[data-action-id="app.toolbar.edit"]')).toBeNull();
+      expect(el('.create-version-btn')).toBeNull();
+    });
+
+    it('offers no enrichment that would write back to a version', async () => {
+      // Knowledge Enrichment writes `dc:description` / `dc:nature` and tags back to the document.
+      const pdf = { 'file:content': { name: 'a.pdf', 'mime-type': 'application/pdf', data: '' } };
+      await render(live({ properties: { ...live().properties, ...pdf } }));
+      expect(el('.ke-action-group')).toBeTruthy();
+
+      fixture.destroy();
+      await render(version(1, { properties: { ...version(1).properties, ...pdf } }));
+      expect(el('.ke-action-group')).toBeNull();
+    });
+
+    it('leaves the live document editable', async () => {
+      await render(live());
+
+      expect(el('.version-banner')).toBeNull();
+      expect(fixture.componentInstance.canWriteDoc()).toBe(true);
+      expect(el('[data-action-id="app.toolbar.edit"]')).toBeTruthy();
+    });
+  });
+
+  describe('restoring a version', () => {
+    it('offers Restore to a user with WriteVersion', async () => {
+      await render(version(1));
+
+      expect(el('.version-banner-restore')?.textContent).toContain('Restore 0.1');
+    });
+
+    it('does not offer Restore without WriteVersion', async () => {
+      await render(version(1, { contextParameters: { permissions: ['Read', 'Write'] } }));
+
+      expect(el('.version-banner')).toBeTruthy();
+      expect(el('.version-banner-restore')).toBeNull();
+    });
+
+    it('asks first, and cancelling restores nothing', async () => {
+      dialogResult = false;
+      await render(version(1));
+
+      await click('.version-banner-restore');
+
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        ConfirmDialogComponent,
+        expect.objectContaining({
+          data: expect.objectContaining({ title: 'Are you sure?', confirmLabel: 'Restore 0.1' }),
+        }),
+      );
+      expect(mockDetailService.restoreVersion).not.toHaveBeenCalled();
+      expect(navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('restores on confirmation and returns to the live document', async () => {
+      dialogResult = true;
+      await render(version(1));
+
+      await click('.version-banner-restore');
+
+      expect(mockDetailService.restoreVersion).toHaveBeenCalledWith('v-0-1');
+      expect(snack).toHaveBeenCalledWith('Restored to version 0.1', 'OK', expect.anything());
+      expect(navigateByUrl).toHaveBeenCalledWith('/doc/doc-live');
+    });
+
+    it.each([
+      [
+        403,
+        "You can't restore this version: you don't have permission, or someone else has locked the document.",
+      ],
+      [
+        409,
+        "This version can't be restored because of a conflict with the document's current state. Reload the page and try again.",
+      ],
+      [500, 'Failed to restore version'],
+    ])('explains a %i refusal and stays on the version', async (status, message) => {
+      dialogResult = true;
+      mockDetailService.restoreVersion.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status })),
+      );
+      await render(version(1));
+      mockDetailService.getFullDocument.mockClear();
+
+      await click('.version-banner-restore');
+
+      expect(snack).toHaveBeenCalledWith(message, 'OK', expect.anything());
+      expect(navigateByUrl).not.toHaveBeenCalled();
+      expect(mockDetailService.getFullDocument).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.actionInProgress()).toBeNull();
+      expect(el('.version-banner-restore')).toBeTruthy();
+    });
+  });
+
+  describe('Create version', () => {
+    const neverVersioned = (over: Partial<NuxeoDocument> = {}): NuxeoDocument =>
+      live({ properties: { 'uid:major_version': 0, 'uid:minor_version': 0 }, ...over });
+
+    it('is offered on a versionable document to a user with WriteVersion', async () => {
+      await render(neverVersioned());
+
+      expect(el('.create-version-btn')).toBeTruthy();
+    });
+
+    it('is not offered to a user with Write but not WriteVersion', async () => {
+      await render(
+        neverVersioned({
+          contextParameters: { permissions: ['Read', 'Write', 'WriteProperties'] },
+        }),
+      );
+
+      expect(el('.create-version-btn')).toBeNull();
+    });
+
+    it('is not offered on a document without the Versionable facet', async () => {
+      await render(neverVersioned({ facets: ['Commentable'] }));
+
+      expect(el('.create-version-btn')).toBeNull();
+    });
+
+    it('is offered in the list of a checked-out document only with WriteVersion', async () => {
+      await render(live());
+      await openVersionsList();
+      expect(el('.version-dropdown-create')).toBeTruthy();
+
+      fixture.destroy();
+      await render(live({ contextParameters: { permissions: ['Read', 'Write'] } }));
+      await openVersionsList();
+      expect(el('.version-dropdown-create')).toBeNull();
+    });
+  });
+});
