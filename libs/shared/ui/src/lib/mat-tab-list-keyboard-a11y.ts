@@ -21,12 +21,10 @@ export function wireMatTabListKeyboardA11y(root: HTMLElement): (() => void) | nu
     return null;
   }
 
-  const handler = (event: KeyboardEvent): void => {
-    if (event.target !== tabList) {
-      return;
-    }
-    const firstTab = tabList.querySelector<HTMLElement>('[role="tab"]');
-    firstTab?.focus();
+  // Inert handler: IBM Equal Access only requires a keydown listener on the tablist node.
+  // Material owns focus and arrow-key navigation on the tab buttons / label container.
+  const handler = (_event: KeyboardEvent): void => {
+    /* Listener presence satisfies IBM Equal Access; Material handles keys. */
   };
 
   tabList.addEventListener('keydown', handler);

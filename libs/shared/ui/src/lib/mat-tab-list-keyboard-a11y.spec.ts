@@ -9,6 +9,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import {
   MAT_TAB_LIST_KEYDOWN_ATTR,
+  observeMatTabListKeyboardA11y,
   wireMatTabListKeyboardA11y,
 } from './mat-tab-list-keyboard-a11y';
 
@@ -87,7 +88,7 @@ describe('wireMatTabListKeyboardA11y', () => {
     expect(tabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBeNull();
   });
 
-  it('focuses the first tab when keydown targets the tablist itself', () => {
+  it('does not move focus when keydown targets the tablist itself', () => {
     const root = materialTabHeaderMarkup();
 
     const tabList = root.querySelector<HTMLElement>('.mat-mdc-tab-list')!;
@@ -95,6 +96,8 @@ describe('wireMatTabListKeyboardA11y', () => {
     const firstTab = root.querySelector<HTMLElement>('[role="tab"]')!;
 
     wireMatTabListKeyboardA11y(root);
+
+    firstTab.focus();
 
     tabList.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
 
@@ -107,6 +110,38 @@ describe('wireMatTabListKeyboardA11y', () => {
     document.body.appendChild(root);
 
     expect(wireMatTabListKeyboardA11y(root)).toBeNull();
+  });
+});
+
+describe('observeMatTabListKeyboardA11y', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it('rewires when Material replaces the tablist node', async () => {
+    const root = materialTabHeaderMarkup();
+    const labelContainer = root.querySelector<HTMLElement>('.mat-mdc-tab-label-container')!;
+    const cleanup = observeMatTabListKeyboardA11y(root);
+    expect(cleanup).not.toBeNull();
+
+    const firstTabList = root.querySelector<HTMLElement>('.mat-mdc-tab-list[role="tablist"]')!;
+    expect(firstTabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBe('true');
+
+    firstTabList.remove();
+    const replacement = document.createElement('div');
+    replacement.className = 'mat-mdc-tab-list';
+    replacement.setAttribute('role', 'tablist');
+    replacement.innerHTML =
+      '<div class="mat-mdc-tab-labels"><button type="button" role="tab">Next</button></div>';
+    labelContainer.appendChild(replacement);
+
+    await vi.waitFor(() => {
+      expect(replacement.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBe('true');
+    });
+    expect(firstTabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBeNull();
+
+    cleanup!();
+    expect(replacement.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBeNull();
   });
 });
 
