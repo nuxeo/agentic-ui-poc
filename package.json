@@ -17,6 +17,8 @@
     "beta:integration": "npx tsx libs/integration-tests/src/preflight-cli.ts && npx vitest run --config libs/integration-tests/vitest.config.mts",
     "beta:integration-preflight": "npx tsx libs/integration-tests/src/preflight-cli.ts",
     "beta:customer-guardrails": "node libs/platform/guardrails/check-extension-library.mjs libs/extensions/acme-extensions && node scripts/check-extension-library.selftest.mjs",
+    "beta:dependency-tree": "node scripts/beta-harness/dependency-tree.mjs",
+    "beta:dependency-tree-selftest": "node scripts/beta-harness/dependency-tree.selftest.mjs",
     "beta:evidence": "node scripts/beta-harness/phase-runner.mjs",
     "beta:fork": "node scripts/beta-harness/fork-simulation.mjs",
     "beta:gate": "node scripts/beta-harness/verify-gate.mjs",

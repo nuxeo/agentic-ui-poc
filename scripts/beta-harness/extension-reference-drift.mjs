@@ -121,7 +121,8 @@ const allSource = [...sources.values()].join('\n');
 const reference = readFileSync(REFERENCE, 'utf8');
 
 /**
- * IDs the document presents as real.
+ * IDs the document presents as real: ours are `app.*`, and the `nxs-` component library's
+ * are `nxs.*`, both one public contract.
  *
  * Only backticked ones, and only outside fenced code blocks: a JSON example may
  * legitimately show `acme.*` IDs a customer would invent, and the security section

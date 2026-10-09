@@ -56,7 +56,8 @@ replacePermissionWithNotification(uid, params): Observable<PermissionWithNotific
 addExternalPermissionWithNotification(uid, params): Observable<PermissionWithNotificationResult>  // saves with notify:false, then optional separate notification
 addExternalPermission(uid: string, params: { email, permission, notify?, comment?, begin?, end?, creator? }): Observable<NuxeoDocument>  // delegates to addPermission; notify defaults false; creator defaults to CURRENT_USERNAME
 replacePermission(uid: string, params: { id?, username?, email?, permission, notify?, comment?, begin?, end? }): Observable<NuxeoDocument>
-removePermission(uid: string, params: { user, permission, acl? }): Observable<NuxeoDocument>
+removePermission(uid: string, params: { user, permission, acl? }): Observable<NuxeoDocument>  // removes EVERY ACE `user` holds in `acl` — Nuxeo ignores `permission`
+removePermissionById(uid: string, aceId: string, acl = 'local'): Observable<NuxeoDocument>  // removes exactly one ACE by its Nuxeo id; an unknown id is a 200 no-op, so re-read to confirm
 blockPermissionInheritance(uid: string): Observable<NuxeoDocument>
 unblockPermissionInheritance(uid: string): Observable<NuxeoDocument>
 sendNotificationEmailForPermission(uid: string, aceId: string): Observable<NuxeoDocument>

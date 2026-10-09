@@ -168,7 +168,11 @@ not shipped in the package; customers use `extension-component`. By hand, the st
 1. `src/lib/<name>/<name>.component.{ts,html,scss,spec.ts}` — selector `nxs-<name>`, class
    `Nxs<Name>Component`, `standalone: true`, `templateUrl`, theme tokens only.
 2. Text inputs take already-translated strings; the library ships no catalogue.
-   `checkNoProseInComponentInputs` scans `nxs-` elements, so a caller must bind them.
+   `checkNoProseInComponentInputs` scans `nxs-` elements, so a caller must bind them. A composite
+   component's own chrome — headings, buttons, messages — is translated with keys under
+   `satori-components.<name>.*` in the app catalogue (`apps/nuxeo-ui/public/i18n/en.json` plus
+   `en.context.json`), written as literals or literal-prefixed template strings so that
+   `node tools/i18n/platform-english.mjs` finds them and ships their English with the package.
 3. The spec covers the empty and error paths and keeps the library at 90% or more:
    `npx nx test satori-components --coverage.enabled=true`, then `npm run beta:coverage`.
 4. Export it from `src/index.ts`, run `npm run beta:api -- --update` and review the
@@ -179,6 +183,14 @@ not shipped in the package; customers use `extension-component`. By hand, the st
 6. A new runtime dependency is a `libs/platform/package.json` peer, or is listed in
    `allowedNonPeerDependencies`.
 7. Shared state is an `InjectionToken` with an exported `provide…()` function, never `providedIn`.
+   A service only one component uses goes in that component's `providers`, as
+   `NxsPermissionsService` does.
+8. Members only the template uses are `protected`, so the component's contract is its inputs and
+   outputs. Specs reach them by element access (`panel()['save']()`).
+9. A component that replaces packaged markup is registered by ID (`nxs.<group>.<name>`, exported as
+   a constant) and rendered through `lib-extension-outlet` with the component as the unresolved
+   fallback, so a customer library can re-register the ID. `beta:reference` checks `nxs.*` IDs
+   against `docs/extension-reference.md` as it does `app.*` ones.
 
 ---
 

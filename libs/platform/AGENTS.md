@@ -250,7 +250,9 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 ```
 
 - **Text inputs take text you have already translated.** The library ships no catalogue, so
-  bind every heading, message and label through your own translate pipe.
+  bind every heading, message and label through your own translate pipe. A composite component
+  such as `nxs-permissions-panel` translates its own chrome under `satori-components.*`; the
+  package's English for those keys is served by `providePlatformEnglishFallback()`.
 - **`nxs-empty-state` renders its heading as an `<h2>` by default.** Bind `[headingLevel]` to
   one below the heading of the section it sits in, so screen-reader heading navigation stays in
   order.
@@ -261,7 +263,14 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 
 ### Overridable — re-register an ID
 
-Four IDs are addressable, so you can replace what renders under them without forking:
+Two kinds of ID are addressable, so you can replace what renders under them without forking.
+
+**A packaged panel.** `nxs-permissions-panel` is registered as `NXS_PERMISSIONS_PANEL_ID`
+(`nxs.components.permissionsPanel`). Register your own component under it and both Permissions
+tabs render yours, with `documentId` and `permissionsChanged`, a callback to invoke after a write
+so the host re-reads the external-user section it owns.
+
+**The four primitives**, each with a Material and a Satori implementation:
 
 | ID                           | Contract to implement  | Material, from `/components` | Satori, from `/components-satori` |
 | ---------------------------- | ---------------------- | ---------------------------- | --------------------------------- |
@@ -281,7 +290,9 @@ providers: [
   provideNxsComponents(),
   provideNxsSatoriComponents(), // optional
   provideSatoriExtensions({
-    components: { 'nxs.primitives.tag': () => import('./acme-tag').then((m) => m.AcmeTagComponent) },
+    components: {
+      'nxs.primitives.tag': () => import('./acme-tag').then((m) => m.AcmeTagComponent),
+    },
   }),
 ];
 ```
@@ -292,7 +303,7 @@ The shipped guardrail fails an override that does not.
 
 **What overriding does not reach:** a component used **by class** rather than resolved by ID. An
 override changes every place that renders the ID through `lib-extension-outlet`, and nothing that
-composed `NxsTagComponent` directly. Today no packaged screen resolves these four IDs yet — see
+composed `NxsTagComponent` directly. Today no packaged screen resolves the four primitive IDs yet — see
 `extension-reference.md` §6a for where they do render.
 
 ### Placeable — the slots that render a component by ID
@@ -303,7 +314,11 @@ the focused document as a `document` input. Their state and descriptor fields ar
 `extension-reference.md` §2, §6, §9, §9a and §11.
 
 ```json
-{ "extensions": { "slots": { "tabs": [{ "id": "acme.tabs.claims", "componentId": "acme.panel.claims" }] } } }
+{
+  "extensions": {
+    "slots": { "tabs": [{ "id": "acme.tabs.claims", "componentId": "acme.panel.claims" }] }
+  }
+}
 ```
 
 ### What the guardrail checks about a component you contribute
