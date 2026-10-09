@@ -722,6 +722,18 @@ expectRed(
   /binds label to `app\.loading`.*omits/s,
 );
 
+expectRed(
+  'an nxs- component label key missing from the fallback, after a quoted ">"',
+  'checkAccessibleNameFallbacks',
+  {
+    ...NXS_LABEL_APP,
+    'libs/features/browse/src/lib/browse/browse.html':
+      '<nxs-spinner\n  [diameter]="size > 0 ? 36 : 24"\n  [label]="\'app.loading\' | translate"\n/>\n',
+  },
+  null,
+  /binds label to `app\.loading`.*omits/s,
+);
+
 expectGreen('an nxs- component label key in the fallback', 'checkAccessibleNameFallbacks', {
   ...NXS_LABEL_APP,
   'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK.replace(

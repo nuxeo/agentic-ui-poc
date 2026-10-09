@@ -3182,7 +3182,8 @@ function checkAccessibleNameFallbacks() {
   // HTML attributes, so a spinner's key could leave EN_FALLBACK_TRANSLATIONS with this gate green —
   // and the core slice names its loaders that way. Matched per opening tag (spinners wrap across
   // lines), and only on `nxs-` elements: `[label]` on a `mat-tab` is visible text, not this gate's.
-  const NXS_OPENING_TAG = /<nxs-[\w-]+\b[^>]*>/g;
+  // Quoted values are consumed whole, so a `>` in a bound expression does not end the tag.
+  const NXS_OPENING_TAG = /<nxs-[\w-]+\b(?:[^>"']|"[^"]*"|'[^']*')*>/g;
   const NXS_LABEL_BINDING = /\[label\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
   // NXENG-798: global search names via a visible `<label>`, not `[placeholder]`. Only this control
