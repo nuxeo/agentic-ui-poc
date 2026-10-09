@@ -17,14 +17,6 @@ function notBusy(operation: string): ExtensionRuleRef {
 }
 
 /**
- * The document can be modified at all. Nuxeo marks versions and publications `Immutable`; a
- * version's `permissions` enricher still lists `Write` while the server refuses the edit, so
- * `app.rules.canWrite` alone offers Edit on a version. Web UI hides Edit on every `Immutable`
- * document.
- */
-const NOT_IMMUTABLE = not({ type: 'app.rules.hasFacet', parameters: ['Immutable'] });
-
-/**
  * The bulk actions the product ships with.
  *
  * The same six controls, in the same order, with the same icons and tooltips
@@ -115,10 +107,12 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
     label: 'Edit',
     icon: 'edit',
     order: 10,
+    // Not `Immutable`: Nuxeo marks versions and publications so, and a version's `permissions`
+    // enricher still lists `Write` while the server refuses the edit. Web UI hides Edit on both.
     rule: every(
       'app.rules.isNotTrashed',
       'app.rules.canWrite',
-      NOT_IMMUTABLE,
+      not({ type: 'app.rules.hasFacet', parameters: ['Immutable'] }),
       not('app.rules.isNote'),
     ),
   },
@@ -131,7 +125,12 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
     label: 'Edit properties',
     icon: 'edit',
     order: 10,
-    rule: every('app.rules.isNotTrashed', 'app.rules.canWrite', NOT_IMMUTABLE, 'app.rules.isNote'),
+    rule: every(
+      'app.rules.isNotTrashed',
+      'app.rules.canWrite',
+      not({ type: 'app.rules.hasFacet', parameters: ['Immutable'] }),
+      'app.rules.isNote',
+    ),
   },
   {
     id: 'app.toolbar.addToCollection',

@@ -265,6 +265,15 @@ const WRITE_VERSION = 'WriteVersion';
 const VERSIONABLE_FACET = 'Versionable';
 
 /**
+ * Nuxeo flags a record with the `isRecord` field of the document JSON — there is no facet for it.
+ * The public `NuxeoDocument` model does not declare the field, so it is read here rather than
+ * added to that published type.
+ */
+function isRecordDocument(doc: NuxeoDocument): boolean {
+  return (doc as NuxeoDocument & { readonly isRecord?: boolean }).isRecord === true;
+}
+
+/**
  * The message for a refused restore. 403 is also what Nuxeo answers when another user holds
  * the lock, which removes `WriteVersion` from everyone but its owner and administrators.
  */
@@ -975,15 +984,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     () => this.isVersionView() && hasDocumentPermission(this.doc(), WRITE_VERSION),
   );
 
-  /**
-   * Web UI's gate for Create Version, except that Web UI also refuses a record: `NuxeoDocument`
-   * does not carry the server's `isRecord` field, so that half is not checked here.
-   */
+  /** Web UI's gate for Create Version. */
   readonly canCreateVersion = computed(() => {
     const d = this.doc();
     return (
       !!d &&
       !d.isVersion &&
+      !isRecordDocument(d) &&
       (d.facets ?? []).includes(VERSIONABLE_FACET) &&
       hasDocumentPermission(d, WRITE_VERSION)
     );
@@ -1769,6 +1776,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private maybeBackfillContentLakeMarker(doc: NuxeoDocument): void {
+    // The backfill writes the marker to the document, and a version is read-only.
+    if (doc.isVersion) return;
     if (!shouldProbeContentLakeIngestStatus(doc)) {
       if (isContentLakeIngestCurrent(doc)) {
         this.contentLakePresenceVerified.set(true);

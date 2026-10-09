@@ -24,6 +24,7 @@ import {
 import {
   ARenderService,
   BrowseService,
+  ContentLakeIngestService,
   CURRENT_USERNAME,
   DirectoryService,
   DocumentDetailService,
@@ -39,6 +40,7 @@ import {
   AiFeatureFlagService,
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
+import { KdClientService } from '@agentic-ui/shared/kd-client';
 import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
 
@@ -132,6 +134,16 @@ const mockDialog = {
 
 const snack = vi.fn();
 
+const mockContentLake = {
+  startIngest: vi.fn(() => of({ commandId: 'c1' })),
+  waitUntilComplete: vi.fn(() => of({})),
+  markIngested: vi.fn(() => of([])),
+  backfillIngestMarkerIfNeeded: vi.fn(() => of({ doc: null, presentInContentLake: false })),
+};
+
+/** A blob Content Lake can ingest, and Knowledge Enrichment can read. */
+const PDF = { 'file:content': { name: 'a.pdf', 'mime-type': 'application/pdf', data: '' } };
+
 describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
   let fixture: ComponentFixture<DocumentDetailComponent>;
   let navigateByUrl: MockInstance<Router['navigateByUrl']>;
@@ -190,6 +202,8 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
           },
         },
         { provide: CURRENT_USERNAME, useValue: () => 'tester' },
+        { provide: ContentLakeIngestService, useValue: mockContentLake },
+        { provide: KdClientService, useValue: { listIngestSourceIds: vi.fn(() => of([])) } },
         { provide: AppConfigService, useValue: { manifest: signal({ extensionLayers: [] }) } },
         provideSatoriExtensions({
           slots: {
@@ -305,13 +319,22 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
 
     it('offers no enrichment that would write back to a version', async () => {
       // Knowledge Enrichment writes `dc:description` / `dc:nature` and tags back to the document.
-      const pdf = { 'file:content': { name: 'a.pdf', 'mime-type': 'application/pdf', data: '' } };
-      await render(live({ properties: { ...live().properties, ...pdf } }));
+      await render(live({ properties: { ...live().properties, ...PDF } }));
       expect(el('.ke-action-group')).toBeTruthy();
 
       fixture.destroy();
-      await render(version(1, { properties: { ...version(1).properties, ...pdf } }));
+      await render(version(1, { properties: { ...version(1).properties, ...PDF } }));
       expect(el('.ke-action-group')).toBeNull();
+    });
+
+    it('does not backfill the Content Lake marker on a version, which would be a write', async () => {
+      await render(live({ properties: { ...live().properties, ...PDF } }));
+      expect(mockContentLake.backfillIngestMarkerIfNeeded).toHaveBeenCalled();
+
+      mockContentLake.backfillIngestMarkerIfNeeded.mockClear();
+      fixture.destroy();
+      await render(version(1, { properties: { ...version(1).properties, ...PDF } }));
+      expect(mockContentLake.backfillIngestMarkerIfNeeded).not.toHaveBeenCalled();
     });
 
     it('leaves the live document editable', async () => {
@@ -414,6 +437,13 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
 
     it('is not offered on a document without the Versionable facet', async () => {
       await render(neverVersioned({ facets: ['Commentable'] }));
+
+      expect(el('.create-version-btn')).toBeNull();
+    });
+
+    it('is not offered on a record', async () => {
+      // `isRecord` is in Nuxeo's document JSON but not in the `NuxeoDocument` model.
+      await render({ ...neverVersioned(), isRecord: true } as NuxeoDocument);
 
       expect(el('.create-version-btn')).toBeNull();
     });
