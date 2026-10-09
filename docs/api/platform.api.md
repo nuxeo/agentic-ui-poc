@@ -1955,7 +1955,7 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void;
 
 ## @nuxeo-satori/platform/ui
 
-45 exported symbol(s).
+46 exported symbol(s).
 
 ```ts
 class ConfirmDialogComponent {
