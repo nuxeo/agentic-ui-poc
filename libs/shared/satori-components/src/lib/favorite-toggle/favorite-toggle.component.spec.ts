@@ -152,6 +152,45 @@ describe('NxsFavoriteToggleComponent', () => {
     expect(host.favorite()).toBe(true);
   });
 
+  it('ignores the answer for a document it is no longer bound to, and frees the new one', async () => {
+    const pending = new Subject<NuxeoDocument>();
+    addToFavorites.mockReturnValueOnce(pending.asObservable());
+    button().click();
+    await render();
+
+    host.documentId.set('doc-2');
+    await render();
+    expect(button().hasAttribute('aria-busy')).toBe(false);
+    button().click();
+    await render();
+    expect(addToFavorites).toHaveBeenLastCalledWith('doc-2');
+    expect(host.changes).toEqual([true]);
+
+    pending.next({} as NuxeoDocument);
+    pending.complete();
+    await render();
+
+    expect(host.changes).toEqual([true]);
+    expect(host.favorite()).toBe(true);
+    // The server still confirmed doc-1, so the shell hears of both.
+    expect(windowEvents).toBe(2);
+  });
+
+  it('reports a failure only for the document it is bound to', async () => {
+    const pending = new Subject<NuxeoDocument>();
+    addToFavorites.mockReturnValueOnce(pending.asObservable());
+    button().click();
+    await render();
+    host.documentId.set('doc-2');
+    await render();
+
+    pending.error({ status: 500 });
+    await render();
+
+    expect(host.failures).toEqual([]);
+    expect(host.favorite()).toBe(false);
+  });
+
   it('does nothing while disabled', async () => {
     host.disabled.set(true);
     await render();

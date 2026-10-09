@@ -3216,11 +3216,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   toggleFavorite(): void {
     if (this.actionInProgress()) return;
     this.actionInProgress.set('favorite');
-    nxsToggleFavorite(this.detailService, this.docUid, this.isFavorite())
+    const uid = this.docUid;
+    nxsToggleFavorite(this.detailService, uid, this.isFavorite())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (favorite) => {
-          this.isFavorite.set(favorite);
+          // The page is reused when `:uid` changes: an answer for the document left behind says
+          // nothing about the star of the one now shown, which loaded its own.
+          if (uid === this.docUid) this.isFavorite.set(favorite);
           this.actionInProgress.set(null);
           this.toast(
             this.translate.instant(

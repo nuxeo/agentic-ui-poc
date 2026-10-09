@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  computed,
   inject,
   input,
   model,
@@ -48,8 +49,14 @@ export class NxsFavoriteToggleComponent {
   /** The server refused; `favorite` is unchanged. Carries the error. */
   readonly failed = output<unknown>();
 
-  /** A request is in flight. The button stays focusable and ignores presses until it answers. */
-  protected readonly busy = signal(false);
+  /**
+   * A request is in flight for the document shown. The button stays focusable and ignores presses
+   * until it answers; bound to another document, it is free again.
+   */
+  protected readonly busy = computed(() => this.pending() === this.documentId());
+
+  /** The document a request is in flight for. */
+  private readonly pending = signal<string | null>(null);
 
   private readonly documents = inject(DocumentDetailService);
   private readonly destroyRef = inject(DestroyRef);
@@ -58,20 +65,23 @@ export class NxsFavoriteToggleComponent {
   toggle(): void {
     const documentId = this.documentId();
     if (!documentId || this.disabled() || this.busy()) return;
-    this.busy.set(true);
+    this.pending.set(documentId);
     nxsToggleFavorite(this.documents, documentId, this.favorite())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (favorite) => {
-          this.busy.set(false);
-          this.favorite.set(favorite);
-          this.changed.emit(favorite);
-        },
-        error: (error: unknown) => {
-          this.busy.set(false);
-          this.failed.emit(error);
-        },
+        next: (favorite) =>
+          this.settle(documentId, () => {
+            this.favorite.set(favorite);
+            this.changed.emit(favorite);
+          }),
+        error: (error: unknown) => this.settle(documentId, () => this.failed.emit(error)),
       });
+  }
+
+  /** Ends the request for `documentId`, and reports it only if that is still the document bound. */
+  private settle(documentId: string, report: () => void): void {
+    if (this.pending() === documentId) this.pending.set(null);
+    if (documentId === this.documentId()) report();
   }
 
   protected press(event: Event): void {
