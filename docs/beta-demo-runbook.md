@@ -187,7 +187,7 @@ wrong.
 | `@alfresco/adf-core`                | 9.0.0               |
 | `@alfresco/adf-extensions`          | 9.0.0               |
 | `@hylandsoftware/hxcs-js-client`    | 2.0.111             |
-| `@hylandsoftware/satori-ui`         | 0.2.0               |
+| `@hylandsoftware/satori-ui`         | 0.2.1               |
 
 ### The side-by-side, and how to show it
 
