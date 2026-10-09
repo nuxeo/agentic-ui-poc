@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 describe('DocumentDetailComponent — panel close focus ring (NXENG-830)', () => {
   const scssPath = join(import.meta.dirname, 'document-detail-panel-close-focus.scss');
   const templatePath = join(import.meta.dirname, 'document-detail.html');
+  const componentPath = join(import.meta.dirname, 'document-detail.ts');
 
   it('wires panel-close-btn on the production properties panel close control', () => {
     const html = readFileSync(templatePath, 'utf8');
@@ -35,5 +36,12 @@ describe('DocumentDetailComponent — panel close focus ring (NXENG-830)', () =>
     expect(scss).toMatch(
       /\.panel-close-btn\.mat-mdc-icon-button:focus[\s\S]*outline:\s*2px\s+solid\s+var\(--document-detail-properties-label-muted\)/,
     );
+  });
+
+  it('loads panel-close focus styles through DocumentDetailComponent styleUrls', () => {
+    const source = readFileSync(componentPath, 'utf8');
+    expect(source).toMatch(/styleUrls:\s*\[/);
+    expect(source).toMatch(/['"]\.\/document-detail\.scss['"]/);
+    expect(source).toMatch(/['"]\.\/document-detail-panel-close-focus\.scss['"]/);
   });
 });
