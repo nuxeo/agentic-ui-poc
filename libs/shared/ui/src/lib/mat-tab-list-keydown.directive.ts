@@ -2,7 +2,7 @@ import { Directive, ElementRef, DestroyRef, afterNextRender, inject } from '@ang
 import { observeMatTabListKeyboardA11y } from './mat-tab-list-keyboard-a11y';
 
 /**
- * Satisfies IBM Equal Access on Material tablists inside `mat-tab-group`.
+ * Sets IBM-detectable inline `onkeydown` on Material tablists inside `mat-tab-group`.
  * Apply as `libMatTabListKeydown` on the group host.
  */
 @Directive({

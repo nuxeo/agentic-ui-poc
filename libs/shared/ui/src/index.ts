@@ -55,6 +55,7 @@ export {
   stripRedundantMatInputAriaRequired,
 } from './lib/login-mat-input-required-a11y';
 export {
+  MAT_TAB_LIST_IBM_ONKEYDOWN,
   MAT_TAB_LIST_KEYDOWN_ATTR,
   observeMatTabListKeyboardA11y,
   wireMatTabListKeyboardA11y,

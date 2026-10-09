@@ -8,6 +8,7 @@ import { RIGHT_ARROW } from '@angular/cdk/keycodes';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
 import {
+  MAT_TAB_LIST_IBM_ONKEYDOWN,
   MAT_TAB_LIST_KEYDOWN_ATTR,
   observeMatTabListKeyboardA11y,
   wireMatTabListKeyboardA11y,
@@ -72,7 +73,7 @@ describe('wireMatTabListKeyboardA11y', () => {
     document.body.replaceChildren();
   });
 
-  it('marks the tablist and removes the marker on cleanup', () => {
+  it('marks the tablist with IBM-detectable onkeydown and removes it on cleanup', () => {
     const root = materialTabHeaderMarkup();
 
     const tabList = root.querySelector<HTMLElement>('.mat-mdc-tab-list')!;
@@ -82,10 +83,12 @@ describe('wireMatTabListKeyboardA11y', () => {
     expect(cleanup).not.toBeNull();
 
     expect(tabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBe('true');
+    expect(tabList.getAttribute('onkeydown')).toBe(MAT_TAB_LIST_IBM_ONKEYDOWN);
 
     cleanup!();
 
     expect(tabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBeNull();
+    expect(tabList.hasAttribute('onkeydown')).toBe(false);
   });
 
   it('does not move focus when keydown targets the tablist itself', () => {
@@ -176,6 +179,7 @@ describe('MatTabListKeydownDirective on Material tab group', () => {
     expect(tabList).toBeTruthy();
 
     expect(tabList!.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBe('true');
+    expect(tabList!.getAttribute('onkeydown')).toBe(MAT_TAB_LIST_IBM_ONKEYDOWN);
   });
 
   it('preserves Material ArrowRight navigation when keydown originates on a tab', async () => {

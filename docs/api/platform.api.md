@@ -2140,6 +2140,7 @@ interface IptcData {
     [key: string]: string | undefined;
     }
 }
+const MAT_TAB_LIST_IBM_ONKEYDOWN = "void(0)";
 const MAT_TAB_LIST_KEYDOWN_ATTR = "data-satori-tablist-keydown";
 class MatTabListKeydownDirective {
     constructor();
