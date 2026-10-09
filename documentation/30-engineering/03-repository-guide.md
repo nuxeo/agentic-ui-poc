@@ -115,7 +115,7 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 > their coverage reports contain 0 total statements, so the summariser computes 0/0 as 100%.
 > `core` has the same shape. Of 17 measured projects, 6 read as ≥90% and **3 genuinely are**.
 
-### Shared libraries — 12, 40,077 lines
+### Shared libraries — 12, 40,113 lines
 
 | Library              |  Lines | Specs | Responsibility                                                                                                                   |
 | -------------------- | -----: | ----: | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -130,7 +130,7 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 | `ke-client`          |    734 |     1 | Knowledge Enrichment client                                                                                                      |
 | `ai-client`          |    457 | **0** | The 12 `AI.*` operations. Thin HTTP client                                                                                       |
 | `util`               |    108 |     0 | Small helpers                                                                                                                    |
-| `satori-components`  |    197 |     1 | The `nxs-` components replacing adf-hx. **Published** as `@nuxeo-satori/platform/components` (NXSAT-308, 2026-10-08)             |
+| `satori-components`  |    233 |     1 | The `nxs-` components replacing adf-hx. **Published** as `@nuxeo-satori/platform/components` (NXSAT-308, 2026-10-08)             |
 
 ### The other three
 

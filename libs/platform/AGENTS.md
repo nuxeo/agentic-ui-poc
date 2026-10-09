@@ -246,6 +246,9 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 
 - **Text inputs take text you have already translated.** The library ships no catalogue, so
   bind every heading, message and label through your own translate pipe.
+- **`nxs-empty-state`'s heading is a level-2 heading by default.** Bind `[headingLevel]` to
+  one below the heading of the section it sits in, so screen-reader heading navigation stays in
+  order.
 - **Import only the entry point.** A path past it fails the shipped guardrail like any other
   deep import.
 - **It is new and growing.** The type declarations are the list of what exists; do not take

@@ -40,8 +40,8 @@
  * - Step 9: the published `.d.ts` carries nullable types. A direct regression guard
  *   for the defect where the package was compiled without `strictNullChecks` and
  *   shipped 27 wrongly non-nullable public types.
- * - Step 10: the `exports` map advertises six entry points and every `types` file
- *   it names exists. An entry pointing at a missing file is an unresolvable import
+ * - Step 10: the `exports` map advertises exactly the six expected entry points, by
+ *   name, and every `types` file it names exists. An entry pointing at a missing file is an unresolvable import
  *   for a customer, which is how `ng-packagr-lite` shipped four broken subpaths.
  * - Step 11: `private: true` survives into the built artifact, so an accidental
  *   `npm publish` is refused while the scope is unconfirmed (R10).
@@ -84,6 +84,25 @@ const DIST = join(ROOT, 'dist', 'libs', 'platform');
 const PACKAGED_NAV_BG = 'rgb(246, 248, 250)';
 /** #0f2b46 — the Acme theme in the template's bootstrap.json. */
 const THEMED_NAV_BG = 'rgb(15, 43, 70)';
+
+/** The subpaths the built package must export, by name: a count alone passes a swapped entry. */
+const EXPECTED_EXPORTS = Object.freeze([
+  '.',
+  './app-config',
+  './components',
+  './extensions',
+  './nuxeo-client',
+  './ui',
+]);
+
+/** The expected subpaths an `exports` map lacks, and the ones it has that nobody expected. */
+export function exportsMismatch(exportsMap) {
+  const actual = Object.keys(exportsMap ?? {}).filter((k) => k !== './package.json');
+  return {
+    missing: EXPECTED_EXPORTS.filter((k) => !actual.includes(k)),
+    unexpected: actual.filter((k) => !EXPECTED_EXPORTS.includes(k)),
+  };
+}
 
 /** Perceived luminance, for the contrast guard. */
 function luminance(rgb) {
@@ -293,10 +312,11 @@ export default async function run(page, h) {
 
   const pkg = JSON.parse(readFileSync(join(DIST, 'package.json'), 'utf8'));
   const subpaths = Object.keys(pkg.exports ?? {}).filter((k) => k !== './package.json');
+  const { missing: absent, unexpected } = exportsMismatch(pkg.exports);
   h.check(
-    'six entry points are exported',
-    subpaths.length === 6,
-    `found ${subpaths.length}: ${subpaths.join(', ')}`,
+    'exactly the six expected entry points are exported',
+    absent.length === 0 && unexpected.length === 0,
+    `missing: ${absent.join(', ') || 'none'}; unexpected: ${unexpected.join(', ') || 'none'}`,
   );
 
   const missing = subpaths
