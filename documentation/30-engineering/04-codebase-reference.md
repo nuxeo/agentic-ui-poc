@@ -12,9 +12,9 @@ audience: engineering
 > **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
 > Only §6 and the `constants/avatar-colors.ts` row were re-verified at that commit. The repository
 > links (made relative rather than pinned to `feature/adf-hx-browse-poc`, every target present) and
-> the `verify-gate.mjs` and `review-guardrails.mjs` rows were re-verified on 2026-10-08 at
-> `2898046` (`feature/nxsat-308-ci-cold-cache-tooling`). The rest of the page as of
-> 2026-08-24 · `77265f9`.
+> the `review-guardrails.mjs` row were re-verified on 2026-10-08 at `2898046`
+> (`feature/nxsat-308-ci-cold-cache-tooling`), and the `verify-gate.mjs` and harness-script rows
+> on 2026-10-08 at `fb97d44`. The rest of the page as of 2026-08-24 · `77265f9`.
 > Directory-level view: [Repository Guide](03-repository-guide.md).
 >
 > **What is excluded, and why:** `node_modules/`, `dist/`, `coverage/`, `.angular/`, `.nx/`,
@@ -37,7 +37,7 @@ If you read six files, read these.
 | [`libs/shared/extensions/src/lib/extension-slots.ts`](../../libs/shared/extensions/src/lib/extension-slots.ts)             |   ~60 | The customisation contract. 8 slots                                                                   |
 | [`libs/shared/extensions/src/lib/extension-rules.ts`](../../libs/shared/extensions/src/lib/extension-rules.ts)             |  ~261 | Rule evaluation, fail-open/fail-closed, depth-bounded recursion. Heavily commented with the reasoning |
 | [`nuxeo-agentic-ui-package/src/main/resources/install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml) |   ~25 | The upgrade-safety guarantee, and why the obvious destination is wrong                                |
-| [`scripts/beta-harness/verify-gate.mjs`](../../scripts/beta-harness/verify-gate.mjs)                                       |  ~520 | Every gate in `ALL_GATES`, each with a comment saying what it caught                                  |
+| [`scripts/beta-harness/verify-gate.mjs`](../../scripts/beta-harness/verify-gate.mjs)                                       |  ~550 | Every gate in `ALL_GATES`, each with a comment saying what it caught                                  |
 
 ---
 
@@ -168,20 +168,20 @@ Owns no logic. Wraps five shared libraries as entry points and ships the custome
 
 Full table in [Dev Harness & Gates](08-dev-harness-and-gates.md). Structure:
 
-| Path                                                                                                                                                                       | Responsibility                                                                       |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `beta-harness/verify-gate.mjs`                                                                                                                                             | Runs every gate in `ALL_GATES`, cheapest-first, stop at first failure                |
-| `beta-harness/phase-runner.mjs`                                                                                                                                            | Evidence runner. Exit 2 = precondition-not-met                                       |
-| `beta-harness/helpers.mjs`                                                                                                                                                 | `step`, `check`, `expectVisible`, `expectNoA11yViolations`, `requirePrecondition`, … |
-| `beta-harness/steps/*.mjs`                                                                                                                                                 | One per phase claim, plus a showcase and a `_template`                               |
-| `beta-harness/{api-surface,publishability,fork-simulation,upgrade-rehearsal}.mjs`                                                                                          | The four published-package gates                                                     |
-| `beta-harness/{coverage,lockfile-integrity,no-test-libs-in-bundle,assertion-audit,extension-reference-drift,state-check,node-version,backend-preflight,e2e-preflight}.mjs` | The rest                                                                             |
-| `review-guardrails.mjs`                                                                                                                                                    | Every commit-time invariant registered in its `GUARDRAILS` array                     |
-| `build-platform-generators.mjs`                                                                                                                                            | Compiles generators into the package. **The only thing that typechecks them**        |
-| `sync-platform-docs.mjs`                                                                                                                                                   | Copies customer docs in before the build                                             |
-| `publish-confluence.mjs`                                                                                                                                                   | Publishes `documentation/` to Confluence. Idempotent by title                        |
-| `agent-context.sh`                                                                                                                                                         | Emits the knowledge base for any LLM CLI                                             |
-| `collect-evidence/NXSAT-*.mjs`                                                                                                                                             | ~20 per-ticket evidence runners                                                      |
+| Path                                                                                                                                                                                       | Responsibility                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `beta-harness/verify-gate.mjs`                                                                                                                                                             | Runs every gate in `ALL_GATES`, cheapest-first, stop at first failure                |
+| `beta-harness/phase-runner.mjs`                                                                                                                                                            | Evidence runner. Exit 2 = precondition-not-met                                       |
+| `beta-harness/helpers.mjs`                                                                                                                                                                 | `step`, `check`, `expectVisible`, `expectNoA11yViolations`, `requirePrecondition`, … |
+| `beta-harness/steps/*.mjs`                                                                                                                                                                 | One per phase claim, plus a showcase and a `_template`                               |
+| `beta-harness/{api-surface,publishability,fork-simulation,upgrade-rehearsal}.mjs`                                                                                                          | The four published-package gates                                                     |
+| `beta-harness/{coverage,lockfile-integrity,dependency-tree,no-test-libs-in-bundle,assertion-audit,extension-reference-drift,state-check,node-version,backend-preflight,e2e-preflight}.mjs` | The rest                                                                             |
+| `review-guardrails.mjs`                                                                                                                                                                    | Every commit-time invariant registered in its `GUARDRAILS` array                     |
+| `build-platform-generators.mjs`                                                                                                                                                            | Compiles generators into the package. **The only thing that typechecks them**        |
+| `sync-platform-docs.mjs`                                                                                                                                                                   | Copies customer docs in before the build                                             |
+| `publish-confluence.mjs`                                                                                                                                                                   | Publishes `documentation/` to Confluence. Idempotent by title                        |
+| `agent-context.sh`                                                                                                                                                                         | Emits the knowledge base for any LLM CLI                                             |
+| `collect-evidence/NXSAT-*.mjs`                                                                                                                                                             | ~20 per-ticket evidence runners                                                      |
 
 ---
 
