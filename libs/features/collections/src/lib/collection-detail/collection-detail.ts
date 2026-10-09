@@ -145,6 +145,12 @@ export class CollectionDetailComponent {
   private thumbnailGeneration = 0;
   /** Request token for the members load — see `loadMembers` for why the two are separate. */
   private memberGeneration = 0;
+  /**
+   * Request token for the collection read and its fallback. Without it a read for a collection
+   * navigated away from could land later and install its lock state, and `toggleLock()` would then
+   * send the wrong operation to the collection now on screen.
+   */
+  private collectionGeneration = 0;
 
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
@@ -294,12 +300,20 @@ export class CollectionDetailComponent {
   }
 
   private loadCollection(): void {
+    const generation = ++this.collectionGeneration;
+    const requestedUid = this.collectionUid;
+    const isCurrent = (): boolean =>
+      generation === this.collectionGeneration && requestedUid === this.collectionUid;
     this.loadState.set('loading');
+    this.isLocked.set(false);
+    this.lockOwner.set(null);
+    this.lockCreated.set(null);
     this.detailService
-      .getFullDocument(this.collectionUid)
+      .getFullDocument(requestedUid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
+          if (!isCurrent()) return;
           this.collection.set(doc);
           this.loadState.set('loaded');
           this.syncActionStates(doc);
@@ -308,11 +322,13 @@ export class CollectionDetailComponent {
           }
         },
         error: () => {
+          if (!isCurrent()) return;
           this.collectionService
-            .getById(this.collectionUid)
+            .getById(requestedUid)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (doc) => {
+                if (!isCurrent()) return;
                 this.collection.set(doc);
                 this.loadState.set('loaded');
                 this.syncActionStates(doc);
@@ -325,6 +341,7 @@ export class CollectionDetailComponent {
               // permission failure the user can retry, and saying "does not exist" there would be
               // a guess. Either way the page must stop pretending it loaded something.
               error: (err: unknown) => {
+                if (!isCurrent()) return;
                 this.collection.set(null);
                 this.loadState.set(
                   (err as { status?: number } | null)?.status === 404 ? 'not-found' : 'error',

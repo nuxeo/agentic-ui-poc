@@ -531,6 +531,33 @@ describe('CollectionDetailComponent', () => {
       expect(component.lockTooltip()).toBe('Locked by alice on August 24, 2026');
     });
 
+    it('ignores a read that lands after navigating to another collection', () => {
+      const late = new Subject<NuxeoDocument | null>();
+      mockDetailService.getFullDocument.mockReturnValue(late);
+      component['loadCollection']();
+      component['collectionUid'] = 'collection-2';
+      load(docWith({ uid: 'collection-2', lockOwner: null, lockCreated: null }));
+
+      late.next(docWith({ lockOwner: 'alice', lockCreated: LOCKED_AT }));
+
+      expect(component.collection()?.uid).toBe('collection-2');
+      expect(component.isLocked()).toBe(false);
+    });
+
+    it('ignores a fallback that lands after navigating to another collection', () => {
+      const late = new Subject<NuxeoDocument | null>();
+      mockDetailService.getFullDocument.mockReturnValue(throwError(() => new Error('enricher')));
+      mockCollectionService.getById.mockReturnValue(late);
+      component['loadCollection']();
+      component['collectionUid'] = 'collection-2';
+      load(docWith({ uid: 'collection-2', lockOwner: null, lockCreated: null }));
+
+      late.next(docWith({ lockOwner: 'alice', lockCreated: LOCKED_AT }));
+
+      expect(component.collection()?.uid).toBe('collection-2');
+      expect(component.isLocked()).toBe(false);
+    });
+
     it('keeps a reader read-only when the fallback answers for a locked collection', () => {
       mockDetailService.getFullDocument.mockReturnValue(throwError(() => new Error('enricher')));
       mockCollectionService.getById.mockReturnValue(
