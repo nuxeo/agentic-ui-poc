@@ -177,20 +177,23 @@ describe('NxsThumbnailCache', () => {
     expect(fetchThumbnail).toHaveBeenCalledTimes(NXS_THUMBNAIL_CONCURRENCY + 2);
   });
 
-  it('revokes every URL, and cancels what is queued, when the page is destroyed', async () => {
-    const ids = Array.from({ length: NXS_THUMBNAIL_CONCURRENCY + 1 }, (_, i) => `doc-${i}`);
+  it('revokes every URL, and starts nothing queued, when the page is destroyed', async () => {
+    const ids = Array.from({ length: NXS_THUMBNAIL_CONCURRENCY + 3 }, (_, i) => `doc-${i}`);
     page.ids.set(ids);
     await render();
     answer('doc-0');
-    answer('doc-1');
     await render();
+    // doc-0 answered and doc-4 took its slot: doc-1..doc-4 in flight, doc-5 and doc-6 queued.
+    expect(fetchThumbnail).toHaveBeenCalledTimes(NXS_THUMBNAIL_CONCURRENCY + 1);
 
     fixture.destroy();
 
-    expect([...revoked].sort()).toEqual([...created].sort());
-    expect(created).toHaveLength(2);
-    // The queued fifth never started.
+    expect(revoked).toEqual(created);
+    expect(created).toHaveLength(1);
     expect(fetchThumbnail).toHaveBeenCalledTimes(NXS_THUMBNAIL_CONCURRENCY + 1);
+    // Cancelled, not merely unanswered: an answer now mints nothing.
+    answer('doc-1');
+    expect(created).toHaveLength(1);
   });
 
   it('hands out no URL for a failed request or an empty rendition', async () => {
@@ -219,10 +222,32 @@ describe('NxsThumbnailCache', () => {
     expect(fetchThumbnail).toHaveBeenCalledTimes(2);
   });
 
-  it('ignores a release it did not lend, and a discard of a URL it no longer holds', () => {
-    page.cache.release('never-acquired');
-    page.cache.discard('never-acquired', 'blob:other');
+  it('ignores a discard of a URL it does not hold', async () => {
+    answer('doc-1');
+    await render();
+
+    page.cache.discard('doc-1', 'blob:other');
+    page.cache.discard('never-lent', 'blob:other');
+
     expect(revoked).toEqual([]);
+    expect(images()).toEqual(['blob:cache-1']);
+  });
+
+  it('does not let a holder of a forgotten entry release the one fetched after it', () => {
+    const stale = page.cache.lend('doc-x').subscribe();
+    answer('doc-x');
+    page.cache.discard('doc-x', created[0]);
+    const fresh = page.cache.lend('doc-x').subscribe();
+    answer('doc-x');
+    expect(created).toHaveLength(2);
+
+    stale.unsubscribe();
+    vi.advanceTimersByTime(NXS_THUMBNAIL_GRACE * 2);
+    expect(revoked).toEqual([created[0]]);
+
+    fresh.unsubscribe();
+    vi.advanceTimersByTime(NXS_THUMBNAIL_GRACE);
+    expect(revoked).toEqual(created);
   });
 
   it('drops a request still in flight when nothing shows its document past the grace', async () => {

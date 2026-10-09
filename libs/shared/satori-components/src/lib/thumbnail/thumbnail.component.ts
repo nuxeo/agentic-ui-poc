@@ -61,13 +61,16 @@ export class NxsThumbnailComponent {
         // Cleared before the next request rather than when it answers, so a changed document never
         // shows the previous one's image, even for the length of a request.
         tap(() => this.clear()),
-        switchMap((id) =>
-          !id ? of(null) : this.cache ? this.borrow(this.cache, id) : this.own(id),
-        ),
+        switchMap((id) => this.load(id)),
         takeUntilDestroyed(),
       )
       .subscribe((url) => this.url.set(url));
     inject(DestroyRef).onDestroy(() => this.clear());
+  }
+
+  private load(documentId: string): Observable<string | null> {
+    if (!documentId) return of(null);
+    return this.cache ? this.cache.lend(documentId) : this.own(documentId);
   }
 
   /** The bytes arrived but are not an image the browser can draw. */
@@ -75,21 +78,6 @@ export class NxsThumbnailComponent {
     const url = this.url();
     if (url && !this.owned) this.cache?.discard(this.documentId(), url);
     this.clear();
-  }
-
-  /**
-   * The page cache's URL, held until `switchMap` moves on or the component is destroyed. The cache's
-   * stream completes once it has answered; that completion is not passed on, or it would release
-   * the URL while it is still on screen.
-   */
-  private borrow(cache: NxsThumbnailCache, documentId: string): Observable<string | null> {
-    return new Observable<string | null>((subscriber) => {
-      const lent = cache.acquire(documentId).subscribe((url) => subscriber.next(url));
-      return () => {
-        lent.unsubscribe();
-        cache.release(documentId);
-      };
-    });
   }
 
   private own(documentId: string): Observable<string | null> {

@@ -1,5 +1,15 @@
 import { DestroyRef, Injectable, inject, type Provider } from '@angular/core';
-import { ReplaySubject, catchError, of, type Observable, type Subscription } from 'rxjs';
+import {
+  NEVER,
+  ReplaySubject,
+  catchError,
+  concat,
+  defer,
+  finalize,
+  of,
+  type Observable,
+  type Subscription,
+} from 'rxjs';
 
 import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -41,12 +51,29 @@ export class NxsThumbnailCache {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
-      for (const id of [...this.entries.keys()]) this.drop(id);
+      // Emptied first: dropping a running request frees its slot, which would start a queued one.
+      this.waiting.length = 0;
+      for (const id of this.entries.keys()) this.drop(id);
     });
   }
 
-  /** The blob URL of a document's thumbnail, or `null`. `release` it when it is no longer shown. */
-  acquire(documentId: string): Observable<string | null> {
+  /**
+   * The blob URL of a document's thumbnail — `null` when there is none — held for as long as it is
+   * subscribed. The stream stays open once it has answered: unsubscribing is what lets the URL go.
+   */
+  lend(documentId: string): Observable<string | null> {
+    return defer(() => {
+      const entry = this.hold(documentId);
+      return concat(entry.url, NEVER).pipe(finalize(() => this.letGo(documentId, entry)));
+    });
+  }
+
+  /** The bytes behind `url` did not decode: forget the document, so the URL is not handed out again. */
+  discard(documentId: string, url: string): void {
+    if (this.entries.get(documentId)?.minted === url) this.drop(documentId);
+  }
+
+  private hold(documentId: string): Entry {
     let entry = this.entries.get(documentId);
     if (!entry) {
       entry = { url: new ReplaySubject(1), minted: null, holders: 0, request: null, expiry: null };
@@ -57,21 +84,16 @@ export class NxsThumbnailCache {
     if (entry.expiry) clearTimeout(entry.expiry);
     entry.expiry = null;
     entry.holders += 1;
-    return entry.url.asObservable();
+    return entry;
   }
 
-  release(documentId: string): void {
-    const entry = this.entries.get(documentId);
-    if (!entry || entry.holders === 0) return;
+  private letGo(documentId: string, entry: Entry): void {
+    // A dropped document may since have been fetched again; that entry is not this holder's.
+    if (this.entries.get(documentId) !== entry) return;
     entry.holders -= 1;
     if (entry.holders === 0) {
       entry.expiry = setTimeout(() => this.drop(documentId), NXS_THUMBNAIL_GRACE);
     }
-  }
-
-  /** The bytes behind `url` did not decode: forget the document, so the URL is not handed out again. */
-  discard(documentId: string, url: string): void {
-    if (this.entries.get(documentId)?.minted === url) this.drop(documentId);
   }
 
   private next(): void {
