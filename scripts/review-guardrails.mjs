@@ -7168,8 +7168,10 @@ function exportedComponentClasses(file, pathMaps, ancestors = new Set()) {
  * imported from the module that declares it, and the file exports at least one story. The meta may
  * be the default export itself or a variable it names, optionally behind `satisfies` or `as`.
  *
- * A story is a named export Storybook renders: the meta's `includeStories` and `excludeStories`
- * apply, as a list of names or a regex literal. One the guardrail cannot read is a failure.
+ * A story is a named export Storybook renders — `export const`, `export function` or a local
+ * `export { … }`, under the name it is exported as: the meta's `includeStories` and
+ * `excludeStories` apply, as a list of names or a regex literal. One the guardrail cannot read is a
+ * failure.
  */
 function storiedComponents(storyFile, pathMaps) {
   const covered = new Set();
@@ -7210,6 +7212,31 @@ function storiedComponents(storyFile, pathMaps) {
         if (!ts.isIdentifier(declaration.name)) continue;
         variables.set(declaration.name.text, declaration.initializer);
         if (exported) namedExports.push(declaration.name.text);
+      }
+    } else if (ts.isFunctionDeclaration(statement) && statement.name) {
+      const kinds = (statement.modifiers ?? []).map((m) => m.kind);
+      if (
+        kinds.includes(ts.SyntaxKind.ExportKeyword) &&
+        !kinds.includes(ts.SyntaxKind.DefaultKeyword)
+      ) {
+        namedExports.push(statement.name.text);
+      }
+    } else if (
+      ts.isExportDeclaration(statement) &&
+      !statement.moduleSpecifier &&
+      !statement.isTypeOnly &&
+      statement.exportClause &&
+      ts.isNamedExports(statement.exportClause)
+    ) {
+      // `export { Basic }`, `export { story as Basic }` and `export { meta as default }`: Storybook
+      // reads each under the name it is exported as.
+      for (const element of statement.exportClause.elements) {
+        if (element.isTypeOnly) continue;
+        if (element.name.text === 'default') {
+          defaultExport = ts.factory.createIdentifier((element.propertyName ?? element.name).text);
+        } else {
+          namedExports.push(element.name.text);
+        }
       }
     } else if (ts.isExportAssignment(statement) && !statement.isExportEquals) {
       defaultExport = unwrap(statement.expression);

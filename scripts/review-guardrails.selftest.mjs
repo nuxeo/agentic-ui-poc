@@ -6644,6 +6644,62 @@ expectGreen(
   }),
 );
 
+// Every named-export form Storybook renders is a story, under the name it is exported as.
+falsePositiveControls += 1;
+expectGreen(
+  'a story exported by a bare export',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      stories: 'const Basic: StoryObj<NxsThingComponent> = {};\nexport { Basic };',
+    }),
+  }),
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a story exported under an alias that includeStories names',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      meta: filteredMeta("includeStories: ['Basic']"),
+      stories: 'const story: StoryObj<NxsThingComponent> = {};\nexport { story as Basic };',
+    }),
+  }),
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a story exported as a function',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({ stories: 'export function Basic() {\n  return {};\n}' }),
+  }),
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a meta exported as default by a bare export',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      meta: 'const meta: Meta<NxsThingComponent> = { component: NxsThingComponent };\nexport { meta as default };',
+    }),
+  }),
+);
+
+expectRed(
+  'a type-only export, which Storybook does not render',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      stories: 'type Basic = StoryObj<NxsThingComponent>;\nexport { type Basic };',
+    }),
+  }),
+  null,
+  /exports `NxsThingComponent` .* no story documents it/,
+);
+
 // `.storybook/main.ts` is read for its exported `stories` list, not searched for the glob's text.
 expectRed(
   'a Storybook main.ts that mentions the glob only in a comment',
