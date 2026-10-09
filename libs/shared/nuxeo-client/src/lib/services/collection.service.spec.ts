@@ -27,11 +27,13 @@ describe('CollectionService', () => {
   afterEach(() => httpMock.verify());
 
   describe('getById', () => {
-    it('asks for the lock, so the collection-detail fallback still knows a locked collection', async () => {
+    it('asks for the lock and the permissions, so the collection-detail fallback still knows a locked collection and who may unlock it', async () => {
       const pending = firstValueFrom(service.getById('col-1'));
       const req = httpMock.expectOne('/nuxeo/api/v1/id/col-1');
       expect(req.request.headers.get('properties')).toBe('dublincore');
       expect(req.request.headers.get('fetch-document')).toBe('lock');
+      // Without the enricher `canShowWriteDocumentAction()` treats the user as a writer.
+      expect(req.request.headers.get('enrichers.document')).toBe('permissions');
       req.flush({
         uid: 'col-1',
         type: 'Collection',

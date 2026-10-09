@@ -531,6 +531,18 @@ describe('CollectionDetailComponent', () => {
       expect(component.lockTooltip()).toBe('Locked by alice on August 24, 2026');
     });
 
+    it('keeps a reader read-only when the fallback answers for a locked collection', () => {
+      mockDetailService.getFullDocument.mockReturnValue(throwError(() => new Error('enricher')));
+      mockCollectionService.getById.mockReturnValue(
+        of(docWith({ lockOwner: 'alice', lockCreated: LOCKED_AT, contextParameters: readOnly })),
+      );
+
+      component['loadCollection']();
+
+      expect(component.showsLockAction()).toBe(true);
+      expect(component.canEditCollection()).toBe(false);
+    });
+
     it('does not carry a previous lock into a fallback read of an unlocked collection', () => {
       load(docWith({ lockOwner: 'alice', lockCreated: LOCKED_AT }));
       mockDetailService.getFullDocument.mockReturnValue(throwError(() => new Error('enricher')));
