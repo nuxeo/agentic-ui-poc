@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, input, numberAttribute } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  numberAttribute,
+} from '@angular/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 /**
@@ -26,4 +32,7 @@ export class NxsSpinnerComponent {
   readonly diameter = input(32, { transform: numberAttribute });
   /** What is loading, already translated. Blank makes the spinner decorative. */
   readonly label = input('');
+
+  /** The accessible name as assistive technology computes it: whitespace alone is no name. */
+  protected readonly name = computed(() => this.label().trim());
 }
