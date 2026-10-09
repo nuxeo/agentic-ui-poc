@@ -11,8 +11,9 @@ audience: engineering
 
 > **Last reviewed:** 2026-10-08 · **Repository:** `5abcd50` (`feature/nxsat-308-replace-adf-extensions`)
 > Only the `@alfresco/adf-extensions` lines in §15 and §16 and the platform version in §19 were
-> re-verified at that commit. The Angular and `dompurify` rows were re-verified on 2026-10-05 at
-> `b15d9cf` (`fix/nxsat-303-production-advisories`) — see Appendix A.
+> re-verified at that commit, and the `@hylandsoftware/satori-ui` row at `d500aae`
+> (`feature/nxsat-308-satori-ui-0-2-1`). The Angular and `dompurify` rows were re-verified on
+> 2026-10-05 at `b15d9cf` (`fix/nxsat-303-production-advisories`) — see Appendix A.
 > **Purpose:** the complete list of technologies, versions and concepts a developer must know to
 > build, extend and operate Nuxeo Satori **by hand**, with no AI assistance of any kind.
 > **Sources:** `package.json`, `package-lock.json`, `pom.xml`, `nx.json`, `angular.json`,
@@ -773,7 +774,7 @@ Estimated effort: **20 hours**.
 | `@alfresco/adf-extensions`          | **9.0.0**               | public npm           | Not imported since NXSAT-308; adf-core and adf-hx still need it    |
 | `@alfresco/js-api`                  | **10.0.0**              | devDependency        | Types-only peer; 7 MB avoided at runtime                           |
 | `@hylandsoftware/hxcs-js-client`    | **2.0.111**             | GitHub Packages      | The `Document` / HxPR model                                        |
-| `@hylandsoftware/satori-ui`         | **0.2.0** (`^0.2.0`)    | GitHub Packages      | Hyland design system; deliberately absent from the template        |
+| `@hylandsoftware/satori-ui`         | **0.2.1** (`^0.2.1`)    | GitHub Packages      | Hyland design system; deliberately absent from the template        |
 
 Authentication for installs is `SATORI_GH_READONLY_TOKEN` with `read:packages` on **both** the
 `@alfresco` and `@hylandsoftware` orgs. `.npmrc` maps both scopes to `https://npm.pkg.github.com`
@@ -950,7 +951,7 @@ Estimated effort: **20 hours** for §17.1 and §17.2 together.
 | **Quill**                       | **2.0.3** (`^2.0.3`)        | `document-detail/note-editor` — 44 references | Delta model, toolbar modules, custom handlers, image insertion                                                                                                                                                                                                    |
 | **DOMPurify**                   | **3.4.16** (`^3.4.16`)      | Notes, comments, AI markdown, `nuxeo-client`  | Configuration, hooks, and _why_ sanitising on output is not enough                                                                                                                                                                                                |
 | **`@ngx-translate/core`**       | **17.0.0**                  | App and three features                        | Custom `TranslateLoader`. **Trap:** adf-core's `TranslationService` does _not_ use the ngx-translate loader interface — extend `AppTranslateLoader` and override `getTranslation`; swapping in adf-core's loader deletes the manifest-`labels` Layer 0 capability |
-| **`@hylandsoftware/satori-ui`** | **0.2.0**                   | `nuxeo-ui` only                               | `SatAvatar`, `SatBreadcrumbs`, `SatTag`, `sat.theme()`                                                                                                                                                                                                            |
+| **`@hylandsoftware/satori-ui`** | **0.2.1**                   | `nuxeo-ui` only                               | `SatAvatar`, `SatBreadcrumbs`, `SatTag`, `sat.theme()`                                                                                                                                                                                                            |
 | **`pdfjs-dist`**                | **6.2.108**                 | Preview                                       | Arrives with the adf-core peer set. Does not tree-shake out.                                                                                                                                                                                                      |
 | **`cropperjs`**                 | **1.6.2**                   | Assets                                        | Image cropping                                                                                                                                                                                                                                                    |
 | **`date-fns`**                  | **2.30.0**                  | Forms, via the Material adapter               | Note the `date-fns/locale` directory-import workaround in every Vite config                                                                                                                                                                                       |
@@ -1260,15 +1261,16 @@ to read each morning of Phase 4 onwards:
 Versions as resolved in `package-lock.json` at commit `e334b0f`. Where `package.json` declares a
 range, the range follows in brackets.
 
-**Three baselines, not one.** The Angular row was refreshed at `3f381e2` (#164), where the framework
+**Four baselines, not one.** The Angular row was refreshed at `3f381e2` (#164), where the framework
 moved to 20.3.31 to clear two advisories, and again at `b15d9cf` (NXSAT-303, #300) where it moved to
 20.3.33 for GHSA-ff3f-86qr-9cv3 in `@angular/router`; the `dompurify` row was refreshed at that same
-commit, 3.4.13 -> 3.4.16 for GHSA-p98j-92pf-mc4p. Those two rows do not come from `e334b0f` and
-cannot be reproduced there. **No other row has been re-verified since `e334b0f`**, and some may have
+commit, 3.4.13 -> 3.4.16 for GHSA-p98j-92pf-mc4p. The `@hylandsoftware/satori-ui` row was refreshed at
+`d500aae` (NXSAT-308, #332), 0.2.0 -> 0.2.1, the newest Satori on the Angular 20 line. Those three rows
+do not come from `e334b0f` and cannot be reproduced there. **No other row has been re-verified since `e334b0f`**, and some may have
 drifted — `axios` and `brace-expansion` also moved at `b15d9cf`, as `overrides` rather than declared
 dependencies, and neither appears in this matrix at all. The honest fix is to re-baseline the whole
-matrix against one revision, which is more than a security bump should carry. Until then, reproduce
-the Angular and `dompurify` rows at `b15d9cf` and the rest at `e334b0f`.
+matrix against one revision, which is more than a version bump should carry. Until then, reproduce
+the Angular and `dompurify` rows at `b15d9cf`, the Satori row at `d500aae` and the rest at `e334b0f`.
 
 ### Runtime dependencies
 
@@ -1285,7 +1287,7 @@ the Angular and `dompurify` rows at `b15d9cf` and the rest at `e334b0f`.
 | `@alfresco/adf-core`                                                                       | 9.0.0                                    |
 | `@alfresco/adf-extensions`                                                                 | 9.0.0                                    |
 | `@alfresco/adf-hx-content-services`                                                        | 7.20.0-automate.292                      |
-| `@hylandsoftware/satori-ui`                                                                | 0.2.0 (`^0.2.0`)                         |
+| `@hylandsoftware/satori-ui`                                                                | 0.2.1 (`^0.2.1`)                         |
 | `@hylandsoftware/hxcs-js-client`                                                           | 2.0.111                                  |
 | `@ngx-translate/core`                                                                      | 17.0.0 (`^17.0.0`)                       |
 | `angular-oauth2-oidc`                                                                      | 19.0.0 (unused)                          |
