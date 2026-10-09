@@ -913,6 +913,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   readonly canManagePermissions = computed(() => canManageDocumentPermissions(this.doc()));
   readonly permissionsPanelId = NXS_PERMISSIONS_PANEL_ID;
+  /** The panel's writes can change the external-user shares this tab reads itself. */
+  readonly onPermissionsChanged = () => this.reloadDocumentPermissions();
   readonly canWriteDoc = computed(() => canWriteDocument(this.doc()));
   readonly canRemoveDoc = computed(() => canRemoveDocument(this.doc()));
 

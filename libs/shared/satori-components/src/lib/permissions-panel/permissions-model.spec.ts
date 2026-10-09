@@ -558,6 +558,14 @@ describe('unconfirmedChanges', () => {
     });
     expect(unconfirmedChanges(cet, [add('2030-01-01')])).toEqual([]);
     expect(unconfirmedChanges(cet, [add('2030-01-03')])).toHaveLength(1);
+    // 11:00Z is 11 hours from Jan 1 and 13 from Jan 2, and the table shows Jan 1.
+    const userInUtc = vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(0);
+    const eleven = snapshot([
+      row({ principal: 'jdoe', permission: 'Read', begin: '2030-01-01T11:00:00.000Z' }),
+    ]);
+    expect(unconfirmedChanges(eleven, [add('2030-01-01')])).toEqual([]);
+    expect(unconfirmedChanges(eleven, [add('2030-01-02')])).toHaveLength(1);
+    userInUtc.mockRestore();
     // A permanent entry does not confirm a dated one, nor the reverse.
     expect(
       unconfirmedChanges(snapshot([row({ principal: 'jdoe' })]), [add('2030-01-01')]),

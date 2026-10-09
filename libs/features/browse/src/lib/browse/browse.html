@@ -495,10 +495,16 @@
                 <lib-extension-outlet
                   #permissionsPanelOutlet
                   [componentId]="permissionsPanelId"
-                  [componentInputs]="{ documentId: folder.uid }"
+                  [componentInputs]="{
+                    documentId: folder.uid,
+                    permissionsChanged: onPermissionsChanged,
+                  }"
                 />
                 @if (permissionsPanelOutlet.unresolved()) {
-                  <nxs-permissions-panel [documentId]="folder.uid" />
+                  <nxs-permissions-panel
+                    [documentId]="folder.uid"
+                    [permissionsChanged]="onPermissionsChanged"
+                  />
                 }
               }
               @if (permissionsLoading()) {

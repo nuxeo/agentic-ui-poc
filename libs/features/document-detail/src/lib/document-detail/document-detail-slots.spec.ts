@@ -106,6 +106,7 @@ class CaseViewComponent {}
 })
 class CustomPermissionsComponent {
   readonly documentId = input('');
+  readonly permissionsChanged = input<(() => void) | null>(null);
 }
 
 /** The packaged type rule, so these tests exercise the rule a customer is told to write. */
@@ -776,6 +777,19 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
 
       expect(body.querySelector('nxs-permissions-panel')).toBeNull();
       expect(body.textContent).toContain('CUSTOM PERMISSIONS for doc-1');
+    });
+
+    it('hands the panel a callback that re-reads the external-user shares after a write', async () => {
+      mockDetailService.getDocumentPermissions.mockReturnValue(of(withWriteVersion()));
+      await render({}, doc(), { 'nxs.components.permissionsPanel': CustomPermissionsComponent });
+      await openPermissions();
+      const custom = fixture.debugElement.query(By.directive(CustomPermissionsComponent))
+        .componentInstance as CustomPermissionsComponent;
+      const reads = mockDetailService.getDocumentPermissions.mock.calls.length;
+
+      custom.permissionsChanged()?.();
+
+      expect(mockDetailService.getDocumentPermissions).toHaveBeenCalledTimes(reads + 1);
     });
   });
 

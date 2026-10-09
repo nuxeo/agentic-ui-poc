@@ -291,16 +291,16 @@ export function refusalsFor(
 }
 
 /**
- * Whether an ACE date and a calendar day name the same day.
+ * Whether an ACE date and a calendar day name the same day, by the reading the table shows.
  *
  * Nuxeo stores the day as midnight in the server's zone, so a server east or west of UTC returns
- * an instant up to fourteen hours either side of UTC midnight. Comparing the ISO prefix would call
- * a correctly applied change unconfirmed on such a server.
+ * an instant hours either side of UTC midnight, and comparing the ISO prefix would call a correctly
+ * applied change unconfirmed on such a server. A tolerance either side would confirm a change to
+ * the next day that the table still shows as the old one.
  */
 function sameDay(instant: string | null, day: string | null): boolean {
   if (!instant || !day) return !instant && !day;
-  const [y, m, d] = day.split('-').map(Number);
-  return Math.abs(Date.parse(instant) - Date.UTC(y, m - 1, d)) < 15 * 60 * 60 * 1000;
+  return instantToDay(instant) === day;
 }
 
 function holds(

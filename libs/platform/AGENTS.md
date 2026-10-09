@@ -253,7 +253,8 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
   order.
 - **Replace a packaged panel by its ID.** `nxs-permissions-panel` is registered as
   `NXS_PERMISSIONS_PANEL_ID` (`nxs.components.permissionsPanel`). Register your own component
-  under it and both Permissions tabs render yours, with one input, `documentId`.
+  under it and both Permissions tabs render yours, with `documentId` and `permissionsChanged`, a
+  callback to invoke after a write so the host re-reads the external-user section it owns.
 - **Import only the entry point.** A path past it fails the shipped guardrail like any other
   deep import.
 - **It is new and growing.** The type declarations are the list of what exists; do not take

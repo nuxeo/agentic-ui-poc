@@ -769,7 +769,10 @@ replaced per document by a `documentView` entry — section 9a. And the local an
 half of `app.tabs.permissions` renders the component registered as
 `nxs.components.permissionsPanel`, as does the Permissions tab of `/browse`, so re-registering
 that ID from your library (section 14) replaces the panel in both; the external-user section
-under it stays packaged. The component receives one input, `documentId`.
+under it stays packaged. The component receives two inputs: `documentId`, and
+`permissionsChanged`, a callback to invoke after any write that may have changed the ACL, so the
+host reads the external-user section again. A replacement that does not declare it leaves that
+section as it was until the tab reloads.
 
 A tab you contribute names a registered component instead, through `componentId`,
 and is rendered by the same `ExtensionOutletComponent` the sidebar uses. The

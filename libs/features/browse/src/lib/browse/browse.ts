@@ -278,6 +278,8 @@ export class BrowseComponent {
   readonly permissionsLoaded = signal(false);
   readonly permissionsLoading = signal(false);
   readonly permissionsPanelId = NXS_PERMISSIONS_PANEL_ID;
+  /** The panel's writes can change the external-user shares this tab reads itself. */
+  readonly onPermissionsChanged = () => this.reloadPermissions();
   readonly externalAces = computed<NuxeoAce[]>(() => {
     const doc = this.currentDoc();
     const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;

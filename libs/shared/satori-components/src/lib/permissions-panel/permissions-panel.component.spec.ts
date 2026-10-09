@@ -101,10 +101,11 @@ function contextOf(doc: NuxeoDocument): Record<string, unknown> {
 @Component({
   standalone: true,
   imports: [NxsPermissionsPanelComponent],
-  template: `<nxs-permissions-panel [documentId]="uid()" />`,
+  template: `<nxs-permissions-panel [documentId]="uid()" [permissionsChanged]="changed" />`,
 })
 class HostComponent {
   readonly uid = signal('doc-1');
+  readonly changed = vi.fn();
 }
 
 describe('NxsPermissionsPanelComponent', () => {
@@ -830,6 +831,45 @@ describe('NxsPermissionsPanelComponent', () => {
       await render();
       expect(text()).toContain('Inheritance could not be changed.');
       expect(text()).toContain('Privilege denied');
+    });
+  });
+
+  describe('telling the host', () => {
+    const told = () => fixture.componentInstance.changed;
+
+    it('after a save and after an inheritance change, so it re-reads what it shows itself', async () => {
+      await mount(PARITY, PARITY, PARITY, PARITY);
+      panel()['setPermission'](panel()['localItems']()[1], 'Everything');
+      panel()['save']();
+      await render();
+      expect(told()).toHaveBeenCalledTimes(1);
+      panel()['toggleInheritance']();
+      await render();
+      expect(told()).toHaveBeenCalledTimes(2);
+    });
+
+    it('after a save that wrote some changes before one was refused', async () => {
+      await mount(PARITY, PARITY, PARITY);
+      documents.replacePermission.mockReturnValueOnce(throwError(() => ({ status: 403 })));
+      panel()['toggleRemove'](panel()['localItems']()[0]);
+      panel()['setPermission'](panel()['localItems']()[1], 'Everything');
+      panel()['save']();
+      await render();
+      expect(told()).toHaveBeenCalledTimes(1);
+    });
+
+    it('not when nothing was written', async () => {
+      await mount(PARITY, PARITY, PARITY);
+      documents.replacePermission.mockReturnValueOnce(throwError(() => ({ status: 403 })));
+      panel()['setPermission'](panel()['localItems']()[1], 'Everything');
+      panel()['save']();
+      await render();
+      expect(panel()['outcome']()?.kind).toBe('failed');
+      documents.getDocumentPermissions.mockReturnValueOnce(throwError(() => ({ status: 500 })));
+      panel()['save']();
+      await render();
+      expect(panel()['outcome']()?.kind).toBe('unread');
+      expect(told()).not.toHaveBeenCalled();
     });
   });
 

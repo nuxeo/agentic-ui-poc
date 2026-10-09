@@ -4,6 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { By } from '@angular/platform-browser';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router, provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
@@ -115,6 +116,7 @@ const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLaye
 })
 class CustomPermissionsComponent {
   readonly documentId = input('');
+  readonly permissionsChanged = input<(() => void) | null>(null);
 }
 
 describe('BrowseComponent — rendered document list', () => {
@@ -703,5 +705,12 @@ describe('BrowseComponent — rendered document list', () => {
 
     expect(query('nxs-permissions-panel')).toBeNull();
     expect(query('.custom-permissions')?.textContent).toContain('CUSTOM PERMISSIONS for ws-1');
+
+    // The panel's writes can change the external-user shares the host reads itself.
+    const custom = fixture.debugElement.query(By.directive(CustomPermissionsComponent))
+      .componentInstance as CustomPermissionsComponent;
+    const reads = detail.getDocumentPermissions.mock.calls.length;
+    custom.permissionsChanged()?.();
+    expect(detail.getDocumentPermissions).toHaveBeenCalledTimes(reads + 1);
   });
 });

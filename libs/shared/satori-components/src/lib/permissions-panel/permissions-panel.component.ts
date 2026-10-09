@@ -119,6 +119,11 @@ interface EditorState {
 export class NxsPermissionsPanelComponent {
   /** The uid of the document whose permissions to show. */
   readonly documentId = input.required<string>();
+  /**
+   * Called after a write that may have changed the document's ACL, so a host showing other
+   * ACL-derived content — the external-user shares this panel leaves to it — can read it again.
+   */
+  readonly permissionsChanged = input<(() => void) | null>(null);
 
   private readonly service = inject(NxsPermissionsService);
   private readonly translate = inject(TranslateService);
@@ -496,8 +501,10 @@ export class NxsPermissionsPanelComponent {
           // Writes stop at the refused change, so it and every change after it were never sent.
           if (outcome.kind === 'failed') {
             this.keepStaged(entries.slice(changes.indexOf(outcome.change)));
+            if (outcome.applied + outcome.unconfirmed.length > 0) this.notifyChanged();
           } else {
             this.clearStaged();
+            this.notifyChanged();
           }
         },
         error: (error: unknown) => {
@@ -507,6 +514,7 @@ export class NxsPermissionsPanelComponent {
           this.saving.set(false);
           this.outcome.set({ kind: 'unverified', count: changes.length, error });
           this.clearStaged();
+          this.notifyChanged();
         },
       });
   }
@@ -527,6 +535,7 @@ export class NxsPermissionsPanelComponent {
           this.inheritanceBusy.set(false);
           if (updated) this.snapshot.set(updated);
           else this.load(this.documentId());
+          this.notifyChanged();
         },
         error: (error: unknown) => {
           if (generation !== this.generation) return;
@@ -555,6 +564,10 @@ export class NxsPermissionsPanelComponent {
   private clearStaged(): void {
     this.staged.set(new Map());
     this.addedLabels.clear();
+  }
+
+  private notifyChanged(): void {
+    this.permissionsChanged()?.();
   }
 
   private keepStaged(entries: readonly (readonly [string, NxsPermissionChange])[]): void {
