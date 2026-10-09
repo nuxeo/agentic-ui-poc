@@ -391,7 +391,6 @@ class NxsRichTooltipComponent implements NxsRichTooltipInputs {
     readonly icon: _angular_core.InputSignal<string>;
     protected readonly open: _angular_core.WritableSignal<boolean>;
     protected readonly panelId: string;
-    protected readonly headingId: string;
     protected toggle(): void;
     protected closeAndRefocus(): void;
     protected onFocusOut(event: FocusEvent): void;

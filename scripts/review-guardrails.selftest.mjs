@@ -5370,6 +5370,13 @@ const nxsComponent = ({ imports = '', config = "selector: 'nxs-thing', standalon
   `@Component({\n  ${config}\n  templateUrl: './thing.component.html',\n` +
   `  styleUrl: './thing.component.scss',\n})\nexport class NxsThingComponent {}\n`;
 
+/** The package root, listing the given subpaths in `PLATFORM_ENTRY_POINTS`. */
+const PLATFORM_INDEX = 'libs/platform/src/index.ts';
+const platformIndex = (...subpaths) =>
+  `export const PLATFORM_ENTRY_POINTS = Object.freeze([${subpaths
+    .map((subpath) => `'${subpath}'`)
+    .join(', ')}] as const);\n`;
+
 /** A correct library: one standalone component behind its barrel, published and aliased. */
 const NXS_LIB = (extra = {}, paths = {}) => ({
   'tsconfig.base.json': `${JSON.stringify(
@@ -5387,6 +5394,7 @@ const NXS_LIB = (extra = {}, paths = {}) => ({
   )}\n`,
   'libs/platform/components/ng-package.json':
     '{ "lib": { "entryFile": "../../shared/satori-components/src/index.ts" } }\n',
+  [PLATFORM_INDEX]: platformIndex('components'),
   [`${NXS_ROOT}/src/index.ts`]:
     "export { NxsThingComponent } from './lib/thing/thing.component';\n",
   [NXS_COMPONENT]: nxsComponent(),
@@ -6741,6 +6749,7 @@ const NXS_FALLBACK = (extra = {}, paths = {}) =>
     {
       'libs/platform/components-satori/ng-package.json':
         '{ "lib": { "entryFile": "../../shared/satori-components-satori/src/index.ts" } }\n',
+      [PLATFORM_INDEX]: platformIndex('components', 'components-satori'),
       [`${NXS_SAT_ROOT}/src/index.ts`]: "export { provide } from './lib/provide';\n",
       [NXS_SAT_PROVIDER]:
         "import { SatTag } from '@hylandsoftware/satori-ui/tag';\n" +
@@ -6853,6 +6862,34 @@ expectRed(
   NXS_FALLBACK({}, { '@nuxeo-satori/platform/components-satori': [] }),
   null,
   /must map `@nuxeo-satori\/platform\/components-satori` to exactly/,
+);
+
+expectRed(
+  'the Satori entry point missing from PLATFORM_ENTRY_POINTS',
+  'checkSatoriFallbackEntryPoint',
+  NXS_FALLBACK({ [PLATFORM_INDEX]: platformIndex('components') }),
+  null,
+  /libs\/platform\/src\/index\.ts does not list 'components-satori' in `PLATFORM_ENTRY_POINTS`/,
+);
+
+expectRed(
+  'PLATFORM_ENTRY_POINTS built from a variable the guardrail cannot read',
+  'checkSatoriFallbackEntryPoint',
+  NXS_FALLBACK({
+    [PLATFORM_INDEX]:
+      "const names = ['components', 'components-satori'] as const;\n" +
+      'export const PLATFORM_ENTRY_POINTS = Object.freeze(names);\n',
+  }),
+  null,
+  /does not export `PLATFORM_ENTRY_POINTS` as a literal list of strings, so whether it lists `components-satori` was not checked/,
+);
+
+expectRed(
+  'a package root that no longer declares PLATFORM_ENTRY_POINTS',
+  'checkSatoriFallbackEntryPoint',
+  NXS_FALLBACK(),
+  (write) => write(PLATFORM_INDEX, '// PLATFORM_ENTRY_POINTS moved elsewhere\n'),
+  /does not export `PLATFORM_ENTRY_POINTS` as a literal list of strings/,
 );
 
 // The base library's own entry-point rule is unaffected by a sibling whose name it prefixes.

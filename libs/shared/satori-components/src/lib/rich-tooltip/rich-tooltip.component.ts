@@ -21,6 +21,9 @@ let nextId = 0;
  * Material's `matTooltip` holds one line of plain text, so this is a toggletip: the button opens a
  * non-modal panel, and Escape or moving focus out of the component closes it. Satori's opens on
  * hover and focus instead; the content contract is the same.
+ *
+ * Focus stays on the button, as it does on Satori's, and the panel opens inside a live region so a
+ * screen reader announces it. It is not a dialog: a dialog takes focus when it opens.
  */
 @Component({
   selector: 'nxs-rich-tooltip',
@@ -43,7 +46,6 @@ export class NxsRichTooltipComponent implements NxsRichTooltipInputs {
 
   protected readonly open = signal(false);
   protected readonly panelId = `nxs-rich-tooltip-${nextId++}`;
-  protected readonly headingId = `${this.panelId}-heading`;
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly trigger = viewChild.required('trigger', {

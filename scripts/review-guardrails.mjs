@@ -6780,7 +6780,8 @@ function checkDependencyClosure({ root, roots, styleRoots = [], banned }) {
  * deep platform imports — and across a federation boundary it cannot be loaded at all. So: no
  * subpath under the entry specifier, no relative path into the library from outside it, no second
  * alias into it in any tsconfig — a project's own `paths` included — and the alias and the
- * published `ng-package.json` both name the barrel.
+ * published `ng-package.json` both name the barrel. The package root lists the subpath in
+ * `PLATFORM_ENTRY_POINTS`, which customers and the docs read as the set of entry points.
  */
 function checkSatoriComponentsEntryPoint() {
   checkLibraryEntryPoint(SATORI_LIBRARIES[0]);
@@ -6789,6 +6790,56 @@ function checkSatoriComponentsEntryPoint() {
 /** `/components-satori` is held to the same single-entry-point rule as the base library. */
 function checkSatoriFallbackEntryPoint() {
   checkLibraryEntryPoint(SATORI_LIBRARIES[1]);
+}
+
+const PLATFORM_INDEX = 'libs/platform/src/index.ts';
+
+/**
+ * The subpaths `PLATFORM_ENTRY_POINTS` lists, or `null` when the package root does not export it as
+ * a literal list of strings, optionally `as const` and wrapped in `Object.freeze(...)`.
+ */
+function platformEntryPoints() {
+  if (!fileExists(PLATFORM_INDEX)) return null;
+  const source = ts.createSourceFile(
+    PLATFORM_INDEX,
+    read(PLATFORM_INDEX),
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const unwrap = (node) => {
+    let current = node;
+    while (
+      current &&
+      (ts.isAsExpression(current) ||
+        ts.isSatisfiesExpression(current) ||
+        ts.isParenthesizedExpression(current))
+    ) {
+      current = current.expression;
+    }
+    return current;
+  };
+  for (const statement of source.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    if (!statement.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || declaration.name.text !== 'PLATFORM_ENTRY_POINTS') {
+        continue;
+      }
+      let list = unwrap(declaration.initializer);
+      if (
+        list &&
+        ts.isCallExpression(list) &&
+        list.expression.getText(source) === 'Object.freeze' &&
+        list.arguments.length === 1
+      ) {
+        list = unwrap(list.arguments[0]);
+      }
+      if (!list || !ts.isArrayLiteralExpression(list)) return null;
+      if (!list.elements.every((element) => ts.isStringLiteralLike(element))) return null;
+      return list.elements.map((element) => element.text);
+    }
+  }
+  return null;
 }
 
 function checkLibraryEntryPoint({ root, entry, barrel, ngPackage }) {
@@ -6851,6 +6902,20 @@ function checkLibraryEntryPoint({ root, entry, barrel, ngPackage }) {
           `${resolved ?? '(none)'}.`,
       );
     }
+  }
+
+  const subpath = entry.slice('@nuxeo-satori/platform/'.length);
+  const listed = platformEntryPoints();
+  if (!listed) {
+    fail(
+      `${PLATFORM_INDEX} does not export \`PLATFORM_ENTRY_POINTS\` as a literal list of strings, ` +
+        `so whether it lists \`${subpath}\` was not checked.`,
+    );
+  } else if (!listed.includes(subpath)) {
+    fail(
+      `${PLATFORM_INDEX} does not list '${subpath}' in \`PLATFORM_ENTRY_POINTS\`, so the package ` +
+        `root does not advertise \`${entry}\`, which ${ngPackage} publishes.`,
+    );
   }
 
   const consumers = [
