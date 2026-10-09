@@ -9,3 +9,4 @@ export {
   NxsPermissionsPanelComponent,
 } from './lib/permissions-panel/permissions-panel.component';
 export { NxsSpinnerComponent } from './lib/spinner/spinner.component';
+export { NxsThumbnailComponent } from './lib/thumbnail/thumbnail.component';
