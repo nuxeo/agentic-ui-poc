@@ -1886,17 +1886,26 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const userId = this.currentUsername() ?? 'Administrator';
     this.taskService.getDocumentTasks(uid, userId).subscribe({
       next: (tasks) => {
+        if (uid !== this.docUid) return;
         this.documentTasks.set(tasks);
         this.documentTasksLoading.set(false);
       },
-      error: () => this.documentTasksLoading.set(false),
+      error: () => {
+        if (uid === this.docUid) this.documentTasksLoading.set(false);
+      },
     });
   }
 
   private loadDocumentWorkflows(uid: string): void {
+    // A late answer for the document the route left would put its workflow banner, and
+    // its Abandon button, on the page now showing another — a version, say.
     this.workflowService.getDocumentWorkflows(uid).subscribe({
-      next: (wfs) => this.documentWorkflows.set(wfs),
-      error: () => this.documentWorkflows.set([]),
+      next: (wfs) => {
+        if (uid === this.docUid) this.documentWorkflows.set(wfs);
+      },
+      error: () => {
+        if (uid === this.docUid) this.documentWorkflows.set([]);
+      },
     });
   }
 
@@ -3020,10 +3029,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private loadPublicationCount(uid: string): void {
     this.detailService.getPublishedVersions(uid).subscribe({
       next: (res) => {
+        if (uid !== this.docUid) return;
         this.publishedDocs.set(res.entries);
         this.publishLoading.set(false);
       },
-      error: () => this.publishLoading.set(false),
+      error: () => {
+        if (uid === this.docUid) this.publishLoading.set(false);
+      },
     });
   }
 

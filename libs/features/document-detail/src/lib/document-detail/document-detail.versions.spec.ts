@@ -34,6 +34,7 @@ import {
   TaskService,
   WorkflowService,
   type NuxeoDocument,
+  type NuxeoWorkflow,
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { ConfirmDialogComponent } from '@nuxeo-satori/platform/ui';
 import {
@@ -135,6 +136,10 @@ const mockDialog = {
 
 const snack = vi.fn();
 
+const mockWorkflowService = {
+  getDocumentWorkflows: vi.fn((_uid: string): Observable<NuxeoWorkflow[]> => of([])),
+};
+
 const mockContentLake = {
   startIngest: vi.fn(() => of({ commandId: 'c1' })),
   waitUntilComplete: vi.fn(() => of({})),
@@ -186,7 +191,7 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
         },
         { provide: KeClientService, useValue: { enrich: emptyKe } },
         { provide: TaskService, useValue: { getDocumentTasks: vi.fn(() => of([])) } },
-        { provide: WorkflowService, useValue: { getDocumentWorkflows: vi.fn(() => of([])) } },
+        { provide: WorkflowService, useValue: mockWorkflowService },
         {
           provide: ARenderService,
           useValue: { isAvailable: vi.fn(() => of(false)), getPreviewerUrl: vi.fn(() => of(null)) },
@@ -262,6 +267,7 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
     dialogResult = undefined;
     mockDetailService.getVersions.mockReturnValue(of({ entries: [version(2), version(1)] }));
     mockDetailService.restoreVersion.mockReturnValue(of(live({ isCheckedOut: false })));
+    mockWorkflowService.getDocumentWorkflows.mockImplementation(() => of([]));
   });
 
   afterEach(() => fixture?.destroy());
@@ -328,6 +334,25 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
 
       expect(fixture.componentInstance.doc()?.uid).toBe('doc-live');
       expect(el('.version-banner')).toBeNull();
+    });
+
+    it("drops the live document's workflows when they arrive after a version opened", async () => {
+      const route = new BehaviorSubject(convertToParamMap({ uid: 'doc-live' }));
+      const liveWorkflows = new Subject<NuxeoWorkflow[]>();
+      mockWorkflowService.getDocumentWorkflows.mockImplementation((uid) =>
+        uid === 'doc-live' ? liveWorkflows : of([]),
+      );
+      await render(live(), { paramMap: route });
+      mockDetailService.getFullDocument.mockImplementation((uid) =>
+        of(uid === 'v-0-1' ? version(1) : live()),
+      );
+      route.next(convertToParamMap({ uid: 'v-0-1' }));
+      await settle();
+      liveWorkflows.next([{ id: 'wf-live', name: 'SerialDocumentReview' } as NuxeoWorkflow]);
+      await settle();
+
+      expect(fixture.componentInstance.doc()?.uid).toBe('v-0-1');
+      expect(fixture.componentInstance.documentWorkflows()).toEqual([]);
     });
   });
 
