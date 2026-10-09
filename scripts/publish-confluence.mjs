@@ -33,6 +33,7 @@
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
+import { docLinkTarget } from './confluence-links.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const DOCS = join(ROOT, 'documentation');
@@ -164,43 +165,35 @@ function inline(text, relPath = '') {
 
   s = esc(s);
   // Markdown links → Confluence external links. Repo-relative links are rewritten to the
-  // GitHub blob URL so they resolve for a reader who is not looking at a clone.
+  // GitHub URL (`/blob/` or `/tree/`) so they resolve for a reader who is not looking at a clone.
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
     if (/^https?:/.test(href)) return `<a href="${esc(href)}">${label}</a>`;
 
-    // Resolve the link against the page it appears on, so `../20-product/x.md` from
-    // `30-engineering/y.md` lands on `20-product/x.md`.
-    const [pathPart, anchorPart] = href.split('#');
-    const from = relPath.includes('/') ? relPath.slice(0, relPath.lastIndexOf('/')) : '';
-    const segments = (from ? `${from}/${pathPart}` : pathPart).split('/');
-    const stack = [];
-    for (const seg of segments) {
-      if (seg === '..') stack.pop();
-      else if (seg && seg !== '.') stack.push(seg);
-    }
-    const target = stack.join('/');
+    // `href` has been through `esc()` with the rest of the line, so undo it before resolving.
+    const link = docLinkTarget(unesc(href), relPath, {
+      pageTitles,
+      branch: manifest.branch,
+      isDirectory: (p) =>
+        statSync(resolve(ROOT, p), { throwIfNoEntry: false })?.isDirectory() ?? false,
+    });
 
     // Another page in this set → a real Confluence page link, resolved by title.
-    const title = pageTitles.get(target);
-    if (title) {
+    if (link.kind === 'page') {
       // The label is UNESCAPED here. `esc()` has already run over the whole string, so a
       // label like "Cost & TCO" arrives as "Cost &amp; TCO" — and CDATA preserves text
       // verbatim, so it would render to the reader as a literal "Cost &amp; TCO". Caught by
       // reading the rendered view rather than the storage format.
       const raw = unesc(label).replace(/]]>/g, ']]]]><![CDATA[>');
       return (
-        `<ac:link${anchorPart ? ` ac:anchor="${esc(anchorPart)}"` : ''}>` +
-        `<ri:page ri:content-title="${esc(title)}" />` +
+        `<ac:link${link.anchor ? ` ac:anchor="${esc(link.anchor)}"` : ''}>` +
+        `<ri:page ri:content-title="${esc(link.title)}" />` +
         `<ac:plain-text-link-body><![CDATA[${raw}]]></ac:plain-text-link-body>` +
         `</ac:link>`
       );
     }
 
-    // Anything else is a file in the repository. Relative to the repo root, which is one level
-    // above `documentation/`.
-    const repoPath = target.replace(/^documentation\//, '');
-    const url = `https://github.com/nuxeo/agentic-ui-poc/blob/${manifest.branch}/${repoPath}`;
-    return `<a href="${esc(url)}">${label}</a>`;
+    // Anything else is a file in the repository, on GitHub.
+    return `<a href="${esc(link.url)}">${label}</a>`;
   });
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   s = s.replace(/(^|[\s(])_([^_]+)_/g, '$1<em>$2</em>');

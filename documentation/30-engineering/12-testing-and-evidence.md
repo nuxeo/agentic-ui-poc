@@ -2,15 +2,17 @@
 title: Testing & Evidence
 parent: Engineering
 order: 12
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: 2898046
 audience: engineering
 ---
 
 # Testing & Evidence
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
-> Standards: [`AGENTS/05-test-standards.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/AGENTS/05-test-standards.md)
+> **Last reviewed:** 2026-10-08 · **Repository:** `2898046` (`feature/nxsat-308-ci-cold-cache-tooling`)
+> Only the repository links were re-verified at that commit: made relative rather than pinned to
+> `feature/adf-hx-browse-poc`, every target present. The rest of the page as of 2026-08-24 · `77265f9`.
+> Standards: [`AGENTS/05-test-standards.md`](../../AGENTS/05-test-standards.md)
 
 ---
 
