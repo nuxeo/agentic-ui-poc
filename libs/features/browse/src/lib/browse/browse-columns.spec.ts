@@ -184,15 +184,21 @@ describe('BrowseComponent — documentList slot', () => {
   });
 
   it('resets to the manifest defaults, not the packaged const', () => {
-    // Before this change `resetColumns()` read `ALL_COLUMNS`, so Reset silently
-    // discarded the customer's relabelling along with the user's choice.
+    // Reset once read `ALL_COLUMNS`, so a column the manifest hid by default came back the
+    // moment a user pressed it. The picker's defaults are the descriptors'.
+    const component = render({
+      overrides: { 'app.documentList.lastContributor': { visible: false } },
+    });
+
+    expect(component.defaultColumnKeys()).toEqual(['title', 'modified']);
+  });
+
+  it('offers the picker the descriptors’ labels, so a relabelled column keeps its name', () => {
     const component = render({
       overrides: { 'app.documentList.title': { label: 'Name' } },
     });
 
-    component.resetColumns();
-
-    expect(component.pendingColumns().find((c) => c.key === 'title')?.label).toBe('Name');
+    expect(component.pickerColumns().find((c) => c.key === 'title')?.label).toBe('Name');
   });
 
   it('falls back to the packaged columns when nothing is registered', () => {

@@ -1849,10 +1849,14 @@ function checkNoHardcodedDescriptorText() {
     /^libs\/core\//,
   ];
 
+  // Stories as well as specs: a story's args are the sample input a component's documentation
+  // shows, standing in for text a caller has already translated, and never render in the product.
   const sources = [
     ...walk('apps', (path) => /\.ts$/.test(path)),
     ...walk('libs', (path) => /\.ts$/.test(path)),
-  ].filter((path) => !/\.spec\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)));
+  ].filter(
+    (path) => !/\.(spec|stories)\.ts$/.test(path) && !EXEMPT.some((pattern) => pattern.test(path)),
+  );
 
   if (sources.length === 0) {
     fail('No TypeScript sources were found under apps/ or libs/, so this gate asserted nothing.');
