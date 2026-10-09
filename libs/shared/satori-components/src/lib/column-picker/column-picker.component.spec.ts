@@ -1,7 +1,22 @@
+import { InteractivityChecker } from '@angular/cdk/a11y';
 import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { NxsColumnPickerComponent, type NxsPickableColumn } from './column-picker.component';
+
+/**
+ * jsdom lays nothing out, so CDK's checker finds no element visible and the focus trap would have
+ * nothing to wrap to. This one reads the markup instead: an enabled button or input is tabbable.
+ */
+const markupChecker: Pick<
+  InteractivityChecker,
+  'isDisabled' | 'isVisible' | 'isFocusable' | 'isTabbable'
+> = {
+  isDisabled: (el) => el.hasAttribute('disabled'),
+  isVisible: () => true,
+  isFocusable: (el) => el.matches('button, input') && !el.hasAttribute('disabled'),
+  isTabbable: (el) => el.matches('button, input') && !el.hasAttribute('disabled'),
+};
 
 const COLUMNS: readonly NxsPickableColumn[] = [
   { key: 'title', label: 'Title', visible: true },
@@ -70,7 +85,10 @@ describe('NxsColumnPickerComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [HostComponent],
-      providers: [provideZonelessChangeDetection()],
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: InteractivityChecker, useValue: markupChecker },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(HostComponent);
     host = fixture.componentInstance;
@@ -96,6 +114,33 @@ describe('NxsColumnPickerComponent', () => {
 
   it('takes focus when it opens', () => {
     expect(document.activeElement).toBe(panel());
+  });
+
+  describe('keeps keyboard focus inside the modal panel', () => {
+    // The trap's anchors sit just outside the panel: Tab past the last control lands on the end
+    // anchor, Shift+Tab before the first lands on the start anchor, and each sends focus back in.
+    const anchors = (): HTMLElement[] => [
+      ...el().querySelectorAll<HTMLElement>('.cdk-focus-trap-anchor'),
+    ];
+
+    it('wraps Tab from Done to the first column that can be switched', () => {
+      expect(anchors()).toHaveLength(2);
+      anchors()[1].focus();
+      expect(document.activeElement).toBe(checkbox('Modified'));
+    });
+
+    it('wraps Shift+Tab from the first column to Done', () => {
+      anchors()[0].focus();
+      expect(document.activeElement).toBe(button('Done'));
+    });
+
+    it('never lets the backdrop take Tab focus from inside the panel', () => {
+      const backdrop = el().querySelector('.nxs-column-picker__backdrop');
+      const [start, end] = anchors();
+      expect(backdrop?.compareDocumentPosition(start) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(panel()?.contains(start)).toBe(false);
+      expect(panel()?.contains(end)).toBe(false);
+    });
   });
 
   it('offers every column, checked as it is shown now', () => {
