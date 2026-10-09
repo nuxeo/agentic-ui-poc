@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
@@ -24,4 +24,7 @@ export class NxsIconComponent {
   readonly name = input.required<string>();
   /** What the icon means, already translated. Blank makes it decorative. */
   readonly label = input('');
+
+  /** The accessible name as assistive technology computes it: whitespace alone is no name. */
+  protected readonly accessibleName = computed(() => this.label().trim());
 }

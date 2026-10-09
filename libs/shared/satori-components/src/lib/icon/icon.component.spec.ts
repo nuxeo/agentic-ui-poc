@@ -52,6 +52,20 @@ describe('NxsIconComponent', () => {
     expect(icon().hasAttribute('aria-hidden')).toBe(false);
   });
 
+  it('stays decorative for a whitespace-only label, rather than an image with no name', async () => {
+    host.label.set('   ');
+    await render();
+    expect(icon().getAttribute('aria-hidden')).toBe('true');
+    expect(icon().hasAttribute('role')).toBe(false);
+    expect(icon().hasAttribute('aria-label')).toBe(false);
+  });
+
+  it('names the image by the label without its surrounding whitespace', async () => {
+    host.label.set('  Shared folder ');
+    await render();
+    expect(icon().getAttribute('aria-label')).toBe('Shared folder');
+  });
+
   it('becomes decorative again when the label is cleared', async () => {
     host.label.set('Shared folder');
     await render();

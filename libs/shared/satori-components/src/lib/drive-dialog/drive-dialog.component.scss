@@ -23,6 +23,18 @@
   }
 }
 
+// Names the dialog while the check runs, when the visible status line is all it shows.
+.nxs-drive-dialog__name.nxs-drive-dialog__name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .nxs-drive-dialog__checking {
   display: flex;
   flex-direction: column;

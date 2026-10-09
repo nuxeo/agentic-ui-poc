@@ -1,6 +1,7 @@
 import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import type { NxsHeadingLevel } from '../heading-level';
 import { NxsFolderHeaderComponent } from './folder-header.component';
 
 @Component({
@@ -9,6 +10,7 @@ import { NxsFolderHeaderComponent } from './folder-header.component';
   template: `
     <nxs-folder-header
       [heading]="heading()"
+      [headingLevel]="headingLevel()"
       [subheading]="subheading()"
       [documentType]="documentType()"
     >
@@ -21,6 +23,7 @@ import { NxsFolderHeaderComponent } from './folder-header.component';
 })
 class HostComponent {
   readonly heading = signal('Claims');
+  readonly headingLevel = signal<NxsHeadingLevel>(1);
   readonly subheading = signal('Folder');
   readonly documentType = signal('Folder');
   readonly withDetail = signal(false);
@@ -48,16 +51,26 @@ describe('NxsFolderHeaderComponent', () => {
     await render();
   });
 
-  it('makes the title the page’s level-one heading', () => {
-    const heading = query('[role="heading"]');
-    expect(heading?.getAttribute('aria-level')).toBe('1');
+  it('makes the title the page’s level-one heading, as a native <h1>', () => {
+    const heading = query('.nxs-folder-header__heading');
+    expect(heading?.tagName).toBe('H1');
     expect(heading?.textContent?.trim()).toBe('Claims');
   });
+
+  it.each([2, 3, 4, 5, 6] as const)(
+    'renders the title as <h%i> when given that heading level',
+    async (level) => {
+      host.headingLevel.set(level);
+      await render();
+      expect(query('.nxs-folder-header__heading')?.tagName).toBe(`H${level}`);
+      expect(query('h1, h2, h3, h4, h5, h6')?.textContent?.trim()).toBe('Claims');
+    },
+  );
 
   it('renders no heading while the title is blank, rather than an empty one', async () => {
     host.heading.set('');
     await render();
-    expect(query('[role="heading"]')).toBeNull();
+    expect(query('h1, h2, h3, h4, h5, h6')).toBeNull();
   });
 
   it('shows the second line when given one', () => {

@@ -1,11 +1,14 @@
 <div class="nxs-drive-dialog__body">
   @if (checking()) {
-    <div class="nxs-drive-dialog__checking" role="status">
+    <h2 mat-dialog-title class="nxs-drive-dialog__name">
+      {{ 'satori-components.drive-dialog.name' | translate }}
+    </h2>
+    <output class="nxs-drive-dialog__checking">
       <nxs-spinner diameter="32" />
-      <p class="nxs-drive-dialog__checking-text">
+      <span class="nxs-drive-dialog__checking-text">
         {{ 'satori-components.drive-dialog.checking' | translate }}
-      </p>
-    </div>
+      </span>
+    </output>
   } @else {
     <h2 mat-dialog-title class="nxs-drive-dialog__title">
       {{ 'satori-components.drive-dialog.title' | translate }}

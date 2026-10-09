@@ -21,16 +21,21 @@
 
 .nxs-folder-header__text {
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
 }
 
 // A host whose header sits in a denser layout can set `--nxs-folder-header-heading-size`.
-.nxs-folder-header__heading {
+// Doubled so it outranks Material's typography hierarchy, `html[data-app-theme] .mat-typography h1`
+// (0-2-2), whose `font`, `letter-spacing` and `margin` would otherwise restyle the heading.
+.nxs-folder-header__heading.nxs-folder-header__heading {
   margin: 0;
   overflow: hidden;
+  font: inherit;
   font-size: var(--nxs-folder-header-heading-size, 18px);
   font-weight: 600;
+  letter-spacing: inherit;
   color: var(--mat-sys-on-surface);
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -252,17 +252,19 @@ class NxsEmptyStateComponent {
     }
 }
 class NxsFolderHeaderComponent {
-    readonly heading: _angular_core.InputSignal<string>;
-    readonly subheading: _angular_core.InputSignal<string>;
-    readonly documentType: _angular_core.InputSignal<string>;
+    readonly heading: InputSignal<string>;
+    readonly headingLevel: InputSignal<NxsHeadingLevel>;
+    readonly subheading: InputSignal<string>;
+    readonly documentType: InputSignal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsFolderHeaderComponent, never>;
-    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsFolderHeaderComponent, "nxs-folder-header", never, { "heading": { "alias": "heading"; "required": false; "isSignal": true; }; "subheading": { "alias": "subheading"; "required": false; "isSignal": true; }; "documentType": { "alias": "documentType"; "required": false; "isSignal": true; }; }, {}, never, ["[nxsFolderHeaderDetail]", "*"], true, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsFolderHeaderComponent, "nxs-folder-header", never, { "heading": { "alias": "heading"; "required": false; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; "subheading": { "alias": "subheading"; "required": false; "isSignal": true; }; "documentType": { "alias": "documentType"; "required": false; "isSignal": true; }; }, {}, never, ["[nxsFolderHeaderDetail]", "*"], true, never>;
     }
 }
 type NxsHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 class NxsIconComponent {
     readonly name: _angular_core.InputSignal<string>;
     readonly label: _angular_core.InputSignal<string>;
+    protected readonly accessibleName: _angular_core.Signal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsIconComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsIconComponent, "nxs-icon", never, { "name": { "alias": "name"; "required": true; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }

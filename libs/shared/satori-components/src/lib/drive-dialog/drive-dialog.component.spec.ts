@@ -42,6 +42,13 @@ describe('NxsDriveDialogComponent', () => {
   const overlay = (): HTMLElement =>
     document.querySelector('.cdk-overlay-container') as HTMLElement;
 
+  /** The text of whatever names the dialog for assistive technology. */
+  const dialogName = (): string | undefined => {
+    const container = overlay().querySelector('mat-dialog-container') as HTMLElement;
+    const labelledBy = container.getAttribute('aria-labelledby') ?? '';
+    return labelledBy ? document.getElementById(labelledBy)?.textContent?.trim() : undefined;
+  };
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
@@ -64,11 +71,17 @@ describe('NxsDriveDialogComponent', () => {
     TestBed.inject(MatDialog).closeAll();
   });
 
-  it('says it is checking while the token probe is in flight', async () => {
+  it('says it is checking, in a status region, while the token probe is in flight', async () => {
     await open({ folderPath: '/ws' });
-    const status = overlay().querySelector('[role="status"]');
+    const status = overlay().querySelector('output.nxs-drive-dialog__checking');
     expect(status?.textContent?.trim()).toBe('Checking Nuxeo Drive...');
     expect(status?.querySelector('nxs-spinner')).not.toBeNull();
+    await answerTokenProbe([]);
+  });
+
+  it('is a named dialog while the token probe is in flight, not an unnamed one', async () => {
+    await open({ folderPath: '/ws' });
+    expect(dialogName()).toBe('Nuxeo Drive');
     await answerTokenProbe([]);
   });
 
@@ -122,12 +135,7 @@ describe('NxsDriveDialogComponent', () => {
       expect(link.rel).toBe('noopener');
     }
 
-    const container = overlay().querySelector('mat-dialog-container') as HTMLElement;
-    const labelledBy = container.getAttribute('aria-labelledby') ?? '';
-    expect(labelledBy).not.toBe('');
-    expect(document.getElementById(labelledBy)?.textContent?.trim()).toBe(
-      'Download Nuxeo Drive Client',
-    );
+    expect(dialogName()).toBe('Download Nuxeo Drive Client');
   });
 
   it('offers the installers when the token probe fails', async () => {
@@ -139,7 +147,7 @@ describe('NxsDriveDialogComponent', () => {
 
     expect(openDriveUrl).not.toHaveBeenCalled();
     expect(close).not.toHaveBeenCalled();
-    expect(overlay().querySelectorAll('a.nxs-drive-dialog__package').length).toBe(3);
+    expect(overlay().querySelectorAll('a.nxs-drive-dialog__package')).toHaveLength(3);
   });
 
   it('closes without a result from its Close button', async () => {
