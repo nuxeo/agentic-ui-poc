@@ -203,6 +203,7 @@ import {
   NXS_PERMISSIONS_PANEL_ID,
   NxsPermissionsPanelComponent,
   NxsSpinnerComponent,
+  nxsToggleFavorite,
 } from '@nuxeo-satori/platform/components';
 
 export interface SectionNode {
@@ -3214,29 +3215,25 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   toggleFavorite(): void {
     if (this.actionInProgress()) return;
     this.actionInProgress.set('favorite');
-    const op = this.isFavorite()
-      ? this.detailService.removeFromFavorites(this.docUid)
-      : this.detailService.addToFavorites(this.docUid);
-
-    op.subscribe({
-      next: () => {
-        const wasFav = this.isFavorite();
-        this.isFavorite.set(!wasFav);
-        this.actionInProgress.set(null);
-        this.toast(
-          this.translate.instant(
-            wasFav
-              ? 'document-detail.message.removed-from-favorites'
-              : 'document-detail.message.added-to-favorites',
-          ),
-        );
-        window.dispatchEvent(new Event('favorites-changed'));
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast(this.translate.instant('document-detail.message.failed-to-update-favorites'));
-      },
-    });
+    nxsToggleFavorite(this.detailService, this.docUid, this.isFavorite())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (favorite) => {
+          this.isFavorite.set(favorite);
+          this.actionInProgress.set(null);
+          this.toast(
+            this.translate.instant(
+              favorite
+                ? 'document-detail.message.added-to-favorites'
+                : 'document-detail.message.removed-from-favorites',
+            ),
+          );
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast(this.translate.instant('document-detail.message.failed-to-update-favorites'));
+        },
+      });
   }
 
   toggleSubscription(): void {
