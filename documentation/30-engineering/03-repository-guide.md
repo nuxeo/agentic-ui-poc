@@ -2,14 +2,17 @@
 title: Repository Guide
 parent: Engineering
 order: 3
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # Repository Guide
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only the `satori-components` row of "Shared libraries" and the `libs/platform` row of "The other
+> three" were re-verified at that commit; that heading's totals add the row to the 2026-08-24
+> figures. The rest of the page as of 2026-08-24 · `77265f9`:
 > 992 tracked files · ~104k lines of TS/HTML/SCSS · ~20k lines of harness scripts ·
 > ~20.5k lines of Markdown
 

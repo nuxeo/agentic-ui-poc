@@ -2,15 +2,17 @@
 title: Dev Harness & Gates
 parent: Engineering
 order: 8
-last_reviewed: 2026-10-05
-repo_commit: b32d4c8
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # The Development Harness and its Gates
 
-> **Last reviewed:** 2026-10-05 · **Repository:** `b32d4c8` — the revision that implements the
-> 24-gate set and the 23-control lockfile suite described below
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only "Hard floors, and where it runs" was re-verified at that commit; the rest of the page as of
+> 2026-10-05 · `b32d4c8` — the revision that implements the 24-gate set and the 23-control
+> lockfile suite described below
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).
 
