@@ -49,6 +49,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import ts from 'typescript';
 import { CONTROL_COUNT, collectReferences, referenced, selfCheck } from './module-references.mjs';
+import {
+  CONTROL_COUNT as SCAN_CONTROL_COUNT,
+  selfCheck as scanSelfCheck,
+} from './stylesheet-scan.mjs';
 
 const repoRoot = resolve(import.meta.dirname, '..', '..');
 const argv = process.argv.slice(2);
@@ -308,6 +312,15 @@ if (controlFailures.length === 0) {
   notes.push(
     `module-reference controls: ${CONTROL_COUNT.negative} negative (must not count) + ` +
       `${CONTROL_COUNT.positive} positive (must count), all as specified.`,
+  );
+}
+const scanFailures = scanSelfCheck();
+for (const failure of scanFailures) fail(`stylesheet-scan control failed — ${failure}`);
+if (scanFailures.length === 0) {
+  notes.push(
+    `stylesheet-scan controls: ${SCAN_CONTROL_COUNT.mask} mask (exact output) + ` +
+      `${SCAN_CONTROL_COUNT.negative} negative (must find nothing) + ` +
+      `${SCAN_CONTROL_COUNT.positive} positive (must find exactly these), all as specified.`,
   );
 }
 
