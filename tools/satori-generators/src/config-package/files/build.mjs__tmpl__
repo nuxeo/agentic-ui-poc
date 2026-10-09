@@ -39,7 +39,15 @@
  * key removed (it is for your editor, not the server).
  */
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateRawSync } from 'node:zlib';
@@ -77,7 +85,10 @@ const problem = (file, message) => problems.push(`${relative(HERE, file) || '.'}
 /** Whether `path` is a symbolic link, reported if so: one is refused, not followed. */
 function isLink(path) {
   if (!lstatSync(path, { throwIfNoEntry: false })?.isSymbolicLink()) return false;
-  problem(path, 'is a symbolic link; put the file itself here, so the package holds only what was reviewed');
+  problem(
+    path,
+    'is a symbolic link; put the file itself here, so the package holds only what was reviewed',
+  );
   return true;
 }
 
@@ -186,7 +197,8 @@ function notWellFormed(xml) {
     i += 2;
     const target = sticky(XML_PI_TARGET)?.[0];
     if (!target) fail('a processing instruction with no target', at);
-    if (target.toLowerCase() === 'xml') fail('an XML declaration that is not at the start of the file', at);
+    if (target.toLowerCase() === 'xml')
+      fail('an XML declaration that is not at the start of the file', at);
     const end = xml.indexOf('?>', i);
     if (end < 0) fail('an unterminated processing instruction', at);
     if (end > i && !space()) fail('a processing instruction target not followed by a space', at);
@@ -219,7 +231,8 @@ function notWellFormed(xml) {
       i += 1;
       space();
       const quote = xml[i];
-      if (quote !== '"' && quote !== "'") fail(`an unquoted attribute ${name} on <${tag}>`, attributeAt);
+      if (quote !== '"' && quote !== "'")
+        fail(`an unquoted attribute ${name} on <${tag}>`, attributeAt);
       i += 1;
       let value = '';
       while (xml[i] !== quote) {
@@ -247,8 +260,11 @@ function notWellFormed(xml) {
       if (prefix === null) continue;
       if (prefix === 'xmlns') fail('a declaration of the reserved prefix xmlns', where);
       const reserved =
-        prefix === 'xml' ? value !== XML_NAMESPACE : value === XML_NAMESPACE || value === XMLNS_NAMESPACE;
-      if (reserved) fail(`a namespace declaration of ${name} that misuses a reserved namespace`, where);
+        prefix === 'xml'
+          ? value !== XML_NAMESPACE
+          : value === XML_NAMESPACE || value === XMLNS_NAMESPACE;
+      if (reserved)
+        fail(`a namespace declaration of ${name} that misuses a reserved namespace`, where);
       if (prefix && value === '') fail(`an empty namespace name for the prefix ${prefix}`, where);
       declared.set(prefix, value);
     }
@@ -267,7 +283,8 @@ function notWellFormed(xml) {
       const namespace = namespaceOf(name, where);
       if (namespace === null) continue;
       const key = `${namespace} ${name.slice(name.indexOf(':') + 1)}`;
-      if (expanded.has(key)) fail(`<${tag}> has two attributes with the same namespace and name`, where);
+      if (expanded.has(key))
+        fail(`<${tag}> has two attributes with the same namespace and name`, where);
       expanded.add(key);
     }
     if (!empty) content(tag, at, declared);
@@ -313,7 +330,10 @@ function notWellFormed(xml) {
       if (!declaration) fail('a malformed XML declaration', 0);
       const encoding = declaration[3];
       if (encoding && !/^utf-?8$/i.test(encoding)) {
-        fail(`an encoding of ${encoding}; write the file in UTF-8, which is how it is read here`, 0);
+        fail(
+          `an encoding of ${encoding}; write the file in UTF-8, which is how it is read here`,
+          0,
+        );
       }
     }
     misc();
@@ -321,7 +341,8 @@ function notWellFormed(xml) {
     if (xml[i] !== '<') fail(i < xml.length ? 'text before the root element' : 'no root element');
     element(new Map([['xml', XML_NAMESPACE]]));
     misc();
-    if (i < xml.length) fail(xml[i] === '<' ? 'markup after the root element' : 'text after the root element');
+    if (i < xml.length)
+      fail(xml[i] === '<' ? 'markup after the root element' : 'text after the root element');
     return null;
   } catch (error) {
     if (error.malformed) return error.message;
@@ -414,23 +435,29 @@ function withoutCommentsOrInstructions(xml) {
 }
 
 /** The same XML with every CDATA section blanked, so markup is never matched inside text. */
-const withoutCdata = (xml) => xml.replace(/<!\[CDATA\[[\s\S]*?(?:\]\]>|$)/g, (section) => ' '.repeat(section.length));
+const withoutCdata = (xml) =>
+  xml.replace(/<!\[CDATA\[[\s\S]*?(?:\]\]>|$)/g, (section) => ' '.repeat(section.length));
 
 const ENTITIES = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" };
 
 /** XML character data with its character and predefined entity references resolved. */
 function decode(text) {
-  return text.replace(/&(?:#x([0-9A-Fa-f]+)|#([0-9]+)|(lt|gt|amp|quot|apos));/g, (reference, hex, decimal, named) => {
-    if (named) return ENTITIES[named];
-    const codePoint = hex ? parseInt(hex, 16) : Number(decimal);
-    return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : reference;
-  });
+  return text.replace(
+    /&(?:#x([0-9A-Fa-f]+)|#([0-9]+)|(lt|gt|amp|quot|apos));/g,
+    (reference, hex, decimal, named) => {
+      if (named) return ENTITIES[named];
+      const codePoint = hex ? parseInt(hex, 16) : Number(decimal);
+      return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : reference;
+    },
+  );
 }
 
 /** Every `name="value"` or `name='value'` attribute of one start tag, trimmed as Nuxeo reads it. */
 function attributes(tag) {
   const found = {};
-  for (const [, name, , double, single] of tag.matchAll(/([\w:.-]+)\s*=\s*("([^"]*)"|'([^']*)')/g)) {
+  for (const [, name, , double, single] of tag.matchAll(
+    /([\w:.-]+)\s*=\s*("([^"]*)"|'([^']*)')/g,
+  )) {
     found[name] = decode(double ?? single).trim();
   }
   return found;
@@ -443,7 +470,7 @@ function attributes(tag) {
 function inlineJson(xml, from, element) {
   const closesElement = new RegExp(`^/${element}\\s*$`);
   let text;
-  for (let at = from; ; ) {
+  for (let at = from; ;) {
     const lt = xml.indexOf('<', at);
     if (text !== undefined) text += decode(xml.slice(at, lt < 0 ? xml.length : lt));
     if (lt < 0) return text?.trim();
@@ -535,7 +562,9 @@ const bundleIsLink = isLink(BUNDLE);
 for (const path of [PACKAGE, packageXmlFile, installXmlFile]) isLink(path);
 readXml(installXmlFile);
 const { name: packageName, version: packageVersion } = attributes(
-  /<package(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/.exec(withoutCdata(withoutCommentsOrInstructions(readXml(packageXmlFile) ?? '')))?.[1] ?? '',
+  /<package(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/.exec(
+    withoutCdata(withoutCommentsOrInstructions(readXml(packageXmlFile) ?? '')),
+  )?.[1] ?? '',
 );
 // Both name the files written below, so each must be a plain file name and nothing more.
 const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -552,7 +581,10 @@ if (!packageName || !packageVersion) {
 
 const manifestFile = join(BUNDLE, 'META-INF', 'MANIFEST.MF');
 // A manifest line longer than 72 bytes continues on the next one, which starts with a space.
-const manifest = ((existsSync(manifestFile) ? readUtf8(manifestFile) : '') ?? '').replace(/(?:\r\n|\r|\n) /g, '');
+const manifest = ((existsSync(manifestFile) ? readUtf8(manifestFile) : '') ?? '').replace(
+  /(?:\r\n|\r|\n) /g,
+  '',
+);
 const componentPaths = (/^Nuxeo-Component:\s*(.+?)\s*$/m.exec(manifest)?.[1] ?? '')
   .split(',')
   .map((path) => path.trim())
@@ -565,7 +597,10 @@ const jsonBodies = new Set();
 for (const componentPath of componentPaths) {
   const componentFile = resolve(BUNDLE, componentPath);
   if (!componentFile.startsWith(BUNDLE + sep) || !isPackaged(componentFile)) {
-    problem(manifestFile, `Nuxeo-Component names ${componentPath}, which is not a packaged file in bundle/`);
+    problem(
+      manifestFile,
+      `Nuxeo-Component names ${componentPath}, which is not a packaged file in bundle/`,
+    );
     continue;
   }
   const source = readXml(componentFile);
@@ -575,17 +610,22 @@ for (const componentPath of componentPaths) {
   const xml = withoutCommentsOrInstructions(source);
   // Markup is looked for here; text, including inline JSON, is read from `xml` at the same offsets.
   const markup = withoutCdata(xml);
-  const contributes = [...markup.matchAll(/<extension(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/g)].some(
-    ([, tag]) => attributes(tag).target === 'org.nuxeo.agentic.ui.config',
-  );
-  const requiresDefaults = /<require[ \t\n]*>[ \t\n]*org\.nuxeo\.agentic\.ui\.config\.defaults[ \t\n]*<\/require[ \t\n]*>/.test(markup);
+  const contributes = [
+    ...markup.matchAll(/<extension(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/g),
+  ].some(([, tag]) => attributes(tag).target === 'org.nuxeo.agentic.ui.config');
+  const requiresDefaults =
+    /<require[ \t\n]*>[ \t\n]*org\.nuxeo\.agentic\.ui\.config\.defaults[ \t\n]*<\/require[ \t\n]*>/.test(
+      markup,
+    );
   if (contributes && !requiresDefaults) {
     problem(
       componentFile,
       `must <require>${DEFAULTS_COMPONENT}</require>, or its fragments may apply before Satori's defaults`,
     );
   }
-  for (const match of markup.matchAll(/<(fragment|layout|asset)(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/g)) {
+  for (const match of markup.matchAll(
+    /<(fragment|layout|asset)(?=[ \t\n/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/g,
+  )) {
     const [startTag, element, tag] = match;
     const entry = attributes(tag);
     const invalid = invalidEntry(element, entry);
@@ -595,7 +635,9 @@ for (const componentPath of componentPaths) {
     }
     const { name, layer, type, mode, src } = entry;
     const label =
-      element === 'layout' ? `layout ${type}/${mode}` : `${element} "${name}"${layer ? ` in ${layer}` : ''}`;
+      element === 'layout'
+        ? `layout ${type}/${mode}`
+        : `${element} "${name}"${layer ? ` in ${layer}` : ''}`;
     // Anything but "true" disables, as Nuxeo reads a boolean. A disabled entry removes an earlier
     // contribution; it has no body to check.
     if (entry.enabled !== undefined && entry.enabled.toLowerCase() !== 'true') continue;
@@ -610,7 +652,10 @@ for (const componentPath of componentPaths) {
       continue;
     }
     if (!src && !hasJson) {
-      problem(componentFile, `${label} has ${element === 'asset' ? 'no src' : 'neither a src nor inline JSON'}`);
+      problem(
+        componentFile,
+        `${label} has ${element === 'asset' ? 'no src' : 'neither a src nor inline JSON'}`,
+      );
       continue;
     }
     if (hasJson) {
@@ -646,12 +691,15 @@ const entries = [];
 for (const file of bundleIsLink || !existsSync(BUNDLE) ? [] : filesUnder(BUNDLE).sort()) {
   if (!isPackaged(file)) continue;
   const name = relative(BUNDLE, file).split(sep).join('/');
-  const data = file.endsWith('.json') || jsonBodies.has(file) ? checkJson(file) : readFileSync(file);
+  const data =
+    file.endsWith('.json') || jsonBodies.has(file) ? checkJson(file) : readFileSync(file);
   if (data) entries.push({ name, data });
 }
 
 if (problems.length > 0) {
-  console.error(`\n${packageName ?? 'configuration package'}: not built — ${problems.length} problem(s)\n`);
+  console.error(
+    `\n${packageName ?? 'configuration package'}: not built — ${problems.length} problem(s)\n`,
+  );
   for (const line of problems) console.error(`  - ${line}`);
   console.error('');
   process.exit(1);
@@ -736,5 +784,7 @@ mkdirSync(OUT, { recursive: true });
 const target = join(OUT, `${packageName}-${packageVersion}.zip`);
 writeFileSync(target, archive);
 const sha256 = createHash('sha256').update(archive).digest('hex');
-console.log(`built ${relative(process.cwd(), target)}  (${archive.length} bytes, sha256 ${sha256})`);
+console.log(
+  `built ${relative(process.cwd(), target)}  (${archive.length} bytes, sha256 ${sha256})`,
+);
 for (const { name } of entries) console.log(`  bundle  ${name}`);

@@ -9,8 +9,8 @@ audience: presales, customers, partners
 
 # Nuxeo Agentic UI — the short version
 
-For presales engineers, customers and partners. It takes about five minutes, describes what the
-`main` branch does today (checked on 7 October 2026), and leaves the longer documents to the end.
+For presales engineers, customers and partners. It takes about five minutes, describes the
+product as it is today (checked on 7 October 2026), and leaves the longer documents to the end.
 
 ## What it is
 
@@ -59,21 +59,32 @@ Configuration has two parts:
 1. **The settings** (bootstrap): the name, logo, colours and default language.
 2. **The manifest**, which holds the wording and the whole arrangement.
 
-Since NXSAT-312 you ship both in **your own Marketplace package that depends on ours**. It
+You ship both in **your own Marketplace package that depends on ours**. It
 contributes configuration fragments, and the server serves them after our defaults, in dependency
 order. Nothing is edited on the server and nothing is stored in the Nuxeo content repository. The
 application reads both at startup, before sign-in, so they are the same for every user (except on a
 demo server whose package turns on presales presets, where a preset applies per browser) and must
 hold nothing secret. Users see a change the next time they open the application. An edited
 `bootstrap.json` beside the bundle and the old manifest Note are not read, and nothing converts
-them. A generator scaffolds such a package: [the guide for
-extenders](../../libs/platform/AGENTS.md#2-start-with-a-generator) gives the three commands, and
-`config-packages/presales-demo` in this repository is a finished example. Until the developer
-package is published, run the generator from a clone of this repository as
-`npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`; the
-`@nuxeo-satori/platform:` form in that guide resolves from the published package, and in a clone
-only after `npx nx run platform:sync-generators`. What it writes is plain JSON, XML and a build
-script with no dependencies, so it can live in your own repository.
+them.
+
+Creating and building such a package needs only Node.js 20: no `npm ci`, no GitHub token, none of
+this repository's dependencies. In a clone of this repository:
+
+```bash
+node tools/satori-generators/src/config-package/create.mjs acme-config --owner=acme
+node config-packages/acme-config/build.mjs     # checks the fragments, writes the zip
+nuxeoctl mp-install config-packages/acme-config/dist/acme-config-1.0.0.zip   # on the Nuxeo server, then restart
+```
+
+What it writes is plain JSON, XML and a build script with no dependencies, so it can live in your
+own repository. `config-packages/presales-demo` is a finished example that builds the same way,
+with `node config-packages/presales-demo/build.mjs`; copying it instead also needs only Node, but
+means renaming it in `package.xml`, `MANIFEST.MF` and the component XML (and that file's name), and
+removing its presets.
+With this repository fully installed (which does need the token), the `config-package` Nx generator
+in [the guide for extenders](../../libs/platform/AGENTS.md#2-start-with-a-generator) writes the same
+files.
 
 ## What you can change without code
 
@@ -125,8 +136,7 @@ shows Administration to administrators only:
 ## What it does not do today
 
 - **Change every mark.** The settings fragment's `branding.logo` replaces the header word mark
-  and the sign-in page logo
-  ([pull request #307](https://github.com/nuxeo/agentic-ui-poc/pull/307)). The small mark at the
+  and the sign-in page logo. The small mark at the
   top of the navigation rail and the "Content Innovation Cloud" title shown when the rail is
   expanded belong to the Satori design system and stay, and so does the browser-tab icon.
 - **Edit the fields of your own document types.** The Properties panel shows a type's own fields,
@@ -163,15 +173,17 @@ the package is not published yet, you build it from this repository. Publishing 
 2. **Change something without code.** Locally, put the example above in a file and run
    `npm run config:dev -- --manifest <file>` before `nx serve`
    ([Part 0.6 of the runbook](../../docs/beta-demo-runbook.md#06-write-the-dev-configuration)).
-   On a server, contribute the same JSON as a fragment from your own package. Beats 3 to 7 of the
+   On a server, contribute the same JSON as a fragment from your own package, created and built
+   with Node alone as [above](#where-configuration-lives-today). Beats 3 to 7 of the
    [demo runbook](../../docs/beta-demo-runbook.md#part-4--the-demo-script) give the exact JSON
    for each change and what you should see.
 3. **Customise it with an AI coding agent.** Use the
    [Nuxeo Agentic UI prompt library](https://github.com/nuxeo-sandbox/nuxeo-agentic-ui-prompts),
    started by Nuxeo presales. Its rule is that the agent reads our source but never changes it,
    and writes everything into your own Marketplace package that depends on `nuxeo-agentic-ui`.
-   Its branding prompt was written before NXSAT-312 and copies a settings file onto the server,
-   which is no longer read; put the same JSON in your package's `bootstrap.json` fragment instead.
+   Its branding prompt was written before configuration moved into packages and copies a
+   settings file onto the server, which is no longer read; put the same JSON in your package's
+   `bootstrap.json` fragment instead.
    Prompts are collected there rather than in this repository.
 
 ## Read more

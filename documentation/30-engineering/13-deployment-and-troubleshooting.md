@@ -2,15 +2,17 @@
 title: Deployment & Troubleshooting
 parent: Engineering
 order: 13
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: 2898046
 audience: engineering
 ---
 
 # Deployment & Troubleshooting
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
-> Packaging detail: [`NUXEO_MARKETPLACE_GUIDE.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/NUXEO_MARKETPLACE_GUIDE.md)
+> **Last reviewed:** 2026-10-08 · **Repository:** `2898046` (`feature/nxsat-308-ci-cold-cache-tooling`)
+> Only the repository links were re-verified at that commit: made relative rather than pinned to
+> `feature/adf-hx-browse-poc`, every target present. The rest of the page as of 2026-08-24 · `77265f9`.
+> Packaging detail: [`NUXEO_MARKETPLACE_GUIDE.md`](../../NUXEO_MARKETPLACE_GUIDE.md)
 
 ---
 
@@ -107,11 +109,15 @@ together. The server side (NXSAT-312 slice 1) stops serving files from disk: a f
 stops reading the Note: the application makes no request for it, before or after sign-in, and
 applies only the fragments the server serves. A Note left in the repository is inert. Anyone
 using either must re-create their settings in a configuration package, or as a preset in a demo
-package. `npx nx g @nuxeo-satori/platform:config-package <name> --owner=<owner>` scaffolds one
-(in a clone of this repository, before the platform package is published:
-`npx nx g ./tools/satori-generators:config-package <name> --owner=<owner>`),
-and `npx nx build <name>` checks its fragments and writes the zip `nuxeoctl mp-install` takes;
-`config-packages/presales-demo` is the demo package presales installs.
+package. In a clone of this repository,
+`node tools/satori-generators/src/config-package/create.mjs <name> --owner=<owner>` scaffolds one
+with Node 20 alone — no `npm ci`, no registry token — and `node config-packages/<name>/build.mjs`
+checks its fragments and writes the zip `nuxeoctl mp-install` takes, to `config-packages/<name>/dist/`.
+Where Nx is installed, the `config-package` generator writes the same files
+(`npx nx g ./tools/satori-generators:config-package <name> --owner=<owner>` after a full install,
+or `npx nx g @nuxeo-satori/platform:config-package …` from the published package) and
+`npx nx build <name>` runs the same `build.mjs`. `config-packages/presales-demo` is the demo
+package presales installs.
 
 ### How the application loads it
 
@@ -157,13 +163,13 @@ anything placed there is never served.** An earlier version shipped `nxserver/we
 
 ## 3. Local development stack
 
-| Component          | How                                                                                                                                                                                                                                                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Nuxeo + OpenSearch | Docker, container `nuxeo`, port 8080. See [`docs/opensearch-setup.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/opensearch-setup.md)                                                                                |
-| Server-side config | [`nuxeo-conf/`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/nuxeo-conf) — read its README                                                                                                                                   |
-| The app            | `npx nx serve nuxeo-ui` → `:4200`, proxying `/nuxeo` → `:8080`                                                                                                                                                                                         |
-| ARender            | `docker compose -f arender-docker-compose.yml --env-file .env.arender up -d`. nginx auth proxy + UI + document-service-broker. [`docs/arender-setup.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/arender-setup.md) |
-| Mailpit            | `docker compose -f mailpit-docker-compose.yml up -d` — local SMTP for permission notifications                                                                                                                                                         |
+| Component          | How                                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nuxeo + OpenSearch | Docker, container `nuxeo`, port 8080. See [`docs/opensearch-setup.md`](../../docs/opensearch-setup.md)                                                                                |
+| Server-side config | [`nuxeo-conf/`](../../nuxeo-conf) — read its README                                                                                                                                   |
+| The app            | `npx nx serve nuxeo-ui` → `:4200`, proxying `/nuxeo` → `:8080`                                                                                                                        |
+| ARender            | `docker compose -f arender-docker-compose.yml --env-file .env.arender up -d`. nginx auth proxy + UI + document-service-broker. [`docs/arender-setup.md`](../../docs/arender-setup.md) |
+| Mailpit            | `docker compose -f mailpit-docker-compose.yml up -d` — local SMTP for permission notifications                                                                                        |
 
 Verify with `npm run beta:backend`.
 
@@ -187,17 +193,18 @@ Verify with `npm run beta:backend`.
 
 ### Build and install
 
-| Symptom                                                                                                       | Cause                                                                                            | Fix                                                                                                      |
-| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `E404` on `@alfresco/*`                                                                                       | Token missing or lacks `read:packages` on the **Alfresco** org                                   | It needs both orgs, not just Hyland                                                                      |
-| `npm ci` fails on CI, green locally                                                                           | A bare `npm install` on macOS pruned Linux-only optional entries                                 | Restore a known-good lock, merge only new entries, run the lockfile gate                                 |
-| CI fetches from the wrong registry after an `.npmrc` change                                                   | `npm ci` installs from each entry's `resolved` URL and **ignores** the mapping                   | Regenerate the lock                                                                                      |
-| `/nuxeo/agentic-ui-config/bootstrap.json` 404s                                                                | The servlet is not mapped: `nuxeo-agentic-core` not deployed, or `web.xml` not regenerated       | `nuxeoctl mp-list`; `nuxeo.war/WEB-INF/web.xml` must name "Agentic UI Configuration". Restart. See §2    |
-| Nuxeo will not start after a configuration package: `requires [service:org.nuxeo.agentic.ui.config.defaults]` | Our package is missing or older than NXSAT-312; strict mode aborts on the unresolved `<require>` | Install or upgrade `nuxeo-agentic-ui` first, or `mp-remove` the configuration package                    |
-| A contributed setting does nothing                                                                            | The fragment was rejected, or applied before ours because the component lacks the `<require>`    | Read `diagnostics` in the served response; add `<require>org.nuxeo.agentic.ui.config.defaults</require>` |
-| An edited `bootstrap.json` on the server has no effect                                                        | Removed in NXSAT-312 with no migration                                                           | Re-create the settings in a configuration package or a preset. See §2                                    |
-| Upgrade fails: `overwrite flag on false but destination file exists`                                          | A pre-NXSAT-317 package upgraded after `bootstrap.json` was edited                               | Move the file out of `nxserver`, `mp-install`, move it back. See §2                                      |
-| Marketplace build fails                                                                                       | Java/Maven version                                                                               | Java 17+, Maven 3.9+                                                                                     |
+| Symptom                                                                                                       | Cause                                                                                            | Fix                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `E404` on `@alfresco/*`                                                                                       | Token missing or lacks `read:packages` on the **Alfresco** org                                   | It needs both orgs, not just Hyland                                                                         |
+| `npm ci` fails on CI, green locally                                                                           | A bare `npm install` on macOS pruned Linux-only optional entries                                 | Restore a known-good lock, merge only new entries, run the lockfile gate                                    |
+| CI fetches from the wrong registry after an `.npmrc` change                                                   | `npm ci` installs from each entry's `resolved` URL and **ignores** the mapping                   | Regenerate the lock                                                                                         |
+| `/nuxeo/agentic-ui-config/bootstrap.json` 404s                                                                | The servlet is not mapped: `nuxeo-agentic-core` not deployed, or `web.xml` not regenerated       | `nuxeoctl mp-list`; `nuxeo.war/WEB-INF/web.xml` must name "Agentic UI Configuration". Restart. See §2       |
+| Nuxeo will not start after a configuration package: `requires [service:org.nuxeo.agentic.ui.config.defaults]` | Our package is missing or older than NXSAT-312; strict mode aborts on the unresolved `<require>` | Install or upgrade `nuxeo-agentic-ui` first, or `mp-remove` the configuration package                       |
+| A contributed setting does nothing                                                                            | The fragment was rejected, or applied before ours because the component lacks the `<require>`    | Read `diagnostics` in the served response; add `<require>org.nuxeo.agentic.ui.config.defaults</require>`    |
+| An edited `bootstrap.json` on the server has no effect                                                        | Removed in NXSAT-312 with no migration                                                           | Re-create the settings in a configuration package or a preset. See §2                                       |
+| `npx nx g …:config-package` stops at `Could not find Nx modules … Have you run npm/yarn install?`             | No install in this clone, and `npm ci` needs a GitHub Packages token                             | `node tools/satori-generators/src/config-package/create.mjs <name> --owner=<owner>`: same files, no install |
+| Upgrade fails: `overwrite flag on false but destination file exists`                                          | A pre-NXSAT-317 package upgraded after `bootstrap.json` was edited                               | Move the file out of `nxserver`, `mp-install`, move it back. See §2                                         |
+| Marketplace build fails                                                                                       | Java/Maven version                                                                               | Java 17+, Maven 3.9+                                                                                        |
 
 ### Runtime
 
@@ -235,8 +242,8 @@ Deliberately deferred. `private: true` is the last thing standing between a mist
 - Scope and registry are **decided**: `@nuxeo/satori-platform` on
   `https://packages.nuxeo.com/repository/npm-public/` — the registry `nuxeo-elements` already
   publishes to.
-- Runbook: [`docs/publishing-to-nuxeo-registry.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/publishing-to-nuxeo-registry.md)
-- Readiness and what is deliberately not done: [`docs/publish-readiness.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/publish-readiness.md)
+- Runbook: [`docs/publishing-to-nuxeo-registry.md`](../../docs/publishing-to-nuxeo-registry.md)
+- Readiness and what is deliberately not done: [`docs/publish-readiness.md`](../../docs/publish-readiness.md)
 
 Before publishing, `npm run beta:publishable` must pass. It runs a real `npm publish --dry-run`,
 which is **the only check that executes `prepublishOnly`** — and for the whole of Phase 4 the

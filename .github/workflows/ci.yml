@@ -80,6 +80,16 @@ jobs:
       - name: Run Crowdin context push controls
         run: npm run review:crowdin-selftest
 
+      # Tooling that runs outside CI — the review-loop harvest and the Confluence publisher both
+      # need credentials CI does not have — so these offline controls are the only part of either
+      # that CI can exercise. The harvest silently dropped every "Previously missed" finding, and
+      # the publisher linked a branch frozen 1364 commits behind main; nothing that ran saw either.
+      - name: Run review-harvest and Confluence link controls
+        run: |
+          set -euo pipefail
+          npm run review:analysis-selftest
+          npm run docs:links-selftest
+
       # Static checks that `beta:gate` has run locally since Phase 5 and that had
       # never run here. They are seconds each and they close a specific hole: the local
       # gate and CI were two different gates, so "green locally" and "green in CI" made
