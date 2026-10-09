@@ -34,7 +34,6 @@ import {
   DOMAIN_CONTAINER_GUIDANCE_KEY,
   defaultNoteContent,
   BLOB_NOT_ATTACHED_ERROR,
-  docTypeIcon,
   docTypeLabel,
   directoryPickerLabel,
   filterDirectoryPickerEntries,
@@ -64,6 +63,7 @@ import {
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
 import {
+  NxsDocTypeIconComponent,
   NxsSpinnerComponent,
   NxsToastService,
   provideNxsToast,
@@ -111,7 +111,6 @@ export interface StagedImportFile {
 export interface DocTypeDef {
   type: string;
   label: string;
-  icon: string;
 }
 
 function defaultImportPropertiesState(file: File): ImportPropertiesState {
@@ -151,7 +150,6 @@ function toDocTypeDefs(types: string[], translate: (key: string) => string): Doc
   return types.map((type) => ({
     type,
     label: docTypeLabel(type, translate),
-    icon: docTypeIcon(type),
   }));
 }
 
@@ -164,6 +162,7 @@ const DIALOG_SIZE = {
   selector: 'lib-create-import-dialog',
   standalone: true,
   imports: [
+    NxsDocTypeIconComponent,
     NxsSpinnerComponent,
     TranslatePipe,
     MatDialogModule,

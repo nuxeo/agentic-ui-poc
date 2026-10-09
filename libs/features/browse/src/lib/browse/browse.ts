@@ -73,7 +73,6 @@ import {
   auditActivityLabel,
   DOMAIN_CONTAINER_GUIDANCE_KEY,
   isDomainParentType,
-  isRepositoryRootPath,
   isRestrictedImportParentPath,
   PERMISSION_DENIED_KEY,
   isPermissionDeniedError,
@@ -132,11 +131,6 @@ import {
 } from '@nuxeo-satori/platform/extensions';
 
 import {
-  BrowseDriveDialogComponent,
-  type BrowseDriveDialogData,
-} from '../drive-dialog/drive-dialog';
-
-import {
   ALL_COLUMNS,
   ColumnDef,
   loadColumnVisibility,
@@ -151,8 +145,12 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   NXS_PERMISSIONS_PANEL_ID,
   NxsColumnPickerComponent,
+  NxsDomainHintComponent,
+  NxsDriveDialogComponent,
+  NxsFolderHeaderComponent,
   NxsPermissionsPanelComponent,
   NxsSpinnerComponent,
+  type NxsDriveDialogData,
   type NxsPickableColumn,
   NxsToastService,
   provideNxsToast,
@@ -179,6 +177,8 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
   providers: [provideTranslatedDatepickerIntl(), provideNxsToast()],
   imports: [
     NxsColumnPickerComponent,
+    NxsDomainHintComponent,
+    NxsFolderHeaderComponent,
     NxsSpinnerComponent,
     DocTypeLabelPipe,
     DescriptorLabelPipe,
@@ -288,9 +288,6 @@ export class BrowseComponent {
     return acls.flatMap((a) => a.aces).filter((ace) => ace.externalUser && ace.granted);
   });
   readonly canWriteCurrentDoc = computed(() => canWriteDocument(this.currentDoc()));
-  readonly isDomainBrowse = computed(() => isDomainParentType(this.currentDoc()?.type));
-  readonly isRepositoryRootBrowse = computed(() => isRepositoryRootPath(this.browsePath()));
-  readonly domainContainerGuidanceKey = DOMAIN_CONTAINER_GUIDANCE_KEY;
   readonly canCreateContentHere = computed(() => {
     const doc = this.currentDoc();
     if (!doc || doc.type === 'Favorites' || !canAddChildren(doc) || !this.isBrowseFolderish(doc)) {
@@ -1236,12 +1233,8 @@ export class BrowseComponent {
   // ── Action toolbar ──
 
   openDriveDialog(): void {
-    const doc = this.currentDoc();
-    const data: BrowseDriveDialogData = {
-      docUid: doc?.uid ?? '',
-      docPath: doc?.path ?? '/',
-    };
-    this.dialog.open(BrowseDriveDialogComponent, { data });
+    const data: NxsDriveDialogData = { folderPath: this.currentDoc()?.path ?? '/' };
+    this.dialog.open(NxsDriveDialogComponent, { data });
   }
 
   private isBrowseFolderish(doc: NuxeoDocument | null | undefined): boolean {

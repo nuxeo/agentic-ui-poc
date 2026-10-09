@@ -80,6 +80,7 @@ import {
 } from '@agentic-ui/shared-permission-dialogs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
+  NxsFolderHeaderComponent,
   NxsSpinnerComponent,
   NxsToastService,
   provideNxsToast,
@@ -90,6 +91,7 @@ import {
   standalone: true,
   providers: [provideTranslatedDatepickerIntl(), provideNxsToast()],
   imports: [
+    NxsFolderHeaderComponent,
     NxsSpinnerComponent,
     TranslatePipe,
     DatePipe,

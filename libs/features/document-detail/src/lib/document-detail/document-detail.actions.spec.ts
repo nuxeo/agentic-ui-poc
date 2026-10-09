@@ -768,7 +768,7 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
   });
 
   describe('drive dialog', () => {
-    it('opens Drive in the containing folder with the stored filename', async () => {
+    it('opens Drive in the containing folder', async () => {
       await build(
         doc({
           path: '/default-domain/workspaces/ws/report',
@@ -778,25 +778,15 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
 
       component.openDriveDialog();
 
-      expect(lastDialogData()).toEqual({
-        docUid: 'doc-1',
-        filename: 'report.docx',
-        blobUrl: '/nuxeo/blob/report',
-        docPath: '/default-domain/workspaces/ws',
-      });
+      expect(lastDialogData()).toEqual({ folderPath: '/default-domain/workspaces/ws' });
     });
 
-    it('falls back to the document title when there is no blob', async () => {
+    it('opens Drive at the repository root for a document directly under it', async () => {
       await build(doc({ title: 'No blob', path: '/x', properties: {} }));
 
       component.openDriveDialog();
 
-      expect(lastDialogData()).toEqual({
-        docUid: 'doc-1',
-        filename: 'No blob',
-        blobUrl: '',
-        docPath: '/',
-      });
+      expect(lastDialogData()).toEqual({ folderPath: '/' });
     });
   });
 
