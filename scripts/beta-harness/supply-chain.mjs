@@ -45,15 +45,17 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import ts from 'typescript';
+import { CONTROL_COUNT, collectReferences, referenced, selfCheck } from './module-references.mjs';
 
 const repoRoot = resolve(import.meta.dirname, '..', '..');
 const argv = process.argv.slice(2);
 const asJson = argv.includes('--json');
 const todayArg = argv[argv.indexOf('--today') + 1];
-const today = argv.includes('--today') && todayArg ? todayArg : new Date().toISOString().slice(0, 10);
+const today =
+  argv.includes('--today') && todayArg ? todayArg : new Date().toISOString().slice(0, 10);
 
 const allowlistPath = resolve(repoRoot, '.ai/state/supply-chain-allowlist.json');
 const allowlist = existsSync(allowlistPath)
@@ -134,9 +136,7 @@ function ghsaIdsOf(v) {
  */
 const prodFindings = [];
 for (const [name, v] of Object.entries(prod?.vulnerabilities ?? {})) {
-  const titles = (v.via ?? [])
-    .map((x) => (typeof x === 'string' ? x : x.title))
-    .filter(Boolean);
+  const titles = (v.via ?? []).map((x) => (typeof x === 'string' ? x : x.title)).filter(Boolean);
   const { ids, unidentifiable } = ghsaIdsOf(v);
   prodFindings.push({
     name,
@@ -219,7 +219,9 @@ for (const f of nonBlocking) {
     fail(
       `the allowlist accepts ${accepted.join(', ')} for ${f.name}, but the audit reports ` +
         `${f.ghsas.join(', ')}.` +
-        (unaccepted.length ? ` Not accepted: ${unaccepted.join(', ')} — needs its own review.` : '') +
+        (unaccepted.length
+          ? ` Not accepted: ${unaccepted.join(', ')} — needs its own review.`
+          : '') +
         (unreported.length ? ` Accepted but not reported: ${unreported.join(', ')}.` : '') +
         ' Every reported advisory must be named, or a new one inherits an approval nobody gave it.',
     );
@@ -294,71 +296,22 @@ notes.push(
 const pkg = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8'));
 const prodDeps = Object.keys(pkg.dependencies ?? {});
 
-/** Everything a bare specifier could plausibly appear in. */
-function collectSource() {
-  let text = '';
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir)) {
-      if (/^(node_modules|dist|coverage|\.nx|\.git)$/.test(entry)) continue;
-      const full = join(dir, entry);
-      if (statSync(full).isDirectory()) {
-        walk(full);
-        continue;
-      }
-      // A selftest writes fixture source as strings, re-introducing an import of a removed package
-      // on purpose to watch a guardrail go red. That is test data, not a dependency on the package.
-      if (/\.selftest\.mjs$/.test(full)) continue;
-      if (/\.(ts|mjs|cjs|js|html|scss|css)$/.test(full)) text += readFileSync(full, 'utf8');
-    }
-  };
-  for (const dir of ['apps', 'libs', 'tools', 'scripts']) {
-    const abs = resolve(repoRoot, dir);
-    if (existsSync(abs)) walk(abs);
-  }
-  // Build config can name a package without any source importing it — an asset glob or a style
-  // entry point is a real reference.
-  //
-  // `package.json` is deliberately NOT included. The first version of this function read it, and
-  // every dependency then matched its own declaration (`"tslib": "^2.8.1"` contains `"tslib"`), so
-  // the check found nothing and every exception looked unnecessary. The file we are testing
-  // against cannot also be evidence.
-  const ngPath = resolve(repoRoot, 'angular.json');
-  if (existsSync(ngPath)) text += readFileSync(ngPath, 'utf8');
-  return text;
-}
-
-const source = collectSource();
-
 /**
- * Is `dep` referenced as a real module specifier or build path?
- *
- * Matching any quoted occurrence of the name is not good enough, and the first version did exactly
- * that. It reported `tslib` as referenced because **this file's own doc comment** contains the
- * string `"tslib": "^2.8.1"` while explaining the previous bug. A check that a comment can satisfy
- * is not a check.
- *
- * So: import/export/require/@use/@import specifiers, dynamic `import()`, a bare side-effect
- * `import 'x';`, and `node_modules/x` for build config. The bare side-effect form is listed
- * explicitly because it has neither `from` nor parentheses, and omitting it is the same gap that
- * was found twice before — in the api-surface gate and in the guardrail we ship to customers.
- * @param {string} dep
+ * Specifiers are parsed rather than pattern-matched, so a comment or prose cannot count as an
+ * import. See `module-references.mjs` for what counts and why.
  */
-function referenced(dep) {
-  const q = dep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const spec = `(?:${q})(?:/[^'"\`]*)?`;
-  const patterns = [
-    new RegExp(`\\bfrom\\s*['"\`]${spec}['"\`]`),
-    new RegExp(`\\brequire\\s*\\(\\s*['"\`]${spec}['"\`]`),
-    new RegExp(`\\bimport\\s*\\(\\s*['"\`]${spec}['"\`]`),
-    // bare side-effect import, and SCSS `@use` / `@import`
-    new RegExp(`\\b(?:import|@use|@import)\\s+['"\`]${spec}['"\`]`),
-    // build config: asset globs and style entry points name a real path
-    new RegExp(`node_modules/${spec}`),
-  ];
-  return patterns.some((p) => p.test(source));
+const refs = collectReferences(repoRoot);
+
+const controlFailures = selfCheck();
+for (const failure of controlFailures) fail(`module-reference control failed — ${failure}`);
+if (controlFailures.length === 0) {
+  notes.push(
+    `module-reference controls: ${CONTROL_COUNT.negative} negative (must not count) + ` +
+      `${CONTROL_COUNT.positive} positive (must count), all as specified.`,
+  );
 }
 
-const unreferenced = prodDeps.filter((d) => !referenced(d));
+const unreferenced = prodDeps.filter((d) => !referenced(d, refs));
 const exceptions = allowlist.unreferencedDependencies ?? {};
 
 for (const dep of unreferenced) {
@@ -379,8 +332,10 @@ for (const dep of unreferenced) {
 // An exception for a dependency that is now referenced, or gone, is a rule protecting nothing.
 for (const dep of Object.keys(exceptions)) {
   if (!prodDeps.includes(dep)) {
-    fail(`"unreferencedDependencies" names ${dep}, which is not a production dependency. Remove it.`);
-  } else if (referenced(dep)) {
+    fail(
+      `"unreferencedDependencies" names ${dep}, which is not a production dependency. Remove it.`,
+    );
+  } else if (referenced(dep, refs)) {
     fail(
       `"unreferencedDependencies" excuses ${dep}, but it IS referenced in the source now. Remove ` +
         'the exception so the check applies to it again.',
@@ -672,7 +627,9 @@ console.log(
   `  dev-inclusive       ${fullCounts.critical ?? 0} critical, ${fullCounts.high ?? 0} high, ` +
     `${fullCounts.moderate ?? 0} moderate, ${fullCounts.low ?? 0} low   (reported, not gated)`,
 );
-console.log(`  production deps     ${prodDeps.length}, of which ${unreferenced.length} unreferenced`);
+console.log(
+  `  production deps     ${prodDeps.length}, of which ${unreferenced.length} unreferenced`,
+);
 console.log(`  mitigations         ${mitigationsChecked} cited pointer(s) resolved in the source`);
 console.log(`  date                ${today}`);
 for (const n of notes) console.log(`\n  - ${n}`);
@@ -682,4 +639,6 @@ if (problems.length) {
   for (const p of problems) console.error(`  - ${p}\n`);
   process.exit(1);
 }
-console.log('\nsupply-chain: pass — nothing high or critical ships, and every acceptance is dated.');
+console.log(
+  '\nsupply-chain: pass — nothing high or critical ships, and every acceptance is dated.',
+);
