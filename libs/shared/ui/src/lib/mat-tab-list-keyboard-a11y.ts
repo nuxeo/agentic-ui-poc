@@ -13,7 +13,7 @@ export const MAT_TAB_LIST_IBM_ONKEYDOWN = 'void(0)';
 
 /**
  * Attach IBM-detectable keyboard metadata on the Material tablist node inside `root`.
- * Returns a cleanup function, or `null` when no tablist is present yet.
+ * Returns cleanup when this call attaches metadata, or `null` when it makes no change.
  */
 export function wireMatTabListKeyboardA11y(root: HTMLElement): (() => void) | null {
   const tabList = root.querySelector<HTMLElement>('.mat-mdc-tab-list[role="tablist"]');
