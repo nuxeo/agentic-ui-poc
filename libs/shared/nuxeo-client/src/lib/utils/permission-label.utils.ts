@@ -13,11 +13,20 @@ const LABELLED_PERMISSIONS = new Set([
   'ReadWrite',
   'Read',
   'Write',
+  'ReadVersion',
+  'WriteVersion',
+  'Version',
   'ReadRemove',
   'AddChildren',
+  'RemoveChildren',
   'Remove',
+  'WriteSecurity',
+  'Unlock',
+  'SetRetention',
+  'UnsetRetention',
   'ManageWorkflows',
   'ReadCanCollect',
+  'CanAskForPublishing',
 ]);
 
 /**

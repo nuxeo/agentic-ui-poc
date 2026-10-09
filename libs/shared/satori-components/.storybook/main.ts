@@ -11,6 +11,9 @@ import type { StorybookConfig } from '@storybook/angular';
  */
 const config: StorybookConfig = {
   stories: ['../src/**/*.stories.ts'],
+  // The application's catalogue, for components whose chrome is translated through ngx-translate
+  // under keys the application owns, such as `nxs-permissions-panel`.
+  staticDirs: [{ from: '../../../../apps/nuxeo-ui/public/i18n', to: 'i18n' }],
   addons: [],
   framework: {
     name: '@storybook/angular',

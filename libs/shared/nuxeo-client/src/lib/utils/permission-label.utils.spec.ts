@@ -5,6 +5,33 @@ import { permissionRightLabel } from './permission-label.utils';
 const echoKey = (key: string) => key;
 
 describe('permissionRightLabel', () => {
+  it('labels the standard grantable set, not only the original three', () => {
+    // NXSAT-300: the twelve the external review named, plus the retention pair.
+    for (const permission of [
+      'Read',
+      'ReadWrite',
+      'Everything',
+      'Write',
+      'ReadVersion',
+      'WriteVersion',
+      'AddChildren',
+      'RemoveChildren',
+      'Remove',
+      'Version',
+      'WriteSecurity',
+      'Unlock',
+      'SetRetention',
+      'UnsetRetention',
+    ]) {
+      expect(permissionRightLabel(permission, echoKey)).toBe(`permissions.right.${permission}`);
+    }
+    expect(permissionRightLabel('CanAskForPublishing', echoKey)).toBe(
+      'permissions.right.CanAskForPublishing',
+    );
+    // An atomic sub-permission keeps its Nuxeo name: it is offered, but not relabelled.
+    expect(permissionRightLabel('Browse', echoKey)).toBe('Browse');
+  });
+
   it('asks the catalogue for each permission it ships a label for', () => {
     expect(permissionRightLabel('Everything', echoKey)).toBe('permissions.right.Everything');
     expect(permissionRightLabel('ReadWrite', echoKey)).toBe('permissions.right.ReadWrite');

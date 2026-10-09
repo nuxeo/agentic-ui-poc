@@ -2,14 +2,16 @@
 title: Developer Getting Started
 parent: Engineering
 order: 1
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: fb97d44
 audience: engineering
 ---
 
 # Developer Getting Started — zero to productive
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-08 · **Repository:** `fb97d44` (`feature/nxsat-308-dependency-tree-gate`)
+> Only the gate guidance (the lockfile trap) was re-verified at that commit; the rest of the page was
+> last reviewed on 2026-08-24 at `77265f9`.
 
 The goal of this page is that you reach a running application, a green gate and your first
 commit **without asking anyone**. If you get stuck on something not covered here, that is
@@ -191,8 +193,8 @@ exists.
 1. **`test` does not typecheck.** Vitest strips types through esbuild. Only `build` and
    `typecheck` catch a TypeScript error, and they run late. A green `test` is not type
    safety.
-2. **Nothing except the `lockfile` gate reads `package-lock.json`.** CI was red for the
-   whole of Phase 2 while every local gate was green.
+2. **Nothing except the `lockfile` gate checks that `package-lock.json` will install.** CI
+   was red for the whole of Phase 2 while every local gate was green.
 
 ### The E2E suite needs the live stack
 
