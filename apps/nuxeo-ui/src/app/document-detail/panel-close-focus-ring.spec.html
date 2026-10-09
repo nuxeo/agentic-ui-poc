@@ -1,0 +1,19 @@
+<!--
+  Fixture for panel-close-focus-ring.spec.ts. Mirrors document-detail.html properties panel
+  header markup so document-detail.scss applies; Karma locates the close control by aria-label.
+  Production template wiring (panel-close-btn + closePropertiesPanel) and the standalone :focus
+  SCSS contract live in document-detail-panel-close-focus-ring.spec.ts (feature Vitest).
+-->
+<aside class="properties-panel">
+  <div class="panel-header">
+    <span class="panel-title">Sample document.pdf</span>
+    <button
+      mat-icon-button
+      type="button"
+      class="panel-close-btn"
+      [attr.aria-label]="'document-detail.document-detail.close-panel' | translate"
+    >
+      <mat-icon aria-hidden="true">close</mat-icon>
+    </button>
+  </div>
+</aside>

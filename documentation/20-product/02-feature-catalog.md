@@ -2,14 +2,16 @@
 title: Feature Catalog
 parent: Product
 order: 2
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: 2898046
 audience: product
 ---
 
 # Feature Catalog
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-08 · **Repository:** `2898046` (`feature/nxsat-308-ci-cold-cache-tooling`)
+> Only the repository links were re-verified at that commit: made relative rather than pinned to
+> `feature/adf-hx-browse-poc`, every target present. The rest of the page as of 2026-08-24 · `77265f9`.
 > Derived from the 23 application routes, the 9 feature libraries and the 25 Nuxeo services.
 > Every row is traceable to code. Where a capability is present but limited, the limit is
 > stated rather than omitted.
@@ -70,7 +72,7 @@ audience: product
 > delete them. But the Layer 1 **rule context** still carries selection _ids_ rather than
 > documents, so `app.rules.canWriteSelection` and `canRemoveSelection` answer `false`
 > everywhere. Bulk permission-gated actions are therefore not manifest-gateable yet.
-> Documented in [`docs/extension-reference.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/extension-reference.md).
+> Documented in [`docs/extension-reference.md`](../../docs/extension-reference.md).
 
 ## 3. Search
 
@@ -85,7 +87,7 @@ audience: product
 | **Natural-language search** | "documents I edited last week" → NXQL              | No query language to learn | **Backend absent** — `AI.NlToNxql` |
 
 > **Search hardening.** The query path escapes literals before interpolation
-> ([`hxql-literal.ts`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/libs/shared/adf-hx-bridge/src/lib/api/hxql-literal.ts)).
+> ([`hxql-literal.ts`](../../libs/shared/adf-hx-bridge/src/lib/api/hxql-literal.ts)).
 > An adversarial review found an injection that returned 155 documents against 0 for the
 > plain term, defeating the `isVersion`/`isTrashed` hygiene filters. Nuxeo's ACL filter
 > bounded the impact — no unauthorised documents were readable — but versions and trashed
@@ -118,13 +120,13 @@ Gated by `adminGuard` → `hasAdministrationAccess()`, and by
 
 ## 6. Knowledge Discovery & Enrichment
 
-| Feature               | Description                                                 | Status                                                                                                                                                                               |
-| --------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Knowledge Discovery   | Conversational discovery over content, with citations       | **Shipped, limited** — needs the KD backend. See [`docs/knowledge-discovery.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/knowledge-discovery.md) |
-| Content Lake ingest   | Ingest documents, track status, backfill, detect duplicates | **Shipped** — `content-lake-ingest.service`                                                                                                                                          |
-| Knowledge Enrichment  |                                                             | **Shipped, limited** — needs the KE backend                                                                                                                                          |
-| Expired queue         | Documents past expiry                                       | **Shipped**                                                                                                                                                                          |
-| Assets / DAM surfaces | Asset search results, asset queue, aggregations             | **Shipped**                                                                                                                                                                          |
+| Feature               | Description                                                 | Status                                                                                                              |
+| --------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Knowledge Discovery   | Conversational discovery over content, with citations       | **Shipped, limited** — needs the KD backend. See [`docs/knowledge-discovery.md`](../../docs/knowledge-discovery.md) |
+| Content Lake ingest   | Ingest documents, track status, backfill, detect duplicates | **Shipped** — `content-lake-ingest.service`                                                                         |
+| Knowledge Enrichment  |                                                             | **Shipped, limited** — needs the KE backend                                                                         |
+| Expired queue         | Documents past expiry                                       | **Shipped**                                                                                                         |
+| Assets / DAM surfaces | Asset search results, asset queue, aggregations             | **Shipped**                                                                                                         |
 
 ## 7. Runtime AI features — 12 operations
 

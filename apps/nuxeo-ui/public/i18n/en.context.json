@@ -1665,6 +1665,7 @@
   "satori-components.column-picker.title": "Heading and accessible name of the panel where a user chooses which columns a document table shows.",
   "satori-components.drive-dialog.checking": "Progress text in the Nuxeo Drive dialog while the application checks whether Nuxeo Drive is installed and connected for this user. The dots mean in progress. Nuxeo Drive is Hyland’s desktop application that synchronizes repository folders with the user’s computer (product name, do not translate).",
   "satori-components.drive-dialog.close": "Button that closes the Nuxeo Drive download dialog.",
+  "satori-components.drive-dialog.name": "Accessible name of the Nuxeo Drive dialog while it checks whether Nuxeo Drive is installed; read by screen readers only. Nuxeo Drive is Hyland’s desktop application that synchronizes repository folders with the user’s computer (product name, do not translate).",
   "satori-components.drive-dialog.package": "Column heading in the Nuxeo Drive download dialog, above the installer file for each operating system.",
   "satori-components.drive-dialog.platform": "Column heading in the Nuxeo Drive download dialog, above the operating system names (Linux, macOS, Windows).",
   "satori-components.drive-dialog.title": "Heading and accessible name of the dialog offering the Nuxeo Drive installers when Drive is not installed. Client means the desktop application. Nuxeo Drive is Hyland’s desktop application that synchronizes repository folders with the user’s computer (product name, do not translate).",

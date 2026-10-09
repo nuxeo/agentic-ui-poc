@@ -308,6 +308,7 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'satori-components.column-picker.reset': 'Reset',
   'satori-components.column-picker.title': 'Column Settings',
   'satori-components.drive-dialog.close': 'Close',
+  'satori-components.drive-dialog.name': 'Nuxeo Drive',
   'satori-components.drive-dialog.title': 'Download Nuxeo Drive Client',
   'satori-components.error-state.retry': 'Retry',
   'permissions.add-permission-dialog.hi-could-you-comment-on-this':

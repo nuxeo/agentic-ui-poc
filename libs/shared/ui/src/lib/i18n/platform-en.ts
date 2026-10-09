@@ -141,6 +141,7 @@ export const PLATFORM_EN_TRANSLATIONS: Readonly<Record<string, string>> = {
   "satori-components.column-picker.title": "Column Settings",
   "satori-components.drive-dialog.checking": "Checking Nuxeo Drive...",
   "satori-components.drive-dialog.close": "Close",
+  "satori-components.drive-dialog.name": "Nuxeo Drive",
   "satori-components.drive-dialog.package": "Package to Install",
   "satori-components.drive-dialog.platform": "Platform",
   "satori-components.drive-dialog.title": "Download Nuxeo Drive Client",

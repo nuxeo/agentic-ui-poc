@@ -133,7 +133,10 @@ into the library to dodge the rule.
    under `satori-components.<name>.*` in the app catalogue (`apps/nuxeo-ui/public/i18n/en.json`
    plus `en.context.json`, and `en-fallback.ts` too if the key names a control), written as
    literals or literal-prefixed template strings so that `node tools/i18n/platform-english.mjs`
-   finds them and ships their English with the package.
+   finds them and ships their English with the package. A message that belongs to a
+   `nuxeo-client` rule keeps that rule's exported key instead: `nxs-domain-hint` shows
+   `DOMAIN_CONTAINER_GUIDANCE_KEY`, the sentence the Create / Import checks give, so one
+   translation serves every place the rule speaks.
 3. The spec covers the empty and error paths and keeps the library at 90% or more:
    `npx nx test satori-components --coverage.enabled=true`, then `npm run beta:coverage`.
 4. Export it from `src/index.ts`, run `npm run beta:api -- --update` and review the

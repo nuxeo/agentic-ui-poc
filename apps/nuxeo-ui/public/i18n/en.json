@@ -1959,6 +1959,7 @@
     "drive-dialog": {
       "checking": "Checking Nuxeo Drive...",
       "close": "Close",
+      "name": "Nuxeo Drive",
       "package": "Package to Install",
       "platform": "Platform",
       "title": "Download Nuxeo Drive Client"
