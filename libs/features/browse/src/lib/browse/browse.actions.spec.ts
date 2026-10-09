@@ -366,17 +366,16 @@ describe('BrowseComponent — actions', () => {
   it('openDriveDialog falls back to the repository root when nothing is browsed', () => {
     component.openDriveDialog();
 
-    expect(dialogData<{ docUid: string; docPath: string }>()).toEqual({ docUid: '', docPath: '/' });
+    expect(dialogData<{ folderPath: string }>()).toEqual({ folderPath: '/' });
   });
 
-  it('openDriveDialog passes the browsed folder uid and path', () => {
+  it('openDriveDialog opens Drive on the browsed folder', () => {
     component.currentDoc.set(folder);
 
     component.openDriveDialog();
 
-    expect(dialogData<{ docUid: string; docPath: string }>()).toEqual({
-      docUid: 'ws-1',
-      docPath: '/default-domain/workspaces/ws-1',
+    expect(dialogData<{ folderPath: string }>()).toEqual({
+      folderPath: '/default-domain/workspaces/ws-1',
     });
   });
 
