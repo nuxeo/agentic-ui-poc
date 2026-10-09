@@ -267,10 +267,20 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 - **`nxs-empty-state` renders its heading as an `<h2>` by default.** Bind `[headingLevel]` to
   one below the heading of the section it sits in, so screen-reader heading navigation stays in
   order.
-- **Favourite a document with `nxs-favorite-toggle`.** `<nxs-favorite-toggle [documentId]
-[(favorite)] (changed) (failed)>` is the star; it runs the request and reports the outcome, and
-  your component says what to the user. To offer the same operation as a menu entry, call
-  `nxsToggleFavorite(documentDetailService, id, favorite)`, which emits the new state.
+- **Favourite a document with `nxs-favorite-toggle`.** It is the star; it runs the request and
+  reports the outcome, and your component says what to the user. To offer the same operation as a
+  menu entry, call `nxsToggleFavorite(documentDetailService, id, favorite)`, which emits the new
+  state.
+
+```html
+<nxs-favorite-toggle
+  [documentId]="doc.uid"
+  [(favorite)]="isFavorite"
+  (changed)="onFavoriteChanged($event)"
+  (failed)="onFavoriteFailed($event)"
+/>
+```
+
 - **Replace a packaged panel by its ID.** `nxs-permissions-panel` is registered as
   `NXS_PERMISSIONS_PANEL_ID` (`nxs.components.permissionsPanel`). Register your own component
   under it and both Permissions tabs render yours, with `documentId` and `permissionsChanged`, a

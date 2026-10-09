@@ -258,7 +258,7 @@ class NxsFavoriteToggleComponent {
     readonly disabled: _angular_core.InputSignal<boolean>;
     readonly changed: _angular_core.OutputEmitterRef<boolean>;
     readonly failed: _angular_core.OutputEmitterRef<unknown>;
-    protected readonly busy: _angular_core.WritableSignal<boolean>;
+    protected readonly busy: _angular_core.Signal<boolean>;
     toggle(): void;
     protected press(event: Event): void;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsFavoriteToggleComponent, never>;

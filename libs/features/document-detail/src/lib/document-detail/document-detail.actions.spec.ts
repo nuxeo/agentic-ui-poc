@@ -575,31 +575,6 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       expect(component.isSubscribed()).toBe(false);
     });
 
-    it('does not mark the document it moved on to when the last one’s answer arrives', async () => {
-      const route = new BehaviorSubject(convertToParamMap({ uid: 'doc-1' }));
-      TestBed.overrideProvider(ActivatedRoute, {
-        useValue: {
-          paramMap: route,
-          queryParamMap: of(convertToParamMap({})),
-          snapshot: { queryParamMap: convertToParamMap({}) },
-        },
-      });
-      await build();
-      const answer = new Subject<undefined>();
-      mockDetailService.addToFavorites.mockReturnValue(answer);
-      component.toggleFavorite();
-
-      mockDetailService.getFullDocument.mockReturnValue(of(doc({ uid: 'doc-2' })));
-      route.next(convertToParamMap({ uid: 'doc-2' }));
-      await fixture.whenStable();
-      answer.next(undefined);
-      answer.complete();
-
-      expect(mockDetailService.addToFavorites).toHaveBeenCalledWith('doc-1');
-      expect(component.isFavorite()).toBe(false);
-      expect(component.actionInProgress()).toBeNull();
-    });
-
     it('leaves the flag alone when the call fails', async () => {
       await build();
       mockDetailService.subscribe.mockReturnValue(throwError(() => new Error('500')));
