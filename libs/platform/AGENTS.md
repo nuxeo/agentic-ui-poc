@@ -246,9 +246,10 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 
 - **Text inputs take text you have already translated.** Bind every heading, message, label and
   column name you pass through your own translate pipe.
-- **A component's own controls use `nxs.*` keys.** The column picker's Done and Reset, for
-  example. Without the Satori catalogue, `providePlatformEnglishFallback()` (README,
-  "Translations") renders them in English; add the same keys to your catalogue to translate them.
+- **A component's own chrome uses `satori-components.*` keys.** The column picker's Done and
+  Reset, or `nxs-permissions-panel`'s headings, for example. Without the Satori catalogue,
+  `providePlatformEnglishFallback()` (README, "Translations") renders them in English; add the same
+  keys to your catalogue to translate them.
 - **`nxs-empty-state` renders its heading as an `<h2>` by default.** Bind `[headingLevel]` to
   one below the heading of the section it sits in, so screen-reader heading navigation stays in
   order.
@@ -259,6 +260,10 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 - **An action slot rendered as a menu is `nxs-action-menu`.** Resolve the slot's descriptors into
   `NxsMenuAction` entries yourself (labels translated, enabled rules evaluated) and run the one it
   emits; with no entries it renders no trigger.
+- **Replace a packaged panel by its ID.** `nxs-permissions-panel` is registered as
+  `NXS_PERMISSIONS_PANEL_ID` (`nxs.components.permissionsPanel`). Register your own component
+  under it and both Permissions tabs render yours, with `documentId` and `permissionsChanged`, a
+  callback to invoke after a write so the host re-reads the external-user section it owns.
 - **Import only the entry point.** A path past it fails the shipped guardrail like any other
   deep import.
 - **It is new and growing.** The type declarations are the list of what exists; do not take

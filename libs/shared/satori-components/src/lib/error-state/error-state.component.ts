@@ -22,23 +22,23 @@ interface Variant {
 const VARIANTS: Readonly<Record<NxsErrorStatus, Variant>> = {
   401: {
     icon: 'lock',
-    heading: 'nxs.error-state.unauthorized.heading',
-    message: 'nxs.error-state.unauthorized.message',
+    heading: 'satori-components.error-state.unauthorized.heading',
+    message: 'satori-components.error-state.unauthorized.message',
   },
   403: {
     icon: 'block',
-    heading: 'nxs.error-state.forbidden.heading',
-    message: 'nxs.error-state.forbidden.message',
+    heading: 'satori-components.error-state.forbidden.heading',
+    message: 'satori-components.error-state.forbidden.message',
   },
   404: {
     icon: 'search_off',
-    heading: 'nxs.error-state.not-found.heading',
-    message: 'nxs.error-state.not-found.message',
+    heading: 'satori-components.error-state.not-found.heading',
+    message: 'satori-components.error-state.not-found.message',
   },
   500: {
     icon: 'error_outline',
-    heading: 'nxs.error-state.server.heading',
-    message: 'nxs.error-state.server.message',
+    heading: 'satori-components.error-state.server.heading',
+    message: 'satori-components.error-state.server.message',
   },
 };
 

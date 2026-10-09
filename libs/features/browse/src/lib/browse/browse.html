@@ -429,169 +429,29 @@
           <!-- ═══════ PERMISSIONS TAB ═══════ -->
           <mat-tab [label]="'browse.tab.permissions' | translate">
             <div class="permissions-container">
+              <!-- Local and inherited permissions: the nxs- panel, resolved by its registered ID so a
+                   customer library can re-register a replacement. -->
+              @if (currentDoc(); as folder) {
+                <lib-extension-outlet
+                  #permissionsPanelOutlet
+                  [componentId]="permissionsPanelId"
+                  [componentInputs]="{
+                    documentId: folder.uid,
+                    permissionsChanged: onPermissionsChanged,
+                  }"
+                />
+                @if (permissionsPanelOutlet.unresolved()) {
+                  <nxs-permissions-panel
+                    [documentId]="folder.uid"
+                    [permissionsChanged]="onPermissionsChanged"
+                  />
+                }
+              }
               @if (permissionsLoading()) {
                 <div class="browse-loading">
                   <nxs-spinner diameter="24" [label]="'browse.browse.loading' | translate" />
                 </div>
               } @else {
-                <!-- Permissions defined locally -->
-                <section class="perm-section">
-                  <div class="perm-section-header">
-                    <div class="perm-section-title" role="heading" aria-level="3">
-                      {{ 'browse.browse.permissions-defined-locally' | translate }}
-                    </div>
-                    @if (canManageCurrentPermissions()) {
-                      <button
-                        mat-button
-                        color="primary"
-                        class="perm-action-btn"
-                        (click)="addPermission()"
-                      >
-                        {{ 'browse.browse.new' | translate }}
-                      </button>
-                    }
-                  </div>
-                  @if (localAces().length === 0) {
-                    <div class="perm-empty">
-                      {{ 'browse.browse.there-are-no-local-permissions' | translate }}
-                    </div>
-                  } @else {
-                    <table class="perm-table">
-                      <thead>
-                        <tr>
-                          <th>{{ 'browse.browse.user-group' | translate }}</th>
-                          <th>{{ 'browse.browse.right' | translate }}</th>
-                          <th>{{ 'browse.browse.time-frame' | translate }}</th>
-                          <th>{{ 'browse.browse.granted-by' | translate }}</th>
-                          @if (canManageCurrentPermissions()) {
-                            <th>
-                              <span class="cdk-visually-hidden">{{
-                                'browse.browse.actions' | translate
-                              }}</span>
-                            </th>
-                          }
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (ace of localAces(); track ace.id) {
-                          <tr>
-                            <td>
-                              <span class="perm-user">
-                                <sat-avatar
-                                  [initials]="avatarInitials(displayUsername(ace))"
-                                  [category]="avatarColor(displayUsername(ace))"
-                                  size="24"
-                                  [borderless]="true"
-                                  aria-hidden="true"
-                                />
-                                {{ displayUsername(ace) }}
-                              </span>
-                            </td>
-                            <td>{{ permissionLabel(ace.permission) }}</td>
-                            <td>{{ aceTimeFrame(ace) }}</td>
-                            <td>{{ aceGrantedBy(ace) }}</td>
-                            @if (canManageCurrentPermissions()) {
-                              <td class="perm-row-actions">
-                                <button
-                                  mat-icon-button
-                                  [matTooltip]="'browse.browse.edit' | translate"
-                                  [attr.aria-label]="'browse.browse.edit' | translate"
-                                  type="button"
-                                  (click)="editPermission(ace)"
-                                >
-                                  <mat-icon>edit</mat-icon>
-                                </button>
-                                <button
-                                  mat-icon-button
-                                  [matTooltip]="'browse.browse.delete' | translate"
-                                  [attr.aria-label]="'browse.browse.delete' | translate"
-                                  type="button"
-                                  (click)="deletePermission(ace)"
-                                >
-                                  <mat-icon>delete</mat-icon>
-                                </button>
-                              </td>
-                            }
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  }
-                </section>
-
-                <!-- Permissions inherited from upper levels -->
-                <section class="perm-section">
-                  <div class="perm-section-header">
-                    <div class="perm-section-title" role="heading" aria-level="3">
-                      {{ 'browse.browse.permissions-inherited-from-upper-levels' | translate }}
-                    </div>
-                    @if (canManageCurrentPermissions()) {
-                      <button
-                        mat-button
-                        color="primary"
-                        class="perm-action-btn"
-                        (click)="toggleInheritance()"
-                        [disabled]="actionInProgress() === 'inheritance'"
-                      >
-                        {{
-                          isInheritanceBlocked()
-                            ? ('browse.unblock' | translate)
-                            : ('browse.block' | translate)
-                        }}
-                      </button>
-                    }
-                  </div>
-                  @if (!isInheritanceBlocked()) {
-                    <div class="perm-info-bar">
-                      <span class="perm-info-accent"></span>
-                      <p>
-                        {{ 'browse.browse.if-you-want-to-explicitly-control' | translate }}
-                      </p>
-                    </div>
-                  }
-                  @if (isInheritanceBlocked()) {
-                    <div class="perm-empty">
-                      {{ 'browse.browse.permissions-inheritance-is-blocked' | translate }}
-                    </div>
-                  } @else if (inheritedAces().length === 0) {
-                    <div class="perm-empty">
-                      {{ 'browse.browse.no-inherited-permissions' | translate }}
-                    </div>
-                  } @else {
-                    <table class="perm-table">
-                      <thead>
-                        <tr>
-                          <th>{{ 'browse.browse.user-group' | translate }}</th>
-                          <th>{{ 'browse.browse.right' | translate }}</th>
-                          <th>{{ 'browse.browse.time-frame' | translate }}</th>
-                          <th>{{ 'browse.browse.granted-by' | translate }}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (ace of inheritedAces(); track ace.id) {
-                          <tr>
-                            <td>
-                              <span class="perm-user">
-                                <sat-avatar
-                                  [initials]="avatarInitials(displayUsername(ace))"
-                                  [category]="avatarColor(displayUsername(ace))"
-                                  size="24"
-                                  [borderless]="true"
-                                  aria-hidden="true"
-                                />
-                                {{ displayUsername(ace) }}
-                              </span>
-                            </td>
-                            <td>{{ permissionLabel(ace.permission) }}</td>
-                            <td>{{ aceTimeFrame(ace) }}</td>
-                            <td>{{ aceGrantedBy(ace) }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  }
-                </section>
-
                 <!-- Permissions Assigned to External Users -->
                 <section class="perm-section">
                   <div class="perm-section-header">

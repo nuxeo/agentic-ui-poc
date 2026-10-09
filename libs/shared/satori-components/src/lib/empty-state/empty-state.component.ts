@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, type InputSignal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { NxsHeadingLevel } from '../heading-level';
@@ -26,8 +26,11 @@ export class NxsEmptyStateComponent {
    * The heading's level in the page outline, rendered as the native `<h1>`–`<h6>`. Set it to fit
    * where the component sits — one below the heading of the section it empties — so heading
    * navigation stays in order.
+   *
+   * Annotated rather than inferred: an inferred union is declared in the compiler's type order,
+   * which moves with unrelated code and broke the published API snapshot on every such change.
    */
-  readonly headingLevel = input<NxsHeadingLevel>(2);
+  readonly headingLevel: InputSignal<NxsHeadingLevel> = input<NxsHeadingLevel>(2);
   /** An optional second line — usually what to do next. Not rendered when blank. */
   readonly message = input('');
   /** An optional Material icon ligature. Decorative, so hidden from assistive technology. */

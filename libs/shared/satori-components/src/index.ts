@@ -18,4 +18,8 @@ export { type NxsErrorStatus, nxsErrorStatus } from './lib/error-state/error-sta
 export { NxsFolderHeaderComponent } from './lib/folder-header/folder-header.component';
 export type { NxsHeadingLevel } from './lib/heading-level';
 export { NxsIconComponent } from './lib/icon/icon.component';
+export {
+  NXS_PERMISSIONS_PANEL_ID,
+  NxsPermissionsPanelComponent,
+} from './lib/permissions-panel/permissions-panel.component';
 export { NxsSpinnerComponent } from './lib/spinner/spinner.component';

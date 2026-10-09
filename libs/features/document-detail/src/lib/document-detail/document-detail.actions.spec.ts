@@ -1161,7 +1161,7 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       expect(component.aceGrantedBy(ace({ creator: null }))).toBe('—');
     });
 
-    it('splits the ACL enricher into local, inherited and external grants', async () => {
+    it('keeps only the external grants, which the host shows beside the panel', async () => {
       await build(
         doc({
           contextParameters: {
@@ -1181,23 +1181,7 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
         }),
       );
 
-      expect(component.localAces().map((a) => a.id)).toEqual(['a']);
-      expect(component.inheritedAces().map((a) => a.id)).toEqual(['d']);
       expect(component.externalAces().map((a) => a.id)).toEqual(['c']);
-      expect(component.isInheritanceBlocked()).toBe(false);
-    });
-
-    it('reports inheritance as blocked when the inherited ACL is gone', async () => {
-      await build(
-        doc({
-          contextParameters: {
-            permissions: ['Everything'],
-            acls: [{ name: 'local', aces: [ace()] }],
-          },
-        }),
-      );
-
-      expect(component.isInheritanceBlocked()).toBe(true);
     });
   });
 
