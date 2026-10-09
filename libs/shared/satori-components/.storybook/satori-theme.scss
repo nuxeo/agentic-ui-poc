@@ -2,8 +2,9 @@
 //
 // Needs `@hylandsoftware/satori-ui` installed, which needs a GitHub Packages token, so nothing in
 // the default configuration references this file. It is the only file under `.storybook/` that may
-// reach `@hylandsoftware/*`, and `checkSatoriComponentsDependencies` reads the default
-// configuration's `styles` to keep it that way.
+// reach `@hylandsoftware/*`: `checkSatoriComponentsDependencies` checks every other stylesheet here
+// and every one a `build-storybook` configuration names, and this one too if a configuration other
+// than `:satori` names it.
 @use '@hylandsoftware/satori-ui/theme' as sat;
 
 html {
