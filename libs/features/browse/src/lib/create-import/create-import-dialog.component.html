@@ -154,7 +154,7 @@
                       [disabled]="busy() || locationRestricted()"
                       (click)="startCreateFromType(dt)"
                     >
-                      <mat-icon class="doctype-icon" aria-hidden="true">{{ dt.icon }}</mat-icon>
+                      <nxs-doc-type-icon class="doctype-icon" [type]="dt.type" />
                       <span class="doctype-label">{{ dt.label }}</span>
                     </button>
                   }
@@ -336,7 +336,7 @@
         @case ('templateForm') {
           @if (selectedDocType(); as dt) {
             <div class="type-form-header">
-              <mat-icon class="type-form-icon" aria-hidden="true">{{ dt.icon }}</mat-icon>
+              <nxs-doc-type-icon class="type-form-icon" [type]="dt.type" />
               <span class="type-form-title">
                 {{ 'browse.create-import-dialog.new-of-type' | translate: { type: dt.label } }}
               </span>

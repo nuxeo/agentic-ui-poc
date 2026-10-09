@@ -31,23 +31,19 @@
     </div>
   } @else {
     <!-- Header -->
-    <div class="collection-header">
-      <div class="header-left">
-        <mat-icon class="header-icon">collections_bookmark</mat-icon>
-        <div class="header-info">
-          <div class="header-title" role="heading" aria-level="1">
-            {{ collection()?.title ?? ('collections.collection' | translate) }}
-          </div>
-          @if (showBreadcrumbs() && breadcrumbItems().length) {
-            <div class="header-path-row">
-              <sat-breadcrumbs
-                [items]="breadcrumbItems()"
-                (click)="onBreadcrumbClick($event)"
-              ></sat-breadcrumbs>
-            </div>
-          }
+    <nxs-folder-header
+      class="collection-header"
+      [documentType]="'Collection'"
+      [heading]="collection()?.title ?? ('collections.collection' | translate)"
+    >
+      @if (showBreadcrumbs() && breadcrumbItems().length) {
+        <div class="header-path-row" nxsFolderHeaderDetail>
+          <sat-breadcrumbs
+            [items]="breadcrumbItems()"
+            (click)="onBreadcrumbClick($event)"
+          ></sat-breadcrumbs>
         </div>
-      </div>
+      }
 
       <div class="header-actions">
         <button
@@ -145,7 +141,7 @@
           <span>{{ 'collections.collection-detail.export' | translate }}</span>
         </button>
       </mat-menu>
-    </div>
+    </nxs-folder-header>
 
     <!-- Tabs -->
     <mat-tab-group

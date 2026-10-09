@@ -102,7 +102,18 @@ interface Fixture {
  * `DocumentDetailService` over one document's ACL held in memory, so the panel reads, stages,
  * saves and blocks inheritance as it does against Nuxeo, with nothing sent anywhere.
  */
-function documentsFor(fixture: Fixture): Provider {
+function inMemoryDocuments(
+  fixture: Fixture,
+): Pick<
+  DocumentDetailService,
+  | 'getDocumentPermissions'
+  | 'addPermission'
+  | 'replacePermission'
+  | 'removePermissionById'
+  | 'blockPermissionInheritance'
+  | 'unblockPermissionInheritance'
+  | 'searchUsersGroups'
+> {
   let local = [...fixture.local];
   const read = (uid: string): Observable<NuxeoDocument> =>
     defer(() => {
@@ -142,16 +153,7 @@ function documentsFor(fixture: Fixture): Provider {
     end: params.end ?? null,
   });
 
-  const documents: Pick<
-    DocumentDetailService,
-    | 'getDocumentPermissions'
-    | 'addPermission'
-    | 'replacePermission'
-    | 'removePermissionById'
-    | 'blockPermissionInheritance'
-    | 'unblockPermissionInheritance'
-    | 'searchUsersGroups'
-  > = {
+  return {
     getDocumentPermissions: read,
     addPermission: (uid, params) => written(uid, () => (local = [...local, entry(params)])),
     replacePermission: (uid, params) =>
@@ -164,8 +166,13 @@ function documentsFor(fixture: Fixture): Provider {
     searchUsersGroups: (term) =>
       of(PRINCIPALS.filter((p) => p.displayLabel.toLowerCase().includes(term.toLowerCase()))),
   };
-  return { provide: DocumentDetailService, useValue: documents };
 }
+
+/** A factory, so each render starts from the declared ACL rather than the last render's edits. */
+const documentsFor = (fixture: Fixture): Provider => ({
+  provide: DocumentDetailService,
+  useFactory: () => inMemoryDocuments(fixture),
+});
 
 /** The panel's chrome and permission names come from the application's catalogue (`preview.ts`). */
 const withDocument = (fixture: Fixture) =>
