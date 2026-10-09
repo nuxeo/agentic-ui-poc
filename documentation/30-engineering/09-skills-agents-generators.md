@@ -2,14 +2,16 @@
 title: Skills, Agents & Generators
 parent: Engineering
 order: 9
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: fb97d44
 audience: engineering
 ---
 
 # Skills, Agents and Generators — what the AI tooling actually is
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-08 · **Repository:** `fb97d44` (`feature/nxsat-308-dependency-tree-gate`)
+> Only the link to Dev Harness & Gates §2 was re-verified at that commit; the rest of the page was
+> last reviewed on 2026-08-24 at `77265f9`.
 > Supersedes [`docs/agentic-system-guide.md`](../../docs/agentic-system-guide.md) and the
 > agent-catalog sections of [`docs/agentic-development-system.md`](../../docs/agentic-development-system.md).
 
@@ -269,7 +271,7 @@ document — which is what its own title says.
 ### Demonstrated
 
 - **The gates catch real defects.** The ledger in
-  [Dev Harness & Gates §2](08-dev-harness-and-gates.md#2-the-15-gates) lists nine live
+  [Dev Harness & Gates §2](08-dev-harness-and-gates.md#2-the-gates) lists nine live
   defects found by gates, several of which had passed every other check.
 - **Knowledge compounds.** `AGENTS/08-bug-patterns.md` is 413 lines of bugs already made.
   The counterfactual is a team re-making them.
