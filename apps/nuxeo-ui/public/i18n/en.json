@@ -1956,6 +1956,11 @@
       "reset": "Reset",
       "title": "Column Settings"
     },
+    "favorite-toggle": {
+      "add": "Add to favorites",
+      "label": "Favorite",
+      "remove": "Remove from favorites"
+    },
     "permissions-panel": {
       "add": "Add",
       "column": {
