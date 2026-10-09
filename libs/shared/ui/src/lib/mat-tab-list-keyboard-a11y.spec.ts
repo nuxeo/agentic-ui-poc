@@ -1,11 +1,12 @@
 import { testTranslateModule } from '@agentic-ui/testing/i18n';
+import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { provideZonelessChangeDetection } from '@angular/core';
 
 import { RIGHT_ARROW } from '@angular/cdk/keycodes';
 
+import { MatTabsModule } from '@angular/material/tabs';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { TranslateModule } from '@ngx-translate/core';
 
 import {
   MAT_TAB_LIST_IBM_ONKEYDOWN,
@@ -13,8 +14,14 @@ import {
   observeMatTabListKeyboardA11y,
   wireMatTabListKeyboardA11y,
 } from './mat-tab-list-keyboard-a11y';
+import { MatTabListKeydownDirective } from './mat-tab-list-keydown.directive';
 
-import { MatTabListKeyboardA11yHostComponent } from './mat-tab-list-keyboard-a11y.host';
+@Component({
+  standalone: true,
+  imports: [MatTabsModule, MatTabListKeydownDirective, TranslateModule],
+  templateUrl: './mat-tab-list-keyboard-a11y.host.html',
+})
+class MatTabListKeyboardA11yHostComponent {}
 
 globalThis.ResizeObserver ??= class implements ResizeObserver {
   observe(): void {
