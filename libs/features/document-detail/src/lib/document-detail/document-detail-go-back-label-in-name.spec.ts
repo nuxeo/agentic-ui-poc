@@ -10,8 +10,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const templatePath = join(dirname(fileURLToPath(import.meta.url)), 'document-detail.html');
-const scssPath = join(dirname(fileURLToPath(import.meta.url)), 'document-detail-go-back-icon.scss');
+const dir = dirname(fileURLToPath(import.meta.url));
+const templatePath = join(dir, 'document-detail.html');
+const scssPath = join(dir, 'document-detail-go-back-icon.scss');
+const componentPath = join(dir, 'document-detail.ts');
 
 describe('Document detail Go back label in name (NXENG-826)', () => {
   it('renders the header back glyph without Material ligature text in the DOM', () => {
@@ -38,5 +40,11 @@ describe('Document detail Go back label in name (NXENG-826)', () => {
     expect(scss).toMatch(
       /\.detail-header mat-icon\.detail-header-go-back-icon::before[\s\S]*content:\s*'\\e5c4'/,
     );
+  });
+
+  it('loads go-back icon styles through DocumentDetailComponent styleUrls', () => {
+    const source = readFileSync(componentPath, 'utf8');
+    expect(source).toMatch(/styleUrls:\s*\[/);
+    expect(source).toMatch(/['"]\.\/document-detail-go-back-icon\.scss['"]/);
   });
 });
