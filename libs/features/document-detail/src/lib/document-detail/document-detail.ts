@@ -3636,8 +3636,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     );
   }
 
+  /**
+   * Through `canWriteDoc`, so a version is refused here too: a manifest may re-enable a write
+   * action's rule, and the handler must not then open an editor on a version.
+   */
   private requireWritePermission(): boolean {
-    if (canWriteDocument(this.doc())) return true;
+    if (this.canWriteDoc()) return true;
     this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
     return false;
   }

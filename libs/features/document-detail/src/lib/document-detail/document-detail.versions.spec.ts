@@ -454,6 +454,19 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
       expect(mockContentLake.backfillIngestMarkerIfNeeded).not.toHaveBeenCalled();
     });
 
+    it('refuses an edit on a version even if a manifest re-enables the action', async () => {
+      await render(version(1));
+
+      fixture.componentInstance.openEditDialog();
+
+      expect(mockDialog.open).not.toHaveBeenCalled();
+      expect(snack).toHaveBeenCalledWith(
+        'You do not have permission to perform this action',
+        'OK',
+        expect.anything(),
+      );
+    });
+
     it('leaves the live document editable', async () => {
       await render(live());
 
