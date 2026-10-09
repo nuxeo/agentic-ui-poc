@@ -303,6 +303,8 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'nav.refresh': 'Refresh',
   'nav.tree.toggle': 'Toggle {{ name }}',
   'nxs.column-picker.close': 'Close column picker',
+  'nxs.column-picker.done': 'Done',
+  'nxs.column-picker.reset': 'Reset',
   'nxs.column-picker.title': 'Column Settings',
   'nxs.drive-dialog.close': 'Close',
   'nxs.drive-dialog.title': 'Download Nuxeo Drive Client',

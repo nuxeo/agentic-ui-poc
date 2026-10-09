@@ -12,6 +12,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { CdkTrapFocus } from '@angular/cdk/a11y';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -34,8 +35,8 @@ export interface NxsPickableColumn {
  * descriptors on browse, a fixed set on search — and where the choice is persisted stay the host's.
  *
  * Changes are buffered until Done, so Escape and the backdrop genuinely discard them. It is a
- * modal dialog while open: it takes focus when it appears and hands focus back to whatever had it
- * (the header's "Manage columns" button) when it goes. The panel hangs from the top-right corner
+ * modal dialog while open: it takes focus when it appears, keeps Tab and Shift+Tab inside itself,
+ * and hands focus back to whatever had it (the header's "Manage columns" button) when it goes. The panel hangs from the top-right corner
  * of the nearest positioned ancestor, so the host renders it inside the table's wrapper.
  */
 @Component({
@@ -43,7 +44,7 @@ export interface NxsPickableColumn {
   standalone: true,
   templateUrl: './column-picker.component.html',
   styleUrl: './column-picker.component.scss',
-  imports: [MatButtonModule, MatCheckboxModule, TranslatePipe],
+  imports: [CdkTrapFocus, MatButtonModule, MatCheckboxModule, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'nxs-column-picker',

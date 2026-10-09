@@ -69,6 +69,19 @@ describe('NxsSpinnerComponent', () => {
     expect(progressbar().hasAttribute('aria-label')).toBe(false);
   });
 
+  it('treats a whitespace-only label as no label, which is what the accessible name becomes', async () => {
+    host.label.set('  \n ');
+    await render();
+    expect(progressbar().getAttribute('aria-hidden')).toBe('true');
+    expect(progressbar().hasAttribute('aria-label')).toBe(false);
+  });
+
+  it('names the progressbar with the label trimmed', async () => {
+    host.label.set('  Loading versions ');
+    await render();
+    expect(progressbar().getAttribute('aria-label')).toBe('Loading versions');
+  });
+
   it('sizes the spinner to the diameter', async () => {
     host.diameter.set(48);
     await render();
