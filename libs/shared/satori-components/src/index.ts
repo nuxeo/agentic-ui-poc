@@ -10,5 +10,6 @@ export {
 } from './lib/drive-dialog/drive-dialog.component';
 export { NxsEmptyStateComponent } from './lib/empty-state/empty-state.component';
 export { NxsFolderHeaderComponent } from './lib/folder-header/folder-header.component';
+export type { NxsHeadingLevel } from './lib/heading-level';
 export { NxsIconComponent } from './lib/icon/icon.component';
 export { NxsSpinnerComponent } from './lib/spinner/spinner.component';

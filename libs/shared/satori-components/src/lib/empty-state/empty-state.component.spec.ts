@@ -11,7 +11,12 @@ import { NxsEmptyStateComponent } from './empty-state.component';
   standalone: true,
   imports: [NxsEmptyStateComponent],
   template: `
-    <nxs-empty-state [heading]="heading()" [message]="message()" [icon]="icon()">
+    <nxs-empty-state
+      [heading]="heading()"
+      [headingLevel]="headingLevel()"
+      [message]="message()"
+      [icon]="icon()"
+    >
       @if (withAction()) {
         <button type="button" class="probe-action">Create folder</button>
       }
@@ -21,6 +26,7 @@ import { NxsEmptyStateComponent } from './empty-state.component';
 class HostComponent {
   // Signals, so a change marks the host dirty under zoneless change detection.
   readonly heading = signal('This folder is empty');
+  readonly headingLevel = signal<1 | 2 | 3 | 4 | 5 | 6>(3);
   readonly message = signal('');
   readonly icon = signal('');
   readonly withAction = signal(false);
@@ -52,6 +58,17 @@ describe('NxsEmptyStateComponent', () => {
 
   it('renders the heading', () => {
     expect(query('.nxs-empty-state__heading')?.textContent?.trim()).toBe('This folder is empty');
+  });
+
+  it('renders the heading as a native heading, at the level the caller gives', async () => {
+    expect(query('.nxs-empty-state__heading')?.tagName).toBe('H3');
+    for (const level of [1, 2, 4, 5, 6] as const) {
+      host.headingLevel.set(level);
+      await render();
+      const heading = query('.nxs-empty-state__heading');
+      expect(heading?.tagName).toBe(`H${level}`);
+      expect(heading?.textContent?.trim()).toBe('This folder is empty');
+    }
   });
 
   it('is a polite status region, so the empty result is announced', () => {
@@ -101,13 +118,27 @@ describe('NxsEmptyStateComponent', () => {
   });
 });
 
-describe('NxsEmptyStateComponent without a heading', () => {
-  it('refuses to render rather than show a blank region', async () => {
+describe('NxsEmptyStateComponent bound directly', () => {
+  beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [NxsEmptyStateComponent],
       providers: [provideZonelessChangeDetection()],
     }).compileComponents();
+  });
+
+  it('refuses to render without a heading rather than show a blank region', () => {
     const fixture = TestBed.createComponent(NxsEmptyStateComponent);
     expect(() => fixture.detectChanges()).toThrow(/NG0950/);
+  });
+
+  it('is an h2 when the caller names no level', () => {
+    const fixture = TestBed.createComponent(NxsEmptyStateComponent);
+    fixture.componentRef.setInput('heading', 'No results');
+    fixture.detectChanges();
+    const heading = (fixture.nativeElement as HTMLElement).querySelector(
+      '.nxs-empty-state__heading',
+    );
+    expect(heading?.tagName).toBe('H2');
+    expect(heading?.textContent?.trim()).toBe('No results');
   });
 });

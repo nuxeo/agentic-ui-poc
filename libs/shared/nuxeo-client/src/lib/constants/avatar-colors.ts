@@ -31,9 +31,9 @@
  * and is compiled by every build, CI's included.
  *
  * It is not here because this library's shipped sources may not import a design-system
- * package, not even a type: `libs/shared/satori-components` imports
- * `@nuxeo-satori/platform/nuxeo-client`, and its guardrail follows imports from the barrel
- * transitively and rejects any `@hylandsoftware/*` it reaches.
+ * package, not even a type: `libs/shared/satori-components` is allowed to import
+ * `@nuxeo-satori/platform/nuxeo-client` (it does not yet), and its guardrail follows imports
+ * transitively and would reject any `@hylandsoftware/*` reached through this barrel.
  */
 export type AvatarColor =
   'purple' | 'blue' | 'pink' | 'teal' | 'yellow' | 'green' | 'red' | 'orange';

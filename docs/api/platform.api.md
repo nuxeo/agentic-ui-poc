@@ -189,7 +189,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-10 exported symbol(s).
+11 exported symbol(s).
 
 ```ts
 class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
@@ -243,10 +243,11 @@ interface NxsDriveDialogData {
 }
 class NxsEmptyStateComponent {
     readonly heading: _angular_core.InputSignal<string>;
+    readonly headingLevel: _angular_core.InputSignal<NxsHeadingLevel>;
     readonly message: _angular_core.InputSignal<string>;
     readonly icon: _angular_core.InputSignal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsEmptyStateComponent, never>;
-    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
     }
 }
 class NxsFolderHeaderComponent {
@@ -257,6 +258,7 @@ class NxsFolderHeaderComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsFolderHeaderComponent, "nxs-folder-header", never, { "heading": { "alias": "heading"; "required": false; "isSignal": true; }; "subheading": { "alias": "subheading"; "required": false; "isSignal": true; }; "documentType": { "alias": "documentType"; "required": false; "isSignal": true; }; }, {}, never, ["[nxsFolderHeaderDetail]", "*"], true, never>;
     }
 }
+type NxsHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 class NxsIconComponent {
     readonly name: _angular_core.InputSignal<string>;
     readonly label: _angular_core.InputSignal<string>;

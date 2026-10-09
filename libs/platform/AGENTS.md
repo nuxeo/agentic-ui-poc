@@ -249,6 +249,9 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 - **A component's own controls use `nxs.*` keys.** The column picker's Done and Reset, for
   example. Without the Satori catalogue, `providePlatformEnglishFallback()` (README,
   "Translations") renders them in English; add the same keys to your catalogue to translate them.
+- **`nxs-empty-state` renders its heading as an `<h2>` by default.** Bind `[headingLevel]` to
+  one below the heading of the section it sits in, so screen-reader heading navigation stays in
+  order.
 - **Import only the entry point.** A path past it fails the shipped guardrail like any other
   deep import.
 - **It is new and growing.** The type declarations are the list of what exists; do not take

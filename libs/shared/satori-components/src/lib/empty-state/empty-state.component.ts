@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import type { NxsHeadingLevel } from '../heading-level';
+
 /**
  * The "nothing here" state for a list, panel or result set.
  *
@@ -20,6 +22,12 @@ import { MatIconModule } from '@angular/material/icon';
 export class NxsEmptyStateComponent {
   /** What is empty, in one line. */
   readonly heading = input.required<string>();
+  /**
+   * The heading's level in the page outline, rendered as the native `<h1>`–`<h6>`. Set it to fit
+   * where the component sits — one below the heading of the section it empties — so heading
+   * navigation stays in order.
+   */
+  readonly headingLevel = input<NxsHeadingLevel>(2);
   /** An optional second line — usually what to do next. Not rendered when blank. */
   readonly message = input('');
   /** An optional Material icon ligature. Decorative, so hidden from assistive technology. */

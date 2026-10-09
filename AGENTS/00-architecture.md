@@ -95,11 +95,11 @@ npm packages, not projects — so that is what the guardrails below are for.
 by CI, with negative controls in `scripts/review-guardrails.selftest.mjs` (the `guardrails-selftest`
 gate, also in CI):
 
-| Rule                                                                                                                                                                                                                     | Guardrail                                  |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| No `@alfresco/*` and no `@hylandsoftware/*` — imported directly, reached through any workspace import, or `@use`d in a stylesheet. A type-only import counts                                                             | `checkSatoriComponentsDependencies`        |
-| Reached only through `@nuxeo-satori/platform/components`: no subpath under it, no relative path into the library, no second alias, and the alias and `libs/platform/components/ng-package.json` both name `src/index.ts` | `checkSatoriComponentsEntryPoint`          |
-| Federation readiness: no `@NgModule`, every component, directive and pipe says `standalone: true`, and no `providedIn` of any value                                                                                      | `checkSatoriComponentsFederationReadiness` |
+| Rule                                                                                                                                                                                                                                                                                                                                          | Guardrail                                  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| No `@alfresco/*` and no `@hylandsoftware/*` — imported directly (even when a tsconfig alias maps the name to a workspace file), reached through any workspace import, or loaded by a stylesheet or inline `styles`. A type-only import counts. Stylesheet paths are read from the syntax tree; one the guardrail cannot read statically fails | `checkSatoriComponentsDependencies`        |
+| Reached only through `@nuxeo-satori/platform/components`: no subpath under it, no relative path into the library, no second alias in any tsconfig (a project's own `paths` included), and the alias and `libs/platform/components/ng-package.json` both name `src/index.ts`                                                                   | `checkSatoriComponentsEntryPoint`          |
+| Federation readiness: no `@NgModule`, every component, directive and pipe says `standalone: true`, and no `providedIn` of any value                                                                                                                                                                                                           | `checkSatoriComponentsFederationReadiness` |
 
 Satori is to reach these components only through a later, separate `/components-satori` entry
 point that re-registers the same IDs, so that once Satori is an optional peer of the package (the
@@ -107,18 +107,21 @@ plan's `satori-fallback` work), a customer without GitHub Packages access still 
 implementations.
 
 **Coverage: a hard 90% line floor** (`FLOORS` in `scripts/beta-harness/coverage-gate.mjs`), from
-the first commit rather than ratcheted. The floor also fails when the library was not measured,
-and when any of its files sits outside the measurement — only `noStatements` barrels are excused,
-never a dated allowlist entry. `npm run beta:coverage` runs at the end of the SonarCloud workflow,
+the first commit rather than ratcheted, counted on distinct lines rather than statements. The
+floor also fails when the library was not measured, when its report is stale — older than its
+source, or counting a file since deleted — and when any of its files sits outside the
+measurement — only `noStatements` barrels are excused, never a dated allowlist entry. `npm run beta:coverage` runs at the end of the SonarCloud workflow,
 after its test-with-coverage step.
 
-**The rule follows imports**, so a shared barrel the library imports must be clean too.
-`@nuxeo-satori/platform/nuxeo-client` and `@nuxeo-satori/platform/extensions` are: the first
-stopped importing a Satori type in `avatar-colors.ts`, the second stopped importing
-`@alfresco/adf-extensions` (both NXSAT-308). `nxs-drive-dialog`, `nxs-domain-hint` and
-`nxs-doc-type-icon` import `nuxeo-client`. If a barrel picks a banned package up again, the
-guardrail names the chain — fix the file that carries the package, rather than copying code into
-the library to dodge the rule.
+**`@nuxeo-satori/platform/nuxeo-client` and `@nuxeo-satori/platform/extensions` are importable**,
+because the dependency rule follows imports and neither barrel now reaches a banned package.
+Both once did: `nuxeo-client`'s `avatar-colors.ts` imported a Satori type, and `extensions` imported
+`@alfresco/adf-extensions`. Controls in `scripts/review-guardrails.selftest.mjs` run the rule over
+the real `libs/` tree and put each import back, so a regression in either barrel is red there.
+`nxs-drive-dialog`, `nxs-domain-hint` and `nxs-doc-type-icon` import `nuxeo-client`.
+
+If another library is refused, fix the file that carries the package, rather than copying code
+into the library to dodge the rule.
 
 **Adding a component, with every gate staying green:**
 
