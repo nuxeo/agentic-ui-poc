@@ -1,14 +1,16 @@
 import { DestroyRef, Injectable, inject, type Provider } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   NEVER,
   ReplaySubject,
+  Subject,
   catchError,
   concat,
   defer,
   finalize,
   of,
+  takeUntil,
   type Observable,
-  type Subscription,
 } from 'rxjs';
 
 import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
@@ -24,9 +26,10 @@ export const NXS_THUMBNAIL_GRACE = 2000;
 interface Entry {
   /** Replays the blob URL — or `null` when there is none — to every holder. */
   readonly url: ReplaySubject<string | null>;
+  /** Ends the entry's request, if it is running, when the entry is dropped. */
+  readonly cancel: Subject<void>;
   minted: string | null;
   holders: number;
-  request: Subscription | null;
   expiry: ReturnType<typeof setTimeout> | null;
 }
 
@@ -45,12 +48,13 @@ interface Entry {
 @Injectable()
 export class NxsThumbnailCache {
   private readonly documents = inject(DocumentDetailService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly entries = new Map<string, Entry>();
   private readonly waiting: string[] = [];
   private running = 0;
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => {
+    this.destroyRef.onDestroy(() => {
       // Emptied first: dropping a running request frees its slot, which would start a queued one.
       this.waiting.length = 0;
       for (const id of this.entries.keys()) this.drop(id);
@@ -76,7 +80,13 @@ export class NxsThumbnailCache {
   private hold(documentId: string): Entry {
     let entry = this.entries.get(documentId);
     if (!entry) {
-      entry = { url: new ReplaySubject(1), minted: null, holders: 0, request: null, expiry: null };
+      entry = {
+        url: new ReplaySubject(1),
+        cancel: new Subject(),
+        minted: null,
+        holders: 0,
+        expiry: null,
+      };
       this.entries.set(documentId, entry);
       this.waiting.push(documentId);
       this.next();
@@ -102,19 +112,23 @@ export class NxsThumbnailCache {
       const entry = this.entries.get(documentId);
       if (!entry) continue;
       this.running += 1;
-      entry.request = this.documents
+      this.documents
         .fetchThumbnail(documentId)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntil(entry.cancel),
+          takeUntilDestroyed(this.destroyRef),
+          // Finished however it ends — answered, failed or cancelled by `drop`.
+          finalize(() => {
+            this.running -= 1;
+            this.next();
+          }),
+        )
         .subscribe((blob) => {
           if (blob && blob.size > 0) entry.minted = URL.createObjectURL(blob);
           entry.url.next(entry.minted);
           entry.url.complete();
         });
-      // Finished however it ends — answered, failed or cancelled by `drop`.
-      entry.request.add(() => {
-        this.running -= 1;
-        this.next();
-      });
     }
   }
 
@@ -125,7 +139,8 @@ export class NxsThumbnailCache {
     const queued = this.waiting.indexOf(documentId);
     if (queued >= 0) this.waiting.splice(queued, 1);
     if (entry.expiry) clearTimeout(entry.expiry);
-    entry.request?.unsubscribe();
+    entry.cancel.next();
+    entry.cancel.complete();
     if (entry.minted) URL.revokeObjectURL(entry.minted);
     entry.url.complete();
   }

@@ -14,7 +14,7 @@ import { SearchQueueComponent } from './search-queue.component';
 /**
  * Covers the queue's thumbnails, which `nxs-thumbnail` now fetches and revokes per result. The queue
  * stays mounted across searches, so the case that matters is a result leaving the list: its URL must
- * be revoked then, not at teardown — an earlier ledger in this component only ever added, and kept
+ * be revoked then — once the cache's grace period runs out — not at teardown — an earlier ledger in this component only ever added, and kept
  * every thumbnail ever fetched for the life of the page.
  *
  * Create and revoke are asserted as a PAIR. Counting only creates cannot detect a leak, and counting
@@ -209,5 +209,48 @@ describe('SearchQueueComponent — thumbnails', () => {
     fixture.destroy();
 
     for (const url of created) expect(revoked).toContain(url);
+  });
+});
+
+describe('SearchQueueComponent — outputs', () => {
+  let fixture: ComponentFixture<SearchQueueComponent>;
+  const items = signal<SearchResultItem[]>([
+    { id: 'doc1', title: 'doc1', type: 'File' } as unknown as SearchResultItem,
+  ]);
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [SearchQueueComponent],
+      providers: [
+        provideZonelessChangeDetection(),
+        { provide: SearchAggregationService, useValue: { items } },
+        { provide: DocumentDetailService, useValue: { fetchThumbnail: () => of(null) } },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(SearchQueueComponent);
+    fixture.componentRef.setInput('activeFilters', [
+      { label: 'PDF', value: 'pdf', selected: false },
+    ]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+  });
+
+  it('reports a press on a result and on a quick filter, and a switch to the filters', () => {
+    const queue = fixture.componentInstance;
+    const host = fixture.nativeElement as HTMLElement;
+    const selected: string[] = [];
+    const toggled: string[] = [];
+    let switched = 0;
+    queue.itemSelected.subscribe((item) => selected.push(item.id));
+    queue.quickFilterToggled.subscribe((value) => toggled.push(value));
+    queue.switchToFilter.subscribe(() => (switched += 1));
+
+    host.querySelector<HTMLButtonElement>('.queue-item')?.click();
+    host.querySelector<HTMLButtonElement>('.quick-filter-btn')?.click();
+    queue.onSwitchToFilter();
+
+    expect(selected).toEqual(['doc1']);
+    expect(toggled).toEqual(['pdf']);
+    expect(switched).toBe(1);
   });
 });
