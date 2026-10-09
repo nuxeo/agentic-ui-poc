@@ -3,13 +3,13 @@ title: Repository Guide
 parent: Engineering
 order: 3
 last_reviewed: 2026-10-09
-repo_commit: 1354e74
+repo_commit: e9cd856
 audience: engineering
 ---
 
 # Repository Guide
 
-> **Last reviewed:** 2026-10-09 · **Repository:** `1354e74` (`feature/nxsat-308-primitives`)
+> **Last reviewed:** 2026-10-09 · **Repository:** `e9cd856` (`feature/nxsat-308-primitives`)
 > Only the `satori-components` row of "Shared libraries" and the `libs/platform` row of "The other
 > three" were re-verified at that commit; that heading's totals add the row to the 2026-08-24
 > figures. The rest of the page as of 2026-08-24 · `77265f9`:
@@ -118,7 +118,7 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 > their coverage reports contain 0 total statements, so the summariser computes 0/0 as 100%.
 > `core` has the same shape. Of 17 measured projects, 6 read as ≥90% and **3 genuinely are**.
 
-### Shared libraries — 12, 40,708 lines
+### Shared libraries — 12, 40,788 lines
 
 | Library              |  Lines | Specs | Responsibility                                                                                                                   |
 | -------------------- | -----: | ----: | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -133,7 +133,7 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 | `ke-client`          |    734 |     1 | Knowledge Enrichment client                                                                                                      |
 | `ai-client`          |    457 | **0** | The 12 `AI.*` operations. Thin HTTP client                                                                                       |
 | `util`               |    108 |     0 | Small helpers                                                                                                                    |
-| `satori-components`  |    828 |     3 | The `nxs-` components replacing adf-hx. **Published** as `@nuxeo-satori/platform/components` (NXSAT-308, 2026-10-08)             |
+| `satori-components`  |    908 |     3 | The `nxs-` components replacing adf-hx. **Published** as `@nuxeo-satori/platform/components` (NXSAT-308, 2026-10-08)             |
 
 ### The other three
 
