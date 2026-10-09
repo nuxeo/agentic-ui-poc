@@ -148,6 +148,7 @@ export class CollectionDetailComponent {
 
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
+  readonly lockCreated = signal<string | null>(null);
   readonly isSubscribed = signal(false);
   readonly actionInProgress = signal<string | null>(null);
   readonly clipboardDocs = signal<ClipboardDoc[]>(readClipboardDocs());
@@ -192,6 +193,12 @@ export class CollectionDetailComponent {
 
   readonly canEditCollection = computed(() => canShowWriteDocumentAction(this.collection()));
   readonly canDeleteCollection = computed(() => canShowRemoveDocumentAction(this.collection()));
+  /**
+   * Write holders may lock; anyone who can read a locked collection sees that it is, and by whom.
+   * Nuxeo's default lock policy takes Write on a locked document away from everyone but its owner
+   * and administrators, so `canEditCollection` also decides who is offered Unlock.
+   */
+  readonly showsLockAction = computed(() => this.isLocked() || this.canEditCollection());
 
   private readonly browseContext = inject(BrowseContextService);
 
@@ -323,8 +330,9 @@ export class CollectionDetailComponent {
   }
 
   private syncActionStates(doc: NuxeoDocument): void {
-    this.isLocked.set(!!doc.lockOwner);
+    this.isLocked.set(!!(doc.lockOwner || doc.lockCreated));
     this.lockOwner.set(doc.lockOwner ?? null);
+    this.lockCreated.set(doc.lockCreated ?? null);
     const subs = doc.contextParameters?.subscribedNotifications;
     this.isSubscribed.set(Array.isArray(subs) && subs.length > 0);
   }
@@ -461,20 +469,25 @@ export class CollectionDetailComponent {
 
   toggleLock(): void {
     if (this.actionInProgress()) return;
+    if (!this.canEditCollection()) {
+      this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
+      return;
+    }
     this.actionInProgress.set('lock');
     const op = this.isLocked()
       ? this.detailService.unlockDocument(this.collectionUid)
       : this.detailService.lockDocument(this.collectionUid);
 
-    op.subscribe({
-      next: () => {
+    op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (updated) => {
         const wasLocked = this.isLocked();
         this.isLocked.set(!wasLocked);
         // Nuxeo records the caller as the lock owner; naming a fixed account here would
-        // tell every user someone else held their own lock. Latent only because
-        // `lockOwner` is not rendered yet — the same line in document-detail was wrong
-        // for the same reason.
-        this.lockOwner.set(wasLocked ? null : (this.currentUsername() ?? null));
+        // tell every user someone else held their own lock.
+        this.lockOwner.set(
+          wasLocked ? null : (updated?.lockOwner ?? this.currentUsername() ?? null),
+        );
+        this.lockCreated.set(wasLocked ? null : (updated?.lockCreated ?? new Date().toISOString()));
         this.actionInProgress.set(null);
         this.toast(
           this.translate.instant(
@@ -484,11 +497,36 @@ export class CollectionDetailComponent {
           ),
         );
       },
-      error: () => {
+      error: (err: unknown) => {
+        const wasLocked = this.isLocked();
         this.actionInProgress.set(null);
-        this.toast(this.translate.instant('browse.message.action-failed'));
+        this.toast(this.translate.instant(this.lockRefusalKey(err, wasLocked)));
       },
     });
+  }
+
+  /** "Locked by {owner} on {date}", or null while unlocked. */
+  lockTooltip(): string | null {
+    const owner = this.lockOwner();
+    const created = this.lockCreated();
+    if (!this.isLocked() || !owner || !created) return null;
+    const date = new Date(created).toLocaleDateString(this.locale, {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    return this.translate.instant('common.lock.locked-by', { owner, date });
+  }
+
+  private lockRefusalKey(err: unknown, wasLocked: boolean): string {
+    switch ((err as { status?: number } | null)?.status) {
+      case 403:
+        return wasLocked ? 'common.lock.unlock-no-permission' : 'common.lock.lock-no-permission';
+      case 409:
+        return wasLocked ? 'common.lock.locked-by-another-user' : 'common.lock.already-locked';
+      default:
+        return 'browse.message.action-failed';
+    }
   }
 
   toggleSubscription(): void {

@@ -130,12 +130,22 @@
               : ('collections.add-to-clipboard' | translate)
           }}</span>
         </button>
-        <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
-          <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
-          <span>{{
-            isLocked() ? ('collections.unlock' | translate) : ('collections.lock' | translate)
-          }}</span>
-        </button>
+        @if (showsLockAction()) {
+          <button
+            mat-menu-item
+            (click)="toggleLock()"
+            [disabled]="actionInProgress() === 'lock' || !canEditCollection()"
+            [matTooltip]="lockTooltip() ?? ''"
+            matTooltipPosition="left"
+          >
+            <mat-icon [class.lock-icon--active]="isLocked() && canEditCollection()">{{
+              isLocked() ? 'lock' : 'lock_open'
+            }}</mat-icon>
+            <span>{{
+              isLocked() ? ('collections.unlock' | translate) : ('collections.lock' | translate)
+            }}</span>
+          </button>
+        }
         <button
           mat-menu-item
           (click)="exportCollection()"

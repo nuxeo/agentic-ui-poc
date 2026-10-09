@@ -624,6 +624,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // Document action states
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
+  readonly lockCreated = signal<string | null>(null);
   readonly isFavorite = signal(false);
   readonly isSubscribed = signal(false);
   readonly actionInProgress = signal<string | null>(null);
@@ -1005,8 +1006,36 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return this.extensions.evaluateRule(action.enabledRule, this.extensionRuleContext.context());
   }
 
+  /**
+   * Inline toolbar buttons are `disabledInteractive` so a disabled one still shows its tooltip,
+   * which means a click reaches here and has to be refused here.
+   */
   runToolbarAction(action: ExtensionActionDescriptor): void {
+    if (!this.isToolbarActionEnabled(action)) return;
     this.actionRegistry.execute(action, this.extensionRuleContext.context());
+  }
+
+  /** A manifest's `tooltip` wins; otherwise Unlock names who holds the lock. Null falls back to the label. */
+  toolbarTooltip(action: ExtensionActionDescriptor): string | null {
+    if (action.tooltip) return action.tooltip;
+    return action.id === 'app.toolbar.unlock' ? this.lockedByLabel() : null;
+  }
+
+  /** The highlighted padlock Web UI shows on a locked document. */
+  isToolbarActionActive(action: ExtensionActionDescriptor): boolean {
+    return action.id === 'app.toolbar.unlock' && this.isLocked();
+  }
+
+  private lockedByLabel(): string | null {
+    const owner = this.lockOwner();
+    const created = this.lockCreated();
+    if (!this.isLocked() || !owner || !created) return null;
+    const date = new Date(created).toLocaleDateString(this.locale, {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    return this.translate.instant('common.lock.locked-by', { owner, date });
   }
 
   /**
@@ -1920,8 +1949,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private syncActionStates(doc: NuxeoDocument): void {
-    this.isLocked.set(!!doc.lockOwner);
+    this.isLocked.set(!!(doc.lockOwner || doc.lockCreated));
     this.lockOwner.set(doc.lockOwner ?? null);
+    this.lockCreated.set(doc.lockCreated ?? null);
     this.isFavorite.set(doc.contextParameters?.favorites?.isFavorite ?? false);
     const subs = doc.contextParameters?.subscribedNotifications;
     this.isSubscribed.set(Array.isArray(subs) && subs.length > 0);
@@ -3203,13 +3233,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       ? this.detailService.unlockDocument(this.docUid)
       : this.detailService.lockDocument(this.docUid);
 
-    op.subscribe({
-      next: () => {
+    op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: (updated) => {
         const wasLocked = this.isLocked();
         this.isLocked.set(!wasLocked);
         // Nuxeo records the caller as the lock owner; naming a fixed account here
         // told every user someone else held their own lock.
-        this.lockOwner.set(wasLocked ? null : (this.currentUsername() ?? null));
+        this.lockOwner.set(
+          wasLocked ? null : (updated?.lockOwner ?? this.currentUsername() ?? null),
+        );
+        this.lockCreated.set(wasLocked ? null : (updated?.lockCreated ?? new Date().toISOString()));
         this.actionInProgress.set(null);
         this.toast(
           this.translate.instant(
@@ -3219,11 +3252,23 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           ),
         );
       },
-      error: () => {
+      error: (err: unknown) => {
+        const wasLocked = this.isLocked();
         this.actionInProgress.set(null);
-        this.toast(this.translate.instant('document-detail.message.failed-to-toggle-lock'));
+        this.toast(this.translate.instant(this.lockRefusalKey(err, wasLocked)));
       },
     });
+  }
+
+  private lockRefusalKey(err: unknown, wasLocked: boolean): string {
+    switch ((err as { status?: number } | null)?.status) {
+      case 403:
+        return wasLocked ? 'common.lock.unlock-no-permission' : 'common.lock.lock-no-permission';
+      case 409:
+        return wasLocked ? 'common.lock.locked-by-another-user' : 'common.lock.already-locked';
+      default:
+        return 'document-detail.message.failed-to-toggle-lock';
+    }
   }
 
   toggleFavorite(): void {
