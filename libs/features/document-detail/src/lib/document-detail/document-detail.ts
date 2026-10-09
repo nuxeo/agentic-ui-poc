@@ -625,6 +625,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
   readonly lockCreated = signal<string | null>(null);
+  /** Token of the lock request that owns `actionInProgress`; navigation invalidates it. */
+  private lockRequest = 0;
   readonly isFavorite = signal(false);
   readonly isSubscribed = signal(false);
   readonly actionInProgress = signal<string | null>(null);
@@ -1017,7 +1019,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   /** A manifest's `tooltip` wins; otherwise Unlock names who holds the lock. Null falls back to the label. */
   toolbarTooltip(action: ExtensionActionDescriptor): string | null {
-    if (action.tooltip) return action.tooltip;
+    if (action.tooltip !== undefined) return action.tooltip;
     return action.id === 'app.toolbar.unlock' ? this.lockedByLabel() : null;
   }
 
@@ -1111,6 +1113,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.readFreshBlobNavigationState();
       this.freshNoteDocument = this.readFreshNoteNavigationState();
       this.resetState();
+      this.releaseLockRequest();
       this.docUid = uid;
       this.loadVocabularies();
       this.loadDocument(uid);
@@ -3232,6 +3235,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     // lands `docUid` and `isLocked()` may describe another document.
     const uid = this.docUid;
     const wasLocked = this.isLocked();
+    const request = ++this.lockRequest;
     this.actionInProgress.set('lock');
     const op = wasLocked
       ? this.detailService.unlockDocument(uid)
@@ -3239,6 +3243,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (updated) => {
+        if (request !== this.lockRequest) return;
         this.actionInProgress.set(null);
         if (uid !== this.docUid) return;
         this.isLocked.set(!wasLocked);
@@ -3257,11 +3262,21 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         );
       },
       error: (err: unknown) => {
+        if (request !== this.lockRequest) return;
         this.actionInProgress.set(null);
         if (uid !== this.docUid) return;
         this.toast(this.translate.instant(this.lockRefusalKey(err, wasLocked)));
       },
     });
+  }
+
+  /**
+   * On navigation, a lock request for the previous document stops owning the busy flag, so the new
+   * document's controls are not held disabled by it, and its late response cannot clear a newer one.
+   */
+  private releaseLockRequest(): void {
+    this.lockRequest += 1;
+    if (this.actionInProgress() === 'lock') this.actionInProgress.set(null);
   }
 
   private lockRefusalKey(err: unknown, wasLocked: boolean): string {

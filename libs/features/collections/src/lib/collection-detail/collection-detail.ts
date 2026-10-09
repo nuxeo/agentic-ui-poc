@@ -151,6 +151,8 @@ export class CollectionDetailComponent {
    * send the wrong operation to the collection now on screen.
    */
   private collectionGeneration = 0;
+  /** Token of the lock request that owns `actionInProgress`; navigation invalidates it. */
+  private lockRequest = 0;
 
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
@@ -206,6 +208,8 @@ export class CollectionDetailComponent {
    * version, an immutable document or the repository root, as in Web UI.
    */
   readonly showsLockAction = computed(() => {
+    // Until the current read lands, `collection()` still holds the previous document.
+    if (this.loadState() !== 'loaded') return false;
     const col = this.collection();
     if (col?.facets?.includes('Immutable') || col?.type === 'Root') return false;
     return this.isLocked() || this.canEditCollection();
@@ -281,6 +285,7 @@ export class CollectionDetailComponent {
     this.destroyRef.onDestroy(() => this.revokeThumbnails());
 
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.releaseLockRequest();
       this.collectionUid = params.get('uid') ?? '';
       this.historyLoaded = false;
       if (this.collectionUid) {
@@ -491,7 +496,7 @@ export class CollectionDetailComponent {
   }
 
   toggleLock(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.showsLockAction()) return;
     if (!this.canEditCollection()) {
       this.toast(
         this.translate.instant(
@@ -504,6 +509,7 @@ export class CollectionDetailComponent {
     // lands `collectionUid` and `isLocked()` may describe another collection.
     const uid = this.collectionUid;
     const wasLocked = this.isLocked();
+    const request = ++this.lockRequest;
     this.actionInProgress.set('lock');
     const op = wasLocked
       ? this.detailService.unlockDocument(uid)
@@ -511,6 +517,7 @@ export class CollectionDetailComponent {
 
     op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (updated) => {
+        if (request !== this.lockRequest) return;
         this.actionInProgress.set(null);
         if (uid !== this.collectionUid) return;
         this.isLocked.set(!wasLocked);
@@ -529,11 +536,21 @@ export class CollectionDetailComponent {
         );
       },
       error: (err: unknown) => {
+        if (request !== this.lockRequest) return;
         this.actionInProgress.set(null);
         if (uid !== this.collectionUid) return;
         this.toast(this.translate.instant(this.lockRefusalKey(err, wasLocked)));
       },
     });
+  }
+
+  /**
+   * On navigation, a lock request for the previous collection stops owning the busy flag, so the
+   * new one's controls are not held disabled by it, and its late response cannot clear a newer one.
+   */
+  private releaseLockRequest(): void {
+    this.lockRequest += 1;
+    if (this.actionInProgress() === 'lock') this.actionInProgress.set(null);
   }
 
   /** "Locked by {owner} on {date}", or null while unlocked. */

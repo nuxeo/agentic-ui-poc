@@ -518,6 +518,34 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       expect(component.toolbarTooltip(offered('app.toolbar.lock'))).toBeNull();
     });
 
+    it('keeps a manifest tooltip that is deliberately empty', async () => {
+      await build(lockedByAlice());
+
+      const silenced = { ...offered('app.toolbar.unlock'), tooltip: '' };
+
+      expect(component.toolbarTooltip(silenced)).toBe('');
+    });
+
+    it('lets a lock request from the previous document neither hold nor clear the busy flag', async () => {
+      await build();
+      const first = new Subject<NuxeoDocument>();
+      mockDetailService.lockDocument.mockReturnValueOnce(first);
+      component.toggleLock();
+
+      // What the route handler does before it switches `docUid`.
+      component['releaseLockRequest']();
+      component['docUid'] = 'doc-2';
+      expect(component.actionInProgress()).toBeNull();
+
+      mockDetailService.lockDocument.mockReturnValueOnce(NEVER);
+      component.toggleLock();
+      first.next(doc({ lockOwner: 'tester', lockCreated: LOCKED_AT }));
+
+      expect(mockDetailService.lockDocument).toHaveBeenLastCalledWith('doc-2');
+      expect(component.actionInProgress()).toBe('lock');
+      expect(component.isLocked()).toBe(false);
+    });
+
     it('lets a tooltip a manifest sets win over the lock owner', async () => {
       await build(lockedByAlice());
 

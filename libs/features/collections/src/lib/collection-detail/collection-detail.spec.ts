@@ -558,6 +558,39 @@ describe('CollectionDetailComponent', () => {
       expect(mockSnackBar.open).not.toHaveBeenCalled();
     });
 
+    it('offers no lock action while the next collection is still loading', () => {
+      load(docWith({}));
+      mockDetailService.getFullDocument.mockReturnValue(new Subject<NuxeoDocument | null>());
+      component['collectionUid'] = 'collection-2';
+
+      component['loadCollection']();
+      component.toggleLock();
+
+      expect(component.showsLockAction()).toBe(false);
+      expect(mockDetailService.lockDocument).not.toHaveBeenCalled();
+    });
+
+    it('lets a lock request from the previous collection neither hold nor clear the busy flag', () => {
+      load(docWith({ lockOwner: null, lockCreated: null }));
+      const first = new Subject<NuxeoDocument>();
+      mockDetailService.lockDocument.mockReturnValueOnce(first);
+      component.toggleLock();
+
+      // What the route subscription does before it switches `collectionUid`.
+      component['releaseLockRequest']();
+      component['collectionUid'] = 'collection-2';
+      expect(component.actionInProgress()).toBeNull();
+
+      load(docWith({ uid: 'collection-2', lockOwner: null, lockCreated: null }));
+      mockDetailService.lockDocument.mockReturnValueOnce(new Subject<NuxeoDocument>());
+      component.toggleLock();
+      first.next(docWith({ lockOwner: TEST_USERNAME, lockCreated: LOCKED_AT }));
+
+      expect(mockDetailService.lockDocument).toHaveBeenLastCalledWith('collection-2');
+      expect(component.actionInProgress()).toBe('lock');
+      expect(component.isLocked()).toBe(false);
+    });
+
     it('ignores a read that lands after navigating to another collection', () => {
       const late = new Subject<NuxeoDocument | null>();
       mockDetailService.getFullDocument.mockReturnValue(late);
