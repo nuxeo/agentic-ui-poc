@@ -8,7 +8,6 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { catchError, of, forkJoin } from 'rxjs';
 import {
   CURRENT_USERNAME,
@@ -23,6 +22,7 @@ import {
 } from '../share-saved-search-add-permission-dialog/share-saved-search-add-permission-dialog.component';
 import { ShareSavedSearchExternalDialogComponent } from '../share-saved-search-external-dialog/share-saved-search-external-dialog.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
 
 export interface PermissionEntry {
   id: string;
@@ -66,12 +66,12 @@ export interface ShareSavedSearchDialogData {
   selector: 'lib-share-saved-search-dialog',
   standalone: true,
   imports: [
+    NxsSpinnerComponent,
     TranslatePipe,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
     MatSelectModule,
-    MatProgressSpinnerModule,
   ],
   templateUrl: './share-saved-search-dialog.component.html',
   styleUrl: './share-saved-search-dialog.component.scss',

@@ -49,10 +49,7 @@
   >
     @if (resolvingPath()) {
       <div class="state-row">
-        <mat-spinner
-          diameter="32"
-          [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
-        />
+        <nxs-spinner diameter="32" [label]="'browse.create-import-dialog.loading' | translate" />
         <span>{{ 'browse.create-import-dialog.resolving-target-folder' | translate }}</span>
       </div>
     } @else if (pathError()) {
@@ -60,10 +57,7 @@
     } @else {
       @if (busy()) {
         <div class="state-row">
-          <mat-spinner
-            diameter="32"
-            [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
-          />
+          <nxs-spinner diameter="32" [label]="'browse.create-import-dialog.loading' | translate" />
           <span>{{ 'browse.create-import-dialog.working' | translate }}</span>
         </div>
       }
@@ -93,9 +87,9 @@
               @if (locationDropdownOpen()) {
                 @if (loadingLocationSuggestions()) {
                   <div class="location-dropdown location-dropdown--loading">
-                    <mat-spinner
+                    <nxs-spinner
                       diameter="20"
-                      [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
+                      [label]="'browse.create-import-dialog.loading' | translate"
                     />
                     <span>{{ 'browse.create-import-dialog.loading-folders' | translate }}</span>
                   </div>
@@ -136,9 +130,9 @@
             @if (!locationRestricted()) {
               @if (loadingContext()) {
                 <div class="state-row state-row--compact">
-                  <mat-spinner
+                  <nxs-spinner
                     diameter="24"
-                    [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
+                    [label]="'browse.create-import-dialog.loading' | translate"
                   />
                   <span>{{
                     'browse.create-import-dialog.loading-document-types' | translate
@@ -371,9 +365,9 @@
                   @if (locationDropdownOpen()) {
                     @if (loadingLocationSuggestions()) {
                       <div class="location-dropdown location-dropdown--loading">
-                        <mat-spinner
+                        <nxs-spinner
                           diameter="20"
-                          [attr.aria-label]="'browse.create-import-dialog.loading' | translate"
+                          [label]="'browse.create-import-dialog.loading' | translate"
                         />
                         <span>{{ 'browse.create-import-dialog.loading-folders' | translate }}</span>
                       </div>

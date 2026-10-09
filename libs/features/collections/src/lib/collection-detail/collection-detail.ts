@@ -6,7 +6,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -81,17 +80,18 @@ import {
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
 
 @Component({
   selector: 'lib-collection-detail',
   standalone: true,
   providers: [provideTranslatedDatepickerIntl()],
   imports: [
+    NxsSpinnerComponent,
     TranslatePipe,
     DatePipe,
     FormsModule,
     MatIconModule,
-    MatProgressSpinnerModule,
     MatButtonModule,
     MatTabsModule,
     MatTooltipModule,

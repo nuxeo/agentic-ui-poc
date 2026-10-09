@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, input, type InputSignal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import type { NxsHeadingLevel } from '../heading-level';
+
 /**
  * The "nothing here" state for a list, panel or result set.
  *
@@ -28,7 +30,7 @@ export class NxsEmptyStateComponent {
    * Annotated rather than inferred: an inferred union is declared in the compiler's type order,
    * which moves with unrelated code and broke the published API snapshot on every such change.
    */
-  readonly headingLevel: InputSignal<1 | 2 | 3 | 4 | 5 | 6> = input<1 | 2 | 3 | 4 | 5 | 6>(2);
+  readonly headingLevel: InputSignal<NxsHeadingLevel> = input<NxsHeadingLevel>(2);
   /** An optional second line — usually what to do next. Not rendered when blank. */
   readonly message = input('');
   /** An optional Material icon ligature. Decorative, so hidden from assistive technology. */

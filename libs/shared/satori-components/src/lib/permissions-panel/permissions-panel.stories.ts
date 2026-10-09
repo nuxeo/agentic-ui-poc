@@ -1,11 +1,4 @@
-import { HttpClient, provideHttpClient } from '@angular/common/http';
-import { inject, type Provider } from '@angular/core';
-import {
-  TranslateLoader,
-  provideTranslateLoader,
-  provideTranslateService,
-  type TranslationObject,
-} from '@ngx-translate/core';
+import type { Provider } from '@angular/core';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { defer, of, throwError, type Observable } from 'rxjs';
 
@@ -18,18 +11,6 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { NxsPermissionsPanelComponent } from './permissions-panel.component';
-
-/**
- * The application's catalogue, which holds the panel's `satori-components.permissions-panel.*` and
- * `permissions.right.*` keys: the library ships none. `.storybook/main.ts` serves it at `i18n/`.
- */
-class ApplicationCatalogueLoader implements TranslateLoader {
-  private readonly http = inject(HttpClient);
-
-  getTranslation(lang: string): Observable<TranslationObject> {
-    return this.http.get<TranslationObject>(`i18n/${lang}.json`);
-  }
-}
 
 const ace = (username: string, permission: string, usernameLabel?: string): NuxeoAce => ({
   id: `${username}:${permission}:true:Administrator::`,
@@ -186,18 +167,9 @@ function documentsFor(fixture: Fixture): Provider {
   return { provide: DocumentDetailService, useValue: documents };
 }
 
+/** The panel's chrome and permission names come from the application's catalogue (`preview.ts`). */
 const withDocument = (fixture: Fixture) =>
-  applicationConfig({
-    providers: [
-      provideHttpClient(),
-      provideTranslateService({
-        loader: provideTranslateLoader(ApplicationCatalogueLoader),
-        lang: 'en',
-        fallbackLang: 'en',
-      }),
-      documentsFor(fixture),
-    ],
-  });
+  applicationConfig({ providers: [documentsFor(fixture)] });
 
 const SHARED: Fixture = {
   local: [ace('jdoe', 'ReadWrite', 'Jane Doe'), ace('members', 'Read', 'Members group')],
