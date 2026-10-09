@@ -191,9 +191,10 @@ node node_modules/@nuxeo-satori/platform/guardrails/check-extension-library.mjs 
 
 It exits non-zero on: an ID registered under a prefix you do not own, an import that
 reaches past a published entry point, a library with no spec touching a registry, a
-gating rule missing from `failClosedRules`, and a component exported from your barrel.
-Every one of those corresponds to a mistake made in this codebase, not a hypothetical —
-and every one passes `lint`, `test` and `typecheck`.
+gating rule missing from `failClosedRules`, a component exported from your barrel, and a
+**component contribution** that does not hold up — see §7. Every one of those corresponds to
+a mistake made in this codebase, not a hypothetical — and every one passes `lint`, `test` and
+`typecheck`.
 
 We run it against our own reference library on every build, so you are not the first to
 find out when it breaks.
@@ -235,18 +236,22 @@ of them named the new IDs.
 
 ## 6. Where things live
 
-| What                                             | Where                                                                       |
-| ------------------------------------------------ | --------------------------------------------------------------------------- |
-| Every addressable ID, and each slot's real state | `extension-reference.md`                                                    |
-| The published API surface                        | `@nuxeo-satori/platform` type declarations                                  |
-| Entry points                                     | `@nuxeo-satori/platform/{extensions,app-config,components,nuxeo-client,ui}` |
-| Your contributions                               | your own library, `provideSatoriExtensions()`                               |
+| What                                             | Where                                                                                         |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Every addressable ID, and each slot's real state | `extension-reference.md`                                                                      |
+| The published API surface                        | `@nuxeo-satori/platform` type declarations                                                    |
+| Entry points                                     | `@nuxeo-satori/platform/{extensions,app-config,components,components-satori,nuxeo-client,ui}` |
+| Your contributions                               | your own library, `provideSatoriExtensions()`                                                 |
 
-## 7. The `nxs-` components
+## 7. The `nxs-` components — compose, override, place
 
 `@nuxeo-satori/platform/components` is the Nuxeo-owned component library: `nxs-` selectors,
-built on Angular Material, with no ADF and no Satori import of its own. Compose its components
-inside your own Layer 2 components:
+built on Angular Material, with no ADF and no Satori import of its own. There are three things
+you can do with it, and they are different promises.
+
+### Composable — use a component inside your own
+
+Every component the entry point exports can be imported and used in your Layer 2 components:
 
 ```ts
 import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
@@ -267,11 +272,80 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 - **`nxs-empty-state` renders its heading as an `<h2>` by default.** Bind `[headingLevel]` to
   one below the heading of the section it sits in, so screen-reader heading navigation stays in
   order.
-- **Replace a packaged panel by its ID.** `nxs-permissions-panel` is registered as
-  `NXS_PERMISSIONS_PANEL_ID` (`nxs.components.permissionsPanel`). Register your own component
-  under it and both Permissions tabs render yours, with `documentId` and `permissionsChanged`, a
-  callback to invoke after a write so the host re-reads the external-user section it owns.
 - **Import only the entry point.** A path past it fails the shipped guardrail like any other
   deep import.
-- **It is new and growing.** The type declarations are the list of what exists; do not take
-  a component's existence from this file.
+- **The type declarations are the list of what exists.** Do not take a component's existence
+  from this file; each one also has a story in the library's Storybook.
+
+### Overridable — re-register an ID
+
+Two kinds of ID are addressable, so you can replace what renders under them without forking.
+
+**A packaged panel.** `nxs-permissions-panel` is registered as `NXS_PERMISSIONS_PANEL_ID`
+(`nxs.components.permissionsPanel`). Register your own component under it and both Permissions
+tabs render yours, with `documentId` and `permissionsChanged`, a callback to invoke after a write
+so the host re-reads the external-user section it owns.
+
+**The four primitives**, each with a Material and a Satori implementation:
+
+| ID                           | Contract to implement  | Material, from `/components` | Satori, from `/components-satori` |
+| ---------------------------- | ---------------------- | ---------------------------- | --------------------------------- |
+| `nxs.primitives.avatar`      | `NxsAvatarInputs`      | `nxs-avatar`                 | `sat-avatar`                      |
+| `nxs.primitives.breadcrumbs` | `NxsBreadcrumbsInputs` | `nxs-breadcrumbs`            | `sat-breadcrumbs`                 |
+| `nxs.primitives.tag`         | `NxsTagInputs`         | `nxs-tag`                    | `sat-category-tag`                |
+| `nxs.primitives.richTooltip` | `NxsRichTooltipInputs` | `nxs-rich-tooltip`           | `sat-rich-tooltip`                |
+
+`provideNxsComponents()` registers them on Material. Only with GitHub Packages access, add
+`provideNxsSatoriComponents()` from `@nuxeo-satori/platform/components-satori` after it to
+re-register them on Satori — the one entry point that needs the optional
+`@hylandsoftware/satori-ui` peer. Registrations layer in provider order and later wins, so yours
+goes last:
+
+```ts
+providers: [
+  provideNxsComponents(),
+  provideNxsSatoriComponents(), // optional
+  provideSatoriExtensions({
+    components: {
+      'nxs.primitives.tag': () => import('./acme-tag').then((m) => m.AcmeTagComponent),
+    },
+  }),
+];
+```
+
+**Implement the contract** — `class AcmeTagComponent implements NxsTagInputs` — because a host
+passes that interface's inputs and the outlet silently drops any your component does not declare.
+The shipped guardrail fails an override that does not.
+
+**What overriding does not reach:** a component used **by class** rather than resolved by ID. An
+override changes every place that renders the ID through `lib-extension-outlet`, and nothing that
+composed `NxsTagComponent` directly. Today no packaged screen resolves the four primitive IDs yet — see
+`extension-reference.md` §6a for where they do render.
+
+### Placeable — the slots that render a component by ID
+
+Four slots name a component with `componentId`, so a manifest can put a registered component on
+screen with no build: `sidebar`, `tabs`, `documentView` and `routes`. `documentView` also passes
+the focused document as a `document` input. Their state and descriptor fields are in
+`extension-reference.md` §2, §6, §9, §9a and §11.
+
+```json
+{
+  "extensions": {
+    "slots": { "tabs": [{ "id": "acme.tabs.claims", "componentId": "acme.panel.claims" }] }
+  }
+}
+```
+
+### What the guardrail checks about a component you contribute
+
+`check-extension-library.mjs` (§4) fails a component registration that:
+
+- **does not resolve** — an `import()` path that is not a file in your library, or a class name
+  the file does not export. The registry swallows a failed load, so this is otherwise a blank
+  slot with no error anywhere;
+- **no spec names** — by its ID, the key expression it is registered under, or its class;
+- **uses another prefix's selector** — yours is `<owner>-`; `nxs-`, `lib-`, `app-` and `sat-`
+  belong to the platform and collide on an upgrade;
+- **overrides an `nxs.primitives.*` ID without implementing its contract**, or one that does not
+  exist.

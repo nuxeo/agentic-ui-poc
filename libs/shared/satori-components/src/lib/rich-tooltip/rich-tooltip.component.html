@@ -1,0 +1,23 @@
+<button
+  #trigger
+  mat-icon-button
+  type="button"
+  class="nxs-rich-tooltip__trigger"
+  [attr.aria-label]="triggerLabel()"
+  [attr.aria-expanded]="open()"
+  [attr.aria-controls]="panelId"
+  (click)="toggle()"
+>
+  <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
+</button>
+@if (open()) {
+  <div
+    class="nxs-rich-tooltip__panel"
+    role="dialog"
+    [id]="panelId"
+    [attr.aria-labelledby]="headingId"
+  >
+    <p class="nxs-rich-tooltip__heading" [id]="headingId">{{ heading() }}</p>
+    <p class="nxs-rich-tooltip__content">{{ content() }}</p>
+  </div>
+}

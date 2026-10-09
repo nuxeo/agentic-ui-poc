@@ -34,6 +34,9 @@
  *    evaluates to `true`; a gating rule that is missing therefore permits everything.
  * 5. **No component is exported from the barrel.** A host that can import the class
  *    depends on a name that should stay free to change.
+ * 6. **Each registered component resolves, is named by a spec, uses the owner's selector
+ *    prefix, and implements the contract of any `nxs.primitives.*` ID it overrides.** The
+ *    registry swallows a failed load, so a wrong path is a blank slot with no error.
  *
  * Exit code 0 = pass, 1 = at least one failure. Warnings do not fail.
  */
@@ -138,6 +141,7 @@ const PUBLISHED = new Set([
   '@nuxeo-satori/platform/extensions',
   '@nuxeo-satori/platform/app-config',
   '@nuxeo-satori/platform/components',
+  '@nuxeo-satori/platform/components-satori',
   '@nuxeo-satori/platform/nuxeo-client',
   '@nuxeo-satori/platform/ui',
 ]);
@@ -298,6 +302,152 @@ if (!barrel) {
   }
 }
 
+// ----------------------------------------------------- 6. component contributions ----
+
+/**
+ * Each component the library registers resolves, is named by a spec, carries the owner's selector
+ * prefix, and — when it overrides one of the platform's `nxs.primitives.*` IDs — implements that
+ * ID's input contract.
+ *
+ * - **Resolves.** `ExtensionComponentRegistry.resolve()` returns `null` for a loader that rejects,
+ *   on purpose, so the outlet renders nothing and logs nothing. A wrong `import()` path or class
+ *   name is a blank panel with no error anywhere; this is the only place it can be seen.
+ * - **Named by a spec.** Check 3 asks for one registry assertion in the library. A component no
+ *   spec names — by its ID, its key expression or its class — is a registration nothing proves.
+ * - **Selector prefix.** `nxs-` is the platform's component library and `lib-`/`app-`/`sat-` its
+ *   shell and design system; a customer selector under one of them collides on an upgrade.
+ * - **Override contract.** A host renders `nxs.primitives.tag` with the inputs `NxsTagInputs`
+ *   names, and the outlet silently drops an input the component does not declare — so an override
+ *   that does not `implements` the interface renders with the wrong inputs, and nothing fails.
+ *
+ * Registrations are read from each `components: { … }` object literal, in the two shapes the
+ * contract uses: `'id': () => import('./x').then((m) => m.X)` and `'id': X` with `X` imported
+ * from a relative path. A registration in neither shape is a warning, so it is seen, not skipped.
+ */
+const PRIMITIVE_CONTRACTS = {
+  avatar: 'NxsAvatarInputs',
+  breadcrumbs: 'NxsBreadcrumbsInputs',
+  tag: 'NxsTagInputs',
+  richTooltip: 'NxsRichTooltipInputs',
+};
+
+/** The body of every `components: { … }` object literal in `text`, braces matched. */
+function componentObjects(text) {
+  const bodies = [];
+  for (const match of text.matchAll(/\bcomponents\s*:\s*\{/g)) {
+    let depth = 1;
+    let at = match.index + match[0].length;
+    const start = at;
+    while (at < text.length && depth > 0) {
+      if (text[at] === '{') depth += 1;
+      else if (text[at] === '}') depth -= 1;
+      at += 1;
+    }
+    bodies.push(text.slice(start, at - 1));
+  }
+  return bodies;
+}
+
+/** The `.ts` file a relative specifier names, or `null`. */
+function resolveRelative(fromFile, specifier) {
+  const base = resolve(fromFile, '..', specifier);
+  for (const candidate of [`${base}.ts`, join(base, 'index.ts'), base]) {
+    if (sources.has(candidate)) return candidate;
+  }
+  return null;
+}
+
+const KEY = String.raw`(\[(?:[^\[\]]|\[[^\]]*\])+\]|['"\x60][^'"\x60]+['"\x60])`;
+const LAZY = new RegExp(
+  String.raw`${KEY}\s*:\s*\(\s*\)\s*=>\s*import\(\s*['"]([^'"]+)['"]\s*\)\s*\.then\(\s*\(?\s*(\w+)\s*\)?\s*=>\s*\3\.(\w+)\s*\)`,
+  'g',
+);
+const EAGER = new RegExp(String.raw`${KEY}\s*:\s*([A-Z][\w$]*)\s*(?=,|$)`, 'g');
+const ANY_ENTRY = new RegExp(String.raw`${KEY}\s*:`, 'g');
+
+const contributions = [];
+for (const [file, text] of code) {
+  for (const body of componentObjects(text)) {
+    const seenKeys = new Set();
+    for (const m of body.matchAll(LAZY)) {
+      seenKeys.add(m[1]);
+      contributions.push({ file, key: m[1], className: m[4], target: resolveRelative(file, m[2]), from: m[2] });
+    }
+    for (const m of body.matchAll(EAGER)) {
+      if (seenKeys.has(m[1])) continue;
+      seenKeys.add(m[1]);
+      const imported = new RegExp(
+        String.raw`import\s*(?:type\s*)?\{[^}]*\b${m[2]}\b[^}]*\}\s*from\s*['"]([^'"]+)['"]`,
+      ).exec(text);
+      if (!imported || !imported[1].startsWith('.')) continue; // a platform class, re-registered
+      contributions.push({ file, key: m[1], className: m[2], target: resolveRelative(file, imported[1]), from: imported[1] });
+    }
+    for (const m of body.matchAll(ANY_ENTRY)) {
+      if (!seenKeys.has(m[1])) {
+        warn(
+          `${rel(file)} registers the component ${m[1]} in a shape this check does not read, so ` +
+            'none of the component checks ran on it. Use `() => import(...).then((m) => m.X)` or an imported class.',
+        );
+      }
+    }
+  }
+}
+
+const specText = specs.map(([, text]) => text).join('\n');
+for (const { file, key, className, target, from } of contributions) {
+  const where = `${rel(file)} registers ${key}`;
+  if (!target) {
+    fail(
+      `${where} from '${from}', which is not a file in this library. The registry swallows the ` +
+        'failed import, so the slot renders nothing and nothing reports it.',
+    );
+    continue;
+  }
+  const componentSource = sources.get(target) ?? '';
+  if (!new RegExp(String.raw`export\s+class\s+${className}\b`).test(componentSource)) {
+    fail(
+      `${where} as \`${className}\`, which ${rel(target)} does not export. The registry swallows ` +
+        'the failed load, so the slot renders nothing and nothing reports it.',
+    );
+    continue;
+  }
+  const keyText = key.replace(/^['"\x60]|['"\x60]$/g, '');
+  const named = [keyText, key.replace(/^\[|\]$/g, ''), className].some(
+    (token) => token && specText.includes(token),
+  );
+  if (!named) {
+    fail(
+      `${where} (\`${className}\`), and no spec names it — not its ID, its key, nor its class. ` +
+        'Render it, or assert `ExtensionComponentRegistry.has(...)` for it.',
+    );
+  }
+  const selector = /selector\s*:\s*['"]([^'"]+)['"]/.exec(componentSource)?.[1];
+  if (owner && selector && !selector.startsWith(`${owner}-`) && !selector.startsWith(`[${owner}`)) {
+    fail(
+      `${rel(target)} declares selector \`${selector}\`. Use your owner prefix, \`${owner}-\`: ` +
+        '`nxs-` is the platform component library and `lib-`, `app-` and `sat-` its shell and ' +
+        'design system, so a selector under them collides on an upgrade.',
+    );
+  }
+  const primitive = /nxs\.primitives\.(\w+)/.exec(keyText)?.[1] ?? /NXS_PRIMITIVE_IDS\.(\w+)/.exec(key)?.[1];
+  const contract = primitive && PRIMITIVE_CONTRACTS[primitive];
+  if (primitive && !contract) {
+    fail(`${where}, but the platform has no \`nxs.primitives.${primitive}\` to override.`);
+  } else if (
+    contract &&
+    !new RegExp(String.raw`class\s+${className}\b[^{]*\bimplements\b[^{]*\b${contract}\b`).test(
+      componentSource,
+    )
+  ) {
+    fail(
+      `${where}, overriding a platform primitive, but \`${className}\` does not implement ` +
+        `\`${contract}\` from '@nuxeo-satori/platform/components'. A host passes that interface's ` +
+        'inputs and the outlet drops any the component does not declare, so it would render with ' +
+        'the wrong inputs and nothing would fail.',
+    );
+  }
+}
+
 // ------------------------------------------------------------------- report ----
 
 for (const w of warnings) console.warn(`[warn] ${w}`);
@@ -311,6 +461,6 @@ if (failures.length) {
 console.log(
   `check-extension-library: pass — ${target}` +
     `${owner ? ` (owner \`${owner}\`)` : ''}, ${code.length} source file(s), ` +
-    `${specs.length} spec file(s)` +
+    `${specs.length} spec file(s), ${contributions.length} component registration(s)` +
     `${warnings.length ? `, ${warnings.length} warning(s)` : ''}.`,
 );
