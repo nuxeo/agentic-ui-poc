@@ -45,11 +45,13 @@ import { NoteImagePickerDialogComponent } from './note-image-picker-dialog';
 import { buildNoteImagesInsertHtml } from './note-image-insert';
 import { notePictureInsertUrl } from './note-image-url';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
 
 @Component({
   selector: 'lib-note-editor',
   standalone: true,
   imports: [
+    NxsSpinnerComponent,
     TranslatePipe,
     FormsModule,
     MatButtonModule,

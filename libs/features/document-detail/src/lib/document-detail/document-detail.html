@@ -1,9 +1,6 @@
 @if (loading()) {
   <div class="detail-loading">
-    <mat-spinner
-      diameter="40"
-      [attr.aria-label]="'document-detail.document-detail.loading' | translate"
-    />
+    <nxs-spinner diameter="40" [label]="'document-detail.document-detail.loading' | translate" />
   </div>
 } @else if (error()) {
   <div class="detail-error">
@@ -522,9 +519,9 @@
 
             @if (permissionsLoading()) {
               <div class="perm-loading">
-                <mat-spinner
+                <nxs-spinner
                   diameter="28"
-                  [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                  [label]="'document-detail.document-detail.loading' | translate"
                 />
               </div>
             }
@@ -722,9 +719,9 @@
             <!-- Table -->
             @if (auditLoading()) {
               <div class="history-loading">
-                <mat-spinner
+                <nxs-spinner
                   diameter="32"
-                  [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                  [label]="'document-detail.document-detail.loading' | translate"
                 />
               </div>
             } @else if (filteredAuditEntries().length === 0) {
@@ -1447,11 +1444,9 @@
                         <div class="version-dropdown">
                           @if (versionsLoading()) {
                             <div class="version-dropdown-loading">
-                              <mat-spinner
+                              <nxs-spinner
                                 diameter="20"
-                                [attr.aria-label]="
-                                  'document-detail.document-detail.loading' | translate
-                                "
+                                [label]="'document-detail.document-detail.loading' | translate"
                               />
                             </div>
                           } @else {
@@ -1861,9 +1856,9 @@
           <div class="panel-body comments-panel">
             @if (commentsLoading()) {
               <div class="panel-loading">
-                <mat-spinner
+                <nxs-spinner
                   diameter="28"
-                  [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                  [label]="'document-detail.document-detail.loading' | translate"
                 />
               </div>
             } @else {
@@ -2162,9 +2157,9 @@
           <div class="panel-body activity-panel">
             @if (panelActivityLoading()) {
               <div class="panel-loading">
-                <mat-spinner
+                <nxs-spinner
                   diameter="28"
-                  [attr.aria-label]="'document-detail.document-detail.loading' | translate"
+                  [label]="'document-detail.document-detail.loading' | translate"
                 />
               </div>
             } @else {

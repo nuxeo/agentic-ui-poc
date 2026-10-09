@@ -252,6 +252,7 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'document-detail.note-editor.text-style': 'Text style',
   'document-detail.note-editor.underline': 'Underline',
   'document-detail.note-image-picker-dialog.close': 'Close',
+  'document-detail.note-image-picker-dialog.loading': 'Loading pictures',
   'document-detail.note-image-picker-dialog.picture-documents': 'Picture documents',
   'document-detail.note-image-picker-dialog.select-all': 'Select all',
   'document-layouts.sections': 'Property sections',
@@ -302,6 +303,10 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'nav.loading': 'Loading',
   'nav.refresh': 'Refresh',
   'nav.tree.toggle': 'Toggle {{ name }}',
+  'satori-components.column-picker.close': 'Close column picker',
+  'satori-components.column-picker.done': 'Done',
+  'satori-components.column-picker.reset': 'Reset',
+  'satori-components.column-picker.title': 'Column Settings',
   'permissions.add-permission-dialog.hi-could-you-comment-on-this':
     'Hi! Could you comment on this document and...',
   'permissions.add-permission-dialog.search-for-users-and-groups': 'Search for users and groups',

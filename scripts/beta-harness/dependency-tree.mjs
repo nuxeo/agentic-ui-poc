@@ -25,8 +25,9 @@
  *   imports    a module specifier naming one of the five, or a subpath of one, in any source or
  *              style file under apps/ or libs/. Code is read with the TypeScript scanner, so a
  *              comment or a string that mentions a name is not an import. Stylesheets have a
- *              scanner of their own, so the same holds there: an `@import` counts every target,
- *              quoted or `url(...)`, and a `@use` or `@forward` its first, the rest configuration.
+ *              scanner of their own, `stylesheet-scan.mjs`, shared with the supply-chain gate, so
+ *              the same holds there: an `@import` counts every target, quoted or `url(...)`, and a
+ *              `@use` or `@forward` its first, the rest configuration.
  *
  * ## Report-only until the removal commit
  *
@@ -72,6 +73,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
+import { styleSpecifiers } from './stylesheet-scan.mjs';
 
 /**
  * THE SWITCH. `false` = report-only, `true` = blocking.
@@ -605,94 +607,6 @@ function codeSpecifiers(text) {
     ...info.importedFiles.map((f) => f.fileName),
     ...info.typeReferenceDirectives.map((f) => f.fileName),
   ];
-}
-
-/**
- * `@use`, `@forward` and `@import` targets in a stylesheet — only at a statement start, never in a
- * comment, and never inside a string. The directives and their targets are found in `mask` and read
- * back from `text` at the same offsets.
- *
- * Every target of an `@import`, not the first: Sass takes `@import 'a', 'b';` and CSS takes an
- * unquoted `url(...)`. Only the first of a `@use` or `@forward`, whose later strings are
- * configuration: `@use 'theme' with ($label: 'x')`. A statement runs to `;`, `{` or `}`, which may
- * be lines away; the indented `.sass` syntax has none, so there it runs to the end of the line.
- */
-function styleSpecifiers(text, rel) {
-  const mask = maskStylesheet(text);
-  const statement = rel.endsWith('.sass')
-    ? /(?:^|\n)[ \t]*@(use|forward|import)\b([^\n]*)/dg
-    : /(?:^|[;{}])\s*@(use|forward|import)\b([^;{}]*)/dg;
-  const target = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"\n]*)\3/dg;
-  const found = [];
-  for (const s of mask.matchAll(statement)) {
-    const [from, to] = s.indices[2];
-    for (const t of mask.slice(from, to).matchAll(target)) {
-      const span = t.indices[2] ?? t.indices[4];
-      found.push(text.slice(from + span[0], from + span[1]).replace(/^~/, ''));
-      if (s[1] !== 'import') break;
-    }
-  }
-  return found;
-}
-
-/**
- * `text` with comments blanked to spaces and string contents to `_`, quotes and newlines kept, so
- * every offset still maps to `text`.
- *
- * A scanner rather than a regex, because neither construct can be found without knowing whether
- * you are inside the other: the `//` in `$marker: "//"` is not a comment, and the `;` and
- * `@import` in `content: "; @import 'x'"` are not a statement. An unquoted `url(...)` is masked
- * like a string up to its `)`, so neither the `//` in `url(//cdn/x)` nor the `;` in
- * `url(data:text/css;base64,…)` is read as syntax.
- */
-function maskStylesheet(text) {
-  let out = '';
-  let quote = null;
-  let inUrl = false;
-  // Just past `url(` and any whitespace, where an unquoted argument would start. A flag rather than
-  // testing `out` for a trailing `url(`: that test rescans the output once per character.
-  let urlOpen = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const c = text[i];
-    if (quote) {
-      if (c === '\\' && i + 1 < text.length) {
-        out += text[i + 1] === '\n' ? '_\n' : '__';
-        i += 1;
-      } else if (c === quote || c === '\n') {
-        quote = null;
-        out += c;
-      } else {
-        out += '_';
-      }
-      continue;
-    }
-    if (urlOpen && !/\s/.test(c)) {
-      urlOpen = false;
-      if (c !== '"' && c !== "'") inUrl = true;
-    }
-    if (inUrl) {
-      if (c === ')') inUrl = false;
-      out += c === ')' || c === '\n' ? c : '_';
-      continue;
-    }
-    if (c === '"' || c === "'") {
-      quote = c;
-      out += c;
-      continue;
-    }
-    const block = c === '/' && text[i + 1] === '*';
-    const line = c === '/' && text[i + 1] === '/';
-    if (block || line) {
-      const end = block ? text.indexOf('*/', i + 2) : text.indexOf('\n', i);
-      const stop = end === -1 ? text.length : block ? end + 2 : end;
-      out += text.slice(i, stop).replace(/[^\n]/g, ' ');
-      i = stop - 1;
-      continue;
-    }
-    out += c;
-    if (c === '(' && /url$/i.test(out.slice(-4, -1))) urlOpen = true;
-  }
-  return out;
 }
 
 /**

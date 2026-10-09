@@ -1466,6 +1466,7 @@
       "clear": "Clear",
       "close": "Close",
       "filters": "Filters",
+      "loading": "Loading pictures",
       "no-pictures-found": "No pictures found.",
       "picture-documents": "Picture documents",
       "quick-search": "Quick Search",
@@ -1949,6 +1950,12 @@
     }
   },
   "satori-components": {
+    "column-picker": {
+      "close": "Close column picker",
+      "done": "Done",
+      "reset": "Reset",
+      "title": "Column Settings"
+    },
     "permissions-panel": {
       "add": "Add",
       "column": {

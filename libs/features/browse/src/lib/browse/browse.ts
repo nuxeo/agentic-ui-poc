@@ -1,10 +1,7 @@
 import {
   Component,
   DestroyRef,
-  ElementRef,
-  HostListener,
   LOCALE_ID,
-  ViewChild,
   computed,
   effect,
   inject,
@@ -14,7 +11,7 @@ import {
 import { NavigationEnd, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { forkJoin, of, Subject, timer, EMPTY } from 'rxjs';
 import {
   catchError,
@@ -127,6 +124,7 @@ import {
   AppExtensionsService,
   DescriptorLabelPipe,
   EXTENSION_SLOTS,
+  descriptorLabel,
   ExtensionActionRegistry,
   ExtensionOutletComponent,
   ExtensionRuleContextService,
@@ -153,7 +151,10 @@ import { CreateImportDialogComponent } from '../create-import/create-import-dial
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   NXS_PERMISSIONS_PANEL_ID,
+  NxsColumnPickerComponent,
   NxsPermissionsPanelComponent,
+  NxsSpinnerComponent,
+  type NxsPickableColumn,
 } from '@nuxeo-satori/platform/components';
 
 /**
@@ -176,6 +177,8 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
   standalone: true,
   providers: [provideTranslatedDatepickerIntl()],
   imports: [
+    NxsColumnPickerComponent,
+    NxsSpinnerComponent,
     DocTypeLabelPipe,
     DescriptorLabelPipe,
     TranslatePipe,
@@ -214,8 +217,6 @@ export class BrowseComponent {
   private readonly translate = inject(TranslateService);
   private readonly locale = inject(LOCALE_ID);
   private readonly destroyRef = inject(DestroyRef);
-  @ViewChild('columnPanel')
-  private columnPanel?: ElementRef<HTMLElement>;
 
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
@@ -449,6 +450,35 @@ export class BrowseComponent {
   readonly visibleColumns = computed(() => this.columns().filter((c) => c.visible));
   readonly columnPanelOpen = signal(false);
 
+  /** Title keys every row; the picker will not let a user switch it off. */
+  readonly requiredColumnKeys: readonly string[] = ['title'];
+
+  /** What Reset returns to: the descriptors' defaults, so a manifest-hidden column stays hidden. */
+  readonly defaultColumnKeys = computed(() =>
+    this.columnDescriptors()
+      .filter((descriptor) => !descriptor.hiddenByDefault)
+      .map((descriptor) => descriptor.field),
+  );
+
+  /**
+   * The active language as a signal. `translate.instant` is not reactive, so the picker's
+   * labels read this to follow a language change.
+   */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.currentLang },
+  );
+
+  /** The columns as the picker offers them: names resolved for the active language. */
+  readonly pickerColumns = computed<readonly NxsPickableColumn[]>(() => {
+    this.currentLang();
+    return this.columns().map((column) => ({
+      key: column.key,
+      label: descriptorLabel(column, (key) => this.translate.instant(key)),
+      visible: column.visible,
+    }));
+  });
+
   /**
    * The browse document context menu, resolved through Layer 1.
    *
@@ -476,8 +506,6 @@ export class BrowseComponent {
   private readonly publishFlagsToRuleContext = effect(() =>
     this.ruleContext.flags.set({ subscribed: this.isSubscribed() === true }),
   );
-  readonly pendingColumns = signal<ColumnDef[]>([]);
-
   // Filters
   readonly filterText = signal('');
   readonly filterType = signal('');
@@ -1134,56 +1162,17 @@ export class BrowseComponent {
   // ── Column settings ──
 
   openColumnPanel(): void {
-    this.pendingColumns.set(this.columns().map((c) => ({ ...c })));
     this.columnPanelOpen.set(true);
-    queueMicrotask(() => this.columnPanel?.nativeElement.focus());
   }
 
   closeColumnPanel(): void {
     this.columnPanelOpen.set(false);
   }
 
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    if (this.columnPanelOpen()) {
-      this.closeColumnPanel();
-    }
-  }
-
-  isPendingColumn(key: string): boolean {
-    return this.pendingColumns().find((c) => c.key === key)?.visible ?? false;
-  }
-
-  togglePendingColumn(key: string): void {
-    if (key === 'title') return;
-    this.pendingColumns.update((cols) =>
-      cols.map((c) => (c.key === key ? { ...c, visible: !c.visible } : c)),
-    );
-  }
-
-  /**
-   * Back to the *descriptors'* defaults, not the packaged const.
-   *
-   * Reset previously read `ALL_COLUMNS`, which meant a customer who hid a column
-   * in the manifest saw it reappear the moment a user pressed Reset — the
-   * manifest silently lost. Resetting through the descriptors keeps Layer 1
-   * authoritative and only discards the user's own layer, which is what "reset"
-   * should mean.
-   */
-  resetColumns(): void {
-    this.pendingColumns.set(
-      this.columnDescriptors().map((d) => ({
-        key: d.field,
-        label: d.label,
-        visible: !d.hiddenByDefault,
-      })),
-    );
-  }
-
-  applyColumns(): void {
-    const updated = this.pendingColumns();
-    this.userVisibleKeys.set(updated.filter((c) => c.visible).map((c) => c.key));
-    saveColumnSettings(updated);
+  /** The picker's Done: the keys to show, in column order. */
+  applyColumns(keys: readonly string[]): void {
+    this.userVisibleKeys.set(keys);
+    saveColumnSettings(this.columns().map((c) => ({ ...c, visible: keys.includes(c.key) })));
     this.columnPanelOpen.set(false);
   }
 

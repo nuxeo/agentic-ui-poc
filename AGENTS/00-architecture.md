@@ -127,11 +127,12 @@ into the library to dodge the rule.
 1. `src/lib/<name>/<name>.component.{ts,html,scss,spec.ts}` — selector `nxs-<name>`, class
    `Nxs<Name>Component`, `standalone: true`, `templateUrl`, theme tokens only.
 2. Text inputs take already-translated strings; the library ships no catalogue.
-   `checkNoProseInComponentInputs` scans `nxs-` elements, so a caller must bind them. A composite
-   component's own chrome — headings, buttons, messages — is translated with keys under
-   `satori-components.<name>.*` in the app catalogue (`apps/nuxeo-ui/public/i18n/en.json` plus
-   `en.context.json`), written as literals or literal-prefixed template strings so that
-   `node tools/i18n/platform-english.mjs` finds them and ships their English with the package.
+   `checkNoProseInComponentInputs` scans `nxs-` elements, so a caller must bind them. A
+   component's own chrome — headings, buttons, messages, accessible names — is translated with keys
+   under `satori-components.<name>.*` in the app catalogue (`apps/nuxeo-ui/public/i18n/en.json`
+   plus `en.context.json`, and `en-fallback.ts` too if the key names a control), written as
+   literals or literal-prefixed template strings so that `node tools/i18n/platform-english.mjs`
+   finds them and ships their English with the package.
 3. The spec covers the empty and error paths and keeps the library at 90% or more:
    `npx nx test satori-components --coverage.enabled=true`, then `npm run beta:coverage`.
 4. Export it from `src/index.ts`, run `npm run beta:api -- --update` and review the

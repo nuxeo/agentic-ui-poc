@@ -12,11 +12,11 @@ import { SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 // Shared rather than local: this normalisation guards three separate served-type checks, and a
 // divergence between them would be a bypass.
 import { mediaTypeEssence } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe } from '@ngx-translate/core';
+import { NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
 
 export interface VideoSource {
   /**
@@ -99,13 +99,7 @@ export interface VideoInfo {
 @Component({
   selector: 'lib-document-viewer',
   standalone: true,
-  imports: [
-    TranslatePipe,
-    MatIconModule,
-    MatButtonModule,
-    MatTooltipModule,
-    MatProgressSpinnerModule,
-  ],
+  imports: [NxsSpinnerComponent, TranslatePipe, MatIconModule, MatButtonModule, MatTooltipModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './document-viewer.component.html',
   styleUrl: './document-viewer.component.scss',

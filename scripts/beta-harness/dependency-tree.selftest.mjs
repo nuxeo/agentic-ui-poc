@@ -33,6 +33,10 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync }
 import { availableParallelism, tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import {
+  CONTROL_COUNT as SCAN_CONTROL_COUNT,
+  selfCheck as scanSelfCheck,
+} from './stylesheet-scan.mjs';
 
 const run = promisify(execFile);
 const ROOT = resolve(import.meta.dirname, '..', '..');
@@ -922,6 +926,16 @@ controls.forEach((c, i) => judge(c, outcomes[i]));
 for (const dir of lockedDirs) chmodSync(dir, 0o755);
 rmSync(workspace, { recursive: true, force: true });
 
+// ------------------------------------------------------- 8. the stylesheet scanner itself ----
+//
+// In-process, because it is a pure function shared with the supply-chain gate. The import controls
+// above prove the gate acts on what the scanner returns; these prove what it returns — the mask
+// character for character, and the exact targets of each statement.
+const scanFailures = scanSelfCheck();
+const scanSplit =
+  `${SCAN_CONTROL_COUNT.mask} mask (exact output) + ${SCAN_CONTROL_COUNT.negative} negative ` +
+  `(must find nothing) + ${SCAN_CONTROL_COUNT.positive} positive (must find exactly these)`;
+
 const failed = results.filter((r) => !r.ok);
 // The split is reported rather than a total, because only the negative controls prove the gate
 // can fail, only the quiet ones prove it does not cry wolf, and the listing ones prove neither —
@@ -932,12 +946,22 @@ const split =
   ` + ${count('listing')} listing (must pass and list findings)`;
 console.log();
 for (const why of notRun) console.log(`NOT RUN ${why}`);
-if (failed.length === 0) {
+if (scanFailures.length === 0) {
+  console.log(`stylesheet-scan controls: pass — ${scanSplit}.`);
+} else {
+  console.error(
+    `stylesheet-scan controls: FAIL — ${scanFailures.length} did not behave as specified (${scanSplit}):`,
+  );
+  for (const f of scanFailures) console.error(`  - ${f}`);
+}
+if (failed.length === 0 && scanFailures.length === 0) {
   console.log(`dependency-tree selftest: pass — ${results.length} control(s): ${split}.`);
   process.exit(0);
 }
 console.error(
-  `dependency-tree selftest: FAIL — ${failed.length} of ${results.length} control(s) (${split}) did not behave as specified:`,
+  `dependency-tree selftest: FAIL — ${failed.length} of ${results.length} control(s) (${split}) did not behave as specified` +
+    (scanFailures.length > 0 ? ', and the stylesheet-scan controls failed' : '') +
+    (failed.length > 0 ? ':' : '.'),
 );
 for (const f of failed) console.error(`  - ${f.name} (expected ${f.expected})`);
 process.exit(1);

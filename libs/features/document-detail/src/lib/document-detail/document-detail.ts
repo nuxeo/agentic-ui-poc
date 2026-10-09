@@ -202,6 +202,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   NXS_PERMISSIONS_PANEL_ID,
   NxsPermissionsPanelComponent,
+  NxsSpinnerComponent,
 } from '@nuxeo-satori/platform/components';
 
 export interface SectionNode {
@@ -289,6 +290,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   selector: 'lib-document-detail',
   standalone: true,
   imports: [
+    NxsSpinnerComponent,
     CdkAriaLive,
     DescriptorLabelPipe,
     TranslatePipe,
