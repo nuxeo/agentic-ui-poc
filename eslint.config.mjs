@@ -97,7 +97,7 @@ export default [
             //
             // What does enforce it is `libs/platform/guardrails/check-extension-library.mjs`
             // check 2, which works on the specifier text and fails any import that is not
-            // one of the five published entry points. It runs against this very library in
+            // one of the six published entry points. It runs against this very library in
             // the `customer-guardrails` gate. So the guarantee holds; it is just not this
             // rule's to make.
             {

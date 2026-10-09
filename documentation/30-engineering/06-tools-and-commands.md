@@ -2,16 +2,17 @@
 title: Tools & Commands
 parent: Engineering
 order: 6
-last_reviewed: 2026-10-08
-repo_commit: fb97d44
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # Tools & Commands — complete reference
 
-> **Last reviewed:** 2026-10-08 · **Repository:** `fb97d44` (`feature/nxsat-308-dependency-tree-gate`)
-> Only §3 (the gate and the dependency-tree commands) was re-verified at that commit; the rest of the
-> page was last reviewed on 2026-08-24 at `77265f9`.
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only the three `beta:coverage` rows were re-verified at that commit; §3 (the gate and the
+> dependency-tree commands) was re-verified on 2026-10-08 at `fb97d44`; the rest of the page was
+> last reviewed on 2026-08-24 at `77265f9`.
 > Source of truth: the `scripts` block in [`package.json`](../../package.json). If a command
 > here does not exist, this page is wrong — fix it.
 
@@ -81,7 +82,7 @@ Verdicts: `pass` (every gate), `pass-partial` (a filtered run — **not** a phas
 | `npm run beta:reference`                                               | Extension reference agrees with the code, both directions            | 1                                                                                                                      |
 | `npm run beta:customer-guardrails`                                     | The shipped guardrail, against our reference library                 | 1                                                                                                                      |
 | `npm run beta:audit`                                                   | Every evidence assertion can fail                                    | 1                                                                                                                      |
-| `npm run beta:coverage`                                                | Ratchet: no regression, no orphan, no unratcheted project            | 1                                                                                                                      |
+| `npm run beta:coverage`                                                | Ratchet (no regression/orphan/unratcheted); `FLOORS` met             | 1                                                                                                                      |
 | `npm run beta:coverage -- --run`                                       | Run the tests first                                                  |                                                                                                                        |
 | `npm run beta:coverage -- --update-baseline`                           | Re-record; prunes orphans                                            |                                                                                                                        |
 | `node scripts/beta-harness/lockfile-integrity.mjs`                     | Every dependency edge resolves in the lock                           | 1                                                                                                                      |
@@ -89,7 +90,7 @@ Verdicts: `pass` (every gate), `pass-partial` (a filtered run — **not** a phas
 | `npm run beta:dependency-tree`                                         | No ADF package in lock, installed tree, manifests, `.npmrc`, imports | 1 when blocking; **report-only** (exit 0, lists findings) until the ADF removal commit; 2 if a location cannot be read |
 | `npm run beta:dependency-tree -- --blocking --list-files`              | Preview the blocking verdict, every importing file listed            |                                                                                                                        |
 | `npm run beta:dependency-tree-selftest`                                | The gate's negative and positive controls                            | 1                                                                                                                      |
-| `npm run review:guardrails`                                            | Every check in `GUARDRAILS` (`scripts/review-guardrails.mjs`)        | 1                                                                                                                      |
+| `npm run review:guardrails`                                            | The 10 repo invariants                                               | 1                                                                                                                      |
 | `npm run review:preflight`                                             | guardrails + affected lint + affected test                           | 1                                                                                                                      |
 
 ---

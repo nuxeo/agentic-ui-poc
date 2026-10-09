@@ -269,9 +269,12 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  /** Right-panel art from `apps/nuxeo-ui/public/images/Login-background.svg`. */
-
-  protected readonly heroImagePath = '/images/Login-background.svg';
+  /**
+   * Right-panel art from `apps/nuxeo-ui/public/images/Login-background.svg`. Relative, so it
+   * resolves against `<base href>`: the Marketplace package serves the app from
+   * `/nuxeo/agentic-ui/`, where a root-absolute path 404s.
+   */
+  protected readonly heroImagePath = 'images/Login-background.svg';
 
   submit(): void {
     this.syncAutofillFromDom();

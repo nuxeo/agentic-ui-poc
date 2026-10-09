@@ -2,16 +2,18 @@
 title: Dev Harness & Gates
 parent: Engineering
 order: 8
-last_reviewed: 2026-10-08
-repo_commit: fb97d44
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # The Development Harness and its Gates
 
-> **Last reviewed:** 2026-10-08 · **Repository:** `fb97d44` (`feature/nxsat-308-dependency-tree-gate`) — 26 gates, including the
-> `dependency-tree` pair (gates 4 and 5) that NXSAT-308 adds. That review covered the gate inventory (§2 and
-> §7); figures elsewhere on the page carry the dates they were measured on and were not re-measured.
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only "Hard floors, and where it runs" was re-verified at that commit; the gate inventory (§2 and
+> §7) — 26 gates, including the `dependency-tree` pair (gates 4 and 5) that NXSAT-308 adds — was
+> re-verified on 2026-10-08 at `fb97d44`; the rest of the page as of 2026-10-05 · `b32d4c8` — the
+> revision that implements the 24-gate set and the 23-control lockfile suite described below.
 > This is the **development-time** harness. For the customer-facing runtime AI features see
 > [Runtime AI Features](10-runtime-ai-features.md).
 
@@ -265,6 +267,25 @@ It also fails on:
 - an **unratcheted** project — measured but absent from the baseline, previously printed as
   `new` and then excluded from every check, so a new library's coverage could fall to zero
   silently.
+
+### Hard floors, and where it runs
+
+A project named in `FLOORS` is held to a fixed floor on every run instead of the ratchet:
+`satori-components`, the `nxs-` library NXSAT-308 builds new, at 90% of lines from its first
+commit. Lines are counted as istanbul counts them — distinct statement start lines, covered if any
+statement on the line ran — and compared as counts, not a rounded percentage. The floor also fails
+when that project was not measured, when its report is stale (older than its source, or counting
+a source file that has since been deleted), and when any of its files sits outside the
+measurement — v8 lists a file no spec imports with an empty statement map, so it cannot lower a
+percentage. Only `noStatements` files are excused, never a dated allowlist entry. Seen red before
+it was trusted: an untested function (83.33%), an untested component file (the percentage stayed
+at 100%; the floor did not), that file with a dated allowlist entry, a report of nine covered
+statements on one line and one uncovered on the next (90% of statements, 50% of lines), and a
+report lifted to 90% by a deleted file.
+
+The gate runs at the end of the SonarCloud workflow, reading the `coverage-final.json` files its
+test-with-coverage step already wrote. Before that it ran in no workflow and was not in
+`beta:gate`, so nothing enforced it.
 
 ### A defect in the numbers — fixed 2026-08-24
 

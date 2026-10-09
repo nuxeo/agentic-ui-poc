@@ -1,7 +1,7 @@
 /**
- * NXENG-799 / NXENG-816 — Toggle fit, Zoom in, and sibling toolbar icon buttons must show a
- * keyboard focus indicator on the image toolbar strip (IBM `style_focus_visible`, WCAG 2.4.7 /
- * 1.4.11).
+ * NXENG-799 / NXENG-816 / NXENG-817 — Image toolbar icon buttons (Toggle fit, Zoom in, Rotate
+ * left, …) must show a keyboard focus indicator on the light toolbar strip (IBM
+ * `style_focus_visible` / 922184956, WCAG 2.4.7 / 1.4.11).
  */
 import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -94,7 +94,7 @@ function assertFocusRingContrast(
     .toBeGreaterThanOrEqual(WCAG_FOCUS_INDICATOR);
 }
 
-describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-816)', () => {
+describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-816 / NXENG-817)', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let originalTheme: string | null;
 
@@ -115,7 +115,7 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-81
   });
 
   afterEach(() => {
-    for (const label of ['Toggle fit', 'Zoom in']) {
+    for (const label of ['Toggle fit', 'Zoom in', 'Rotate left']) {
       const button = fixture.nativeElement.querySelector(
         `.viewer-toolbar button[aria-label="${label}"]`,
       ) as HTMLButtonElement | null;
@@ -146,6 +146,10 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-81
 
   function zoomInButton(): HTMLButtonElement {
     return toolbarButton('Zoom in');
+  }
+
+  function rotateLeftButton(): HTMLButtonElement {
+    return toolbarButton('Rotate left');
   }
 
   it('wires the focus ring through --document-viewer-focus-on-light-surface on the viewer host', () => {
@@ -205,6 +209,9 @@ describe('DocumentViewer image toolbar focus ring by theme (NXENG-799 / NXENG-81
 
       assertFocusRingContrast(button, toolbar, label);
       assertFocusRingContrast(zoomInButton(), toolbar, `${label} — Zoom in (NXENG-816)`);
+
+      const rotate = rotateLeftButton();
+      assertFocusRingContrast(rotate, toolbar, `${label} — Rotate left`);
 
       const backdrop = surfaceBehindPositiveOutlineRing(button);
       const stripBg = parseColor(getComputedStyle(toolbar).backgroundColor).rgb;

@@ -2,16 +2,17 @@
 title: Codebase Reference
 parent: Engineering
 order: 4
-last_reviewed: 2026-10-08
-repo_commit: fb97d44
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # Codebase Reference — file and folder responsibilities
 
-> **Last reviewed:** 2026-10-08 · **Repository:** `fb97d44` (`feature/nxsat-308-dependency-tree-gate`)
-> Only the `verify-gate.mjs` and harness-script rows were re-verified at that commit; the rest of the
-> page was last reviewed on 2026-08-24 at `77265f9`.
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only §6 and the `constants/avatar-colors.ts` row were re-verified at that commit; the
+> `verify-gate.mjs` and harness-script rows were re-verified on 2026-10-08 at `fb97d44`; the rest of
+> the page was last reviewed on 2026-08-24 at `77265f9`.
 > Directory-level view: [Repository Guide](03-repository-guide.md).
 >
 > **What is excluded, and why:** `node_modules/`, `dist/`, `coverage/`, `.angular/`, `.nx/`,
@@ -85,7 +86,7 @@ If you read six files, read these.
 | `utils/browse-path.utils.ts`                |   175 | Path parsing, router-URL translation                                                                                                                                                             |
 | `models/directory.model.ts`                 |   296 | Vocabulary shapes                                                                                                                                                                                |
 | `auth/admin-access.token.ts`                |       | `ADMIN_ACCESS_CHECKS`, `CURRENT_USERNAME` — the app supplies the implementations                                                                                                                 |
-| `constants/avatar-colors.ts`                |       | `AvatarColor` — **our own** union, with two compile-time assertions keeping it exactly upstream's. Previously leaked `SatAvatarCategory`, a third-party type, into the public API                |
+| `constants/avatar-colors.ts`                |       | `AvatarColor` — **our own** union; nuxeo-client imports no design system. The app's dashboard page asserts it equals `SatAvatarCategory` both ways. Previously leaked that third-party type      |
 | `src/index.ts`                              |   342 | The published barrel — 275 exported symbols                                                                                                                                                      |
 
 ---
@@ -147,17 +148,17 @@ format in [`docs/extension-reference.md`](../../docs/extension-reference.md) §9
 
 ## 6. `libs/platform` — the publishable package
 
-Owns no logic. Wraps four shared libraries as entry points and ships the customer-facing assets.
+Owns no logic. Wraps five shared libraries as entry points and ships the customer-facing assets.
 
-| Path                                                      | Responsibility                                                                                                            |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `package.json`                                            | Name, version, **10 peers**, `private: true`, `generators` field                                                          |
-| `ng-package.json`                                         | ng-packagr config + assets: README, AGENTS.md, extension reference, `guardrails/**`, `generators/**`                      |
-| `tsconfig.lib.json`                                       | **The entire compiler configuration**, not overrides. Two defects came from options being _absent_                        |
-| `{app-config,extensions,nuxeo-client,ui}/ng-package.json` | The four secondary entry points, pointing at `../../shared/*/src/index.ts`                                                |
-| `guardrails/check-extension-library.mjs`                  | The 5 customer checks, shipped in the tarball                                                                             |
-| `AGENTS.md`                                               | ~180 lines of customer procedure, shipped                                                                                 |
-| `project.json`                                            | `build` depends on `sync-docs` **and** `sync-generators`, which must precede ng-packagr because it clears its destination |
+| Path                                                                 | Responsibility                                                                                                            |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `package.json`                                                       | Name, version, **10 peers**, `private: true`, `generators` field                                                          |
+| `ng-package.json`                                                    | ng-packagr config + assets: README, AGENTS.md, extension reference, `generators.json`, `guardrails/**`, `generators/**`   |
+| `tsconfig.lib.json`                                                  | **The entire compiler configuration**, not overrides. Two defects came from options being _absent_                        |
+| `{app-config,components,extensions,nuxeo-client,ui}/ng-package.json` | The five secondary entry points, pointing at `../../shared/*/src/index.ts`                                                |
+| `guardrails/check-extension-library.mjs`                             | The 5 customer checks, shipped in the tarball                                                                             |
+| `AGENTS.md`                                                          | ~255 lines of customer procedure, shipped                                                                                 |
+| `project.json`                                                       | `build` depends on `sync-docs` **and** `sync-generators`, which must precede ng-packagr because it clears its destination |
 
 ---
 
