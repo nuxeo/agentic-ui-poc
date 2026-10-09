@@ -1,8 +1,8 @@
 import { Component, inject, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBar, type MatSnackBarConfig } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { NxsToastComponent } from './toast.component';
 import { NXS_TOAST_DURATION, NxsToastService, provideNxsToast } from './toast.service';
@@ -16,7 +16,7 @@ class ConsumerComponent {
 describe('NxsToastService', () => {
   let toast: NxsToastService;
   let snackBar: MatSnackBar;
-  let open: ReturnType<typeof vi.spyOn>;
+  let open: MockInstance<MatSnackBar['openFromComponent']>;
 
   function container(): HTMLElement | null {
     return document.querySelector('mat-snack-bar-container');
@@ -26,7 +26,7 @@ describe('NxsToastService', () => {
     return document.querySelector('nxs-toast');
   }
 
-  function lastConfig() {
+  function lastConfig(): MatSnackBarConfig | undefined {
     return open.mock.calls.at(-1)?.[1];
   }
 
