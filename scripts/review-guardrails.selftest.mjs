@@ -6547,6 +6547,61 @@ expectRed(
   /thing\.stories\.ts spreads another object into its default-exported meta/,
 );
 
+// Meta keys are read as JavaScript reads them, so a computed or repeated key filters as Storybook does.
+expectRed(
+  'a computed excludeStories key that filters out the only story',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({ [NXS_STORY]: nxsStory({ meta: filteredMeta("['excludeStories']: ['Basic']") }) }),
+  null,
+  /exports `NxsThingComponent` .* no story documents it/,
+);
+
+expectRed(
+  'a meta key computed from an expression the guardrail cannot read',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      meta: `const KEY = 'excludeStories';\n${filteredMeta("[KEY]: ['Basic']")}`,
+    }),
+  }),
+  null,
+  /thing\.stories\.ts computes a key of its default-exported meta/,
+);
+
+expectRed(
+  'a repeated excludeStories whose later value filters out the only story',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      meta: filteredMeta("excludeStories: ['fixture'], ['excludeStories']: ['Basic']"),
+    }),
+  }),
+  null,
+  /exports `NxsThingComponent` .* no story documents it/,
+);
+
+expectRed(
+  'an excludeStories accessor',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({ meta: filteredMeta("get excludeStories() { return ['Basic']; }") }),
+  }),
+  null,
+  /thing\.stories\.ts sets `excludeStories` to something other than a list of names or a regex literal/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a computed excludeStories key that keeps a story',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      meta: filteredMeta("['excludeStories']: ['fixture']"),
+      stories: 'export const fixture = {};\nexport const Basic: StoryObj<NxsThingComponent> = {};',
+    }),
+  }),
+);
+
 // `.storybook/main.ts` is read for its exported `stories` list, not searched for the glob's text.
 expectRed(
   'a Storybook main.ts that mentions the glob only in a comment',

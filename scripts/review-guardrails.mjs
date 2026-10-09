@@ -7039,18 +7039,36 @@ function storiedComponents(storyFile, pathMaps) {
     );
     return covered;
   }
-  // A property's value; a shorthand (`{ excludeStories }`) is the file's top-level constant of that
-  // name, and `undefined` when there is none to read.
-  const metaProperty = (name) => {
-    const property = defaultExport.properties.find(
-      (p) =>
-        (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) &&
-        (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
-        p.name.text === name,
+  // A key as JavaScript reads it: `excludeStories`, `'excludeStories'` and `['excludeStories']` are
+  // one key. `undefined` for a key computed any other way.
+  const propertyKey = (p) => {
+    const name = p.name;
+    if (ts.isIdentifier(name) || ts.isStringLiteralLike(name) || ts.isNumericLiteral(name)) {
+      return name.text;
+    }
+    if (ts.isComputedPropertyName(name)) {
+      const key = unwrap(name.expression);
+      if (key && ts.isStringLiteralLike(key)) return key.text;
+    }
+    return undefined;
+  };
+  // A computed key can be `excludeStories` as easily as anything else, so the file counts no story.
+  if (defaultExport.properties.some((p) => propertyKey(p) === undefined)) {
+    fail(
+      `${storyFile} computes a key of its default-exported meta, so which of its exports are ` +
+        'stories was not read and none was counted. Write each key as a name or a string.',
     );
+    return covered;
+  }
+  // A property's value — the last one, as JavaScript keeps it when a key repeats. A shorthand
+  // (`{ excludeStories }`) is the file's top-level constant of that name; `undefined` when there is
+  // none to read, or the key is a method or an accessor.
+  const metaProperty = (name) => {
+    const property = defaultExport.properties.findLast((p) => propertyKey(p) === name);
     if (!property) return null;
     if (ts.isPropertyAssignment(property)) return unwrap(property.initializer);
-    return unwrap(variables.get(name));
+    if (ts.isShorthandPropertyAssignment(property)) return unwrap(variables.get(name));
+    return undefined;
   };
 
   // `includeStories` / `excludeStories` as Storybook applies them; `undefined` when unreadable.
