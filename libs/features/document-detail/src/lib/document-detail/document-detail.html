@@ -498,6 +498,25 @@
 
         <ng-template #permissionsTabContent>
           <div class="permissions-container">
+            <!-- Local and inherited permissions: the nxs- panel, resolved by its registered ID so a
+                 customer library can re-register a replacement. -->
+            @if (doc(); as current) {
+              <lib-extension-outlet
+                #permissionsPanelOutlet
+                [componentId]="permissionsPanelId"
+                [componentInputs]="{
+                  documentId: current.uid,
+                  permissionsChanged: onPermissionsChanged,
+                }"
+              />
+              @if (permissionsPanelOutlet.unresolved()) {
+                <nxs-permissions-panel
+                  [documentId]="current.uid"
+                  [permissionsChanged]="onPermissionsChanged"
+                />
+              }
+            }
+
             @if (permissionsLoading()) {
               <div class="perm-loading">
                 <nxs-spinner
@@ -506,155 +525,6 @@
                 />
               </div>
             }
-            <!-- Permissions defined locally -->
-            <section class="perm-section perm-section--local">
-              <div class="perm-section-header">
-                <div class="perm-section-title" role="heading" aria-level="3">
-                  {{ 'document-detail.document-detail.permissions-defined-locally' | translate }}
-                </div>
-                @if (canManagePermissions()) {
-                  <button
-                    mat-button
-                    color="primary"
-                    type="button"
-                    class="perm-action-btn"
-                    (click)="openAddPermissionDialog()"
-                  >
-                    {{ 'document-detail.document-detail.new' | translate }}
-                  </button>
-                }
-              </div>
-              @if (localAces().length === 0) {
-                <div class="perm-empty perm-empty--local">
-                  {{ 'document-detail.document-detail.there-are-no-local-permissions' | translate }}
-                </div>
-              } @else {
-                <div class="perm-table-wrap">
-                  <table class="perm-table">
-                    <thead>
-                      <tr>
-                        <th>{{ 'document-detail.document-detail.user-group' | translate }}</th>
-                        <th>{{ 'document-detail.document-detail.right' | translate }}</th>
-                        <th>{{ 'document-detail.document-detail.time-frame' | translate }}</th>
-                        <th>{{ 'document-detail.document-detail.granted-by' | translate }}</th>
-                        @if (canManagePermissions()) {
-                          <th></th>
-                        }
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (ace of localAces(); track ace.id) {
-                        <tr>
-                          <td>{{ displayUsername(ace) }}</td>
-                          <td>{{ permissionLabel(ace.permission) }}</td>
-                          <td>{{ aceTimeFrame(ace) }}</td>
-                          <td>{{ aceGrantedBy(ace) }}</td>
-                          @if (canManagePermissions()) {
-                            <td class="perm-row-actions">
-                              <button
-                                mat-icon-button
-                                [matTooltip]="'document-detail.document-detail.edit' | translate"
-                                [attr.aria-label]="
-                                  'document-detail.document-detail.edit-permission' | translate
-                                "
-                                type="button"
-                                (click)="editPermission(ace)"
-                              >
-                                <mat-icon>edit</mat-icon>
-                              </button>
-                              <button
-                                mat-icon-button
-                                [matTooltip]="'document-detail.document-detail.delete' | translate"
-                                [attr.aria-label]="
-                                  'document-detail.document-detail.delete-permission' | translate
-                                "
-                                type="button"
-                                (click)="deletePermission(ace)"
-                              >
-                                <mat-icon>delete</mat-icon>
-                              </button>
-                            </td>
-                          }
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              }
-            </section>
-
-            <!-- Permissions inherited from upper levels -->
-            <section class="perm-section">
-              <div class="perm-section-header">
-                <div class="perm-section-title" role="heading" aria-level="3">
-                  {{
-                    'document-detail.document-detail.permissions-inherited-from-upper-levels'
-                      | translate
-                  }}
-                </div>
-                @if (canManagePermissions()) {
-                  <button
-                    mat-button
-                    color="primary"
-                    class="perm-action-btn"
-                    [disabled]="actionInProgress() === 'block-inheritance'"
-                    (click)="toggleInheritanceBlock()"
-                  >
-                    {{
-                      isInheritanceBlocked()
-                        ? ('document-detail.unblock' | translate)
-                        : ('document-detail.block' | translate)
-                    }}
-                  </button>
-                }
-              </div>
-              @if (!isInheritanceBlocked()) {
-                <div class="perm-info-bar">
-                  <span class="perm-info-accent"></span>
-                  <p>
-                    {{
-                      'document-detail.document-detail.if-you-want-to-explicitly-control'
-                        | translate
-                    }}
-                  </p>
-                </div>
-              }
-              @if (isInheritanceBlocked()) {
-                <div class="perm-empty">
-                  {{
-                    'document-detail.document-detail.permissions-inheritance-is-blocked' | translate
-                  }}
-                </div>
-              } @else if (inheritedAces().length === 0) {
-                <div class="perm-empty">
-                  {{ 'document-detail.document-detail.no-inherited-permissions' | translate }}
-                </div>
-              } @else {
-                <div class="perm-table-wrap">
-                  <table class="perm-table">
-                    <thead>
-                      <tr>
-                        <th>{{ 'document-detail.document-detail.user-group' | translate }}</th>
-                        <th>{{ 'document-detail.document-detail.right' | translate }}</th>
-                        <th>{{ 'document-detail.document-detail.time-frame' | translate }}</th>
-                        <th>{{ 'document-detail.document-detail.granted-by' | translate }}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (ace of inheritedAces(); track ace.id) {
-                        <tr>
-                          <td>{{ displayUsername(ace) }}</td>
-                          <td>{{ permissionLabel(ace.permission) }}</td>
-                          <td>{{ aceTimeFrame(ace) }}</td>
-                          <td>{{ aceGrantedBy(ace) }}</td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              }
-            </section>
-
             <!-- Permissions Assigned to External Users -->
             <section class="perm-section">
               <div class="perm-section-header">

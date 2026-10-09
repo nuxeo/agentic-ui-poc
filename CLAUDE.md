@@ -70,8 +70,8 @@ Two traps that have each cost a phase:
 
 - **`test` does not typecheck.** Vitest strips types through esbuild. Only `build` and
   `typecheck` catch a `TS` error, and they run last. A green `test` is not type safety.
-- **Nothing except the `lockfile` gate reads `package-lock.json`.** CI was red for the
-  whole of Phase 2 while every local gate was green.
+- **Nothing except the `lockfile` gate checks that `package-lock.json` will install.** CI was
+  red for the whole of Phase 2 while every local gate was green.
 
 ## Hard-won rules — the expensive ones
 

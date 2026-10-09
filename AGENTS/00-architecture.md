@@ -126,11 +126,13 @@ into the library to dodge the rule.
 
 1. `src/lib/<name>/<name>.component.{ts,html,scss,spec.ts}` — selector `nxs-<name>`, class
    `Nxs<Name>Component`, `standalone: true`, `templateUrl`, theme tokens only.
-2. Text inputs take already-translated strings; `checkNoProseInComponentInputs` scans `nxs-`
-   elements, so a caller must bind them. Text the component owns — its own buttons and accessible
-   names — is an `nxs.<name>.*` key in `apps/nuxeo-ui/public/i18n/en.json` with context in
-   `en.context.json`, in `en-fallback.ts` too if it names a control, and then
-   `node tools/i18n/platform-english.mjs` so the package carries its English.
+2. Text inputs take already-translated strings; the library ships no catalogue.
+   `checkNoProseInComponentInputs` scans `nxs-` elements, so a caller must bind them. A
+   component's own chrome — headings, buttons, messages, accessible names — is translated with keys
+   under `satori-components.<name>.*` in the app catalogue (`apps/nuxeo-ui/public/i18n/en.json`
+   plus `en.context.json`, and `en-fallback.ts` too if the key names a control), written as
+   literals or literal-prefixed template strings so that `node tools/i18n/platform-english.mjs`
+   finds them and ships their English with the package.
 3. The spec covers the empty and error paths and keeps the library at 90% or more:
    `npx nx test satori-components --coverage.enabled=true`, then `npm run beta:coverage`.
 4. Export it from `src/index.ts`, run `npm run beta:api -- --update` and review the
@@ -138,6 +140,14 @@ into the library to dodge the rule.
 5. A new runtime dependency is a `libs/platform/package.json` peer, or is listed in
    `allowedNonPeerDependencies`.
 6. Shared state is an `InjectionToken` with an exported `provide…()` function, never `providedIn`.
+   A service only one component uses goes in that component's `providers`, as
+   `NxsPermissionsService` does.
+7. Members only the template uses are `protected`, so the component's contract is its inputs and
+   outputs. Specs reach them by element access (`panel()['save']()`).
+8. A component that replaces packaged markup is registered by ID (`nxs.<group>.<name>`, exported as
+   a constant) and rendered through `lib-extension-outlet` with the component as the unresolved
+   fallback, so a customer library can re-register the ID. `beta:reference` checks `nxs.*` IDs
+   against `docs/extension-reference.md` as it does `app.*` ones.
 
 ---
 
