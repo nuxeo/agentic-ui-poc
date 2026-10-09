@@ -63,8 +63,9 @@ const ALL_GATES = [
     echoOnPass: true,
   },
   // Next because it is the next cheapest and because Phase 2 proved it is the one
-  // failure none of the others can see: nothing downstream reads the lockfile,
-  // so a lock that `npm ci` will refuse on Linux leaves every local gate green.
+  // failure none of the others can see: nothing downstream checks that the lock's
+  // dependency edges resolve, so a lock that `npm ci` will refuse on Linux leaves
+  // every local gate green.
   {
     id: 'lockfile',
     label: 'Lockfile integrity',

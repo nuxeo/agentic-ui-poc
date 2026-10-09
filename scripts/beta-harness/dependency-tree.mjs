@@ -24,8 +24,9 @@
  *   npmrc      an `@alfresco:registry` mapping in the root .npmrc. Comment lines do not count.
  *   imports    a module specifier naming one of the five, or a subpath of one, in any source or
  *              style file under apps/ or libs/. Code is read with the TypeScript scanner, so a
- *              comment or a string that mentions a name is not an import. A stylesheet's `@use`,
- *              `@forward` and `@import` count every target, quoted or `url(...)`.
+ *              comment or a string that mentions a name is not an import. Stylesheets have a
+ *              scanner of their own, so the same holds there: an `@import` counts every target,
+ *              quoted or `url(...)`, and a `@use` or `@forward` its first, the rest configuration.
  *
  * ## Report-only until the removal commit
  *
@@ -38,9 +39,9 @@
  *
  *   - a location that could not be inspected — a `--root` that does not resolve, an unreadable lock,
  *     manifest or .npmrc, a lock or manifest that is valid JSON but not an object, no installed tree,
- *     `npm ls` output that is not JSON, a directory under apps/, libs/ or tools/ that cannot be
- *     listed, a link that cannot be resolved or that leaves the repository, a source file that
- *     cannot be read — exits 2 in either
+ *     `npm ls` output that is not a JSON tree object, a directory under apps/, libs/ or tools/ that
+ *     cannot be listed, a link that cannot be resolved or that leaves the repository (a root-level
+ *     lock, manifest or .npmrc included), a source file that cannot be read — exits 2 in either
  *     mode. A gap in the list is not a short list;
  *   - report-only on a tree with **no** findings exits 1. A clean tree means the removal has
  *     landed, and a gate left report-only after that would let the packages come back unseen, so
@@ -61,7 +62,7 @@
  *   --blocking     force blocking mode, whatever `BLOCKING` says — for previews and the selftest
  *   --report-only  force report-only mode — for the selftest
  *   --list-files   print every importing file rather than one line per project
- *   --json         machine-readable output, same exit codes
+ *   --json         machine-readable output, same exit codes, failures before the scan included
  *
  * Exit: 0 pass, or report-only with findings · 1 findings in blocking mode, or report-only on a
  * clean tree · 2 a location could not be inspected.
@@ -117,10 +118,10 @@ const option = (name) => {
   const i = argv.indexOf(name);
   return i >= 0 ? argv[i + 1] : undefined;
 };
+const asJson = has('--json');
 
 if (has('--blocking') && has('--report-only')) {
-  console.error('dependency-tree: --blocking and --report-only contradict each other.');
-  process.exit(2);
+  await cannotStart('--blocking and --report-only contradict each other.', false);
 }
 
 const rootArg = option('--root');
@@ -130,10 +131,9 @@ let root;
 try {
   root = realpathSync(resolve(rootArg ?? join(import.meta.dirname, '..', '..')));
 } catch (error) {
-  console.error(
-    `dependency-tree: CANNOT INSPECT — the root ${rootArg ?? '(this repository)'} cannot be resolved: ${error.message}`,
+  await cannotStart(
+    `the root ${rootArg ?? '(this repository)'} cannot be resolved: ${error.message}`,
   );
-  process.exit(2);
 }
 const blocking = has('--blocking') ? true : has('--report-only') ? false : BLOCKING;
 const modeSource =
@@ -141,7 +141,6 @@ const modeSource =
     ? 'forced on the command line'
     : `BLOCKING = ${BLOCKING} in ${SCRIPT}`;
 const listFiles = has('--list-files');
-const asJson = has('--json');
 
 /** @type {{ location: 'lockfile'|'installed'|'manifest'|'npmrc'|'import', pkg: string, where: string, detail: string, spec?: boolean, project?: string }[]} */
 const findings = [];
@@ -213,7 +212,15 @@ const notes = [];
       gaps.push(`npm ls could not be run: ${proc.error.message}`);
     } else {
       try {
-        tree = JSON.parse(proc.stdout);
+        const parsed = JSON.parse(proc.stdout);
+        // Valid JSON of another shape parses without throwing, and would walk as an empty tree.
+        const shape = !isObject(parsed)
+          ? `${describe(parsed)}, not a dependency tree object`
+          : parsed.dependencies !== undefined && !isObject(parsed.dependencies)
+            ? `a tree whose "dependencies" is ${describe(parsed.dependencies)}, not an object`
+            : null;
+        if (shape) gaps.push(`npm ls --all --json printed ${shape}`);
+        else tree = parsed;
       } catch {
         gaps.push(
           `npm ls --all --json exited ${proc.status} without printing a JSON tree:\n${lastLines(proc.stderr, 8)}`,
@@ -337,7 +344,7 @@ const notes = [];
   } catch {
     /* no .npmrc at all, which is a clean answer */
   }
-  if (present) {
+  if (present && resolvesInside(npmrc, '.npmrc')) {
     try {
       text = readFileSync(npmrc, 'utf8');
     } catch (error) {
@@ -478,6 +485,26 @@ if (asJson) {
 
 // --------------------------------------------------------------------------------- helpers ----
 
+/**
+ * Report a failure found before the scan can start — exit 2, as JSON with `--json` — and stop.
+ * The write is awaited because `process.exit()` straight after one can truncate a pipe.
+ */
+async function cannotStart(reason, inspectionGap = true) {
+  const verdict = inspectionGap ? `CANNOT INSPECT — ${reason}` : reason;
+  const [stream, text] = asJson
+    ? [
+        process.stdout,
+        JSON.stringify(
+          { verdict, exitCode: 2, gaps: inspectionGap ? [reason] : [], findings: [], notes: [] },
+          null,
+          2,
+        ),
+      ]
+    : [process.stderr, `dependency-tree: ${verdict}`];
+  await new Promise((done) => stream.write(`${text}\n`, done));
+  process.exit(2);
+}
+
 function table() {
   const head = ['package', 'lockfile', 'installed', 'manifests', 'imports', 'total'];
   const rows = FORBIDDEN.map((pkg) => {
@@ -580,20 +607,92 @@ function codeSpecifiers(text) {
   ];
 }
 
-/** `@use`, `@forward` and `@import` in a stylesheet, with block and line comments stripped first. */
+/**
+ * `@use`, `@forward` and `@import` targets in a stylesheet — only at a statement start, never in a
+ * comment, and never inside a string. The directives and their targets are found in `mask` and read
+ * back from `text` at the same offsets.
+ *
+ * Every target of an `@import`, not the first: Sass takes `@import 'a', 'b';` and CSS takes an
+ * unquoted `url(...)`. Only the first of a `@use` or `@forward`, whose later strings are
+ * configuration: `@use 'theme' with ($label: 'x')`. A statement runs to `;`, `{` or `}`, which may
+ * be lines away; the indented `.sass` syntax has none, so there it runs to the end of the line.
+ */
 function styleSpecifiers(text, rel) {
-  const code = text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
-  // Every target in the statement, not the first: Sass takes `@import 'a', 'b';` and CSS takes an
-  // unquoted `url(...)`. A statement runs to `;`, which may be lines away; the indented `.sass`
-  // syntax has no `;`, so there it runs to the end of the line. And only at a statement start —
-  // the file's, or after `;`, `{` or `}` — so `content: "@import '…'"` is a string, not an import.
+  const mask = maskStylesheet(text);
   const statement = rel.endsWith('.sass')
-    ? /(?:^|\n)[ \t]*@(?:use|forward|import)\b([^\n]*)/g
-    : /(?:^|[;{}])\s*@(?:use|forward|import)\b([^;]*)/g;
-  const target = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"]+)\3/g;
-  return [...code.matchAll(statement)].flatMap((s) =>
-    [...s[1].matchAll(target)].map((t) => (t[2] ?? t[4]).replace(/^~/, '')),
-  );
+    ? /(?:^|\n)[ \t]*@(use|forward|import)\b([^\n]*)/dg
+    : /(?:^|[;{}])\s*@(use|forward|import)\b([^;{}]*)/dg;
+  const target = /url\(\s*(['"]?)([^'")\s]+)\1\s*\)|(['"])([^'"\n]*)\3/dg;
+  const found = [];
+  for (const s of mask.matchAll(statement)) {
+    const [from, to] = s.indices[2];
+    for (const t of mask.slice(from, to).matchAll(target)) {
+      const span = t.indices[2] ?? t.indices[4];
+      found.push(text.slice(from + span[0], from + span[1]).replace(/^~/, ''));
+      if (s[1] !== 'import') break;
+    }
+  }
+  return found;
+}
+
+/**
+ * `text` with comments blanked to spaces and string contents to `_`, quotes and newlines kept, so
+ * every offset still maps to `text`.
+ *
+ * A scanner rather than a regex, because neither construct can be found without knowing whether
+ * you are inside the other: the `//` in `$marker: "//"` is not a comment, and the `;` and
+ * `@import` in `content: "; @import 'x'"` are not a statement. An unquoted `url(...)` is masked
+ * like a string up to its `)`, so neither the `//` in `url(//cdn/x)` nor the `;` in
+ * `url(data:text/css;base64,…)` is read as syntax.
+ */
+function maskStylesheet(text) {
+  let out = '';
+  let quote = null;
+  let inUrl = false;
+  // Just past `url(` and any whitespace, where an unquoted argument would start. A flag rather than
+  // testing `out` for a trailing `url(`: that test rescans the output once per character.
+  let urlOpen = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    if (quote) {
+      if (c === '\\' && i + 1 < text.length) {
+        out += text[i + 1] === '\n' ? '_\n' : '__';
+        i += 1;
+      } else if (c === quote || c === '\n') {
+        quote = null;
+        out += c;
+      } else {
+        out += '_';
+      }
+      continue;
+    }
+    if (urlOpen && !/\s/.test(c)) {
+      urlOpen = false;
+      if (c !== '"' && c !== "'") inUrl = true;
+    }
+    if (inUrl) {
+      if (c === ')') inUrl = false;
+      out += c === ')' || c === '\n' ? c : '_';
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      out += c;
+      continue;
+    }
+    const block = c === '/' && text[i + 1] === '*';
+    const line = c === '/' && text[i + 1] === '/';
+    if (block || line) {
+      const end = block ? text.indexOf('*/', i + 2) : text.indexOf('\n', i);
+      const stop = end === -1 ? text.length : block ? end + 2 : end;
+      out += text.slice(i, stop).replace(/[^\n]/g, ' ');
+      i = stop - 1;
+      continue;
+    }
+    out += c;
+    if (c === '(' && /url$/i.test(out.slice(-4, -1))) urlOpen = true;
+  }
+  return out;
 }
 
 /**
@@ -688,8 +787,12 @@ function projectOf(rel) {
   return fallback;
 }
 
-/** A JSON object, or `null` with a gap recorded. Valid JSON of another shape is a gap too. */
+/**
+ * A JSON object, or `null` with a gap recorded. Valid JSON of another shape is a gap too, and so is
+ * a link out of the repository.
+ */
 function readJson(path, label) {
+  if (!resolvesInside(path, label)) return null;
   let value;
   try {
     value = JSON.parse(readFileSync(path, 'utf8'));
@@ -697,13 +800,38 @@ function readJson(path, label) {
     gaps.push(`${label}: cannot read — ${error.message}`);
     return null;
   }
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    gaps.push(
-      `${label}: is ${Array.isArray(value) ? 'an array' : String(value)}, not a JSON object`,
-    );
+  if (!isObject(value)) {
+    gaps.push(`${label}: is ${describe(value)}, not a JSON object`);
     return null;
   }
   return value;
+}
+
+/**
+ * False, with a gap recorded, when `path` resolves outside the repository. The root-level inputs
+ * are read by path rather than walked, so they need the walk's containment check of their own. A
+ * path that does not resolve is left to the reader, whose failure is the gap.
+ */
+function resolvesInside(path, label) {
+  let real;
+  try {
+    real = realpathSync(path);
+  } catch {
+    return true;
+  }
+  if (real === root || real.startsWith(`${root}${sep}`)) return true;
+  gaps.push(`${label}: links outside the repository, to ${real} — not read`);
+  return false;
+}
+
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** What a non-object JSON value is, for a gap message. */
+function describe(value) {
+  if (value === null) return 'null';
+  return Array.isArray(value) ? 'an array' : `a ${typeof value}`;
 }
 
 function toRepoPath(path) {

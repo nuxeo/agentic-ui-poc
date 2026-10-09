@@ -31,7 +31,7 @@
 import { execFile } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 const run = promisify(execFile);
@@ -133,9 +133,21 @@ function lockWith(entries) {
   return lock;
 }
 
+/**
+ * A clean fixture whose `npm` prints `output` — for the shapes a real npm does not produce on
+ * demand. The stand-in sits outside apps/, libs/ and tools/, so nothing scans it.
+ */
+function withFakeNpm(name, output) {
+  const dir = fixture(name, { 'fake-bin/ls.json': output });
+  const npm = join(dir, 'fake-bin', 'npm');
+  writeFileSync(npm, '#!/bin/sh\ncat "$(dirname "$0")/ls.json"\n');
+  chmodSync(npm, 0o755);
+  return { dir, env: { ...process.env, PATH: `${dirname(npm)}${delimiter}${process.env.PATH}` } };
+}
+
 // -------------------------------------------------------------------------------- harness ----
 
-/** @type {{ name: string, expected: 'pass'|'fail'|'gap', kind: Kind, because: (string|RegExp)[], dir: string, args: string[] }[]} */
+/** @type {{ name: string, expected: 'pass'|'fail'|'gap', kind: Kind, because: (string|RegExp)[], dir: string, env?: NodeJS.ProcessEnv, args: string[] }[]} */
 const controls = [];
 const EXIT = { pass: 0, fail: 1, gap: 2 };
 
@@ -154,27 +166,34 @@ const EXIT = { pass: 0, fail: 1, gap: 2 };
  * @param {string} name
  * @param {'pass'|'fail'|'gap'} expected  `gap` is exit 2, "could not inspect"
  * @param {string|RegExp|(string|RegExp)[]} because  what the output must contain
- * @param {string} dir  fixture root
+ * @param {string | { dir: string, env: NodeJS.ProcessEnv }} where  fixture root, or a root and
+ *   the environment to run the gate in
  * @param {string[]} [args]  defaults to blocking mode with every importing file listed
  * @param {Kind} [kind]  defaults to `negative` for a failure and `quiet` for a pass
  */
-function control(name, expected, because, dir, args = ['--blocking', '--list-files'], kind) {
+function control(name, expected, because, where, args = ['--blocking', '--list-files'], kind) {
+  const { dir, env } = typeof where === 'string' ? { dir: where } : where;
   controls.push({
     name,
     expected,
     kind: kind ?? (expected === 'pass' ? 'quiet' : 'negative'),
     because: [because].flat(),
     dir,
+    env,
     args,
   });
 }
 
-async function runGate(dir, args) {
+/** The whole output is one JSON object: nothing printed as text before or after it. */
+const ONLY_JSON_EXIT_2 = /^\s*\{[\s\S]*"exitCode": 2,[\s\S]*\}\s*$/;
+
+async function runGate(dir, args, env) {
   try {
     const { stdout, stderr } = await run('node', [GATE, '--root', dir, ...args], {
       cwd: ROOT,
       encoding: 'utf8',
       maxBuffer: 256 * 1024 * 1024,
+      env,
     });
     return { code: 0, out: `${stdout}${stderr}` };
   } catch (error) {
@@ -277,6 +296,27 @@ control(
     [`${NM}/x/package.json`]: { name: 'x', version: '1.0.0', dependencies: { [JS_API]: '10.0.0' } },
     [`${NM}/x/${NM}/${JS_API}/package.json`]: { name: JS_API, version: '10.0.0' },
   }),
+);
+
+// Valid JSON that is not a tree parses without throwing, so a reader that only catches parse errors
+// walks `[]` as an empty tree and skips `null` — either way the installed tree reads as clean.
+control(
+  'installed: npm ls printing JSON null is a gap, not a skipped tree',
+  'gap',
+  ['CANNOT INSPECT', 'npm ls --all --json printed null, not a dependency tree object'],
+  withFakeNpm('gap-npm-ls-null', 'null\n'),
+);
+control(
+  'installed: npm ls printing a JSON array is a gap, not an empty tree',
+  'gap',
+  ['CANNOT INSPECT', 'npm ls --all --json printed an array, not a dependency tree object'],
+  withFakeNpm('gap-npm-ls-array', '[]\n'),
+);
+control(
+  'installed: an npm ls tree whose "dependencies" is an array is a gap',
+  'gap',
+  ['CANNOT INSPECT', 'npm ls --all --json printed a tree whose "dependencies" is an array'],
+  withFakeNpm('gap-npm-ls-dependencies-array', '{ "name": "fixture", "dependencies": [] }\n'),
 );
 
 // -------------------------------------------------------------------------- 3. manifests ----
@@ -411,6 +451,44 @@ control(
   fixture('npmrc-spaced', { '.npmrc': '   @alfresco:registry = https://registry.npmjs.org/\n' }),
 );
 
+// The root-level inputs are read by path, not walked, so each needs the containment check the walk
+// applies: a committed link to a runner's or user's file makes the verdict depend on that host.
+{
+  const outside = join(workspace, 'outside-root-files');
+  mkdirSync(outside, { recursive: true });
+  writeFileSync(join(outside, 'npmrc'), '@alfresco:registry=https://npm.pkg.github.com\n');
+  writeFileSync(join(outside, 'package-lock.json'), JSON.stringify(cleanLock(), null, 2));
+  writeFileSync(join(outside, 'package.json'), JSON.stringify(cleanManifest(), null, 2));
+  for (const [file, target] of [
+    ['.npmrc', 'npmrc'],
+    ['package-lock.json', 'package-lock.json'],
+    ['package.json', 'package.json'],
+  ]) {
+    const dir = fixture(`gap-root-link-outside-${file.replace(/\W/g, '_')}`, { [file]: undefined });
+    symlinkSync(join(outside, target), join(dir, file));
+    control(
+      `a root ${file} that links outside the repository is a gap, not read`,
+      'gap',
+      ['CANNOT INSPECT', `${file}: links outside the repository`],
+      dir,
+    );
+  }
+}
+{
+  // Inside the repository a link is just a file: the check must not turn every link into a gap.
+  const dir = fixture('npmrc-link-inside-root', {
+    '.npmrc': undefined,
+    'config/npmrc': '@alfresco:registry=https://npm.pkg.github.com\n',
+  });
+  symlinkSync(join('config', 'npmrc'), join(dir, '.npmrc'));
+  control(
+    '.npmrc: a link to a file inside the repository is read',
+    'fail',
+    '[npmrc] .npmrc:1 @alfresco:registry=https://npm.pkg.github.com',
+    dir,
+  );
+}
+
 // ----------------------------------------------------------------------------- 5. imports ----
 
 control(
@@ -493,6 +571,45 @@ control(
   }),
 );
 
+// A `//` that is not a comment — inside a string, or an unquoted url() — must not blank the rest of
+// the line and the import on it.
+control(
+  'import: an @use after a "//" inside a string is reported',
+  'fail',
+  `[import] libs/ui/src/marker.scss ${CORE}/theming`,
+  fixture('import-scss-slashes-in-string', {
+    'libs/ui/src/marker.scss': `$marker: "//"; @use '${CORE}/theming';\n`,
+  }),
+);
+control(
+  'import: a target after a url(//…) is reported',
+  'fail',
+  `[import] libs/ui/src/cdn.scss ${EXT}/styles`,
+  fixture('import-scss-after-protocol-relative-url', {
+    'libs/ui/src/cdn.scss': `@import url(//cdn.example/x.css), '${EXT}/styles';\n`,
+  }),
+);
+// And string content is not syntax: a `;` inside a value does not start a statement, and the
+// strings in a `with (…)` clause configure a module rather than load one.
+control(
+  'import: a ";" and @import inside a quoted value stay quiet',
+  'pass',
+  'dependency-tree: pass',
+  fixture('import-scss-statement-in-string', {
+    'libs/ui/src/quoted.scss': `.a { content: "; @import '${CORE}/theming';"; }\n`,
+  }),
+);
+control(
+  'import: strings in an @use or @forward with (…) clause stay quiet',
+  'pass',
+  'dependency-tree: pass',
+  fixture('import-scss-with-clause', {
+    'libs/ui/src/configured.scss':
+      `@use 'theme' with ($label: '${CORE}/theming');\n` +
+      `@forward 'tokens' with ($source: '${EXT}' !default);\n`,
+  }),
+);
+
 // ------------------------------------------------------------------- 6. the gate's own rules ----
 
 // Report-only must not be "cannot fail": a clean tree means the removal landed, and the gate has to
@@ -571,6 +688,22 @@ control(
   'gap',
   ['CANNOT INSPECT', 'cannot be resolved'],
   join(workspace, 'no-such-repository'),
+);
+// The failures found before the scan starts are the ones automation most needs to read, so they
+// honour --json like every other gap.
+control(
+  'with --json, a --root that does not resolve is reported as JSON',
+  'gap',
+  [ONLY_JSON_EXIT_2, '"verdict": "CANNOT INSPECT', 'cannot be resolved'],
+  join(workspace, 'no-such-repository'),
+  ['--json'],
+);
+control(
+  'with --json, contradictory mode flags are reported as JSON',
+  'gap',
+  [ONLY_JSON_EXIT_2, 'contradict each other'],
+  fixture('json-contradictory-flags'),
+  ['--blocking', '--report-only', '--json'],
 );
 // Valid JSON of the wrong shape parses without throwing, so a reader that only catches parse
 // errors returns nothing and the file drops out of the scan.
@@ -731,7 +864,7 @@ await Promise.all(
   Array.from({ length: limit }, async () => {
     while (next < controls.length) {
       const i = next++;
-      outcomes[i] = await runGate(controls[i].dir, controls[i].args);
+      outcomes[i] = await runGate(controls[i].dir, controls[i].args, controls[i].env);
     }
   }),
 );
