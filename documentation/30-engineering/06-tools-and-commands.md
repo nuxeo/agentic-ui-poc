@@ -2,14 +2,16 @@
 title: Tools & Commands
 parent: Engineering
 order: 6
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # Tools & Commands — complete reference
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only the three `beta:coverage` rows were re-verified at that commit; the rest of the page as of
+> 2026-08-24 · `77265f9`.
 > Source of truth: the `scripts` block in [`package.json`](../../package.json). If a command
 > here does not exist, this page is wrong — fix it.
 
@@ -79,7 +81,7 @@ Verdicts: `pass` (all 15), `pass-partial` (a filtered run — **not** a phase ga
 | `npm run beta:reference`                                               | Extension reference agrees with the code, both directions | 1                        |
 | `npm run beta:customer-guardrails`                                     | The shipped guardrail, against our reference library      | 1                        |
 | `npm run beta:audit`                                                   | Every evidence assertion can fail                         | 1                        |
-| `npm run beta:coverage`                                                | Ratchet: no regression, no orphan, no unratcheted project | 1                        |
+| `npm run beta:coverage`                                                | Ratchet (no regression/orphan/unratcheted); `FLOORS` met  | 1                        |
 | `npm run beta:coverage -- --run`                                       | Run the tests first                                       |                          |
 | `npm run beta:coverage -- --update-baseline`                           | Re-record; prunes orphans                                 |                          |
 | `node scripts/beta-harness/lockfile-integrity.mjs`                     | Every dependency edge resolves in the lock                | 1                        |

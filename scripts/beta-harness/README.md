@@ -177,7 +177,7 @@ pipeline cannot assume — a measurement run, or evidence that lives outside the
 
 | Command                 | Checks                                          | Why it is separate                                                          |
 | ----------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
-| `npm run beta:coverage` | no project lost coverage                        | needs a `--coverage` test run first                                         |
+| `npm run beta:coverage` | no project lost coverage; `FLOORS` met          | needs a `--coverage` run first; CI runs it after Sonar's tests              |
 | `npm run beta:state`    | every "complete" phase cites a passing manifest | evidence lives outside the tree, so this is local-only and cannot run in CI |
 | `npm run beta:backend`  | the Nuxeo stack is up and serving               | starts containers; a side effect a gate should not have                     |
 
@@ -206,7 +206,9 @@ The Beta bar is 90%. Nothing is near it — `search` is at 22.8%, `document-deta
 at 29.8% — so a gate at 90% would be red until Phase 6, get bypassed, and then get
 ignored. Instead `beta:coverage` records each project in
 `.ai/state/coverage-baseline.json` and fails when one goes **backwards** by more
-than 0.5pp, printing how far each still is from 90%.
+than 0.5pp, printing how far each still is from 90%. A project named in `FLOORS` is held to a
+fixed floor instead — `satori-components` at 90% of lines from its first commit, with no file
+allowed outside the measurement and no stale report, including one that counts a deleted file.
 
 ```bash
 npm run beta:coverage -- --run               # run the tests, then check the ratchet

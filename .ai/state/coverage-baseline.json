@@ -8,6 +8,14 @@
   "target": 90,
   "tolerance": 0.5,
   "projects": {
+    "@nuxeo-satori/generators": {
+      "lines": 20.89,
+      "statements": 20.89,
+      "branches": 82.35,
+      "functions": 37.5,
+      "sTotal": 383,
+      "sCovered": 80
+    },
     "acme-extensions": {
       "lines": 100,
       "statements": 100,
@@ -72,6 +80,14 @@
       "sTotal": 4840,
       "sCovered": 4480
     },
+    "document-layouts": {
+      "lines": 99.64,
+      "statements": 99.64,
+      "branches": 95.17,
+      "functions": 100,
+      "sTotal": 826,
+      "sCovered": 823
+    },
     "integration-tests": {
       "lines": 30.36,
       "statements": 30.36,
@@ -103,6 +119,14 @@
       "functions": 93.75,
       "sTotal": 476,
       "sCovered": 459
+    },
+    "satori-components": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "sTotal": 14,
+      "sCovered": 14
     },
     "search": {
       "lines": 94.69,

@@ -218,8 +218,8 @@ Two independent artefacts, and a clean support boundary.
 
 ### 1. The npm library — what customers code against
 
-`@nuxeo-satori/platform`, five entry points: `.`, `/app-config`, `/extensions`, `/nuxeo-client`,
-`/ui`. The built package also ships `AGENTS.md`, `extension-reference.md`, five Nx generators —
+`@nuxeo-satori/platform`, six entry points: `.`, `/app-config`, `/components`, `/extensions`,
+`/nuxeo-client`, `/ui`. The built package also ships `AGENTS.md`, `extension-reference.md`, five Nx generators —
 four for Layer 2 libraries, one for configuration packages — and the guardrail script.
 
 **Say "publishable", not "published".** Nothing is on any registry — that is a deliberate later

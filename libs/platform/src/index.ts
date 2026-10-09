@@ -8,6 +8,7 @@
  * | -------------------------------------- | --------------------------------------------------- |
  * | `@nuxeo-satori/platform/extensions`    | Layer 1/2 — slots, rules, actions, registration      |
  * | `@nuxeo-satori/platform/app-config`    | Layer 0 — bootstrap config and the runtime manifest  |
+ * | `@nuxeo-satori/platform/components`    | `nxs-` components, Material-backed, no Satori import |
  * | `@nuxeo-satori/platform/nuxeo-client`  | Nuxeo REST services and document models             |
  * | `@nuxeo-satori/platform/ui`            | Shared components and dialogs                       |
  *
@@ -28,6 +29,7 @@
  */
 export const PLATFORM_ENTRY_POINTS = Object.freeze([
   'app-config',
+  'components',
   'extensions',
   'nuxeo-client',
   'ui',

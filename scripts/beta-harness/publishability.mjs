@@ -115,6 +115,7 @@ if (pkg.scripts?.prepublishOnly) {
 const fesm = [
   'nuxeo-satori-platform.mjs',
   'nuxeo-satori-platform-app-config.mjs',
+  'nuxeo-satori-platform-components.mjs',
   'nuxeo-satori-platform-extensions.mjs',
   'nuxeo-satori-platform-nuxeo-client.mjs',
   'nuxeo-satori-platform-ui.mjs',
@@ -246,9 +247,9 @@ const manifestDeps = new Set([
 ]);
 
 /**
- * Every `.mjs` the `exports` map actually points at, not the hard-coded five.
+ * Every `.mjs` the `exports` map actually points at, not only the hard-coded list.
  *
- * The `fesm` list above is a deliberate, explicit expectation for check 2 — those five bundles must
+ * The `fesm` list above is a deliberate, explicit expectation for check 2 — those bundles must
  * exist. It is the wrong source for *this* check, which asks a question about the whole published
  * surface: add a sixth entry point and its bundle was silently omitted, so an undeclared runtime
  * dependency reachable only through it still passed. A gate that shrinks as the package grows is the
@@ -275,7 +276,7 @@ const scanned = publishedBundleNames();
 const extras = scanned.filter((name) => !fesm.includes(name));
 if (extras.length > 0) {
   notes.push(
-    `import scan covers ${extras.length} bundle(s) beyond the expected five: ${extras.join(', ')}`,
+    `import scan covers ${extras.length} bundle(s) beyond the expected ${fesm.length}: ${extras.join(', ')}`,
   );
 }
 
@@ -285,8 +286,8 @@ for (const name of scanned) {
   if (!existsSync(file)) {
     // A bundle the `exports` map points at but which is not on disk.
     //
-    // Continuing silently was fail-open: the fixed five are asserted present by check 2, but a newly
-    // added sixth export could point at a missing FESM file and still pass this "whole published
+    // Continuing silently was fail-open: the fixed list is asserted present by check 2, but a newly
+    // added export could point at a missing FESM file and still pass this "whole published
     // surface" scan — and `npm publish --dry-run` does not validate export targets either, so nothing
     // would have caught it. An export that does not resolve is a broken package, and it is also a
     // bundle whose imports were never read.

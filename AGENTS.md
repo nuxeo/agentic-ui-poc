@@ -126,6 +126,7 @@ Feature flag: **on by default** — gated by `AiFeatureFlagService`, with an exp
 | Change auth behavior    | `apps/nuxeo-ui/src/app/auth/`                                                                  |
 | Add a data model        | `libs/shared/nuxeo-client/src/lib/models/`                                                     |
 | Add a shared component  | `libs/shared/ui/src/lib/`                                                                      |
+| Add an `nxs-` component | `libs/shared/satori-components/src/lib/` — rules in `AGENTS/00-architecture.md`                |
 
 ---
 

@@ -5106,7 +5106,7 @@ function checkNoProseInComponentInputs() {
     'fontSet',
     'svgIcon',
   ]);
-  const ELEMENT = /<((?:mat|hxp|app|sat|adf|nx|lib)-[\w-]+|[A-Z][\w-]*)\b([^>]*)>/gs;
+  const ELEMENT = /<((?:mat|hxp|nxs|app|sat|adf|nx|lib)-[\w-]+|[A-Z][\w-]*)\b([^>]*)>/gs;
   const ATTRIBUTE = /(?<![[(\w.-])([a-zA-Z][\w-]*)="([A-Z][^"<>{}]*)"/g;
 
   const templates = [
@@ -6215,6 +6215,574 @@ function checkTranslateIsInjectedWhereUsed() {
   }
 }
 
+/* ---------------- libs/shared/satori-components (NXSAT-308) ---------------- */
+
+/**
+ * The `nxs-` component library, published as `@nuxeo-satori/platform/components`.
+ *
+ * Three rules hold it to the plan of record (`satori_component_library` plan, sections 3 and 7):
+ * it builds and ships with no ADF, no HxCS client and no Satori, because Satori is to enter only
+ * through a separate `/components-satori` entry point — so that once Satori is an optional peer of
+ * the package, a customer without GitHub Packages access still gets the Material implementations; it is reached only through its entry point; and
+ * it stays cheap to turn into a federated remote later.
+ */
+const SATORI_COMPONENTS_ROOT = 'libs/shared/satori-components';
+const SATORI_COMPONENTS_ENTRY = '@nuxeo-satori/platform/components';
+const SATORI_COMPONENTS_BARREL = `${SATORI_COMPONENTS_ROOT}/src/index.ts`;
+
+const isTsconfig = (path) => /(^|\/)tsconfig[^/]*\.json$/.test(path);
+
+/**
+ * `paths`, `baseUrl` and the config that declared `paths`, as TypeScript computes them for one
+ * config: its own values, else the nearest inherited ones. `baseUrl` is resolved against the
+ * config that sets it. Only relative `extends` are followed — a package config is not ours.
+ */
+function effectiveCompilerPaths(config, seen = new Set()) {
+  if (seen.has(config) || !fileExists(config)) return {};
+  const parsed = ts.parseConfigFileTextToJson(config, read(config)).config ?? {};
+  let effective = {};
+  for (const parent of [parsed.extends ?? []].flat()) {
+    if (typeof parent !== 'string' || !parent.startsWith('.')) continue;
+    const file = toPosixRel(
+      join(dirname(config), parent.endsWith('.json') ? parent : `${parent}.json`),
+    );
+    effective = { ...effective, ...effectiveCompilerPaths(file, new Set([...seen, config])) };
+  }
+  const options = parsed.compilerOptions ?? {};
+  if (typeof options.baseUrl === 'string') {
+    effective.baseUrl = toPosixRel(join(dirname(config), options.baseUrl));
+  }
+  if (options.paths && typeof options.paths === 'object') {
+    effective.paths = options.paths;
+    effective.declaredIn = config;
+  }
+  return effective;
+}
+
+/**
+ * Every `paths` map a compilation in this repository sees, its targets made repo-relative.
+ *
+ * Not only `tsconfig.base.json`'s: a project's own tsconfig may declare `paths`, which replaces the
+ * inherited map for that project, and an alias declared there is as real as one in the base.
+ * Targets resolve against the effective `baseUrl`, or with none against the directory of the
+ * config that declared `paths`; `${configDir}` is the config being compiled.
+ */
+function tsconfigPathMaps() {
+  const configs = [
+    ...readdirSync(repoRoot).filter(isTsconfig),
+    ...walk('apps', isTsconfig),
+    ...walk('libs', isTsconfig),
+  ];
+  const maps = new Map();
+  for (const config of configs) {
+    const { paths, baseUrl, declaredIn } = effectiveCompilerPaths(config);
+    if (!paths) continue;
+    const from = baseUrl ?? dirname(declaredIn);
+    const usesConfigDir = JSON.stringify(paths).includes('${configDir}');
+    const key = `${declaredIn}|${from}|${usesConfigDir ? config : ''}`;
+    if (maps.has(key)) continue;
+    const rebase = (target) =>
+      target.startsWith('${configDir}')
+        ? toPosixRel(join(dirname(config), target.slice('${configDir}'.length).replace(/^\//, '')))
+        : toPosixRel(join(from, target));
+    maps.set(key, {
+      declaredIn,
+      paths: Object.fromEntries(
+        Object.entries(paths).map(([alias, targets]) => [
+          alias,
+          (Array.isArray(targets) ? targets : []).map(rebase),
+        ]),
+      ),
+    });
+  }
+  return [...maps.values()];
+}
+
+/** The first file a list of targets resolves to, as TypeScript tries them, or `null`. */
+function firstExistingTarget(targets) {
+  for (const target of targets) {
+    const base = toPosixRel(join(target)).replace(/^\.\//, '');
+    // TypeScript maps an explicit `.js`/`.mjs` specifier back to its `.ts`/`.mts` source.
+    const source = base.replace(/\.js$/, '.ts').replace(/\.mjs$/, '.mts');
+    for (const candidate of [source, base, `${base}.ts`, `${base}.mts`, `${base}/index.ts`]) {
+      if (fileExists(candidate) && statSync(join(repoRoot, candidate)).isFile()) return candidate;
+    }
+  }
+  return null;
+}
+
+/**
+ * The repo-relative files a specifier resolves to — `[]` if it names no file, `undefined` if it is
+ * neither relative nor matched by any alias, so a package.
+ *
+ * Every alias in every map is tried, not only the one TypeScript would pick for `fromFile`:
+ * over-approximating what a file can reach adds files to a walk and never hides one.
+ */
+function resolveSpecifier(fromFile, specifier, pathMaps) {
+  if (specifier.startsWith('.')) {
+    const hit = firstExistingTarget([toPosixRel(join(dirname(fromFile), specifier))]);
+    return hit ? [hit] : [];
+  }
+  let matched = false;
+  const out = new Set();
+  for (const { paths } of pathMaps) {
+    for (const [alias, aliasTargets] of Object.entries(paths)) {
+      let targets = aliasTargets;
+      if (alias !== specifier) {
+        const star = alias.indexOf('*');
+        if (star === -1) continue;
+        const [prefix, suffix] = [alias.slice(0, star), alias.slice(star + 1)];
+        if (
+          specifier.length < prefix.length + suffix.length ||
+          !specifier.startsWith(prefix) ||
+          !specifier.endsWith(suffix)
+        ) {
+          continue;
+        }
+        const middle = specifier.slice(prefix.length, specifier.length - suffix.length);
+        targets = aliasTargets.map((target) => target.replaceAll('*', middle));
+      }
+      matched = true;
+      const hit = firstExistingTarget(targets);
+      if (hit) out.add(hit);
+    }
+  }
+  return matched ? [...out] : undefined;
+}
+
+/** Every module specifier in a source file, type-only and dynamic imports included. */
+function importSpecifiers(text) {
+  return ts.preProcessFile(text, true, true).importedFiles.map((entry) => entry.fileName);
+}
+
+/**
+ * A decorator's `@angular/core` name, so `import { Component as C }` and `import * as ng`
+ * classify the same as a plain `@Component`.
+ */
+function angularDecoratorNamer(source) {
+  const names = new Map();
+  const namespaces = new Set();
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    if (statement.moduleSpecifier.text !== '@angular/core') continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings) continue;
+    if (ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
+    else {
+      for (const element of bindings.elements) {
+        names.set(element.name.text, (element.propertyName ?? element.name).text);
+      }
+    }
+  }
+  return (callee) => {
+    if (ts.isIdentifier(callee)) return names.get(callee.text) ?? callee.text;
+    if (
+      ts.isPropertyAccessExpression(callee) &&
+      ts.isIdentifier(callee.expression) &&
+      namespaces.has(callee.expression.text)
+    ) {
+      return callee.name.text;
+    }
+    return callee.getText(source);
+  };
+}
+
+/**
+ * A metadata key by name, however it is spelled: `providedIn`, `'providedIn'` and
+ * `['providedIn']` are one key to Angular, so they are one key here.
+ */
+function metadataKey(property, source) {
+  const name = property.name;
+  if (!name) return null;
+  if (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) return name.text;
+  if (ts.isComputedPropertyName(name) && ts.isStringLiteralLike(name.expression)) {
+    return name.expression.text;
+  }
+  return name.getText(source);
+}
+
+const STYLE_KEYS = new Set(['styleUrl', 'styleUrls', 'styles']);
+
+/**
+ * The stylesheets a file's decorators name: `styleUrl` / `styleUrls` paths and inline `styles`.
+ *
+ * Read from the syntax tree, not matched by pattern, because every spelling a pattern missed was a
+ * stylesheet never opened: a quoted or computed key, a backtick path. What cannot be read
+ * statically — a constant, an interpolated template, `@Component` metadata that is not an object
+ * literal or spreads one in — is returned as `unreadable`, so the caller fails rather than passing
+ * a stylesheet it never saw.
+ */
+function stylesOf(file, text) {
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const lineOf = (node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+  const decoratorName = angularDecoratorNamer(source);
+  const out = { files: [], inline: [], unreadable: [] };
+  const visit = (node) => {
+    if (ts.isDecorator(node) && ts.isCallExpression(node.expression)) {
+      const isComponent = decoratorName(node.expression.expression) === 'Component';
+      const [metadata] = node.expression.arguments;
+      if (metadata && !ts.isObjectLiteralExpression(metadata) && isComponent) {
+        out.unreadable.push({ line: lineOf(metadata), key: null });
+      }
+      for (const property of metadata && ts.isObjectLiteralExpression(metadata)
+        ? metadata.properties
+        : []) {
+        if (ts.isSpreadAssignment(property)) {
+          if (isComponent) out.unreadable.push({ line: lineOf(property), key: null });
+          continue;
+        }
+        const key = metadataKey(property, source);
+        if (!STYLE_KEYS.has(key)) continue;
+        const value = ts.isPropertyAssignment(property) ? property.initializer : undefined;
+        const items = value && ts.isArrayLiteralExpression(value) ? value.elements : [value];
+        for (const item of items) {
+          if (!item || !ts.isStringLiteralLike(item)) {
+            out.unreadable.push({ line: lineOf(property), key });
+          } else if (key === 'styles') {
+            out.inline.push(item.text);
+          } else {
+            out.files.push(toPosixRel(join(dirname(file), item.text)));
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return out;
+}
+
+/**
+ * The files a local Sass URL can load, in Sass's own order: the file, its `_` partial, then the
+ * directory's `index` or `_index` — each as `.scss` or `.sass`. A URL with an extension names the
+ * file and its partial only. Plain `.css` is left out: Sass cannot load a package from it.
+ */
+function sassCandidates(base) {
+  const dir = dirname(base);
+  const name = base.split('/').pop();
+  if (/\.(scss|sass)$/.test(name)) return [base, toPosixRel(join(dir, `_${name}`))];
+  return [
+    ...['scss', 'sass'].flatMap((ext) => [
+      `${base}.${ext}`,
+      toPosixRel(join(dir, `_${name}.${ext}`)),
+    ]),
+    ...['scss', 'sass'].flatMap((ext) => [`${base}/index.${ext}`, `${base}/_index.${ext}`]),
+  ];
+}
+
+/**
+ * Every URL a stylesheet loads: `@use` and `@forward` (one URL each — a later string is
+ * configuration), every entry of an `@import` list, and `meta.load-css()`.
+ */
+function sassLoadedUrls(body) {
+  const urls = [];
+  for (const rule of body.matchAll(/@(use|forward|import)\s+([^;{}]*)/g)) {
+    const strings = [...rule[2].matchAll(/['"]([^'"]+)['"]/g)].map((match) => match[1]);
+    urls.push(...(rule[1] === 'import' ? strings : strings.slice(0, 1)));
+  }
+  for (const call of body.matchAll(/load-css\(\s*['"]([^'"]+)['"]/g)) urls.push(call[1]);
+  return urls;
+}
+
+function satoriComponentsSources() {
+  return walk(`${SATORI_COMPONENTS_ROOT}/src`, (path) => /\.(ts|mts)$/.test(path));
+}
+
+/**
+ * No `@alfresco/*`, no `@hylandsoftware/*` — reached directly **or through anything it imports**.
+ *
+ * Transitive on purpose. `libs/shared/nuxeo-client` once imported a Satori type in `avatar-colors.ts`
+ * and `libs/shared/extensions` imported `@alfresco/adf-extensions`, so a component importing either
+ * barrel needed both packages to compile while a direct-import check stayed green. A type-only
+ * import counts: it still needs the package installed to compile. The ban is on the specifier, so
+ * a tsconfig alias that maps a banned name to a workspace file does not lift it — the emitted code
+ * still names the package. Stylesheets count too, because
+ * `@use '@hylandsoftware/satori-ui/theme'` needs the package as much as an import does, and so do
+ * inline `styles`, which the app compiles as SCSS.
+ */
+function checkSatoriComponentsDependencies() {
+  const roots = satoriComponentsSources();
+  if (roots.length === 0) {
+    fail(
+      `${SATORI_COMPONENTS_ROOT} has no TypeScript sources, so the no-ADF / no-Satori rule for ` +
+        'the component library asserted nothing.',
+    );
+    return;
+  }
+
+  const pathMaps = tsconfigPathMaps();
+  const reportedFor = new Set();
+  const banned = (specifier) => {
+    if (/^@alfresco\//.test(specifier)) {
+      return 'ADF leaves the dependency tree in NXSAT-308, and nothing new may be built on it';
+    }
+    if (/^@hylandsoftware\/hxcs-js-client(\/|$)/.test(specifier)) {
+      return 'the HxCS client exists only for the adf-hx bridge and leaves with it';
+    }
+    if (/^@hylandsoftware\//.test(specifier)) {
+      return (
+        'Satori may enter only through a separate `/components-satori` entry point, so this ' +
+        'library never needs the Satori package itself'
+      );
+    }
+    return null;
+  };
+  // One report per offending import, however many library files reach it.
+  const report = (chain, specifier, why) => {
+    const holder = chain[chain.length - 1];
+    const key = `${holder}|${specifier}`;
+    if (reportedFor.has(key)) return;
+    reportedFor.add(key);
+    const outside = !holder.startsWith(`${SATORI_COMPONENTS_ROOT}/`);
+    fail(
+      `${holder} imports \`${specifier}\`` +
+        (outside ? `, and the library reaches that file through ${chain.join(' -> ')}` : '') +
+        `. ${SATORI_COMPONENTS_ROOT} may not depend on it: ${why}.` +
+        (outside
+          ? '\n    The import is not in the library itself — move what you need behind a ' +
+            'boundary that does not carry the package, or remove the package from that file.'
+          : ''),
+    );
+  };
+
+  // `label` names the stylesheet in a report; `at` is where its relative URLs resolve from.
+  const scanStyleText = (body, at, label, chain, seen) => {
+    for (const url of sassLoadedUrls(body)) {
+      // `~` is webpack's package prefix and `pkg:` Sass's; either way the URL names a package.
+      const why = banned(url.replace(/^~/, '').replace(/^pkg:/, ''));
+      if (why) {
+        report([...chain, label], url, why);
+        continue;
+      }
+      // Sass resolves a bare URL (`@use 'theme'`) against the current file first, like `./theme`.
+      // A package URL starts with `@` or `~`; `sass:`, `pkg:` and any other scheme are not files.
+      if (/^[@~]|^[a-z][a-z0-9+.-]*:/i.test(url)) continue;
+      const base = toPosixRel(join(dirname(at), url));
+      const found = sassCandidates(base).find(
+        (candidate) => fileExists(candidate) && statSync(join(repoRoot, candidate)).isFile(),
+      );
+      if (found) scanStyles(found, [...chain, label], seen);
+    }
+  };
+  const scanStyles = (styleFile, chain, seen) => {
+    if (seen.has(styleFile) || !fileExists(styleFile)) return;
+    seen.add(styleFile);
+    scanStyleText(read(styleFile), styleFile, styleFile, chain, seen);
+  };
+
+  for (const root of roots) {
+    const seen = new Set();
+    const styles = new Set();
+    const queue = [[root]];
+    while (queue.length > 0) {
+      const chain = queue.shift();
+      const file = chain[chain.length - 1];
+      if (seen.has(file)) continue;
+      seen.add(file);
+      const text = read(file);
+      const sheets = stylesOf(file, text);
+      for (const { line, key } of sheets.unreadable) {
+        const where = `${file}:${line}`;
+        if (reportedFor.has(where)) continue;
+        reportedFor.add(where);
+        fail(
+          key
+            ? `${where} \`${key}\` is not a string literal, so the stylesheet it names was not ` +
+                `checked for ADF or Satori. Write it as a literal.`
+            : `${where} @Component metadata is not an object literal the guardrail can read — a ` +
+                'constant, or a spread — so its stylesheets were not checked for ADF or Satori. ' +
+                'Write the metadata inline.',
+        );
+      }
+      for (const styleFile of sheets.files) scanStyles(styleFile, chain, styles);
+      for (const css of sheets.inline) {
+        scanStyleText(css, file, `${file} (inline styles)`, chain.slice(0, -1), styles);
+      }
+      for (const specifier of importSpecifiers(text)) {
+        const why = banned(specifier);
+        if (why) {
+          report(chain, specifier, why);
+          continue;
+        }
+        for (const resolved of resolveSpecifier(file, specifier, pathMaps) ?? []) {
+          if (!seen.has(resolved)) queue.push([...chain, resolved]);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * The library is reached through `@nuxeo-satori/platform/components` and nothing else.
+ *
+ * A deep import into a library cannot be versioned — the reason the customer guardrail rejects
+ * deep platform imports — and across a federation boundary it cannot be loaded at all. So: no
+ * subpath under the entry specifier, no relative path into the library from outside it, no second
+ * alias into it in any tsconfig — a project's own `paths` included — and the alias and the
+ * published `ng-package.json` both name the barrel.
+ */
+function checkSatoriComponentsEntryPoint() {
+  if (!fileExists(SATORI_COMPONENTS_BARREL)) {
+    fail(
+      `${SATORI_COMPONENTS_BARREL} does not exist, so the component library has no entry point ` +
+        'and the no-deep-imports rule asserted nothing.',
+    );
+    return;
+  }
+
+  const pathMaps = tsconfigPathMaps();
+  const inLibrary = (path) =>
+    path === SATORI_COMPONENTS_ROOT || path.startsWith(`${SATORI_COMPONENTS_ROOT}/`);
+  const isBarrelOnly = (targets) => targets.length === 1 && targets[0] === SATORI_COMPONENTS_BARREL;
+
+  const base = pathMaps.find((map) => map.declaredIn === 'tsconfig.base.json')?.paths ?? {};
+  const entryTargets = base[SATORI_COMPONENTS_ENTRY] ?? [];
+  if (!isBarrelOnly(entryTargets)) {
+    fail(
+      `tsconfig.base.json must map \`${SATORI_COMPONENTS_ENTRY}\` to exactly ` +
+        `\`${SATORI_COMPONENTS_BARREL}\`; it maps it to ${JSON.stringify(entryTargets)}.`,
+    );
+  }
+  for (const { declaredIn, paths } of pathMaps) {
+    for (const [alias, targets] of Object.entries(paths)) {
+      if (alias === SATORI_COMPONENTS_ENTRY) {
+        // A project that declares `paths` must re-declare the entry, and may — to the barrel.
+        if (declaredIn !== 'tsconfig.base.json' && !isBarrelOnly(targets)) {
+          fail(
+            `${declaredIn} maps \`${SATORI_COMPONENTS_ENTRY}\` to ${JSON.stringify(targets)}; ` +
+              `like tsconfig.base.json it must name exactly \`${SATORI_COMPONENTS_BARREL}\`.`,
+          );
+        }
+        continue;
+      }
+      const into = targets.filter(inLibrary);
+      if (into.length > 0) {
+        fail(
+          `${declaredIn} alias \`${alias}\` points into ${SATORI_COMPONENTS_ROOT} ` +
+            `(${into.join(', ')}). The library has one entry point, \`${SATORI_COMPONENTS_ENTRY}\`; ` +
+            'a second alias is a deep import with a name.',
+        );
+      }
+    }
+  }
+
+  const ngPackage = 'libs/platform/components/ng-package.json';
+  if (!fileExists(ngPackage)) {
+    fail(`${ngPackage} is missing, so \`${SATORI_COMPONENTS_ENTRY}\` is not published.`);
+  } else {
+    let entryFile;
+    try {
+      entryFile = JSON.parse(read(ngPackage)).lib?.entryFile;
+    } catch {
+      entryFile = undefined;
+    }
+    const resolved = entryFile ? toPosixRel(join('libs/platform/components', entryFile)) : null;
+    if (resolved !== SATORI_COMPONENTS_BARREL) {
+      fail(
+        `${ngPackage} must publish \`${SATORI_COMPONENTS_BARREL}\`; its entryFile resolves to ` +
+          `${resolved ?? '(none)'}.`,
+      );
+    }
+  }
+
+  const consumers = [
+    ...walk('apps', (path) => /\.(ts|mts|js|mjs)$/.test(path)),
+    ...walk('libs', (path) => /\.(ts|mts|js|mjs)$/.test(path)),
+  ].filter((path) => !inLibrary(path));
+  for (const file of consumers) {
+    for (const specifier of importSpecifiers(read(file))) {
+      if (specifier === SATORI_COMPONENTS_ENTRY) continue;
+      let target = null;
+      if (specifier.startsWith(`${SATORI_COMPONENTS_ENTRY}/`)) {
+        target = specifier;
+      } else if (specifier.startsWith('.')) {
+        const path = toPosixRel(join(dirname(file), specifier));
+        if (inLibrary(path)) target = path;
+      } else {
+        target = (resolveSpecifier(file, specifier, pathMaps) ?? []).find(inLibrary) ?? null;
+      }
+      if (target) {
+        fail(
+          `${file} imports \`${specifier}\`, which reaches into ${SATORI_COMPONENTS_ROOT} past its ` +
+            `entry point. Import from \`${SATORI_COMPONENTS_ENTRY}\`, and export what you need from ` +
+            `${SATORI_COMPONENTS_BARREL} if it is not there yet.`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * The two federation-readiness rules a static check can hold today (plan section 7).
+ *
+ * - **Standalone only.** A remote exposes standalone components; an NgModule does not survive the
+ *   boundary cleanly. So no `@NgModule`, and every `@Component`, `@Directive` and `@Pipe` says
+ *   `standalone: true` — the repo convention, stated rather than left to the Angular 19+ default.
+ * - **No `providedIn` singletons.** A root-provided service is one instance per Angular platform,
+ *   and a host and a remote are two, so the "singleton" silently becomes two. That is the trap that
+ *   forced the adf-hx ports into root-injector binding. Shared state goes behind an
+ *   `InjectionToken` with an explicit `provide…()` function, so host and remote can share one
+ *   instance. Every `providedIn` value is refused, `'platform'` and `'any'` included.
+ *
+ * Specs are exempt: a test host is not part of the library.
+ */
+function checkSatoriComponentsFederationReadiness() {
+  const sources = satoriComponentsSources().filter((path) => !/\.(spec|test)\.ts$/.test(path));
+  if (sources.length === 0) {
+    fail(
+      `${SATORI_COMPONENTS_ROOT} has no non-spec TypeScript sources, so the federation-readiness ` +
+        'rules asserted nothing.',
+    );
+    return;
+  }
+
+  for (const file of sources) {
+    const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+    const lineOf = (node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+    const decoratorName = angularDecoratorNamer(source);
+    const keyOf = (property) => metadataKey(property, source);
+
+    const visit = (node) => {
+      if (ts.isDecorator(node) && ts.isCallExpression(node.expression)) {
+        const name = decoratorName(node.expression.expression);
+        if (name === 'NgModule') {
+          fail(
+            `${file}:${lineOf(node)} declares an @NgModule. The component library is standalone ` +
+              'only — an NgModule does not cross a federation boundary cleanly. Export the ' +
+              'standalone pieces, or a `provide…()` function for their providers.',
+          );
+        } else if (['Component', 'Directive', 'Pipe'].includes(name)) {
+          const [config] = node.expression.arguments;
+          const standalone =
+            config && ts.isObjectLiteralExpression(config)
+              ? config.properties.find(
+                  (p) => ts.isPropertyAssignment(p) && keyOf(p) === 'standalone',
+                )
+              : undefined;
+          if (!standalone || standalone.initializer.kind !== ts.SyntaxKind.TrueKeyword) {
+            fail(
+              `${file}:${lineOf(node)} @${name} does not say \`standalone: true\`. Every component, ` +
+                'directive and pipe in the library is standalone, and says so.',
+            );
+          }
+        }
+      }
+      if (
+        (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) &&
+        keyOf(node) === 'providedIn'
+      ) {
+        fail(
+          `${file}:${lineOf(node)} uses \`providedIn\`. A provided-in singleton becomes two ` +
+            'instances across a federation boundary. Put shared state behind an InjectionToken ' +
+            'and export an explicit `provide…()` function instead.',
+        );
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+  }
+}
+
 const GUARDRAILS = [
   checkThemeTokens,
   checkDocsNumbering,
@@ -6252,6 +6820,9 @@ const GUARDRAILS = [
   checkShippedDefaultLanguage,
   checkAccessibleNameFallbacks,
   checkLocaleDataRegistered,
+  checkSatoriComponentsDependencies,
+  checkSatoriComponentsEntryPoint,
+  checkSatoriComponentsFederationReadiness,
 ];
 
 /**
