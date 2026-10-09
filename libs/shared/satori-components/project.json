@@ -46,6 +46,12 @@
     "build-storybook": {
       "executor": "@storybook/angular:build-storybook",
       "outputs": ["{options.outputDir}"],
+      "inputs": [
+        "default",
+        "^production",
+        "{projectRoot}/.storybook/**/*",
+        "{workspaceRoot}/apps/nuxeo-ui/public/i18n/**/*"
+      ],
       "options": {
         "outputDir": "dist/storybook/satori-components",
         "configDir": "libs/shared/satori-components/.storybook",

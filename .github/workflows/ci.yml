@@ -178,7 +178,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if ! npx nx show projects --affected --base=$NX_BASE --head=$NX_HEAD | grep -qx satori-components; then
+          # Captured first, so a failing query fails the step instead of reading as "not affected".
+          affected="$(npx nx show projects --affected --base=$NX_BASE --head=$NX_HEAD)"
+          if ! grep -qx satori-components <<<"$affected"; then
             echo "satori-components is not affected: Storybook build NOT RUN"
             exit 0
           fi
