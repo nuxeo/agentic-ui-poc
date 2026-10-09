@@ -4,6 +4,7 @@ import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-clien
 
 import {
   NXS_STANDARD_PERMISSIONS,
+  dateToWrite,
   dayToDate,
   instantToDay,
   isInheritanceMarker,
@@ -556,5 +557,31 @@ describe('calendar days', () => {
     expect(dayToDate('garbage')).toBeNull();
     expect(instantToDay('2030-01-01T00:00:00.000Z')).toBe('2030-01-01');
     expect(instantToDay(null)).toBeNull();
+  });
+
+  it('reads midnight in a zone east or west of UTC as that day', () => {
+    // Measured on 2025.26.16: an ACE written as 2030-01-01T00:00:00+01:00, as Nuxeo Web UI sends
+    // from a CET browser, is read back as 2029-12-31T23:00:00.000Z.
+    expect(instantToDay('2029-12-31T23:00:00.000Z')).toBe('2030-01-01');
+    expect(instantToDay('2029-12-31T12:00:00.000Z')).toBe('2030-01-01');
+    expect(instantToDay('2030-01-01T05:00:00.000Z')).toBe('2030-01-01');
+    expect(instantToDay('2030-01-01T11:00:00.000Z')).toBe('2030-01-01');
+    expect(instantToDay('2030-01-01')).toBe('2030-01-01');
+  });
+});
+
+describe('dateToWrite', () => {
+  const cetMidnight = '2029-12-31T23:00:00.000Z';
+
+  it("sends the server's own instant back when the day is unchanged", () => {
+    // Sending the day instead moved this entry's start 23 hours earlier, measured.
+    expect(dateToWrite('2030-01-01', cetMidnight)).toBe(cetMidnight);
+  });
+
+  it('sends the day the user picked when it changed, was added or was cleared', () => {
+    expect(dateToWrite('2030-01-02', cetMidnight)).toBe('2030-01-02');
+    expect(dateToWrite('2030-01-02', null)).toBe('2030-01-02');
+    expect(dateToWrite(null, cetMidnight)).toBeNull();
+    expect(dateToWrite(null, null)).toBeNull();
   });
 });

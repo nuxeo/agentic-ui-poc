@@ -1539,7 +1539,10 @@ second list only when that list includes `Everything`, since only then is it the
   and `ReplacePermission`. The panel re-reads the ACL before writing, refusing a change whose target
   is gone, and again after, reporting any change the server does not show.
 - `ReplacePermission` writes the `begin` and `end` it is given, so an edit of the permission alone
-  must send the entry's existing dates or it becomes permanent.
+  must send the entry's existing dates or it becomes permanent — and send them as the instants the
+  read returned. Dates come back in UTC, so an entry written as `2030-01-01T00:00:00+01:00` reads
+  as `2029-12-31T23:00:00.000Z`, and sending the day `2029-12-31` back moved it 23 hours earlier.
+  The panel shows that entry as 1 January and writes an unchanged date back as the original instant.
 - `AddPermission` answers `400` "Permission X is invalid" for a permission the server does not
   define, and `403` "Privilege 'WriteSecurity' is not granted" to a user who cannot manage
   permissions. A deny other than the inheritance marker is refused with `500` ("Negative ACL not

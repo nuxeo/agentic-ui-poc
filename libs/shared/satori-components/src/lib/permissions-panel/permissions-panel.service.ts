@@ -8,6 +8,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import {
+  dateToWrite,
   readSnapshot,
   refusalsFor,
   unconfirmedChanges,
@@ -16,8 +17,10 @@ import {
   type NxsPermissionsSnapshot,
 } from './permissions-model';
 
-/** How a save ended. Every outcome carries the server's ACL as it stands afterwards. */
+/** How a save ended. Every outcome that could read it carries the server's ACL afterwards. */
 export type NxsSaveOutcome =
+  /** Nothing was written, because the read before the first write failed. */
+  | { readonly kind: 'unread'; readonly error: unknown }
   /** Every change was written and the re-read shows each one. */
   | { readonly kind: 'saved'; readonly count: number; readonly snapshot: NxsPermissionsSnapshot }
   /** Nothing was written, because these changes cannot be written faithfully. */
@@ -64,13 +67,17 @@ export class NxsPermissionsService {
    * Writes `changes`, refusing the whole batch first if any of them cannot be written faithfully.
    *
    * The ACL is read again before the first write rather than trusted from the panel's view, so a
-   * target someone else changed meanwhile is refused instead of silently skipped by Nuxeo. Writes
-   * run in order and stop at the first server refusal. The ACL is re-read afterwards, both to show
-   * the user what the server now holds and to confirm each write actually took.
+   * target someone else changed meanwhile is refused instead of silently skipped by Nuxeo; if that
+   * read fails, nothing is sent. Writes run in order and stop at the first server refusal. The ACL
+   * is re-read afterwards, both to show the user what the server now holds and to confirm each
+   * write actually took.
    */
   save(uid: string, changes: readonly NxsPermissionChange[]): Observable<NxsSaveOutcome> {
     return this.load(uid).pipe(
-      switchMap((fresh) => {
+      map((fresh) => ({ fresh, error: null as unknown })),
+      catchError((error: unknown) => of({ fresh: null, error })),
+      switchMap(({ fresh, error }) => {
+        if (!fresh) return of<NxsSaveOutcome>({ kind: 'unread', error });
         const refusals = refusalsFor(fresh, changes);
         if (refusals.length > 0) {
           return of<NxsSaveOutcome>({ kind: 'refused', refusals, snapshot: fresh });
@@ -157,8 +164,8 @@ export class NxsPermissionsService {
           id: change.target.id,
           username: change.target.principal,
           permission: change.permission,
-          begin: change.begin,
-          end: change.end,
+          begin: dateToWrite(change.begin, change.target.begin),
+          end: dateToWrite(change.end, change.target.end),
           notify: false,
         });
       case 'remove':

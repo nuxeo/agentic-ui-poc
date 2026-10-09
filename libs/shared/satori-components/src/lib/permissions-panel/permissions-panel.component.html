@@ -79,6 +79,17 @@
           </ul>
         </div>
       }
+      @case ('unread') {
+        <div class="nxs-permissions-panel__alert" role="alert">
+          <p class="nxs-permissions-panel__alert-heading">
+            {{ 'satori-components.permissions-panel.unread.heading' | translate }}
+          </p>
+          <p class="nxs-permissions-panel__server-message">{{ serverMessage(result.error) }}</p>
+          <button mat-stroked-button type="button" (click)="reload()">
+            {{ 'satori-components.permissions-panel.reload' | translate }}
+          </button>
+        </div>
+      }
       @case ('unverified') {
         <div class="nxs-permissions-panel__alert" role="alert">
           <p class="nxs-permissions-panel__alert-heading">

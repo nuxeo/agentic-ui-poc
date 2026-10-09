@@ -1,6 +1,6 @@
 import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError, type Observable } from 'rxjs';
+import { Subject, map, of, throwError, type Observable } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DocumentDetailService, type NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
@@ -382,30 +382,27 @@ describe('NxsPermissionsPanelComponent', () => {
       expect(panel()['pendingCount']()).toBe(0);
     });
 
-    it('keeps a dated entry dated when only its permission changes', async () => {
-      const dated = serverDoc([
-        {
-          username: 'jdoe',
-          permission: 'Read',
-          begin: '2030-01-01T00:00:00.000Z',
-          end: '2031-01-01T00:00:00.000Z',
-        },
-      ]);
-      const after = serverDoc([
-        {
-          username: 'jdoe',
-          permission: 'Write',
-          begin: '2030-01-01T00:00:00.000Z',
-          end: '2031-01-01T00:00:00.000Z',
-        },
-      ]);
+    it('keeps a dated entry on its own dates when only its permission changes', async () => {
+      // CET midnights, as Nuxeo Web UI writes them and Nuxeo reads them back (measured).
+      const begin = '2029-12-31T23:00:00.000Z';
+      const end = '2030-12-31T23:00:00.000Z';
+      const inherited = [{ username: 'members', permission: 'Read', begin, end: null }];
+      const dated = serverDoc([{ username: 'jdoe', permission: 'Read', begin, end }], {
+        inherited,
+      });
+      const after = serverDoc([{ username: 'jdoe', permission: 'Write', begin, end }], {
+        inherited,
+      });
       await mount(dated, dated, after);
+      expect(rows(0)[0].textContent).toContain('Jan 01, 2030');
+      expect(rows(1)[0].textContent).toContain('Jan 01, 2030');
+
       panel()['setPermission'](panel()['localItems']()[0], 'Write');
       panel()['save']();
       await render();
       expect(documents.replacePermission).toHaveBeenCalledWith(
         'doc-1',
-        expect.objectContaining({ permission: 'Write', begin: '2030-01-01', end: '2031-01-01' }),
+        expect.objectContaining({ permission: 'Write', begin, end }),
       );
       expect(panel()['outcome']()?.kind).toBe('saved');
     });
@@ -657,16 +654,33 @@ describe('NxsPermissionsPanelComponent', () => {
       expect(panel()['outcome']()).toBeNull();
     });
 
-    it('reports a failed read before saving, and offers a reload', async () => {
+    it('says nothing was sent when the read before saving fails, and keeps the change', async () => {
       await mount(PARITY, { status: 503 }, PARITY);
       panel()['toggleRemove'](panel()['localItems']()[0]);
       panel()['save']();
       await render();
-      expect(el().querySelector('[role="alert"]')?.textContent).toContain('HTTP 503');
+      const alert = el().querySelector('[role="alert"]')?.textContent ?? '';
+      expect(alert).toContain('could not be read before saving, so no change was sent');
+      expect(alert).toContain('HTTP 503');
+      expect(alert).not.toContain('refused');
       expect(documents.removePermissionById).not.toHaveBeenCalled();
+      expect(panel()['pendingCount']()).toBe(1);
       buttonByText('Reload')?.click();
       await render();
       expect(panel()['outcome']()).toBeNull();
+    });
+
+    it('reports an unexpected failure as an unknown state, not as a clean one', async () => {
+      await mount(PARITY, PARITY);
+      documents.removePermissionById.mockImplementation(() => {
+        throw new Error('not an HTTP failure');
+      });
+      panel()['toggleRemove'](panel()['localItems']()[0]);
+      panel()['save']();
+      await render();
+      expect(panel()['outcome']()?.kind).toBe('unverified');
+      expect(text()).toContain('cannot confirm them');
+      expect(panel()['saving']()).toBe(false);
     });
 
     it('does nothing when there is nothing to save', async () => {
@@ -784,6 +798,104 @@ describe('NxsPermissionsPanelComponent', () => {
     expect(documents.getDocumentPermissions).toHaveBeenLastCalledWith('doc-2');
     expect(panel()['pendingCount']()).toBe(0);
     expect(text()).toContain('Other document');
+  });
+
+  describe('when the document changes mid-write', () => {
+    const other = serverDoc([], { uid: 'doc-2', title: 'Other document' });
+
+    beforeEach(() => {
+      documents.getDocumentPermissions.mockImplementation((uid) =>
+        of(uid === 'doc-2' ? other : PARITY),
+      );
+    });
+
+    async function switchDocument(): Promise<void> {
+      fixture.componentInstance.uid.set('doc-2');
+      await render();
+    }
+
+    it('finishes the save on its own document but does not show its answer on the next', async () => {
+      const write = new Subject<unknown>();
+      documents.removePermissionById.mockReturnValue(write);
+      fixture = TestBed.createComponent(HostComponent);
+      await render();
+      panel()['toggleRemove'](panel()['localItems']()[0]);
+      panel()['save']();
+      expect(panel()['saving']()).toBe(true);
+
+      await switchDocument();
+      expect(panel()['saving']()).toBe(false);
+      write.next({});
+      write.complete();
+      await render();
+
+      expect(documents.removePermissionById).toHaveBeenCalledWith(
+        'doc-1',
+        expect.stringContaining('parity-user'),
+      );
+      expect(panel()['snapshot']()?.uid).toBe('doc-2');
+      expect(panel()['outcome']()).toBeNull();
+      expect(text()).toContain('Other document');
+    });
+
+    it('drops a late save failure for the previous document', async () => {
+      // The read before the first write answers only after the switch; the write then throws.
+      const preflight = new Subject<unknown>();
+      documents.removePermissionById.mockImplementation(() => {
+        throw new Error('late');
+      });
+      documents.getDocumentPermissions.mockImplementation((uid) =>
+        uid === 'doc-2' ? of(other) : preflight.pipe(map(() => PARITY)),
+      );
+      documents.getDocumentPermissions.mockReturnValueOnce(of(PARITY));
+      fixture = TestBed.createComponent(HostComponent);
+      await render();
+      panel()['toggleRemove'](panel()['localItems']()[0]);
+      panel()['save']();
+
+      await switchDocument();
+      preflight.next({});
+      await render();
+
+      expect(documents.removePermissionById).toHaveBeenCalled();
+
+      expect(panel()['outcome']()).toBeNull();
+      expect(panel()['snapshot']()?.uid).toBe('doc-2');
+    });
+
+    it('does not show a late inheritance change, or its failure, on the next document', async () => {
+      const block = new Subject<unknown>();
+      documents.blockPermissionInheritance.mockReturnValue(block);
+      fixture = TestBed.createComponent(HostComponent);
+      await render();
+      buttonByText('Block inheritance')?.click();
+      expect(panel()['inheritanceBusy']()).toBe(true);
+
+      await switchDocument();
+      expect(panel()['inheritanceBusy']()).toBe(false);
+      block.error({ status: 403 });
+      await render();
+
+      expect(panel()['inheritanceError']()).toBeNull();
+      expect(panel()['snapshot']()?.uid).toBe('doc-2');
+    });
+
+    it('does not apply a late inheritance result to the next document', async () => {
+      const block = new Subject<unknown>();
+      documents.blockPermissionInheritance.mockReturnValue(block);
+      fixture = TestBed.createComponent(HostComponent);
+      await render();
+      buttonByText('Block inheritance')?.click();
+      expect(panel()['inheritanceBusy']()).toBe(true);
+
+      await switchDocument();
+      block.next({});
+      block.complete();
+      await render();
+
+      expect(panel()['snapshot']()?.uid).toBe('doc-2');
+      expect(text()).toContain('Other document');
+    });
   });
 
   it('names an entry with no principal, and a failure with no reason', async () => {

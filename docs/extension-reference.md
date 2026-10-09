@@ -1150,10 +1150,13 @@ that is Layer 2 — see section 14.
   `sections` root, which Nuxeo grants `members: CanAskForPublishing` by default.
 
   The product's Permissions tabs — document detail and `/browse` — use
-  `nxs.components.permissionsPanel` instead, which has neither limit. It offers every permission
-  the server defines: the server's list for the document type, then `Write`, `ReadVersion`,
-  `WriteVersion`, `AddChildren`, `RemoveChildren`, `Remove`, `Version`, `WriteSecurity`, `Unlock`,
-  `SetRetention` and `UnsetRetention`, then any other permission the server reports. It writes one
+  `nxs.components.permissionsPanel` instead, which has neither limit. It offers the server's list
+  for the document type, then `Write`, `ReadVersion`, `WriteVersion`, `AddChildren`,
+  `RemoveChildren`, `Remove`, `Version`, `WriteSecurity`, `Unlock`, `SetRetention` and
+  `UnsetRetention`, then any other permission the server reports. Nuxeo reports only the
+  permissions the user holds, so that last group is every permission the server defines only for a
+  user holding `Everything`; a manager with `WriteSecurity` alone is not offered a custom permission
+  they do not hold. It writes one
   entry per change, so an entry nobody touched is never written. What it still refuses, before
   writing anything and naming each entry and why: an entry that changed on the server after the
   page loaded, editing a deny (Nuxeo's write operations only grant), an entry with no identifier,

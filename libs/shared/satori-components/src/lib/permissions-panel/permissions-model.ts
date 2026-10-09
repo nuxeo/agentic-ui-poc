@@ -87,7 +87,10 @@ export interface NxsPermissionsSnapshot {
   readonly catalogue: NxsPermissionCatalogue;
 }
 
-/** A change the user has staged. Dates are calendar days, `YYYY-MM-DD`. */
+/**
+ * A change the user has staged. Dates are calendar days, `YYYY-MM-DD`; a replacement writes an
+ * unchanged day as its target's original instant (see {@link dateToWrite}).
+ */
 export type NxsPermissionChange =
   | {
       readonly kind: 'add';
@@ -361,17 +364,32 @@ export function toDay(date: Date | null): string | null {
 /**
  * The calendar day an ACE date names, as a local `Date` for a date picker.
  *
- * `new Date(iso)` would put UTC midnight into the user's zone, which west of UTC is the previous
- * evening — and the picker would show, and a save would write back, the day before.
+ * An ACE date is midnight in some zone — the browser's when Nuxeo Web UI wrote it, the server's for
+ * a day-only write — and Nuxeo returns it in UTC, so a CET midnight reads as 23:00 the day before. Rounding to the nearest
+ * UTC midnight recovers the day for any zone from UTC−11 to UTC+12; reading the UTC date alone gives
+ * the day before east of UTC. `new Date(iso)` alone would be wrong west of UTC instead, because it
+ * puts the instant into the user's zone.
  */
 export function dayToDate(instant: string | null): Date | null {
   if (!instant) return null;
-  const parsed = new Date(instant);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return new Date(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate());
+  const parsed = Date.parse(instant);
+  if (Number.isNaN(parsed)) return null;
+  const nearest = new Date(parsed + 12 * 60 * 60 * 1000);
+  return new Date(nearest.getUTCFullYear(), nearest.getUTCMonth(), nearest.getUTCDate());
 }
 
 /** `instant` as a calendar day, the inverse of {@link dayToDate} for an unchanged date. */
 export function instantToDay(instant: string | null): string | null {
   return toDay(dayToDate(instant));
+}
+
+/**
+ * The value to write for an ACE date the user may not have changed: the server's own instant when
+ * `day` is still the day it names, otherwise `day`.
+ *
+ * Writing the day back instead re-anchors it at the server's midnight, which for an entry written
+ * from another zone moves it — measured, a CET entry's start moved 23 hours on a permission-only edit.
+ */
+export function dateToWrite(day: string | null, original: string | null): string | null {
+  return day && original && instantToDay(original) === day ? original : day;
 }

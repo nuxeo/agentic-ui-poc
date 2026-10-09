@@ -2,15 +2,17 @@
 title: Nuxeo Agentic UI — the short version
 parent: Product
 order: 0
-last_reviewed: 2026-10-07
-repo_commit: 8be3182
+last_reviewed: 2026-10-09
+repo_commit: 97c6794
 audience: presales, customers, partners
 ---
 
 # Nuxeo Agentic UI — the short version
 
 For presales engineers, customers and partners. It takes about five minutes, describes what the
-`main` branch does today (checked on 7 October 2026), and leaves the longer documents to the end.
+`main` branch does today (checked on 7 October 2026 at `8be3182`; only the permission-level item
+under "What it does not do today" was re-checked on 9 October, at `97c6794`), and leaves the longer
+documents to the end.
 
 ## What it is
 
@@ -140,8 +142,8 @@ shows Administration to administrators only:
 - **Edit every permission level on the rail's Browse page.** That page is still the adf-hx proof
   of concept, and its Permissions tab handles only Nuxeo's Read, ReadWrite and Everything. On a
   folder that also carries any other permission it refuses to save rather than delete that entry.
-  The Permissions tab on a document's own page, and on `/browse`, offers every permission the
-  server defines
+  The Permissions tab on a document's own page, and on `/browse`, offers all of Nuxeo's standard
+  permissions and the others the server reports
   ([extension reference, section 13](../../docs/extension-reference.md#13-what-beta-does-not-yet-address)).
 
 ## What needs code

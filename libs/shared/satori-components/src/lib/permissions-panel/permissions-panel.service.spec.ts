@@ -226,11 +226,12 @@ describe('NxsPermissionsService', () => {
     expect(documents.addPermission).toHaveBeenCalledTimes(1);
   });
 
-  it('propagates a failure of the read before the first write', async () => {
+  it('reports a failure of the read before the first write as unread, sending nothing', async () => {
     documents.getDocumentPermissions.mockReturnValue(throwError(() => ({ status: 500 })));
-    await expect(
-      firstValueFrom(service.save('doc-1', [{ kind: 'remove', target: target('a', 'Read') }])),
-    ).rejects.toEqual({ status: 500 });
+    const outcome = await firstValueFrom(
+      service.save('doc-1', [{ kind: 'remove', target: target('a', 'Read') }]),
+    );
+    expect(outcome).toEqual({ kind: 'unread', error: { status: 500 } });
     expect(documents.removePermissionById).not.toHaveBeenCalled();
   });
 

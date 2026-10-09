@@ -209,6 +209,7 @@ export const PLATFORM_EN_TRANSLATIONS: Readonly<Record<string, string>> = {
   "satori-components.permissions-panel.unconfirmed.heading": "The server did not apply every change. These entries are not as you set them:",
   "satori-components.permissions-panel.undo": "Undo",
   "satori-components.permissions-panel.unnamed-principal": "(no user or group)",
+  "satori-components.permissions-panel.unread.heading": "Nothing was saved. The permissions could not be read before saving, so no change was sent:",
   "satori-components.permissions-panel.unverified.heading": "The changes were sent, but reading the permissions back failed, so the panel cannot confirm them. Reload to see what the server holds.",
   "settings.themes.name.dark": "Dark",
   "settings.themes.name.kawaii": "Kawaii",

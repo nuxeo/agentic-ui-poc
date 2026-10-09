@@ -76,7 +76,8 @@ interface EditorState {
 
 /**
  * A document's permissions: local and inherited ACEs, blocked inheritance, and each ACE's time
- * frame and status, with add, edit and remove over every permission the server defines.
+ * frame and status, with add, edit and remove over the server's list for the document type, Nuxeo's
+ * standard permissions and every other permission the server reports to the user.
  *
  * **Every write addresses one ACE.** Changes are staged and applied on Save as one
  * `Document.AddPermission`, `ReplacePermission` or `RemovePermission`-by-id per change, so an
@@ -160,6 +161,11 @@ export class NxsPermissionsPanelComponent {
 
   private readonly loads = new Subject<string>();
   private readonly searches = new Subject<string>();
+  /**
+   * Bumped whenever the document changes. A save or inheritance change still in flight finishes on
+   * its own document, but its answer is dropped rather than shown on this one.
+   */
+  private generation = 0;
 
   protected readonly loadErrorKey = computed(
     () => `satori-components.permissions-panel.load-error.${this.loadError() ?? 'failed'}`,
@@ -286,10 +292,13 @@ export class NxsPermissionsPanelComponent {
     effect(() => {
       const uid = this.documentId();
       untracked(() => {
+        this.generation += 1;
         this.snapshot.set(null);
         this.clearStaged();
         this.outcome.set(null);
         this.editor.set(null);
+        this.saving.set(false);
+        this.inheritanceBusy.set(false);
         this.inheritanceError.set(null);
         this.load(uid);
       });
@@ -309,10 +318,11 @@ export class NxsPermissionsPanelComponent {
     return permissionRightLabel(permission, (key) => this.translate.instant(key));
   }
 
+  /** An ACE's time frame, from staged days or the server's instants alike. */
   protected timeFrame(begin: string | null, end: string | null): string {
     return formatAceDateRange(
-      begin,
-      end,
+      instantToDay(begin),
+      instantToDay(end),
       (key, params) => this.translate.instant(key, params),
       this.locale,
     );
@@ -450,30 +460,28 @@ export class NxsPermissionsPanelComponent {
     this.saving.set(true);
     this.outcome.set(null);
     this.editor.set(null);
+    const generation = this.generation;
     this.service
       .save(this.documentId(), changes)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (outcome) => {
+          if (generation !== this.generation) return;
           this.saving.set(false);
           this.outcome.set(outcome);
-          // A refusal wrote nothing, so the user's staged changes stay for them to adjust.
-          if (outcome.kind === 'refused') return;
+          // Neither wrote anything, so the user's staged changes stay for them to adjust.
+          if (outcome.kind === 'refused' || outcome.kind === 'unread') return;
           if (outcome.kind !== 'unverified' && outcome.snapshot)
             this.snapshot.set(outcome.snapshot);
           this.clearStaged();
         },
         error: (error: unknown) => {
-          // Only the pre-save read can fail here; every later failure is an outcome.
+          if (generation !== this.generation) return;
+          // Every failure the service expects is an outcome. Anything else may have struck
+          // mid-batch, so what the server holds is unknown.
           this.saving.set(false);
-          this.outcome.set({
-            kind: 'failed',
-            applied: 0,
-            total: changes.length,
-            change: changes[0],
-            error,
-            snapshot: null,
-          });
+          this.outcome.set({ kind: 'unverified', count: changes.length, error });
+          this.clearStaged();
         },
       });
   }
@@ -484,16 +492,19 @@ export class NxsPermissionsPanelComponent {
     this.inheritanceBusy.set(true);
     this.inheritanceError.set(null);
     this.outcome.set(null);
+    const generation = this.generation;
     this.service
       .setInheritanceBlocked(this.documentId(), !snapshot.inheritanceBlocked)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
+          if (generation !== this.generation) return;
           this.inheritanceBusy.set(false);
           if (updated) this.snapshot.set(updated);
           else this.load(this.documentId());
         },
         error: (error: unknown) => {
+          if (generation !== this.generation) return;
           this.inheritanceBusy.set(false);
           this.inheritanceError.set(this.serverMessage(error));
         },

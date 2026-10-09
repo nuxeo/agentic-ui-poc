@@ -2056,6 +2056,9 @@
       },
       "undo": "Undo",
       "unnamed-principal": "(no user or group)",
+      "unread": {
+        "heading": "Nothing was saved. The permissions could not be read before saving, so no change was sent:"
+      },
       "unverified": {
         "heading": "The changes were sent, but reading the permissions back failed, so the panel cannot confirm them. Reload to see what the server holds."
       }
