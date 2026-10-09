@@ -122,8 +122,8 @@ nav updates 245 ms after reload, the browse table 273 ms.
 the server looks like the product for everyone else:
 
 ```bash
-npx nx build presales-demo
-nuxeoctl mp-install dist/config-packages/presales-demo/presales-demo-1.0.0.zip   # then restart Nuxeo
+node config-packages/presales-demo/build.mjs   # Node alone; or `npx nx build presales-demo`, which writes dist/config-packages/presales-demo/
+nuxeoctl mp-install config-packages/presales-demo/dist/presales-demo-1.0.0.zip   # then restart Nuxeo
 ```
 
 | URL                                   | Shows                                                       |
@@ -699,21 +699,24 @@ The generated library then passed `check-extension-library`, `nx test` (6 tests)
 and `nx lint` from scratch. The library generator's console output tells you it is **"TWO STEPS,
 not one"** and hands you the route, because a nav entry alone would fall through the wildcard.
 
-The fifth scaffolds the configuration package that carries Layer 0 and 1 — no code at all:
-
-```bash
-npx nx g ./tools/satori-generators:config-package contoso-config --owner=contoso
-npx nx build contoso-config     # refuses a bad fragment; writes the installable zip
-```
-
-`config-packages/presales-demo` (Part 0.7) was made this way and installed on a real Nuxeo. A
-customer does not need this repository's install, or its token, for this one: Node alone writes the
-same files and builds them.
+The fifth scaffolds the configuration package that carries Layer 0 and 1 — no code at all — and
+needs neither this repository's install nor its token. Show it the way a customer runs it, with Node
+alone:
 
 ```bash
 node tools/satori-generators/src/config-package/create.mjs contoso-config --owner=contoso
-node config-packages/contoso-config/build.mjs   # writes config-packages/contoso-config/dist/contoso-config-1.0.0.zip
+node config-packages/contoso-config/build.mjs   # refuses a bad fragment; writes config-packages/contoso-config/dist/contoso-config-1.0.0.zip
 ```
+
+With the full install, the Nx generator writes the same files, byte for byte, and `nx build` runs
+the same `build.mjs`:
+
+```bash
+npx nx g ./tools/satori-generators:config-package contoso-config --owner=contoso
+npx nx build contoso-config     # writes dist/config-packages/contoso-config/contoso-config-1.0.0.zip
+```
+
+`config-packages/presales-demo` (Part 0.7) was made by the generator and installed on a real Nuxeo.
 
 **Be honest if asked:** the three contribution generators write registrations but **no specs**.
 
