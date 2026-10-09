@@ -1,4 +1,5 @@
-import { Injectable, inject, type Provider } from '@angular/core';
+import { DestroyRef, Injectable, inject, type Provider } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateService } from '@ngx-translate/core';
 
@@ -45,6 +46,7 @@ export interface NxsToastErrorOptions extends NxsToastOptions {
 export class NxsToastService {
   private readonly snackBar = inject(MatSnackBar);
   private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Something happened: saved, copied, moved to trash. */
   show(message: string, options: NxsToastOptions = {}): void {
@@ -72,15 +74,21 @@ export class NxsToastService {
         data.kind === 'error' ? ['nxs-toast-panel', 'nxs-toast-panel--error'] : 'nxs-toast-panel',
     });
     const action = data.action;
-    // `onAction` completes when the toast is dismissed, so this subscription ends with the toast.
-    if (action) ref.onAction().subscribe(() => action.run());
+    // Ends with the toast or with the component that provides this service, whichever is first: an
+    // action left on screen after its component is gone must not run against that component.
+    if (action) {
+      ref
+        .onAction()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => action.run());
+    }
   }
 }
 
-/** `0` means "until dismissed", which is how `MatSnackBar` reads it too. */
+/** Exactly `0` means "until dismissed", which is how `MatSnackBar` reads it too. */
 function toastDuration(requested: number | undefined, hasAction: boolean): number {
   if (requested === undefined) return hasAction ? 0 : NXS_TOAST_DURATION;
-  if (requested <= 0) return 0;
+  if (requested === 0) return 0;
   return Math.max(requested, NXS_TOAST_DURATION);
 }
 

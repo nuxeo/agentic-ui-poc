@@ -1,5 +1,5 @@
 import { Component, inject, provideZonelessChangeDetection } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatSnackBar, type MatSnackBarConfig } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
@@ -14,6 +14,7 @@ class ConsumerComponent {
 }
 
 describe('NxsToastService', () => {
+  let consumer: ComponentFixture<ConsumerComponent>;
   let toast: NxsToastService;
   let snackBar: MatSnackBar;
   let open: MockInstance<MatSnackBar['openFromComponent']>;
@@ -41,7 +42,8 @@ describe('NxsToastService', () => {
       imports: [ConsumerComponent],
       providers: [provideZonelessChangeDetection(), provideNoopAnimations()],
     });
-    toast = TestBed.createComponent(ConsumerComponent).componentInstance.toast;
+    consumer = TestBed.createComponent(ConsumerComponent);
+    toast = consumer.componentInstance.toast;
     snackBar = TestBed.inject(MatSnackBar);
     open = vi.spyOn(snackBar, 'openFromComponent');
   });
@@ -84,6 +86,11 @@ describe('NxsToastService', () => {
     it('stays until dismissed when the caller passes 0', () => {
       toast.show('Preparing the download', { duration: 0 });
       expect(lastConfig()?.duration).toBe(0);
+    });
+
+    it('takes the floor for a negative duration rather than staying forever', () => {
+      toast.show('Saved', { duration: -1 });
+      expect(lastConfig()?.duration).toBe(NXS_TOAST_DURATION);
     });
 
     it('opens nothing for a blank message, as Web UI does', () => {
@@ -188,6 +195,17 @@ describe('NxsToastService', () => {
     it('keeps the caller’s duration for a toast with an action', () => {
       toast.show('Moved to trash', { action: { label: 'Undo', run: vi.fn() }, duration: 8000 });
       expect(lastConfig()?.duration).toBe(8000);
+    });
+
+    it('does not run the action once the component that opened it is gone', async () => {
+      const run = vi.fn();
+      toast.show('Moved to trash', { action: { label: 'Undo', run } });
+      await settle();
+      consumer.destroy();
+      toastElement()?.querySelector<HTMLButtonElement>('.nxs-toast__action')?.click();
+      await settle();
+
+      expect(run).not.toHaveBeenCalled();
     });
 
     it('does not run the action when the toast is dismissed instead', async () => {
