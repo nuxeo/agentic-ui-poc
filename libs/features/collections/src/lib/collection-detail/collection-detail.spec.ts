@@ -841,7 +841,7 @@ describe('CollectionDetailComponent', () => {
     it('mints no object URL for a member thumbnail', () => {
       component.loadMembers();
 
-      expect(component.members().length).toBe(2);
+      expect(component.members()).toHaveLength(2);
       expect(mockDetailService.fetchThumbnail).not.toHaveBeenCalled();
       expect(created).toEqual([]);
     });

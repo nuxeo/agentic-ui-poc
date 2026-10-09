@@ -182,7 +182,7 @@ describe('NxsThumbnailComponent', () => {
     host.shown.set(false);
     await render();
 
-    expect(created.length).toBe(4);
+    expect(created).toHaveLength(4);
     expect([...revoked].sort()).toEqual([...created].sort());
   });
 
