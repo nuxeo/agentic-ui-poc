@@ -189,7 +189,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-4 exported symbol(s).
+5 exported symbol(s).
 
 ```ts
 class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
@@ -213,13 +213,14 @@ class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
 }
 class NxsEmptyStateComponent {
     readonly heading: _angular_core.InputSignal<string>;
-    readonly headingLevel: _angular_core.InputSignal<1 | 2 | 3 | 4 | 5 | 6>;
+    readonly headingLevel: _angular_core.InputSignal<NxsHeadingLevel>;
     readonly message: _angular_core.InputSignal<string>;
     readonly icon: _angular_core.InputSignal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsEmptyStateComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
     }
 }
+type NxsHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 interface NxsPickableColumn {
     readonly key: string;
     readonly label: string;
