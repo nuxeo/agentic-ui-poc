@@ -80,6 +80,22 @@ private readonly locale = inject(LOCALE_ID);
   display label, replacing three hardcoded English `Record<string, string>` copies. Unknown
   permissions (for example from a marketplace package) still render their raw Nuxeo name.
 
+### Added (`@nuxeo-satori/platform` generators)
+
+- `generators/config-package/create.mjs` scaffolds a configuration package with Node 20 alone —
+  no install, no Nx, no registry token (NXSAT-312). In a clone of this repository:
+  `node tools/satori-generators/src/config-package/create.mjs acme-config --owner=acme`. It writes
+  the same files as the `config-package` generator, byte for byte, which `create.spec.ts` checks.
+
+### Changed (`@nuxeo-satori/platform` generators)
+
+- The `config-package` generator no longer runs Prettier over what it writes, so its output no
+  longer depends on the workspace's Prettier configuration or on the title (Prettier rewrote
+  `*Claims*` as `_Claims_`). Its templates are stored as Prettier formatted them, so the only file
+  formatted differently is `project.json`, now as Nx serialises it, one array item per line. The
+  generated README builds with `node build.mjs`, and its table no longer names the component file.
+  A `.gitignore` keeps the `dist/` that `node build.mjs` writes inside the package out of git.
+
 ### Fixed
 
 - Permission tables, browse columns, the expired-documents drawer, task due dates and the

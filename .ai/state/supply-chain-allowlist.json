@@ -99,6 +99,7 @@
     "pdfjs-dist": "Version pin only, and the second deliberate deviation: 4.x downgrades a shared native package, so 6.2.108 is pinned.",
     "minimatch": "Version pin only. Declared as a `>=10.0.0` peer by @alfresco/adf-core.",
     "angular-oauth2-oidc": "Version pin only. A direct dependency of @alfresco/adf-core; pinned here so a clean install cannot float it.",
-    "@alfresco/adf-extensions": "Required at runtime by the two ADF packages, not by our source. @alfresco/adf-core declares it as a `>=9.0.0` peer, and both adf-core and @alfresco/adf-hx-content-services import it from their shipped bundles. Our extension engine stopped importing it in NXSAT-308 (own filterEnabled, sortByOrder and mergeObjects) and it is no longer a @nuxeo-satori/platform peer. Leaves with adf-core and adf-hx in the NXSAT-308 removal commit."
+    "@alfresco/adf-extensions": "Required at runtime by the two ADF packages, not by our source. @alfresco/adf-core declares it as a `>=9.0.0` peer, and both adf-core and @alfresco/adf-hx-content-services import it from their shipped bundles. Our extension engine stopped importing it in NXSAT-308 (own filterEnabled, sortByOrder and mergeObjects) and it is no longer a @nuxeo-satori/platform peer. Leaves with adf-core and adf-hx in the NXSAT-308 removal commit.",
+    "ng-mocks": "Not a library: `file:tools/stubs/ng-mocks`, a stub that replaces the real test-mocking package because @alfresco/adf-hx-content-services imports `ngMocks` from its shipped /ui bundle (see scripts/beta-harness/no-test-libs-in-bundle.mjs). Our source never imports it. Until NXSAT-308 this check counted the stub's own doc comment as an import. Leaves with adf-hx."
   }
 }

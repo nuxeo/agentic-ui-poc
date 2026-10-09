@@ -30,13 +30,17 @@ raising rather than a reason to fork.
 The five generators ship **inside this package** — `generators.json` at its root, so Nx
 resolves them from `node_modules` like any other plugin. Nothing to clone.
 
-For Layer 0 and 1 — no code — scaffold the **configuration package** you install on Nuxeo:
+For Layer 0 and 1 — no code — scaffold the **configuration package** you install on Nuxeo. That
+needs only Node 20: no install, no Nx, no registry token. In a clone of the Satori repository:
 
 ```bash
-npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme
-npx nx build acme-config          # checks the fragments, writes dist/config-packages/acme-config/acme-config-1.0.0.zip
-nuxeoctl mp-install dist/config-packages/acme-config/acme-config-1.0.0.zip   # then restart Nuxeo
+node tools/satori-generators/src/config-package/create.mjs acme-config --owner=acme
+node config-packages/acme-config/build.mjs     # checks the fragments, writes config-packages/acme-config/dist/acme-config-1.0.0.zip
+nuxeoctl mp-install config-packages/acme-config/dist/acme-config-1.0.0.zip   # then restart Nuxeo
 ```
+
+Where this package is installed, the same script is
+`node_modules/@nuxeo-satori/platform/generators/config-package/create.mjs`.
 
 It writes the Marketplace package — `package.xml` depending on `nuxeo-agentic-ui`, a component
 that `<require>`s Satori's defaults, starter `bootstrap.json` and `manifest.json` with JSON
@@ -44,9 +48,17 @@ schemas for your editor — and a `build.mjs` that refuses what the server would
 a repeated key, a fragment over 1 MiB, a missing asset) before anything reaches a server.
 `--presales` adds demo presets. Everything in a fragment is served without authentication.
 
-Working from a clone of the Satori repository instead of the installed package? There
-`generators.json` is a build output, so use `npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`,
-or run `npx nx run platform:sync-generators` once first.
+Where Nx is installed, the `config-package` generator writes the same files, byte for byte, and
+`nx build` runs the same `build.mjs`:
+
+```bash
+npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme
+npx nx build acme-config          # writes dist/config-packages/acme-config/acme-config-1.0.0.zip
+```
+
+In a fully installed clone that form needs `npx nx run platform:sync-generators` first, because
+there `generators.json` is a build output;
+`npx nx g ./tools/satori-generators:config-package acme-config --owner=acme` works without it.
 
 For Layer 2 — code — the other four:
 

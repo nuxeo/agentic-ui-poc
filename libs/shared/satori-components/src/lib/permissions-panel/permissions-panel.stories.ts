@@ -51,24 +51,45 @@ const BLOCK: NuxeoAce = {
   granted: false,
 };
 
-/** The permissions a stock server reports to an `Everything` holder. */
+/**
+ * The 33 permissions a stock 2025.26.16 server reports to an `Everything` holder, as
+ * `permissions-model.spec.ts` records them. A list holding `Everything` is read as the server's
+ * whole set, so a shorter one would hide permissions from the panel's select.
+ */
 const EVERYTHING = [
-  'Read',
-  'ReadWrite',
-  'Everything',
   'Write',
-  'ReadVersion',
   'WriteVersion',
-  'AddChildren',
-  'RemoveChildren',
+  'ReadProperties',
+  'ReadCanCollect',
+  'ReadSecurity',
   'Remove',
+  'ReadVersion',
+  'Read',
+  'WriteLifeCycle',
+  'Everything',
+  'Moderate',
   'Version',
-  'WriteSecurity',
-  'Unlock',
-  'SetRetention',
+  'ManageLegalHold',
+  'MakeRecord',
+  'WriteColdStorage',
+  'ReadChildren',
+  'AddChildren',
+  'Comment',
+  'ReadLifeCycle',
+  'RemoveChildren',
+  'DataVisualization',
+  'ReviewParticipant',
   'UnsetRetention',
-  'Browse',
+  'Unlock',
   'CanAskForPublishing',
+  'RestrictedRead',
+  'ReadWrite',
+  'ReadRemove',
+  'Browse',
+  'SetRetention',
+  'WriteProperties',
+  'WriteSecurity',
+  'ManageWorkflows',
 ];
 
 const PRINCIPALS: UserGroupSuggestion[] = [

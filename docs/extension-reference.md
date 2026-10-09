@@ -72,13 +72,17 @@ component `<require>`s `org.nuxeo.agentic.ui.config.defaults`, which orders cont
 defaults are always registered first. Everything at that path is served without authentication —
 put nothing secret in a fragment.
 
-Scaffold that package rather than writing it by hand:
-`npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme` (from the published
-package; in a clone of this repository, `npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`) writes both
-declarations, starter fragments with JSON schemas for your editor, and a `build` target whose
-`build.mjs` refuses what the server would reject — JSON that does not parse, a repeated key, a
-fragment over 1 MiB, a missing asset — and writes the installable zip. `config-packages/presales-demo`
-in this repository is one, with two demo presets. The `bootstrap.json` that used to be copied and edited beside
+Scaffold that package rather than writing it by hand. In a clone of this repository it needs only
+Node 20 — no `npm ci`, no registry token:
+`node tools/satori-generators/src/config-package/create.mjs acme-config --owner=acme` writes both
+declarations, starter fragments with JSON schemas for your editor, and a `build.mjs` that refuses
+what the server would reject — JSON that does not parse, a repeated key, a fragment over 1 MiB, a
+missing asset — and writes the installable zip: `node config-packages/acme-config/build.mjs`. The
+`config-package` Nx generator writes the same files, byte for byte, where Nx is installed:
+`npx nx g ./tools/satori-generators:config-package acme-config --owner=acme` after a full install
+of this repository, or `npx nx g @nuxeo-satori/platform:config-package acme-config --owner=acme`
+from the published package. `config-packages/presales-demo` in this repository is one, with two
+demo presets. The `bootstrap.json` that used to be copied and edited beside
 the bundle is **removed with no migration**: a file left in `nxserver/nuxeo.war/agentic-ui-config`
 is not served.
 
