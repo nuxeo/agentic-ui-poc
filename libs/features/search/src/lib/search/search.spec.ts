@@ -1183,7 +1183,7 @@ describe('SearchComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      expect(mockSearchService.search.mock.calls.length).toBe(calls + 1);
+      expect(mockSearchService.search.mock.calls).toHaveLength(calls + 1);
       expect(mockSearchService.search.mock.calls.at(-1)?.[0]).toEqual(
         mockSearchService.search.mock.calls[calls - 1][0],
       );
