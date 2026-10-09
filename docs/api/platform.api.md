@@ -189,7 +189,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-8 exported symbol(s).
+14 exported symbol(s).
 
 ```ts
 const NXS_PERMISSIONS_PANEL_ID = "nxs.components.permissionsPanel";
@@ -212,6 +212,36 @@ class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsColumnPickerComponent, "nxs-column-picker", never, { "columns": { "alias": "columns"; "required": true; "isSignal": true; }; "required": { "alias": "required"; "required": false; "isSignal": true; }; "defaults": { "alias": "defaults"; "required": false; "isSignal": true; }; }, { "apply": "apply"; "dismiss": "dismiss"; }, never, never, true, never>;
     }
 }
+class NxsDocTypeIconComponent {
+    readonly type: _angular_core.InputSignal<string>;
+    readonly label: _angular_core.InputSignal<string>;
+    protected readonly icon: _angular_core.Signal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsDocTypeIconComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsDocTypeIconComponent, "nxs-doc-type-icon", never, { "type": { "alias": "type"; "required": true; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
+    }
+}
+class NxsDomainHintComponent {
+    readonly documentType: _angular_core.InputSignal<string | null | undefined>;
+    readonly path: _angular_core.InputSignal<string | null | undefined>;
+    protected readonly guidanceKey = "browse.message.domain-container-guidance";
+    protected readonly visible: _angular_core.Signal<boolean>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsDomainHintComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsDomainHintComponent, "nxs-domain-hint", never, { "documentType": { "alias": "documentType"; "required": false; "isSignal": true; }; "path": { "alias": "path"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
+    }
+}
+class NxsDriveDialogComponent {
+    protected readonly packages: readonly DrivePackage[];
+    protected readonly checking: _angular_core.WritableSignal<boolean>;
+    constructor();
+    protected close(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsDriveDialogComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsDriveDialogComponent, "nxs-drive-dialog", never, {}, {}, never, never, true, never>;
+    }
+}
+interface NxsDriveDialogData {
+    readonly folderPath?: string;
+    }
+}
 class NxsEmptyStateComponent {
     readonly heading: InputSignal<string>;
     readonly headingLevel: InputSignal<NxsHeadingLevel>;
@@ -221,7 +251,24 @@ class NxsEmptyStateComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
     }
 }
+class NxsFolderHeaderComponent {
+    readonly heading: InputSignal<string>;
+    readonly headingLevel: InputSignal<NxsHeadingLevel>;
+    readonly subheading: InputSignal<string>;
+    readonly documentType: InputSignal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsFolderHeaderComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsFolderHeaderComponent, "nxs-folder-header", never, { "heading": { "alias": "heading"; "required": false; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; "subheading": { "alias": "subheading"; "required": false; "isSignal": true; }; "documentType": { "alias": "documentType"; "required": false; "isSignal": true; }; }, {}, never, ["[nxsFolderHeaderDetail]", "*"], true, never>;
+    }
+}
 type NxsHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+class NxsIconComponent {
+    readonly name: _angular_core.InputSignal<string>;
+    readonly label: _angular_core.InputSignal<string>;
+    protected readonly accessibleName: _angular_core.Signal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsIconComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsIconComponent, "nxs-icon", never, { "name": { "alias": "name"; "required": true; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
+    }
+}
 class NxsPermissionsPanelComponent {
     readonly documentId: _angular_core.InputSignal<string>;
     readonly permissionsChanged: _angular_core.InputSignal<(() => void) | null>;

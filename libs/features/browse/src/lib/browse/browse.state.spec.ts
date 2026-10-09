@@ -485,16 +485,6 @@ describe('BrowseComponent — listing state', () => {
     expect(component.canCreateContentHere()).toBe(false);
   });
 
-  it('isRepositoryRootBrowse and isDomainBrowse track the browsed location', () => {
-    expect(component.isRepositoryRootBrowse()).toBe(true);
-    expect(component.isDomainBrowse()).toBe(false);
-
-    component.browsePath.set('/default-domain');
-    component.currentDoc.set(doc({ uid: 'dom-1', type: 'Domain', path: '/default-domain' }));
-    expect(component.isRepositoryRootBrowse()).toBe(false);
-    expect(component.isDomainBrowse()).toBe(true);
-  });
-
   it('hasCollectionEntries is true only while a collection is visible in the listing', () => {
     component.entries.set([doc({ uid: 'a', type: 'File' })]);
     expect(component.hasCollectionEntries()).toBe(false);
