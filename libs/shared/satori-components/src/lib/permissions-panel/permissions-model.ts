@@ -363,21 +363,28 @@ export function toDay(date: Date | null): string | null {
   return `${date.getFullYear()}-${m}-${d}`;
 }
 
+const MINUTE = 60 * 1000;
+const DAY = 24 * 60 * MINUTE;
+
 /**
  * The calendar day an ACE date names, as a local `Date` for a date picker.
  *
  * An ACE date is midnight in some zone — the browser's when Nuxeo Web UI wrote it, the server's for
- * a day-only write — and Nuxeo returns it in UTC, so a CET midnight reads as 23:00 the day before. Rounding to the nearest
- * UTC midnight recovers the day for any zone from UTC−11 to UTC+12; reading the UTC date alone gives
- * the day before east of UTC. `new Date(iso)` alone would be wrong west of UTC instead, because it
- * puts the instant into the user's zone.
+ * a day-only write — and Nuxeo returns it in UTC, so a CET midnight reads as 23:00 the day before.
+ * The zone is not stored. An instant at midnight in the user's own zone is read as that day, which
+ * recovers every entry written from the user's zone, UTC+13 and UTC+14 included. Any other is
+ * rounded to the nearest UTC midnight, which recovers the day for a writer anywhere from UTC−11 to
+ * UTC+12. Reading the UTC date alone gives the day before east of UTC; `new Date(iso)` alone would
+ * be wrong west of UTC instead. Two zones 24 hours apart share their midnights, so between them the
+ * day is genuinely ambiguous and the user's own is chosen.
  */
 export function dayToDate(instant: string | null): Date | null {
   if (!instant) return null;
   const parsed = Date.parse(instant);
   if (Number.isNaN(parsed)) return null;
-  const nearest = new Date(parsed + 12 * 60 * 60 * 1000);
-  return new Date(nearest.getUTCFullYear(), nearest.getUTCMonth(), nearest.getUTCDate());
+  const wallClock = parsed - new Date(parsed).getTimezoneOffset() * MINUTE;
+  const day = new Date(wallClock % DAY === 0 ? wallClock : parsed + DAY / 2);
+  return new Date(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate());
 }
 
 /** `instant` as a calendar day, the inverse of {@link dayToDate} for an unchanged date. */

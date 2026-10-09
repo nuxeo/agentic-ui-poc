@@ -1160,7 +1160,8 @@ that is Layer 2 — see section 14.
   entry per change, so an entry nobody touched is never written. What it still refuses, before
   writing anything and naming each entry and why: an entry that changed on the server after the
   page loaded, editing a deny (Nuxeo's write operations only grant), an entry with no identifier,
-  and a permission the server does not define. Its labels for permissions outside that standard set
+  an entry naming no user or group, a time frame that ends before it starts, and a permission the
+  server does not define. Its labels for permissions outside that standard set
   are the Nuxeo identifiers, not translated names.
 
 ---

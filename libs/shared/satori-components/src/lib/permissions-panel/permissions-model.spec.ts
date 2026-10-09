@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -566,6 +566,11 @@ describe('unconfirmedChanges', () => {
 });
 
 describe('calendar days', () => {
+  afterEach(() => vi.restoreAllMocks());
+  /** The user's zone, as `getTimezoneOffset` reports it: minutes behind UTC. */
+  const userIn = (minutesBehindUtc: number) =>
+    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(minutesBehindUtc);
+
   it('formats the day the user picked in their own zone', () => {
     expect(toDay(new Date(2030, 0, 5))).toBe('2030-01-05');
     expect(toDay(null)).toBeNull();
@@ -582,6 +587,7 @@ describe('calendar days', () => {
   });
 
   it('reads midnight in a zone east or west of UTC as that day', () => {
+    userIn(0);
     // Measured on 2025.26.16: an ACE written as 2030-01-01T00:00:00+01:00, as Nuxeo Web UI sends
     // from a CET browser, is read back as 2029-12-31T23:00:00.000Z.
     expect(instantToDay('2029-12-31T23:00:00.000Z')).toBe('2030-01-01');
@@ -589,6 +595,30 @@ describe('calendar days', () => {
     expect(instantToDay('2030-01-01T05:00:00.000Z')).toBe('2030-01-01');
     expect(instantToDay('2030-01-01T11:00:00.000Z')).toBe('2030-01-01');
     expect(instantToDay('2030-01-01')).toBe('2030-01-01');
+  });
+
+  describe('for a user beyond UTC+12 or at UTC−12', () => {
+    it.each([
+      ['UTC+14', -840, '2029-12-31T10:00:00.000Z'],
+      ['UTC+13', -780, '2029-12-31T11:00:00.000Z'],
+      ['UTC−12', 720, '2030-01-01T12:00:00.000Z'],
+    ])('reads a day picked at %s as that day', (_zone, offset, midnight) => {
+      userIn(offset);
+      expect(instantToDay(midnight)).toBe('2030-01-01');
+      expect(dateToWrite('2030-01-01', midnight)).toBe(midnight);
+    });
+
+    it('still reads an entry from another zone by its nearest UTC midnight', () => {
+      userIn(-840);
+      expect(instantToDay('2029-12-31T23:00:00.000Z')).toBe('2030-01-01');
+      expect(instantToDay('2030-01-01T05:00:00.000Z')).toBe('2030-01-01');
+    });
+
+    it("reads a midnight two zones 24 hours apart share as the user's own day", () => {
+      // 11:00Z is midnight on Jan 1 at UTC−11 and on Jan 2 at UTC+13; the zone is not stored.
+      userIn(-780);
+      expect(instantToDay('2030-01-01T11:00:00.000Z')).toBe('2030-01-02');
+    });
   });
 });
 
