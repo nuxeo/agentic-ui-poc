@@ -25,11 +25,18 @@ export function wireMatTabListKeyboardA11y(root: HTMLElement): (() => void) | nu
     return null;
   }
 
+  const existingOnKeydown = tabList.getAttribute('onkeydown');
+  if (existingOnKeydown !== null && existingOnKeydown !== MAT_TAB_LIST_IBM_ONKEYDOWN) {
+    return null;
+  }
+
   tabList.setAttribute('onkeydown', MAT_TAB_LIST_IBM_ONKEYDOWN);
   tabList.setAttribute(MAT_TAB_LIST_KEYDOWN_ATTR, 'true');
 
   return () => {
-    tabList.removeAttribute('onkeydown');
+    if (tabList.getAttribute('onkeydown') === MAT_TAB_LIST_IBM_ONKEYDOWN) {
+      tabList.removeAttribute('onkeydown');
+    }
     tabList.removeAttribute(MAT_TAB_LIST_KEYDOWN_ATTR);
   };
 }

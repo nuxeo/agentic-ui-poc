@@ -114,6 +114,28 @@ describe('wireMatTabListKeyboardA11y', () => {
 
     expect(wireMatTabListKeyboardA11y(root)).toBeNull();
   });
+
+  it('does not overwrite a pre-existing onkeydown handler attribute', () => {
+    const root = materialTabHeaderMarkup();
+    const tabList = root.querySelector<HTMLElement>('.mat-mdc-tab-list')!;
+    tabList.setAttribute('onkeydown', 'return customHandler(event)');
+
+    expect(wireMatTabListKeyboardA11y(root)).toBeNull();
+    expect(tabList.getAttribute('onkeydown')).toBe('return customHandler(event)');
+    expect(tabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBeNull();
+  });
+
+  it('cleanup removes onkeydown only when it is still the IBM placeholder', () => {
+    const root = materialTabHeaderMarkup();
+    const tabList = root.querySelector<HTMLElement>('.mat-mdc-tab-list')!;
+    const cleanup = wireMatTabListKeyboardA11y(root)!;
+
+    tabList.setAttribute('onkeydown', 'return customHandler(event)');
+    cleanup();
+
+    expect(tabList.getAttribute('onkeydown')).toBe('return customHandler(event)');
+    expect(tabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBeNull();
+  });
 });
 
 describe('observeMatTabListKeyboardA11y', () => {
