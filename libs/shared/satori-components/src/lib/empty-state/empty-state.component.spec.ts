@@ -60,13 +60,15 @@ describe('NxsEmptyStateComponent', () => {
     expect(query('.nxs-empty-state__heading')?.textContent?.trim()).toBe('This folder is empty');
   });
 
-  it('exposes the heading as a heading, at the level the caller gives', async () => {
-    const heading = query('.nxs-empty-state__heading');
-    expect(heading?.getAttribute('role')).toBe('heading');
-    expect(heading?.getAttribute('aria-level')).toBe('3');
-    host.headingLevel.set(4);
-    await render();
-    expect(heading?.getAttribute('aria-level')).toBe('4');
+  it('renders the heading as a native heading, at the level the caller gives', async () => {
+    expect(query('.nxs-empty-state__heading')?.tagName).toBe('H3');
+    for (const level of [1, 2, 4, 5, 6] as const) {
+      host.headingLevel.set(level);
+      await render();
+      const heading = query('.nxs-empty-state__heading');
+      expect(heading?.tagName).toBe(`H${level}`);
+      expect(heading?.textContent?.trim()).toBe('This folder is empty');
+    }
   });
 
   it('is a polite status region, so the empty result is announced', () => {
@@ -129,14 +131,14 @@ describe('NxsEmptyStateComponent bound directly', () => {
     expect(() => fixture.detectChanges()).toThrow(/NG0950/);
   });
 
-  it('is a level-2 heading when the caller names no level', () => {
+  it('is an h2 when the caller names no level', () => {
     const fixture = TestBed.createComponent(NxsEmptyStateComponent);
     fixture.componentRef.setInput('heading', 'No results');
     fixture.detectChanges();
     const heading = (fixture.nativeElement as HTMLElement).querySelector(
       '.nxs-empty-state__heading',
     );
-    expect(heading?.getAttribute('role')).toBe('heading');
-    expect(heading?.getAttribute('aria-level')).toBe('2');
+    expect(heading?.tagName).toBe('H2');
+    expect(heading?.textContent?.trim()).toBe('No results');
   });
 });
