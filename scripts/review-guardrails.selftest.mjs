@@ -262,13 +262,17 @@ expectRed(
 );
 
 falsePositiveControls += 1;
-expectGreen('a catalogue with carriage return as JSON whitespace between tokens', 'checkTranslationCatalogues', {
-  'apps/nuxeo-ui/public/i18n/en.json':
-    '{\r "app": { "title": "Hyland Nuxeo", "nav": { "toggle": "Toggle navigation menu" } }, ' +
-    '"settings": { "themes": { "search": "Search themes" } } }\n',
-  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
-  'apps/nuxeo-ui/src/app/shell/app-shell.component.html': GOOD_TEMPLATE,
-});
+expectGreen(
+  'a catalogue with carriage return as JSON whitespace between tokens',
+  'checkTranslationCatalogues',
+  {
+    'apps/nuxeo-ui/public/i18n/en.json':
+      '{\r "app": { "title": "Hyland Nuxeo", "nav": { "toggle": "Toggle navigation menu" } }, ' +
+      '"settings": { "themes": { "search": "Search themes" } } }\n',
+    'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK,
+    'apps/nuxeo-ui/src/app/shell/app-shell.component.html': GOOD_TEMPLATE,
+  },
+);
 
 expectWarn(
   'locale missing a key the reference has — warns, because English is the fallback',
@@ -480,7 +484,12 @@ expectRed(
   {
     'apps/nuxeo-ui/public/i18n/en.json': EN_PLACEHOLDERS,
     'apps/nuxeo-ui/public/i18n/fr.json': `${JSON.stringify(
-      { browse: { deleted: '{{count}} documents supprimés de {{ folder }}', title: 'Parcourir {{  count  }}' } },
+      {
+        browse: {
+          deleted: '{{count}} documents supprimés de {{ folder }}',
+          title: 'Parcourir {{  count  }}',
+        },
+      },
       null,
       2,
     )}\n`,
@@ -689,6 +698,48 @@ expectRed(
   /maps it to an empty string/,
 );
 
+/**
+ * `[label]` on an `nxs-` component is an accessible name — `nxs-spinner`'s progressbar,
+ * `nxs-icon`'s image — so its key needs a fallback too. The binding pattern read only HTML
+ * attributes and passed this tree; the note image picker's spinner key was missing from the
+ * fallback for that reason until someone noticed by hand. Wrapped across lines, as spinners are.
+ */
+const NXS_LABEL_APP = {
+  ...APP,
+  'apps/nuxeo-ui/public/i18n/en.json': EN_JSON.replace(
+    '"title": "Hyland Nuxeo",',
+    '"title": "Hyland Nuxeo",\n    "loading": "Loading",',
+  ),
+  'libs/features/browse/src/lib/browse/browse.html':
+    '<nxs-spinner\n  diameter="36"\n  [label]="\'app.loading\' | translate"\n/>\n',
+};
+
+expectRed(
+  'an nxs- component label key missing from the fallback',
+  'checkAccessibleNameFallbacks',
+  NXS_LABEL_APP,
+  null,
+  /binds label to `app\.loading`.*omits/s,
+);
+
+expectGreen('an nxs- component label key in the fallback', 'checkAccessibleNameFallbacks', {
+  ...NXS_LABEL_APP,
+  'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': EN_FALLBACK.replace(
+    '};',
+    "  'app.loading': 'Loading',\n};",
+  ),
+});
+
+expectGreen(
+  'a [label] on a non-nxs element is not an accessible name this gate owns',
+  'checkAccessibleNameFallbacks',
+  {
+    ...NXS_LABEL_APP,
+    'libs/features/browse/src/lib/browse/browse.html':
+      '<mat-tab [label]="\'app.loading\' | translate"></mat-tab>\n',
+  },
+);
+
 expectRed(
   'no accessible names bound at all must not read as a pass',
   'checkAccessibleNameFallbacks',
@@ -864,11 +915,15 @@ class TestHost {}
 it('renders', () => expect(TestHost).toBeTruthy());
 `;
 
-expectGreen('a fixture referenced by exactly one sibling spec is exempt', 'checkNoHardcodedUiText', {
-  ...APP,
-  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
-  'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
-});
+expectGreen(
+  'a fixture referenced by exactly one sibling spec is exempt',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+  },
+);
 
 // Copilot's case. `dashboard/widget.host.html` is referenced by nothing, but under basename
 // matching it saw `shell/widget.spec.ts` — a spec for a DIFFERENT file — and was exempted on
@@ -890,13 +945,17 @@ expectRed(
 // rule: two fixtures that legitimately share a basename each have their own hosting spec. Under
 // basename matching both saw two specs, failed the "exactly one" test, and NEITHER was exempt —
 // a false rejection. Resolution gives each its own proof.
-expectGreen('two same-named fixtures each with their own hosting spec are both exempt', 'checkNoHardcodedUiText', {
-  ...APP,
-  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
-  'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
-  'apps/nuxeo-ui/src/app/dashboard/widget.host.html': FIXTURE_PROSE,
-  'apps/nuxeo-ui/src/app/dashboard/widget.spec.ts': hostingSpec('widget.host.html'),
-});
+expectGreen(
+  'two same-named fixtures each with their own hosting spec are both exempt',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.spec.ts': hostingSpec('widget.host.html'),
+    'apps/nuxeo-ui/src/app/dashboard/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/dashboard/widget.spec.ts': hostingSpec('widget.host.html'),
+  },
+);
 
 // A mention is not a reference. Under basename matching, a spec that only talked ABOUT the file
 // — in a comment, in a string, in a variable name — proved it was a fixture.
@@ -907,8 +966,8 @@ expectRed(
     ...APP,
     'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
     'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
-      '// See widget.host.html for the markup that reproduced this.\nit('
-      + "'passes', () => expect(true).toBe(true));\n",
+      '// See widget.host.html for the markup that reproduced this.\nit(' +
+      "'passes', () => expect(true).toBe(true));\n",
   },
   null,
   /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
@@ -925,8 +984,8 @@ expectRed(
     ...APP,
     'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
     'apps/nuxeo-ui/src/app/shell/unrelated.spec.ts':
-      "// See './widget.host.html' for the markup that reproduced this.\nit("
-      + "'passes', () => expect(true).toBe(true));\n",
+      "// See './widget.host.html' for the markup that reproduced this.\nit(" +
+      "'passes', () => expect(true).toBe(true));\n",
   },
   null,
   /shell\/widget\.host\.html:1 introduces the text `Show details` as hard-coded English/,
@@ -935,13 +994,17 @@ expectRed(
 // ...and the other side of that: a reference in real code must still count, or the parser change
 // would simply have disabled the exemption. `hostingSpec` puts it in a `templateUrl`, so this is
 // the positive control for the AST path specifically.
-expectGreen('a fixture referenced from a block-commented spec’s live code is still exempt', 'checkNoHardcodedUiText', {
-  ...APP,
-  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
-  'apps/nuxeo-ui/src/app/shell/widget.spec.ts':
-    "/* Hosts './other.host.html' in an older revision — kept for context. */\n" +
-    hostingSpec('widget.host.html'),
-});
+expectGreen(
+  'a fixture referenced from a block-commented spec’s live code is still exempt',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.spec.ts':
+      "/* Hosts './other.host.html' in an older revision — kept for context. */\n" +
+      hostingSpec('widget.host.html'),
+  },
+);
 
 // Round four: `..` that climbs above the repository root. `resolveRef` walked segments and
 // popped on `..`, and `pop()` on an empty array is a no-op — so a path that really resolves
@@ -1047,10 +1110,13 @@ expectRed(
 
 // The other side of it, or the resolution would just have disabled the exemption for anyone
 // who renames the import. An alias is still the same binding.
-expectGreen('a fixture hosted through an aliased @angular/core Component import is exempt', 'checkNoHardcodedUiText', {
-  ...APP,
-  'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
-  'apps/nuxeo-ui/src/app/shell/widget.spec.ts': `import { Component as NgComponent } from '@angular/core';
+expectGreen(
+  'a fixture hosted through an aliased @angular/core Component import is exempt',
+  'checkNoHardcodedUiText',
+  {
+    ...APP,
+    'apps/nuxeo-ui/src/app/shell/widget.host.html': FIXTURE_PROSE,
+    'apps/nuxeo-ui/src/app/shell/widget.spec.ts': `import { Component as NgComponent } from '@angular/core';
 
 @NgComponent({
   standalone: true,
@@ -1061,7 +1127,8 @@ class TestHost {}
 
 it('renders', () => expect(TestHost).toBeTruthy());
 `,
-});
+  },
+);
 
 // Round two's property, also never controlled: a shipped component compiling the file means its
 // text is not test data, so the fixture cannot hold the proof of its own exemption.
@@ -1532,10 +1599,10 @@ expectRed(
   'checkShippedDefaultLanguage',
   {
     ...CATALOGUES,
-    'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json': BOOTSTRAP('zz', [
-      'en',
-      'fr',
-    ]),
+    'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json': BOOTSTRAP(
+      'zz',
+      ['en', 'fr'],
+    ),
   },
   null,
   /GENERATED pseudo-locale/,
@@ -1546,11 +1613,10 @@ expectRed(
   'checkShippedDefaultLanguage',
   {
     ...CATALOGUES,
-    'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json': BOOTSTRAP('de', [
-      'en',
-      'fr',
+    'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json': BOOTSTRAP(
       'de',
-    ]),
+      ['en', 'fr', 'de'],
+    ),
   },
   null,
   /no catalogue exists for it/,
@@ -1561,7 +1627,10 @@ expectRed(
   'checkShippedDefaultLanguage',
   {
     ...CATALOGUES,
-    'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json': BOOTSTRAP('fr', ['en']),
+    'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json': BOOTSTRAP(
+      'fr',
+      ['en'],
+    ),
   },
   null,
   /absent from/,
@@ -1569,7 +1638,10 @@ expectRed(
 
 expectGreen('a real shipped default', 'checkShippedDefaultLanguage', {
   ...CATALOGUES,
-  'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json': BOOTSTRAP('en', ['en', 'fr']),
+  'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json': BOOTSTRAP(
+    'en',
+    ['en', 'fr'],
+  ),
 });
 
 // A gate that cannot find the file it checks must say so, not pass.
@@ -2001,7 +2073,10 @@ const INSTALL_XML_BEFORE = `<install>
 `;
 
 /** NXSAT-317's installer: the config directory carried only a sample, replaced on upgrade. */
-const INSTALL_XML_SAMPLE = INSTALL_XML_BEFORE.replace(/overwrite="false" \/>/, 'overwrite="true" />');
+const INSTALL_XML_SAMPLE = INSTALL_XML_BEFORE.replace(
+  /overwrite="false" \/>/,
+  'overwrite="true" />',
+);
 
 /** NXSAT-312's: configuration is contributed to the configuration service, nothing is copied. */
 const INSTALL_XML_AFTER = `<install>
@@ -2112,9 +2187,13 @@ expectGreen('the NXSAT-312 installer', 'checkInstallerOwnsNoCustomerFile', {
 });
 
 falsePositiveControls += 1;
-expectGreen('overwrite="TRUE", which parseBoolean reads as true', 'checkInstallerOwnsNoCustomerFile', {
-  [INSTALL_XML]: INSTALL_XML_AFTER.replace(/overwrite="true" \/>/, 'overwrite="TRUE" />'),
-});
+expectGreen(
+  'overwrite="TRUE", which parseBoolean reads as true',
+  'checkInstallerOwnsNoCustomerFile',
+  {
+    [INSTALL_XML]: INSTALL_XML_AFTER.replace(/overwrite="true" \/>/, 'overwrite="TRUE" />'),
+  },
+);
 
 expectRed(
   'no installer found at all',
@@ -4321,7 +4400,8 @@ expectRed(
  * languages it could not render, and the gate was looking somewhere else entirely.
  */
 const TEMPLATE_CONFIG = 'apps/nuxeo-satori-template/public/agentic-ui-config/bootstrap.json';
-const PACKAGED_CONFIG = 'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json';
+const PACKAGED_CONFIG =
+  'nuxeo-agentic-core/src/main/resources/agentic-ui-config/bootstrap.defaults.json';
 const EN_ONLY = '{\n  "defaultLanguage": "en",\n  "availableLanguages": ["en"]\n}\n';
 
 expectRed(
@@ -4523,8 +4603,7 @@ const METHOD_BINDING_TS = `export class XComponent {
   }
 }
 `;
-const METHOD_BINDING_HTML =
-  `<button type="button" [attr.aria-label]="panelLabelKey() | translate"></button>\n`;
+const METHOD_BINDING_HTML = `<button type="button" [attr.aria-label]="panelLabelKey() | translate"></button>\n`;
 const METHOD_BINDING_APP = {
   'apps/nuxeo-ui/public/i18n/en.json': METHOD_BINDING_CATALOGUE,
   'apps/nuxeo-ui/src/app/i18n/en-fallback.ts': METHOD_BINDING_FALLBACK,
@@ -4551,8 +4630,7 @@ expectGreen(
   METHOD_BINDING_APP,
 );
 
-const METHOD_PLACEHOLDER_HTML =
-  `<input [placeholder]="inputLabelKey() | translate" />\n`;
+const METHOD_PLACEHOLDER_HTML = `<input [placeholder]="inputLabelKey() | translate" />\n`;
 const METHOD_PLACEHOLDER_TS = `export class XComponent {
   inputLabelKey(): 'x.panel.hide' | 'x.panel.show' {
     return this.open ? 'x.panel.hide' : 'x.panel.show';
@@ -4823,8 +4901,7 @@ expectRed(
   /panelLabelKey\(\).*control-flow path does not return a resolvable/s,
 );
 
-const METHOD_PARAM_HTML =
-  `<button type="button" [attr.aria-label]="panelLabelKey() | translate: { name: itemName() }"></button>\n`;
+const METHOD_PARAM_HTML = `<button type="button" [attr.aria-label]="panelLabelKey() | translate: { name: itemName() }"></button>\n`;
 expectRed(
   'a parameterised method-bound accessible name whose keys are missing from the fallback map',
   'checkAccessibleNameFallbacks',
@@ -5331,7 +5408,8 @@ const NXS_LIB = (extra = {}, paths = {}) => ({
   )}\n`,
   'libs/platform/components/ng-package.json':
     '{ "lib": { "entryFile": "../../shared/satori-components/src/index.ts" } }\n',
-  [`${NXS_ROOT}/src/index.ts`]: "export { NxsThingComponent } from './lib/thing/thing.component';\n",
+  [`${NXS_ROOT}/src/index.ts`]:
+    "export { NxsThingComponent } from './lib/thing/thing.component';\n",
   [NXS_COMPONENT]: nxsComponent(),
   [`${NXS_ROOT}/src/lib/thing/thing.component.html`]: '<p>{{ 1 }}</p>\n',
   [NXS_STYLES]: ':host {\n  display: block;\n}\n',
@@ -5448,7 +5526,9 @@ expectRed(
   'a direct adf-core import',
   'checkSatoriComponentsDependencies',
   NXS_LIB({
-    [NXS_COMPONENT]: nxsComponent({ imports: "import { FileSizePipe } from '@alfresco/adf-core';" }),
+    [NXS_COMPONENT]: nxsComponent({
+      imports: "import { FileSizePipe } from '@alfresco/adf-core';",
+    }),
   }),
   null,
   /thing\.component\.ts imports `@alfresco\/adf-core`\. .*ADF leaves the dependency tree/,
@@ -5470,7 +5550,8 @@ expectRed(
   'a dynamic import of an ADF package',
   'checkSatoriComponentsDependencies',
   NXS_LIB({
-    [`${NXS_ROOT}/src/lib/thing/lazy.ts`]: "export const load = () => import('@alfresco/adf-core');\n",
+    [`${NXS_ROOT}/src/lib/thing/lazy.ts`]:
+      "export const load = () => import('@alfresco/adf-core');\n",
   }),
   null,
   /lazy\.ts imports `@alfresco\/adf-core`/,
@@ -5996,7 +6077,9 @@ falsePositiveControls += 1;
 expectGreen(
   'a component whose standalone key is quoted',
   'checkSatoriComponentsFederationReadiness',
-  NXS_LIB({ [NXS_COMPONENT]: nxsComponent({ config: "selector: 'nxs-thing', 'standalone': true," }) }),
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({ config: "selector: 'nxs-thing', 'standalone': true," }),
+  }),
 );
 
 expectRed(
@@ -6025,7 +6108,10 @@ expectRed(
 expectRed(
   'prose in an input on an nxs- component',
   'checkNoProseInComponentInputs',
-  { 'libs/features/x/src/lib/x.html': '<nxs-empty-state heading="Nothing here"></nxs-empty-state>\n' },
+  {
+    'libs/features/x/src/lib/x.html':
+      '<nxs-empty-state heading="Nothing here"></nxs-empty-state>\n',
+  },
   null,
   /sets `heading="Nothing here"` on `<nxs-empty-state>`/,
 );
