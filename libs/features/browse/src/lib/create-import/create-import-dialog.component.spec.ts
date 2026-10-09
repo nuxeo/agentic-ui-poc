@@ -87,7 +87,7 @@ const mockDirectoryService = {
 };
 
 function pictureType() {
-  return { type: 'Picture', label: 'Picture', icon: 'image' };
+  return { type: 'Picture', label: 'Picture' };
 }
 
 function jpegFile(name = 'photo.jpg') {
@@ -264,7 +264,6 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
     component.startCreateFromType({
       type: 'Collection',
       label: 'Collection',
-      icon: 'collections_bookmark',
     });
     component.docTitle = 'My Collection';
     component.createDocument();
@@ -295,7 +294,6 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
     component.startCreateFromType({
       type: 'Collection',
       label: 'Collection',
-      icon: 'collections_bookmark',
     });
     component.docTitle = 'Minimal Collection';
     component.createDocument();
@@ -865,7 +863,7 @@ describe('CreateImportDialogComponent domain create (NXSAT-199)', () => {
     await createDialog();
     expect(component.parentPath()).toBe('/');
 
-    component.startCreateFromType({ type: 'Domain', label: 'Domain', icon: 'domain' });
+    component.startCreateFromType({ type: 'Domain', label: 'Domain' });
     component.docTitle = 'Test Domain';
     component.createDocument();
     await Promise.resolve();
@@ -1700,7 +1698,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
       expect(component.hasContentField()).toBe(false);
       expect(component.createMissingMainFile()).toBe(false);
 
-      component.startCreateFromType({ type: 'Folder', label: 'Folder', icon: 'folder' });
+      component.startCreateFromType({ type: 'Folder', label: 'Folder' });
       expect(component.hasContentField()).toBe(false);
       expect(component.createMissingMainFile()).toBe(false);
 
@@ -1868,7 +1866,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
         }),
       );
 
-      component.startCreateFromType({ type: 'Note', label: 'Note', icon: 'note' });
+      component.startCreateFromType({ type: 'Note', label: 'Note' });
       component.docTitle = 'Minutes';
       component.noteFormat = 'text/html';
       component.createDocument();
@@ -1921,7 +1919,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
       component.createDocument();
       expect(m.createChildDocument).not.toHaveBeenCalled();
 
-      component.startCreateFromType({ type: 'Folder', label: 'Folder', icon: 'folder' });
+      component.startCreateFromType({ type: 'Folder', label: 'Folder' });
       component.docTitle = '   ';
       component.createDocument();
       expect(m.createChildDocument).not.toHaveBeenCalled();
@@ -1929,7 +1927,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
 
     it('refuses to create while the expiry field is invalid', async () => {
       await createDialog();
-      component.startCreateFromType({ type: 'Folder', label: 'Folder', icon: 'folder' });
+      component.startCreateFromType({ type: 'Folder', label: 'Folder' });
       component.docTitle = 'Reports';
       component.onExpiresInput(changeEvent(inputWith('99/99/9999')));
 
@@ -1952,7 +1950,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
         }),
       );
 
-      component.startCreateFromType({ type: 'Folder', label: 'Folder', icon: 'folder' });
+      component.startCreateFromType({ type: 'Folder', label: 'Folder' });
       component.docTitle = 'Reports';
       component.onExpiresInput(changeEvent(inputWith('12/31/2027')));
       component.onExpiresChange(new Date('2027-12-31T00:00:00.000Z'));
@@ -1979,7 +1977,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
       await createDialog();
       m.createChildDocument.mockReturnValue(throwError(() => ({ message: 'Name already used' })));
 
-      component.startCreateFromType({ type: 'Folder', label: 'Folder', icon: 'folder' });
+      component.startCreateFromType({ type: 'Folder', label: 'Folder' });
       component.docTitle = 'Reports';
       component.createDocument();
       await flushAsync();
@@ -1993,7 +1991,7 @@ describe('CreateImportDialogComponent location, vocabularies and file handling',
       await createDialog();
       m.createChildDocument.mockReturnValue(throwError(() => ({})));
 
-      component.startCreateFromType({ type: 'Folder', label: 'Folder', icon: 'folder' });
+      component.startCreateFromType({ type: 'Folder', label: 'Folder' });
       component.docTitle = 'Reports';
       component.createDocument();
       await flushAsync();

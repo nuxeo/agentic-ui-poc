@@ -1,15 +1,11 @@
 <div class="browse-container">
   <!-- Header row: doc icon/title + actions -->
-  <div class="browse-header">
-    <div class="header-left">
-      @if (currentDoc(); as doc) {
-        <mat-icon class="header-doc-icon">{{ docIcon(doc) }}</mat-icon>
-        <div class="header-doc-info">
-          <div class="header-doc-title" role="heading" aria-level="1">{{ doc.title }}</div>
-          <span class="header-doc-type">{{ doc.type | docTypeLabel }}</span>
-        </div>
-      }
-    </div>
+  <nxs-folder-header
+    class="browse-header"
+    [heading]="currentDoc()?.title ?? ''"
+    [subheading]="currentDoc()?.type | docTypeLabel"
+    [documentType]="currentDoc()?.type ?? ''"
+  >
     <div class="header-actions">
       @if (canCreateContentHere()) {
         <button
@@ -84,18 +80,14 @@
         }
       </mat-menu>
     </div>
-  </div>
+  </nxs-folder-header>
 
   <!-- Breadcrumbs -->
   @if (showBreadcrumbs()) {
     <sat-breadcrumbs [items]="breadcrumbs()" (click)="onBreadcrumbClick($event)"></sat-breadcrumbs>
   }
 
-  @if (isDomainBrowse() || isRepositoryRootBrowse()) {
-    <p class="browse-domain-hint" role="note">
-      {{ domainContainerGuidanceKey | translate }}
-    </p>
-  }
+  <nxs-domain-hint [documentType]="currentDoc()?.type" [path]="browsePath()" />
 
   <!-- Main body: tabs on left, details panel on right -->
   <div class="browse-body">

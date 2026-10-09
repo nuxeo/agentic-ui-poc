@@ -266,7 +266,9 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 - **A component's own chrome uses `satori-components.*` keys.** The column picker's Done and
   Reset, or `nxs-permissions-panel`'s headings, for example. Without the Satori catalogue,
   `providePlatformEnglishFallback()` (README, "Translations") renders them in English; add the same
-  keys to your catalogue to translate them.
+  keys to your catalogue to translate them. `nxs-domain-hint` is the exception: its note is
+  `nuxeo-client`'s `DOMAIN_CONTAINER_GUIDANCE_KEY` (`browse.message.domain-container-guidance`),
+  the same sentence the Create / Import checks give, and the fallback covers it the same way.
 - **`nxs-empty-state` renders its heading as an `<h2>` by default.** Bind `[headingLevel]` to
   one below the heading of the section it sits in, so screen-reader heading navigation stays in
   order.
