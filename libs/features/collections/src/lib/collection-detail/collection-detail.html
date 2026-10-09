@@ -131,10 +131,13 @@
           }}</span>
         </button>
         @if (showsLockAction()) {
+          <!-- Not `disabled` for a reader who may not unlock: the menu's key manager skips disabled
+               items, so "Locked by …" would be unreachable from the keyboard. toggleLock() refuses
+               instead, and says why. -->
           <button
             mat-menu-item
             (click)="toggleLock()"
-            [disabled]="actionInProgress() === 'lock' || !canEditCollection()"
+            [disabled]="actionInProgress() === 'lock'"
             [matTooltip]="lockTooltip() ?? ''"
             matTooltipPosition="left"
           >

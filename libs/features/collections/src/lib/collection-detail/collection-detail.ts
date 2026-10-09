@@ -196,9 +196,14 @@ export class CollectionDetailComponent {
   /**
    * Write holders may lock; anyone who can read a locked collection sees that it is, and by whom.
    * Nuxeo's default lock policy takes Write on a locked document away from everyone but its owner
-   * and administrators, so `canEditCollection` also decides who is offered Unlock.
+   * and administrators, so `canEditCollection` also decides who may unlock. Never offered on a
+   * version, an immutable document or the repository root, as in Web UI.
    */
-  readonly showsLockAction = computed(() => this.isLocked() || this.canEditCollection());
+  readonly showsLockAction = computed(() => {
+    const col = this.collection();
+    if (col?.facets?.includes('Immutable') || col?.type === 'Root') return false;
+    return this.isLocked() || this.canEditCollection();
+  });
 
   private readonly browseContext = inject(BrowseContextService);
 
@@ -470,7 +475,11 @@ export class CollectionDetailComponent {
   toggleLock(): void {
     if (this.actionInProgress()) return;
     if (!this.canEditCollection()) {
-      this.toast(this.translate.instant(PERMISSION_DENIED_KEY));
+      this.toast(
+        this.translate.instant(
+          this.isLocked() ? 'common.lock.locked-by-another-user' : PERMISSION_DENIED_KEY,
+        ),
+      );
       return;
     }
     this.actionInProgress.set('lock');

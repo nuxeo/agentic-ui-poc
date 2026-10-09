@@ -535,10 +535,22 @@ describe('CollectionDetailComponent', () => {
 
       expect(mockDetailService.unlockDocument).not.toHaveBeenCalled();
       expect(mockSnackBar.open).toHaveBeenCalledWith(
-        'You do not have permission to perform this action',
+        "You can't unlock this document because it is locked by another user.",
         'OK',
         expect.anything(),
       );
+    });
+
+    it('offers no lock action on a version, which carries the Immutable facet', () => {
+      load(docWith({ lockOwner: 'alice', lockCreated: LOCKED_AT, facets: ['Immutable'] }));
+
+      expect(component.showsLockAction()).toBe(false);
+    });
+
+    it('offers no lock action on the repository root', () => {
+      load(docWith({ type: 'Root' }));
+
+      expect(component.showsLockAction()).toBe(false);
     });
 
     it('does not offer Lock to a read-only user on an unlocked collection', () => {
