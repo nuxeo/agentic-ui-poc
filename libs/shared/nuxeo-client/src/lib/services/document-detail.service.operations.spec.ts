@@ -582,6 +582,40 @@ describe('DocumentDetailService', () => {
       await pending;
     });
 
+    it('removePermissionById addresses one ACE by id and sends no user', async () => {
+      // With `user`, Nuxeo removes every ACE that principal holds; only `id` removes one.
+      const pending = firstValueFrom(
+        service.removePermissionById('doc-1', 'jdoe:WriteVersion:true:Administrator::'),
+      );
+      const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-1/@op/Document.RemovePermission');
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body.params).toEqual({
+        id: 'jdoe:WriteVersion:true:Administrator::',
+        acl: 'local',
+      });
+      req.flush(doc());
+      await pending;
+    });
+
+    it('removePermissionById honours an explicit acl name', async () => {
+      const pending = firstValueFrom(service.removePermissionById('doc-1', 'ace-1', 'custom'));
+      const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-1/@op/Document.RemovePermission');
+      expect(req.request.body.params.acl).toBe('custom');
+      req.flush(doc());
+      await pending;
+    });
+
+    it('removePermissionById surfaces the server refusal', async () => {
+      const pending = firstValueFrom(service.removePermissionById('doc-1', 'ace-1'));
+      httpMock
+        .expectOne('/nuxeo/api/v1/id/doc-1/@op/Document.RemovePermission')
+        .flush(
+          { status: 403, message: "Privilege 'WriteSecurity' is not granted to 'jdoe'" },
+          { status: 403, statusText: 'Forbidden' },
+        );
+      await expect(pending).rejects.toMatchObject({ status: 403 });
+    });
+
     it('replacePermission seeds an empty users array before the caller params', async () => {
       // `Document.ReplacePermission` rejects the call without `users`, and the spread order
       // is what lets a caller override it.

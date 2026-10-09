@@ -189,16 +189,80 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-1 exported symbol(s).
+3 exported symbol(s).
 
 ```ts
+const NXS_PERMISSIONS_PANEL_ID = "nxs.components.permissionsPanel";
 class NxsEmptyStateComponent {
-    readonly heading: _angular_core.InputSignal<string>;
-    readonly headingLevel: _angular_core.InputSignal<1 | 2 | 3 | 4 | 5 | 6>;
-    readonly message: _angular_core.InputSignal<string>;
-    readonly icon: _angular_core.InputSignal<string>;
+    readonly heading: InputSignal<string>;
+    readonly headingLevel: InputSignal<1 | 2 | 3 | 4 | 5 | 6>;
+    readonly message: InputSignal<string>;
+    readonly icon: InputSignal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsEmptyStateComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
+    }
+}
+class NxsPermissionsPanelComponent {
+    readonly documentId: _angular_core.InputSignal<string>;
+    readonly permissionsChanged: _angular_core.InputSignal<(() => void) | null>;
+    protected readonly localColumns: string[];
+    protected readonly inheritedColumns: string[];
+    protected readonly otherColumns: string[];
+    protected readonly snapshot: _angular_core.WritableSignal<NxsPermissionsSnapshot | null>;
+    protected readonly loading: _angular_core.WritableSignal<boolean>;
+    protected readonly loadError: _angular_core.WritableSignal<LoadError | null>;
+    protected readonly saving: _angular_core.WritableSignal<boolean>;
+    protected readonly outcome: _angular_core.WritableSignal<NxsSaveOutcome | null>;
+    protected readonly inheritanceBusy: _angular_core.WritableSignal<boolean>;
+    protected readonly inheritanceError: _angular_core.WritableSignal<string | null>;
+    protected readonly staged: _angular_core.WritableSignal<ReadonlyMap<string, NxsPermissionChange>>;
+    protected readonly editor: _angular_core.WritableSignal<EditorState | null>;
+    protected readonly editorPrincipal: _angular_core.WritableSignal<UserGroupSuggestion | null>;
+    protected readonly editorQuery: _angular_core.WritableSignal<string>;
+    protected readonly editorPermission: _angular_core.WritableSignal<string>;
+    protected readonly editorDated: _angular_core.WritableSignal<boolean>;
+    protected readonly editorBegin: _angular_core.WritableSignal<Date | null>;
+    protected readonly editorEnd: _angular_core.WritableSignal<Date | null>;
+    protected readonly editorSubmitted: _angular_core.WritableSignal<boolean>;
+    protected readonly suggestions: _angular_core.WritableSignal<UserGroupSuggestion[]>;
+    protected readonly loadErrorKey: _angular_core.Signal<string>;
+    protected readonly canManage: _angular_core.Signal<boolean>;
+    protected readonly editable: _angular_core.Signal<boolean>;
+    protected readonly trackItem: (_index: number, item: LocalItem) => string;
+    protected readonly pendingCount: _angular_core.Signal<number>;
+    protected readonly permissionGroups: _angular_core.Signal<{
+    label: string;
+    permissions: readonly string[];
+    }[]>;
+    protected readonly localItems: _angular_core.Signal<LocalItem[]>;
+    protected readonly editorExtraPermissions: _angular_core.Signal<readonly string[]>;
+    protected readonly editorInvalidRange: _angular_core.Signal<boolean>;
+    constructor();
+    protected reload(): void;
+    protected permissionLabel(permission: string): string;
+    protected timeFrame(begin: string | null, end: string | null): string;
+    protected entryLabel(principal: string, permission: string): string;
+    protected serverMessage(error: unknown): string;
+    protected isDenied(error: unknown): boolean;
+    protected setPermission(item: LocalItem, permission: string): void;
+    protected toggleRemove(item: LocalItem): void;
+    protected dismissOutcome(): void;
+    protected discard(): void;
+    protected openAdd(): void;
+    protected openEdit(item: LocalItem): void;
+    protected closeEditor(): void;
+    protected onPrincipalInput(value: string): void;
+    protected onPrincipalSelected(suggestion: UserGroupSuggestion): void;
+    protected displaySuggestion(suggestion: UserGroupSuggestion | string | null): string;
+    protected applyEditor(): void;
+    protected save(): void;
+    protected toggleInheritance(): void;
+    protected refusalReasonKey(refusal: NxsPermissionRefusal): string;
+    protected failedEntry(outcome: Extract<NxsSaveOutcome, {
+    kind: 'failed';
+    }>): string;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsPermissionsPanelComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsPermissionsPanelComponent, "nxs-permissions-panel", never, { "documentId": { "alias": "documentId"; "required": true; "isSignal": true; }; "permissionsChanged": { "alias": "permissionsChanged"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
 }
 ```
@@ -968,6 +1032,7 @@ class DocumentDetailService {
     permission: string;
     acl?: string;
     }): Observable<NuxeoDocument>;
+    removePermissionById(uid: string, aceId: string, acl?: string): Observable<NuxeoDocument>;
     uploadAttachment(uid: string, file: File): Observable<unknown>;
     removeAttachment(uid: string, index: number): Observable<NuxeoDocument>;
     replaceAttachment(uid: string, index: number, file: File): Observable<unknown>;
@@ -1137,6 +1202,7 @@ type NoteMimeType = (typeof NOTE_FORMAT_OPTIONS)[number]['value'];
 interface NuxeoAce {
     id: string;
     username: string;
+    usernameLabel?: string;
     externalUser: boolean;
     permission: string;
     granted: boolean;

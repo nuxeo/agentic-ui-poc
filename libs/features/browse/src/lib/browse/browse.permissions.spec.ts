@@ -91,13 +91,11 @@ const detail = {
 const manifest = signal<{ extensionLayers: readonly unknown[] }>({ extensionLayers: [] });
 
 /**
- * The Permissions tab: what the three ACL lists derive from the document, and
- * each dialog and operation in both branches.
+ * The Permissions tab's host half: the external-user list, its dialogs and the load that feeds it.
  *
- * `browse.spec.ts` already covers `localAces`, the permissions-tab load and the
- * notification-email pair; those are not repeated here. What was untested was the
- * inherited and external lists, the inheritance toggle, and the four dialogs that
- * only reload permissions when the dialog reports it changed something.
+ * Local and inherited permissions and the inheritance toggle are `nxs-permissions-panel`'s, and
+ * are specified in `libs/shared/satori-components`. `browse.spec.ts` covers the notification-email
+ * pair; it is not repeated here.
  */
 describe('BrowseComponent — permissions tab', () => {
   let component: BrowseComponent;
@@ -163,7 +161,7 @@ describe('BrowseComponent — permissions tab', () => {
 
   // ── Derived ACL lists ──
 
-  it('derives the three ACL lists from one document, keeping each to its own entries', () => {
+  it('keeps only the external grants, which the host shows beside the panel', () => {
     component.currentDoc.set(
       withAcls([
         {
@@ -183,39 +181,21 @@ describe('BrowseComponent — permissions tab', () => {
       ]),
     );
 
-    expect(component.localAces().map((a) => a.id)).toEqual(['l-1']);
-    expect(component.inheritedAces().map((a) => a.id)).toEqual(['i-1']);
     expect(component.externalAces().map((a) => a.id)).toEqual(['l-2']);
-    expect(component.isInheritanceBlocked()).toBe(false);
   });
 
-  it('reports inheritance as blocked exactly when no inherited ACL is present', () => {
-    component.currentDoc.set(withAcls([{ name: 'local', aces: [] }]));
-    expect(component.isInheritanceBlocked()).toBe(true);
-
-    component.currentDoc.set(
-      withAcls([
-        { name: 'local', aces: [] },
-        { name: 'inherited', aces: [] },
-      ]),
-    );
-    expect(component.isInheritanceBlocked()).toBe(false);
+  it('renders the local and inherited permissions through the library panel ID', () => {
+    expect(component.permissionsPanelId).toBe('nxs.components.permissionsPanel');
   });
 
-  it('yields empty ACL lists and unblocked inheritance before the document has loaded', () => {
-    expect(component.localAces()).toEqual([]);
-    expect(component.inheritedAces()).toEqual([]);
+  it('yields no external grants before the document has loaded', () => {
     expect(component.externalAces()).toEqual([]);
-    expect(component.isInheritanceBlocked()).toBe(false);
   });
 
-  it('yields empty ACL lists for a document loaded without the acls enricher', () => {
+  it('yields no external grants for a document loaded without the acls enricher', () => {
     component.currentDoc.set(doc({ uid: 'ws-1', contextParameters: {} }));
 
-    expect(component.localAces()).toEqual([]);
-    expect(component.inheritedAces()).toEqual([]);
     expect(component.externalAces()).toEqual([]);
-    expect(component.isInheritanceBlocked()).toBe(false);
   });
 
   // ── Loading ──
@@ -225,13 +205,13 @@ describe('BrowseComponent — permissions tab', () => {
       doc({ uid: 'ws-1', contextParameters: { favorites: { isFavorite: true } } }),
     );
     detail.getDocumentPermissions.mockReturnValue(
-      of(withAcls([{ name: 'local', aces: [ace({ id: 'l-1' })] }])),
+      of(withAcls([{ name: 'local', aces: [ace({ id: 'l-1', externalUser: true })] }])),
     );
 
     component.onTabChange(1);
 
     expect(component.currentDoc()?.contextParameters?.['favorites']).toEqual({ isFavorite: true });
-    expect(component.localAces().map((a) => a.id)).toEqual(['l-1']);
+    expect(component.externalAces().map((a) => a.id)).toEqual(['l-1']);
   });
 
   it('does not request permissions for a tab opened before any document has loaded', () => {
@@ -265,37 +245,6 @@ describe('BrowseComponent — permissions tab', () => {
   });
 
   // ── Add / edit / delete ──
-
-  it('addPermission reloads the ACLs only when the dialog reports a new entry', () => {
-    component.currentDoc.set(doc({ uid: 'ws-1' }));
-    detail.getDocumentPermissions.mockReturnValue(of(withAcls([{ name: 'local', aces: [] }])));
-
-    dialogOpen.mockReturnValue({ afterClosed: () => of(false) });
-    component.addPermission();
-    expect(dialogData<{ documentUid: string }>().documentUid).toBe('ws-1');
-    expect(detail.getDocumentPermissions).not.toHaveBeenCalled();
-
-    dialogOpen.mockReturnValue({ afterClosed: () => of(true) });
-    component.addPermission();
-    expect(detail.getDocumentPermissions).toHaveBeenCalledWith('ws-1');
-    expect(snackBar).toHaveBeenCalledWith('Permission added', 'OK', { duration: 3000 });
-  });
-
-  it('editPermission passes the ACE through and reloads on a confirmed update', () => {
-    component.currentDoc.set(doc({ uid: 'ws-1' }));
-    detail.getDocumentPermissions.mockReturnValue(of(withAcls([{ name: 'local', aces: [] }])));
-    dialogOpen.mockReturnValue({ afterClosed: () => of(true) });
-    const target = ace({ id: 'l-1', permission: 'ReadWrite' });
-
-    component.editPermission(target);
-
-    expect(dialogData<{ documentUid: string; ace: NuxeoAce }>()).toEqual({
-      documentUid: 'ws-1',
-      ace: target,
-    });
-    expect(detail.getDocumentPermissions).toHaveBeenCalledWith('ws-1');
-    expect(snackBar).toHaveBeenCalledWith('Permission updated', 'OK', { duration: 3000 });
-  });
 
   it('deletePermission shows the human-readable permission and timeframe in the confirmation', () => {
     component.currentDoc.set(doc({ uid: 'ws-1' }));
@@ -346,80 +295,13 @@ describe('BrowseComponent — permissions tab', () => {
   });
 
   it('opens no permission dialog at all without a browsed document', () => {
-    component.addPermission();
-    component.editPermission(ace({ id: 'l-1' }));
     component.deletePermission(ace({ id: 'l-1' }));
     component.shareWithExternal();
     component.editExternalPermission(ace({ id: 'l-1' }));
     component.sendNotificationEmail(ace({ id: 'l-1' }));
-    component.toggleInheritance();
 
     expect(dialogOpen).not.toHaveBeenCalled();
-    expect(detail.blockPermissionInheritance).not.toHaveBeenCalled();
     expect(detail.sendNotificationEmailForPermission).not.toHaveBeenCalled();
-  });
-
-  // ── Inheritance ──
-
-  it('toggleInheritance blocks inheritance when it is currently inherited', () => {
-    component.currentDoc.set(
-      withAcls([
-        { name: 'local', aces: [] },
-        { name: 'inherited', aces: [] },
-      ]),
-    );
-    detail.blockPermissionInheritance.mockReturnValue(of(doc({ uid: 'ws-1' })));
-    detail.getDocumentPermissions.mockReturnValue(of(withAcls([{ name: 'local', aces: [] }])));
-
-    component.toggleInheritance();
-
-    expect(detail.blockPermissionInheritance).toHaveBeenCalledWith('ws-1');
-    expect(detail.unblockPermissionInheritance).not.toHaveBeenCalled();
-    expect(component.actionInProgress()).toBeNull();
-    expect(component.isInheritanceBlocked()).toBe(true);
-    expect(snackBar).toHaveBeenCalledWith('Inheritance blocked', 'OK', { duration: 3000 });
-  });
-
-  it('toggleInheritance unblocks inheritance when it is currently blocked', () => {
-    component.currentDoc.set(withAcls([{ name: 'local', aces: [] }]));
-    detail.unblockPermissionInheritance.mockReturnValue(of(doc({ uid: 'ws-1' })));
-    detail.getDocumentPermissions.mockReturnValue(
-      of(
-        withAcls([
-          { name: 'local', aces: [] },
-          { name: 'inherited', aces: [] },
-        ]),
-      ),
-    );
-
-    component.toggleInheritance();
-
-    expect(detail.unblockPermissionInheritance).toHaveBeenCalledWith('ws-1');
-    expect(component.isInheritanceBlocked()).toBe(false);
-    expect(snackBar).toHaveBeenCalledWith('Inheritance unblocked', 'OK', { duration: 3000 });
-  });
-
-  it('toggleInheritance releases the in-progress flag when the operation fails', () => {
-    component.currentDoc.set(withAcls([{ name: 'local', aces: [] }]));
-    detail.unblockPermissionInheritance.mockReturnValue(throwError(() => ({ status: 403 })));
-
-    component.toggleInheritance();
-
-    expect(component.actionInProgress()).toBeNull();
-    expect(detail.getDocumentPermissions).not.toHaveBeenCalled();
-    expect(component.isInheritanceBlocked()).toBe(true);
-    expect(snackBar).toHaveBeenCalledWith('Action failed', 'OK', { duration: 3000 });
-  });
-
-  it('toggleInheritance ignores a second press while an operation is running', () => {
-    component.currentDoc.set(withAcls([{ name: 'local', aces: [] }]));
-    detail.unblockPermissionInheritance.mockReturnValue(new Subject<never>());
-
-    component.toggleInheritance();
-    component.toggleInheritance();
-
-    expect(detail.unblockPermissionInheritance).toHaveBeenCalledTimes(1);
-    expect(component.actionInProgress()).toBe('inheritance');
   });
 
   it('sendNotificationEmail ignores a second press while a send is running', () => {

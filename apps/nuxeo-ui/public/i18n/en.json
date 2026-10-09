@@ -1877,14 +1877,23 @@
     },
     "right": {
       "AddChildren": "Add Children",
+      "CanAskForPublishing": "Can ask for publishing",
       "Everything": "Manage everything",
       "ManageWorkflows": "Manage Workflows",
       "Read": "Read",
       "ReadCanCollect": "Can collect",
       "ReadRemove": "Read & Remove",
+      "ReadVersion": "Read versions",
       "ReadWrite": "Edit",
       "Remove": "Remove",
-      "Write": "Write"
+      "RemoveChildren": "Remove children",
+      "SetRetention": "Set retention",
+      "Unlock": "Unlock",
+      "UnsetRetention": "Unset retention",
+      "Version": "Create versions",
+      "Write": "Write",
+      "WriteSecurity": "Manage permissions",
+      "WriteVersion": "Write versions"
     },
     "share-external-dialog": {
       "cancel": "Cancel",
@@ -1937,6 +1946,122 @@
   "saved-search": {
     "dialog": {
       "name-placeholder": "Enter a name for your saved search"
+    }
+  },
+  "satori-components": {
+    "permissions-panel": {
+      "add": "Add",
+      "column": {
+        "acl": "Access list",
+        "actions": "Actions",
+        "granted-by": "Granted by",
+        "permission": "Permission",
+        "principal": "User or group",
+        "time-frame": "Time frame"
+      },
+      "denied": "Denied",
+      "discard": "Discard",
+      "dismiss": "Dismiss",
+      "edit": "Edit",
+      "edit-entry": "Edit the permission for {{ principal }}",
+      "editor": {
+        "add": "Add",
+        "add-heading": "Add a permission",
+        "apply": "Apply",
+        "cancel": "Cancel",
+        "date-based": "Date-based",
+        "edit-heading": "Edit the permission for {{ principal }}",
+        "end-before-begin": "The end date is before the start date.",
+        "from": "From",
+        "no-principal": "Choose a user or group from the list.",
+        "permanent": "Permanent",
+        "permission": "Permission",
+        "principal": "User or group",
+        "to": "To"
+      },
+      "failed": {
+        "denied": "You don't have permission to change permissions on this document.",
+        "heading": "Saved {{ applied }} of {{ total }} changes. The server refused the next one:",
+        "unknown": "The server gave no reason."
+      },
+      "group": {
+        "other": "Other permissions on this server",
+        "standard": "Standard permissions",
+        "suggested": "Suggested for this document type"
+      },
+      "inherited": {
+        "block": "Block inheritance",
+        "blocked": "Inheritance is blocked, so only the permissions set on this document apply.",
+        "empty": "No permissions are inherited.",
+        "heading": "Inherited from parent folders",
+        "save-first": "Save or discard your changes first.",
+        "toggle-failed": "Inheritance could not be changed.",
+        "unblock": "Unblock inheritance"
+      },
+      "load-error": {
+        "denied": "You don't have access to this document's permissions.",
+        "failed": "The permissions could not be loaded.",
+        "not-found": "This document no longer exists."
+      },
+      "loading": "Loading permissions",
+      "local": {
+        "empty": "No permissions are set on this document itself.",
+        "heading": "Set on this document"
+      },
+      "locked": {
+        "deny": "A deny entry can be removed here, but not edited.",
+        "no-id": "Can't be changed here: the server sent no identifier for this entry."
+      },
+      "other": {
+        "heading": "Set by other access lists"
+      },
+      "pending": {
+        "many": "{{ count }} unsaved changes",
+        "one": "{{ count }} unsaved change"
+      },
+      "permission-for": "Permission for {{ principal }}",
+      "refusal": {
+        "changed-on-server": "it changed on the server after this page loaded. Reload, then make the change again.",
+        "deny-entry": "it denies access, and this panel can only grant: editing it would turn it into a grant.",
+        "invalid-time-frame": "its end date is before its start date.",
+        "no-id": "the server sent no identifier for it, so it can't be changed without risking another entry.",
+        "no-principal": "it names no user or group.",
+        "not-applied": "the server accepted the change, but its permissions don't show it.",
+        "undefined-permission": "this server doesn't define that permission."
+      },
+      "refused": {
+        "heading": "Nothing was saved. These entries can't be saved from this panel:"
+      },
+      "reload": "Reload",
+      "remove": "Remove",
+      "remove-entry": "Remove {{ permission }} for {{ principal }}",
+      "retry": "Retry",
+      "save": "Save",
+      "saved": {
+        "many": "Saved {{ count }} changes.",
+        "one": "Saved {{ count }} change."
+      },
+      "state": {
+        "added": "New",
+        "changed": "Changed",
+        "removed": "To remove"
+      },
+      "status": {
+        "archived": "Expired",
+        "pending": "Not yet active"
+      },
+      "title": "Permissions",
+      "unconfirmed": {
+        "heading": "The server did not apply every change. These entries are not as you set them:"
+      },
+      "undo": "Undo",
+      "unnamed-principal": "(no user or group)",
+      "unread": {
+        "heading": "Nothing was saved. The permissions could not be read before saving, so no change was sent:"
+      },
+      "unverified": {
+        "heading": "The changes were sent, but reading the permissions back failed, so the panel cannot confirm them. Reload to see what the server holds."
+      }
     }
   },
   "search": {

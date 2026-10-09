@@ -191,8 +191,6 @@ import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-docume
 import { NoteEditorComponent } from '../note-editor/note-editor';
 import { documentTypeTraits, type PackagedDocumentView } from './document-type-traits';
 import {
-  AddPermissionDialogComponent,
-  AddPermissionDialogData,
   DeletePermissionDialogComponent,
   DeletePermissionDialogData,
   ShareExternalDialogComponent,
@@ -201,6 +199,10 @@ import {
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import {
+  NXS_PERMISSIONS_PANEL_ID,
+  NxsPermissionsPanelComponent,
+} from '@nuxeo-satori/platform/components';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -314,6 +316,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     DocumentLayoutComponent,
     DocumentViewerComponent,
     ExtensionOutletComponent,
+    NxsPermissionsPanelComponent,
     NoteEditorComponent,
     SatAvatarModule,
     SatBreadcrumbsComponent,
@@ -901,22 +904,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   // Permissions tab computed
-  readonly localAces = computed<NuxeoAce[]>(() => {
-    const d = this.doc();
-    const acls = d?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
-    if (!acls) return [];
-    const local = acls.find((a) => a.name === 'local');
-    return local?.aces.filter((ace) => ace.granted && !ace.externalUser) ?? [];
-  });
-
-  readonly inheritedAces = computed<NuxeoAce[]>(() => {
-    const d = this.doc();
-    const acls = d?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
-    if (!acls) return [];
-    const inherited = acls.find((a) => a.name === 'inherited');
-    return inherited?.aces.filter((ace) => ace.granted) ?? [];
-  });
-
   readonly externalAces = computed<NuxeoAce[]>(() => {
     const d = this.doc();
     const acls = d?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
@@ -924,14 +911,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return acls.flatMap((a) => a.aces).filter((ace) => ace.externalUser && ace.granted);
   });
 
-  readonly isInheritanceBlocked = computed<boolean>(() => {
-    const d = this.doc();
-    const acls = d?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
-    if (!acls) return false;
-    return !acls.some((a) => a.name === 'inherited');
-  });
-
   readonly canManagePermissions = computed(() => canManageDocumentPermissions(this.doc()));
+  readonly permissionsPanelId = NXS_PERMISSIONS_PANEL_ID;
+  /** The panel's writes can change the external-user shares this tab reads itself. */
+  readonly onPermissionsChanged = () => this.reloadDocumentPermissions();
   readonly canWriteDoc = computed(() => canWriteDocument(this.doc()));
   readonly canRemoveDoc = computed(() => canRemoveDocument(this.doc()));
 
@@ -4115,38 +4098,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.dialog.open(DriveDialogComponent, { width: '500px', data });
   }
 
-  openAddPermissionDialog(): void {
-    const data: AddPermissionDialogData = { documentUid: this.docUid };
-    const ref = this.dialog.open(AddPermissionDialogComponent, {
-      width: '540px',
-      data,
-      autoFocus: false,
-    });
-    ref
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((saved: boolean) => {
-        if (saved) this.reloadDocumentPermissions();
-      });
-  }
-
-  editPermission(ace: NuxeoAce): void {
-    const ref = this.dialog.open(UpdatePermissionDialogComponent, {
-      width: '520px',
-      data: { documentUid: this.docUid, ace } satisfies UpdatePermissionDialogData,
-      autoFocus: false,
-    });
-    ref
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((updated: boolean | undefined) => {
-        if (updated) {
-          this.toast(this.translate.instant('browse.message.permission-updated'));
-          this.reloadDocumentPermissions();
-        }
-      });
-  }
-
   deletePermission(ace: NuxeoAce): void {
     const ref = this.dialog.open(DeletePermissionDialogComponent, {
       width: '560px',
@@ -4210,34 +4161,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           );
         },
       });
-  }
-
-  toggleInheritanceBlock(): void {
-    if (this.actionInProgress()) return;
-    const blocked = this.isInheritanceBlocked();
-    this.actionInProgress.set('block-inheritance');
-    const op = blocked
-      ? this.detailService.unblockPermissionInheritance(this.docUid)
-      : this.detailService.blockPermissionInheritance(this.docUid);
-    op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast(
-          this.translate.instant(
-            blocked
-              ? 'document-detail.message.permission-inheritance-unblocked'
-              : 'document-detail.message.permission-inheritance-blocked',
-          ),
-        );
-        this.reloadDocumentPermissions();
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast(
-          this.translate.instant('document-detail.message.failed-to-update-permission-inheritance'),
-        );
-      },
-    });
   }
 
   openExternalPermissionDialog(): void {
