@@ -6485,12 +6485,14 @@ function stylesOf(file, text) {
 
 /**
  * The files a local Sass URL can load, in Sass's own order: the file, its `_` partial, then the
- * directory's `index` or `_index` — each as `.scss` or `.sass`. A URL with an extension names the
- * file and its partial only. Plain `.css` is left out: Sass cannot load a package from it.
+ * directory's `index` or `_index` — each as `.scss` or `.sass`. A URL with a Sass extension names
+ * the file and its partial only; a `.css` URL names that file, which Sass leaves as a CSS `@import`
+ * and the application build then follows.
  */
 function sassCandidates(base) {
   const dir = dirname(base);
   const name = base.split('/').pop();
+  if (/\.css$/.test(name)) return [base];
   if (/\.(scss|sass)$/.test(name)) return [base, toPosixRel(join(dir, `_${name}`))];
   return [
     ...['scss', 'sass'].flatMap((ext) => [
@@ -6503,12 +6505,26 @@ function sassCandidates(base) {
 
 /**
  * Every URL a stylesheet loads: `@use` and `@forward` (one URL each — a later string is
- * configuration), every entry of an `@import` list, and `meta.load-css()`.
+ * configuration), every entry of an `@import` list, quoted or as `url(…)`, and `meta.load-css()`.
+ *
+ * Indented Sass (`indented`) ends a rule at the end of its line rather than at `;`, and may write
+ * an `@import` list unquoted.
  */
-function sassLoadedUrls(body) {
+function sassLoadedUrls(body, { indented = false } = {}) {
   const urls = [];
-  for (const rule of body.matchAll(/@(use|forward|import)\s+([^;{}]*)/g)) {
-    const strings = [...rule[2].matchAll(/['"]([^'"]+)['"]/g)].map((match) => match[1]);
+  const rules = indented
+    ? /@(use|forward|import)[ \t]+([^\n]*)/g
+    : /@(use|forward|import)\s+([^;{}]*)/g;
+  for (const rule of body.matchAll(rules)) {
+    let strings = [...rule[2].matchAll(/['"]([^'"]+)['"]|url\(\s*([^'"()\s]+)\s*\)/g)].map(
+      (match) => match[1] ?? match[2],
+    );
+    if (indented && rule[1] === 'import' && strings.length === 0) {
+      strings = rule[2]
+        .split(',')
+        .map((url) => url.trim())
+        .filter(Boolean);
+    }
     urls.push(...(rule[1] === 'import' ? strings : strings.slice(0, 1)));
   }
   for (const call of body.matchAll(/load-css\(\s*['"]([^'"]+)['"]/g)) urls.push(call[1]);
@@ -6526,8 +6542,9 @@ const SATORI_COMPONENTS_PROJECT = `${SATORI_COMPONENTS_ROOT}/project.json`;
  * The stylesheets the **default** `build-storybook` configuration compiles.
  *
  * Only `options.styles`: a named configuration such as `:satori` is opt-in and may need a token,
- * the default is what has to build without one. An unreadable project.json yields nothing, and the
- * library sources are still checked.
+ * the default is what has to build without one. Every entry, whatever its extension — Angular
+ * compiles `.css` and indented `.sass` as well as `.scss`. An unreadable project.json yields
+ * nothing, and the library sources are still checked.
  */
 function satoriComponentsStorybookStyles() {
   if (!fileExists(SATORI_COMPONENTS_PROJECT)) return [];
@@ -6540,7 +6557,7 @@ function satoriComponentsStorybookStyles() {
   }
   return (Array.isArray(styles) ? styles : [])
     .map((style) => (typeof style === 'string' ? style : style?.input))
-    .filter((style) => typeof style === 'string' && style.endsWith('.scss'));
+    .filter((style) => typeof style === 'string');
 }
 
 /**
@@ -6660,7 +6677,7 @@ function checkDependencyClosure({ root, roots, styleRoots = [], banned }) {
 
   // `label` names the stylesheet in a report; `at` is where its relative URLs resolve from.
   const scanStyleText = (body, at, label, chain, seen) => {
-    for (const url of sassLoadedUrls(body)) {
+    for (const url of sassLoadedUrls(body, { indented: at.endsWith('.sass') })) {
       // `~` is webpack's package prefix and `pkg:` Sass's; either way the URL names a package.
       const why = banned(url.replace(/^~/, '').replace(/^pkg:/, ''));
       if (why) {
@@ -7028,6 +7045,9 @@ function exportedComponentClasses(file, pathMaps, ancestors = new Set()) {
  * A story counts when its default-exported meta names the class as `component:`, the class is
  * imported from the module that declares it, and the file exports at least one story. The meta may
  * be the default export itself or a variable it names, optionally behind `satisfies` or `as`.
+ *
+ * A story is a named export Storybook renders: the meta's `includeStories` and `excludeStories`
+ * apply, as a list of names or a regex literal. One the guardrail cannot read is a failure.
  */
 function storiedComponents(storyFile, pathMaps) {
   const covered = new Set();
@@ -7036,7 +7056,7 @@ function storiedComponents(storyFile, pathMaps) {
   const imports = new Map();
   const variables = new Map();
   let defaultExport = null;
-  let namedStories = 0;
+  const namedExports = [];
   const unwrap = (node) => {
     let current = node;
     while (
@@ -7067,7 +7087,7 @@ function storiedComponents(storyFile, pathMaps) {
       for (const declaration of statement.declarationList.declarations) {
         if (!ts.isIdentifier(declaration.name)) continue;
         variables.set(declaration.name.text, declaration.initializer);
-        if (exported) namedStories += 1;
+        if (exported) namedExports.push(declaration.name.text);
       }
     } else if (ts.isExportAssignment(statement) && !statement.isExportEquals) {
       defaultExport = unwrap(statement.expression);
@@ -7077,15 +7097,56 @@ function storiedComponents(storyFile, pathMaps) {
   if (defaultExport && ts.isIdentifier(defaultExport)) {
     defaultExport = unwrap(variables.get(defaultExport.text));
   }
-  if (namedStories === 0 || !defaultExport || !ts.isObjectLiteralExpression(defaultExport)) {
-    return covered;
+  if (!defaultExport || !ts.isObjectLiteralExpression(defaultExport)) return covered;
+  const metaProperty = (name) =>
+    defaultExport.properties.find(
+      (p) =>
+        ts.isPropertyAssignment(p) &&
+        (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
+        p.name.text === name,
+    );
+
+  // `includeStories` / `excludeStories` as Storybook applies them; `undefined` when unreadable.
+  const storyFilter = (name) => {
+    const property = metaProperty(name);
+    if (!property) return null;
+    const value = unwrap(property.initializer);
+    if (ts.isArrayLiteralExpression(value) && value.elements.every(ts.isStringLiteralLike)) {
+      const names = new Set(value.elements.map((element) => element.text));
+      return (exportName) => names.has(exportName);
+    }
+    if (ts.isRegularExpressionLiteral(value)) {
+      const [, pattern, flags] = /^\/(.*)\/([a-z]*)$/s.exec(value.text) ?? [];
+      try {
+        const regex = new RegExp(pattern, flags.replace(/[gy]/g, ''));
+        return (exportName) => regex.test(exportName);
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  };
+  const include = storyFilter('includeStories');
+  const exclude = storyFilter('excludeStories');
+  for (const [name, filter] of [
+    ['includeStories', include],
+    ['excludeStories', exclude],
+  ]) {
+    if (filter === undefined) {
+      fail(
+        `${storyFile} sets \`${name}\` to something other than a list of names or a regex ` +
+          'literal, so which of its exports are stories was not read and none was counted.',
+      );
+      return covered;
+    }
   }
-  const componentProperty = defaultExport.properties.find(
-    (p) =>
-      ts.isPropertyAssignment(p) &&
-      (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
-      p.name.text === 'component',
+  const stories = namedExports.filter(
+    (name) =>
+      name !== '__namedExportsOrder' && (!include || include(name)) && !(exclude && exclude(name)),
   );
+  if (stories.length === 0) return covered;
+
+  const componentProperty = metaProperty('component');
   const value = componentProperty && unwrap(componentProperty.initializer);
   if (!value || !ts.isIdentifier(value)) return covered;
   const origin = imports.get(value.text);

@@ -10,7 +10,10 @@
       "example": {
         "label": "Example customer",
         "bootstrap": {
-          "branding": { "applicationTitle": "Example customer", "documentTitle": "Example customer" }
+          "branding": {
+            "applicationTitle": "Example customer",
+            "documentTitle": "Example customer"
+          }
         },
         "manifest": { "labels": { "nav.item.collections": "Cases" } }
       }

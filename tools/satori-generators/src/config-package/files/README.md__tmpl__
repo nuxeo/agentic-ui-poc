@@ -7,14 +7,15 @@ defaults at `/nuxeo/agentic-ui-config/bootstrap.json` and `manifest.json`.
 Nothing is edited on the server and nothing is stored in the repository: a change reaches a server
 only as a new version of this package, built from reviewed source.
 
-| File                                    | What it is                                                         |
-| --------------------------------------- | ------------------------------------------------------------------ |
-| `bundle/agentic-ui-config/bootstrap.json` | Layer 0 — branding, logo, themes, languages, endpoints, sign-in<% if (presales) { %>, presets<% } %> |
+| File                                      | What it is                                                           |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| `bundle/agentic-ui-config/bootstrap.json` | Layer 0 — branding, logo, themes, languages, endpoints, sign-in      |
 | `bundle/agentic-ui-config/manifest.json`  | Layer 1 — hide, reorder, relabel and gate what the application shows |
-| `bundle/agentic-ui-config/assets/`        | Images a fragment names, such as a logo                            |
-| `bundle/OSGI-INF/<%= name %>-config.xml`  | The Nuxeo component that contributes the fragments                 |
-| `package/package.xml`                     | Package name, version, and the dependency on `nuxeo-agentic-ui`    |
-| `schema/`                                 | JSON schemas your editor uses to check the fragments as you type   |
+| `bundle/agentic-ui-config/assets/`        | Images a fragment names, such as a logo                              |
+| `bundle/OSGI-INF/`                        | The Nuxeo component that contributes the fragments                   |
+| `package/package.xml`                     | Package name, version, and the dependency on `nuxeo-agentic-ui`      |
+| `schema/`                                 | JSON schemas your editor uses to check the fragments as you type     |
+| `build.mjs`                               | Checks the package and writes the installable zip                    |
 
 The keys each fragment accepts are documented in `@nuxeo-satori/platform`'s
 `extension-reference.md`.
@@ -23,11 +24,15 @@ The keys each fragment accepts are documented in `@nuxeo-satori/platform`'s
 
 ```bash
 # 1. edit the fragments, and raise the version in package/package.xml
-npx nx build <%= name %>            # checks the fragments, writes the zip
-nuxeoctl mp-install dist/<%= projectRoot %>/<%= name %>-<version>.zip   # then restart Nuxeo
+node build.mjs                                      # checks the fragments, writes dist/<%= name %>-<version>.zip
+nuxeoctl mp-install dist/<%= name %>-<version>.zip   # on the Nuxeo server, then restart Nuxeo
 ```
 
-`nx build` runs `build.mjs`, which refuses — with the file and the reason — what the server would
+Run it in this directory. `build.mjs` needs only Node 20 — nothing to install, no registry token —
+so the package can live in your own repository. In an Nx workspace, `npx nx build <%= name %>` runs
+the same script and writes the zip to `dist/<%= projectRoot %>/` at the workspace root instead.
+
+`build.mjs` refuses — with the file and the reason — what the server would
 leave out: a fragment or layout body, in a file or inline, that does not parse, is not an object,
 repeats a key, or exceeds 1 MiB; an asset over 2 MiB or not named as a plain image file; an entry
 whose name or layer the server rejects, or that has no body. It also refuses XML that is not
@@ -57,7 +62,7 @@ the package requires, and a browser picks it up on its next load.
 
 Fragments apply in the order Nuxeo registers their components, and a later key wins. This package
 is ordered after Satori by two declarations: the dependency in `package.xml` (installation order)
-and the `<require>` in the component XML (contribution order). To layer a second package on
+and the `<require>` in `bundle/OSGI-INF/<%= name %>-config.xml` (contribution order). To layer a second package on
 this one — a regional variant, say — give it the same two declarations naming **this** package and
 component.
 
