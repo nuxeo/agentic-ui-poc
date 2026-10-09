@@ -20,7 +20,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -65,6 +64,7 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { provideTranslatedDatepickerIntl } from '@nuxeo-satori/platform/ui';
+import { NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
 
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */
@@ -161,6 +161,7 @@ const DIALOG_SIZE = {
   selector: 'lib-create-import-dialog',
   standalone: true,
   imports: [
+    NxsSpinnerComponent,
     TranslatePipe,
     MatDialogModule,
     MatButtonModule,
@@ -171,7 +172,6 @@ const DIALOG_SIZE = {
     MatChipsModule,
     MatDatepickerModule,
     MatNativeDateModule,
-    MatProgressSpinnerModule,
     MatProgressBarModule,
     MatSnackBarModule,
     MatSlideToggleModule,
