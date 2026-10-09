@@ -336,6 +336,65 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
       expect(el('.version-banner')).toBeNull();
     });
 
+    it('drops a versions list that arrives after the route moved to another document', async () => {
+      const route = new BehaviorSubject(convertToParamMap({ uid: 'doc-live' }));
+      const lateList = new Subject<{ entries: NuxeoDocument[] }>();
+      await render(live(), { paramMap: route });
+      mockDetailService.getVersions.mockReturnValueOnce(lateList);
+      await openVersionsList();
+      const other = live({ uid: 'doc-other', title: 'Other' });
+      mockDetailService.getFullDocument.mockReturnValue(of(other));
+      route.next(convertToParamMap({ uid: 'doc-other' }));
+      await settle();
+      lateList.next({ entries: [version(2), version(1)] });
+      await settle();
+
+      expect(fixture.componentInstance.versions()).toEqual([]);
+      expect(fixture.componentInstance.versionsLoading()).toBe(false);
+    });
+
+    it('drops a permissions refresh for the document the route has left', async () => {
+      // Merged late, it would hand the live document's permissions to the version on screen.
+      const route = new BehaviorSubject(convertToParamMap({ uid: 'doc-live' }));
+      await render(live(), { paramMap: route });
+      const late = new Subject<NuxeoDocument>();
+      mockDetailService.getDocumentPermissions.mockReturnValueOnce(late);
+      fixture.componentInstance['reloadDocumentPermissions']();
+      mockDetailService.getFullDocument.mockImplementation((uid) =>
+        of(uid === 'v-0-1' ? version(1) : live()),
+      );
+      route.next(convertToParamMap({ uid: 'v-0-1' }));
+      await settle();
+      late.next(live({ contextParameters: { permissions: ['Read', 'LateMarker'] } }));
+      await settle();
+
+      expect(fixture.componentInstance.doc()?.uid).toBe('v-0-1');
+      expect(fixture.componentInstance.doc()?.contextParameters?.['permissions']).not.toContain(
+        'LateMarker',
+      );
+    });
+
+    it('drops comments that arrive after the route moved on', async () => {
+      const route = new BehaviorSubject(convertToParamMap({ uid: 'doc-live' }));
+      await render(live(), { paramMap: route });
+      const late = new Subject<{ entries: unknown[] }>();
+      mockDetailService.getAllComments.mockReturnValueOnce(late);
+      fixture.componentInstance.loadComments();
+      mockDetailService.getFullDocument.mockImplementation((uid) =>
+        of(uid === 'v-0-1' ? version(1) : live()),
+      );
+      route.next(convertToParamMap({ uid: 'v-0-1' }));
+      await settle();
+      late.next({
+        entries: [
+          { uid: 'c1', properties: { 'comment:parentId': 'doc-live', 'comment:text': 'live' } },
+        ],
+      });
+      await settle();
+
+      expect(fixture.componentInstance.repliesMap()).toEqual({});
+    });
+
     it("drops the live document's workflows when they arrive after a version opened", async () => {
       const route = new BehaviorSubject(convertToParamMap({ uid: 'doc-live' }));
       const liveWorkflows = new Subject<NuxeoWorkflow[]>();

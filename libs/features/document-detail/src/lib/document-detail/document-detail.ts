@@ -1214,6 +1214,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.panelActivityLoaded = false;
     this.versions.set([]);
     this.versionsLoaded = false;
+    this.versionsLoading.set(false);
     this.versionDropdownOpen.set(false);
     this.documentTasks.set([]);
     this.documentWorkflows.set([]);
@@ -2917,13 +2918,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private reloadDocumentPermissions(): void {
-    if (!this.docUid) return;
+    const requestedFor = this.docUid;
+    if (!requestedFor) return;
     this.permissionsLoading.set(true);
     this.detailService
-      .getDocumentPermissions(this.docUid)
+      .getDocumentPermissions(requestedFor)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
+          // Late, this would put the previous document — or its permissions — on the page.
+          if (requestedFor !== this.docUid) return;
           const existing = this.doc();
           if (!existing) {
             this.doc.set(updated);
@@ -2934,6 +2938,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.permissionsLoading.set(false);
         },
         error: () => {
+          if (requestedFor !== this.docUid) return;
           this.permissionsLoading.set(false);
           this.toast(
             this.translate.instant('document-detail.message.failed-to-refresh-permissions'),
@@ -2975,18 +2980,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     this.auditLoading.set(true);
 
+    const requestedFor = this.docUid;
     this.detailService
-      .getAuditLog(this.docUid, this.auditPageSize(), this.auditPageIndex())
+      .getAuditLog(requestedFor, this.auditPageSize(), this.auditPageIndex())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          if (requestedFor !== this.docUid) return;
           this.auditEntries.set(res.entries);
           this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
           this.auditLoading.set(false);
           this.historyLoaded = true;
         },
         error: () => {
-          this.auditLoading.set(false);
+          if (requestedFor === this.docUid) this.auditLoading.set(false);
         },
       });
   }
@@ -3044,12 +3051,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.sectionsLoading.set(true);
 
     if (this.publishedDocs().length === 0) {
-      this.detailService.getPublishedVersions(this.docUid).subscribe({
+      const requestedFor = this.docUid;
+      this.detailService.getPublishedVersions(requestedFor).subscribe({
         next: (res) => {
+          if (requestedFor !== this.docUid) return;
           this.publishedDocs.set(res.entries);
           this.publishLoading.set(false);
         },
-        error: () => this.publishLoading.set(false),
+        error: () => {
+          if (requestedFor === this.docUid) this.publishLoading.set(false);
+        },
       });
     } else {
       this.publishLoading.set(false);
@@ -3771,10 +3782,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // ── Comments ──
 
   loadComments(): void {
-    if (!this.docUid) return;
+    const requestedFor = this.docUid;
+    if (!requestedFor) return;
     this.commentsLoading.set(true);
-    this.detailService.getAllComments(this.docUid).subscribe({
+    this.detailService.getAllComments(requestedFor).subscribe({
       next: (res) => {
+        if (requestedFor !== this.docUid) return;
         const all = (res.entries ?? []).map((e) => ({
           id: e.uid,
           parentId: (e.properties['comment:parentId'] as string) ?? this.docUid,
@@ -3802,7 +3815,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.commentsLoading.set(false);
         this.commentsLoaded = true;
       },
-      error: () => this.commentsLoading.set(false),
+      error: () => {
+        if (requestedFor === this.docUid) this.commentsLoading.set(false);
+      },
     });
   }
 
@@ -4000,16 +4015,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     this.panelActivityLoading.set(true);
+    const requestedFor = this.docUid;
     this.detailService
-      .getAuditLog(this.docUid, 20, 0)
+      .getAuditLog(requestedFor, 20, 0)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          if (requestedFor !== this.docUid) return;
           this.panelActivity.set(res.entries);
           this.panelActivityLoading.set(false);
           this.panelActivityLoaded = true;
         },
-        error: () => this.panelActivityLoading.set(false),
+        error: () => {
+          if (requestedFor === this.docUid) this.panelActivityLoading.set(false);
+        },
       });
   }
 
@@ -4059,15 +4078,21 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   loadVersions(): void {
-    if (!this.docUid) return;
+    const requestedFor = this.docUid;
+    if (!requestedFor) return;
     this.versionsLoading.set(true);
     this.detailService.getVersions(this.liveDocumentUid()).subscribe({
       next: (res) => {
+        // A list that arrives after the route moved on belongs to the previous document; marking
+        // it loaded would skip the next document's own fetch.
+        if (requestedFor !== this.docUid) return;
         this.versions.set(res.entries ?? []);
         this.versionsLoading.set(false);
         this.versionsLoaded = true;
       },
-      error: () => this.versionsLoading.set(false),
+      error: () => {
+        if (requestedFor === this.docUid) this.versionsLoading.set(false);
+      },
     });
   }
 
