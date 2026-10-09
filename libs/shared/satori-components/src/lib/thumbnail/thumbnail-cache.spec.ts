@@ -1,6 +1,6 @@
 import { Component, inject, provideZonelessChangeDetection, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Subject, of, throwError, type Observable } from 'rxjs';
+import { Subject, of, type Observable } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
