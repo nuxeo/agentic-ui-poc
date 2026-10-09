@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('DocumentDetailComponent — panel close focus ring (NXENG-830)', () => {
-  const scssPath = join(import.meta.dirname, 'document-detail.scss');
+  const scssPath = join(import.meta.dirname, 'document-detail-panel-close-focus.scss');
   const templatePath = join(import.meta.dirname, 'document-detail.html');
 
   it('wires panel-close-btn on the production properties panel close control', () => {
