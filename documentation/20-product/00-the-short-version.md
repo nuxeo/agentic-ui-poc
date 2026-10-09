@@ -137,9 +137,12 @@ shows Administration to administrators only:
   pre-production Marketplace. The developer package your own code builds against,
   `@nuxeo-satori/platform`, is not on any npm registry yet.
 - **Run your own code inside the shipped application.** See the next section.
-- **Edit every permission level.** The Permissions tab on the Browse page handles Nuxeo's Read,
-  ReadWrite and Everything. On a folder that also carries any other permission it refuses to save
-  rather than delete that entry; manage those in Nuxeo.
+- **Edit every permission level on the rail's Browse page.** That page is still the adf-hx proof
+  of concept, and its Permissions tab handles only Nuxeo's Read, ReadWrite and Everything. On a
+  folder that also carries any other permission it refuses to save rather than delete that entry.
+  The Permissions tab on a document's own page, and on `/browse`, offers every permission the
+  server defines
+  ([extension reference, section 13](../../docs/extension-reference.md#13-what-beta-does-not-yet-address)).
 
 ## What needs code
 
