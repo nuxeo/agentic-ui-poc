@@ -1823,14 +1823,6 @@
     "plain": "Text",
     "xml": "XML"
   },
-  "nxs": {
-    "column-picker": {
-      "close": "Close column picker",
-      "done": "Done",
-      "reset": "Reset",
-      "title": "Column Settings"
-    }
-  },
   "permission": {
     "everything": "Manage everything",
     "read": "Read",
@@ -1958,6 +1950,12 @@
     }
   },
   "satori-components": {
+    "column-picker": {
+      "close": "Close column picker",
+      "done": "Done",
+      "reset": "Reset",
+      "title": "Column Settings"
+    },
     "permissions-panel": {
       "add": "Add",
       "column": {
