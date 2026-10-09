@@ -189,7 +189,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-13 exported symbol(s).
+15 exported symbol(s).
 
 ```ts
 const NXS_PERMISSIONS_PANEL_ID = "nxs.components.permissionsPanel";
@@ -346,6 +346,17 @@ class NxsSpinnerComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsSpinnerComponent, "nxs-spinner", never, { "diameter": { "alias": "diameter"; "required": false; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
 }
+class NxsThumbnailComponent {
+    readonly documentId: _angular_core.InputSignal<string>;
+    readonly alt: _angular_core.InputSignal<string>;
+    protected readonly url: _angular_core.WritableSignal<string | null>;
+    constructor();
+    protected broken(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsThumbnailComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsThumbnailComponent, "nxs-thumbnail", never, { "documentId": { "alias": "documentId"; "required": true; "isSignal": true; }; "alt": { "alias": "alt"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
+    }
+}
+function provideNxsThumbnailCache(): Provider;
 ```
 
 ## @nuxeo-satori/platform/extensions
