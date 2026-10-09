@@ -531,6 +531,33 @@ describe('CollectionDetailComponent', () => {
       expect(component.lockTooltip()).toBe('Locked by alice on August 24, 2026');
     });
 
+    it.each([
+      [
+        'succeeds',
+        (pending: Subject<NuxeoDocument>) =>
+          pending.next(docWith({ lockOwner: TEST_USERNAME, lockCreated: LOCKED_AT })),
+      ],
+      [
+        'is refused',
+        (pending: Subject<NuxeoDocument>) => pending.error(new HttpErrorResponse({ status: 409 })),
+      ],
+    ])('ignores a Lock that %s after navigating to another collection', (_how, settle) => {
+      load(docWith({ lockOwner: null, lockCreated: null }));
+      const pending = new Subject<NuxeoDocument>();
+      mockDetailService.lockDocument.mockReturnValue(pending);
+
+      component.toggleLock();
+      component['collectionUid'] = 'collection-2';
+      mockSnackBar.open.mockClear();
+      settle(pending);
+
+      expect(mockDetailService.lockDocument).toHaveBeenCalledWith('collection-1');
+      expect(component.isLocked()).toBe(false);
+      expect(component.lockOwner()).toBeNull();
+      expect(component.actionInProgress()).toBeNull();
+      expect(mockSnackBar.open).not.toHaveBeenCalled();
+    });
+
     it('ignores a read that lands after navigating to another collection', () => {
       const late = new Subject<NuxeoDocument | null>();
       mockDetailService.getFullDocument.mockReturnValue(late);

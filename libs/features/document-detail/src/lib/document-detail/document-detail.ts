@@ -3228,14 +3228,19 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   toggleLock(): void {
     if (this.actionInProgress() || !this.requireWritePermission()) return;
+    // Captured before the request: the page is reused across `:uid` changes, so when the response
+    // lands `docUid` and `isLocked()` may describe another document.
+    const uid = this.docUid;
+    const wasLocked = this.isLocked();
     this.actionInProgress.set('lock');
-    const op = this.isLocked()
-      ? this.detailService.unlockDocument(this.docUid)
-      : this.detailService.lockDocument(this.docUid);
+    const op = wasLocked
+      ? this.detailService.unlockDocument(uid)
+      : this.detailService.lockDocument(uid);
 
     op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (updated) => {
-        const wasLocked = this.isLocked();
+        this.actionInProgress.set(null);
+        if (uid !== this.docUid) return;
         this.isLocked.set(!wasLocked);
         // Nuxeo records the caller as the lock owner; naming a fixed account here
         // told every user someone else held their own lock.
@@ -3243,7 +3248,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           wasLocked ? null : (updated?.lockOwner ?? this.currentUsername() ?? null),
         );
         this.lockCreated.set(wasLocked ? null : (updated?.lockCreated ?? new Date().toISOString()));
-        this.actionInProgress.set(null);
         this.toast(
           this.translate.instant(
             wasLocked
@@ -3253,8 +3257,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         );
       },
       error: (err: unknown) => {
-        const wasLocked = this.isLocked();
         this.actionInProgress.set(null);
+        if (uid !== this.docUid) return;
         this.toast(this.translate.instant(this.lockRefusalKey(err, wasLocked)));
       },
     });

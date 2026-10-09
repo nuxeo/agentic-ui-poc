@@ -12,7 +12,7 @@ import {
 } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { NEVER, Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import {
@@ -624,6 +624,33 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       component.toggleLock();
 
       expect(component.lockCreated()).toBeNull();
+    });
+
+    it.each([
+      [
+        'succeeds',
+        (pending: Subject<NuxeoDocument>) =>
+          pending.next(doc({ lockOwner: 'tester', lockCreated: LOCKED_AT })),
+      ],
+      [
+        'is refused',
+        (pending: Subject<NuxeoDocument>) => pending.error(new HttpErrorResponse({ status: 409 })),
+      ],
+    ])('ignores a Lock that %s after navigating to another document', async (_how, settle) => {
+      await build();
+      const pending = new Subject<NuxeoDocument>();
+      mockDetailService.lockDocument.mockReturnValue(pending);
+
+      component.toggleLock();
+      component['docUid'] = 'doc-2';
+      snack.mockClear();
+      settle(pending);
+
+      expect(mockDetailService.lockDocument).toHaveBeenCalledWith('doc-1');
+      expect(component.isLocked()).toBe(false);
+      expect(component.lockOwner()).toBeNull();
+      expect(component.actionInProgress()).toBeNull();
+      expect(snack).not.toHaveBeenCalled();
     });
 
     it.each([

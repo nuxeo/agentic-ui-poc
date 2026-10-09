@@ -500,14 +500,19 @@ export class CollectionDetailComponent {
       );
       return;
     }
+    // Captured before the request: the page is reused across `:uid` changes, so when the response
+    // lands `collectionUid` and `isLocked()` may describe another collection.
+    const uid = this.collectionUid;
+    const wasLocked = this.isLocked();
     this.actionInProgress.set('lock');
-    const op = this.isLocked()
-      ? this.detailService.unlockDocument(this.collectionUid)
-      : this.detailService.lockDocument(this.collectionUid);
+    const op = wasLocked
+      ? this.detailService.unlockDocument(uid)
+      : this.detailService.lockDocument(uid);
 
     op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (updated) => {
-        const wasLocked = this.isLocked();
+        this.actionInProgress.set(null);
+        if (uid !== this.collectionUid) return;
         this.isLocked.set(!wasLocked);
         // Nuxeo records the caller as the lock owner; naming a fixed account here would
         // tell every user someone else held their own lock.
@@ -515,7 +520,6 @@ export class CollectionDetailComponent {
           wasLocked ? null : (updated?.lockOwner ?? this.currentUsername() ?? null),
         );
         this.lockCreated.set(wasLocked ? null : (updated?.lockCreated ?? new Date().toISOString()));
-        this.actionInProgress.set(null);
         this.toast(
           this.translate.instant(
             wasLocked
@@ -525,8 +529,8 @@ export class CollectionDetailComponent {
         );
       },
       error: (err: unknown) => {
-        const wasLocked = this.isLocked();
         this.actionInProgress.set(null);
+        if (uid !== this.collectionUid) return;
         this.toast(this.translate.instant(this.lockRefusalKey(err, wasLocked)));
       },
     });
