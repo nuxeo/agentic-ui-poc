@@ -80,13 +80,14 @@ import {
   UpdatePermissionDialogData,
 } from '@agentic-ui/shared-permission-dialogs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
+import { NxsFolderHeaderComponent, NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
 
 @Component({
   selector: 'lib-collection-detail',
   standalone: true,
   providers: [provideTranslatedDatepickerIntl()],
   imports: [
+    NxsFolderHeaderComponent,
     NxsSpinnerComponent,
     TranslatePipe,
     DatePipe,
