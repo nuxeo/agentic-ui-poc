@@ -2,14 +2,16 @@
 title: Tools & Commands
 parent: Engineering
 order: 6
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # Tools & Commands — complete reference
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only the three `beta:coverage` rows were re-verified at that commit; the rest of the page as of
+> 2026-08-24 · `77265f9`.
 > Source of truth: the `scripts` block in [`package.json`](../../package.json). If a command
 > here does not exist, this page is wrong — fix it.
 

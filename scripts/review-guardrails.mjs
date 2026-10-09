@@ -5201,6 +5201,252 @@ function checkNoTemplateSyntaxInDocumentShell() {
 }
 
 /**
+ * `source` with its comments blanked — replaced by spaces, newlines kept, so an offset still maps
+ * to the line as written.
+ *
+ * A scanner rather than a regex, because a comment opener inside a value is not a comment: the
+ * `//` of `url("//cdn…")` or `url(//cdn…)`, or `<!--` inside an attribute. Read as comments, they
+ * blank whatever follows them, including a real reference. `//` is a comment in `.scss` only; in
+ * `.css` and `.html` it never is.
+ *
+ * @param {string} source
+ * @param {string} kind file extension: `html`, `css` or `scss`
+ */
+function blankComments(source, kind) {
+  const blank = (text) => text.replace(/[^\n]/g, ' ');
+  let out = '';
+  let quote = null;
+  let inTag = false;
+  let inUrl = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const c = source[i];
+    const rest = source.slice(i, i + 4);
+    if (quote) {
+      out += c;
+      if (c === '\\' && kind !== 'html') out += source[++i] ?? '';
+      else if (c === quote || (c === '\n' && kind !== 'html')) quote = null;
+      continue;
+    }
+    if (inUrl) {
+      out += c;
+      if (c === ')') inUrl = false;
+      continue;
+    }
+    const opener =
+      kind === 'html'
+        ? !inTag && rest === '<!--'
+          ? '-->'
+          : null
+        : rest.startsWith('/*')
+          ? '*/'
+          : kind === 'scss' && rest.startsWith('//')
+            ? '\n'
+            : null;
+    if (opener) {
+      const end = source.indexOf(opener, i + 2);
+      const stop = end === -1 ? source.length : opener === '\n' ? end : end + opener.length;
+      out += blank(source.slice(i, stop));
+      i = stop - 1;
+      continue;
+    }
+    out += c;
+    if (kind === 'html') {
+      if (!inTag && c === '<' && /[A-Za-z/]/.test(source[i + 1] ?? '')) inTag = true;
+      else if (inTag && c === '>') inTag = false;
+      else if (inTag && (c === '"' || c === "'")) quote = c;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (
+      c === '(' &&
+      /url$/i.test(out.slice(-4, -1)) &&
+      !/^\s*["']/.test(source.slice(i + 1))
+    ) {
+      inUrl = true;
+    }
+  }
+  return out;
+}
+
+/**
+ * A file the app ships is referenced relative to `<base href>`, never from the server root.
+ *
+ * The Marketplace package serves the app from `/nuxeo/agentic-ui/`, so `/images/x.svg` resolves
+ * to the server root there and 404s while `images/x.svg` resolves to
+ * `/nuxeo/agentic-ui/images/x.svg`. The dev server, the unit tests and the e2e suite all use base
+ * href `/`, where the two are the same URL, so none of them can see the difference. The login
+ * page's background art was a broken image on every packaged install that way (NXSAT-318).
+ *
+ * What ships is read from `angular.json`, not listed here: the top-level names each
+ * application's build `assets` put at the output root — every tracked entry of an input copied to
+ * the root, and the first segment of every `output`. A new `public/fonts/` is covered once it is
+ * committed. A directory only matches with a segment after it, so the `/login` route is not taken
+ * for the shipped `login/` folder.
+ *
+ * Files under `apps/<app>/` are held to that app's names, and `libs/` to every app's, since any
+ * app can load a library. Specs are exempt: they assert URLs rather than load them. In `.ts` only
+ * string literals are read, so a comment quoting a path is not a reference; in templates and
+ * stylesheets comments are blanked first. Server paths — `/nuxeo/api/…`, `/nuxeo/icons/…`, the
+ * `/nuxeo/agentic-ui-config/` servlet — name nothing the app ships, so they never match.
+ */
+function checkNoRootAbsoluteShippedAssetPaths() {
+  const file = 'angular.json';
+  if (!fileExists(file)) {
+    fail(`${file} was not found, so checkNoRootAbsoluteShippedAssetPaths asserted nothing.`);
+    return;
+  }
+
+  /** @type {any} */
+  let doc;
+  try {
+    doc = JSON.parse(read(file));
+  } catch (error) {
+    fail(`${file} is not valid JSON: ${error instanceof Error ? error.message : error}`);
+    return;
+  }
+
+  /** @type {Map<string, Map<string, boolean>>} app root → shipped top-level name → is a directory */
+  const shippedByApp = new Map();
+  for (const project of Object.values(doc.projects ?? {})) {
+    const p = /** @type {any} */ (project);
+    const assets = (p.architect ?? p.targets)?.build?.options?.assets;
+    if (!Array.isArray(assets) || typeof p.root !== 'string') continue;
+    const names = new Map();
+    for (const entry of assets) {
+      if (typeof entry === 'string') {
+        const absolute = join(repoRoot, entry);
+        names.set(entry.split('/').pop(), existsSync(absolute) && statSync(absolute).isDirectory());
+        continue;
+      }
+      const output = String(entry.output ?? '').replace(/^\/+|\/+$/g, '');
+      if (output) {
+        names.set(output.split('/')[0], true);
+        continue;
+      }
+      const input = String(entry.input ?? '').replace(/\/+$/, '');
+      for (const tracked of git(['ls-files', '--', input]).split('\n').filter(Boolean)) {
+        const rest = tracked.slice(input.length + 1).split('/');
+        names.set(rest[0], (names.get(rest[0]) ?? false) || rest.length > 1);
+      }
+    }
+    if (names.size) shippedByApp.set(p.root.replace(/\/+$/, ''), names);
+  }
+
+  if (shippedByApp.size === 0) {
+    fail(
+      `No application in ${file} declares build assets, so checkNoRootAbsoluteShippedAssetPaths ` +
+        'asserted nothing. Check how it reads the asset configuration before trusting a pass.',
+    );
+    return;
+  }
+
+  const escape = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  /**
+   * Leading form, for a `.ts` string literal; embedded form, for markup and CSS. A value opens
+   * after a quote or `url(` only, so nothing inside a URL — a query's `?path=/images/x.svg` —
+   * can open one. A quote after `+` is the tail of a concatenation
+   * (`[src]="base + '/images/x.svg'"`), placed by whatever precedes it, as `isSuffix` decides
+   * for `.ts`.
+   *
+   * Two shapes are deliberately not matched. An unquoted attribute value (`src=/images/x.svg`)
+   * cannot be committed: the pre-commit hook runs Prettier on every template, which quotes it.
+   * A later `srcset` candidate (`a.svg 1x, /images/x.svg 2x`) — nothing here uses `srcset`.
+   * Openers for both were tried, and each matched inside ordinary query strings.
+   */
+  const patternsFor = (names) => {
+    const dirs = [...names].filter(([, dir]) => dir).map(([name]) => escape(name));
+    const files = [...names].filter(([, dir]) => !dir).map(([name]) => escape(name));
+    const alternatives = [
+      ...(dirs.length ? [`(?:${dirs.join('|')})/`] : []),
+      ...(files.length ? [`(?:${files.join('|')})(?=$|[\\s?#"'\`),>])`] : []),
+    ].join('|');
+    return {
+      leading: new RegExp(`^/(?:${alternatives})`),
+      embedded: new RegExp(`(?:(?<!\\+\\s*)["'\`]|[uU][rR][lL]\\()\\s*/(?:${alternatives})`, 'g'),
+    };
+  };
+  /**
+   * A literal that only ends a URL — a template's `${base}/images/x.svg`, or `base +
+   * '/images/x.svg'` — is not root-absolute: whatever precedes it decides where it points.
+   */
+  const isSuffix = (node) =>
+    ts.isTemplateMiddle(node) ||
+    ts.isTemplateTail(node) ||
+    (ts.isBinaryExpression(node.parent) &&
+      node.parent.operatorToken.kind === ts.SyntaxKind.PlusToken &&
+      node.parent.right === node);
+  const everyApp = new Map([...shippedByApp.values()].flatMap((names) => [...names]));
+  const patternsByApp = new Map(
+    [...shippedByApp].map(([root, names]) => [root, patternsFor(names)]),
+  );
+  const libPatterns = patternsFor(everyApp);
+
+  const sources = git(['ls-files', '--cached', '--others', '--exclude-standard'])
+    .split('\n')
+    .filter((path) => /^(apps|libs)\/.+\.(ts|html|scss|css)$/.test(path))
+    .filter((path) => !/\.spec\.(ts|html)$/.test(path));
+
+  let scanned = 0;
+  for (const path of sources) {
+    if (!fileExists(path)) continue;
+    const appRoot = [...patternsByApp.keys()].find((root) => path.startsWith(`${root}/`));
+    const patterns = path.startsWith('libs/') ? libPatterns : patternsByApp.get(appRoot);
+    if (!patterns) continue;
+    scanned += 1;
+
+    const body = read(path);
+    /** @type {{ line: number, text: string }[]} */
+    const hits = [];
+    if (path.endsWith('.ts')) {
+      const source = ts.createSourceFile(path, body, ts.ScriptTarget.Latest, true);
+      const visit = (node) => {
+        if (
+          ts.isStringLiteral(node) ||
+          ts.isNoSubstitutionTemplateLiteral(node) ||
+          ts.isTemplateHead(node) ||
+          ts.isTemplateMiddle(node) ||
+          ts.isTemplateTail(node)
+        ) {
+          const text = node.text;
+          patterns.embedded.lastIndex = 0;
+          if ((!isSuffix(node) && patterns.leading.test(text)) || patterns.embedded.test(text)) {
+            const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
+            hits.push({ line: line + 1, text });
+          }
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    } else {
+      const stripped = blankComments(body, path.split('.').pop());
+      // The whole file, not line by line: `url(` and its path may sit on different lines. The
+      // reported line is the one the path itself is on.
+      const lines = stripped.split('\n');
+      for (const match of stripped.matchAll(patterns.embedded)) {
+        const line = stripped.slice(0, match.index + match[0].length).split('\n').length;
+        hits.push({ line, text: lines[line - 1].trim() });
+      }
+    }
+
+    for (const hit of hits) {
+      fail(
+        `${path}:${hit.line} references a file the app ships from the server root: ` +
+          `${JSON.stringify(hit.text.slice(0, 120))}.\n` +
+          '    The Marketplace package serves the app from /nuxeo/agentic-ui/, so a leading "/"\n' +
+          '    resolves outside it and 404s; dev and every test use base href "/", where it looks\n' +
+          '    fine. Drop the leading "/" so it resolves against <base href> (NXSAT-318).',
+      );
+    }
+  }
+
+  if (scanned === 0) {
+    fail(
+      'checkNoRootAbsoluteShippedAssetPaths scanned no source files under apps/ or libs/, so it ' +
+        'asserted nothing. Check the file glob before trusting a pass.',
+    );
+  }
+}
+
+/**
  * No prose in a plain attribute on a component — it is an `@Input`, not HTML.
  *
  * `checkNoHardcodedUiText` knows the HTML attributes that hold text: `title`, `aria-label`,
@@ -6015,35 +6261,76 @@ const SATORI_LIBRARIES = [
   },
 ];
 
-/** The tsconfig path aliases, so a workspace specifier can be followed to the file it names. */
-function tsconfigPaths() {
-  if (!fileExists('tsconfig.base.json')) return {};
-  const parsed = ts.parseConfigFileTextToJson('tsconfig.base.json', read('tsconfig.base.json'));
-  return parsed.config?.compilerOptions?.paths ?? {};
+const isTsconfig = (path) => /(^|\/)tsconfig[^/]*\.json$/.test(path);
+
+/**
+ * `paths`, `baseUrl` and the config that declared `paths`, as TypeScript computes them for one
+ * config: its own values, else the nearest inherited ones. `baseUrl` is resolved against the
+ * config that sets it. Only relative `extends` are followed — a package config is not ours.
+ */
+function effectiveCompilerPaths(config, seen = new Set()) {
+  if (seen.has(config) || !fileExists(config)) return {};
+  const parsed = ts.parseConfigFileTextToJson(config, read(config)).config ?? {};
+  let effective = {};
+  for (const parent of [parsed.extends ?? []].flat()) {
+    if (typeof parent !== 'string' || !parent.startsWith('.')) continue;
+    const file = toPosixRel(
+      join(dirname(config), parent.endsWith('.json') ? parent : `${parent}.json`),
+    );
+    effective = { ...effective, ...effectiveCompilerPaths(file, new Set([...seen, config])) };
+  }
+  const options = parsed.compilerOptions ?? {};
+  if (typeof options.baseUrl === 'string') {
+    effective.baseUrl = toPosixRel(join(dirname(config), options.baseUrl));
+  }
+  if (options.paths && typeof options.paths === 'object') {
+    effective.paths = options.paths;
+    effective.declaredIn = config;
+  }
+  return effective;
 }
 
-/** The repo-relative file a specifier resolves to, `null` if it names no file, or `undefined` if external. */
-function resolveSpecifier(fromFile, specifier, paths) {
-  let targets;
-  if (specifier.startsWith('.')) {
-    targets = [toPosixRel(join(dirname(fromFile), specifier))];
-  } else {
-    for (const [alias, aliasTargets] of Object.entries(paths)) {
-      if (alias === specifier) {
-        targets = aliasTargets;
-        break;
-      }
-      const star = alias.indexOf('*');
-      if (star === -1) continue;
-      const [prefix, suffix] = [alias.slice(0, star), alias.slice(star + 1)];
-      if (specifier.startsWith(prefix) && specifier.endsWith(suffix)) {
-        const middle = specifier.slice(prefix.length, specifier.length - suffix.length);
-        targets = aliasTargets.map((target) => target.replaceAll('*', middle));
-        break;
-      }
-    }
-    if (!targets) return undefined;
+/**
+ * Every `paths` map a compilation in this repository sees, its targets made repo-relative.
+ *
+ * Not only `tsconfig.base.json`'s: a project's own tsconfig may declare `paths`, which replaces the
+ * inherited map for that project, and an alias declared there is as real as one in the base.
+ * Targets resolve against the effective `baseUrl`, or with none against the directory of the
+ * config that declared `paths`; `${configDir}` is the config being compiled.
+ */
+function tsconfigPathMaps() {
+  const configs = [
+    ...readdirSync(repoRoot).filter(isTsconfig),
+    ...walk('apps', isTsconfig),
+    ...walk('libs', isTsconfig),
+  ];
+  const maps = new Map();
+  for (const config of configs) {
+    const { paths, baseUrl, declaredIn } = effectiveCompilerPaths(config);
+    if (!paths) continue;
+    const from = baseUrl ?? dirname(declaredIn);
+    const usesConfigDir = JSON.stringify(paths).includes('${configDir}');
+    const key = `${declaredIn}|${from}|${usesConfigDir ? config : ''}`;
+    if (maps.has(key)) continue;
+    const rebase = (target) =>
+      target.startsWith('${configDir}')
+        ? toPosixRel(join(dirname(config), target.slice('${configDir}'.length).replace(/^\//, '')))
+        : toPosixRel(join(from, target));
+    maps.set(key, {
+      declaredIn,
+      paths: Object.fromEntries(
+        Object.entries(paths).map(([alias, targets]) => [
+          alias,
+          (Array.isArray(targets) ? targets : []).map(rebase),
+        ]),
+      ),
+    });
   }
+  return [...maps.values()];
+}
+
+/** The first file a list of targets resolves to, as TypeScript tries them, or `null`. */
+function firstExistingTarget(targets) {
   for (const target of targets) {
     const base = toPosixRel(join(target)).replace(/^\.\//, '');
     // TypeScript maps an explicit `.js`/`.mjs` specifier back to its `.ts`/`.mts` source.
@@ -6055,20 +6342,177 @@ function resolveSpecifier(fromFile, specifier, paths) {
   return null;
 }
 
+/**
+ * The repo-relative files a specifier resolves to — `[]` if it names no file, `undefined` if it is
+ * neither relative nor matched by any alias, so a package.
+ *
+ * Every alias in every map is tried, not only the one TypeScript would pick for `fromFile`:
+ * over-approximating what a file can reach adds files to a walk and never hides one.
+ */
+function resolveSpecifier(fromFile, specifier, pathMaps) {
+  if (specifier.startsWith('.')) {
+    const hit = firstExistingTarget([toPosixRel(join(dirname(fromFile), specifier))]);
+    return hit ? [hit] : [];
+  }
+  let matched = false;
+  const out = new Set();
+  for (const { paths } of pathMaps) {
+    for (const [alias, aliasTargets] of Object.entries(paths)) {
+      let targets = aliasTargets;
+      if (alias !== specifier) {
+        const star = alias.indexOf('*');
+        if (star === -1) continue;
+        const [prefix, suffix] = [alias.slice(0, star), alias.slice(star + 1)];
+        if (
+          specifier.length < prefix.length + suffix.length ||
+          !specifier.startsWith(prefix) ||
+          !specifier.endsWith(suffix)
+        ) {
+          continue;
+        }
+        const middle = specifier.slice(prefix.length, specifier.length - suffix.length);
+        targets = aliasTargets.map((target) => target.replaceAll('*', middle));
+      }
+      matched = true;
+      const hit = firstExistingTarget(targets);
+      if (hit) out.add(hit);
+    }
+  }
+  return matched ? [...out] : undefined;
+}
+
 /** Every module specifier in a source file, type-only and dynamic imports included. */
 function importSpecifiers(text) {
   return ts.preProcessFile(text, true, true).importedFiles.map((entry) => entry.fileName);
 }
 
-/** The SCSS files a component names in `styleUrl` / `styleUrls`. */
-function styleUrlsOf(file, text) {
-  const out = [];
-  for (const match of text.matchAll(/styleUrls?\s*:\s*(\[[^\]]*\]|['"][^'"]+['"])/g)) {
-    for (const url of match[1].matchAll(/['"]([^'"]+)['"]/g)) {
-      out.push(toPosixRel(join(dirname(file), url[1])));
+/**
+ * A decorator's `@angular/core` name, so `import { Component as C }` and `import * as ng`
+ * classify the same as a plain `@Component`.
+ */
+function angularDecoratorNamer(source) {
+  const names = new Map();
+  const namespaces = new Set();
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement)) continue;
+    if (statement.moduleSpecifier.text !== '@angular/core') continue;
+    const bindings = statement.importClause?.namedBindings;
+    if (!bindings) continue;
+    if (ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
+    else {
+      for (const element of bindings.elements) {
+        names.set(element.name.text, (element.propertyName ?? element.name).text);
+      }
     }
   }
+  return (callee) => {
+    if (ts.isIdentifier(callee)) return names.get(callee.text) ?? callee.text;
+    if (
+      ts.isPropertyAccessExpression(callee) &&
+      ts.isIdentifier(callee.expression) &&
+      namespaces.has(callee.expression.text)
+    ) {
+      return callee.name.text;
+    }
+    return callee.getText(source);
+  };
+}
+
+/**
+ * A metadata key by name, however it is spelled: `providedIn`, `'providedIn'` and
+ * `['providedIn']` are one key to Angular, so they are one key here.
+ */
+function metadataKey(property, source) {
+  const name = property.name;
+  if (!name) return null;
+  if (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) return name.text;
+  if (ts.isComputedPropertyName(name) && ts.isStringLiteralLike(name.expression)) {
+    return name.expression.text;
+  }
+  return name.getText(source);
+}
+
+const STYLE_KEYS = new Set(['styleUrl', 'styleUrls', 'styles']);
+
+/**
+ * The stylesheets a file's decorators name: `styleUrl` / `styleUrls` paths and inline `styles`.
+ *
+ * Read from the syntax tree, not matched by pattern, because every spelling a pattern missed was a
+ * stylesheet never opened: a quoted or computed key, a backtick path. What cannot be read
+ * statically — a constant, an interpolated template, `@Component` metadata that is not an object
+ * literal or spreads one in — is returned as `unreadable`, so the caller fails rather than passing
+ * a stylesheet it never saw.
+ */
+function stylesOf(file, text) {
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const lineOf = (node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+  const decoratorName = angularDecoratorNamer(source);
+  const out = { files: [], inline: [], unreadable: [] };
+  const visit = (node) => {
+    if (ts.isDecorator(node) && ts.isCallExpression(node.expression)) {
+      const isComponent = decoratorName(node.expression.expression) === 'Component';
+      const [metadata] = node.expression.arguments;
+      if (metadata && !ts.isObjectLiteralExpression(metadata) && isComponent) {
+        out.unreadable.push({ line: lineOf(metadata), key: null });
+      }
+      for (const property of metadata && ts.isObjectLiteralExpression(metadata)
+        ? metadata.properties
+        : []) {
+        if (ts.isSpreadAssignment(property)) {
+          if (isComponent) out.unreadable.push({ line: lineOf(property), key: null });
+          continue;
+        }
+        const key = metadataKey(property, source);
+        if (!STYLE_KEYS.has(key)) continue;
+        const value = ts.isPropertyAssignment(property) ? property.initializer : undefined;
+        const items = value && ts.isArrayLiteralExpression(value) ? value.elements : [value];
+        for (const item of items) {
+          if (!item || !ts.isStringLiteralLike(item)) {
+            out.unreadable.push({ line: lineOf(property), key });
+          } else if (key === 'styles') {
+            out.inline.push(item.text);
+          } else {
+            out.files.push(toPosixRel(join(dirname(file), item.text)));
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
   return out;
+}
+
+/**
+ * The files a local Sass URL can load, in Sass's own order: the file, its `_` partial, then the
+ * directory's `index` or `_index` — each as `.scss` or `.sass`. A URL with an extension names the
+ * file and its partial only. Plain `.css` is left out: Sass cannot load a package from it.
+ */
+function sassCandidates(base) {
+  const dir = dirname(base);
+  const name = base.split('/').pop();
+  if (/\.(scss|sass)$/.test(name)) return [base, toPosixRel(join(dir, `_${name}`))];
+  return [
+    ...['scss', 'sass'].flatMap((ext) => [
+      `${base}.${ext}`,
+      toPosixRel(join(dir, `_${name}.${ext}`)),
+    ]),
+    ...['scss', 'sass'].flatMap((ext) => [`${base}/index.${ext}`, `${base}/_index.${ext}`]),
+  ];
+}
+
+/**
+ * Every URL a stylesheet loads: `@use` and `@forward` (one URL each — a later string is
+ * configuration), every entry of an `@import` list, and `meta.load-css()`.
+ */
+function sassLoadedUrls(body) {
+  const urls = [];
+  for (const rule of body.matchAll(/@(use|forward|import)\s+([^;{}]*)/g)) {
+    const strings = [...rule[2].matchAll(/['"]([^'"]+)['"]/g)].map((match) => match[1]);
+    urls.push(...(rule[1] === 'import' ? strings : strings.slice(0, 1)));
+  }
+  for (const call of body.matchAll(/load-css\(\s*['"]([^'"]+)['"]/g)) urls.push(call[1]);
+  return urls;
 }
 
 function satoriComponentsSources() {
@@ -6105,8 +6549,11 @@ function satoriComponentsStorybookStyles() {
  * Transitive on purpose. `libs/shared/nuxeo-client` once imported a Satori type in `avatar-colors.ts`
  * and `libs/shared/extensions` imported `@alfresco/adf-extensions`, so a component importing either
  * barrel needed both packages to compile while a direct-import check stayed green. A type-only
- * import counts: it still needs the package installed to compile. Stylesheets count too, because
- * `@use '@hylandsoftware/satori-ui/theme'` needs the package as much as an import does.
+ * import counts: it still needs the package installed to compile. The ban is on the specifier, so
+ * a tsconfig alias that maps a banned name to a workspace file does not lift it — the emitted code
+ * still names the package. Stylesheets count too, because
+ * `@use '@hylandsoftware/satori-ui/theme'` needs the package as much as an import does, and so do
+ * inline `styles`, which the app compiles as SCSS.
  *
  * The Storybook build is held to the same rule, because it has to build without a token (plan
  * section 9.4): `.storybook/*.ts` are roots, and so are the stylesheets the default
@@ -6190,7 +6637,7 @@ function checkSatoriFallbackDependencies() {
  * workspace aliases and relative paths, and fail each external specifier `banned` names a reason for.
  */
 function checkDependencyClosure({ root, roots, styleRoots = [], banned }) {
-  const paths = tsconfigPaths();
+  const pathMaps = tsconfigPathMaps();
   const reportedFor = new Set();
   const project = `${root}/project.json`;
   // One report per offending import, however many library files reach it.
@@ -6211,38 +6658,29 @@ function checkDependencyClosure({ root, roots, styleRoots = [], banned }) {
     );
   };
 
-  const scanStyles = (styleFile, chain, seen) => {
-    if (seen.has(styleFile) || !fileExists(styleFile)) return;
-    seen.add(styleFile);
-    const body = read(styleFile);
-    for (const use of body.matchAll(/@(?:use|import|forward)\s+['"]~?([^'"]+)['"]/g)) {
-      const why = banned(use[1]);
+  // `label` names the stylesheet in a report; `at` is where its relative URLs resolve from.
+  const scanStyleText = (body, at, label, chain, seen) => {
+    for (const url of sassLoadedUrls(body)) {
+      // `~` is webpack's package prefix and `pkg:` Sass's; either way the URL names a package.
+      const why = banned(url.replace(/^~/, '').replace(/^pkg:/, ''));
       if (why) {
-        report([...chain, styleFile], use[1], why);
+        report([...chain, label], url, why);
         continue;
       }
       // Sass resolves a bare URL (`@use 'theme'`) against the current file first, like `./theme`.
-      // A package URL starts with `@`; `sass:` is a built-in module.
-      if (use[1].startsWith('@') || use[1].startsWith('sass:')) continue;
-      const base = toPosixRel(join(dirname(styleFile), use[1]));
-      // `theme` and `theme.scss` name the same partial, `_theme.scss`.
-      const name = base
-        .split('/')
-        .pop()
-        .replace(/\.scss$/, '');
-      const dir = dirname(base);
-      for (const candidate of [
-        base,
-        `${base}.scss`,
-        toPosixRel(join(dir, `_${name}.scss`)),
-        `${base}/_index.scss`,
-      ]) {
-        if (fileExists(candidate) && statSync(join(repoRoot, candidate)).isFile()) {
-          scanStyles(candidate, [...chain, styleFile], seen);
-          break;
-        }
-      }
+      // A package URL starts with `@` or `~`; `sass:`, `pkg:` and any other scheme are not files.
+      if (/^[@~]|^[a-z][a-z0-9+.-]*:/i.test(url)) continue;
+      const base = toPosixRel(join(dirname(at), url));
+      const found = sassCandidates(base).find(
+        (candidate) => fileExists(candidate) && statSync(join(repoRoot, candidate)).isFile(),
+      );
+      if (found) scanStyles(found, [...chain, label], seen);
     }
+  };
+  const scanStyles = (styleFile, chain, seen) => {
+    if (seen.has(styleFile) || !fileExists(styleFile)) return;
+    seen.add(styleFile);
+    scanStyleText(read(styleFile), styleFile, styleFile, chain, seen);
   };
 
   const storybookStyles = new Set();
@@ -6267,14 +6705,32 @@ function checkDependencyClosure({ root, roots, styleRoots = [], banned }) {
       if (seen.has(file)) continue;
       seen.add(file);
       const text = read(file);
-      for (const styleFile of styleUrlsOf(file, text)) scanStyles(styleFile, chain, styles);
+      const sheets = stylesOf(file, text);
+      for (const { line, key } of sheets.unreadable) {
+        const where = `${file}:${line}`;
+        if (reportedFor.has(where)) continue;
+        reportedFor.add(where);
+        fail(
+          key
+            ? `${where} \`${key}\` is not a string literal, so the stylesheet it names was not ` +
+                `checked for ADF or Satori. Write it as a literal.`
+            : `${where} @Component metadata is not an object literal the guardrail can read — a ` +
+                'constant, or a spread — so its stylesheets were not checked for ADF or Satori. ' +
+                'Write the metadata inline.',
+        );
+      }
+      for (const styleFile of sheets.files) scanStyles(styleFile, chain, styles);
+      for (const css of sheets.inline) {
+        scanStyleText(css, file, `${file} (inline styles)`, chain.slice(0, -1), styles);
+      }
       for (const specifier of importSpecifiers(text)) {
-        const resolved = resolveSpecifier(file, specifier, paths);
-        if (resolved === undefined) {
-          const why = banned(specifier);
-          if (why) report(chain, specifier, why);
-        } else if (resolved && !seen.has(resolved)) {
-          queue.push([...chain, resolved]);
+        const why = banned(specifier);
+        if (why) {
+          report(chain, specifier, why);
+          continue;
+        }
+        for (const resolved of resolveSpecifier(file, specifier, pathMaps) ?? []) {
+          if (!seen.has(resolved)) queue.push([...chain, resolved]);
         }
       }
     }
@@ -6288,7 +6744,8 @@ function checkDependencyClosure({ root, roots, styleRoots = [], banned }) {
  * A deep import into a library cannot be versioned — the reason the customer guardrail rejects
  * deep platform imports — and across a federation boundary it cannot be loaded at all. So: no
  * subpath under the entry specifier, no relative path into the library from outside it, no second
- * tsconfig alias into it, and the alias and the published `ng-package.json` both name the barrel.
+ * alias into it in any tsconfig — a project's own `paths` included — and the alias and the
+ * published `ng-package.json` both name the barrel.
  */
 function checkSatoriComponentsEntryPoint() {
   checkLibraryEntryPoint(SATORI_LIBRARIES[0]);
@@ -6308,25 +6765,38 @@ function checkLibraryEntryPoint({ root, entry, barrel, ngPackage }) {
     return;
   }
 
-  const paths = tsconfigPaths();
+  const pathMaps = tsconfigPathMaps();
   const inLibrary = (path) => path === root || path.startsWith(`${root}/`);
+  const isBarrelOnly = (targets) => targets.length === 1 && targets[0] === barrel;
 
-  const entryTargets = (paths[entry] ?? []).map((t) => t.replace(/^\.\//, ''));
-  if (entryTargets.length !== 1 || entryTargets[0] !== barrel) {
+  const base = pathMaps.find((map) => map.declaredIn === 'tsconfig.base.json')?.paths ?? {};
+  const entryTargets = base[entry] ?? [];
+  if (!isBarrelOnly(entryTargets)) {
     fail(
       `tsconfig.base.json must map \`${entry}\` to exactly ` +
         `\`${barrel}\`; it maps it to ${JSON.stringify(entryTargets)}.`,
     );
   }
-  for (const [alias, targets] of Object.entries(paths)) {
-    if (alias === entry) continue;
-    const into = targets.map((t) => t.replace(/^\.\//, '')).filter(inLibrary);
-    if (into.length > 0) {
-      fail(
-        `tsconfig.base.json alias \`${alias}\` points into ${root} ` +
-          `(${into.join(', ')}). The library has one entry point, \`${entry}\`; ` +
-          'a second alias is a deep import with a name.',
-      );
+  for (const { declaredIn, paths } of pathMaps) {
+    for (const [alias, targets] of Object.entries(paths)) {
+      if (alias === entry) {
+        // A project that declares `paths` must re-declare the entry, and may — to the barrel.
+        if (declaredIn !== 'tsconfig.base.json' && !isBarrelOnly(targets)) {
+          fail(
+            `${declaredIn} maps \`${entry}\` to ${JSON.stringify(targets)}; ` +
+              `like tsconfig.base.json it must name exactly \`${barrel}\`.`,
+          );
+        }
+        continue;
+      }
+      const into = targets.filter(inLibrary);
+      if (into.length > 0) {
+        fail(
+          `${declaredIn} alias \`${alias}\` points into ${root} ` +
+            `(${into.join(', ')}). The library has one entry point, \`${entry}\`; ` +
+            'a second alias is a deep import with a name.',
+        );
+      }
     }
   }
 
@@ -6362,8 +6832,7 @@ function checkLibraryEntryPoint({ root, entry, barrel, ngPackage }) {
         const path = toPosixRel(join(dirname(file), specifier));
         if (inLibrary(path)) target = path;
       } else {
-        const resolved = resolveSpecifier(file, specifier, paths);
-        if (resolved && inLibrary(resolved)) target = resolved;
+        target = (resolveSpecifier(file, specifier, pathMaps) ?? []).find(inLibrary) ?? null;
       }
       if (target) {
         fail(
@@ -6405,40 +6874,8 @@ function checkSatoriComponentsFederationReadiness() {
   for (const file of [...sources, ...walk(`${SATORI_FALLBACK_ROOT}/src`, nonSpec)]) {
     const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
     const lineOf = (node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
-
-    // Local name -> `@angular/core` export, so `import { Component as C }` and
-    // `import * as ng` classify the same as a plain `@Component`.
-    const angularNames = new Map();
-    const angularNamespaces = new Set();
-    for (const statement of source.statements) {
-      if (!ts.isImportDeclaration(statement)) continue;
-      if (statement.moduleSpecifier.text !== '@angular/core') continue;
-      const bindings = statement.importClause?.namedBindings;
-      if (!bindings) continue;
-      if (ts.isNamespaceImport(bindings)) angularNamespaces.add(bindings.name.text);
-      else {
-        for (const element of bindings.elements) {
-          angularNames.set(element.name.text, (element.propertyName ?? element.name).text);
-        }
-      }
-    }
-    const decoratorName = (callee) => {
-      if (ts.isIdentifier(callee)) return angularNames.get(callee.text) ?? callee.text;
-      if (
-        ts.isPropertyAccessExpression(callee) &&
-        ts.isIdentifier(callee.expression) &&
-        angularNamespaces.has(callee.expression.text)
-      ) {
-        return callee.name.text;
-      }
-      return callee.getText(source);
-    };
-
-    // A metadata key may be quoted (`'providedIn': 'root'`); compare the name, not its spelling.
-    const keyOf = (property) =>
-      ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)
-        ? property.name.text
-        : property.name.getText(source);
+    const decoratorName = angularDecoratorNamer(source);
+    const keyOf = (property) => metadataKey(property, source);
 
     const visit = (node) => {
       if (ts.isDecorator(node) && ts.isCallExpression(node.expression)) {
@@ -6502,13 +6939,18 @@ function componentDecoratorNames(source) {
   return { names, namespaces };
 }
 
+/** The first file `resolveSpecifier` finds for a specifier, or `null` if it names none. */
+function resolveFile(fromFile, specifier, pathMaps) {
+  return resolveSpecifier(fromFile, specifier, pathMaps)?.[0] ?? null;
+}
+
 /**
  * The `@Component` classes a module exports, by public name, following re-exports.
  *
  * `export class X` with a `@Component` decorator, `export { a as b } from './m'`,
  * `export * from './m'`, and an imported class re-exported by a bare `export { X }`.
  */
-function exportedComponentClasses(file, paths, ancestors = new Set()) {
+function exportedComponentClasses(file, pathMaps, ancestors = new Set()) {
   // `ancestors` guards a re-export cycle along one path only: a module re-exported twice from
   // one barrel must be read twice, or the second statement finds nothing.
   const seen = ancestors;
@@ -6556,17 +6998,17 @@ function exportedComponentClasses(file, paths, ancestors = new Set()) {
       for (const element of statement.exportClause.elements) {
         const local = imported.get((element.propertyName ?? element.name).text);
         if (element.isTypeOnly || !local) continue;
-        const target = resolveSpecifier(file, local.specifier, paths);
+        const target = resolveFile(file, local.specifier, pathMaps);
         const origin =
-          target && exportedComponentClasses(target, paths, new Set(seen)).get(local.name);
+          target && exportedComponentClasses(target, pathMaps, new Set(seen)).get(local.name);
         if (origin) found.set(element.name.text, origin);
       }
       continue;
     }
     if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
-    const target = resolveSpecifier(file, statement.moduleSpecifier.text, paths);
+    const target = resolveFile(file, statement.moduleSpecifier.text, pathMaps);
     if (!target) continue;
-    const inner = exportedComponentClasses(target, paths, new Set(seen));
+    const inner = exportedComponentClasses(target, pathMaps, new Set(seen));
     if (!statement.exportClause) {
       for (const [name, origin] of inner) found.set(name, origin);
     } else if (ts.isNamedExports(statement.exportClause)) {
@@ -6587,7 +7029,7 @@ function exportedComponentClasses(file, paths, ancestors = new Set()) {
  * imported from the module that declares it, and the file exports at least one story. The meta may
  * be the default export itself or a variable it names, optionally behind `satisfies` or `as`.
  */
-function storiedComponents(storyFile, paths) {
+function storiedComponents(storyFile, pathMaps) {
   const covered = new Set();
   const source = ts.createSourceFile(storyFile, read(storyFile), ts.ScriptTarget.Latest, true);
 
@@ -6612,7 +7054,7 @@ function storiedComponents(storyFile, paths) {
     if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
       const bindings = statement.importClause?.namedBindings;
       if (!bindings || !ts.isNamedImports(bindings)) continue;
-      const target = resolveSpecifier(storyFile, statement.moduleSpecifier.text, paths);
+      const target = resolveFile(storyFile, statement.moduleSpecifier.text, pathMaps);
       if (!target) continue;
       for (const element of bindings.elements) {
         imports.set(element.name.text, {
@@ -6650,7 +7092,7 @@ function storiedComponents(storyFile, paths) {
   if (!origin) return covered;
 
   // The import may itself be a barrel; resolve the name to the module that declares the class.
-  const declared = exportedComponentClasses(origin.file, paths).get(origin.name);
+  const declared = exportedComponentClasses(origin.file, pathMaps).get(origin.name);
   if (declared) covered.add(`${declared.file}#${declared.className}`);
   return covered;
 }
@@ -6666,8 +7108,8 @@ function storiedComponents(storyFile, paths) {
  */
 function checkSatoriComponentsHaveStories() {
   if (!fileExists(SATORI_COMPONENTS_BARREL)) return;
-  const paths = tsconfigPaths();
-  const exported = exportedComponentClasses(SATORI_COMPONENTS_BARREL, paths);
+  const pathMaps = tsconfigPathMaps();
+  const exported = exportedComponentClasses(SATORI_COMPONENTS_BARREL, pathMaps);
   if (exported.size === 0) return;
 
   const STORY_GLOB = '../src/**/*.stories.ts';
@@ -6688,7 +7130,7 @@ function checkSatoriComponentsHaveStories() {
   for (const story of walk(`${SATORI_COMPONENTS_ROOT}/src`, (path) =>
     path.endsWith('.stories.ts'),
   )) {
-    for (const key of storiedComponents(story, paths)) covered.add(key);
+    for (const key of storiedComponents(story, pathMaps)) covered.add(key);
   }
   for (const [name, { file, className }] of exported) {
     if (covered.has(`${file}#${className}`)) continue;
@@ -6801,6 +7243,7 @@ const GUARDRAILS = [
   checkTranslatorContextPush,
   checkNoProseInComponentInputs,
   checkNoTemplateSyntaxInDocumentShell,
+  checkNoRootAbsoluteShippedAssetPaths,
   checkShippedDefaultLanguage,
   checkAccessibleNameFallbacks,
   checkLocaleDataRegistered,

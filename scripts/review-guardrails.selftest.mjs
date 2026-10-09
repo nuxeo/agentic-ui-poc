@@ -1235,6 +1235,313 @@ expectRed(
   /asserted nothing/,
 );
 
+/* ---------------- checkNoRootAbsoluteShippedAssetPaths (NXSAT-318) ---------------- */
+
+// What ships is derived from angular.json, so the fixture declares it the way the real one does:
+// one input copied to the output root, and one node_modules input given an `output`.
+const ASSETS_APP = (extra = {}) => ({
+  'angular.json': `${JSON.stringify(
+    {
+      projects: {
+        'nuxeo-ui': {
+          root: 'apps/nuxeo-ui',
+          architect: {
+            build: {
+              options: {
+                assets: [
+                  { glob: '**/*', input: 'apps/nuxeo-ui/public' },
+                  { glob: '**/*', input: 'node_modules/vendor/assets', output: 'assets/vendor' },
+                ],
+              },
+            },
+          },
+        },
+      },
+    },
+    null,
+    2,
+  )}\n`,
+  'apps/nuxeo-ui/public/favicon.ico': '',
+  'apps/nuxeo-ui/public/images/art.svg': '<svg xmlns="http://www.w3.org/2000/svg"/>\n',
+  'apps/nuxeo-ui/public/login/.gitkeep': '',
+  'apps/nuxeo-ui/src/app/login/login.ts': "export const art = 'images/art.svg';\n",
+  ...extra,
+});
+
+expectGreen(
+  'shipped files referenced relative to the base href',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+);
+
+expectRed(
+  'a component field naming shipped art from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write('apps/nuxeo-ui/src/app/login/login.ts', "export const art = '/images/art.svg';\n"),
+  /login\.ts:1 references a file the app ships from the server root/,
+);
+
+expectRed(
+  'a template src attribute naming shipped art from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.html',
+      '<p>Hi</p>\n<img src="/images/art.svg" alt="" />\n',
+    ),
+  /login\.html:2 references a file the app ships/,
+);
+
+expectRed(
+  'a stylesheet url() naming shipped art from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      '.hero {\n  background: url(/images/art.svg);\n}\n',
+    ),
+  /login\.scss:2 references a file the app ships/,
+);
+
+// `assets` only ships because of an `output`, and the reference is in a library.
+expectRed(
+  'a library fetching a vendor asset from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write('libs/shared/x/src/lib/x.ts', 'export const url = `/assets/vendor/${"en"}.json`;\n'),
+  /libs\/shared\/x\/src\/lib\/x\.ts:1 references a file the app ships/,
+);
+
+// A top-level file, not a folder.
+expectRed(
+  'the favicon from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) => write('apps/nuxeo-ui/src/index.html', '<link rel="icon" href="/favicon.ico" />\n'),
+  /index\.html:1 references a file the app ships/,
+);
+
+// The list is not hand-maintained: a folder added to public/ is covered the day it lands.
+expectRed(
+  'a newly shipped public folder referenced from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP({ 'apps/nuxeo-ui/public/fonts/brand.woff2': '' }),
+  (write) =>
+    write('apps/nuxeo-ui/src/styles.scss', "@font-face {\n  src: url('/fonts/brand.woff2');\n}\n"),
+  /styles\.scss:2 references a file the app ships/,
+);
+
+// `/login` is a route and `login/` a shipped folder. A directory only matches with a segment
+// after it, so router calls stay clean.
+falsePositiveControls += 1;
+expectGreen(
+  'a router path that shares a shipped folder name',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/auth/guard.ts':
+      "export const login = ['/login'];\nexport const to = (r: { navigateByUrl(u: string): void }) => r.navigateByUrl('/login');\n",
+  },
+);
+
+falsePositiveControls += 1;
+expectGreen('a server-absolute Nuxeo path', 'checkNoRootAbsoluteShippedAssetPaths', {
+  ...ASSETS_APP(),
+  'libs/shared/x/src/lib/x.ts':
+    "export const icon = '/nuxeo/icons/note.gif';\nexport const config = '/nuxeo/agentic-ui-config/bootstrap.json';\n",
+});
+
+falsePositiveControls += 1;
+expectGreen('a comment quoting the root-absolute form', 'checkNoRootAbsoluteShippedAssetPaths', {
+  ...ASSETS_APP(),
+  'apps/nuxeo-ui/src/app/login/login.ts':
+    "/** Not `/images/art.svg`: that 404s under /nuxeo/agentic-ui/. */\nexport const art = 'images/art.svg';\n",
+  'apps/nuxeo-ui/src/app/login/login.html':
+    '<!-- not src="/images/art.svg" -->\n<img [src]="art" alt="" />\n',
+  'apps/nuxeo-ui/src/app/login/login.scss':
+    '// url(/images/art.svg) would 404 when packaged\n.hero {\n  color: red; // not url(/images/art.svg)\n}\n',
+});
+
+// CSS function names are case-insensitive.
+expectRed(
+  'an upper-case URL() from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.css',
+      '.hero {\n  background: URL(/images/art.svg);\n}\n',
+    ),
+  /login\.css:2 references a file the app ships/,
+);
+
+// `url(` and its path on different lines; the path's own line is reported.
+expectRed(
+  'a multi-line stylesheet url() from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      '.hero {\n  background: url(\n    /images/art.svg\n  );\n}\n',
+    ),
+  /login\.scss:3 references a file the app ships/,
+);
+
+// A comment opener inside a value is not a comment, so it must not blank what follows it.
+expectRed(
+  'a root-absolute url() after a quoted protocol-relative one',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      '.hero {\n  background: url("//cdn.example/overlay.png"), url("/images/art.svg");\n}\n',
+    ),
+  /login\.scss:2 references a file the app ships/,
+);
+
+expectRed(
+  'a root-absolute src after a comment opener inside an attribute',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.html',
+      '<img title="<!--" src="/images/art.svg" alt="" />\n<!-- a later comment -->\n',
+    ),
+  /login\.html:1 references a file the app ships/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'protocol-relative and absolute URLs in a stylesheet',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.a {\n  background: url(//cdn.example/x.png), url("https://cdn.example/y.png");\n}\n' +
+      "/* url(/images/art.svg) */\n.b {\n  content: '//'; // url(/images/art.svg)\n}\n",
+    'apps/nuxeo-ui/src/styles.css': '.c {\n  background: url(//cdn.example/x.png);\n}\n',
+  },
+);
+
+// A query string carries a path to another host; its `=` and `,` do not open a value.
+falsePositiveControls += 1;
+expectGreen(
+  'a shipped-looking path inside a URL query string',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.a {\n  background: url("https://cdn.example/render?path=/images/art.svg");\n}\n' +
+      '.b {\n  background: url(https://cdn.example/render?a=1,/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.html':
+      '<img src="https://cdn.example/render?path=/images/art.svg" alt="" />\n' +
+      '<img src=https://cdn.example/render?path=/images/art.svg alt="" />\n',
+    'libs/shared/x/src/lib/x.ts':
+      "export const u = 'https://cdn.example/render?path=/images/art.svg&b=1,/images/art.svg';\n",
+  },
+);
+
+// A relative URL with a query: nothing inside a URL opens a value.
+falsePositiveControls += 1;
+expectGreen(
+  'a shipped-looking path in a relative URL query',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.hero {\n  background: url(render?path=/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.css':
+      '.hero {\n  background: url(render?path=/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.html':
+      '<div style="background: url(render?path=/images/art.svg)"></div>\n',
+  },
+);
+
+// `1x,` and `100w,` are ordinary query text too.
+falsePositiveControls += 1;
+expectGreen(
+  'a descriptor-like comma inside a URL query string',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.a {\n  background: url(https://cdn.example/render?size=1x,/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.html':
+      '<img src="https://cdn.example/render?variant=100w,/images/art.svg" alt="" />\n',
+    'libs/shared/x/src/lib/x.ts':
+      "export const u = 'https://cdn.example/render?size=1x,/images/art.svg';\n",
+  },
+);
+
+// An Angular binding that concatenates a path onto a base: the quoted tail is a suffix.
+falsePositiveControls += 1;
+expectGreen(
+  'a path concatenated onto a base in a template binding',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.html': `<img [src]="assetBase + '/images/art.svg'" alt="" />\n`,
+  },
+);
+
+expectRed(
+  'a bound string literal from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write('apps/nuxeo-ui/src/app/login/login.html', `<img [src]="'/images/art.svg'" alt="" />\n`),
+  /login\.html:1 references a file the app ships/,
+);
+
+// A literal that only ends a URL is placed by what precedes it, so it is not root-absolute.
+falsePositiveControls += 1;
+expectGreen('a path appended to a base URL', 'checkNoRootAbsoluteShippedAssetPaths', {
+  ...ASSETS_APP(),
+  'libs/shared/x/src/lib/x.ts':
+    "const base = 'http://host/nuxeo/agentic-ui';\n" +
+    'export const a = `${base}/images/art.svg`;\n' +
+    "export const b = base + '/images/art.svg';\n",
+});
+
+// Blanking a trailing comment must not blank the code in front of it.
+expectRed(
+  'a stylesheet url() followed by a trailing comment',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      ".hero {\n  background: url('/images/art.svg'); // decorative\n}\n",
+    ),
+  /login\.scss:2 references a file the app ships/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a spec asserting the root-absolute form', 'checkNoRootAbsoluteShippedAssetPaths', {
+  ...ASSETS_APP(),
+  'apps/nuxeo-ui/src/app/login/login.spec.ts':
+    "expect(new URL('images/art.svg', 'http://h/').pathname).toBe('/images/art.svg');\n",
+});
+
+expectRed(
+  'no application declares build assets at all',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    'angular.json': '{ "projects": { "x": { "root": "apps/x", "architect": {} } } }\n',
+    'apps/x/src/main.ts': 'export const x = 1;\n',
+  },
+  null,
+  /declares build assets, so checkNoRootAbsoluteShippedAssetPaths asserted nothing/,
+);
+
 expectRed(
   'prose in a plain attribute on a component',
   'checkNoProseInComponentInputs',
@@ -5142,6 +5449,13 @@ const REAL_LIBS_WITH_PROBE = {
 };
 const AVATAR_COLORS = 'libs/shared/nuxeo-client/src/lib/constants/avatar-colors.ts';
 const EXTENSION_RULES = 'libs/shared/extensions/src/lib/extension-rules.ts';
+/**
+ * Interpolated into the control below, never spelled out in it. `supply-chain` reads a
+ * `from '<dep>'` anywhere under `scripts/` as a real import, and this dependency is excused there
+ * as unreferenced — a literal specifier in a fixture would make it look used, and that gate is
+ * right to refuse it.
+ */
+const ADF_EXTENSIONS = '@alfresco/adf-extensions';
 
 falsePositiveControls += 1;
 expectGreen(
@@ -5170,7 +5484,7 @@ expectRed(
   (write) =>
     write(
       EXTENSION_RULES,
-      "import type { RuleContext } from '@alfresco/adf-extensions';\n" + REAL_LIBS[EXTENSION_RULES],
+      `import type { RuleContext } from '${ADF_EXTENSIONS}';\n` + REAL_LIBS[EXTENSION_RULES],
     ),
   /extension-rules\.ts imports `@alfresco\/adf-extensions`, and the library reaches that file through libs\/shared\/satori-components\/src\/.* -> libs\/shared\/extensions\/src\/index\.ts -> /,
 );
@@ -5296,6 +5610,172 @@ expectRed(
   /thing\.component\.spec\.ts imports `@hylandsoftware\/satori-ui\/tag`/,
 );
 
+/** A library component whose metadata, after `templateUrl`, is exactly `metadata`. */
+const nxsComponentWith = (metadata, preamble = '') =>
+  `import { Component } from '@angular/core';\n${preamble}@Component({\n  selector: 'nxs-thing',\n` +
+  `  standalone: true,\n  templateUrl: './thing.component.html',\n${metadata}\n})\n` +
+  'export class NxsThingComponent {}\n';
+const SATORI_THEME = "@use '@hylandsoftware/satori-ui/theme' as sat;\n";
+
+// Every spelling Angular accepts for a stylesheet path is followed.
+for (const [how, metadata] of [
+  ['a quoted styleUrl key', "  'styleUrl': './thing.component.scss',"],
+  ['a double-quoted styleUrls key', '  "styleUrls": [\'./thing.component.scss\'],'],
+  ['a computed styleUrl key', "  ['styleUrl']: './thing.component.scss',"],
+  ['a backtick styleUrl path', '  styleUrl: `./thing.component.scss`,'],
+  ['a backtick path in styleUrls', '  styleUrls: [`./thing.component.scss`],'],
+]) {
+  expectRed(
+    `a Satori theme in a stylesheet named by ${how}`,
+    'checkSatoriComponentsDependencies',
+    NXS_LIB({ [NXS_COMPONENT]: nxsComponentWith(metadata), [NXS_STYLES]: SATORI_THEME }),
+    null,
+    /thing\.component\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+  );
+}
+
+// A path the guardrail cannot read statically fails, rather than passing a stylesheet unread.
+expectRed(
+  'a stylesheet named by a constant',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponentWith(
+      '  styleUrl: STYLE,',
+      "const STYLE = './thing.component.scss';\n",
+    ),
+  }),
+  null,
+  /thing\.component\.ts:7 `styleUrl` is not a string literal, so the stylesheet it names was not checked/,
+);
+
+expectRed(
+  'component metadata spread from a constant',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponentWith(
+      '  ...STYLES,',
+      "const STYLES = { styleUrl: './thing.component.scss' };\n",
+    ),
+  }),
+  null,
+  /thing\.component\.ts:7 @Component metadata is not an object literal the guardrail can read/,
+);
+
+// The app builds the library's components with `inlineStyleLanguage: scss`.
+expectRed(
+  'a Satori theme in inline styles',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponentWith(
+      "  styles: [`@use '@hylandsoftware/satori-ui/theme' as sat;`],",
+    ),
+  }),
+  null,
+  /thing\.component\.ts \(inline styles\) imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'decorators without metadata objects, and a styles key outside any decorator',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]:
+      "import { Component, HostListener, Input } from '@angular/core';\n" +
+      'const theme = { styles: [String(1)] };\n' +
+      "@Component({\n  selector: 'nxs-thing',\n  standalone: true,\n" +
+      "  templateUrl: './thing.component.html',\n  styleUrl: './thing.component.scss',\n})\n" +
+      "export class NxsThingComponent {\n  @Input('alias') value = theme;\n" +
+      "  @HostListener('click', ['$event']) onClick(): void {}\n}\n",
+  }),
+);
+
+// The package ban is on the specifier, whatever a tsconfig alias maps it to.
+expectRed(
+  'a Satori specifier a tsconfig alias maps to a workspace file',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB(
+    {
+      [NXS_COMPONENT]: nxsComponent({
+        imports: "import { SatTag } from '@hylandsoftware/satori-ui/tag';",
+      }),
+      'libs/shared/shims/src/satori-tag.ts': 'export const SatTag = 1;\n',
+    },
+    { '@hylandsoftware/satori-ui/tag': ['libs/shared/shims/src/satori-tag.ts'] },
+  ),
+  null,
+  /thing\.component\.ts imports `@hylandsoftware\/satori-ui\/tag`\. .*`\/components-satori` entry point/,
+);
+
+// A project's own tsconfig `paths` is followed too, against the directory that declares it.
+expectRed(
+  'a Satori import behind a project-level tsconfig alias',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_COMPONENT]: nxsComponent({ imports: "import { dirty } from '@shim/dirty';" }),
+    [`${NXS_ROOT}/tsconfig.json`]: `${JSON.stringify({
+      extends: '../../../tsconfig.base.json',
+      compilerOptions: { paths: { '@shim/dirty': ['../other/src/dirty.ts'] } },
+    })}\n`,
+    'libs/shared/other/src/dirty.ts':
+      "import { SatTag } from '@hylandsoftware/satori-ui/tag';\nexport const dirty = SatTag;\n",
+  }),
+  null,
+  /other\/src\/dirty\.ts imports `@hylandsoftware\/satori-ui\/tag`, and the library reaches that file through/,
+);
+
+// Sass's own resolution order: file, `_` partial, then `index` or `_index`, as .scss or .sass.
+expectRed(
+  'a Satori theme behind a non-partial Sass directory index',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]: "@use './theme';\n",
+    [`${NXS_ROOT}/src/lib/thing/theme/index.scss`]: SATORI_THEME,
+  }),
+  null,
+  /thing\/theme\/index\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a Satori theme behind an indented-syntax Sass partial',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]: "@use 'theme';\n",
+    [`${NXS_ROOT}/src/lib/thing/_theme.sass`]: "@use '@hylandsoftware/satori-ui/theme' as sat\n",
+  }),
+  null,
+  /thing\/_theme\.sass imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a Satori theme through a pkg: URL',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({ [NXS_STYLES]: "@use 'pkg:@hylandsoftware/satori-ui/theme' as sat;\n" }),
+  null,
+  /thing\.component\.scss imports `pkg:@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a Satori theme second in an @import list',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]: "@import 'local', '@hylandsoftware/satori-ui/theme';\n",
+    [`${NXS_ROOT}/src/lib/thing/_local.scss`]: ':root {\n  display: block;\n}\n',
+  }),
+  null,
+  /thing\.component\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a Satori theme loaded with meta.load-css',
+  'checkSatoriComponentsDependencies',
+  NXS_LIB({
+    [NXS_STYLES]:
+      "@use 'sass:meta';\n:host {\n  @include meta.load-css('@hylandsoftware/satori-ui/theme');\n}\n",
+  }),
+  null,
+  /thing\.component\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
 expectRed(
   'no library sources at all',
   'checkSatoriComponentsDependencies',
@@ -5366,6 +5846,84 @@ expectRed(
   }),
   null,
   /ng-package\.json must publish `libs\/shared\/satori-components\/src\/index\.ts`/,
+);
+
+// A project's own tsconfig `paths` is an alias like any other. Its targets resolve against its
+// `baseUrl` — its own, else the one it inherits — or, with none, its own directory.
+const projectTsconfig = (compilerOptions) =>
+  `${JSON.stringify({ extends: '../../../tsconfig.base.json', compilerOptions })}\n`;
+
+expectRed(
+  'a project-level alias into the library, against its own baseUrl',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'libs/features/x/tsconfig.json': projectTsconfig({
+      baseUrl: '../../..',
+      paths: { '@x/thing': [`${NXS_ROOT}/src/lib/thing/thing.component.ts`] },
+    }),
+  }),
+  null,
+  /libs\/features\/x\/tsconfig\.json alias `@x\/thing` points into libs\/shared\/satori-components/,
+);
+
+expectRed(
+  'a project-level alias into the library, against an inherited baseUrl',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'tsconfig.base.json': `${JSON.stringify({
+      compilerOptions: {
+        baseUrl: '.',
+        paths: { '@nuxeo-satori/platform/components': [`${NXS_ROOT}/src/index.ts`] },
+      },
+    })}\n`,
+    'libs/features/x/tsconfig.json': projectTsconfig({
+      paths: { '@x/thing': [`${NXS_ROOT}/src/lib/thing/thing.component.ts`] },
+    }),
+  }),
+  null,
+  /libs\/features\/x\/tsconfig\.json alias `@x\/thing` points into libs\/shared\/satori-components/,
+);
+
+expectRed(
+  'a consumer reaching into the library through a project-level wildcard alias',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'libs/features/x/tsconfig.json': projectTsconfig({ paths: { '@libs/*': ['../../*'] } }),
+    [NXS_CONSUMER]:
+      "import { NxsThingComponent } from '@libs/shared/satori-components/src/lib/thing/thing.component';\n",
+  }),
+  null,
+  /x\.ts imports `@libs\/shared\/satori-components\/src\/lib\/thing\/thing\.component`, which reaches into/,
+);
+
+expectRed(
+  'a project-level entry alias pointing past the barrel',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'libs/features/x/tsconfig.json': projectTsconfig({
+      paths: {
+        '@nuxeo-satori/platform/components': [
+          '../../shared/satori-components/src/lib/thing/thing.component.ts',
+        ],
+      },
+    }),
+  }),
+  null,
+  /libs\/features\/x\/tsconfig\.json maps `@nuxeo-satori\/platform\/components` to \["libs\/shared\/satori-components\/src\/lib\/thing\/thing\.component\.ts"\]/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a project tsconfig re-declaring the entry alias',
+  'checkSatoriComponentsEntryPoint',
+  NXS_LIB({
+    'libs/features/x/tsconfig.json': projectTsconfig({
+      paths: {
+        '@nuxeo-satori/platform/components': ['../../shared/satori-components/src/index.ts'],
+      },
+    }),
+    [NXS_CONSUMER]: "import { NxsThingComponent } from '@nuxeo-satori/platform/components';\n",
+  }),
 );
 
 expectRed(
@@ -5476,6 +6034,18 @@ expectRed(
     [`${NXS_ROOT}/src/lib/thing/thing.service.ts`]:
       "import { Injectable } from '@angular/core';\n" +
       "@Injectable({ 'providedIn': 'root' })\nexport class ThingService {}\n",
+  }),
+  null,
+  /thing\.service\.ts:2 uses `providedIn`/,
+);
+
+expectRed(
+  'a root-provided service with a computed key',
+  'checkSatoriComponentsFederationReadiness',
+  NXS_LIB({
+    [`${NXS_ROOT}/src/lib/thing/thing.service.ts`]:
+      "import { Injectable } from '@angular/core';\n" +
+      "@Injectable({ ['providedIn']: 'root' })\nexport class ThingService {}\n",
   }),
   null,
   /thing\.service\.ts:2 uses `providedIn`/,

@@ -1,6 +1,7 @@
 @use '@angular/material' as mat;
 @use '@hylandsoftware/satori-ui/theme' as sat;
 @use './styles/hxp-theme' as hxp;
+@use './app/document-detail/document-detail-header-toolbar-focus';
 
 html[data-app-theme='nuxeo'],
 html:not([data-app-theme]) {
