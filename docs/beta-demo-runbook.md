@@ -706,7 +706,14 @@ npx nx g ./tools/satori-generators:config-package contoso-config --owner=contoso
 npx nx build contoso-config     # refuses a bad fragment; writes the installable zip
 ```
 
-`config-packages/presales-demo` (Part 0.7) was made this way and installed on a real Nuxeo.
+`config-packages/presales-demo` (Part 0.7) was made this way and installed on a real Nuxeo. A
+customer does not need this repository's install, or its token, for this one: Node alone writes the
+same files and builds them.
+
+```bash
+node tools/satori-generators/src/config-package/create.mjs contoso-config --owner=contoso
+node config-packages/contoso-config/build.mjs   # writes config-packages/contoso-config/dist/contoso-config-1.0.0.zip
+```
 
 **Be honest if asked:** the three contribution generators write registrations but **no specs**.
 

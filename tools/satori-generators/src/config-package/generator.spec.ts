@@ -16,6 +16,7 @@ import { inflateRawSync } from 'node:zlib';
 
 import { readProjectConfiguration, type Tree } from '@nx/devkit';
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing';
+import * as prettier from 'prettier';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import configPackageGenerator from './generator';
@@ -106,6 +107,27 @@ describe('config-package generator', () => {
     const packageXml = tree.read(`${ROOT}/package/package.xml`, 'utf8') ?? '';
     expect(packageXml).toContain('<title>Acme &lt;Claims&gt; &amp; Co</title>');
     expect(packageXml).toContain('<vendor>Acme &#34;Insurance&#34;</vendor>');
+  });
+
+  it('writes every file but project.json as Prettier formats it, though it runs no Prettier', async () => {
+    const workspace = join(__dirname, '../../../..');
+    let checked = 0;
+    for (const presales of [false, true]) {
+      const generated = createTreeWithEmptyWorkspace();
+      await configPackageGenerator(generated, { name: 'acme-config', owner: 'acme', presales });
+      for (const change of generated.listChanges()) {
+        // Nx's own JSON.stringify, one array item per line, as for any project it adds.
+        if (!change.path.startsWith(`${ROOT}/`) || change.path.endsWith('/project.json')) continue;
+        const filepath = join(workspace, change.path);
+        if (!(await prettier.getFileInfo(filepath)).inferredParser) continue;
+        const text = change.content?.toString('utf8') ?? '';
+        const config = await prettier.resolveConfig(filepath);
+        expect(await prettier.format(text, { ...config, filepath }), change.path).toBe(text);
+        checked++;
+      }
+    }
+    // README.md, build.mjs, both fragments, both schemas and assets/README.md, twice.
+    expect(checked).toBe(14);
   });
 
   it.each(['customer configs', '../outside', 'a;b', 'a/./b', '-configs', 'customers/-acme'])(

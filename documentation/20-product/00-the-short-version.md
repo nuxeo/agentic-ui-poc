@@ -66,14 +66,25 @@ application reads both at startup, before sign-in, so they are the same for ever
 demo server whose package turns on presales presets, where a preset applies per browser) and must
 hold nothing secret. Users see a change the next time they open the application. An edited
 `bootstrap.json` beside the bundle and the old manifest Note are not read, and nothing converts
-them. A generator scaffolds such a package: [the guide for
-extenders](../../libs/platform/AGENTS.md#2-start-with-a-generator) gives the three commands, and
-`config-packages/presales-demo` in this repository is a finished example. Until the developer
-package is published, run the generator from a clone of this repository as
-`npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`; the
-`@nuxeo-satori/platform:` form in that guide resolves from the published package, and in a clone
-only after `npx nx run platform:sync-generators`. What it writes is plain JSON, XML and a build
-script with no dependencies, so it can live in your own repository.
+them.
+
+Creating and building such a package needs only Node.js 20: no `npm ci`, no GitHub token, none of
+this repository's dependencies. In a clone of this repository:
+
+```bash
+node tools/satori-generators/src/config-package/create.mjs acme-config --owner=acme
+node config-packages/acme-config/build.mjs     # checks the fragments, writes the zip
+nuxeoctl mp-install config-packages/acme-config/dist/acme-config-1.0.0.zip   # on the Nuxeo server, then restart
+```
+
+What it writes is plain JSON, XML and a build script with no dependencies, so it can live in your
+own repository. `config-packages/presales-demo` is a finished example that builds the same way,
+with `node config-packages/presales-demo/build.mjs`; copying it instead also needs only Node, but
+means renaming it in `package.xml`, `MANIFEST.MF` and the component XML (and that file's name), and
+removing its presets.
+With this repository fully installed (which does need the token), the `config-package` Nx generator
+in [the guide for extenders](../../libs/platform/AGENTS.md#2-start-with-a-generator) writes the same
+files.
 
 ## What you can change without code
 
@@ -163,7 +174,8 @@ the package is not published yet, you build it from this repository. Publishing 
 2. **Change something without code.** Locally, put the example above in a file and run
    `npm run config:dev -- --manifest <file>` before `nx serve`
    ([Part 0.6 of the runbook](../../docs/beta-demo-runbook.md#06-write-the-dev-configuration)).
-   On a server, contribute the same JSON as a fragment from your own package. Beats 3 to 7 of the
+   On a server, contribute the same JSON as a fragment from your own package, created and built
+   with Node alone as [above](#where-configuration-lives-today). Beats 3 to 7 of the
    [demo runbook](../../docs/beta-demo-runbook.md#part-4--the-demo-script) give the exact JSON
    for each change and what you should see.
 3. **Customise it with an AI coding agent.** Use the

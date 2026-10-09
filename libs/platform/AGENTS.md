@@ -44,9 +44,17 @@ schemas for your editor — and a `build.mjs` that refuses what the server would
 a repeated key, a fragment over 1 MiB, a missing asset) before anything reaches a server.
 `--presales` adds demo presets. Everything in a fragment is served without authentication.
 
-Working from a clone of the Satori repository instead of the installed package? There
-`generators.json` is a build output, so use `npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`,
-or run `npx nx run platform:sync-generators` once first.
+Working from a clone of the Satori repository instead of the installed package? This one needs
+neither the clone's install nor its GitHub Packages token — Node 20 alone writes the same files:
+
+```bash
+node tools/satori-generators/src/config-package/create.mjs acme-config --owner=acme
+node config-packages/acme-config/build.mjs   # writes config-packages/acme-config/dist/acme-config-1.0.0.zip
+```
+
+With the clone fully installed, `npx nx g ./tools/satori-generators:config-package acme-config --owner=acme`
+works too; the `@nuxeo-satori/platform:` form needs `npx nx run platform:sync-generators` first,
+because there `generators.json` is a build output.
 
 For Layer 2 — code — the other four:
 
