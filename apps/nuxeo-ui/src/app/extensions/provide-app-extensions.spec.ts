@@ -7,6 +7,7 @@ import { APP_CONFIG_FORMAT, AppConfigService } from '@nuxeo-satori/platform/app-
 import {
   AppExtensionsService,
   EXTENSION_SLOTS,
+  ExtensionComponentRegistry,
   type ExtensionActionDescriptor,
   type ExtensionRouteDescriptor,
   type ExtensionTabDescriptor,
@@ -94,6 +95,19 @@ describe('provideAppExtensions — the four reserved slots, as the app wires the
       'app.tabs.publishing',
     ]);
     expect(ids(EXTENSION_SLOTS.contextMenu)).toContain('app.contextMenu.share');
+  });
+
+  it('registers the packaged permissions panel under the ID the library exports', async () => {
+    // The app keys the registration with a literal so the library stays out of the initial
+    // bundle; this is what keeps that literal and the exported ID from drifting apart.
+    await loadManifest({});
+    // Imported here as the app does, lazily: a static import would pull the library into the
+    // app's eager graph, which is exactly what the literal key avoids.
+    const { NXS_PERMISSIONS_PANEL_ID, NxsPermissionsPanelComponent } =
+      await import('@nuxeo-satori/platform/components');
+    const components = TestBed.inject(ExtensionComponentRegistry);
+    expect(components.has(NXS_PERMISSIONS_PANEL_ID)).toBe(true);
+    expect(await components.resolve(NXS_PERMISSIONS_PANEL_ID)).toBe(NxsPermissionsPanelComponent);
   });
 
   it('merges manifest contributions into all four slots', async () => {

@@ -5453,7 +5453,7 @@ expectRed(
       "import type { SatAvatarCategory } from '@hylandsoftware/satori-ui/avatar';\n" +
         REAL_LIBS[AVATAR_COLORS],
     ),
-  /avatar-colors\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through .*probe\.ts -> libs\/shared\/nuxeo-client\/src\/index\.ts -> /,
+  /avatar-colors\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through .* -> libs\/shared\/nuxeo-client\/src\/index\.ts -> libs\/shared\/nuxeo-client\/src\/lib\/constants\/avatar-colors\.ts\./,
 );
 
 expectRed(

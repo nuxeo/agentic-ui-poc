@@ -466,7 +466,7 @@ describe('DocumentDetailComponent — tab surfaces', () => {
             title: 'Server copy',
             contextParameters: {
               permissions: ['Everything'],
-              acls: [{ name: 'local', aces: [ace({ id: 'new' })] }],
+              acls: [{ name: 'local', aces: [ace({ id: 'new', externalUser: true })] }],
             },
           }),
         ),
@@ -474,7 +474,7 @@ describe('DocumentDetailComponent — tab surfaces', () => {
 
       openTab('app.tabs.permissions');
 
-      expect(component.localAces().map((a) => a.id)).toEqual(['new']);
+      expect(component.externalAces().map((a) => a.id)).toEqual(['new']);
       expect(component.permissionsLoading()).toBe(false);
     });
 
@@ -492,39 +492,6 @@ describe('DocumentDetailComponent — tab surfaces', () => {
       openTab('app.tabs.permissions');
 
       expect(mockDetailService.getDocumentPermissions).toHaveBeenCalledTimes(2);
-    });
-
-    it('reloads the permissions after one is added', async () => {
-      await build();
-      mockDialog.open.mockImplementation(() => ({ afterClosed: () => of(true) }));
-      mockDetailService.getDocumentPermissions.mockClear();
-
-      component.openAddPermissionDialog();
-
-      expect(lastDialogData()).toEqual({ documentUid: 'doc-1' });
-      expect(mockDetailService.getDocumentPermissions).toHaveBeenCalledWith('doc-1');
-    });
-
-    it('does not reload when the add-permission dialog is dismissed', async () => {
-      await build();
-      mockDialog.open.mockImplementation(() => ({ afterClosed: () => of(false) }));
-      mockDetailService.getDocumentPermissions.mockClear();
-
-      component.openAddPermissionDialog();
-
-      expect(mockDetailService.getDocumentPermissions).not.toHaveBeenCalled();
-    });
-
-    it('reloads after a permission is edited and reports it', async () => {
-      await build();
-      mockDialog.open.mockImplementation(() => ({ afterClosed: () => of(true) }));
-      mockDetailService.getDocumentPermissions.mockClear();
-
-      component.editPermission(ace());
-
-      expect(lastDialogData()).toEqual({ documentUid: 'doc-1', ace: ace() });
-      expect(snack).toHaveBeenCalledWith('Permission updated', 'OK', expect.anything());
-      expect(mockDetailService.getDocumentPermissions).toHaveBeenCalledWith('doc-1');
     });
 
     it('describes the grant being removed in the delete confirmation', async () => {
@@ -569,63 +536,6 @@ describe('DocumentDetailComponent — tab surfaces', () => {
 
       expect(snack).toHaveBeenCalledWith('Shared with external user', 'OK', expect.anything());
       expect(mockDetailService.getDocumentPermissions).toHaveBeenCalledWith('doc-1');
-    });
-
-    it('blocks inheritance and reloads', async () => {
-      await build(
-        doc({
-          contextParameters: {
-            permissions: ['Everything'],
-            acls: [
-              { name: 'local', aces: [ace()] },
-              { name: 'inherited', aces: [ace({ id: 'i' })] },
-            ],
-          },
-        }),
-      );
-      expect(component.isInheritanceBlocked()).toBe(false);
-
-      component.toggleInheritanceBlock();
-
-      expect(mockDetailService.blockPermissionInheritance).toHaveBeenCalledWith('doc-1');
-      expect(component.actionInProgress()).toBeNull();
-      expect(snack).toHaveBeenCalledWith('Permission inheritance blocked', 'OK', expect.anything());
-    });
-
-    it('unblocks inheritance when it is already blocked', async () => {
-      await build(
-        doc({
-          contextParameters: {
-            permissions: ['Everything'],
-            acls: [{ name: 'local', aces: [ace()] }],
-          },
-        }),
-      );
-
-      component.toggleInheritanceBlock();
-
-      expect(mockDetailService.unblockPermissionInheritance).toHaveBeenCalledWith('doc-1');
-      expect(snack).toHaveBeenCalledWith(
-        'Permission inheritance unblocked',
-        'OK',
-        expect.anything(),
-      );
-    });
-
-    it('releases the in-progress flag when the inheritance change fails', async () => {
-      await build();
-      mockDetailService.blockPermissionInheritance.mockReturnValue(
-        throwError(() => new Error('403')),
-      );
-
-      component.toggleInheritanceBlock();
-
-      expect(component.actionInProgress()).toBeNull();
-      expect(snack).toHaveBeenCalledWith(
-        'Failed to update permission inheritance',
-        'OK',
-        expect.anything(),
-      );
     });
 
     it('sends a notification email for a grant', async () => {

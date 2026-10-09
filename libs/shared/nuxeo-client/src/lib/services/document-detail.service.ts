@@ -628,6 +628,13 @@ export class DocumentDetailService {
     );
   }
 
+  /**
+   * Removes **every** ACE `user` holds in `acl`, whatever `permission` says.
+   *
+   * `Document.RemovePermission` reads `user` as "all permissions for this user" and has no
+   * `permission` parameter, so a principal holding `Read` and `WriteVersion` loses both when
+   * either row is deleted. To remove one entry, use {@link removePermissionById}.
+   */
   removePermission(
     uid: string,
     params: { user: string; permission: string; acl?: string },
@@ -635,6 +642,20 @@ export class DocumentDetailService {
     return this.api.post<NuxeoDocument>(
       `/nuxeo/api/v1/id/${uid}/@op/Document.RemovePermission`,
       { params: { ...params, acl: params.acl ?? 'local' }, context: {} },
+      { 'Content-Type': 'application/json' },
+    );
+  }
+
+  /**
+   * Removes exactly one ACE, addressed by its Nuxeo id (`user:permission:granted:creator:begin:end`).
+   *
+   * Nuxeo answers 200 and changes nothing when no ACE has that id, so a caller that must know the
+   * entry is gone re-reads the ACL afterwards.
+   */
+  removePermissionById(uid: string, aceId: string, acl = 'local'): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      `/nuxeo/api/v1/id/${uid}/@op/Document.RemovePermission`,
+      { params: { id: aceId, acl }, context: {} },
       { 'Content-Type': 'application/json' },
     );
   }
