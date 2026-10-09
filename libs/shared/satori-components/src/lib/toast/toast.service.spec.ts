@@ -197,15 +197,28 @@ describe('NxsToastService', () => {
       expect(lastConfig()?.duration).toBe(8000);
     });
 
-    it('does not run the action once the component that opened it is gone', async () => {
+    it('closes a toast with an action when the component that opened it is destroyed', async () => {
       const run = vi.fn();
       toast.show('Moved to trash', { action: { label: 'Undo', run } });
       await settle();
+      expect(toastElement()).not.toBeNull();
+
       consumer.destroy();
-      toastElement()?.querySelector<HTMLButtonElement>('.nxs-toast__action')?.click();
       await settle();
 
+      // No button is left on screen that would run against the destroyed component.
+      expect(toastElement()).toBeNull();
       expect(run).not.toHaveBeenCalled();
+    });
+
+    it('leaves a toast without an action to its own timer when its component is destroyed', async () => {
+      toast.show('Saved');
+      await settle();
+
+      consumer.destroy();
+      await settle();
+
+      expect(toastElement()).not.toBeNull();
     });
 
     it('does not run the action when the toast is dismissed instead', async () => {

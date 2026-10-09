@@ -74,14 +74,19 @@ export class NxsToastService {
         data.kind === 'error' ? ['nxs-toast-panel', 'nxs-toast-panel--error'] : 'nxs-toast-panel',
     });
     const action = data.action;
-    // Ends with the toast or with the component that provides this service, whichever is first: an
-    // action left on screen after its component is gone must not run against that component.
-    if (action) {
-      ref
-        .onAction()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => action.run());
-    }
+    if (!action) return;
+    // A toast with an action stays until dismissed, so it can outlive the component that opened
+    // it. It is dismissed with that component rather than left showing a button that would run
+    // against a destroyed one.
+    const dismissWithOwner = this.destroyRef.onDestroy(() => ref.dismiss());
+    ref
+      .afterDismissed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => dismissWithOwner());
+    ref
+      .onAction()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => action.run());
   }
 }
 
