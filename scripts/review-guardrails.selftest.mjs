@@ -1189,6 +1189,313 @@ expectRed(
   /asserted nothing/,
 );
 
+/* ---------------- checkNoRootAbsoluteShippedAssetPaths (NXSAT-318) ---------------- */
+
+// What ships is derived from angular.json, so the fixture declares it the way the real one does:
+// one input copied to the output root, and one node_modules input given an `output`.
+const ASSETS_APP = (extra = {}) => ({
+  'angular.json': `${JSON.stringify(
+    {
+      projects: {
+        'nuxeo-ui': {
+          root: 'apps/nuxeo-ui',
+          architect: {
+            build: {
+              options: {
+                assets: [
+                  { glob: '**/*', input: 'apps/nuxeo-ui/public' },
+                  { glob: '**/*', input: 'node_modules/vendor/assets', output: 'assets/vendor' },
+                ],
+              },
+            },
+          },
+        },
+      },
+    },
+    null,
+    2,
+  )}\n`,
+  'apps/nuxeo-ui/public/favicon.ico': '',
+  'apps/nuxeo-ui/public/images/art.svg': '<svg xmlns="http://www.w3.org/2000/svg"/>\n',
+  'apps/nuxeo-ui/public/login/.gitkeep': '',
+  'apps/nuxeo-ui/src/app/login/login.ts': "export const art = 'images/art.svg';\n",
+  ...extra,
+});
+
+expectGreen(
+  'shipped files referenced relative to the base href',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+);
+
+expectRed(
+  'a component field naming shipped art from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write('apps/nuxeo-ui/src/app/login/login.ts', "export const art = '/images/art.svg';\n"),
+  /login\.ts:1 references a file the app ships from the server root/,
+);
+
+expectRed(
+  'a template src attribute naming shipped art from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.html',
+      '<p>Hi</p>\n<img src="/images/art.svg" alt="" />\n',
+    ),
+  /login\.html:2 references a file the app ships/,
+);
+
+expectRed(
+  'a stylesheet url() naming shipped art from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      '.hero {\n  background: url(/images/art.svg);\n}\n',
+    ),
+  /login\.scss:2 references a file the app ships/,
+);
+
+// `assets` only ships because of an `output`, and the reference is in a library.
+expectRed(
+  'a library fetching a vendor asset from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write('libs/shared/x/src/lib/x.ts', 'export const url = `/assets/vendor/${"en"}.json`;\n'),
+  /libs\/shared\/x\/src\/lib\/x\.ts:1 references a file the app ships/,
+);
+
+// A top-level file, not a folder.
+expectRed(
+  'the favicon from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) => write('apps/nuxeo-ui/src/index.html', '<link rel="icon" href="/favicon.ico" />\n'),
+  /index\.html:1 references a file the app ships/,
+);
+
+// The list is not hand-maintained: a folder added to public/ is covered the day it lands.
+expectRed(
+  'a newly shipped public folder referenced from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP({ 'apps/nuxeo-ui/public/fonts/brand.woff2': '' }),
+  (write) =>
+    write('apps/nuxeo-ui/src/styles.scss', "@font-face {\n  src: url('/fonts/brand.woff2');\n}\n"),
+  /styles\.scss:2 references a file the app ships/,
+);
+
+// `/login` is a route and `login/` a shipped folder. A directory only matches with a segment
+// after it, so router calls stay clean.
+falsePositiveControls += 1;
+expectGreen(
+  'a router path that shares a shipped folder name',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/auth/guard.ts':
+      "export const login = ['/login'];\nexport const to = (r: { navigateByUrl(u: string): void }) => r.navigateByUrl('/login');\n",
+  },
+);
+
+falsePositiveControls += 1;
+expectGreen('a server-absolute Nuxeo path', 'checkNoRootAbsoluteShippedAssetPaths', {
+  ...ASSETS_APP(),
+  'libs/shared/x/src/lib/x.ts':
+    "export const icon = '/nuxeo/icons/note.gif';\nexport const config = '/nuxeo/agentic-ui-config/bootstrap.json';\n",
+});
+
+falsePositiveControls += 1;
+expectGreen('a comment quoting the root-absolute form', 'checkNoRootAbsoluteShippedAssetPaths', {
+  ...ASSETS_APP(),
+  'apps/nuxeo-ui/src/app/login/login.ts':
+    "/** Not `/images/art.svg`: that 404s under /nuxeo/agentic-ui/. */\nexport const art = 'images/art.svg';\n",
+  'apps/nuxeo-ui/src/app/login/login.html':
+    '<!-- not src="/images/art.svg" -->\n<img [src]="art" alt="" />\n',
+  'apps/nuxeo-ui/src/app/login/login.scss':
+    '// url(/images/art.svg) would 404 when packaged\n.hero {\n  color: red; // not url(/images/art.svg)\n}\n',
+});
+
+// CSS function names are case-insensitive.
+expectRed(
+  'an upper-case URL() from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.css',
+      '.hero {\n  background: URL(/images/art.svg);\n}\n',
+    ),
+  /login\.css:2 references a file the app ships/,
+);
+
+// `url(` and its path on different lines; the path's own line is reported.
+expectRed(
+  'a multi-line stylesheet url() from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      '.hero {\n  background: url(\n    /images/art.svg\n  );\n}\n',
+    ),
+  /login\.scss:3 references a file the app ships/,
+);
+
+// A comment opener inside a value is not a comment, so it must not blank what follows it.
+expectRed(
+  'a root-absolute url() after a quoted protocol-relative one',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      '.hero {\n  background: url("//cdn.example/overlay.png"), url("/images/art.svg");\n}\n',
+    ),
+  /login\.scss:2 references a file the app ships/,
+);
+
+expectRed(
+  'a root-absolute src after a comment opener inside an attribute',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.html',
+      '<img title="<!--" src="/images/art.svg" alt="" />\n<!-- a later comment -->\n',
+    ),
+  /login\.html:1 references a file the app ships/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'protocol-relative and absolute URLs in a stylesheet',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.a {\n  background: url(//cdn.example/x.png), url("https://cdn.example/y.png");\n}\n' +
+      "/* url(/images/art.svg) */\n.b {\n  content: '//'; // url(/images/art.svg)\n}\n",
+    'apps/nuxeo-ui/src/styles.css': '.c {\n  background: url(//cdn.example/x.png);\n}\n',
+  },
+);
+
+// A query string carries a path to another host; its `=` and `,` do not open a value.
+falsePositiveControls += 1;
+expectGreen(
+  'a shipped-looking path inside a URL query string',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.a {\n  background: url("https://cdn.example/render?path=/images/art.svg");\n}\n' +
+      '.b {\n  background: url(https://cdn.example/render?a=1,/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.html':
+      '<img src="https://cdn.example/render?path=/images/art.svg" alt="" />\n' +
+      '<img src=https://cdn.example/render?path=/images/art.svg alt="" />\n',
+    'libs/shared/x/src/lib/x.ts':
+      "export const u = 'https://cdn.example/render?path=/images/art.svg&b=1,/images/art.svg';\n",
+  },
+);
+
+// A relative URL with a query: nothing inside a URL opens a value.
+falsePositiveControls += 1;
+expectGreen(
+  'a shipped-looking path in a relative URL query',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.hero {\n  background: url(render?path=/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.css':
+      '.hero {\n  background: url(render?path=/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.html':
+      '<div style="background: url(render?path=/images/art.svg)"></div>\n',
+  },
+);
+
+// `1x,` and `100w,` are ordinary query text too.
+falsePositiveControls += 1;
+expectGreen(
+  'a descriptor-like comma inside a URL query string',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.scss':
+      '.a {\n  background: url(https://cdn.example/render?size=1x,/images/art.svg);\n}\n',
+    'apps/nuxeo-ui/src/app/login/login.html':
+      '<img src="https://cdn.example/render?variant=100w,/images/art.svg" alt="" />\n',
+    'libs/shared/x/src/lib/x.ts':
+      "export const u = 'https://cdn.example/render?size=1x,/images/art.svg';\n",
+  },
+);
+
+// An Angular binding that concatenates a path onto a base: the quoted tail is a suffix.
+falsePositiveControls += 1;
+expectGreen(
+  'a path concatenated onto a base in a template binding',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    ...ASSETS_APP(),
+    'apps/nuxeo-ui/src/app/login/login.html': `<img [src]="assetBase + '/images/art.svg'" alt="" />\n`,
+  },
+);
+
+expectRed(
+  'a bound string literal from the server root',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write('apps/nuxeo-ui/src/app/login/login.html', `<img [src]="'/images/art.svg'" alt="" />\n`),
+  /login\.html:1 references a file the app ships/,
+);
+
+// A literal that only ends a URL is placed by what precedes it, so it is not root-absolute.
+falsePositiveControls += 1;
+expectGreen('a path appended to a base URL', 'checkNoRootAbsoluteShippedAssetPaths', {
+  ...ASSETS_APP(),
+  'libs/shared/x/src/lib/x.ts':
+    "const base = 'http://host/nuxeo/agentic-ui';\n" +
+    'export const a = `${base}/images/art.svg`;\n' +
+    "export const b = base + '/images/art.svg';\n",
+});
+
+// Blanking a trailing comment must not blank the code in front of it.
+expectRed(
+  'a stylesheet url() followed by a trailing comment',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  ASSETS_APP(),
+  (write) =>
+    write(
+      'apps/nuxeo-ui/src/app/login/login.scss',
+      ".hero {\n  background: url('/images/art.svg'); // decorative\n}\n",
+    ),
+  /login\.scss:2 references a file the app ships/,
+);
+
+falsePositiveControls += 1;
+expectGreen('a spec asserting the root-absolute form', 'checkNoRootAbsoluteShippedAssetPaths', {
+  ...ASSETS_APP(),
+  'apps/nuxeo-ui/src/app/login/login.spec.ts':
+    "expect(new URL('images/art.svg', 'http://h/').pathname).toBe('/images/art.svg');\n",
+});
+
+expectRed(
+  'no application declares build assets at all',
+  'checkNoRootAbsoluteShippedAssetPaths',
+  {
+    'angular.json': '{ "projects": { "x": { "root": "apps/x", "architect": {} } } }\n',
+    'apps/x/src/main.ts': 'export const x = 1;\n',
+  },
+  null,
+  /declares build assets, so checkNoRootAbsoluteShippedAssetPaths asserted nothing/,
+);
+
 expectRed(
   'prose in a plain attribute on a component',
   'checkNoProseInComponentInputs',

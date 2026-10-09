@@ -14,6 +14,34 @@ chore/<description>       → chore/update-dependencies
 
 ---
 
+## Integration Branches
+
+```
+integration/<ticket>      → integration/nxsat-308
+```
+
+A ticket whose plan is delivered as many PRs that must not reach `main` piecemeal gets an
+integration branch, created from `main`.
+
+- **Every PR for that ticket targets `integration/<ticket>`**, not `main`. Branch each sub-PR
+  from `origin/integration/<ticket>` and sync it from there.
+- **`main` is merged into the integration branch at least daily** — `git merge origin/main`, a
+  normal merge commit. Never rebase it: other PRs are based on it, and a rewritten integration
+  branch strands every one of them.
+- **It reaches `main` in one final PR** once every item of the ticket's plan is done. That PR
+  is the only one reviewed against `main`; record in it what was verified for the whole set.
+- The PR gates (CI, SonarCloud, CodeQL, template accessibility, dependency review, marketplace
+  build) run for PRs into `integration/**` exactly as for PRs into `main`, and CI, SonarCloud,
+  A11y and CodeQL also run on push to it. A new integration branch needs no workflow change.
+- Branch protection rulesets apply to the default branch only, so an integration branch has no
+  required review or code-scanning merge rule. The gates still run; nothing enforces them, so
+  do not merge a sub-PR that is red.
+- Run the local gate against the integration branch, not `main`. `--base` moves the affected
+  set and the guardrails; the sanitizer budget ratchet reads its own variable:
+  `SANITIZER_AUDIT_BASE_REF=origin/integration/<ticket> npm run beta:gate -- --base origin/integration/<ticket>`.
+
+---
+
 ## Commit Message Format (Conventional Commits)
 
 ```
