@@ -3177,6 +3177,15 @@ function checkAccessibleNameFallbacks() {
   const METHOD_BINDING =
     /\[(?:matTooltip|(?:attr\.)?(?:aria-label|title|placeholder))\]="\s*(\w+)\(\)\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
 
+  // `[label]` on an `nxs-` component is that component's accessible name: `nxs-spinner` puts it on
+  // its progressbar, `nxs-icon` and `nxs-doc-type-icon` on their image. BINDING above reads only the
+  // HTML attributes, so a spinner's key could leave EN_FALLBACK_TRANSLATIONS with this gate green —
+  // and the core slice names its loaders that way. Matched per opening tag (spinners wrap across
+  // lines), and only on `nxs-` elements: `[label]` on a `mat-tab` is visible text, not this gate's.
+  // Quoted values are consumed whole, so a `>` in a bound expression does not end the tag.
+  const NXS_OPENING_TAG = /<nxs-[\w-]+\b(?:[^>"']|"[^"]*"|'[^']*')*>/g;
+  const NXS_LABEL_BINDING = /\[label\]="\s*'([^']+)'\s*\|\s*translate(?::\s*\{[^{}]*\})?\s*"/g;
+
   // NXENG-798: global search names via a visible `<label>`, not `[placeholder]`. Only this control
   // is wired here — a repo-wide `<label>{{ … | translate }}</label>` scan would surface dozens of
   // pre-existing catalogue keys that never passed through the attribute binding pattern.
@@ -3246,7 +3255,8 @@ function checkAccessibleNameFallbacks() {
 
     function initializerFullyResolved(expr, scope) {
       if (!expr) return false;
-      if (ts.isParenthesizedExpression(expr)) return initializerFullyResolved(expr.expression, scope);
+      if (ts.isParenthesizedExpression(expr))
+        return initializerFullyResolved(expr.expression, scope);
       if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
       if (ts.isConditionalExpression(expr)) {
         return (
@@ -3262,7 +3272,8 @@ function checkAccessibleNameFallbacks() {
 
     function expressionFullyResolved(expr, scope) {
       if (!expr) return false;
-      if (ts.isParenthesizedExpression(expr)) return expressionFullyResolved(expr.expression, scope);
+      if (ts.isParenthesizedExpression(expr))
+        return expressionFullyResolved(expr.expression, scope);
       if (ts.isStringLiteral(expr) && keyShape.test(expr.text)) return true;
       if (ts.isConditionalExpression(expr)) {
         return (
@@ -3303,7 +3314,10 @@ function checkAccessibleNameFallbacks() {
 
     function walkScopedStatements(statements, scope) {
       for (const stmt of statements) {
-        if (ts.isVariableStatement(stmt) && (stmt.declarationList.flags & ts.NodeFlags.Const) !== 0) {
+        if (
+          ts.isVariableStatement(stmt) &&
+          (stmt.declarationList.flags & ts.NodeFlags.Const) !== 0
+        ) {
           for (const decl of stmt.declarationList.declarations) bindConstDeclaration(scope, decl);
         } else if (ts.isReturnStatement(stmt)) {
           if (!expressionFullyResolved(stmt.expression, scope)) partialReturn = true;
@@ -3455,6 +3469,11 @@ function checkAccessibleNameFallbacks() {
     for (const [, attribute, key] of html.matchAll(BINDING)) {
       recordBinding(template, attribute, key);
     }
+    for (const [tag] of html.matchAll(NXS_OPENING_TAG)) {
+      for (const [, key] of tag.matchAll(NXS_LABEL_BINDING)) {
+        recordBinding(template, 'label', key);
+      }
+    }
     const methodBindings = [...html.matchAll(METHOD_BINDING)];
     if (methodBindings.length === 0) continue;
     const tsPath = componentTsForTemplate(template);
@@ -3470,10 +3489,7 @@ function checkAccessibleNameFallbacks() {
     }
     const tsSource = read(tsPath);
     for (const [, methodName] of methodBindings) {
-      const { keys: methodKeys, partial } = translationKeysReturnedByMethod(
-        tsSource,
-        methodName,
-      );
+      const { keys: methodKeys, partial } = translationKeysReturnedByMethod(tsSource, methodName);
       if (partial || methodKeys.length === 0) {
         const attr = `${methodName}()`;
         if (!unresolvedMethodBindings.has(attr)) {
