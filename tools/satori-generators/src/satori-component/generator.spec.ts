@@ -42,7 +42,10 @@ function library(tree: Tree): void {
     projectType: 'library',
   });
   tree.write(PROVIDER, PROVIDER_SOURCE);
-  tree.write(BARREL, "export { NxsTagComponent } from './lib/tag/tag.component';\n// satori:export:components\n");
+  tree.write(
+    BARREL,
+    "export { NxsTagComponent } from './lib/tag/tag.component';\n// satori:export:components\n",
+  );
   tree.write(REFERENCE, REFERENCE_SOURCE);
 }
 
@@ -57,10 +60,19 @@ describe('satori-component generator', () => {
 
   it('writes the component, its spec and its story', async () => {
     await satoriComponentGenerator(tree, { name: 'claim-summary', slot: 'sidebar' });
-    for (const suffix of ['component.ts', 'component.html', 'component.scss', 'component.spec.ts', 'stories.ts']) {
+    for (const suffix of [
+      'component.ts',
+      'component.html',
+      'component.scss',
+      'component.spec.ts',
+      'stories.ts',
+    ]) {
       expect(tree.exists(`${ROOT}/src/lib/claim-summary/claim-summary.${suffix}`)).toBe(true);
     }
-    const component = tree.read(`${ROOT}/src/lib/claim-summary/claim-summary.component.ts`, 'utf-8');
+    const component = tree.read(
+      `${ROOT}/src/lib/claim-summary/claim-summary.component.ts`,
+      'utf-8',
+    );
     expect(component).toContain("selector: 'nxs-claim-summary'");
     expect(component).toContain('standalone: true');
     expect(component).toContain('export class NxsClaimSummaryComponent');
@@ -104,7 +116,7 @@ describe('satori-component generator', () => {
     );
     expect(tree.read(`${dir}/claim-view.component.html`, 'utf-8')).toContain('doc.title');
     expect(tree.read(`${dir}/claim-view.component.spec.ts`, 'utf-8')).toContain(
-      "shows the focused document's title".replace("'", '’'),
+      'shows the focused document’s title',
     );
   });
 
@@ -130,22 +142,22 @@ describe('satori-component generator', () => {
 
   it('refuses a workspace without the nxs- library, pointing a customer elsewhere', async () => {
     const empty = createTreeWithEmptyWorkspace();
-    await expect(
-      satoriComponentGenerator(empty, { name: 'x', slot: 'tabs' }),
-    ).rejects.toThrow(/use extension-component under your prefix/);
+    await expect(satoriComponentGenerator(empty, { name: 'x', slot: 'tabs' })).rejects.toThrow(
+      /use extension-component under your prefix/,
+    );
   });
 
   it('refuses when the registration marker is gone, rather than guessing', async () => {
     tree.write(PROVIDER, PROVIDER_SOURCE.replace(/.*satori:register:components.*\n/, ''));
-    await expect(
-      satoriComponentGenerator(tree, { name: 'x', slot: 'tabs' }),
-    ).rejects.toThrow(/has no `satori:register:components` marker/);
+    await expect(satoriComponentGenerator(tree, { name: 'x', slot: 'tabs' })).rejects.toThrow(
+      /has no `satori:register:components` marker/,
+    );
   });
 
   it('refuses when the reference table is gone', async () => {
     tree.write(REFERENCE, REFERENCE_SOURCE.replace(/\| Component ID[\s\S]*?\n\n/, ''));
-    await expect(
-      satoriComponentGenerator(tree, { name: 'x', slot: 'tabs' }),
-    ).rejects.toThrow(/has no table after `satori:register:nxs-components`/);
+    await expect(satoriComponentGenerator(tree, { name: 'x', slot: 'tabs' })).rejects.toThrow(
+      /has no table after `satori:register:nxs-components`/,
+    );
   });
 });
