@@ -306,6 +306,7 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'nxs.column-picker.title': 'Column Settings',
   'nxs.drive-dialog.close': 'Close',
   'nxs.drive-dialog.title': 'Download Nuxeo Drive Client',
+  'nxs.error-state.retry': 'Retry',
   'permissions.add-permission-dialog.hi-could-you-comment-on-this':
     'Hi! Could you comment on this document and...',
   'permissions.add-permission-dialog.search-for-users-and-groups': 'Search for users and groups',

@@ -188,9 +188,15 @@ describe('SearchComponent', () => {
     revoked.push(u);
   });
 
-  /** Rebuild the TestBed with a given query-param map. */
-  async function configure(queryParams: Record<string, string> = {}): Promise<void> {
-    await TestBed.configureTestingModule({
+  /**
+   * Rebuild the TestBed with a given query-param map. `rendered` keeps the real template, for a
+   * test that asserts what the page shows rather than what the component holds.
+   */
+  async function configure(
+    queryParams: Record<string, string> = {},
+    { rendered = false } = {},
+  ): Promise<void> {
+    const bed = TestBed.configureTestingModule({
       // `resetTestingModule()` in three of these tests discards what test-setup.ts provides
       // globally, and the component now injects TranslateService for the saved-search dialog
       // placeholder.
@@ -212,11 +218,11 @@ describe('SearchComponent', () => {
         { provide: MatDialog, useValue: mockDialog },
         { provide: MatSnackBar, useValue: { open: snackOpen } },
       ],
-    })
-      .overrideComponent(SearchComponent, {
-        set: { imports: [], template: '<div></div>' },
-      })
-      .compileComponents();
+    });
+    if (!rendered) {
+      bed.overrideComponent(SearchComponent, { set: { imports: [], template: '<div></div>' } });
+    }
+    await bed.compileComponents();
   }
 
   beforeEach(async () => {
@@ -1122,6 +1128,64 @@ describe('SearchComponent', () => {
       expect(mockSearchAggregationService.aggregations()).toEqual({});
       expect(mockSearchAggregationService.items()).toEqual([]);
       expect(component.results()).toEqual([]);
+    });
+
+    /** The page with its real template, rebuilt so the stubbed one from `beforeEach` is gone. */
+    async function renderPage(): Promise<void> {
+      TestBed.resetTestingModule();
+      await configure({}, { rendered: true });
+      fixture = TestBed.createComponent(SearchComponent);
+      component = fixture.componentInstance;
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('shows a failed search as a failure, not as an empty result set', async () => {
+      mockSearchService.search.mockReturnValue(throwError(() => ({ status: 500 })));
+
+      await renderPage();
+
+      const el = fixture.nativeElement as HTMLElement;
+      const state = el.querySelector('nxs-error-state');
+      expect(state?.getAttribute('data-status')).toBe('500');
+      expect(state?.querySelector('.nxs-error-state__heading')?.textContent?.trim()).toBe(
+        'Failed to load search results.',
+      );
+      expect(state?.querySelector('button')?.textContent).toContain('Retry');
+      expect(el.querySelector('.results-empty')).toBeNull();
+    });
+
+    it('says a forbidden search is forbidden, without Retry', async () => {
+      mockSearchService.search.mockReturnValue(throwError(() => ({ status: 403 })));
+
+      await renderPage();
+
+      const state = (fixture.nativeElement as HTMLElement).querySelector('nxs-error-state');
+      expect(component.errorStatus()).toBe(403);
+      expect(state?.getAttribute('data-status')).toBe('403');
+      expect(state?.querySelector('button')).toBeNull();
+    });
+
+    it('runs the same search again on Retry, and shows the results it returns', async () => {
+      mockSearchService.search.mockReturnValueOnce(throwError(() => ({ status: 500 })));
+
+      await renderPage();
+      const calls = mockSearchService.search.mock.calls.length;
+
+      mockSearchService.search.mockReturnValue(
+        of({ items: [resultItem({ id: 'found' })], aggregations: {} }),
+      );
+      component.retrySearch();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(mockSearchService.search.mock.calls.length).toBe(calls + 1);
+      expect(mockSearchService.search.mock.calls.at(-1)?.[0]).toEqual(
+        mockSearchService.search.mock.calls[calls - 1][0],
+      );
+      expect(component.error()).toBeNull();
+      expect(component.results().map((item) => item.id)).toEqual(['found']);
+      expect((fixture.nativeElement as HTMLElement).querySelector('nxs-error-state')).toBeNull();
     });
 
     it('sends only the drawer filters that have a value', async () => {

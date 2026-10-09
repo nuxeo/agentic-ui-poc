@@ -189,9 +189,18 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-11 exported symbol(s).
+16 exported symbol(s).
 
 ```ts
+class NxsActionMenuComponent {
+    readonly actions: _angular_core.InputSignal<readonly NxsMenuAction[]>;
+    readonly label: _angular_core.InputSignal<string>;
+    readonly icon: _angular_core.InputSignal<string>;
+    readonly selected: _angular_core.OutputEmitterRef<NxsMenuAction>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsActionMenuComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsActionMenuComponent, "nxs-action-menu", never, { "actions": { "alias": "actions"; "required": true; "isSignal": true; }; "label": { "alias": "label"; "required": true; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, { "selected": "selected"; }, never, never, true, never>;
+    }
+}
 class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
     readonly columns: _angular_core.InputSignal<readonly NxsPickableColumn[]>;
     readonly required: _angular_core.InputSignal<readonly string[]>;
@@ -250,6 +259,19 @@ class NxsEmptyStateComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
     }
 }
+class NxsErrorStateComponent {
+    readonly status: _angular_core.InputSignal<NxsErrorStatus>;
+    readonly heading: _angular_core.InputSignal<string>;
+    readonly headingLevel: _angular_core.InputSignal<NxsHeadingLevel>;
+    readonly retryable: _angular_core.InputSignalWithTransform<boolean, unknown>;
+    readonly retry: _angular_core.OutputEmitterRef<void>;
+    protected readonly variant: _angular_core.Signal<Variant>;
+    protected readonly canRetry: _angular_core.Signal<boolean>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsErrorStateComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsErrorStateComponent, "nxs-error-state", never, { "status": { "alias": "status"; "required": false; "isSignal": true; }; "heading": { "alias": "heading"; "required": false; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; "retryable": { "alias": "retryable"; "required": false; "isSignal": true; }; }, { "retry": "retry"; }, never, ["*"], true, never>;
+    }
+}
+type NxsErrorStatus = 401 | 403 | 404 | 500;
 class NxsFolderHeaderComponent {
     readonly heading: _angular_core.InputSignal<string>;
     readonly subheading: _angular_core.InputSignal<string>;
@@ -266,6 +288,13 @@ class NxsIconComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsIconComponent, "nxs-icon", never, { "name": { "alias": "name"; "required": true; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
 }
+interface NxsMenuAction {
+    readonly id: string;
+    readonly label: string;
+    readonly icon?: string;
+    readonly disabled?: boolean;
+    }
+}
 interface NxsPickableColumn {
     readonly key: string;
     readonly label: string;
@@ -279,6 +308,7 @@ class NxsSpinnerComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsSpinnerComponent, "nxs-spinner", never, { "diameter": { "alias": "diameter"; "required": false; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
 }
+function nxsErrorStatus(error: unknown): NxsErrorStatus;
 ```
 
 ## @nuxeo-satori/platform/extensions
