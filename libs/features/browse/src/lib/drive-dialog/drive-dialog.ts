@@ -1,9 +1,9 @@
 import { Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { NuxeoDriveService } from '@nuxeo-satori/platform/nuxeo-client';
 import { TranslatePipe } from '@ngx-translate/core';
+import { NxsSpinnerComponent } from '@nuxeo-satori/platform/components';
 
 export interface BrowseDriveDialogData {
   docUid: string;
@@ -37,7 +37,7 @@ const DRIVE_PACKAGES: DrivePackage[] = [
 @Component({
   selector: 'lib-browse-drive-dialog',
   standalone: true,
-  imports: [TranslatePipe, MatDialogModule, MatProgressSpinnerModule],
+  imports: [NxsSpinnerComponent, TranslatePipe, MatDialogModule],
   templateUrl: './drive-dialog.html',
   styles: [
     `

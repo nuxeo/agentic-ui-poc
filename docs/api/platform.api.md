@@ -189,7 +189,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-17 exported symbol(s).
+21 exported symbol(s).
 
 ```ts
 const NXS_PERMISSIONS_PANEL_ID = "nxs.components.permissionsPanel";
@@ -239,15 +239,35 @@ interface NxsBreadcrumbsInputs {
     readonly label: InputSignal<string>;
     }
 }
+class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
+    readonly columns: _angular_core.InputSignal<readonly NxsPickableColumn[]>;
+    readonly required: _angular_core.InputSignal<readonly string[]>;
+    readonly defaults: _angular_core.InputSignal<readonly string[]>;
+    readonly apply: _angular_core.OutputEmitterRef<readonly string[]>;
+    readonly dismiss: _angular_core.OutputEmitterRef<void>;
+    protected readonly chosen: _angular_core.Signal<readonly string[]>;
+    ngAfterViewInit(): void;
+    ngOnDestroy(): void;
+    protected isChosen(key: string): boolean;
+    protected isRequired(key: string): boolean;
+    protected toggle(key: string): void;
+    protected reset(): void;
+    protected commit(): void;
+    protected cancel(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsColumnPickerComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsColumnPickerComponent, "nxs-column-picker", never, { "columns": { "alias": "columns"; "required": true; "isSignal": true; }; "required": { "alias": "required"; "required": false; "isSignal": true; }; "defaults": { "alias": "defaults"; "required": false; "isSignal": true; }; }, { "apply": "apply"; "dismiss": "dismiss"; }, never, never, true, never>;
+    }
+}
 class NxsEmptyStateComponent {
     readonly heading: InputSignal<string>;
-    readonly headingLevel: InputSignal<1 | 2 | 3 | 4 | 5 | 6>;
+    readonly headingLevel: InputSignal<NxsHeadingLevel>;
     readonly message: InputSignal<string>;
     readonly icon: InputSignal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsEmptyStateComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsEmptyStateComponent, "nxs-empty-state", never, { "heading": { "alias": "heading"; "required": true; "isSignal": true; }; "headingLevel": { "alias": "headingLevel"; "required": false; "isSignal": true; }; "message": { "alias": "message"; "required": false; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
     }
 }
+type NxsHeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 class NxsPermissionsPanelComponent {
     readonly documentId: _angular_core.InputSignal<string>;
     readonly permissionsChanged: _angular_core.InputSignal<(() => void) | null>;
@@ -311,6 +331,12 @@ class NxsPermissionsPanelComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsPermissionsPanelComponent, "nxs-permissions-panel", never, { "documentId": { "alias": "documentId"; "required": true; "isSignal": true; }; "permissionsChanged": { "alias": "permissionsChanged"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
 }
+interface NxsPickableColumn {
+    readonly key: string;
+    readonly label: string;
+    readonly visible: boolean;
+    }
+}
 class NxsRichTooltipComponent implements NxsRichTooltipInputs {
     readonly heading: _angular_core.InputSignal<string>;
     readonly content: _angular_core.InputSignal<string>;
@@ -331,6 +357,14 @@ interface NxsRichTooltipInputs {
     readonly content: InputSignal<string>;
     readonly triggerLabel: InputSignal<string>;
     readonly icon: InputSignal<string>;
+    }
+}
+class NxsSpinnerComponent {
+    readonly diameter: _angular_core.InputSignalWithTransform<number, unknown>;
+    readonly label: _angular_core.InputSignal<string>;
+    protected readonly name: _angular_core.Signal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsSpinnerComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsSpinnerComponent, "nxs-spinner", never, { "diameter": { "alias": "diameter"; "required": false; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
 }
 type NxsTagColor = NxsAvatarColor | 'gray';

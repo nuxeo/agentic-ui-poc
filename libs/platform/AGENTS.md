@@ -256,10 +256,12 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
 <nxs-empty-state icon="inbox" [heading]="'acme.claims.empty' | translate" />
 ```
 
-- **Text inputs take text you have already translated.** The library ships no catalogue, so
-  bind every heading, message and label through your own translate pipe. A composite component
-  such as `nxs-permissions-panel` translates its own chrome under `satori-components.*`; the
-  package's English for those keys is served by `providePlatformEnglishFallback()`.
+- **Text inputs take text you have already translated.** Bind every heading, message, label and
+  column name you pass through your own translate pipe.
+- **A component's own chrome uses `satori-components.*` keys.** The column picker's Done and
+  Reset, or `nxs-permissions-panel`'s headings, for example. Without the Satori catalogue,
+  `providePlatformEnglishFallback()` (README, "Translations") renders them in English; add the same
+  keys to your catalogue to translate them.
 - **`nxs-empty-state` renders its heading as an `<h2>` by default.** Bind `[headingLevel]` to
   one below the heading of the section it sits in, so screen-reader heading navigation stays in
   order.

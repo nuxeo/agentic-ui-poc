@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
-import { DescriptorLabelPipe } from '@nuxeo-satori/platform/extensions';
+import { DescriptorLabelPipe, descriptorLabel } from '@nuxeo-satori/platform/extensions';
 import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
@@ -50,6 +50,11 @@ import {
   aiErrorMessage,
 } from '@agentic-ui/shared/ai-client';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import {
+  NxsColumnPickerComponent,
+  NxsSpinnerComponent,
+  type NxsPickableColumn,
+} from '@nuxeo-satori/platform/components';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -68,6 +73,9 @@ interface QuickFilterOption {
   labelKey?: string;
   value: string;
 }
+
+/** The columns a search table starts with, and what the picker's Reset returns to. */
+const DEFAULT_COLUMN_KEYS: readonly string[] = ['name', 'modified', 'contributor'];
 
 const ALL_COLUMNS: ColumnDef[] = [
   { key: 'name', labelKey: 'search.column.name', label: 'Title', width: '2fr' },
@@ -167,6 +175,8 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
   selector: 'lib-search',
   standalone: true,
   imports: [
+    NxsColumnPickerComponent,
+    NxsSpinnerComponent,
     DocTypeLabelPipe,
     DescriptorLabelPipe,
     TranslatePipe,
@@ -244,10 +254,29 @@ export class SearchComponent {
   readonly gridGroupBy = signal<string>('created');
   readonly gridSortOrder = signal<SortDirection>('asc');
   readonly viewMode = signal<ViewMode>('table');
-  readonly visibleColumnKeys = signal<string[]>(['name', 'modified', 'contributor']);
+  readonly visibleColumnKeys = signal<string[]>([...DEFAULT_COLUMN_KEYS]);
   readonly columnPanelOpen = signal(false);
-  readonly pendingColumnKeys = signal<string[]>(['name', 'modified', 'contributor']);
-  readonly columnsForPanel = ALL_COLUMNS;
+  readonly defaultColumnKeys = DEFAULT_COLUMN_KEYS;
+
+  /**
+   * The active language as a signal. `translate.instant` is not reactive, so the picker's
+   * labels read this to follow a language change.
+   */
+  private readonly currentLang = toSignal(
+    this.translate.onLangChange.pipe(map((event) => event.lang)),
+    { initialValue: this.translate.currentLang },
+  );
+
+  /** Every column as the picker offers it: names resolved for the active language. */
+  readonly pickerColumns = computed<readonly NxsPickableColumn[]>(() => {
+    this.currentLang();
+    const visible = this.visibleColumnKeys();
+    return ALL_COLUMNS.map((column) => ({
+      key: column.key,
+      label: descriptorLabel(column, (key) => this.translate.instant(key)),
+      visible: visible.includes(column.key),
+    }));
+  });
   readonly sortColumn = signal<string | null>(null);
   readonly sortDirection = signal<SortDirection>(null);
   readonly favoriteIds = signal<Set<string>>(new Set());
@@ -492,23 +521,7 @@ export class SearchComponent {
     this.selectionService.clear();
   }
 
-  isPendingColumn(key: string): boolean {
-    return this.pendingColumnKeys().includes(key);
-  }
-
-  togglePendingColumn(key: string): void {
-    const current = this.pendingColumnKeys();
-    if (current.includes(key)) {
-      this.pendingColumnKeys.set(current.filter((k) => k !== key));
-      return;
-    }
-
-    const ordered = ALL_COLUMNS.map((c) => c.key);
-    this.pendingColumnKeys.set(ordered.filter((k) => [...current, key].includes(k)));
-  }
-
   openColumnPanel(): void {
-    this.pendingColumnKeys.set(this.visibleColumnKeys());
     this.columnPanelOpen.set(true);
   }
 
@@ -516,14 +529,9 @@ export class SearchComponent {
     this.columnPanelOpen.set(false);
   }
 
-  resetColumns(): void {
-    this.pendingColumnKeys.set(['name', 'modified', 'contributor']);
-  }
-
-  applyColumns(): void {
-    this.visibleColumnKeys.set(
-      ALL_COLUMNS.map((c) => c.key).filter((k) => this.pendingColumnKeys().includes(k)),
-    );
+  /** The picker's Done: the keys to show, in column order. */
+  applyColumns(keys: readonly string[]): void {
+    this.visibleColumnKeys.set([...keys]);
     this.columnPanelOpen.set(false);
   }
 

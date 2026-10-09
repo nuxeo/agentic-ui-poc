@@ -221,7 +221,7 @@
 
   @if (busy()) {
     <div class="results-loading">
-      <mat-spinner diameter="32" [attr.aria-label]="'search.search.loading' | translate" />
+      <nxs-spinner diameter="32" [label]="'search.search.loading' | translate" />
     </div>
   }
 
@@ -330,34 +330,12 @@
   @if (!busy() && viewMode() === 'table') {
     <div class="list-wrapper">
       @if (columnPanelOpen()) {
-        <button
-          type="button"
-          class="col-panel-backdrop"
-          [attr.aria-label]="'search.search.close-column-picker' | translate"
-          (click)="closeColumnPanel()"
-          (keydown.escape)="closeColumnPanel()"
-        ></button>
-        <div class="col-panel">
-          <p class="col-panel-title">{{ 'search.search.column-settings' | translate }}</p>
-          <div class="col-panel-list">
-            @for (col of columnsForPanel; track col.key) {
-              <mat-checkbox
-                class="col-panel-option"
-                [checked]="isPendingColumn(col.key)"
-                (change)="togglePendingColumn(col.key)"
-                >{{ col | descriptorLabel }}</mat-checkbox
-              >
-            }
-          </div>
-          <div class="col-panel-actions">
-            <button mat-button (click)="resetColumns()">
-              {{ 'search.search.reset' | translate }}
-            </button>
-            <button mat-flat-button color="primary" (click)="applyColumns()">
-              {{ 'search.search.done' | translate }}
-            </button>
-          </div>
-        </div>
+        <nxs-column-picker
+          [columns]="pickerColumns()"
+          [defaults]="defaultColumnKeys"
+          (apply)="applyColumns($event)"
+          (dismiss)="closeColumnPanel()"
+        />
       }
 
       <div class="result-list">
