@@ -620,6 +620,20 @@ describe('NxsPermissionsPanelComponent', () => {
       expect(panel()['pendingCount']()).toBe(0);
     });
 
+    it('counts only the writes the re-read confirms when a later one is refused', async () => {
+      // The removal is answered 200 and does nothing; the replacement after it is refused.
+      await mount(PARITY, PARITY, PARITY);
+      documents.replacePermission.mockReturnValueOnce(throwError(() => ({ status: 403 })));
+      panel()['toggleRemove'](panel()['localItems']()[0]);
+      panel()['setPermission'](panel()['localItems']()[1], 'Everything');
+      panel()['save']();
+      await render();
+      const alert = el().querySelector('[role="alert"]')?.textContent ?? '';
+      expect(alert).toContain('Saved 0 of 2 changes. The server refused the next one:');
+      expect(alert).toContain('The server did not apply every change');
+      expect(alert).toContain('parity-user — Add Children (AddChildren)');
+    });
+
     it('reports an unknown permission the server rejected', async () => {
       await mount(PARITY, PARITY, PARITY);
       documents.removePermissionById.mockReturnValueOnce(throwError(() => ({ status: 400 })));
@@ -743,6 +757,72 @@ describe('NxsPermissionsPanelComponent', () => {
       await render();
       expect(text()).toContain('Inheritance could not be changed.');
       expect(text()).toContain('Privilege denied');
+    });
+  });
+
+  describe('while a write is in flight', () => {
+    const controls = () => ({
+      add: buttonByText('Add'),
+      selects: Array.from(all('section')[0]?.querySelectorAll<HTMLElement>('mat-select') ?? []),
+      rowButtons: all('button[aria-label^="Remove"], button[aria-label^="Edit the permission"]'),
+    });
+    const locked = () => {
+      const { add, selects, rowButtons } = controls();
+      return {
+        add: add?.hasAttribute('disabled'),
+        selects:
+          selects.length > 0 && selects.every((s) => s.getAttribute('aria-disabled') === 'true'),
+        rowButtons: rowButtons.length > 0 && rowButtons.every((b) => b.hasAttribute('disabled')),
+      };
+    };
+    const tryToStage = () => {
+      const [first] = panel()['localItems']();
+      panel()['setPermission'](first, 'Write');
+      panel()['toggleRemove'](first);
+      panel()['openAdd']();
+    };
+
+    it('locks every control that stages a change until the save answers, so none is lost', async () => {
+      const after = serverDoc([
+        { username: 'parity-user', permission: 'AddChildren' },
+        { username: 'members', permission: 'Everything' },
+      ]);
+      await mount(PARITY, PARITY, after);
+      const write = new Subject<unknown>();
+      documents.replacePermission.mockReturnValue(write);
+      panel()['setPermission'](panel()['localItems']()[1], 'Everything');
+      panel()['save']();
+      await render();
+
+      expect(locked()).toEqual({ add: true, selects: true, rowButtons: true });
+      tryToStage();
+      expect(panel()['pendingCount']()).toBe(1);
+      expect(panel()['editor']()).toBeNull();
+
+      write.next({});
+      write.complete();
+      await render();
+      expect(panel()['outcome']()?.kind).toBe('saved');
+      expect(panel()['pendingCount']()).toBe(0);
+      expect(locked()).toEqual({ add: false, selects: false, rowButtons: false });
+    });
+
+    it('locks them while an inheritance change is in flight too', async () => {
+      await mount(PARITY, PARITY);
+      const block = new Subject<unknown>();
+      documents.blockPermissionInheritance.mockReturnValue(block);
+      buttonByText('Block inheritance')?.click();
+      await render();
+
+      expect(locked()).toEqual({ add: true, selects: true, rowButtons: true });
+      tryToStage();
+      expect(panel()['pendingCount']()).toBe(0);
+      expect(panel()['editor']()).toBeNull();
+
+      block.next({});
+      block.complete();
+      await render();
+      expect(locked()).toEqual({ add: false, selects: false, rowButtons: false });
     });
   });
 

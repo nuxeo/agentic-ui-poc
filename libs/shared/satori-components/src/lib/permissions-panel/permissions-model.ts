@@ -196,13 +196,15 @@ export function readSnapshot(doc: NuxeoDocument): NxsPermissionsSnapshot {
   for (const acl of acls as Array<{ name?: string; aces?: NuxeoAce[]; ace?: NuxeoAce[] }>) {
     const name = acl?.name ?? '';
     for (const ace of acesOf(acl ?? {})) {
+      // External sharing is listed by the host tab, from every ACL.
+      if (ace.externalUser) continue;
       const row = toRow(ace, name);
       if (name === 'local') {
         // Blocked inheritance is not a flag in Nuxeo: it is this deny, which
         // `Document.BlockPermissionInheritance` writes and `Unblock…` removes. A document with no
         // `inherited` ACL is not necessarily blocked — the repository root has none.
         if (isInheritanceMarker(row)) inheritanceBlocked = true;
-        else if (!ace.externalUser) local.push(row);
+        else local.push(row);
       } else if (name === 'inherited') {
         inherited.push(row);
       } else {

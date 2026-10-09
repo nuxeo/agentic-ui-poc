@@ -117,7 +117,23 @@
               serverMessage(result.error)
             }}</span>
           </p>
+          @if (result.unconfirmed.length > 0) {
+            <p class="nxs-permissions-panel__alert-heading">
+              {{ 'satori-components.permissions-panel.unconfirmed.heading' | translate }}
+            </p>
+            <ul class="nxs-permissions-panel__refusals">
+              @for (refusal of result.unconfirmed; track $index) {
+                <li>
+                  <span class="nxs-permissions-panel__entry">{{
+                    entryLabel(refusal.principal, refusal.permission)
+                  }}</span
+                  >: {{ refusalReasonKey(refusal) | translate }}
+                </li>
+              }
+            </ul>
+          }
           @if (!result.snapshot) {
+            <p>{{ 'satori-components.permissions-panel.unverified.heading' | translate }}</p>
             <button mat-stroked-button type="button" (click)="reload()">
               {{ 'satori-components.permissions-panel.reload' | translate }}
             </button>
@@ -139,7 +155,13 @@
         {{ 'satori-components.permissions-panel.local.heading' | translate }}
       </div>
       @if (canManage() && !editor()) {
-        <button mat-stroked-button type="button" color="primary" (click)="openAdd()">
+        <button
+          mat-stroked-button
+          type="button"
+          color="primary"
+          [disabled]="!editable()"
+          (click)="openAdd()"
+        >
           <mat-icon aria-hidden="true">add</mat-icon>
           {{ 'satori-components.permissions-panel.add' | translate }}
         </button>
@@ -289,7 +311,7 @@
           <button mat-button type="button" (click)="closeEditor()">
             {{ 'satori-components.permissions-panel.editor.cancel' | translate }}
           </button>
-          <button mat-flat-button color="primary" type="submit">
+          <button mat-flat-button color="primary" type="submit" [disabled]="!editable()">
             {{
               (edit.mode === 'add'
                 ? 'satori-components.permissions-panel.editor.add'
@@ -353,6 +375,7 @@
               <mat-select
                 class="nxs-permissions-panel__select"
                 [value]="item.permission"
+                [disabled]="!editable()"
                 [aria-label]="
                   'satori-components.permissions-panel.permission-for'
                     | translate: { principal: item.principal }
@@ -444,13 +467,19 @@
                     'satori-components.permissions-panel.edit-entry'
                       | translate: { principal: item.principal }
                   "
+                  [disabled]="!editable()"
                   (click)="openEdit(item)"
                 >
                   <mat-icon aria-hidden="true">edit</mat-icon>
                 </button>
               }
               @if (item.state === 'removed') {
-                <button mat-button type="button" (click)="toggleRemove(item)">
+                <button
+                  mat-button
+                  type="button"
+                  [disabled]="!editable()"
+                  (click)="toggleRemove(item)"
+                >
                   {{ 'satori-components.permissions-panel.undo' | translate }}
                 </button>
               } @else if (
@@ -468,6 +497,7 @@
                             permission: permissionLabel(item.permission),
                           }
                   "
+                  [disabled]="!editable()"
                   (click)="toggleRemove(item)"
                 >
                   <mat-icon aria-hidden="true">delete</mat-icon>

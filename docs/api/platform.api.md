@@ -226,6 +226,7 @@ class NxsPermissionsPanelComponent {
     protected readonly suggestions: _angular_core.WritableSignal<UserGroupSuggestion[]>;
     protected readonly loadErrorKey: _angular_core.Signal<string>;
     protected readonly canManage: _angular_core.Signal<boolean>;
+    protected readonly editable: _angular_core.Signal<boolean>;
     protected readonly trackItem: (_index: number, item: LocalItem) => string;
     protected readonly pendingCount: _angular_core.Signal<number>;
     protected readonly permissionGroups: _angular_core.Signal<{

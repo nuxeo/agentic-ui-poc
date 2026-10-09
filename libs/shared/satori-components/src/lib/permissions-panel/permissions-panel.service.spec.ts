@@ -180,7 +180,13 @@ describe('NxsPermissionsService', () => {
 
     const outcome = await firstValueFrom(service.save('doc-1', changes));
 
-    expect(outcome).toMatchObject({ kind: 'failed', applied: 1, total: 3, error: denied });
+    expect(outcome).toMatchObject({
+      kind: 'failed',
+      applied: 1,
+      unconfirmed: [],
+      total: 3,
+      error: denied,
+    });
     expect(outcome.kind === 'failed' && outcome.change).toBe(changes[1]);
     expect(
       outcome.kind === 'failed' ? outcome.snapshot?.local.map((r) => r.principal) : null,
@@ -199,6 +205,47 @@ describe('NxsPermissionsService', () => {
       ]),
     );
     expect(outcome).toMatchObject({ kind: 'failed', applied: 0, snapshot: null });
+  });
+
+  it('counts only the earlier writes the re-read confirms, and names the rest', async () => {
+    // Nuxeo answers 200 for a removal by an id it no longer holds, and does nothing.
+    const unchanged = serverDoc([{ username: 'old', permission: 'Write' }]);
+    documents.getDocumentPermissions
+      .mockReturnValueOnce(of(unchanged))
+      .mockReturnValueOnce(of(unchanged));
+    const denied = { status: 403 };
+    documents.addPermission.mockReturnValueOnce(throwError(() => denied));
+    const changes: NxsPermissionChange[] = [
+      { kind: 'remove', target: target('old', 'Write') },
+      { kind: 'add', key: 'a', principal: 'jdoe', permission: 'Read', begin: null, end: null },
+    ];
+
+    const outcome = await firstValueFrom(service.save('doc-1', changes));
+
+    expect(outcome).toMatchObject({
+      kind: 'failed',
+      applied: 0,
+      unconfirmed: [{ principal: 'old', permission: 'Write', reason: 'not-applied' }],
+      total: 2,
+      error: denied,
+    });
+    expect(outcome.kind === 'failed' && outcome.change).toBe(changes[1]);
+  });
+
+  it('counts every 200 and names none when the re-read after a refusal fails', async () => {
+    documents.getDocumentPermissions
+      .mockReturnValueOnce(of(serverDoc([])))
+      .mockReturnValueOnce(throwError(() => ({ status: 503 })));
+    documents.addPermission
+      .mockReturnValueOnce(of({}))
+      .mockReturnValueOnce(throwError(() => ({ status: 400 })));
+    const outcome = await firstValueFrom(
+      service.save('doc-1', [
+        { kind: 'add', key: 'a', principal: 'jdoe', permission: 'Read', begin: null, end: null },
+        { kind: 'add', key: 'b', principal: 'ann', permission: 'Read', begin: null, end: null },
+      ]),
+    );
+    expect(outcome).toMatchObject({ kind: 'failed', applied: 1, unconfirmed: [], snapshot: null });
   });
 
   it('reports a write the server answered and did not apply', async () => {

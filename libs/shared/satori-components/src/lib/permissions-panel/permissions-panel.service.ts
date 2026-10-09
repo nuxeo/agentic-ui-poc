@@ -29,10 +29,15 @@ export type NxsSaveOutcome =
       readonly refusals: readonly NxsPermissionRefusal[];
       readonly snapshot: NxsPermissionsSnapshot;
     }
-  /** The server rejected a change; the ones before it were applied. */
+  /**
+   * The server rejected a change. `applied` counts the earlier changes the re-read confirms, and
+   * `unconfirmed` names those it answered 200 but does not show. With no re-read neither is known,
+   * so `applied` counts the 200s and `unconfirmed` is empty.
+   */
   | {
       readonly kind: 'failed';
       readonly applied: number;
+      readonly unconfirmed: readonly NxsPermissionRefusal[];
       readonly total: number;
       readonly change: NxsPermissionChange;
       readonly error: unknown;
@@ -136,14 +141,20 @@ export class NxsPermissionsService {
         // is reported as an unknown state rather than masking the write failure that caused it.
         return this.load(uid).pipe(
           catchError(() => of(null)),
-          map((snapshot): NxsSaveOutcome => ({
-            kind: 'failed',
-            applied,
-            total: changes.length,
-            change: caught.change,
-            error: caught.cause,
-            snapshot,
-          })),
+          map((snapshot): NxsSaveOutcome => {
+            const unconfirmed = snapshot
+              ? unconfirmedChanges(snapshot, changes.slice(0, applied))
+              : [];
+            return {
+              kind: 'failed',
+              applied: applied - unconfirmed.length,
+              unconfirmed,
+              total: changes.length,
+              change: caught.change,
+              error: caught.cause,
+              snapshot,
+            };
+          }),
         );
       }),
     );

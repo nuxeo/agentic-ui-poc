@@ -171,6 +171,13 @@ export class NxsPermissionsPanelComponent {
     () => `satori-components.permissions-panel.load-error.${this.loadError() ?? 'failed'}`,
   );
   protected readonly canManage = computed(() => this.snapshot()?.canManage ?? false);
+  /**
+   * False while a save or an inheritance change is in flight: a save clears every staged change
+   * when it answers, so one staged after it started would be lost unsaved.
+   */
+  protected readonly editable = computed(
+    () => this.canManage() && !this.saving() && !this.inheritanceBusy(),
+  );
   protected readonly trackItem = (_index: number, item: LocalItem) => item.key;
   protected readonly pendingCount = computed(() => this.staged().size);
 
@@ -352,6 +359,7 @@ export class NxsPermissionsPanelComponent {
   // ── Staging ─────────────────────────────────────────────────────────────────────────────────
 
   protected setPermission(item: LocalItem, permission: string): void {
+    if (!this.editable()) return;
     this.outcome.set(null);
     if (item.row) {
       this.stageReplace(item.key, item.row, permission, item.begin, item.end);
@@ -361,6 +369,7 @@ export class NxsPermissionsPanelComponent {
   }
 
   protected toggleRemove(item: LocalItem): void {
+    if (!this.editable()) return;
     this.outcome.set(null);
     const next = new Map(this.staged());
     if (!item.row || next.get(item.key)?.kind === 'remove') {
@@ -384,6 +393,7 @@ export class NxsPermissionsPanelComponent {
   // ── Editor ──────────────────────────────────────────────────────────────────────────────────
 
   protected openAdd(): void {
+    if (!this.editable()) return;
     this.outcome.set(null);
     this.editor.set({ mode: 'add', item: null });
     this.editorPrincipal.set(null);
@@ -397,6 +407,7 @@ export class NxsPermissionsPanelComponent {
   }
 
   protected openEdit(item: LocalItem): void {
+    if (!this.editable()) return;
     this.outcome.set(null);
     this.editor.set({ mode: 'edit', item });
     this.editorPermission.set(item.permission);
@@ -428,7 +439,7 @@ export class NxsPermissionsPanelComponent {
 
   protected applyEditor(): void {
     const editor = this.editor();
-    if (!editor) return;
+    if (!editor || !this.editable()) return;
     this.editorSubmitted.set(true);
     if (this.editorInvalidRange()) return;
     const begin = this.editorDated() ? toDay(this.editorBegin()) : null;

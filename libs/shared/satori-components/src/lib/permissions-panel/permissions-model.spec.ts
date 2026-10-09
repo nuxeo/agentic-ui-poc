@@ -198,6 +198,28 @@ describe('readSnapshot', () => {
     ]);
   });
 
+  it('leaves external users to the host in every ACL, not only the local one', () => {
+    // The host tabs list external sharing from every ACL, so a row here would show it twice.
+    const result = readSnapshot(
+      doc([
+        { name: 'local', aces: [ace({ username: 'jdoe' })] },
+        {
+          name: 'inherited',
+          aces: [
+            ace({ username: 'transient/guest@example.com', externalUser: true }),
+            ace({ username: 'members' }),
+          ],
+        },
+        {
+          name: 'workflow',
+          aces: [ace({ username: 'transient/reviewer@example.com', externalUser: true })],
+        },
+      ]),
+    );
+    expect(result.inherited.map((r) => r.principal)).toEqual(['members']);
+    expect(result.otherAcls).toEqual([]);
+  });
+
   it('resolves extended principals and reads the @acl adapter shape', () => {
     const result = readSnapshot(
       doc([
