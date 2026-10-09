@@ -46,7 +46,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve, relative } from 'node:path';
+import { resolve, relative, sep } from 'node:path';
 import ts from 'typescript';
 
 const repoRoot = resolve(import.meta.dirname, '..', '..');
@@ -214,7 +214,8 @@ const vacuous = [];
  *
  * Both were mistakes of the same shape, made twice in one session, which is what a check is
  * for. Compared against every `.ts` under the project root: a source file edited after the
- * report was written means the report does not describe the code on disk.
+ * report was written means the report does not describe the code on disk. So does a report that
+ * counts a file under the project root which no longer exists — a deletion leaves nothing newer.
  */
 const stale = [];
 
@@ -280,6 +281,27 @@ function executableStatements(text) {
   ).length;
 }
 
+/** A percentage truncated to two places, so a figure below a floor never prints as meeting it. */
+function truncatedPercent(covered, total) {
+  return Math.floor((covered / total) * 10000) / 100;
+}
+
+// Regression case, run on every invocation: nine covered statements on one line and an uncovered
+// one on the next are 90% of statements but 50% of lines.
+{
+  const at = (line) => ({ start: { line, column: 0 }, end: { line, column: 1 } });
+  const ids = [...Array(10).keys()];
+  const got = summarise({
+    'case.ts': {
+      statementMap: Object.fromEntries(ids.map((i) => [i, at(i < 9 ? 1 : 2)])),
+      s: Object.fromEntries(ids.map((i) => [i, i < 9 ? 1 : 0])),
+    },
+  });
+  if (got.sCovered !== 9 || got.sTotal !== 10 || got.lCovered !== 1 || got.lTotal !== 2) {
+    throw new Error(`coverage-gate: summarise counted lines wrongly: ${JSON.stringify(got)}`);
+  }
+}
+
 // Regression cases, run on every invocation so the exemption check cannot regress unnoticed.
 for (const [text, want] of [
   ["export { A } from './a';\nexport * from './b';\nexport type { T } from './t';\n", 0],
@@ -317,14 +339,22 @@ for (const [project, floor] of Object.entries(FLOORS)) {
     fails('it has no coverage report this run, so the floor was not measured');
     continue;
   }
-  if (stale.some((t) => t.project === project)) {
-    fails('its coverage report is older than its source, so the floor was measured on old code');
+  const staleReport = stale.find((t) => t.project === project);
+  if (staleReport) {
+    fails(
+      staleReport.gone?.length
+        ? `its coverage report counts ${staleReport.gone.length} source file(s) that no longer ` +
+            `exist (${staleReport.gone.join(', ')}), so the floor was measured on old code`
+        : 'its coverage report is older than its source, so the floor was measured on old code',
+    );
     continue;
   }
-  // Compared on the counts: `m.lines` is rounded, and 89.996% must not round its way to 90.
-  if (m.sCovered * 100 < floor * m.sTotal) {
-    const truncated = Math.floor((m.sCovered / m.sTotal) * 10000) / 100;
-    fails(`${truncated}% of lines covered (${m.sCovered} of ${m.sTotal} statements)`);
+  // Lines, not statements, because the floor is a line floor — see `summarise()`. Compared on the
+  // counts, because a rounded percentage would let 89.996% round its way to 90.
+  if (m.lCovered * 100 < floor * m.lTotal) {
+    fails(
+      `${truncatedPercent(m.lCovered, m.lTotal)}% of lines covered (${m.lCovered} of ${m.lTotal} lines)`,
+    );
   }
   for (const u of m.unmeasured ?? []) {
     if (noStatementsAllowlist.has(u.file)) {
@@ -566,6 +596,24 @@ async function collect() {
     } catch {
       continue;
     }
+    // Deleting a source leaves no newer file behind, so the mtime test above cannot see it, and
+    // the report goes on counting the deleted file's statements.
+    const rootAbs = resolve(repoRoot, p.root);
+    const gone = Object.keys(data)
+      .map((f) => resolve(repoRoot, f))
+      .filter((f) => f.startsWith(`${rootAbs}${sep}`) && !existsSync(f))
+      .map((f) => relative(repoRoot, f));
+    if (gone.length) {
+      const entry = stale.find((t) => t.project === p.name);
+      if (entry) entry.gone = gone;
+      else
+        stale.push({
+          project: p.name,
+          report: new Date(reportAge).toISOString(),
+          source: null,
+          gone,
+        });
+    }
     const s = summarise(data);
     if (s.files === 0) continue;
     const specs = await countSpecs(p.root);
@@ -671,13 +719,22 @@ async function discoverProjects() {
 
 /**
  * Vitest's v8 provider writes istanbul-shaped data: `s`/`b`/`f` are hit counts
- * keyed by entries in `statementMap`/`branchMap`/`fnMap`. Line coverage is derived
- * from statements, which is what istanbul's own summary does for v8 data.
+ * keyed by entries in `statementMap`/`branchMap`/`fnMap`.
+ *
+ * Two line figures. The ratchet's `lines` is the statement percentage, as recorded in the
+ * baseline since the gate began. `lTotal`/`lCovered` are exact, the way istanbul derives lines:
+ * each distinct start line is one line, covered if any statement on it ran. A floor reads those,
+ * because it is a line floor and nine statements on one line are still one line. Under v8 the two
+ * agree — it emits one statement per line, and on 2026-10-09 every one of 28,593 statements in
+ * 308 files started on a line of its own — so this changes no figure today; it stops the floor
+ * depending on that.
  * @param {Record<string, any>} data
  */
 function summarise(data) {
   let sTotal = 0,
     sCovered = 0,
+    lTotal = 0,
+    lCovered = 0,
     bTotal = 0,
     bCovered = 0,
     fTotal = 0,
@@ -696,10 +753,15 @@ function summarise(data) {
     // Statements and lines were never affected, which is why this hid: the headline number the
     // ratchet acts on was right while the two beside it were not.
     const hasStatements = Object.keys(entry.s ?? {}).length > 0;
-    for (const hits of Object.values(entry.s ?? {})) {
+    const lineHits = new Map();
+    for (const [id, hits] of Object.entries(entry.s ?? {})) {
       sTotal += 1;
       if (hits > 0) sCovered += 1;
+      const line = entry.statementMap?.[id]?.start?.line;
+      if (line !== undefined) lineHits.set(line, Math.max(lineHits.get(line) ?? 0, hits));
     }
+    lTotal += lineHits.size;
+    for (const hits of lineHits.values()) if (hits > 0) lCovered += 1;
     if (hasStatements) {
       for (const arr of Object.values(entry.b ?? {})) {
         for (const hits of arr ?? []) {
@@ -735,6 +797,8 @@ function summarise(data) {
     // percentage alone cannot tell "tests were deleted" from "a previously uninstrumented
     // file entered the denominator" — see the comparability check in the main flow.
     sCovered,
+    lTotal,
+    lCovered,
     statements: stmts,
     branches: pct(bCovered, bTotal),
     functions: pct(fCovered, fTotal),
@@ -1050,10 +1114,15 @@ function report() {
 
   if (stale.length) {
     console.log(
-      `\n  STALE REPORTS — ${stale.length} project(s) have source newer than their coverage report:`,
+      `\n  STALE REPORTS — ${stale.length} project(s) have source newer than their coverage report, ` +
+        'or a report counting deleted files:',
     );
     for (const t of stale) {
-      console.log(`    ${t.project.padEnd(24)} report ${t.report}  source ${t.source}`);
+      const parts = [`report ${t.report}`];
+      if (t.source) parts.push(`source ${t.source}`);
+      if (t.gone?.length)
+        parts.push(`counts ${t.gone.length} deleted file(s): ${t.gone.join(', ')}`);
+      console.log(`    ${t.project.padEnd(24)} ${parts.join('  ')}`);
     }
     console.log(
       '    These numbers describe code that has since changed, so nothing below can be\n' +
@@ -1190,8 +1259,9 @@ function reportFloors() {
     const m = measured.find((x) => x.project === project);
     if (failures.length === 0) {
       console.log(
-        `    ${project.padEnd(24)} ${String(m.lines).padStart(6)}%  meets ${FLOORS[project]}% ` +
-          `(${m.sCovered} of ${m.sTotal} statements; every unmeasured file is statement-free)`,
+        `    ${project.padEnd(24)} ${String(truncatedPercent(m.lCovered, m.lTotal)).padStart(6)}%  ` +
+          `meets ${FLOORS[project]}% (${m.lCovered} of ${m.lTotal} lines; every unmeasured file ` +
+          'is statement-free)',
       );
       continue;
     }

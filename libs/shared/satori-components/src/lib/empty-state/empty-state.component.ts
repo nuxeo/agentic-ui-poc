@@ -20,6 +20,11 @@ import { MatIconModule } from '@angular/material/icon';
 export class NxsEmptyStateComponent {
   /** What is empty, in one line. */
   readonly heading = input.required<string>();
+  /**
+   * The heading's level in the page outline. Set it to fit where the component sits — one below
+   * the heading of the section it empties — so heading navigation stays in order.
+   */
+  readonly headingLevel = input<1 | 2 | 3 | 4 | 5 | 6>(2);
   /** An optional second line — usually what to do next. Not rendered when blank. */
   readonly message = input('');
   /** An optional Material icon ligature. Decorative, so hidden from assistive technology. */

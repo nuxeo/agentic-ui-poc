@@ -2,14 +2,18 @@
 title: Repository Guide
 parent: Engineering
 order: 3
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # Repository Guide
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only the `satori-components` row of "Shared libraries" and the `libs/platform` row of "The other
+> three" were re-verified at that commit; that heading's totals add the row to the 2026-08-24
+> figures. `feature/nxsat-308-permissions-panel` recounted the `satori-components` row, with the
+> permissions panel, on 2026-10-09. The rest of the page as of 2026-08-24 · `77265f9`:
 > 992 tracked files · ~104k lines of TS/HTML/SCSS · ~20k lines of harness scripts ·
 > ~20.5k lines of Markdown
 
@@ -115,7 +119,7 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 > their coverage reports contain 0 total statements, so the summariser computes 0/0 as 100%.
 > `core` has the same shape. Of 17 measured projects, 6 read as ≥90% and **3 genuinely are**.
 
-### Shared libraries — 12, 43,910 lines
+### Shared libraries — 12, 43,946 lines
 
 | Library              |  Lines | Specs | Responsibility                                                                                                                   |
 | -------------------- | -----: | ----: | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -130,7 +134,7 @@ It also carries the reference Layer 0/1/2 customisation the upgrade rehearsal st
 | `ke-client`          |    734 |     1 | Knowledge Enrichment client                                                                                                      |
 | `ai-client`          |    457 | **0** | The 12 `AI.*` operations. Thin HTTP client                                                                                       |
 | `util`               |    108 |     0 | Small helpers                                                                                                                    |
-| `satori-components`  |  4,030 |     4 | The `nxs-` components replacing adf-hx. **Published** as `@nuxeo-satori/platform/components` (NXSAT-308; counted 2026-10-09)     |
+| `satori-components`  |  4,066 |     4 | The `nxs-` components replacing adf-hx. **Published** as `@nuxeo-satori/platform/components` (NXSAT-308; counted 2026-10-09)     |
 
 ### The other three
 

@@ -248,6 +248,9 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
   bind every heading, message and label through your own translate pipe. A composite component
   such as `nxs-permissions-panel` translates its own chrome under `satori-components.*`; the
   package's English for those keys is served by `providePlatformEnglishFallback()`.
+- **`nxs-empty-state`'s heading is a level-2 heading by default.** Bind `[headingLevel]` to
+  one below the heading of the section it sits in, so screen-reader heading navigation stays in
+  order.
 - **Replace a packaged panel by its ID.** `nxs-permissions-panel` is registered as
   `NXS_PERMISSIONS_PANEL_ID` (`nxs.components.permissionsPanel`). Register your own component
   under it and both Permissions tabs render yours, with one input, `documentId`.
