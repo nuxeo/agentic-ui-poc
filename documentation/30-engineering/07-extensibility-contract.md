@@ -2,16 +2,18 @@
 title: Extensibility Contract
 parent: Engineering
 order: 7
-last_reviewed: 2026-10-08
-repo_commit: 5abcd50
+last_reviewed: 2026-10-09
+repo_commit: effd434
 audience: engineering
 ---
 
 # The Extensibility Contract — four layers
 
-> **Last reviewed:** 2026-10-08 · **Repository:** `5abcd50` (`feature/nxsat-308-replace-adf-extensions`)
-> Only "Our rule context is deliberately not upstream's" in §5 was re-verified at that commit; the
-> rest of the page as of 2026-08-24 · `77265f9`.
+> **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
+> Only the entry-point count and the `@nuxeo-satori/platform/components` row in §6 were
+> re-verified at that commit, and "Our rule context is deliberately not upstream's" in §5 at
+> `5abcd50` (`feature/nxsat-308-replace-adf-extensions`); the tarball figure in §6 carries its own
+> date. The rest of the page as of 2026-08-24 · `77265f9`.
 > Customer-facing companion: [`docs/extension-reference.md`](../../docs/extension-reference.md),
 > which is drift-gated by `npm run beta:reference`.
 

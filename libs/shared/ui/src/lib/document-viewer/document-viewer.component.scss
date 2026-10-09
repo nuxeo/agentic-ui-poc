@@ -366,7 +366,7 @@
   }
 }
 
-// NXENG-799 / NXENG-816 — IBM `style_focus_visible` (366662714, 911144409) reads `:focus` only;
+// NXENG-799 / NXENG-816 / NXENG-817 (IBM 922184956) — `style_focus_visible` reads `:focus` only;
 // keep this selector separate from `:focus-visible` (comma lists are not resolved by the scanner).
 .viewer-toolbar button.mat-mdc-icon-button:focus {
   outline: 2px solid var(--document-viewer-focus-on-light-surface) !important;
