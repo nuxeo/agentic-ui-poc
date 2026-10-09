@@ -606,6 +606,6 @@ sat-breadcrumbs {
 }
 
 // The highlighted padlock Web UI shows on a locked document, only where the user may unlock it.
-.mat-mdc-menu-item .mat-icon.lock-icon--active {
+.header-actions button.lock-toggle--active:not(.mat-mdc-button-disabled) {
   color: var(--mat-sys-primary);
 }

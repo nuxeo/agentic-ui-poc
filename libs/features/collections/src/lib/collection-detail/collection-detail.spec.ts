@@ -518,6 +518,32 @@ describe('CollectionDetailComponent', () => {
       expect(component.lockTooltip()).toBe('Locked by alice on August 24, 2026');
     });
 
+    it('keeps the lock state when the full read fails and the fallback answers', () => {
+      component.isLocked.set(false);
+      mockDetailService.getFullDocument.mockReturnValue(throwError(() => new Error('enricher')));
+      mockCollectionService.getById.mockReturnValue(
+        of(docWith({ lockOwner: 'alice', lockCreated: LOCKED_AT })),
+      );
+
+      component['loadCollection']();
+
+      expect(component.isLocked()).toBe(true);
+      expect(component.lockTooltip()).toBe('Locked by alice on August 24, 2026');
+    });
+
+    it('does not carry a previous lock into a fallback read of an unlocked collection', () => {
+      load(docWith({ lockOwner: 'alice', lockCreated: LOCKED_AT }));
+      mockDetailService.getFullDocument.mockReturnValue(throwError(() => new Error('enricher')));
+      mockCollectionService.getById.mockReturnValue(
+        of(docWith({ lockOwner: null, lockCreated: null })),
+      );
+
+      component['loadCollection']();
+
+      expect(component.isLocked()).toBe(false);
+      expect(component.lockOwner()).toBeNull();
+    });
+
     it('has no lock tooltip while unlocked', () => {
       load(docWith({ lockOwner: null, lockCreated: null }));
 

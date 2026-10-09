@@ -189,6 +189,8 @@
           type="button"
           [attr.data-action-id]="action.id"
           [disabled]="!isToolbarActionEnabled(action)"
+          [matTooltip]="toolbarTooltip(action) ?? ''"
+          matTooltipPosition="left"
           (click)="runToolbarAction(action)"
         >
           @if (action.icon) {

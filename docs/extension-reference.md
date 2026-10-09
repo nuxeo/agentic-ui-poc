@@ -728,6 +728,9 @@ the lock — its tooltip reads "Locked by {owner} on {date}" unless a manifest s
 everyone but its owner and administrators, so they are the users offered it enabled. With the
 policy disabled other Write holders are offered it too, and the server refuses them with a 409.
 The server decides either way — this rule only decides what the interface offers.
+Moved to the overflow menu with `"overflow": true`, Unlock keeps its tooltip on hover, but a
+reader's disabled entry there cannot take keyboard focus — Material menus skip disabled items —
+so the owner and date are then reachable by pointer only. Keep it inline where that matters.
 
 `app.toolbar.export` is the one entry with no `rule`, deliberately: it was
 outside the trashed-document guard in the markup this replaced, and exporting a

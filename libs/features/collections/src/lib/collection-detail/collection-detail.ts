@@ -315,6 +315,7 @@ export class CollectionDetailComponent {
               next: (doc) => {
                 this.collection.set(doc);
                 this.loadState.set('loaded');
+                this.syncActionStates(doc);
                 if (this.activeTabIndex() === 2 && !this.historyLoaded) {
                   this.loadAuditLog();
                 }

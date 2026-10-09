@@ -921,14 +921,14 @@ L10n directories (`l10nsubjects`, `l10ncoverage`) use `label_en` instead of `lab
 
 **Headers:** `fetch-document: lock`, so the response carries the `lockOwner` / `lockCreated` the server recorded.
 
-**State Detection:** The document's `lockOwner` and `lockCreated` fields are populated when locked (`null` when unlocked) — **only when the request sends `fetch-document: lock`**. Without it Nuxeo omits both on a locked document, which is why `getFullDocument(uid)` sends it. Enricher request includes `favorites,subscribedNotifications` to get all action states in one call.
+**State Detection:** The document's `lockOwner` and `lockCreated` fields are populated when locked (`null` when unlocked) — **only when the request sends `fetch-document: lock`**. Without it Nuxeo omits both on a locked document, which is why `getFullDocument(uid)` sends it, and `CollectionService.getById(uid)` too, since collection detail falls back to it. Enricher request includes `favorites,subscribedNotifications` to get all action states in one call.
 
 **Errors:** `409` when another user holds the lock (on Lock: "already locked"; on Unlock: "locked by another user"), `403` when the caller lacks the permission. Nuxeo's default lock policy removes Write on a locked document from everyone but its owner and administrators, so the packaged Unlock action is enabled by `app.rules.canWrite`; the server still decides.
 
 **Used by:**
 
 - **Document detail page** — Lock/Unlock toggle in the header toolbar (`app.toolbar.lock` / `app.toolbar.unlock`)
-- **Collection detail page** — Lock/Unlock in the "More actions" menu
+- **Collection detail page** — Lock/Unlock icon button in the header
 
 ---
 
