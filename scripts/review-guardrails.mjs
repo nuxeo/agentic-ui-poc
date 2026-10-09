@@ -6850,13 +6850,18 @@ function componentDecoratorNames(source) {
   return { names, namespaces };
 }
 
+/** The first file `resolveSpecifier` finds for a specifier, or `null` if it names none. */
+function resolveFile(fromFile, specifier, pathMaps) {
+  return resolveSpecifier(fromFile, specifier, pathMaps)?.[0] ?? null;
+}
+
 /**
  * The `@Component` classes a module exports, by public name, following re-exports.
  *
  * `export class X` with a `@Component` decorator, `export { a as b } from './m'`,
  * `export * from './m'`, and an imported class re-exported by a bare `export { X }`.
  */
-function exportedComponentClasses(file, paths, ancestors = new Set()) {
+function exportedComponentClasses(file, pathMaps, ancestors = new Set()) {
   // `ancestors` guards a re-export cycle along one path only: a module re-exported twice from
   // one barrel must be read twice, or the second statement finds nothing.
   const seen = ancestors;
@@ -6904,17 +6909,17 @@ function exportedComponentClasses(file, paths, ancestors = new Set()) {
       for (const element of statement.exportClause.elements) {
         const local = imported.get((element.propertyName ?? element.name).text);
         if (element.isTypeOnly || !local) continue;
-        const target = resolveSpecifier(file, local.specifier, paths);
+        const target = resolveFile(file, local.specifier, pathMaps);
         const origin =
-          target && exportedComponentClasses(target, paths, new Set(seen)).get(local.name);
+          target && exportedComponentClasses(target, pathMaps, new Set(seen)).get(local.name);
         if (origin) found.set(element.name.text, origin);
       }
       continue;
     }
     if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
-    const target = resolveSpecifier(file, statement.moduleSpecifier.text, paths);
+    const target = resolveFile(file, statement.moduleSpecifier.text, pathMaps);
     if (!target) continue;
-    const inner = exportedComponentClasses(target, paths, new Set(seen));
+    const inner = exportedComponentClasses(target, pathMaps, new Set(seen));
     if (!statement.exportClause) {
       for (const [name, origin] of inner) found.set(name, origin);
     } else if (ts.isNamedExports(statement.exportClause)) {
@@ -6935,7 +6940,7 @@ function exportedComponentClasses(file, paths, ancestors = new Set()) {
  * imported from the module that declares it, and the file exports at least one story. The meta may
  * be the default export itself or a variable it names, optionally behind `satisfies` or `as`.
  */
-function storiedComponents(storyFile, paths) {
+function storiedComponents(storyFile, pathMaps) {
   const covered = new Set();
   const source = ts.createSourceFile(storyFile, read(storyFile), ts.ScriptTarget.Latest, true);
 
@@ -6960,7 +6965,7 @@ function storiedComponents(storyFile, paths) {
     if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
       const bindings = statement.importClause?.namedBindings;
       if (!bindings || !ts.isNamedImports(bindings)) continue;
-      const target = resolveSpecifier(storyFile, statement.moduleSpecifier.text, paths);
+      const target = resolveFile(storyFile, statement.moduleSpecifier.text, pathMaps);
       if (!target) continue;
       for (const element of bindings.elements) {
         imports.set(element.name.text, {
@@ -6998,7 +7003,7 @@ function storiedComponents(storyFile, paths) {
   if (!origin) return covered;
 
   // The import may itself be a barrel; resolve the name to the module that declares the class.
-  const declared = exportedComponentClasses(origin.file, paths).get(origin.name);
+  const declared = exportedComponentClasses(origin.file, pathMaps).get(origin.name);
   if (declared) covered.add(`${declared.file}#${declared.className}`);
   return covered;
 }
@@ -7014,8 +7019,8 @@ function storiedComponents(storyFile, paths) {
  */
 function checkSatoriComponentsHaveStories() {
   if (!fileExists(SATORI_COMPONENTS_BARREL)) return;
-  const paths = tsconfigPaths();
-  const exported = exportedComponentClasses(SATORI_COMPONENTS_BARREL, paths);
+  const pathMaps = tsconfigPathMaps();
+  const exported = exportedComponentClasses(SATORI_COMPONENTS_BARREL, pathMaps);
   if (exported.size === 0) return;
 
   const STORY_GLOB = '../src/**/*.stories.ts';
@@ -7036,7 +7041,7 @@ function checkSatoriComponentsHaveStories() {
   for (const story of walk(`${SATORI_COMPONENTS_ROOT}/src`, (path) =>
     path.endsWith('.stories.ts'),
   )) {
-    for (const key of storiedComponents(story, paths)) covered.add(key);
+    for (const key of storiedComponents(story, pathMaps)) covered.add(key);
   }
   for (const [name, { file, className }] of exported) {
     if (covered.has(`${file}#${className}`)) continue;
