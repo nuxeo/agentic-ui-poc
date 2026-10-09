@@ -136,6 +136,20 @@ describe('wireMatTabListKeyboardA11y', () => {
     expect(tabList.getAttribute('onkeydown')).toBe('return customHandler(event)');
     expect(tabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBeNull();
   });
+
+  it('does not remove a pre-existing IBM-equivalent onkeydown on cleanup', () => {
+    const root = materialTabHeaderMarkup();
+    const tabList = root.querySelector<HTMLElement>('.mat-mdc-tab-list')!;
+    tabList.setAttribute('onkeydown', MAT_TAB_LIST_IBM_ONKEYDOWN);
+
+    const cleanup = wireMatTabListKeyboardA11y(root)!;
+    expect(cleanup).not.toBeNull();
+    expect(tabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBe('true');
+
+    cleanup();
+    expect(tabList.getAttribute('onkeydown')).toBe(MAT_TAB_LIST_IBM_ONKEYDOWN);
+    expect(tabList.getAttribute(MAT_TAB_LIST_KEYDOWN_ATTR)).toBeNull();
+  });
 });
 
 describe('observeMatTabListKeyboardA11y', () => {
@@ -176,7 +190,6 @@ describe('MatTabListKeydownDirective on Material tab group', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [testTranslateModule(), MatTabListKeyboardA11yHostComponent],
-
       providers: [provideZonelessChangeDetection(), provideNoopAnimations()],
     }).compileComponents();
 
