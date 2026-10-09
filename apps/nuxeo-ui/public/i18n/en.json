@@ -2199,6 +2199,14 @@
       "cancel": "Cancel",
       "export": "Export"
     },
+    "mat-tab-list-keyboard-a11y": {
+      "host": {
+        "body-a": "Body A",
+        "body-b": "Body B",
+        "tab-a": "Tab A",
+        "tab-b": "Tab B"
+      }
+    },
     "message": {
       "failed-to-copy-link": "Failed to copy link",
       "failed-to-load-documents-for-comparison": "Failed to load documents for comparison.",
