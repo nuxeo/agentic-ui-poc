@@ -1,6 +1,6 @@
 /**
- * NXENG-806 — SCSS contract for `.format-size` on the fixed light picture-cards strip
- * (IBM Issue ID 626137632; was hardcoded #999 ~2.85:1).
+ * NXENG-806 / NXENG-825 — SCSS contract for `.format-size` on the fixed light picture-cards strip
+ * (IBM Issue IDs 626137632, 1088600166; was hardcoded #999 ~2.85:1).
  *
  * Per-theme contrast regression cross-check:
  * `apps/nuxeo-ui/.../document-viewer-format-type-contrast.spec.ts`. Published WCAG 2.1 AA
@@ -19,7 +19,7 @@ function scssBlocks(source: string, className: string): { prelude: string; body:
   }));
 }
 
-describe('DocumentViewerComponent — format-size SCSS contract (NXENG-806)', () => {
+describe('DocumentViewerComponent — format-size SCSS contract (NXENG-806 / NXENG-825)', () => {
   it('scssBlocks catches compound and pseudo-class .format-size selectors', () => {
     const sample = [
       '.format-size { color: var(--document-viewer-muted-on-light-surface); }',
@@ -31,7 +31,7 @@ describe('DocumentViewerComponent — format-size SCSS contract (NXENG-806)', ()
     expect(blocks.some(({ body }) => /#999/i.test(body))).toBe(true);
   });
 
-  it('pins every .format-size block to the light-strip muted token per NXENG-806', () => {
+  it('pins every .format-size block to the light-strip muted token per NXENG-806 / NXENG-825', () => {
     const scssPath = join(import.meta.dirname, 'document-viewer.component.scss');
     const scss = readFileSync(scssPath, 'utf8');
     const sizeBlocks = scssBlocks(scss, 'format-size');

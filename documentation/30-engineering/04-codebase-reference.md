@@ -10,8 +10,11 @@ audience: engineering
 # Codebase Reference — file and folder responsibilities
 
 > **Last reviewed:** 2026-10-09 · **Repository:** `effd434` (`feature/nxsat-308-satori-components`)
-> Only §6 and the `constants/avatar-colors.ts` row were re-verified at that commit; the rest of the
-> page as of 2026-08-24 · `77265f9`.
+> Only §6 and the `constants/avatar-colors.ts` row were re-verified at that commit. The repository
+> links (made relative rather than pinned to `feature/adf-hx-browse-poc`, every target present) and
+> the `verify-gate.mjs` and `review-guardrails.mjs` rows were re-verified on 2026-10-08 at
+> `2898046` (`feature/nxsat-308-ci-cold-cache-tooling`). The rest of the page as of
+> 2026-08-24 · `77265f9`.
 > Directory-level view: [Repository Guide](03-repository-guide.md).
 >
 > **What is excluded, and why:** `node_modules/`, `dist/`, `coverage/`, `.angular/`, `.nx/`,
@@ -27,14 +30,14 @@ audience: engineering
 
 If you read six files, read these.
 
-| File                                                                                                                                                                                        | Lines | Why                                                                                                   |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | ----------------------------------------------------------------------------------------------------- |
-| [`apps/nuxeo-ui/src/app/app.config.ts`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/apps/nuxeo-ui/src/app/app.config.ts)                                         |   ~97 | The composition root. Provider **order is load-bearing**, and the file explains why in detail         |
-| [`apps/nuxeo-ui/src/app/app.routes.ts`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/apps/nuxeo-ui/src/app/app.routes.ts)                                         |       | The entire surface area in one file. 23 routes                                                        |
-| [`libs/shared/extensions/src/lib/extension-slots.ts`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/libs/shared/extensions/src/lib/extension-slots.ts)             |   ~60 | The customisation contract. 8 slots                                                                   |
-| [`libs/shared/extensions/src/lib/extension-rules.ts`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/libs/shared/extensions/src/lib/extension-rules.ts)             |  ~261 | Rule evaluation, fail-open/fail-closed, depth-bounded recursion. Heavily commented with the reasoning |
-| [`nuxeo-agentic-ui-package/src/main/resources/install.xml`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/nuxeo-agentic-ui-package/src/main/resources/install.xml) |   ~25 | The upgrade-safety guarantee, and why the obvious destination is wrong                                |
-| [`scripts/beta-harness/verify-gate.mjs`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/scripts/beta-harness/verify-gate.mjs)                                       |   368 | The 17 gates, each with a comment saying what it caught                                               |
+| File                                                                                                                       | Lines | Why                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------------------- | ----: | ----------------------------------------------------------------------------------------------------- |
+| [`apps/nuxeo-ui/src/app/app.config.ts`](../../apps/nuxeo-ui/src/app/app.config.ts)                                         |   ~97 | The composition root. Provider **order is load-bearing**, and the file explains why in detail         |
+| [`apps/nuxeo-ui/src/app/app.routes.ts`](../../apps/nuxeo-ui/src/app/app.routes.ts)                                         |       | The entire surface area in one file. 23 routes                                                        |
+| [`libs/shared/extensions/src/lib/extension-slots.ts`](../../libs/shared/extensions/src/lib/extension-slots.ts)             |   ~60 | The customisation contract. 8 slots                                                                   |
+| [`libs/shared/extensions/src/lib/extension-rules.ts`](../../libs/shared/extensions/src/lib/extension-rules.ts)             |  ~261 | Rule evaluation, fail-open/fail-closed, depth-bounded recursion. Heavily commented with the reasoning |
+| [`nuxeo-agentic-ui-package/src/main/resources/install.xml`](../../nuxeo-agentic-ui-package/src/main/resources/install.xml) |   ~25 | The upgrade-safety guarantee, and why the obvious destination is wrong                                |
+| [`scripts/beta-harness/verify-gate.mjs`](../../scripts/beta-harness/verify-gate.mjs)                                       |  ~520 | Every gate in `ALL_GATES`, each with a comment saying what it caught                                  |
 
 ---
 
@@ -167,13 +170,13 @@ Full table in [Dev Harness & Gates](08-dev-harness-and-gates.md). Structure:
 
 | Path                                                                                                                                                                       | Responsibility                                                                       |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `beta-harness/verify-gate.mjs`                                                                                                                                             | The 15-gate runner, cheapest-first, stop at first failure                            |
+| `beta-harness/verify-gate.mjs`                                                                                                                                             | Runs every gate in `ALL_GATES`, cheapest-first, stop at first failure                |
 | `beta-harness/phase-runner.mjs`                                                                                                                                            | Evidence runner. Exit 2 = precondition-not-met                                       |
 | `beta-harness/helpers.mjs`                                                                                                                                                 | `step`, `check`, `expectVisible`, `expectNoA11yViolations`, `requirePrecondition`, … |
 | `beta-harness/steps/*.mjs`                                                                                                                                                 | One per phase claim, plus a showcase and a `_template`                               |
 | `beta-harness/{api-surface,publishability,fork-simulation,upgrade-rehearsal}.mjs`                                                                                          | The four published-package gates                                                     |
 | `beta-harness/{coverage,lockfile-integrity,no-test-libs-in-bundle,assertion-audit,extension-reference-drift,state-check,node-version,backend-preflight,e2e-preflight}.mjs` | The rest                                                                             |
-| `review-guardrails.mjs`                                                                                                                                                    | The 10 commit-time invariants                                                        |
+| `review-guardrails.mjs`                                                                                                                                                    | Every commit-time invariant registered in its `GUARDRAILS` array                     |
 | `build-platform-generators.mjs`                                                                                                                                            | Compiles generators into the package. **The only thing that typechecks them**        |
 | `sync-platform-docs.mjs`                                                                                                                                                   | Copies customer docs in before the build                                             |
 | `publish-confluence.mjs`                                                                                                                                                   | Publishes `documentation/` to Confluence. Idempotent by title                        |

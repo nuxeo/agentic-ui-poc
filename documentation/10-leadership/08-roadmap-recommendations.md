@@ -2,17 +2,19 @@
 title: Roadmap Recommendations
 parent: Executive / Leadership
 order: 8
-last_reviewed: 2026-08-24
-repo_commit: 77265f9
+last_reviewed: 2026-10-08
+repo_commit: 2898046
 audience: leadership
 ---
 
 # Roadmap Recommendations
 
-> **Last reviewed:** 2026-08-24 · **Repository:** `77265f9`
+> **Last reviewed:** 2026-10-08 · **Repository:** `2898046` (`feature/nxsat-308-ci-cold-cache-tooling`)
+> Only the repository links were re-verified at that commit: made relative rather than pinned to
+> `feature/adf-hx-browse-poc`, every target present. The rest of the page as of 2026-08-24 · `77265f9`.
 >
 > **These are recommendations, not commitments, and not a plan of record.** The plan of record
-> is [`docs/adf-hx-beta-plan.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/adf-hx-beta-plan.md).
+> is [`docs/adf-hx-beta-plan.md`](../../docs/adf-hx-beta-plan.md).
 > Sequencing here is derived from what the repository shows and what the RFC identifies as
 > unresolved. No dates are given, because effort in this programme has never been measured and
 > a date derived from an unmeasured baseline would be quoted as though it were real.
