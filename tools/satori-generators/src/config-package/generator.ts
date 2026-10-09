@@ -1,6 +1,5 @@
 import {
   addProjectConfiguration,
-  formatFiles,
   generateFiles,
   names,
   updateProjectConfiguration,
@@ -45,11 +44,20 @@ function titleCase(kebab: string): string {
  *   writes the installable zip. It has no dependencies, so the package builds on any machine with
  *   Node and reaches a server only as a reviewed artifact.
  *
+ * `create.mjs` beside this file writes the same files with Node alone, for anyone without this
+ * workspace's install — which needs a GitHub Packages token. `create.spec.ts` holds the two to the
+ * same bytes.
+ *
  * ## What it deliberately does not do
  *
  * It declares no minimum version of `nuxeo-agentic-ui`: every published build is currently
  * `2026.0.1-<timestamp>`, so there is no version that separates a build with the configuration
  * service from one without it. The README says what that means for the customer.
+ *
+ * It does not run Prettier over what it writes. `create.mjs` cannot, and Prettier's output depends
+ * on the input — it rewrites `*Claims*` in a title as `_Claims_` and breaks a long `outputs` path
+ * onto its own line — so the two would differ for options no test happened to try. The templates
+ * are kept as Prettier formats them instead.
  */
 export default async function configPackageGenerator(tree: Tree, options: ConfigPackageSchema) {
   const parentDirectory = options.directory ?? 'config-packages';
@@ -132,8 +140,6 @@ export default async function configPackageGenerator(tree: Tree, options: Config
   configure(tree, name.fileName, config);
 
   generateFiles(tree, join(__dirname, 'files'), projectRoot, substitutions);
-
-  await formatFiles(tree);
 
   return () => {
     console.log(`
