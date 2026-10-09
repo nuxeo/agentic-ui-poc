@@ -269,7 +269,8 @@ import { NxsEmptyStateComponent } from '@nuxeo-satori/platform/components';
   order.
 - **Show a document's thumbnail with `nxs-thumbnail`.** `<nxs-thumbnail [documentId]="doc.uid">`
   fetches the rendition with the platform's credentials and revokes its blob URL itself; put the
-  fallback (a type icon) inside it, and size it with your own class on the element.
+  fallback (a type icon) inside it, and size it with your own class on the element. A page
+  listing many lists `provideNxsThumbnailCache()` in its `providers`.
 - **Replace a packaged panel by its ID.** `nxs-permissions-panel` is registered as
   `NXS_PERMISSIONS_PANEL_ID` (`nxs.components.permissionsPanel`). Register your own component
   under it and both Permissions tabs render yours, with `documentId` and `permissionsChanged`, a

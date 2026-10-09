@@ -46,6 +46,9 @@ describe('SearchQueueComponent — thumbnails', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    // The queue's thumbnail cache keeps a URL briefly after its result leaves, for a view switch to
+    // reuse; these tests run that grace period out rather than wait for it.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     created.length = 0;
     revoked.length = 0;
     seq = 0;
@@ -72,6 +75,15 @@ describe('SearchQueueComponent — thumbnails', () => {
 
     fixture = TestBed.createComponent(SearchQueueComponent);
   });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Lets the cache's grace period for results that left the list run out. */
+  function graceElapses(): void {
+    vi.runOnlyPendingTimers();
+  }
 
   /** Publishes a result set and lets each thumbnail request start and answer. */
   async function withResults(...ids: string[]): Promise<void> {
@@ -113,6 +125,8 @@ describe('SearchQueueComponent — thumbnails', () => {
 
     // A second search returns only doc2.
     await withResults('doc2');
+    expect(revoked).toEqual([]);
+    graceElapses();
 
     expect(revoked).toContain(urlOne);
     expect(revoked).not.toContain(urlTwo);
@@ -125,6 +139,7 @@ describe('SearchQueueComponent — thumbnails', () => {
     await withResults('a');
     await withResults('b');
     await withResults('c');
+    graceElapses();
 
     expect(created).toHaveLength(3);
     expect(revoked).toHaveLength(2);
@@ -146,7 +161,7 @@ describe('SearchQueueComponent — thumbnails', () => {
     expect(created).toHaveLength(3);
   });
 
-  it('drops a late response for a result that already left the list', async () => {
+  it('does not keep a URL for a result that left the list, even when its response is late', async () => {
     // Only a pending request can arrive after its item has gone, which is the case that would mint an
     // orphaned URL — one nothing renders and nothing revokes until teardown.
     const pending = new Subject<Blob | null>();
@@ -164,10 +179,11 @@ describe('SearchQueueComponent — thumbnails', () => {
     pending.next(new Blob(['late']));
     pending.complete();
     await settle();
+    graceElapses();
 
-    // No URL minted for the departed id.
-    expect(created).toHaveLength(1);
+    // Whatever the late answer minted is revoked; only the result on screen keeps one.
     expect(Object.keys(shown())).toEqual(['other']);
+    expect(created.filter((url) => !revoked.includes(url))).toEqual([shown()['other']]);
   });
 
   it('still accepts a response that arrives while its result is present', async () => {

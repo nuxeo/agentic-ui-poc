@@ -6,7 +6,7 @@ import {
   SearchAggregationService,
   type SearchResultItem,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import { NxsThumbnailComponent } from '@nuxeo-satori/platform/components';
+import { NxsThumbnailComponent, provideNxsThumbnailCache } from '@nuxeo-satori/platform/components';
 import { TranslatePipe } from '@ngx-translate/core';
 
 interface ActiveFilter {
@@ -19,6 +19,7 @@ interface ActiveFilter {
   selector: 'lib-search-queue',
   standalone: true,
   imports: [NxsThumbnailComponent, TranslatePipe, CommonModule, MatButtonModule, MatIconModule],
+  providers: [provideNxsThumbnailCache()],
   templateUrl: './search-queue.component.html',
   styleUrl: './search-queue.component.scss',
 })

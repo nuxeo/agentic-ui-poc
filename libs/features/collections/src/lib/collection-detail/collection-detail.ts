@@ -84,12 +84,13 @@ import {
   NxsFolderHeaderComponent,
   NxsSpinnerComponent,
   NxsThumbnailComponent,
+  provideNxsThumbnailCache,
 } from '@nuxeo-satori/platform/components';
 
 @Component({
   selector: 'lib-collection-detail',
   standalone: true,
-  providers: [provideTranslatedDatepickerIntl()],
+  providers: [provideTranslatedDatepickerIntl(), provideNxsThumbnailCache()],
   imports: [
     NxsFolderHeaderComponent,
     NxsSpinnerComponent,

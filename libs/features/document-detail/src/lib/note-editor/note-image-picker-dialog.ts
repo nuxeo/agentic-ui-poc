@@ -26,7 +26,11 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 import { extractMainBlobFileName } from './note-image-url';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { NxsSpinnerComponent, NxsThumbnailComponent } from '@nuxeo-satori/platform/components';
+import {
+  NxsSpinnerComponent,
+  NxsThumbnailComponent,
+  provideNxsThumbnailCache,
+} from '@nuxeo-satori/platform/components';
 
 @Component({
   selector: 'lib-note-image-picker-dialog',
@@ -46,6 +50,7 @@ import { NxsSpinnerComponent, NxsThumbnailComponent } from '@nuxeo-satori/platfo
     MatTooltipModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [provideNxsThumbnailCache()],
   templateUrl: './note-image-picker-dialog.html',
   styleUrl: './note-image-picker-dialog.scss',
 })

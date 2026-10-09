@@ -23,7 +23,7 @@ import {
   type ExtensionActionDescriptor,
 } from '@nuxeo-satori/platform/extensions';
 import { TranslatePipe } from '@ngx-translate/core';
-import { NxsThumbnailComponent } from '@nuxeo-satori/platform/components';
+import { NxsThumbnailComponent, provideNxsThumbnailCache } from '@nuxeo-satori/platform/components';
 
 @Component({
   selector: 'lib-selection-topbar',
@@ -36,6 +36,7 @@ import { NxsThumbnailComponent } from '@nuxeo-satori/platform/components';
     MatIconModule,
     MatTooltipModule,
   ],
+  providers: [provideNxsThumbnailCache()],
   templateUrl: './selection-topbar.component.html',
   styleUrl: './selection-topbar.component.scss',
 })

@@ -152,6 +152,7 @@ import {
   NxsPermissionsPanelComponent,
   NxsSpinnerComponent,
   NxsThumbnailComponent,
+  provideNxsThumbnailCache,
   type NxsDriveDialogData,
   type NxsPickableColumn,
 } from '@nuxeo-satori/platform/components';
@@ -174,7 +175,7 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
 @Component({
   selector: 'lib-browse',
   standalone: true,
-  providers: [provideTranslatedDatepickerIntl()],
+  providers: [provideTranslatedDatepickerIntl(), provideNxsThumbnailCache()],
   imports: [
     NxsColumnPickerComponent,
     NxsDomainHintComponent,

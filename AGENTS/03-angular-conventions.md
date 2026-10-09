@@ -151,7 +151,9 @@ loadImage(uid: string): void {
 **A document thumbnail is `<nxs-thumbnail>`** (`@nuxeo-satori/platform/components`). It fetches
 the rendition through `fetchThumbnail`, owns the blob URL and revokes it when the document changes
 and on destroy, and shows its projected content (the type icon) until the image arrives or when
-there is none. Size it with a class on the host; do not set `display` on it.
+there is none. Size it with a class on the host; do not set `display` on it. A page that lists many
+lists `provideNxsThumbnailCache()` in its `providers`: its thumbnails then share one request per
+document, keep their URL across a view switch, and run at most four requests at once.
 
 ```html
 <nxs-thumbnail class="doc-thumb" [documentId]="doc.uid">

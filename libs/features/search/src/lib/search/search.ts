@@ -54,6 +54,7 @@ import {
   NxsColumnPickerComponent,
   NxsSpinnerComponent,
   NxsThumbnailComponent,
+  provideNxsThumbnailCache,
   type NxsPickableColumn,
 } from '@nuxeo-satori/platform/components';
 
@@ -193,6 +194,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
     MatAutocompleteModule,
     FormsModule,
   ],
+  providers: [provideNxsThumbnailCache()],
   templateUrl: './search.html',
   styleUrl: './search.scss',
 })

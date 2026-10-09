@@ -189,7 +189,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-14 exported symbol(s).
+15 exported symbol(s).
 
 ```ts
 const NXS_PERMISSIONS_PANEL_ID = "nxs.components.permissionsPanel";
@@ -356,6 +356,7 @@ class NxsThumbnailComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsThumbnailComponent, "nxs-thumbnail", never, { "documentId": { "alias": "documentId"; "required": true; "isSignal": true; }; "alt": { "alias": "alt"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
     }
 }
+function provideNxsThumbnailCache(): Provider;
 ```
 
 ## @nuxeo-satori/platform/extensions

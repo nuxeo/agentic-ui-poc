@@ -7,14 +7,20 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
-import { catchError, of, switchMap, tap } from 'rxjs';
+import { Observable, catchError, map, of, switchMap, tap } from 'rxjs';
 
 import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
 
+import { NxsThumbnailCache } from './thumbnail-cache';
+
 /**
  * A document's thumbnail rendition, fetched through the authenticated client and shown from a blob
- * URL that this component owns: it is revoked when the document changes and when the component is
- * destroyed, so no caller creates or revokes one.
+ * URL that no caller creates or revokes.
+ *
+ * Under a page that lists `provideNxsThumbnailCache()`, the page's `NxsThumbnailCache` owns the URL:
+ * thumbnails of one document share it, a view switch reuses it, requests are bounded, and it is
+ * revoked once nothing shows it and with the page. Without one, this component owns it and revokes
+ * it when the document changes and when it is destroyed.
  *
  * Until the image arrives — and when there is none, the request fails or the bytes do not decode —
  * the projected content shows instead, usually the document-type icon. While it shows, the host
@@ -45,6 +51,9 @@ export class NxsThumbnailComponent {
   protected readonly url = signal<string | null>(null);
 
   private readonly documents = inject(DocumentDetailService);
+  private readonly cache = inject(NxsThumbnailCache, { optional: true });
+  /** Whether `url` is this component's to revoke — it is not when a page cache lent it. */
+  private owned = false;
 
   constructor() {
     toObservable(this.documentId)
@@ -53,24 +62,51 @@ export class NxsThumbnailComponent {
         // shows the previous one's image, even for the length of a request.
         tap(() => this.clear()),
         switchMap((id) =>
-          id ? this.documents.fetchThumbnail(id).pipe(catchError(() => of(null))) : of(null),
+          !id ? of(null) : this.cache ? this.borrow(this.cache, id) : this.own(id),
         ),
         takeUntilDestroyed(),
       )
-      .subscribe((blob) => {
-        if (blob && blob.size > 0) this.url.set(URL.createObjectURL(blob));
-      });
+      .subscribe((url) => this.url.set(url));
     inject(DestroyRef).onDestroy(() => this.clear());
   }
 
   /** The bytes arrived but are not an image the browser can draw. */
   protected broken(): void {
+    const url = this.url();
+    if (url && !this.owned) this.cache?.discard(this.documentId(), url);
     this.clear();
+  }
+
+  /**
+   * The page cache's URL, held until `switchMap` moves on or the component is destroyed. The cache's
+   * stream completes once it has answered; that completion is not passed on, or it would release
+   * the URL while it is still on screen.
+   */
+  private borrow(cache: NxsThumbnailCache, documentId: string): Observable<string | null> {
+    return new Observable<string | null>((subscriber) => {
+      const lent = cache.acquire(documentId).subscribe((url) => subscriber.next(url));
+      return () => {
+        lent.unsubscribe();
+        cache.release(documentId);
+      };
+    });
+  }
+
+  private own(documentId: string): Observable<string | null> {
+    return this.documents.fetchThumbnail(documentId).pipe(
+      catchError(() => of(null)),
+      map((blob) => {
+        if (!blob || blob.size === 0) return null;
+        this.owned = true;
+        return URL.createObjectURL(blob);
+      }),
+    );
   }
 
   private clear(): void {
     const url = this.url();
-    if (url) URL.revokeObjectURL(url);
+    if (url && this.owned) URL.revokeObjectURL(url);
+    this.owned = false;
     this.url.set(null);
   }
 }
