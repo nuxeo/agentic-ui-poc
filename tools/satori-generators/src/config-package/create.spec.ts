@@ -156,7 +156,7 @@ describe('create.mjs writes what the config-package generator writes', () => {
     const create = createWorkspace();
     expect(await generator.generate(options)).toBeNull();
     expect(await create.generate(options)).toBeNull();
-    expect(create.files().size).toBe(12);
+    expect(create.files().size).toBe(13);
     expectSameFiles(create.files(), generator.files());
   });
 

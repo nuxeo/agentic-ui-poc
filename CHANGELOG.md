@@ -77,6 +77,7 @@ private readonly locale = inject(LOCALE_ID);
   `*Claims*` as `_Claims_`). Its templates are stored as Prettier formatted them, so the only file
   formatted differently is `project.json`, now as Nx serialises it, one array item per line. The
   generated README builds with `node build.mjs`, and its table no longer names the component file.
+  A `.gitignore` keeps the `dist/` that `node build.mjs` writes inside the package out of git.
 
 ### Fixed
 
