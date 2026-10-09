@@ -34,7 +34,7 @@
       "evidence": {
         "manifest": "phase-0-baseline/2026-08-21T11-47-33",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/latest:review-fixes-applied"
+        "regate": "gates/2026-10-08T12-01-28-nxsat-308-dependency-tree-gate"
       },
       "deviations": [],
       "notCovered": [
@@ -49,7 +49,7 @@
       "evidence": {
         "manifest": "phase-1-config/2026-08-21T11-47-45",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/latest:review-fixes-applied"
+        "regate": "gates/2026-10-08T12-01-28-nxsat-308-dependency-tree-gate"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -66,7 +66,7 @@
       "evidence": {
         "manifest": "phase-2-registry/2026-08-21T11-51-02",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/latest:review-fixes-applied"
+        "regate": "gates/2026-10-08T12-01-28-nxsat-308-dependency-tree-gate"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -91,7 +91,7 @@
         "manifest": "phase-3-adf-hx/2026-08-24T03-03-48",
         "searchManifest": "phase-3-search/2026-08-24T02-58-00",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/latest:review-fixes-applied"
+        "regate": "gates/2026-10-08T12-01-28-nxsat-308-dependency-tree-gate"
       },
       "deviations": [
         "2026-09-23, after sign-off: the adopted breadcrumb is now upstream's inner HxpUiBreadcrumbComponent, fed the ancestors plus the current folder, rather than HxpBreadcrumbComponent, which never showed the current folder. The capture's 'links target browse-adf-hx' check had passed while every crumb but Home linked to browse-adf-hx%3Fpath%3D… — NuxeoDocumentRouterService.urlFor returned a string, and [routerLink] escapes a string's '?'. urlFor now returns a UrlTree, and the check requires the query to survive.",
@@ -199,7 +199,7 @@
       "evidence": {
         "manifest": "phase-4-platform/2026-08-23T03-22-29",
         "gate": "gates/2026-08-23T03-47-19-phase-4-signoff",
-        "regate": "gates/latest:review-fixes-applied"
+        "regate": "gates/2026-10-08T12-01-28-nxsat-308-dependency-tree-gate"
       },
       "deviations": [
         "Merged from two duplicate entries. `phase-4-layer2` and `phase-4-platform` both carried the title \"Layer 2 \u2014 publishable platform\"; the latter was a stub whose notCovered read \"everything\". Kept the id the gate reports and the evidence directory use.",
@@ -231,7 +231,7 @@
       "evidence": {
         "manifest": "phase-5-harness/2026-08-24T03-08-47",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/latest:review-fixes-applied"
+        "regate": "gates/2026-10-08T12-01-28-nxsat-308-dependency-tree-gate"
       },
       "deviations": [
         "Departed from the plan's wording deliberately, and measured first. The plan said 'split the AGENTS/ knowledge base'; 50 files carry 185 references to AGENTS/ paths, and .github/workflows/staleness-check.yml asserts AGENTS/01-services.md and AGENTS/${i}-*.md exist \u2014 so a split breaks CI and every skill. Measuring the content settled it too: 3,177 lines, of which only 3 of 13 files mention extensions, slots or the Layers. libs/platform/AGENTS.md is therefore authored for the audience, not extracted.",

@@ -111,8 +111,6 @@ import {
 } from '@nuxeo-satori/platform/ui';
 
 import {
-  AddPermissionDialogComponent,
-  AddPermissionDialogData,
   UpdatePermissionDialogComponent,
   UpdatePermissionDialogData,
   DeletePermissionDialogComponent,
@@ -127,6 +125,7 @@ import {
   EXTENSION_SLOTS,
   descriptorLabel,
   ExtensionActionRegistry,
+  ExtensionOutletComponent,
   ExtensionRuleContextService,
   type ExtensionActionDescriptor,
   type ExtensionColumnDescriptor,
@@ -145,10 +144,12 @@ import {
 import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
+  NXS_PERMISSIONS_PANEL_ID,
   NxsColumnPickerComponent,
   NxsDomainHintComponent,
   NxsDriveDialogComponent,
   NxsFolderHeaderComponent,
+  NxsPermissionsPanelComponent,
   NxsSpinnerComponent,
   type NxsDriveDialogData,
   type NxsPickableColumn,
@@ -206,6 +207,8 @@ const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_CO
     SatAvatarModule,
     SatTagModule,
     SatBreadcrumbsComponent,
+    ExtensionOutletComponent,
+    NxsPermissionsPanelComponent,
   ],
   templateUrl: './browse.html',
   styleUrl: './browse.scss',
@@ -275,31 +278,14 @@ export class BrowseComponent {
   // Permissions tab
   readonly permissionsLoaded = signal(false);
   readonly permissionsLoading = signal(false);
-  readonly localAces = computed<NuxeoAce[]>(() => {
-    const doc = this.currentDoc();
-    const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
-    if (!acls) return [];
-    const local = acls.find((a) => a.name === 'local');
-    return local?.aces.filter((ace) => ace.granted && !ace.externalUser) ?? [];
-  });
-  readonly inheritedAces = computed<NuxeoAce[]>(() => {
-    const doc = this.currentDoc();
-    const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
-    if (!acls) return [];
-    const inherited = acls.find((a) => a.name === 'inherited');
-    return inherited?.aces.filter((ace) => ace.granted) ?? [];
-  });
+  readonly permissionsPanelId = NXS_PERMISSIONS_PANEL_ID;
+  /** The panel's writes can change the external-user shares this tab reads itself. */
+  readonly onPermissionsChanged = () => this.reloadPermissions();
   readonly externalAces = computed<NuxeoAce[]>(() => {
     const doc = this.currentDoc();
     const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
     if (!acls) return [];
     return acls.flatMap((a) => a.aces).filter((ace) => ace.externalUser && ace.granted);
-  });
-  readonly isInheritanceBlocked = computed<boolean>(() => {
-    const doc = this.currentDoc();
-    const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
-    if (!acls) return false;
-    return !acls.some((a) => a.name === 'inherited');
   });
   readonly canWriteCurrentDoc = computed(() => canWriteDocument(this.currentDoc()));
   readonly canCreateContentHere = computed(() => {
@@ -2072,50 +2058,6 @@ export class BrowseComponent {
     this.loadPermissions(true);
   }
 
-  addPermission(): void {
-    const doc = this.currentDoc();
-    if (!doc) return;
-    const dialogRef = this.dialog.open(AddPermissionDialogComponent, {
-      data: { documentUid: doc.uid } satisfies AddPermissionDialogData,
-      width: '560px',
-    });
-    dialogRef
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((created: boolean | undefined) => {
-        if (created) {
-          this.reloadPermissions();
-          this.snackBar.open(
-            this.translate.instant('browse.message.permission-added'),
-            this.translate.instant('common.ok'),
-            { duration: 3000 },
-          );
-        }
-      });
-  }
-
-  editPermission(ace: NuxeoAce): void {
-    const doc = this.currentDoc();
-    if (!doc) return;
-    const dialogRef = this.dialog.open(UpdatePermissionDialogComponent, {
-      data: { documentUid: doc.uid, ace } satisfies UpdatePermissionDialogData,
-      width: '520px',
-    });
-    dialogRef
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((updated: boolean | undefined) => {
-        if (updated) {
-          this.reloadPermissions();
-          this.snackBar.open(
-            this.translate.instant('browse.message.permission-updated'),
-            this.translate.instant('common.ok'),
-            { duration: 3000 },
-          );
-        }
-      });
-  }
-
   deletePermission(ace: NuxeoAce): void {
     const doc = this.currentDoc();
     if (!doc) return;
@@ -2141,39 +2083,6 @@ export class BrowseComponent {
           );
         }
       });
-  }
-
-  toggleInheritance(): void {
-    const doc = this.currentDoc();
-    if (!doc || this.actionInProgress()) return;
-    this.actionInProgress.set('inheritance');
-    const blocked = this.isInheritanceBlocked();
-    const op = blocked
-      ? this.detailService.unblockPermissionInheritance(doc.uid)
-      : this.detailService.blockPermissionInheritance(doc.uid);
-    op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.reloadPermissions();
-        this.snackBar.open(
-          blocked
-            ? this.translate.instant('browse.message.inheritance-unblocked')
-            : this.translate.instant('browse.message.inheritance-blocked'),
-          this.translate.instant('common.ok'),
-          {
-            duration: 3000,
-          },
-        );
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.snackBar.open(
-          this.translate.instant('browse.message.action-failed'),
-          this.translate.instant('common.ok'),
-          { duration: 3000 },
-        );
-      },
-    });
   }
 
   shareWithExternal(): void {

@@ -95,7 +95,7 @@ jobs:
       # runs individual scripts. So "registered as a gate" meant local-only, and review had
       # to point out that the gate guarding a shipped XSS-adjacent defect could not block a
       # merge. Registering a check in ALL_GATES is not the same as running it.
-      - name: Static beta gates (evidence, reference drift, customer guardrails, supply chain, sanitizers, lockfile controls)
+      - name: Static beta gates (evidence, reference drift, customer guardrails, supply chain, sanitizers, lockfile and dependency-tree controls)
         env:
           # The sanitizer budget ratchet compares against the merge base with `origin/main` by
           # default. A PR into an integration branch must be ratcheted against that branch, or a
@@ -111,6 +111,14 @@ jobs:
           # the override selector was stripped. The controls are the only thing that re-asserts it.
           npm run beta:lockfile
           npm run beta:lockfile-selftest
+          # NXSAT-308 criterion 3: no adf-hx, adf-core, adf-extensions, js-api or hxcs-js-client in
+          # the lock, the installed tree `npm ci` just produced, a manifest, .npmrc or an import.
+          # REPORT-ONLY until the ADF removal commit flips `BLOCKING` in the script, so today it
+          # prints the removal backlog and passes. It is red even in report-only mode if a location
+          # cannot be read, or if the tree is clean and the switch was not flipped. The controls
+          # are what keep a gate that passes whatever it finds from quietly finding nothing.
+          npm run beta:dependency-tree
+          npm run beta:dependency-tree-selftest
           # Fails if an evidence step asserts something it cannot observe. Phase 1 shipped
           # a dead feature past two checks that certified properties they could not see.
           npm run beta:audit

@@ -3,7 +3,7 @@ title: Developer Learning Path (No-Agent)
 parent: Engineering
 order: 14
 last_reviewed: 2026-10-08
-repo_commit: 5abcd50
+repo_commit: 89cfd7b
 audience: engineering
 ---
 
@@ -11,8 +11,9 @@ audience: engineering
 
 > **Last reviewed:** 2026-10-08 · **Repository:** `5abcd50` (`feature/nxsat-308-replace-adf-extensions`)
 > Only the `@alfresco/adf-extensions` lines in §15 and §16 and the platform version in §19 were
-> re-verified at that commit, and the `@hylandsoftware/satori-ui` row at `d500aae`
-> (`feature/nxsat-308-satori-ui-0-2-1`). The Angular and `dompurify` rows were re-verified on
+> re-verified at that commit, and only §22.2, the local gate list, at `fb97d44`
+> (`feature/nxsat-308-dependency-tree-gate`), and the `@hylandsoftware/satori-ui` row at
+> `d500aae` (`feature/nxsat-308-satori-ui-0-2-1`). The Angular and `dompurify` rows were re-verified on
 > 2026-10-05 at `b15d9cf` (`fix/nxsat-303-production-advisories`) — see Appendix A.
 > **Purpose:** the complete list of technologies, versions and concepts a developer must know to
 > build, extend and operate Nuxeo Satori **by hand**, with no AI assistance of any kind.
@@ -1108,14 +1109,15 @@ Estimated effort: **15 hours**.
 CodeQL runs through GitHub's **default setup** (repository settings), not a workflow, with the
 `security-extended` suite over `apps` and `libs`.
 
-#### 22.2 The local gate — twenty checks, not six
+#### 22.2 The local gate — twenty-six checks, not six
 
 `npm run beta:gate` runs, cheapest first, stopping at the first failure:
 
-`node` → `lockfile` → `supply-chain` → `code-scanning` → `guardrails` → `sanitizer-audit` →
-`sanitizer-selftest` → `assertions` → `lint` → `test` → `build` → `typecheck` → `spec-types` →
-`bundle` → `api-surface` → `publishability` → `fork-simulation` → `upgrade-rehearsal` →
-`reference-drift` → `customer-guardrails`
+`node` → `lockfile` → `lockfile-selftest` → `dependency-tree` → `dependency-tree-selftest` →
+`supply-chain` → `code-scanning` → `guardrails` → `guardrails-selftest` → `crowdin-selftest` →
+`sanitizer-audit` → `sanitizer-selftest` → `assertions` → `lint` → `test` → `build` → `typecheck`
+→ `spec-types` → `bundle` → `api-surface` → `publishability` → `fork-simulation` →
+`upgrade-rehearsal` → `reference-drift` → `agent-mirror` → `customer-guardrails`
 
 Each exists because of a specific failure that got through. The ones worth understanding in detail:
 `publishability` runs a real `npm publish --dry-run` and is the only thing that executes

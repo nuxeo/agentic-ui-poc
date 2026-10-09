@@ -164,11 +164,20 @@ npm run beta:gate -- --gates guardrails,lint        # fast inner loop
 npm run beta:gate -- --base main --tail 80
 ```
 
-Eight gates, cheapest first, stopping at the first failure and printing only its
-output tail: `node`, `lockfile`, `guardrails`, `assertions`, then affected `lint`,
-`test`, `build`, `typecheck`. That ordering is deliberate — a lint error usually
-explains the test failure that would follow, and running the full set on a
-known-broken tree wastes minutes per iteration.
+Every gate in `ALL_GATES` (26 today — an unknown `--gates` id prints the current
+list), cheapest first, stopping at the first failure and printing only its output
+tail: `node`, the `lockfile` and `dependency-tree` pairs, `supply-chain`,
+`code-scanning`, the guardrails and sanitizer pairs, `assertions`, then affected
+`lint`, `test`, `build`, `typecheck`, then `spec-types`, `bundle` and the packaging
+and drift gates. [Dev Harness & Gates](../../documentation/30-engineering/08-dev-harness-and-gates.md)
+has the table. That ordering is deliberate — a lint error usually explains the test
+failure that would follow, and running the full set on a known-broken tree wastes
+minutes per iteration.
+
+`dependency-tree` is **report-only** until the ADF removal commit (NXSAT-308): it
+passes while listing every adf-hx, adf-core, adf-extensions, js-api and
+hxcs-js-client finding, and the removal commit sets `BLOCKING = true` in
+`dependency-tree.mjs` to make it fail on them.
 
 Reports land in `$EVIDENCE_ROOT/beta/gates/<timestamp>-<phase>.json`.
 

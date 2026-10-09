@@ -2,17 +2,19 @@
   @if (checking()) {
     <div class="nxs-drive-dialog__checking" role="status">
       <nxs-spinner diameter="32" />
-      <p class="nxs-drive-dialog__checking-text">{{ 'nxs.drive-dialog.checking' | translate }}</p>
+      <p class="nxs-drive-dialog__checking-text">
+        {{ 'satori-components.drive-dialog.checking' | translate }}
+      </p>
     </div>
   } @else {
     <h2 mat-dialog-title class="nxs-drive-dialog__title">
-      {{ 'nxs.drive-dialog.title' | translate }}
+      {{ 'satori-components.drive-dialog.title' | translate }}
     </h2>
     <table class="nxs-drive-dialog__table">
       <thead>
         <tr>
-          <th scope="col">{{ 'nxs.drive-dialog.platform' | translate }}</th>
-          <th scope="col">{{ 'nxs.drive-dialog.package' | translate }}</th>
+          <th scope="col">{{ 'satori-components.drive-dialog.platform' | translate }}</th>
+          <th scope="col">{{ 'satori-components.drive-dialog.package' | translate }}</th>
         </tr>
       </thead>
       <tbody>
@@ -35,7 +37,7 @@
       </tbody>
     </table>
     <button type="button" class="nxs-drive-dialog__close" (click)="close()">
-      {{ 'nxs.drive-dialog.close' | translate }}
+      {{ 'satori-components.drive-dialog.close' | translate }}
     </button>
   }
 </div>

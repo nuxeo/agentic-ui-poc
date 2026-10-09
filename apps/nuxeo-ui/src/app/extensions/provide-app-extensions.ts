@@ -154,6 +154,12 @@ function provideAppContributions(): EnvironmentProviders {
           import('../features/contracts/contracts-page.component').then(
             (m) => m.ContractsPageComponent,
           ),
+
+        // The local and inherited half of the document-detail and browse Permissions tabs.
+        // Re-registering this ID replaces the panel in both. The literal, rather than the
+        // library's `NXS_PERMISSIONS_PANEL_ID`, keeps the library out of the initial bundle.
+        'nxs.components.permissionsPanel': () =>
+          import('@nuxeo-satori/platform/components').then((m) => m.NxsPermissionsPanelComponent),
       },
     };
   });

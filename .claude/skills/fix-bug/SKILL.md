@@ -525,17 +525,19 @@ npm run beta:gate -- --gates guardrails,lint      # seconds — after every mean
 npm run beta:gate                                 # full run before pushing
 ```
 
-An unfiltered run executes **all 21 gates** cheapest-first — `node`, `lockfile`, `supply-chain`,
+An unfiltered run executes **every gate in `ALL_GATES`** (26 today; the verdict line prints the
+count) cheapest-first — `node`, `lockfile` and the dependency-tree pair, `supply-chain`,
 `code-scanning`, `guardrails`, sanitizers, `assertions`, then affected `lint`, `test`, `build`,
 `typecheck`, `spec-types`, `bundle`, `api-surface`, the packaging gates and the drift gates
-(`reference-drift`, `agent-mirror`). It stops at the first
-failure. Expect it to take a while; that is the cost of the two traps it catches that
-`review:preflight` does not:
+(`reference-drift`, `agent-mirror`), with each gate's self-test beside it. It stops at the first
+failure. `dependency-tree` passes while listing the ADF packages still in the tree — that list is
+the NXSAT-308 removal backlog, not something your fix introduced. Expect the run to take a while;
+that is the cost of the two traps it catches that `review:preflight` does not:
 
 - **`test` does not typecheck.** Vitest strips types through esbuild, so a green test run is not
   type safety. Only `build` and `typecheck` catch a `TS` error, and they run late.
-- **Nothing except the `lockfile` gate reads `package-lock.json`.** CI was red for the whole of
-  Phase 2 while every local gate was green. Revert incidental lockfile churn, and **never run a
+- **Nothing except the `lockfile` gate checks that `package-lock.json` will install.** CI was red
+  for the whole of Phase 2 while every local gate was green. Revert incidental lockfile churn, and **never run a
   bare `npm install` and commit the result** — on macOS it prunes optional platform entries Linux
   needs and `npm ci` then refuses the tree.
 

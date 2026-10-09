@@ -1,7 +1,7 @@
 <button
   type="button"
   class="nxs-column-picker__backdrop"
-  [attr.aria-label]="'nxs.column-picker.close' | translate"
+  [attr.aria-label]="'satori-components.column-picker.close' | translate"
   (click)="cancel()"
 ></button>
 <div
@@ -9,11 +9,11 @@
   class="nxs-column-picker__panel"
   role="dialog"
   aria-modal="true"
-  [attr.aria-label]="'nxs.column-picker.title' | translate"
+  [attr.aria-label]="'satori-components.column-picker.title' | translate"
   tabindex="-1"
   cdkTrapFocus
 >
-  <p class="nxs-column-picker__title">{{ 'nxs.column-picker.title' | translate }}</p>
+  <p class="nxs-column-picker__title">{{ 'satori-components.column-picker.title' | translate }}</p>
   <div class="nxs-column-picker__list">
     @for (column of columns(); track column.key) {
       <mat-checkbox
@@ -27,10 +27,10 @@
   </div>
   <div class="nxs-column-picker__actions">
     <button mat-button type="button" (click)="reset()">
-      {{ 'nxs.column-picker.reset' | translate }}
+      {{ 'satori-components.column-picker.reset' | translate }}
     </button>
     <button mat-flat-button color="primary" type="button" (click)="commit()">
-      {{ 'nxs.column-picker.done' | translate }}
+      {{ 'satori-components.column-picker.done' | translate }}
     </button>
   </div>
 </div>
