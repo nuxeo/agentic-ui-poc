@@ -189,10 +189,11 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/components
 
-13 exported symbol(s).
+19 exported symbol(s).
 
 ```ts
 const NXS_PERMISSIONS_PANEL_ID = "nxs.components.permissionsPanel";
+const NXS_TOAST_DURATION = 4000;
 class NxsColumnPickerComponent implements AfterViewInit, OnDestroy {
     readonly columns: _angular_core.InputSignal<readonly NxsPickableColumn[]>;
     readonly required: _angular_core.InputSignal<readonly string[]>;
@@ -346,6 +347,28 @@ class NxsSpinnerComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<NxsSpinnerComponent, "nxs-spinner", never, { "diameter": { "alias": "diameter"; "required": false; "isSignal": true; }; "label": { "alias": "label"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
 }
+interface NxsToastAction {
+    readonly label: string;
+    readonly run: () => void;
+    }
+}
+interface NxsToastErrorOptions extends NxsToastOptions {
+    readonly retry?: () => void;
+    }
+}
+interface NxsToastOptions {
+    readonly duration?: number;
+    readonly action?: NxsToastAction;
+    }
+}
+class NxsToastService {
+    show(message: string, options?: NxsToastOptions): void;
+    error(message: string, options?: NxsToastErrorOptions): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<NxsToastService, never>;
+    static ɵprov: _angular_core.ɵɵInjectableDeclaration<NxsToastService>;
+    }
+}
+function provideNxsToast(): Provider;
 ```
 
 ## @nuxeo-satori/platform/extensions

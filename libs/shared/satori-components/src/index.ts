@@ -17,3 +17,11 @@ export {
   NxsPermissionsPanelComponent,
 } from './lib/permissions-panel/permissions-panel.component';
 export { NxsSpinnerComponent } from './lib/spinner/spinner.component';
+export {
+  NXS_TOAST_DURATION,
+  NxsToastService,
+  provideNxsToast,
+  type NxsToastAction,
+  type NxsToastErrorOptions,
+  type NxsToastOptions,
+} from './lib/toast/toast.service';
