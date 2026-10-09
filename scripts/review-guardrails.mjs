@@ -6538,26 +6538,44 @@ function satoriComponentsSources() {
 const SATORI_COMPONENTS_STORYBOOK = `${SATORI_COMPONENTS_ROOT}/.storybook`;
 const SATORI_COMPONENTS_PROJECT = `${SATORI_COMPONENTS_ROOT}/project.json`;
 
+/** The one Storybook stylesheet that may reach Satori: the opt-in `:satori` configuration's theme. */
+const SATORI_COMPONENTS_STORYBOOK_SATORI_THEME = `${SATORI_COMPONENTS_STORYBOOK}/satori-theme.scss`;
+
 /**
- * The stylesheets the **default** `build-storybook` configuration compiles.
+ * The Storybook stylesheets held to the no-Satori rule: everything any `build-storybook`
+ * configuration names, and every stylesheet under `.storybook/` — all but the opt-in `:satori`
+ * configuration's theme.
  *
- * Only `options.styles`: a named configuration such as `:satori` is opt-in and may need a token,
- * the default is what has to build without one. Every entry, whatever its extension — Angular
- * compiles `.css` and indented `.sass` as well as `.scss`. An unreadable project.json yields
- * nothing, and the library sources are still checked.
+ * The exception is exact. Named by the default or any other configuration, that theme is checked
+ * like the rest, and anything else the `:satori` configuration names is checked too. Every entry,
+ * whatever its extension — Angular compiles `.css` and indented `.sass` as well as `.scss`. An
+ * unreadable project.json still leaves the `.storybook/` stylesheets and the library sources.
  */
 function satoriComponentsStorybookStyles() {
-  if (!fileExists(SATORI_COMPONENTS_PROJECT)) return [];
-  let styles;
-  try {
-    styles = JSON.parse(read(SATORI_COMPONENTS_PROJECT)).targets?.['build-storybook']?.options
-      ?.styles;
-  } catch {
-    return [];
+  const entries = (styles) =>
+    (Array.isArray(styles) ? styles : [])
+      .map((style) => (typeof style === 'string' ? style : style?.input))
+      .filter((style) => typeof style === 'string');
+  let target = {};
+  if (fileExists(SATORI_COMPONENTS_PROJECT)) {
+    try {
+      target = JSON.parse(read(SATORI_COMPONENTS_PROJECT)).targets?.['build-storybook'] ?? {};
+    } catch {
+      target = {};
+    }
   }
-  return (Array.isArray(styles) ? styles : [])
-    .map((style) => (typeof style === 'string' ? style : style?.input))
-    .filter((style) => typeof style === 'string');
+  const tokenFree = [
+    ...entries(target.options?.styles),
+    ...Object.entries(target.configurations ?? {})
+      .filter(([name]) => name !== 'satori')
+      .flatMap(([, configuration]) => entries(configuration?.styles)),
+  ];
+  const optIn = entries(target.configurations?.satori?.styles);
+  const onDisk = walk(SATORI_COMPONENTS_STORYBOOK, (path) => /\.(s?css|sass)$/.test(path));
+  const exempt = tokenFree.includes(SATORI_COMPONENTS_STORYBOOK_SATORI_THEME)
+    ? null
+    : SATORI_COMPONENTS_STORYBOOK_SATORI_THEME;
+  return [...new Set([...tokenFree, ...optIn, ...onDisk])].filter((style) => style !== exempt);
 }
 
 /**
@@ -6573,8 +6591,8 @@ function satoriComponentsStorybookStyles() {
  * inline `styles`, which the app compiles as SCSS.
  *
  * The Storybook build is held to the same rule, because it has to build without a token (plan
- * section 9.4): `.storybook/*.ts` are roots, and so are the stylesheets the default
- * `build-storybook` configuration names. The opt-in `:satori` configuration's are not.
+ * section 9.4): `.storybook/*.ts` are roots, and so is every stylesheet a `build-storybook`
+ * configuration names or `.storybook/` holds, except the opt-in `:satori` configuration's theme.
  */
 function checkSatoriComponentsDependencies() {
   const sources = satoriComponentsSources();
@@ -7098,19 +7116,33 @@ function storiedComponents(storyFile, pathMaps) {
     defaultExport = unwrap(variables.get(defaultExport.text));
   }
   if (!defaultExport || !ts.isObjectLiteralExpression(defaultExport)) return covered;
-  const metaProperty = (name) =>
-    defaultExport.properties.find(
+  // A spread can carry `excludeStories` this cannot see, so the file counts no story.
+  if (defaultExport.properties.some(ts.isSpreadAssignment)) {
+    fail(
+      `${storyFile} spreads another object into its default-exported meta, so which of its ` +
+        'exports are stories was not read and none was counted. Write the meta inline.',
+    );
+    return covered;
+  }
+  // A property's value; a shorthand (`{ excludeStories }`) is the file's top-level constant of that
+  // name, and `undefined` when there is none to read.
+  const metaProperty = (name) => {
+    const property = defaultExport.properties.find(
       (p) =>
-        ts.isPropertyAssignment(p) &&
+        (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) &&
         (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
         p.name.text === name,
     );
+    if (!property) return null;
+    if (ts.isPropertyAssignment(property)) return unwrap(property.initializer);
+    return unwrap(variables.get(name));
+  };
 
   // `includeStories` / `excludeStories` as Storybook applies them; `undefined` when unreadable.
   const storyFilter = (name) => {
-    const property = metaProperty(name);
-    if (!property) return null;
-    const value = unwrap(property.initializer);
+    const value = metaProperty(name);
+    if (value === null) return null;
+    if (!value) return undefined;
     if (ts.isArrayLiteralExpression(value) && value.elements.every(ts.isStringLiteralLike)) {
       const names = new Set(value.elements.map((element) => element.text));
       return (exportName) => names.has(exportName);
@@ -7146,8 +7178,7 @@ function storiedComponents(storyFile, pathMaps) {
   );
   if (stories.length === 0) return covered;
 
-  const componentProperty = metaProperty('component');
-  const value = componentProperty && unwrap(componentProperty.initializer);
+  const value = metaProperty('component');
   if (!value || !ts.isIdentifier(value)) return covered;
   const origin = imports.get(value.text);
   if (!origin) return covered;
@@ -7156,6 +7187,57 @@ function storiedComponents(storyFile, pathMaps) {
   const declared = exportedComponentClasses(origin.file, pathMaps).get(origin.name);
   if (declared) covered.add(`${declared.file}#${declared.className}`);
   return covered;
+}
+
+/**
+ * The `stories` globs a Storybook `main.ts` exports, read from its syntax tree — the default export
+ * or the constant it names, behind `satisfies` or `as` — so a comment mentioning a glob does not
+ * count. `null` when the list is not string literals the guardrail can read.
+ */
+function storybookStoryGlobs(main) {
+  const source = ts.createSourceFile(main, read(main), ts.ScriptTarget.Latest, true);
+  const unwrap = (node) => {
+    let current = node;
+    while (
+      current &&
+      (ts.isSatisfiesExpression(current) ||
+        ts.isAsExpression(current) ||
+        ts.isParenthesizedExpression(current))
+    ) {
+      current = current.expression;
+    }
+    return current;
+  };
+  const variables = new Map();
+  let config = null;
+  for (const statement of source.statements) {
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        if (ts.isIdentifier(declaration.name)) {
+          variables.set(declaration.name.text, declaration.initializer);
+        }
+      }
+    } else if (ts.isExportAssignment(statement) && !statement.isExportEquals) {
+      config = unwrap(statement.expression);
+    }
+  }
+  const resolve = (node) =>
+    node && ts.isIdentifier(node) ? unwrap(variables.get(node.text)) : node;
+  config = resolve(config);
+  if (!config || !ts.isObjectLiteralExpression(config)) return null;
+  const property = config.properties.find(
+    (p) =>
+      (ts.isPropertyAssignment(p) || ts.isShorthandPropertyAssignment(p)) &&
+      (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
+      p.name.text === 'stories',
+  );
+  if (!property) return null;
+  const value = resolve(
+    ts.isPropertyAssignment(property) ? unwrap(property.initializer) : property.name,
+  );
+  if (!value || !ts.isArrayLiteralExpression(value)) return null;
+  if (!value.elements.every(ts.isStringLiteralLike)) return null;
+  return value.elements.map((element) => element.text);
 }
 
 /**
@@ -7180,11 +7262,19 @@ function checkSatoriComponentsHaveStories() {
       `${main} does not exist, so the ${exported.size} component(s) ${SATORI_COMPONENTS_BARREL} ` +
         'exports have no Storybook to be documented in.',
     );
-  } else if (!read(main).includes(`'${STORY_GLOB}'`)) {
-    fail(
-      `${main} does not load \`${STORY_GLOB}\`, so the stories this check counts are not the ` +
-        'ones Storybook renders.',
-    );
+  } else {
+    const globs = storybookStoryGlobs(main);
+    if (globs === null) {
+      fail(
+        `${main} does not export a \`stories\` list of string literals, so whether Storybook ` +
+          'loads the stories this check counts was not read.',
+      );
+    } else if (!globs.includes(STORY_GLOB)) {
+      fail(
+        `${main} does not load \`${STORY_GLOB}\`, so the stories this check counts are not the ` +
+          'ones Storybook renders.',
+      );
+    }
   }
 
   const covered = new Set();
