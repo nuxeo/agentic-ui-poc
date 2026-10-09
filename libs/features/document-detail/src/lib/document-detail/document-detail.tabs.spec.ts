@@ -1717,6 +1717,9 @@ describe('DocumentDetailComponent — tab surfaces', () => {
       expect(mockKeClient.enrich).not.toHaveBeenCalled();
       expect(component.keError()).toContain('"nature" vocabulary failed to load');
       expect(component.keActionInFlight()).toBeNull();
+      // A refusal, so it is announced as an error rather than as news.
+      expect(toast.error).toHaveBeenCalledWith(component.keError());
+      expect(toast.show).not.toHaveBeenCalled();
     });
 
     it('writes the matched vocabulary id, not the label the model returned', async () => {
@@ -1941,6 +1944,7 @@ describe('DocumentDetailComponent — tab surfaces', () => {
       component.ingestToContentLake();
 
       expect(component.contentLakeIngestError()).toContain('(3 failed)');
+      expect(toast.error).toHaveBeenCalledWith(component.contentLakeIngestError());
       expect(component.contentLakeIngestStatus()).toBeNull();
       expect(component.contentLakePresenceVerified()).toBe(false);
       expect(component.contentLakeIngestInFlight()).toBe(false);

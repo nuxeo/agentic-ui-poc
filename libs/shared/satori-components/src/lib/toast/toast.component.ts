@@ -42,7 +42,7 @@ export interface NxsToastData {
   host: {
     class: 'nxs-toast',
     '[class.nxs-toast--error]': "data.kind === 'error'",
-    '(keydown.escape)': 'dismiss()',
+    '(keydown.escape)': 'dismiss($event)',
   },
 })
 export class NxsToastComponent {
@@ -53,7 +53,12 @@ export class NxsToastComponent {
     this.ref.dismissWithAction();
   }
 
-  protected dismiss(): void {
+  /**
+   * Escape stops here: a snack-bar overlay subscribes to no keydown, so the CDK would hand the event
+   * on to a dialog underneath and close it too — losing a form the toast was reporting on.
+   */
+  protected dismiss(event?: Event): void {
+    event?.stopPropagation();
     this.ref.dismiss();
   }
 }

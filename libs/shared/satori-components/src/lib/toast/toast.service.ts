@@ -11,7 +11,7 @@ export const NXS_TOAST_DURATION = 4000;
 export interface NxsToastAction {
   /** What the button says, already translated. */
   readonly label: string;
-  /** Runs when the button is pressed. The toast closes first. */
+  /** Runs when the button is pressed, just before the toast closes. */
   readonly run: () => void;
 }
 

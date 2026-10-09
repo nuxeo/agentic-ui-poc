@@ -172,6 +172,19 @@ describe('NxsToastService', () => {
       expect(toastElement()).toBeNull();
     });
 
+    it('runs the action just before the toast closes', async () => {
+      let openWhenRun: boolean | null = null;
+      toast.show('Moved to trash', {
+        action: { label: 'Undo', run: () => (openWhenRun = toastElement() !== null) },
+      });
+      await settle();
+      toastElement()?.querySelector<HTMLButtonElement>('.nxs-toast__action')?.click();
+      await settle();
+
+      expect(openWhenRun).toBe(true);
+      expect(toastElement()).toBeNull();
+    });
+
     it('keeps the caller’s duration for a toast with an action', () => {
       toast.show('Moved to trash', { action: { label: 'Undo', run: vi.fn() }, duration: 8000 });
       expect(lastConfig()?.duration).toBe(8000);
@@ -213,6 +226,23 @@ describe('NxsToastService', () => {
       dismiss?.focus();
       dismiss?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       await settle();
+      expect(toastElement()).toBeNull();
+    });
+
+    it('keeps Escape from reaching a dialog underneath, which would close it too', async () => {
+      // The CDK's overlay keyboard dispatcher listens on the body; a dialog closes from there.
+      const bodyKeydown = vi.fn();
+      document.body.addEventListener('keydown', bodyKeydown);
+      toast.error('Failed to update document');
+      await settle();
+
+      toastElement()
+        ?.querySelector<HTMLButtonElement>('.nxs-toast__dismiss')
+        ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
+      document.body.removeEventListener('keydown', bodyKeydown);
+
+      expect(bodyKeydown).not.toHaveBeenCalled();
       expect(toastElement()).toBeNull();
     });
 

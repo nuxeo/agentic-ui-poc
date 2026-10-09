@@ -1351,7 +1351,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         'document-detail.message.classification-unavailable-vocabulary',
       );
       this.keError.set(message);
-      this.toast.show(message);
+      this.toast.error(message);
       return;
     }
     this.runKnowledgeEnrichment('text-classification', {
@@ -1411,7 +1411,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             );
             this.contentLakeIngestError.set(message);
             this.contentLakeIngestStatus.set(null);
-            this.toast.show(message);
+            this.toast.error(message);
             return;
           }
 
