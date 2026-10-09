@@ -5056,7 +5056,8 @@ expectGreen(
  * walk skips an alias whose target is absent — so the fixture carries every non-spec source in
  * `libs/` and the real `tsconfig.base.json`. The two red controls after it re-introduce the
  * imports each barrel once carried, two hops deep, so the green cannot come from a walk that never
- * entered either library.
+ * entered either library. They accept any chain through the barrel's `index.ts`, not only the
+ * probe's: once a real component imports a barrel, the guardrail reports that shorter chain.
  */
 const REAL_LIBS = (() => {
   const listed = spawnSync('git', ['ls-files', '-z', 'libs', 'tsconfig.base.json'], {
@@ -5110,7 +5111,7 @@ expectRed(
       "import type { SatAvatarCategory } from '@hylandsoftware/satori-ui/avatar';\n" +
         REAL_LIBS[AVATAR_COLORS],
     ),
-  /avatar-colors\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through .*probe\.ts -> libs\/shared\/nuxeo-client\/src\/index\.ts -> /,
+  /avatar-colors\.ts imports `@hylandsoftware\/satori-ui\/avatar`, and the library reaches that file through .* -> libs\/shared\/nuxeo-client\/src\/index\.ts -> /,
 );
 
 expectRed(
@@ -5122,7 +5123,7 @@ expectRed(
       EXTENSION_RULES,
       `import type { RuleContext } from '${ADF_EXTENSIONS}';\n` + REAL_LIBS[EXTENSION_RULES],
     ),
-  /extension-rules\.ts imports `@alfresco\/adf-extensions`, and the library reaches that file through .*probe\.ts -> libs\/shared\/extensions\/src\/index\.ts -> /,
+  /extension-rules\.ts imports `@alfresco\/adf-extensions`, and the library reaches that file through .* -> libs\/shared\/extensions\/src\/index\.ts -> /,
 );
 
 expectRed(
