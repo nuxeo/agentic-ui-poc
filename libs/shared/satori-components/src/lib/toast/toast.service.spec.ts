@@ -104,7 +104,7 @@ describe('NxsToastService', () => {
       toast.show('Saved');
       await settle();
       expect(toastElement()?.querySelector('.nxs-toast__action')).toBeNull();
-      expect(toastElement()?.querySelectorAll('button').length).toBe(1);
+      expect(toastElement()?.querySelectorAll('button')).toHaveLength(1);
     });
   });
 
@@ -150,7 +150,7 @@ describe('NxsToastService', () => {
       await settle();
 
       const buttons = toastElement()?.querySelectorAll<HTMLButtonElement>('.nxs-toast__action');
-      expect(buttons?.length).toBe(1);
+      expect(buttons).toHaveLength(1);
       expect(buttons?.[0].textContent?.trim()).toBe('Retry');
       buttons?.[0].click();
       await settle();
@@ -282,7 +282,7 @@ describe('NxsToastService', () => {
       await settle();
       toast.error('Second');
       await settle();
-      expect(document.querySelectorAll('nxs-toast').length).toBe(1);
+      expect(document.querySelectorAll('nxs-toast')).toHaveLength(1);
       expect(toastElement()?.textContent).toContain('Second');
     });
   });
