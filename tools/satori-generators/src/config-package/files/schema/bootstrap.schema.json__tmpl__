@@ -66,7 +66,10 @@
       "type": ["string", "null"],
       "description": "Absolute Nuxeo URL for clients that connect directly (Nuxeo Drive, ARender)."
     },
-    "aiBackendUrl": { "type": "string", "description": "Base URL for the AI Automation operations." },
+    "aiBackendUrl": {
+      "type": "string",
+      "description": "Base URL for the AI Automation operations."
+    },
     "branding": {
       "type": "object",
       "additionalProperties": false,
