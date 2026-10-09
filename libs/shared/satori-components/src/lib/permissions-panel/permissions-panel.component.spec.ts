@@ -277,6 +277,29 @@ describe('NxsPermissionsPanelComponent', () => {
       expect(text()).toContain('workflow-acl');
     });
 
+    it('marks a deny as denied in the inherited and other-list tables, not as a grant', async () => {
+      const doc = serverDoc([], {
+        inherited: [
+          { username: 'members', permission: 'Read' },
+          { username: 'jdoe', permission: 'Write', granted: false },
+        ],
+      });
+      (contextOf(doc)['acls'] as unknown[]).push({
+        name: 'workflow-acl',
+        aces: [
+          aceOf({ username: 'reviewers', permission: 'Write' }),
+          aceOf({ username: 'guests', permission: 'Read', granted: false }),
+        ],
+      });
+      await mount(doc);
+      const [inheritedGrant, inheritedDeny] = Array.from(rows(1));
+      const [otherGrant, otherDeny] = Array.from(rows(2));
+      expect(inheritedDeny.textContent).toContain('Denied');
+      expect(otherDeny.textContent).toContain('Denied');
+      expect(inheritedGrant.textContent).not.toContain('Denied');
+      expect(otherGrant.textContent).not.toContain('Denied');
+    });
+
     it('is read-only for a user who cannot manage permissions', async () => {
       await mount(
         serverDoc([{ username: 'members', permission: 'ReadWrite' }], {
@@ -617,7 +640,57 @@ describe('NxsPermissionsPanelComponent', () => {
       expect(alert).toContain('members — Manage everything (Everything)');
       expect(alert).toContain("You don't have permission to change permissions on this document.");
       expect(alert).toContain("Privilege 'WriteSecurity' is not granted to 'jdoe'");
-      expect(panel()['pendingCount']()).toBe(0);
+      expect(panel()['pendingCount']()).toBe(1);
+      expect(panel()['localItems']()[1]).toMatchObject({
+        state: 'changed',
+        permission: 'Everything',
+      });
+    });
+
+    it('keeps the refused change and every change after it, which were never sent, staged', async () => {
+      const afterRemoval = serverDoc([{ username: 'members', permission: 'ReadWrite' }], {
+        inherited: [{ username: 'Administrator', permission: 'Everything' }],
+      });
+      await mount(PARITY, PARITY, afterRemoval, afterRemoval, afterRemoval);
+      documents.replacePermission.mockReturnValueOnce(throwError(() => ({ status: 403 })));
+      panel()['toggleRemove'](panel()['localItems']()[0]);
+      panel()['setPermission'](panel()['localItems']()[1], 'Everything');
+      panel()['openAdd']();
+      panel()['editorPrincipal'].set({
+        id: 'ann',
+        displayLabel: 'Ann Smith',
+        type: 'USER_TYPE',
+        prefixed_id: 'user:ann',
+      });
+      panel()['applyEditor']();
+      panel()['save']();
+      await render();
+
+      expect(el().querySelector('[role="alert"]')?.textContent).toContain(
+        'Saved 1 of 3 changes. The server refused the next one:',
+      );
+      expect(documents.addPermission).not.toHaveBeenCalled();
+      expect(panel()['pendingCount']()).toBe(2);
+      expect(
+        panel()
+          ['localItems']()
+          .map((i) => [i.principal, i.state]),
+      ).toEqual([
+        ['members', 'changed'],
+        ['ann', 'added'],
+      ]);
+      expect(addedItem().principalLabel).toBe('Ann Smith');
+      expect(text()).toContain('2 unsaved changes');
+
+      panel()['save']();
+      await render();
+      expect(documents.removePermissionById).toHaveBeenCalledTimes(1);
+      expect(documents.replacePermission).toHaveBeenCalledTimes(2);
+      expect(documents.addPermission).toHaveBeenCalledTimes(1);
+      expect(documents.addPermission).toHaveBeenCalledWith(
+        'doc-1',
+        expect.objectContaining({ username: 'ann' }),
+      );
     });
 
     it('counts only the writes the re-read confirms when a later one is refused', async () => {
@@ -867,6 +940,49 @@ describe('NxsPermissionsPanelComponent', () => {
       expect(panel()['suggestions']()).toEqual([]);
       expect(panel()['displaySuggestion'](null)).toBe('');
       expect(panel()['displaySuggestion']('raw')).toBe('raw');
+    });
+
+    describe('a search that answers late', () => {
+      const ann = [{ id: 'ann', displayLabel: 'Ann', type: 'USER_TYPE', prefixed_id: 'user:ann' }];
+
+      it('is not offered on an Add form opened after it was sent', async () => {
+        vi.useFakeTimers();
+        await mount(PARITY);
+        const answer = new Subject<typeof ann>();
+        documents.searchUsersGroups.mockReturnValue(answer);
+        panel()['openAdd']();
+        panel()['onPrincipalInput']('an');
+        vi.advanceTimersByTime(350);
+        panel()['closeEditor']();
+        panel()['openAdd']();
+        answer.next(ann);
+        expect(panel()['suggestions']()).toEqual([]);
+      });
+
+      it('is not offered for a term the user has since changed', async () => {
+        vi.useFakeTimers();
+        await mount(PARITY);
+        const answer = new Subject<typeof ann>();
+        documents.searchUsersGroups.mockReturnValue(answer);
+        panel()['openAdd']();
+        panel()['onPrincipalInput']('an');
+        vi.advanceTimersByTime(350);
+        panel()['onPrincipalInput']('bob');
+        answer.next(ann);
+        expect(panel()['suggestions']()).toEqual([]);
+      });
+
+      it('is still offered while its form and term are unchanged', async () => {
+        vi.useFakeTimers();
+        await mount(PARITY);
+        const answer = new Subject<typeof ann>();
+        documents.searchUsersGroups.mockReturnValue(answer);
+        panel()['openAdd']();
+        panel()['onPrincipalInput']('an ');
+        vi.advanceTimersByTime(350);
+        answer.next(ann);
+        expect(panel()['suggestions']()).toEqual(ann);
+      });
     });
   });
 

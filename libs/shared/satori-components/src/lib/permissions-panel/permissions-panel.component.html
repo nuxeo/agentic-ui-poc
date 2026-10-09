@@ -617,6 +617,11 @@
             @if (permissionLabel(row.permission) !== row.permission) {
               <span class="nxs-permissions-panel__id">{{ row.permission }}</span>
             }
+            @if (!row.granted) {
+              <span class="nxs-permissions-panel__badge nxs-permissions-panel__badge--removed">{{
+                'satori-components.permissions-panel.denied' | translate
+              }}</span>
+            }
           </td>
         </ng-container>
         <ng-container matColumnDef="timeFrame">
@@ -674,6 +679,11 @@
             {{ permissionLabel(row.permission) }}
             @if (permissionLabel(row.permission) !== row.permission) {
               <span class="nxs-permissions-panel__id">{{ row.permission }}</span>
+            }
+            @if (!row.granted) {
+              <span class="nxs-permissions-panel__badge nxs-permissions-panel__badge--removed">{{
+                'satori-components.permissions-panel.denied' | translate
+              }}</span>
             }
           </td>
         </ng-container>

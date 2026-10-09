@@ -24,7 +24,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { Subject, catchError, debounceTime, defer, of, switchMap } from 'rxjs';
+import { Subject, catchError, debounceTime, defer, map, of, switchMap } from 'rxjs';
 
 import {
   formatAceDateRange,
@@ -172,8 +172,8 @@ export class NxsPermissionsPanelComponent {
   );
   protected readonly canManage = computed(() => this.snapshot()?.canManage ?? false);
   /**
-   * False while a save or an inheritance change is in flight: a save clears every staged change
-   * when it answers, so one staged after it started would be lost unsaved.
+   * False while a save or an inheritance change is in flight: a save replaces the staged changes
+   * with those it did not send when it answers, so one staged after it started would be lost.
    */
   protected readonly editable = computed(
     () => this.canManage() && !this.saving() && !this.inheritanceBusy(),
@@ -286,14 +286,22 @@ export class NxsPermissionsPanelComponent {
     this.searches
       .pipe(
         debounceTime(300),
+        map((term) => term.trim()),
         switchMap((term) =>
-          term.trim().length >= 1
-            ? defer(() => this.service.searchPrincipals(term.trim())).pipe(catchError(() => of([])))
-            : of([]),
+          (term.length >= 1
+            ? defer(() => this.service.searchPrincipals(term)).pipe(catchError(() => of([])))
+            : of([])
+          ).pipe(map((results) => ({ term, results }))),
         ),
         takeUntilDestroyed(),
       )
-      .subscribe((results) => this.suggestions.set(results));
+      // A search can answer after its form closed or its term changed, and must not offer its
+      // principals to whatever the editor holds now.
+      .subscribe(({ term, results }) => {
+        if (this.editor()?.mode === 'add' && this.editorQuery().trim() === term) {
+          this.suggestions.set(results);
+        }
+      });
 
     // A new document is a new panel: nothing staged, shown or half-edited may carry over.
     effect(() => {
@@ -466,7 +474,8 @@ export class NxsPermissionsPanelComponent {
   // ── Writes ──────────────────────────────────────────────────────────────────────────────────
 
   protected save(): void {
-    const changes = [...this.staged().values()];
+    const entries = [...this.staged().entries()];
+    const changes = entries.map(([, change]) => change);
     if (changes.length === 0 || this.saving()) return;
     this.saving.set(true);
     this.outcome.set(null);
@@ -484,7 +493,12 @@ export class NxsPermissionsPanelComponent {
           if (outcome.kind === 'refused' || outcome.kind === 'unread') return;
           if (outcome.kind !== 'unverified' && outcome.snapshot)
             this.snapshot.set(outcome.snapshot);
-          this.clearStaged();
+          // Writes stop at the refused change, so it and every change after it were never sent.
+          if (outcome.kind === 'failed') {
+            this.keepStaged(entries.slice(changes.indexOf(outcome.change)));
+          } else {
+            this.clearStaged();
+          }
         },
         error: (error: unknown) => {
           if (generation !== this.generation) return;
@@ -541,6 +555,14 @@ export class NxsPermissionsPanelComponent {
   private clearStaged(): void {
     this.staged.set(new Map());
     this.addedLabels.clear();
+  }
+
+  private keepStaged(entries: readonly (readonly [string, NxsPermissionChange])[]): void {
+    const kept = new Map(entries);
+    for (const key of [...this.addedLabels.keys()]) {
+      if (!kept.has(key)) this.addedLabels.delete(key);
+    }
+    this.staged.set(kept);
   }
 
   private load(uid: string): void {
