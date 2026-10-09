@@ -7,11 +7,12 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   ActivatedRoute,
   convertToParamMap,
+  type ParamMap,
   provideRouter,
   Router,
   withDisabledInitialNavigation,
 } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, of, Subject, throwError } from 'rxjs';
 import { type MockInstance, vi } from 'vitest';
 
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
@@ -104,7 +105,7 @@ const emptyKe = (): Observable<KeEnrichmentResult> =>
   of({ textClassification: { result: '' } } as KeEnrichmentResult);
 
 const mockDetailService = {
-  getFullDocument: vi.fn((): Observable<NuxeoDocument> => of(live())),
+  getFullDocument: vi.fn((_uid?: string): Observable<NuxeoDocument> => of(live())),
   fetchBlob: vi.fn((): Observable<Blob> => of(new Blob(['x'], { type: 'text/plain' }))),
   fetchBlobByXpath: vi.fn((): Observable<Blob> => of(new Blob(['x']))),
   fetchThumbnail: vi.fn((): Observable<Blob> => of(new Blob(['x'], { type: 'image/png' }))),
@@ -146,12 +147,15 @@ const PDF = { 'file:content': { name: 'a.pdf', 'mime-type': 'application/pdf', d
 
 describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
   let fixture: ComponentFixture<DocumentDetailComponent>;
-  let navigateByUrl: MockInstance<Router['navigateByUrl']>;
+  let navigate: MockInstance<Router['navigate']>;
 
   (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:mock/1');
   (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn();
 
-  async function render(focused: NuxeoDocument): Promise<void> {
+  async function render(
+    focused: NuxeoDocument,
+    route: { query?: Record<string, string>; paramMap?: Observable<ParamMap> } = {},
+  ): Promise<void> {
     mockDetailService.getFullDocument.mockReturnValue(of(focused));
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
@@ -164,9 +168,9 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(convertToParamMap({ uid: focused.uid })),
-            queryParamMap: of(convertToParamMap({})),
-            snapshot: { queryParamMap: convertToParamMap({}) },
+            paramMap: route.paramMap ?? of(convertToParamMap({ uid: focused.uid })),
+            queryParamMap: of(convertToParamMap(route.query ?? {})),
+            snapshot: { queryParamMap: convertToParamMap(route.query ?? {}) },
           },
         },
         { provide: DocumentDetailService, useValue: mockDetailService },
@@ -219,7 +223,7 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
       .overrideProvider(MatSnackBar, { useValue: { open: snack } })
       .compileComponents();
 
-    navigateByUrl = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     fixture = TestBed.createComponent(DocumentDetailComponent);
     await settle();
   }
@@ -271,7 +275,7 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
       await settle();
 
       expect(mockDetailService.restoreVersion).not.toHaveBeenCalled();
-      expect(navigateByUrl).toHaveBeenCalledWith('/doc/v-0-1');
+      expect(navigate).toHaveBeenCalledWith(['/doc', 'v-0-1'], {});
     });
 
     it('lets a user who cannot write open a version too', async () => {
@@ -282,7 +286,7 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
       versionItem('0.1')?.click();
       await settle();
 
-      expect(navigateByUrl).toHaveBeenCalledWith('/doc/v-0-1');
+      expect(navigate).toHaveBeenCalledWith(['/doc', 'v-0-1'], {});
     });
 
     it("lists the live document's versions while a version is open, and leads back to it", async () => {
@@ -294,7 +298,36 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
       expect(versionItem('0.2')?.getAttribute('aria-current')).toBeNull();
 
       await click('.version-dropdown-latest');
-      expect(navigateByUrl).toHaveBeenCalledWith('/doc/doc-live');
+      expect(navigate).toHaveBeenCalledWith(['/doc', 'doc-live'], {});
+    });
+    it('keeps the browse return mode when moving between a document and its versions', async () => {
+      await render(live(), { query: { browseReturn: 'adf-hx' } });
+      await openVersionsList();
+
+      versionItem('0.1')?.click();
+      await settle();
+
+      expect(navigate).toHaveBeenCalledWith(['/doc', 'v-0-1'], {
+        queryParams: { browseReturn: 'adf-hx' },
+      });
+    });
+
+    it('ignores a slower response for a document the route has already left', async () => {
+      // Opening a version and going straight back: the version's response arrives last.
+      const route = new BehaviorSubject(convertToParamMap({ uid: 'doc-live' }));
+      const versionLoad = new Subject<NuxeoDocument>();
+      await render(live(), { paramMap: route });
+      mockDetailService.getFullDocument.mockImplementation((uid) =>
+        uid === 'v-0-1' ? versionLoad : of(live()),
+      );
+      route.next(convertToParamMap({ uid: 'v-0-1' }));
+      route.next(convertToParamMap({ uid: 'doc-live' }));
+      await settle();
+      versionLoad.next(version(1));
+      await settle();
+
+      expect(fixture.componentInstance.doc()?.uid).toBe('doc-live');
+      expect(el('.version-banner')).toBeNull();
     });
   });
 
@@ -304,7 +337,7 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
 
       expect(el('.version-banner')?.textContent).toContain("You're viewing the 0.1 version.");
       await click('.version-banner-latest');
-      expect(navigateByUrl).toHaveBeenCalledWith('/doc/doc-live');
+      expect(navigate).toHaveBeenCalledWith(['/doc', 'doc-live'], {});
     });
 
     it('is read-only even though the permissions enricher reports Write', async () => {
@@ -373,7 +406,7 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
         }),
       );
       expect(mockDetailService.restoreVersion).not.toHaveBeenCalled();
-      expect(navigateByUrl).not.toHaveBeenCalled();
+      expect(navigate).not.toHaveBeenCalled();
     });
 
     it('restores on confirmation and returns to the live document', async () => {
@@ -384,7 +417,7 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
 
       expect(mockDetailService.restoreVersion).toHaveBeenCalledWith('v-0-1');
       expect(snack).toHaveBeenCalledWith('Restored to version 0.1', 'OK', expect.anything());
-      expect(navigateByUrl).toHaveBeenCalledWith('/doc/doc-live');
+      expect(navigate).toHaveBeenCalledWith(['/doc', 'doc-live'], {});
     });
 
     it.each([
@@ -408,7 +441,7 @@ describe('DocumentDetailComponent — versions (NXSAT-332)', () => {
       await click('.version-banner-restore');
 
       expect(snack).toHaveBeenCalledWith(message, 'OK', expect.anything());
-      expect(navigateByUrl).not.toHaveBeenCalled();
+      expect(navigate).not.toHaveBeenCalled();
       expect(mockDetailService.getFullDocument).not.toHaveBeenCalled();
       expect(fixture.componentInstance.actionInProgress()).toBeNull();
       expect(el('.version-banner-restore')).toBeTruthy();

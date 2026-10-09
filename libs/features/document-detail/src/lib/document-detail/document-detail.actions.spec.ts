@@ -938,11 +938,11 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
 
     it('returns to the live document after restoring the version it shows', async () => {
       await build();
-      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
       component.restoreVersion({ ...version(1, 0), versionableId: 'doc-live' });
 
-      expect(navigate).toHaveBeenCalledWith('/doc/doc-live');
+      expect(navigate).toHaveBeenCalledWith(['/doc', 'doc-live'], {});
     });
 
     it('reloads the document after a version is created', async () => {

@@ -1833,6 +1833,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
+          // A slower response for a uid the route has already left — moving between a version
+          // and its live document — would otherwise render the wrong one, and its write gates.
+          if (uid !== this.docUid) return;
           if (isCollectionDocument(doc)) {
             void this.router.navigate(['/collections', doc.uid], { replaceUrl: true });
             return;
@@ -1869,6 +1872,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.maybeBackfillContentLakeMarker(doc);
         },
         error: () => {
+          if (uid !== this.docUid) return;
           this.error.set(this.translate.instant('document-detail.message.failed-to-load-document'));
           this.loading.set(false);
         },
@@ -4061,17 +4065,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return `${major}.${minor}`;
   }
 
+  /**
+   * Move between a document and its versions. The browse return mode is carried along, or the
+   * breadcrumb and back target of a document opened from adf-hx browse would reset after one
+   * version was opened.
+   */
+  private navigateWithinVersions(uid: string): void {
+    const returnMode = this.route.snapshot.queryParamMap.get(BROWSE_RETURN_MODE_PARAM);
+    void this.router.navigate(
+      ['/doc', uid],
+      returnMode ? { queryParams: { [BROWSE_RETURN_MODE_PARAM]: returnMode } } : {},
+    );
+  }
+
   /** Open a version read-only. Choosing one from the list never restores it. */
   openVersion(version: NuxeoDocument): void {
     this.versionDropdownOpen.set(false);
-    if (version.uid !== this.docUid) this.navigateToDoc(version.uid);
+    if (version.uid !== this.docUid) this.navigateWithinVersions(version.uid);
   }
 
   /** Leave a version for the live document it belongs to. */
   showLatestVersion(): void {
     this.versionDropdownOpen.set(false);
     const liveUid = this.liveDocumentUid();
-    if (liveUid !== this.docUid) this.navigateToDoc(liveUid);
+    if (liveUid !== this.docUid) this.navigateWithinVersions(liveUid);
   }
 
   /** Restoring replaces the live document's content, so it is confirmed first. */
@@ -4118,7 +4135,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           );
           const liveUid = version.versionableId;
           if (liveUid && liveUid !== this.docUid) {
-            this.navigateToDoc(liveUid);
+            this.navigateWithinVersions(liveUid);
           } else {
             this.versionsLoaded = false;
             this.loadDocument(this.docUid);
