@@ -321,7 +321,11 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   ],
   providers: [provideTranslatedDatepickerIntl(), provideNativeDateAdapter()],
   templateUrl: './document-detail.html',
-  styleUrls: ['./document-detail.scss', './document-detail-go-back-icon.scss'],
+  styleUrls: [
+    './document-detail.scss',
+    './document-detail-go-back-icon.scss',
+    './document-detail-panel-close-focus.scss',
+  ],
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly translate = inject(TranslateService);
