@@ -9,8 +9,8 @@ audience: presales, customers, partners
 
 # Nuxeo Agentic UI — the short version
 
-For presales engineers, customers and partners. It takes about five minutes, describes what the
-`main` branch does today (checked on 7 October 2026), and leaves the longer documents to the end.
+For presales engineers, customers and partners. It takes about five minutes, describes the
+product as it is today (checked on 7 October 2026), and leaves the longer documents to the end.
 
 ## What it is
 
@@ -59,7 +59,7 @@ Configuration has two parts:
 1. **The settings** (bootstrap): the name, logo, colours and default language.
 2. **The manifest**, which holds the wording and the whole arrangement.
 
-Since NXSAT-312 you ship both in **your own Marketplace package that depends on ours**. It
+You ship both in **your own Marketplace package that depends on ours**. It
 contributes configuration fragments, and the server serves them after our defaults, in dependency
 order. Nothing is edited on the server and nothing is stored in the Nuxeo content repository. The
 application reads both at startup, before sign-in, so they are the same for every user (except on a
@@ -136,8 +136,7 @@ shows Administration to administrators only:
 ## What it does not do today
 
 - **Change every mark.** The settings fragment's `branding.logo` replaces the header word mark
-  and the sign-in page logo
-  ([pull request #307](https://github.com/nuxeo/agentic-ui-poc/pull/307)). The small mark at the
+  and the sign-in page logo. The small mark at the
   top of the navigation rail and the "Content Innovation Cloud" title shown when the rail is
   expanded belong to the Satori design system and stay, and so does the browser-tab icon.
 - **Edit the fields of your own document types.** The Properties panel shows a type's own fields,
@@ -182,8 +181,9 @@ the package is not published yet, you build it from this repository. Publishing 
    [Nuxeo Agentic UI prompt library](https://github.com/nuxeo-sandbox/nuxeo-agentic-ui-prompts),
    started by Nuxeo presales. Its rule is that the agent reads our source but never changes it,
    and writes everything into your own Marketplace package that depends on `nuxeo-agentic-ui`.
-   Its branding prompt was written before NXSAT-312 and copies a settings file onto the server,
-   which is no longer read; put the same JSON in your package's `bootstrap.json` fragment instead.
+   Its branding prompt was written before configuration moved into packages and copies a
+   settings file onto the server, which is no longer read; put the same JSON in your package's
+   `bootstrap.json` fragment instead.
    Prompts are collected there rather than in this repository.
 
 ## Read more
