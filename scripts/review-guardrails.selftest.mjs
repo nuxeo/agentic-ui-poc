@@ -6212,6 +6212,75 @@ expectRed(
   /\.storybook\/material-theme\.sass imports `@hylandsoftware\/satori-ui\/theme`/,
 );
 
+// The `:satori` configuration's theme is the one stylesheet that may reach Satori — exactly that one.
+const storybookProjectWith = (configurations) =>
+  `${JSON.stringify(
+    {
+      name: 'satori-components',
+      targets: {
+        'build-storybook': {
+          options: { styles: [`${NXS_ROOT}/.storybook/material-theme.scss`] },
+          configurations,
+        },
+      },
+    },
+    null,
+    2,
+  )}\n`;
+
+expectRed(
+  'another named Storybook configuration whose theme reaches Satori',
+  'checkSatoriComponentsDependencies',
+  NXS_STORYBOOK({
+    [`${NXS_ROOT}/project.json`]: storybookProjectWith({
+      satori: { styles: [`${NXS_ROOT}/.storybook/satori-theme.scss`] },
+      print: { styles: [`${NXS_ROOT}/.storybook/print-theme.scss`] },
+    }),
+    [`${NXS_ROOT}/.storybook/print-theme.scss`]: "@use '@hylandsoftware/satori-ui/theme';\n",
+  }),
+  null,
+  /\.storybook\/print-theme\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'the Satori theme named by a configuration other than :satori',
+  'checkSatoriComponentsDependencies',
+  NXS_STORYBOOK({
+    [`${NXS_ROOT}/project.json`]: storybookProjectWith({
+      satori: { styles: [`${NXS_ROOT}/.storybook/satori-theme.scss`] },
+      print: { styles: [`${NXS_ROOT}/.storybook/satori-theme.scss`] },
+    }),
+  }),
+  null,
+  /\.storybook\/satori-theme\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
+expectRed(
+  'a second stylesheet in the :satori configuration that reaches Satori',
+  'checkSatoriComponentsDependencies',
+  NXS_STORYBOOK({
+    [`${NXS_ROOT}/project.json`]: NXS_STORYBOOK_PROJECT({
+      satoriStyles: [
+        `${NXS_ROOT}/.storybook/satori-theme.scss`,
+        `${NXS_ROOT}/.storybook/satori-extra.scss`,
+      ],
+    }),
+    [`${NXS_ROOT}/.storybook/satori-extra.scss`]: "@use '@hylandsoftware/satori-ui/tokens';\n",
+  }),
+  null,
+  /\.storybook\/satori-extra\.scss imports `@hylandsoftware\/satori-ui\/tokens`/,
+);
+
+expectRed(
+  'a stylesheet under .storybook that no configuration names, reaching Satori',
+  'checkSatoriComponentsDependencies',
+  NXS_STORYBOOK({
+    [`${NXS_ROOT}/.storybook/extra.scss`]: "@use '@hylandsoftware/satori-ui/theme';\n",
+  }),
+  null,
+  /\.storybook\/extra\.scss imports `@hylandsoftware\/satori-ui\/theme`/,
+);
+
 falsePositiveControls += 1;
 expectGreen(
   'a default indented-Sass theme on Material only',
@@ -6425,6 +6494,95 @@ expectGreen(
   'a meta whose includeStories regex matches its story',
   'checkSatoriComponentsHaveStories',
   NXS_STORYBOOK({ [NXS_STORY]: nxsStory({ meta: filteredMeta('includeStories: /^Bas/') }) }),
+);
+
+expectRed(
+  'a shorthand excludeStories that filters out the only export',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      meta: `const excludeStories = ['fixture'];\n${filteredMeta('excludeStories')}`,
+      stories: 'export const fixture = {};',
+    }),
+  }),
+  null,
+  /exports `NxsThingComponent` .* no story documents it/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a shorthand excludeStories that keeps a story',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      meta: `const excludeStories = ['fixture'];\n${filteredMeta('excludeStories')}`,
+      stories: 'export const fixture = {};\nexport const Basic: StoryObj<NxsThingComponent> = {};',
+    }),
+  }),
+);
+
+expectRed(
+  'a shorthand excludeStories naming an import the guardrail cannot read',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      imports:
+        "import { NxsThingComponent } from './thing.component';\nimport { excludeStories } from './filters';",
+      meta: filteredMeta('excludeStories'),
+    }),
+  }),
+  null,
+  /thing\.stories\.ts sets `excludeStories` to something other than a list of names or a regex literal/,
+);
+
+expectRed(
+  'a meta that spreads another object in',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory({
+      meta: `const shared = { excludeStories: ['Basic'] };\n${filteredMeta('...shared')}`,
+    }),
+  }),
+  null,
+  /thing\.stories\.ts spreads another object into its default-exported meta/,
+);
+
+// `.storybook/main.ts` is read for its exported `stories` list, not searched for the glob's text.
+expectRed(
+  'a Storybook main.ts that mentions the glob only in a comment',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory(),
+    [NXS_STORYBOOK_MAIN]:
+      "// '../src/**/*.stories.ts'\nexport default { stories: ['../docs/**/*.mdx'] };\n",
+  }),
+  null,
+  /main\.ts does not load `\.\.\/src\/\*\*\/\*\.stories\.ts`/,
+);
+
+expectRed(
+  'a Storybook main.ts whose stories list is not literal',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory(),
+    [NXS_STORYBOOK_MAIN]:
+      "const globs = () => ['../src/**/*.stories.ts'];\nexport default { stories: globs() };\n",
+  }),
+  null,
+  /main\.ts does not export a `stories` list of string literals/,
+);
+
+falsePositiveControls += 1;
+expectGreen(
+  'a Storybook main.ts exporting a typed constant, as the library does',
+  'checkSatoriComponentsHaveStories',
+  NXS_STORYBOOK({
+    [NXS_STORY]: nxsStory(),
+    [NXS_STORYBOOK_MAIN]:
+      "import type { StorybookConfig } from '@storybook/angular';\n" +
+      "const config: StorybookConfig = { stories: ['../src/**/*.stories.ts'], addons: [] };\n" +
+      'export default config;\n',
+  }),
 );
 
 expectRed(
