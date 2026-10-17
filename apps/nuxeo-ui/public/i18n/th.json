@@ -518,7 +518,7 @@
       "coming-soon": "เร็วๆ นี้"
     },
     "preset": {
-      "badge": "Preset: {{ label }}"
+      "badge": "พรีเซ็ต: {{ label }}"
     },
     "profile-page": {
       "change-password": "เปลี่ยนรหัสผ่าน",
@@ -1057,14 +1057,14 @@
       "trashed-document-many": "เอกสารในถังขยะ {{ count }} รายการ",
       "trashed-document-one": "เอกสารในถังขยะ {{ count }} รายการ"
     },
-    "date-mask": "dd/mm/yyyy",
+    "date-mask": "mm/dd/yyyy",
     "dismiss": "ยกเลิก",
     "email-example": "name@company.com",
     "lock": {
-      "already-locked": "เอกสารถูกล็อกโดยผู้ใช้อื่นแล้ว โปรดรีเฟรชหน้า",
-      "lock-no-permission": "คุณไม่มีสิทธิ์ล็อกเอกสารนี้",
+      "already-locked": "เอกสารนี้ถูกล็อกโดยผู้ใช้อื่นแล้ว กรุณารีเฟรชหน้า",
+      "lock-no-permission": "คุณไม่มีสิทธิ์ในการล็อกเอกสารนี้",
       "locked-by": "ล็อกโดย {{ owner }} เมื่อ {{ date }}",
-      "locked-by-another-user": "คุณไม่สามารถปลดล็อกเอกสารนี้ได้ เนื่องจากถูกล็อกโดยผู้ใช้อื่น",
+      "locked-by-another-user": "คุณไม่สามารถปลดล็อกเอกสารนี้ได้ เนื่องจากผู้ใช้อื่นล็อกเอกสารนี้ไว้",
       "unlock-no-permission": "คุณไม่มีสิทธิ์ปลดล็อกเอกสารนี้"
     },
     "ok": "ตกลง",
@@ -1420,8 +1420,8 @@
       "publication-removed": "นำการเผยแพร่ออกแล้ว",
       "removed-from-favorites": "นำออกจากรายการโปรดแล้ว",
       "reply-deleted": "ลบการตอบกลับแล้ว",
-      "restore-version-conflict": "ไม่สามารถกู้คืนเวอร์ชันนี้ได้เนื่องจากขัดแย้งกับสถานะปัจจุบันของเอกสาร โปรดโหลดหน้าใหม่แล้วลองอีกครั้ง",
-      "restore-version-forbidden": "คุณไม่สามารถกู้คืนเวอร์ชันนี้ได้ เนื่องจากคุณไม่มีสิทธิ์ หรือผู้ใช้อื่นได้ล็อกเอกสารไว้",
+      "restore-version-conflict": "ไม่สามารถคืนค่าเวอร์ชันนี้ได้เนื่องจากมีความขัดแย้งกับสถานะปัจจุบันของเอกสาร โปรดโหลดหน้าใหม่และลองอีกครั้ง",
+      "restore-version-forbidden": "คุณไม่สามารถกู้คืนเวอร์ชันนี้ได้: คุณไม่มีสิทธิ์ หรือมีผู้อื่นล็อกเอกสารนี้ไว้",
       "search-failed-try-again": "การค้นหาล้มเหลว ลองอีกครั้ง.",
       "section-not-found": "ไม่พบส่วน",
       "selected-documents-have-no-insertable-image-url": "เอกสารที่เลือกไม่มี URL รูปภาพที่แทรกได้",
@@ -1520,15 +1520,16 @@
     "version-latest-entry": "เวอร์ชันล่าสุด",
     "version-modified-by": "แก้ไขเมื่อ {{ when }} โดย {{ who }}",
     "version-restore": "กู้คืน {{ version }}",
-    "version-restore-confirm-title": "คุณแน่ใจหรือไม่",
+    "version-restore-confirm-title": "ยืนยันหรือไม่?",
+    "version-restore-replaces-content": "การเรียกคืนเวอร์ชัน {{ version }} จะแทนที่เนื้อหาปัจจุบันของเอกสาร รวมถึงการเปลี่ยนแปลงใดๆ ที่ทำขึ้นหลังเวอร์ชัน {{ version }}",
     "version-viewing": "คุณกำลังดูเวอร์ชัน {{ version }}",
     "visual-editor": "ตัวแก้ไขแบบภาพ",
     "workflow-started-on-document": "คุณได้เริ่มเวิร์กโฟลว์ {{ workflow }} ในเอกสารนี้แล้ว"
   },
   "document-layouts": {
-    "no": "No",
-    "sections": "Property sections",
-    "yes": "Yes"
+    "no": "ไม่",
+    "sections": "ส่วนคุณสมบัติ",
+    "yes": "ใช่"
   },
   "drawer": {
     "administration-analytics": "การวิเคราะห์",
@@ -2152,6 +2153,7 @@
     "document-viewer": {
       "additional-formats": "รูปแบบเพิ่มเติม",
       "annotations-are-not-available-for-this": "ไม่มีคำอธิบายประกอบสำหรับเอกสารนี้",
+      "annotations-frame": "คำอธิบายประกอบสำหรับ {{ name }}",
       "audio-codec": "โคเดกเสียง",
       "bit-depth-per-channel": "ความลึกบิตต่อช่องสัญญาณ",
       "color-profile": "โปรไฟล์สี",
@@ -2174,9 +2176,12 @@
       "iptc-rights": "สิทธิ์การใช้งาน",
       "iptc-source": "แหล่งที่มา",
       "loading": "กำลังโหลด",
+      "note-frame": "เนื้อหาบันทึกย่อสำหรับ {{ name }}",
       "open-with-nuxeo-drive": "เปิดด้วย Nuxeo Drive",
+      "pdf-frame": "ตัวอย่าง PDF ของ {{ name }}",
       "picture-info": "ข้อมูลรูปภาพ",
       "preview": "แสดงตัวอย่าง",
+      "preview-frame": "ตัวอย่างของ {{ name }}",
       "preview-not-available": "ไม่มีตัวอย่าง",
       "remove": "ลบ",
       "remove-main-file": "ลบไฟล์หลัก",

@@ -518,7 +518,7 @@
       "coming-soon": "Prochainement disponible"
     },
     "preset": {
-      "badge": "Preset: {{ label }}"
+      "badge": "Préréglage : {{ label }}"
     },
     "profile-page": {
       "change-password": "Changer le mot de passe",
@@ -1057,15 +1057,15 @@
       "trashed-document-many": "{{ count }} documents dans la corbeille",
       "trashed-document-one": "{{ count }} document dans la corbeille"
     },
-    "date-mask": "jj/mm/aaaa",
+    "date-mask": "mm/dd/yyyy",
     "dismiss": "Abandonner",
     "email-example": "nom@entreprise.com",
     "lock": {
-      "already-locked": "Document déjà verrouillé par un autre utilisateur, veuillez rafraîchir votre page.",
-      "lock-no-permission": "Vous n'avez pas l'autorisation de verrouiller ce document.",
+      "already-locked": "Document déjà verrouillé par un autre utilisateur, veuillez actualiser votre page.",
+      "lock-no-permission": "Vous n'êtes pas autorisé(e) à verrouiller ce document.",
       "locked-by": "Verrouillé par {{ owner }} le {{ date }}",
-      "locked-by-another-user": "Vous ne pouvez pas déverrouiller ce document car il est verrouillé par un autre utilisateur.",
-      "unlock-no-permission": "Vous n'avez pas l'autorisation de déverrouiller ce document."
+      "locked-by-another-user": "Vous ne pouvez pas déverrouiller ce document, car il est verrouillé par un autre utilisateur.",
+      "unlock-no-permission": "Vous n’êtes pas autorisé(e) à déverrouiller ce document."
     },
     "ok": "OK",
     "page-number": "Page {{ page }}",
@@ -1421,7 +1421,7 @@
       "removed-from-favorites": "Supprimé des favoris",
       "reply-deleted": "Réponse supprimée",
       "restore-version-conflict": "Cette version ne peut pas être restaurée en raison d'un conflit avec l'état actuel du document. Rechargez la page et réessayez.",
-      "restore-version-forbidden": "Vous ne pouvez pas restaurer cette version : vous n'avez pas l'autorisation, ou un autre utilisateur a verrouillé le document.",
+      "restore-version-forbidden": "Vous ne pouvez pas restaurer cette version : vous n'avez pas l'autorisation nécessaire, ou quelqu'un d'autre a verrouillé le document.",
       "search-failed-try-again": "Échec de la recherche. Réessayez.",
       "section-not-found": "Section introuvable",
       "selected-documents-have-no-insertable-image-url": "Les documents sélectionnés n'ont pas d'URL d'image insérable",
@@ -1515,20 +1515,21 @@
     "task-due-before": "avant le {{ due }}",
     "unblock": "Débloquer",
     "unknown": "Inconnu",
-    "version-go-to-latest": "Aller à la dernière version",
+    "version-go-to-latest": "Accéder à la dernière version",
     "version-latest": "{{ version }} récente",
     "version-latest-entry": "Dernière version",
     "version-modified-by": "Modifié {{ when }} par {{ who }}",
     "version-restore": "Restaurer {{ version }}",
-    "version-restore-confirm-title": "Êtes-vous sûr ?",
+    "version-restore-confirm-title": "Vous êtes sûr ?",
+    "version-restore-replaces-content": "La restauration de la version {{ version }} remplace le contenu actuel du document, y compris toutes les modifications effectuées après la version {{ version }}.",
     "version-viewing": "Vous consultez la version {{ version }}.",
     "visual-editor": "Editeur visuel",
     "workflow-started-on-document": "Vous avez démarré un flux de travail {{ workflow }} sur ce document."
   },
   "document-layouts": {
-    "no": "No",
-    "sections": "Property sections",
-    "yes": "Yes"
+    "no": "Non",
+    "sections": "Sections de propriétés",
+    "yes": "Oui"
   },
   "drawer": {
     "administration-analytics": "Analyse",
@@ -2152,6 +2153,7 @@
     "document-viewer": {
       "additional-formats": "Formats supplémentaires",
       "annotations-are-not-available-for-this": "Les annotations ne sont pas disponibles pour ce document.",
+      "annotations-frame": "Annotations pour {{ name }}",
       "audio-codec": "Codec audio",
       "bit-depth-per-channel": "Profondeur de bits par canal",
       "color-profile": "Profil de couleur",
@@ -2174,9 +2176,12 @@
       "iptc-rights": "Droits",
       "iptc-source": "Source",
       "loading": "Chargement",
+      "note-frame": "Contenu de la note pour {{ name }}",
       "open-with-nuxeo-drive": "Ouvrir avec Nuxeo Drive",
+      "pdf-frame": "Aperçu PDF de {{ name }}",
       "picture-info": "Informations sur l'image",
       "preview": "Aperçu",
+      "preview-frame": "Aperçu de {{ name }}",
       "preview-not-available": "Aperçu non disponible",
       "remove": "Supprimer",
       "remove-main-file": "Supprimer le fichier principal",

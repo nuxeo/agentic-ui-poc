@@ -518,7 +518,7 @@
       "coming-soon": "即将推出"
     },
     "preset": {
-      "badge": "Preset: {{ label }}"
+      "badge": "预设：{{ label }}"
     },
     "profile-page": {
       "change-password": "更改密码",
@@ -1057,15 +1057,15 @@
       "trashed-document-many": "回收站中的 {{ count }} 个文档",
       "trashed-document-one": "回收站中的 {{ count }} 个文档"
     },
-    "date-mask": "yy-mm-dd",
+    "date-mask": "mm/dd/yyyy",
     "dismiss": "解除",
     "email-example": "name@company.com",
     "lock": {
-      "already-locked": "文档已被其他用户锁定，请刷新您的页面。",
-      "lock-no-permission": "您没有权限锁定该文档。",
-      "locked-by": "已由 {{ owner }} 于 {{ date }} 锁定",
-      "locked-by-another-user": "您不能解锁此文档，因为它已被其他用户锁定。",
-      "unlock-no-permission": "您没有权限解锁该文档。"
+      "already-locked": "文档已被其他用户锁定，请刷新页面。",
+      "lock-no-permission": "您没有锁定此文档的权限。",
+      "locked-by": "由 {{ owner }} 于 {{ date }} 锁定",
+      "locked-by-another-user": "您无法解锁此文档，因为该文档已被其他用户锁定。",
+      "unlock-no-permission": "您没有解锁此文档的权限。"
     },
     "ok": "确定",
     "page-number": "第 {{ page }} 页",
@@ -1420,7 +1420,7 @@
       "publication-removed": "发布内容已删除",
       "removed-from-favorites": "已从收藏夹中移除",
       "reply-deleted": "回复已删除",
-      "restore-version-conflict": "由于与文档的当前状态冲突，无法恢复此版本。请重新加载页面后重试。",
+      "restore-version-conflict": "由于与文档当前状态存在冲突，无法恢复此版本。请重新加载页面并重试。",
       "restore-version-forbidden": "无法恢复此版本：您没有权限，或其他用户已锁定该文档。",
       "search-failed-try-again": "搜索失败。请重试。",
       "section-not-found": "未找到版块",
@@ -1520,15 +1520,16 @@
     "version-latest-entry": "最新版本",
     "version-modified-by": "由 {{ who }} 于 {{ when }} 修改",
     "version-restore": "恢复 {{ version }}",
-    "version-restore-confirm-title": "确定吗？",
+    "version-restore-confirm-title": "确定吗?",
+    "version-restore-replaces-content": "恢复版本 {{ version }} 将替换文档的当前内容，包括版本 {{ version }} 之后所做的所有更改。",
     "version-viewing": "您正在查看 {{ version }} 版本。",
     "visual-editor": "可视化编辑器",
     "workflow-started-on-document": "您已在此文档上启动 {{ workflow }} 工作流程。"
   },
   "document-layouts": {
-    "no": "No",
-    "sections": "Property sections",
-    "yes": "Yes"
+    "no": "否",
+    "sections": "属性部分",
+    "yes": "是"
   },
   "drawer": {
     "administration-analytics": "分析",
@@ -2152,6 +2153,7 @@
     "document-viewer": {
       "additional-formats": "其他格式",
       "annotations-are-not-available-for-this": "此文档不支持批注。",
+      "annotations-frame": "{{ name }} 的注释",
       "audio-codec": "音频编解码器",
       "bit-depth-per-channel": "每通道位深度",
       "color-profile": "颜色配置文件",
@@ -2174,9 +2176,12 @@
       "iptc-rights": "权利",
       "iptc-source": "来源",
       "loading": "加载",
+      "note-frame": "{{ name }} 的笔记内容",
       "open-with-nuxeo-drive": "使用 Nuxeo Drive 打开",
+      "pdf-frame": "{{ name }} 的 PDF 预览",
       "picture-info": "图片信息",
       "preview": "预览",
+      "preview-frame": "{{ name }} 的预览",
       "preview-not-available": "预览不可用",
       "remove": "删除",
       "remove-main-file": "删除主文件",

@@ -518,7 +518,7 @@
       "coming-soon": "近日公開"
     },
     "preset": {
-      "badge": "Preset: {{ label }}"
+      "badge": "プリセット: {{ label }}"
     },
     "profile-page": {
       "change-password": "パスワードの変更",
@@ -1057,13 +1057,13 @@
       "trashed-document-many": "ごみ箱内の文書: {{ count }} 件",
       "trashed-document-one": "ごみ箱内の文書: {{ count }} 件"
     },
-    "date-mask": "yyyy/mm/dd",
+    "date-mask": "mm/dd/yyyy",
     "dismiss": "破棄",
     "email-example": "name@company.com",
     "lock": {
-      "already-locked": "文書は既に別のユーザーによってロックされています。ページを更新してください。",
+      "already-locked": "この文書は他のユーザーによってすでにロックされています。ページを更新してください。",
       "lock-no-permission": "この文書をロックする権限がありません。",
-      "locked-by": "{{ owner }} によって {{ date }} にロックされました",
+      "locked-by": "{{ owner }} が {{ date }} にロックしました",
       "locked-by-another-user": "この文書は別のユーザーによってロックされているため、ロックを解除できません。",
       "unlock-no-permission": "この文書のロックを解除する権限がありません。"
     },
@@ -1420,8 +1420,8 @@
       "publication-removed": "公開を削除しました",
       "removed-from-favorites": "お気に入りから削除されました",
       "reply-deleted": "返信を削除しました",
-      "restore-version-conflict": "文書の現在の状態と競合しているため、このバージョンを復元できません。ページを再読み込みして、もう一度お試しください。",
-      "restore-version-forbidden": "このバージョンを復元できません。権限がないか、別のユーザーが文書をロックしています。",
+      "restore-version-conflict": "文書の現在の状態との競合により、このバージョンは復元できません。ページを再読み込みしてから再試行してください。",
+      "restore-version-forbidden": "このバージョンを復元できません: 権限がないか、他のユーザーが文書をロックしています。",
       "search-failed-try-again": "検索に失敗しました。もう一度お試しください。",
       "section-not-found": "セクションが見つかりません",
       "selected-documents-have-no-insertable-image-url": "選択した文書には挿入可能な画像 URL がありません",
@@ -1519,16 +1519,17 @@
     "version-latest": "{{ version }} 最新",
     "version-latest-entry": "最新バージョン",
     "version-modified-by": "{{ who }} が {{ when }} に変更",
-    "version-restore": "{{ version }} を復元",
-    "version-restore-confirm-title": "よろしいですか?",
-    "version-viewing": "バージョン {{ version }} を表示しています。",
+    "version-restore": "バージョン {{ version }} を復元",
+    "version-restore-confirm-title": "本当に実行しますか?",
+    "version-restore-replaces-content": "バージョン {{ version }} を復元すると、文書の現在のコンテンツ（バージョン {{ version }} より後に行われた変更を含む）が置き換えられます。",
+    "version-viewing": "{{ version }} バージョンを表示しています。",
     "visual-editor": "ビジュアルエディター",
     "workflow-started-on-document": "この文書で {{ workflow }} ワークフローを開始しました。"
   },
   "document-layouts": {
-    "no": "No",
-    "sections": "Property sections",
-    "yes": "Yes"
+    "no": "いいえ",
+    "sections": "プロパティセクション",
+    "yes": "はい"
   },
   "drawer": {
     "administration-analytics": "分析",
@@ -2152,6 +2153,7 @@
     "document-viewer": {
       "additional-formats": "その他の形式",
       "annotations-are-not-available-for-this": "この文書では注釈を使用できません。",
+      "annotations-frame": "{{ name }}の注釈",
       "audio-codec": "オーディオコーデック",
       "bit-depth-per-channel": "チャネルあたりのビット深度",
       "color-profile": "カラープロファイル",
@@ -2174,9 +2176,12 @@
       "iptc-rights": "権利",
       "iptc-source": "提供元",
       "loading": "読み込んでいます",
+      "note-frame": "{{ name }} のノートコンテンツ",
       "open-with-nuxeo-drive": "Nuxeo Drive で開く",
+      "pdf-frame": "{{ name }} の PDF プレビュー",
       "picture-info": "画像情報",
       "preview": "プレビュー",
+      "preview-frame": "{{ name }} のプレビュー",
       "preview-not-available": "プレビューは使用できません",
       "remove": "削除",
       "remove-main-file": "メインファイルを削除",
