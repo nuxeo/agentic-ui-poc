@@ -518,7 +518,7 @@
       "coming-soon": "Demnächst verfügbar"
     },
     "preset": {
-      "badge": "Preset: {{ label }}"
+      "badge": "Voreinstellung: {{ label }}"
     },
     "profile-page": {
       "change-password": "Passwort ändern",
@@ -1057,15 +1057,15 @@
       "trashed-document-many": "{{ count }} Dokumente im Papierkorb",
       "trashed-document-one": "{{ count }} Dokument im Papierkorb"
     },
-    "date-mask": "tt.mm.jjjj",
+    "date-mask": "mm/dd/yyyy",
     "dismiss": "Verwerfen",
     "email-example": "name@firma.de",
     "lock": {
-      "already-locked": "Dokument bereits von einem anderen Benutzer gesperrt, bitte aktualisieren Sie Ihre Seite.",
-      "lock-no-permission": "Sie haben keine Berechtigung, dieses Dokument zu sperren.",
+      "already-locked": "Dokument bereits von einem anderen Benutzer gesperrt, bitte aktualisieren Sie die Seite.",
+      "lock-no-permission": "Sie haben keine Autorisierung, dieses Dokument zu sperren.",
       "locked-by": "Gesperrt von {{ owner }} am {{ date }}",
-      "locked-by-another-user": "Sie können dieses Dokument nicht entsperren, weil es von einem anderen Benutzer gesperrt ist.",
-      "unlock-no-permission": "Sie haben keine Berechtigung, dieses Dokument zu entsperren."
+      "locked-by-another-user": "Sie können dieses Dokument nicht entsperren, da es von einem anderen Benutzer gesperrt ist.",
+      "unlock-no-permission": "Sie haben keine Autorisierung, dieses Dokument zu entsperren."
     },
     "ok": "OK",
     "page-number": "Seite {{ page }}",
@@ -1420,8 +1420,8 @@
       "publication-removed": "Veröffentlichung entfernt",
       "removed-from-favorites": "Aus Favoriten entfernt",
       "reply-deleted": "Antwort gelöscht",
-      "restore-version-conflict": "Diese Version kann wegen eines Konflikts mit dem aktuellen Zustand des Dokuments nicht wiederhergestellt werden. Laden Sie die Seite neu und versuchen Sie es erneut.",
-      "restore-version-forbidden": "Sie können diese Version nicht wiederherstellen: Ihnen fehlt die Berechtigung, oder ein anderer Benutzer hat das Dokument gesperrt.",
+      "restore-version-conflict": "Diese Version kann aufgrund eines Konflikts mit dem aktuellen Status des Dokuments nicht wiederhergestellt werden. Laden Sie die Seite neu und versuchen Sie es erneut.",
+      "restore-version-forbidden": "Sie können diese Version nicht wiederherstellen: Sie haben keine Autorisierung, oder jemand anderes hat das Dokument gesperrt.",
       "search-failed-try-again": "Suche fehlgeschlagen. Versuchen Sie es erneut.",
       "section-not-found": "Abschnitt nicht gefunden",
       "selected-documents-have-no-insertable-image-url": "Die ausgewählten Dokumente haben keine einfügbare Bild-URL",
@@ -1515,20 +1515,21 @@
     "task-due-before": "bis {{ due }}",
     "unblock": "Entsperren",
     "unknown": "Unbekannt",
-    "version-go-to-latest": "Zur neuesten Version",
+    "version-go-to-latest": "Zur neuesten Version wechseln",
     "version-latest": "{{ version }} Neueste",
     "version-latest-entry": "Neueste Version",
     "version-modified-by": "Bearbeitet {{ when }} von {{ who }}",
     "version-restore": "{{ version }} wiederherstellen",
     "version-restore-confirm-title": "Sind Sie sicher?",
-    "version-viewing": "Sie sehen die Version {{ version }}.",
+    "version-restore-replaces-content": "Das Wiederherstellen von Release {{ version }} ersetzt den aktuellen Inhalt des Dokuments, einschließlich aller Änderungen, die nach Release {{ version }} vorgenommen wurden.",
+    "version-viewing": "Sie zeigen den Release {{ version }} an.",
     "visual-editor": "Visueller Editor",
     "workflow-started-on-document": "Sie haben für dieses Dokument einen Workflow „{{ workflow }}“ gestartet."
   },
   "document-layouts": {
-    "no": "No",
-    "sections": "Property sections",
-    "yes": "Yes"
+    "no": "Nein",
+    "sections": "Eigenschaftsabschnitte",
+    "yes": "Ja"
   },
   "drawer": {
     "administration-analytics": "Analysen",
@@ -2152,6 +2153,7 @@
     "document-viewer": {
       "additional-formats": "Zusätzliche Formate",
       "annotations-are-not-available-for-this": "Für dieses Dokument sind keine Anmerkungen verfügbar.",
+      "annotations-frame": "Anmerkungen für {{ name }}",
       "audio-codec": "Audio-Codec",
       "bit-depth-per-channel": "Bittiefe pro Kanal",
       "color-profile": "Farbprofil",
@@ -2174,9 +2176,12 @@
       "iptc-rights": "Rechte",
       "iptc-source": "Quelle",
       "loading": "Wird geladen",
+      "note-frame": "Notizinhalt für {{ name }}",
       "open-with-nuxeo-drive": "Mit Nuxeo Drive öffnen",
+      "pdf-frame": "PDF-Vorschau von {{ name }}",
       "picture-info": "Bildinfo",
       "preview": "Vorschau",
+      "preview-frame": "Vorschau von {{ name }}",
       "preview-not-available": "Vorschau nicht verfügbar",
       "remove": "Entfernen",
       "remove-main-file": "Hauptdatei entfernen",
