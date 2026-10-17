@@ -1,0 +1,29 @@
+export * from './lib/ui/ui';
+export { SelectionTopbarComponent } from './lib/selection-topbar/selection-topbar.component';
+export { DocumentCompareDialogComponent, } from './lib/document-compare-dialog/document-compare-dialog.component';
+export { openDocumentCompareDialog } from './lib/document-compare-dialog/open-document-compare-dialog';
+export { WidgetContainerComponent } from './lib/widget-container/widget-container.component';
+export { WidgetGridComponent } from './lib/widget-grid/widget-grid.component';
+export { ShareDialogComponent, } from './lib/share-dialog/share-dialog.component';
+export { DocumentViewerComponent, } from './lib/document-viewer/document-viewer.component';
+export { ExportDialogComponent, } from './lib/export-dialog/export-dialog.component';
+export { SavedSearchDialogComponent, SAVED_SEARCH_DIALOG_OPTIONS, } from './lib/saved-search-dialog/saved-search-dialog.component';
+export { ShareSavedSearchDialogComponent, } from './lib/share-saved-search-dialog/share-saved-search-dialog.component';
+export { ConfirmDialogComponent, } from './lib/confirm-dialog/confirm-dialog.component';
+export { EditCollectionDialogComponent, } from './lib/edit-collection-dialog/edit-collection-dialog';
+export { trashDocumentConfirmData, trashSelectedDocumentsConfirmData, } from './lib/confirm-dialog/trash-confirm.utils';
+export { observeStripRedundantMatInputAriaRequired, stripRedundantMatInputAriaRequired, } from './lib/login-mat-input-required-a11y';
+export { MAT_TAB_LIST_IBM_ONKEYDOWN, MAT_TAB_LIST_KEYDOWN_ATTR, observeMatTabListKeyboardA11y, wireMatTabListKeyboardA11y, } from './lib/mat-tab-list-keyboard-a11y';
+export { MatTabListKeydownDirective } from './lib/mat-tab-list-keydown.directive';
+export { TranslatedDatepickerIntl, provideTranslatedDatepickerIntl, } from './lib/datepicker-intl/translated-datepicker-intl';
+// Only the provider. `libs/platform/package.json` already declares `date-fns` and
+// `@angular/material-date-fns-adapter` as peer dependencies, so a customer's install depends on
+// that choice either way; what stays unexported is the date-fns `Locale` type, which
+// `dateFnsLocaleFor` returns and which would otherwise enter our TypeScript API.
+export { provideSatoriDateAdapter } from './lib/date-adapter/satori-date-adapter';
+// `dateMaskFor` takes and returns strings, so it carries no date-fns type into the API. It is
+// exported beside the pipe for a host that renders its own date hint.
+export { dateMaskFor } from './lib/date-adapter/date-mask';
+export { DateMaskPipe } from './lib/date-adapter/date-mask.pipe';
+export { PLATFORM_EN_TRANSLATIONS } from './lib/i18n/platform-en';
+export { PLATFORM_MISSING_TRANSLATION_NEXT, PlatformEnglishMissingTranslationHandler, providePlatformEnglishFallback, } from './lib/i18n/platform-english-fallback';

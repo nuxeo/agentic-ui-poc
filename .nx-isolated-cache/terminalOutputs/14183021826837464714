@@ -1,0 +1,35 @@
+> ngc -p apps/nuxeo-satori-template/tsconfig.app.json --outDir dist/out-tsc/apps/nuxeo-satori-template
+
+[96m../../libs/shared/satori-components/src/lib/create-version-dialog/create-version-dialog.component.html[0m:[93m38[0m:[93m7[0m - [93mwarning[0m[90m NG8011: [0mNode matches the ".material-icons:not([iconPositionEnd]), mat-icon:not([iconPositionEnd]), [matButtonIcon]:not([iconPositionEnd])" slot of the "MatButton" component, but will not be projected into the specific slot because the surrounding @if has more than one node at its root. To project the node in the right slot, you can:
+
+1. Wrap the content of the @if block in an <ng-container/> that matches the ".material-icons:not([iconPositionEnd]), mat-icon:not([iconPositionEnd]), [matButtonIcon]:not([iconPositionEnd])" selector.
+2. Split the content of the @if block across multiple @if blocks such that each one only has a single projectable node at its root.
+3. Remove all content from the @if block, except for the node being projected.
+
+This check can be disabled using the `extendedDiagnostics.checks.controlFlowPreventingContentProjection = "suppress" compiler option.`
+
+[7m38[0m       <mat-icon class="nxs-spinning" aria-hidden="true">autorenew</mat-icon>
+[7m  [0m [93m      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96m../../libs/shared/satori-components/src/lib/create-version-dialog/create-version-dialog.component.ts[0m:[93m40[0m:[93m16[0m
+    [7m40[0m   templateUrl: './create-version-dialog.component.html',
+    [7m  [0m [96m               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    Warning occurs in the template of component NxsCreateVersionDialogComponent.
+[96m../../libs/shared/satori-components/src/lib/delete-permission-dialog/delete-permission-dialog.component.html[0m:[93m45[0m:[93m7[0m - [93mwarning[0m[90m NG8011: [0mNode matches the ".material-icons:not([iconPositionEnd]), mat-icon:not([iconPositionEnd]), [matButtonIcon]:not([iconPositionEnd])" slot of the "MatButton" component, but will not be projected into the specific slot because the surrounding @if has more than one node at its root. To project the node in the right slot, you can:
+
+1. Wrap the content of the @if block in an <ng-container/> that matches the ".material-icons:not([iconPositionEnd]), mat-icon:not([iconPositionEnd]), [matButtonIcon]:not([iconPositionEnd])" selector.
+2. Split the content of the @if block across multiple @if blocks such that each one only has a single projectable node at its root.
+3. Remove all content from the @if block, except for the node being projected.
+
+This check can be disabled using the `extendedDiagnostics.checks.controlFlowPreventingContentProjection = "suppress" compiler option.`
+
+[7m45[0m       <mat-icon class="nxs-spinning" aria-hidden="true">autorenew</mat-icon>
+[7m  [0m [93m      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  [96m../../libs/shared/satori-components/src/lib/delete-permission-dialog/delete-permission-dialog.component.ts[0m:[93m46[0m:[93m16[0m
+    [7m46[0m   templateUrl: './delete-permission-dialog.component.html',
+    [7m  [0m [96m               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    Warning occurs in the template of component NxsDeletePermissionDialogComponent.
+
+(node:32657) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)

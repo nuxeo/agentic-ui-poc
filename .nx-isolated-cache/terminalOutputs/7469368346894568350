@@ -1,0 +1,712 @@
+
+ RUN  v3.2.7 /Users/narasimha.koppula/Desktop/Projects/agentic-ui-worktrees/NXSAT-649-sync3/libs/features/search
+
+(node:24822) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |search| src/lib/search-filters-drawer/facet-labels.spec.ts (10 tests) 7ms
+stderr | src/lib/search-session/search-session.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-session/search-session.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-queue/search-queue.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-session/search-request-count.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-queue/search-queue.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-session/search-request-count.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search/search.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search/search.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > empty > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-queue/search-queue.component.spec.ts > SearchQueueComponent — thumbnails > shows a thumbnail per result, from a blob URL, named by the title
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > empty > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > whitespace only > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > whitespace only > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > plain term > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > the one search > sends nothing until something subscribes, then one request shared by every subscriber
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > plain term > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > double quotes (phrase) > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > double quotes (phrase) > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > apostrophe > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > apostrophe > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > trailing wildcard > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > the one search > builds the request from the filters and the page’s quick filters and sort
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > trailing wildcard > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > inner wildcard > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > inner wildcard > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > the one search > sends nothing more for the same page query set again
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > dashes (Web UI formatFulltext) > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > the one search > runs the search again for each change of the filters, Enter on the same term included
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > dashes (Web UI formatFulltext) > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > query-shaped term > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > query-shaped term > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > the one search > reports loading, then the answer, and publishes it to the shared state
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > ampersand and hash > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > ampersand and hash > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > the one search > reports a failure with its error, and clears the shared state
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > non-Latin > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > non-Latin > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > brackets > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > the one search > runs the same request again on retry
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > brackets > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > opens one: reads its filters, applies them, and is not dirty
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > every date range, in order > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > every date range, in order > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > legacy "more than a year" range > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > starts an open saved search from the first page, even when its filters already match
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > legacy "more than a year" range > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > multi-value facets, duplicates dropped > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > is not dirty while the saved search is still being read
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > multi-value facets, duplicates dropped > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > fails, closing the saved search and keeping the filters, when it cannot be read
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > a facet value with a comma > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > a facet value with a comma > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > a facet value with quotes > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > a facet value with quotes > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > every size > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > every size > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > author with a quote > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > author with a quote > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > collection > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > collection > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > tag with spaces > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > tag with spaces > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > everything at once > sends exactly these filter parameters, by way of the record the drawer keeps
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-variant-matrix.spec.ts > search variant matrix — filters in, request and saved search out > everything at once > reads back the same filters from a saved search, stored as the server stores it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |search| src/lib/search-session/search-variant-matrix.spec.ts (44 tests) 57ms
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > drops a late answer for a search the user has left
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > with none open, is dirty exactly when a filter is set
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > saves as: writes the page provider’s names, opens the new search, refreshes the list
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > saves as with the typed title when the answer has none, and opens nothing without an id
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > saves into the open search, then is not dirty
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > clears the old names a search was saved under, so a removed author stays removed
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > renames, deletes and saves nothing with no search open
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > renames without touching the stored filters, and refreshes the list
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > deletes the open search and clears its filters
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > keeps the search the user moved to when an earlier delete answers
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-session.spec.ts > SearchSession > saved searches > resets: no saved search, no filter
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |search| src/lib/search-session/search-session.spec.ts (22 tests) 69ms
+stderr | src/lib/search-queue/search-queue.component.spec.ts > SearchQueueComponent — thumbnails > revokes the URL of a result that left the list
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-queue/search-queue.component.spec.ts > SearchQueueComponent — thumbnails > does not accumulate across repeated disjoint searches
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-queue/search-queue.component.spec.ts > SearchQueueComponent — thumbnails > keeps a result that survives a search, without re-fetching or re-minting it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-queue/search-queue.component.spec.ts > SearchQueueComponent — thumbnails > does not keep a URL for a result that left the list, even when its response is late
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-queue/search-queue.component.spec.ts > SearchQueueComponent — thumbnails > still accepts a response that arrives while its result is present
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-queue/search-queue.component.spec.ts > SearchQueueComponent — thumbnails > revokes everything still held on destroy
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-queue/search-queue.component.spec.ts > SearchQueueComponent — outputs > reports a press on a result and on a quick filter, and a switch to the filters
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |search| src/lib/search-queue/search-queue.component.spec.ts (8 tests) 227ms
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > shows the saved searches and the filters, and keeps the shared search running
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > should create
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > thumbnails > mints no object URL for a result thumbnail, even when the rendition answers
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > toggleQuickFilter > should add a filter when not present
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > toggleQuickFilter > should remove a filter when present
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > toggleQuickFilter > should update query params with selected filters
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > setViewMode > should update view mode signal
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > openDocument > should navigate to /doc/:uid for regular documents
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > openDocument > should navigate to /collections/:uid for Collections
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > openDocument > should navigate to /browse/path for folderish documents
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > openDocument > should do nothing when uid is empty
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > selection > should toggle individual selection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > selection > should check if item is selected
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > selection > should select all when none selected
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > selection > should clear selection when all selected
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > writes a change of the filters into the session and shows the results page
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > selection > should call clear on clearSelection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > deleteSelected > deletes through SelectionService and runs the same search again, so the rows leave
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > column management > offers every column to the picker, ticked as it is shown now
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > column management > gives the picker translated labels, not keys
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > column management > should open column panel
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > column management > should close column panel
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > column management > resets to the default columns
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > column management > should apply column changes and close the panel
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > sortBy > should set sort to ascending on first click
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > sortBy > should toggle to descending on second click
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > sortBy > should clear sort on third click
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > sortBy > should do nothing for non-sortable columns
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > getCellValue > should return correct values for each column
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > getCellValue > should return em dash for missing optional fields
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > getCellValue > should return empty string for unknown columns
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > isQuickFilterSelected > should return true for selected filter
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > stays on the results page when already there
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > isQuickFilterSelected > should return false for unselected filter
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > favorites > should check if document is favorited
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > favorites > marks a result a favorite once its star confirms it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > favorites > unmarks a result once its star confirms the removal, leaving the others
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > favorites > reports the server’s message when a star’s request fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > favorites > falls back to its own message when the server sends none
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > onImageError > should replace image src with the fallback, resolved against the base href
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > onImageError > should do nothing when target is not an image
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > download > should check if type is downloadable
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > download > should not download when id is empty
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > should toggle AI search mode on
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-request-count.spec.ts > one change of the search, one request > sends one request when the page and the drawer open together
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > should toggle AI search mode off and reset state
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > should update AI query on input
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > should select AI suggestion
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > closes the saved search on Reset
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > should execute AI search with valid query
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > ignores an NXQL response superseded by a later query
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > ignores an NXQL failure superseded by a later query
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > ignores an nlToNxql response superseded by a later AI search
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > ignores an AI response that arrives after AI mode is switched off
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > superseding an AI request releases its loading state > clears AI loading when the user leaves AI mode mid-request
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > opens a chosen saved search and shows its results
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > superseding an AI request releases its loading state > clears AI loading when a new AI search supersedes a running NXQL request
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > superseding an AI request releases its loading state > does not release loading owned by an in-flight standard search
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > superseding an AI request releases its loading state > reports busy while either request is in flight
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > should not execute AI search with empty query
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > AI search > should not execute AI search with whitespace-only query
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > says so when a chosen saved search cannot be opened
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > grid sorting > should set grid group by and update route
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > grid sorting > should set grid sort order
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > grid sorting > should default to asc for invalid sort direction
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > parseQuickFilters > should parse comma-separated filter string
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > parseQuickFilters > should filter out invalid values
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > parseQuickFilters > should trim whitespace
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > parseQuickFilters > should return empty set for empty string
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-request-count.spec.ts > one change of the search, one request > sends one request for one Enter in the full-text box
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > buildDownloadFileName > should keep existing extension
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > buildDownloadFileName > should add extension from MIME type
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > buildDownloadFileName > should handle unknown MIME type
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > buildDownloadFileName > should use "document" for empty name
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > buildDownloadFileName > should handle various Office formats
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > computed signals > should compute resultCount
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > computed signals > ignores a pager page asked for while a page loads, and takes it once the page has loaded
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > computed signals > counts the server total for a standard search, and the rows shown for an AI search
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > computed signals > should compute selectedCount
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > computed signals > should compute isIndeterminate from selection service and displayResults
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > saves the filters under the name given
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > publishes items, aggregations and favourites from one response
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > clears the shared state and reports an error when the query fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > shows a failed search as a failure, not as an empty result set
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > shows a failed search as a failure, not as an empty result set
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > says so when saving fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > saves nothing when the name dialog is dismissed
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > hands the filters the vocabulary labels of the nature, subject and coverage facets
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > says a forbidden search is forbidden, without Retry
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > says a forbidden search is forbidden, without Retry
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > the queue > opens the first result when it is entered
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > the queue > keeps the document already open when it is in the results
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > runs the same search again on Retry, and shows the results it returns
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > runs the same search again on Retry, and shows the results it returns
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > the queue > opens a collection or a folder where it lives
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > shows a successful AI search's results over the standard search that failed
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > the queue > enters nothing with no result
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > shows a successful AI search's results over the standard search that failed
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > the queue > toggles a quick filter onto the results page, in a fixed order
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > sends only the drawer filters that have a value
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > maps a sortBy query param back to the UI column key
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > the queue > starts the results from the first page when a quick filter is toggled
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > maps a sortBy query param back to the UI column key
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-request-count.spec.ts > one change of the search, one request > sends one request for one checkbox, and the drawer counts from its aggregates
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > ignores a sortOrder that is neither asc nor desc
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > ignores a sortOrder that is neither asc nor desc
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > the queue > reads the quick filters from the URL, ignoring unknown ones
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > parses quick filters from the query string
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > parses quick filters from the query string
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > sorts the rendered rows by the active column, in both directions
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > returns rows unsorted when no sort is active
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts > SearchFiltersDrawerComponent > the queue > goes back to the filters on the results page
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > shows AI results instead of query results once an AI search has run
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > the results pipeline > gives each row fallback art that resolves against the base href (NXSAT-318)
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > exportCsv > writes a header row plus one row per result, and revokes the blob URL
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > exportCsv > doubles embedded quotes so a title cannot break out of its CSV field
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > exportCsv > doubles embedded quotes so a title cannot break out of its CSV field
+Not implemented: navigation to another Document
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > exportCsv > renders an em dash for the optional columns that are absent
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > exportCsv > renders an em dash for the optional columns that are absent
+Not implemented: navigation to another Document
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > saves a new search under the entered name, in the parameters default_search reads
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |search| src/lib/search-filters-drawer/search-filters-drawer.component.spec.ts (18 tests) 1043ms
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > does not save when the dialog is dismissed or the name is blank
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > reports a failed save and opens nothing
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > saves the changed filters into the open saved search
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > renames without sending filters, so the stored ones are kept
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > does nothing to rename with no saved search open
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > keeps the old title and says so when the rename fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > opens the share dialog for the open saved search
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > does not open the share dialog with nothing open
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > deletes the open saved search after confirmation, and clears its filters
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > does not delete when the confirmation is dismissed
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > keeps the selection and says so when the delete fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > saved searches > offers Save only once the open saved search has changed
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > downloadDocument > downloads a blob and revokes its object URL
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > downloadDocument > refuses to download a type that carries no content
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > downloadDocument > surfaces the API message when the download fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > downloadDocument > falls back to a generic message when the error carries none
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts > SearchComponent > downloadDocument > stops the click from also opening the document
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search/search.spec.ts
+Not implemented: navigation to another Document
+
+stderr | src/lib/search/search.spec.ts
+Not implemented: navigation to another Document
+
+ ✓ |search| src/lib/search/search.spec.ts (107 tests) 1103ms
+stderr | src/lib/search-session/search-request-count.spec.ts > one change of the search, one request > sends one request when the quick filters in the URL change
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-request-count.spec.ts > one change of the search, one request > paging > sends one request when the pager moves to the next page, and the URL follows
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-request-count.spec.ts > one change of the search, one request > paging > keeps the same pager control on screen while the next page loads
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-request-count.spec.ts > one change of the search, one request > paging > reopens the page a deep link names, with one request
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/search-session/search-request-count.spec.ts > one change of the search, one request > paging > goes back to the first page with one request when the filters change
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |search| src/lib/search-session/search-request-count.spec.ts (8 tests) 1829ms
+   ✓ one change of the search, one request > sends one request when the page and the drawer open together  480ms
+   ✓ one change of the search, one request > sends one request for one Enter in the full-text box  430ms
+   ✓ one change of the search, one request > sends one request for one checkbox, and the drawer counts from its aggregates  368ms
+   ✓ one change of the search, one request > paging > goes back to the first page with one request when the filters change  347ms
+
+ Test Files  7 passed (7)
+      Tests  217 passed (217)
+   Start at  16:28:24
+   Duration  7.89s (transform 5.18s, setup 5.54s, collect 20.32s, tests 4.33s, environment 7.99s, prepare 371ms)
+

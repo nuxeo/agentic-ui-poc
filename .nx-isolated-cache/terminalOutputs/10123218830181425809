@@ -1,0 +1,107 @@
+
+ RUN  v3.2.7 /Users/narasimha.koppula/Desktop/Projects/agentic-ui-worktrees/NXSAT-649-sync3/libs/shared/permission-dialogs
+
+(node:23202) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/update-permission-dialog/update-permission-dialog.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/update-permission-dialog/update-permission-dialog.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/update-permission-dialog/update-permission-dialog.component.spec.ts > UpdatePermissionDialogComponent (NXSAT-159) > exposes SMTP mail hint constant
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts > ShareExternalDialogComponent (NXSAT-159) > exposes SMTP mail hint constant
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > exposes SMTP mail hint constant
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts > ShareExternalDialogComponent (NXSAT-159) > creates external permission with notification and date-only end
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/update-permission-dialog/update-permission-dialog.component.spec.ts > UpdatePermissionDialogComponent (NXSAT-159) > updates local permission via replacePermissionWithNotification
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/update-permission-dialog/update-permission-dialog.component.spec.ts > UpdatePermissionDialogComponent (NXSAT-159) > warns when local update saves but notification fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts > ShareExternalDialogComponent (NXSAT-159) > warns when permission is saved but notification fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/update-permission-dialog/update-permission-dialog.component.spec.ts > UpdatePermissionDialogComponent (NXSAT-159) > shows SMTP error when update fails due to mail
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/update-permission-dialog/update-permission-dialog.component.spec.ts > UpdatePermissionDialogComponent external (NXSAT-159) > updates external permission via addExternalPermissionWithNotification
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > creates permission with notification via addPermissionWithNotification
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |permission-dialogs| src/lib/update-permission-dialog/update-permission-dialog.component.spec.ts (5 tests) 134ms
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts > ShareExternalDialogComponent (NXSAT-159) > handles permission creation when notification is not sent
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > creates permission without notification when checkbox is off
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts > ShareExternalDialogComponent (NXSAT-159) > resets form on create-and-add-another without closing
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts > ShareExternalDialogComponent (NXSAT-159) > closes with true on cancel after create-and-add-another
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > warns when permission is saved but notification email fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > resets form and shows snackbar on create-and-add-another
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts > ShareExternalDialogComponent (NXSAT-159) > closes with false on cancel when nothing was created
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/share-external-dialog/share-external-dialog.component.spec.ts > ShareExternalDialogComponent (NXSAT-159) > shows SMTP error when create fails due to mail
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > shows SMTP error when permission creation fails due to mail
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |permission-dialogs| src/lib/share-external-dialog/share-external-dialog.component.spec.ts (8 tests) 195ms
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > user selection and search > updates search text and triggers search on change
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > user selection and search > does not search for an empty term
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > user selection and search > sets selected user and updates search text
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > user selection and search > displays user label from suggestion object
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > user selection and search > displays string value as-is
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts > AddPermissionDialogComponent (NXSAT-159) > user selection and search > returns empty string for null or undefined
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |permission-dialogs| src/lib/add-permission-dialog/add-permission-dialog.component.spec.ts (12 tests) 250ms
+
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+   Start at  16:27:30
+   Duration  19.95s (transform 6.99s, setup 6.21s, collect 28.77s, tests 580ms, environment 22.36s, prepare 23.12s)
+

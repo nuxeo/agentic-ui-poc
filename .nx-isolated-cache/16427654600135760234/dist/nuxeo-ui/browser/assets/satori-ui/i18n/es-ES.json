@@ -1,0 +1,19 @@
+{
+  "sat": {
+    "platform-nav": {
+      "expand": "Expandir navegación",
+      "collapse": "Contraer navegación",
+      "environment-switcher": {
+        "trigger-label": "Entorno",
+        "trigger-tooltip-prefix": "Entorno: "
+      }
+    },
+    "breadcrumbs": {
+      "breadcrumbs": "Ruta de navegación",
+      "show-more": "Mostrar más rutas de navegación"
+    },
+    "rich-tooltip": {
+      "press-escape-to-close": "Pulse la tecla Escape para cerrar"
+    }
+  }
+}

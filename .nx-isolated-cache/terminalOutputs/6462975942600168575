@@ -1,0 +1,12 @@
+
+Linting "browse"...
+(node:22035) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[0m[0m
+[0m[4m/Users/narasimha.koppula/Desktop/Projects/agentic-ui-worktrees/NXSAT-649-sync3/libs/features/browse/src/lib/browse/browse-context-menu.spec.ts[24m[0m
+[0m  [2m7:10[22m  [33mwarning[39m  'TranslateModule' is defined but never used. Allowed unused vars must match /^_/u  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[33m[1m✖ 1 problem (0 errors, 1 warning)[22m[39m[0m
+[0m[33m[1m[22m[39m[0m
+✖ 1 problem (0 errors, 1 warning)
+

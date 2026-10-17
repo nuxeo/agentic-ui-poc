@@ -1,0 +1,19 @@
+{
+  "sat": {
+    "platform-nav": {
+      "expand": "Développer la navigation",
+      "collapse": "Réduire la navigation",
+      "environment-switcher": {
+        "trigger-label": "Environnement",
+        "trigger-tooltip-prefix": "Environnement : "
+      }
+    },
+    "breadcrumbs": {
+      "breadcrumbs": "Fil d'Ariane",
+      "show-more": "Afficher plus de fil d'Ariane"
+    },
+    "rich-tooltip": {
+      "press-escape-to-close": "Appuyer sur la touche Échap pour fermer"
+    }
+  }
+}

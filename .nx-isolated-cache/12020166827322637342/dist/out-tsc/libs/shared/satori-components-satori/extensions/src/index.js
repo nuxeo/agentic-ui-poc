@@ -1,0 +1,20 @@
+export { EXTENSION_SLOTS, } from './lib/extension-slots';
+export { CORE_RULE_EVALUATORS, EMPTY_EXTENSION_RULE_CONTEXT, ExtensionRuleRegistry, SECURITY_RELEVANT_RULE_IDS, } from './lib/extension-rules';
+export { ExtensionSlotRegistry, NO_EXTENSION_SLOT_OVERRIDES, } from './lib/extension-slot-registry.service';
+export { mergeExtensionConfigs, readExtensionConfig, resolveExtensionConfig, } from './lib/extension-config';
+export { DOCUMENT_RULE_EVALUATORS } from './lib/document-rules';
+export { SURFACE_RULE_EVALUATORS } from './lib/surface-rules';
+export { descriptorLabel, ExtensionActionRegistry, } from './lib/extension-actions';
+export { PACKAGED_BROWSE_CONTEXT_MENU, PACKAGED_BULK_ACTIONS, PACKAGED_DOCUMENT_TOOLBAR_ACTIONS, PACKAGED_ROW_ACTIONS, } from './lib/packaged-actions';
+export { PACKAGED_DOCUMENT_TABS } from './lib/packaged-tabs';
+export { PACKAGED_BROWSE_COLUMNS } from './lib/packaged-columns';
+export { extensionRoutes, provideExtensionRoutes, } from './lib/extension-routes';
+export { extensionRoutePathRejection, partitionExtensionRouteDescriptors, } from './lib/extension-route-paths';
+export { ExtensionRuleContextService } from './lib/extension-rule-context.service';
+export { ExtensionComponentRegistry, } from './lib/extension-component-registry.service';
+export { ExtensionOutletComponent } from './lib/extension-outlet.component';
+export { AppExtensionsService } from './lib/app-extensions.service';
+export { provideSatoriExtensions, } from './lib/provide-satori-extensions';
+export { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS } from './lib/nav-items';
+export { DescriptorLabelPipe } from './lib/descriptor-label.pipe';
+//# sourceMappingURL=index.js.map

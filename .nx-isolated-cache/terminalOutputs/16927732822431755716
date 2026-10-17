@@ -1,0 +1,324 @@
+
+ RUN  v3.2.7 /Users/narasimha.koppula/Desktop/Projects/agentic-ui-worktrees/NXSAT-649-sync3/libs/features/collections
+
+(node:24821) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |collections| src/lib/collection-detail/collection-detail.history-date-locale.spec.ts (2 tests) 4ms
+stderr | src/lib/collection-detail/collection-detail.not-found.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/collection-detail/collection-detail.not-found.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/collection-detail/collection-detail.not-found.spec.ts > CollectionDetailComponent — unresolved collection > reports a 404 as not-found and offers no actions on it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > should create
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > should load collection on init
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > should fallback to collectionService if detailService fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > computed signals > should compute breadcrumbItems from collection path
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > computed signals > should return empty array when collection has no path
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > computed signals > should use cached breadcrumbs for same collection path
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > computed signals > should compute externalAces
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > computed signals > lists only the collection’s own pending and effective shares, as Web UI
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > computed signals > should check if collection is in clipboard
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > breadcrumbs > links each parent folder in the app, and does not throw on a literal percent sign
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > goToCollections > should navigate to collections list
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.not-found.spec.ts > CollectionDetailComponent — unresolved collection > distinguishes an unreachable collection from a missing one
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > onRowClick > should navigate to document detail
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > editCollection > should open edit dialog
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > editCollection > should do nothing when no collection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.not-found.spec.ts > CollectionDetailComponent — unresolved collection > still renders the collection and its actions when the load succeeds
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleLock > should lock document when not locked
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleLock > should unlock document when locked
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleLock > should do nothing when action in progress
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleLock > records the acting user as the lock owner, not a fixed account
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleLock > clears the lock owner on unlock
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > opens a collection locked earlier as locked, with its owner and date
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > keeps the lock state when the full read fails and the fallback answers
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > ignores a Lock that succeeds after navigating to another collection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > ignores a Lock that is refused after navigating to another collection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > offers no lock action while the next collection is still loading
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > lets a lock request from the previous collection neither hold nor clear the busy flag
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > ignores a read that lands after navigating to another collection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > ignores a fallback that lands after navigating to another collection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > keeps a reader read-only when the fallback answers for a locked collection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > does not carry a previous lock into a fallback read of an unlocked collection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > has no lock tooltip while unlocked
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > shows a locked collection to a user the lock policy left read-only, without letting them unlock
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > offers no lock action on a version, which carries the Immutable facet
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > offers no lock action on the repository root
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > does not offer Lock to a read-only user on an unlocked collection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > records the owner and date the server returns from Lock
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > locked=false: explains a 409 refusal specifically
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > locked=false: explains a 403 refusal specifically
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > locked=true: explains a 409 refusal specifically
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > locked=true: explains a 403 refusal specifically
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > lock owner and who may unlock > locked=true: explains a 500 refusal specifically
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleSubscription > should subscribe when not subscribed
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleSubscription > should unsubscribe when subscribed
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleSubscription > should do nothing when action in progress
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > deleteCollection > should delete after confirmation
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > deleteCollection > should not delete when cancelled
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > deleteCollection > should do nothing when action in progress
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleClipboard > should add to clipboard when not present
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleClipboard > should remove from clipboard when present
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > toggleClipboard > should do nothing when no collection
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > exportCollection > should open export dialog
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > exportCollection > should route each export type to the right service call
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > should open the delete dialog for the entry and the ACL that holds it
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > should reload after a permission is deleted
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > offers a Collection’s own rights in the external dialogs, read from the server
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.not-found.spec.ts > CollectionDetailComponent — unresolved collection > recovers when a retried load succeeds
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > leaves the dialogs to their default when the rights cannot be read
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > should share with an external user and reload
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > offers no external-share actions to a user without WriteSecurity
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > should strip the transient/ prefix from a username
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > sendNotificationEmail > should send and clear the in-progress flag
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > sendNotificationEmail > should clear the in-progress flag on failure
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permission management > sendNotificationEmail > should do nothing when another action is in progress
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > member thumbnails > mints no object URL for a member thumbnail
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > should load directory entries and the audit log when the history tab opens
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > should not reload the audit log on a second visit to the tab
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > should not query the audit log for a document the user cannot audit
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > should do nothing without a collection uid
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > should clear loading and allow a retry when the audit request fails
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > should re-query with the new page on pagination
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > should record the sort without re-querying, since sorting is in-memory
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > should fall back to a prettified label when the directory has no entry
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > filteredAuditEntries > should return everything when no filter is set
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > filteredAuditEntries > should filter by username, case-insensitively
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > filteredAuditEntries > should filter by a start date
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > filteredAuditEntries > should include the whole of the end date, not midnight
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > filteredAuditEntries > should filter by action and by category
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > filteredAuditEntries > should sort ascending and descending without mutating the source
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > history tab > filteredAuditEntries > should combine a filter with a sort
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > loadMembers > should load collection members
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > loadMembers > pages on the server, keeping the order, and reports a next page
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > loadMembers > starts a new order from the first page, and ignores the page on screen
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > loadMembers > marks every member column sortable on the server
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > loadMembers > shows the 403 error state when the members fail to load
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > loadMembers > shows the 404 error state when the members fail to load
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > loadMembers > shows the 500 error state when the members fail to load
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > shareCollection > should open share dialog
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permissionLabel > should return label for known permissions
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > permissionLabel > should return original permission for unknown permissions
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > aceTimeFrame > should return Permanent when no begin/end
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |collections| src/lib/collection-detail/collection-detail.not-found.spec.ts (4 tests) 805ms
+   ✓ CollectionDetailComponent — unresolved collection > reports a 404 as not-found and offers no actions on it  351ms
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > aceTimeFrame > should format date range when both present
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > aceTimeFrame > should format from date when only begin present
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > aceTimeFrame > should format until date when only end present
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > avatarColor > should have avatarColor function available
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > overlapping member requests > ignores a members response superseded by a newer load
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > overlapping member requests > ignores a stale failure rather than showing an error over newer results
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/collection-detail/collection-detail.spec.ts > CollectionDetailComponent > overlapping member requests > still applies a members response that nothing superseded
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |collections| src/lib/collection-detail/collection-detail.spec.ts (95 tests) 842ms
+
+ Test Files  3 passed (3)
+      Tests  101 passed (101)
+   Start at  16:28:24
+   Duration  7.21s (transform 2.96s, setup 2.39s, collect 7.77s, tests 1.65s, environment 4.24s, prepare 197ms)
+

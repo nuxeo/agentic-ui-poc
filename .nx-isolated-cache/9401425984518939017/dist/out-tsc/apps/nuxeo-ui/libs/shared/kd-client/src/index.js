@@ -1,0 +1,3 @@
+export { DEFAULT_KD_CIC_OPERATIONS, DEFAULT_KD_UPSTREAM_PATHS, KD_CIC_OPERATIONS, KD_UPSTREAM_PATHS, } from './lib/kd.config';
+export { KdClientService, KdDiscoveryError } from './lib/kd-client.service';
+export { buildIndexedReferences, enrichCitationsFromObjectReferences, extractNuxeoDocumentId, extractReferenceContent, findReferenceByIndex, findReferenceByKey, findReferenceForCitation, flattenObjectReferencesToCitations, formatReferenceExcerpt, formatReferenceLabel, getMaxCitationIndex, mergeCitationExcerpts, referenceKey, mergeObjectReferenceContent, normalizeObjectReferenceEntry, normalizeObjectReferences, parseAnswerSegments, referencesForObject, } from './lib/kd-references.util';

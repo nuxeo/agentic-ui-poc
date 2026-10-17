@@ -1,0 +1,34 @@
+/** Nuxeo Note `note:mime_type` values and display labels (matches Nuxeo Web UI). */
+export const NOTE_FORMAT_OPTIONS = [
+    { value: 'text/html', labelKey: 'note-format.html', label: 'HTML' },
+    { value: 'text/plain', labelKey: 'note-format.plain', label: 'Text' },
+    { value: 'text/xml', labelKey: 'note-format.xml', label: 'XML' },
+    { value: 'text/markdown', labelKey: 'note-format.markdown', label: 'Markdown' },
+];
+const NOTE_FORMAT_LABELS = new Map(NOTE_FORMAT_OPTIONS.map((opt) => [opt.value, opt.label]));
+/** Default empty body for a new note of the given format. */
+export function defaultNoteContent(mimeType) {
+    return mimeType === 'text/html' ? '<p></p>' : '';
+}
+/** Human-readable label for `note:mime_type` (e.g. `text/html` → `HTML`). */
+export function noteFormatLabel(mimeType) {
+    if (!mimeType)
+        return 'HTML';
+    return NOTE_FORMAT_LABELS.get(mimeType) ?? mimeType;
+}
+export function isHtmlNoteFormat(mimeType) {
+    return mimeType === 'text/html';
+}
+/**
+ * Formats note HTML for the code/source textarea (display only).
+ *
+ * Nuxeo Web UI toggles source mode on the persisted `note:note` string. Satori uses Quill for
+ * the visual editor; `getSemanticHTML()` collapses markup onto one line with `&nbsp;` entities.
+ * This helper restores a readable multi-line source view without mutating the saved document.
+ */
+export function formatNoteHtmlForSourceView(html) {
+    if (!html)
+        return '';
+    const normalized = html.replace(/\r\n/g, '\n').replace(/&nbsp;/gi, ' ');
+    return normalized.replace(/>\s*</g, '>\n<').trim();
+}

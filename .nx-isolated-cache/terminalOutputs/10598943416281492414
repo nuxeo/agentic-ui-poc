@@ -1,0 +1,2 @@
+> tsc --build tsconfig.lib.json tsconfig.spec.json
+

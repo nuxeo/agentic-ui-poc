@@ -1,0 +1,64 @@
+
+ RUN  v3.2.7 /Users/narasimha.koppula/Desktop/Projects/agentic-ui-worktrees/NXSAT-649-sync3/libs/shared/document-layouts
+
+(node:23581) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |document-layouts| src/lib/validation-failure.spec.ts (4 tests) 3ms
+ ✓ |document-layouts| src/lib/document-layout/field-view.spec.ts (18 tests) 12ms
+ ✓ |document-layouts| src/lib/layout-file.spec.ts (22 tests) 6ms
+ ✓ |document-layouts| src/lib/resolve-layout.spec.ts (38 tests) 9ms
+ ✓ |document-layouts| src/lib/layout-label.spec.ts (7 tests) 16ms
+ ✓ |document-layouts| src/lib/document-layout.service.spec.ts (37 tests) 83ms
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts
+NG0912: Component ID generation collision detected. Components '_VisuallyHiddenLoader' and '_VisuallyHiddenLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts
+NG0912: Component ID generation collision detected. Components '_CdkTextFieldStyleLoader' and '_CdkTextFieldStyleLoader' with selector 'ng-component' generated the same component ID. To fix this, you can change the selector of one of those components or add an extra host attribute to force a different ID. Find more at https://v20.angular.dev/errors/NG0912
+
+ ✓ |document-layouts| src/lib/document-layout/document-layout.spec.ts (22 tests) 330ms
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > editing > reads the type's edit layout, facet schemas included, and fills it from the document
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > editing > sends only what changed, and refuses a required field left blank
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > editing > puts Nuxeo's messages on their fields and hands back the rest
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > editing > keeps the Dublin Core fields when the type cannot be read
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > editing > shows a spinner while the layout resolves
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > creating > reads the type's create layout without the parent's facets, empty, and sends every value
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > creating > asks for nothing until it knows the type
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > a contributed form > replaces the edit layout, given the document the host edits whatever the manifest says
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > a contributed form > saves only once the component says its values are valid, and sends what it reported
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > a contributed form > forgets what it reported when the host hands it another document of the same type
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > a contributed form > judges a create's rule by the type being created, in its folder
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > a contributed form > falls back to the layout when the entry names a component this build lacks
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+stderr | src/lib/document-layout-form/document-layout-form.spec.ts > DocumentLayoutFormComponent > a contributed form > puts the layout back, savable, when the component fails to load
+NG0914: The application is using zoneless change detection, but is still loading Zone.js. Consider removing Zone.js to get the full benefits of zoneless. In applications using the Angular CLI, Zone.js is typically included in the "polyfills" section of the angular.json file.
+
+ ✓ |document-layouts| src/lib/document-layout-form/document-layout-form.spec.ts (13 tests) 578ms
+
+ Test Files  8 passed (8)
+      Tests  161 passed (161)
+   Start at  16:27:57
+   Duration  3.87s (transform 2.58s, setup 4.82s, collect 4.44s, tests 1.04s, environment 4.85s, prepare 5.43s)
+
