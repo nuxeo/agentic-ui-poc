@@ -51,7 +51,6 @@ import {
   permissionRightLabel,
 } from '@nuxeo/satori-platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
-import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import {
   ShareDialogComponent,
   ShareDialogData,
@@ -141,7 +140,6 @@ const MEMBER_PAGE_SIZE = 50;
     MatSelectModule,
     MatDatepickerModule,
     SatAvatarModule,
-    SatTagModule,
   ],
   templateUrl: './collection-detail.html',
   styleUrl: './collection-detail.scss',
@@ -250,6 +248,8 @@ export class CollectionDetailComponent {
   private breadcrumbItemsCache: NxsBreadcrumbItem[] = [];
   /** Rendered by ID, so the product shows Satori's and a host without it the built-in one. */
   readonly breadcrumbsId = NXS_PRIMITIVE_IDS.breadcrumbs;
+  /** Rendered by ID, so the product shows Satori's status tag and a host without it the built-in one. */
+  readonly statusTagId = NXS_PRIMITIVE_IDS.statusTag;
 
   readonly isInClipboard = computed(() =>
     this.clipboardDocs().some((d) => d.uid === this.collectionUid),
