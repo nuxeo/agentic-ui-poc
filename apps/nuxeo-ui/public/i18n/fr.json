@@ -10,6 +10,11 @@
     "context-menu-share": "Partager",
     "context-menu-subscribe": "M'avertir",
     "context-menu-unsubscribe": "Se désabonner",
+    "row-actions-copy-to": "Copy to…",
+    "row-actions-delete": "Delete",
+    "row-actions-download": "Download",
+    "row-actions-move-to": "Move to…",
+    "row-actions-rename": "Rename",
     "toolbar-add-to-clipboard": "Ajouter au Presse-papiers",
     "toolbar-add-to-collection": "Ajouter à la collection",
     "toolbar-add-to-favorites": "Ajouter aux favoris",
@@ -508,7 +513,7 @@
       "coming-soon": "Prochainement disponible"
     },
     "preset": {
-      "badge": "Preset: {{ label }}"
+      "badge": "Préréglage : {{ label }}"
     },
     "profile-page": {
       "change-password": "Changer le mot de passe",
@@ -624,6 +629,7 @@
   "browse": {
     "block": "Bloquer",
     "breadcrumb": {
+      "label": "Breadcrumbs",
       "root": "Racine"
     },
     "browse": {
@@ -636,11 +642,13 @@
       "card-view": "Vue en cartes",
       "category": "Catégorie",
       "clear": "Effacer",
+      "clear-uploads": "Clear",
       "close-column-picker": "Fermer le sélecteur de colonnes",
       "close-panel": "Fermer le panneau",
       "collection-actions": "Actions de la collection",
       "column-settings": "Paramètres des colonnes",
       "comment": "Commentaire",
+      "contents-of": "Contents of {{ name }}",
       "contributors": "Contributeurs",
       "create-folder-upload-files-or-import": "Créer un dossier, importer des fichiers ou importer un CSV",
       "create-import": "Créer / Importer",
@@ -649,6 +657,7 @@
       "delete": "Supprimer",
       "done": "Terminé",
       "download-all": "Tout télécharger",
+      "drop-to-upload": "Drop files to upload them to {{ name }}",
       "edit": "Modifier",
       "export-csv": "Exporter CSV",
       "filter-by-title": "Filtrer par titre...",
@@ -695,6 +704,7 @@
       "trash-is-empty": "La corbeille est vide",
       "type": "Type",
       "upload-with-nuxeo-drive": "Importer avec Nuxeo Drive",
+      "uploads": "Uploads",
       "user": "Utilisateur",
       "user-group": "Utilisateur / Groupe",
       "username": "Nom d'utilisateur"
@@ -820,6 +830,7 @@
       "action-failed": "Échec de l'action",
       "collection-moved-to-trash": "Collection déplacée dans la corbeille",
       "collection-updated": "Collection mise à jour",
+      "copied-to": "Copied \"{{ name }}\" to {{ folder }}",
       "could-not-load-folder-contents": "Impossible de charger le contenu du dossier.",
       "could-not-resolve-a-default-folder-open": "Impossible de déterminer un dossier par défaut. Ouvrez d'abord un dossier dans Parcourir.",
       "could-not-resolve-this-path-try-another": "Impossible de résoudre ce chemin. Essayez un autre dossier.",
@@ -834,12 +845,14 @@
       "domain-container-guidance": "Ouvrez Sections, Modèles ou Espaces de travail, puis créez du contenu dans ces dossiers.",
       "download-failed": "Échec du téléchargement.",
       "failed-to-add-tag": "Échec de l'ajout de la balise",
+      "failed-to-copy": "The document could not be copied.",
       "failed-to-delete": "Échec de la suppression",
       "failed-to-delete-collection": "Échec de la suppression de la collection",
       "failed-to-load-collection": "Échec du chargement de la collection",
       "failed-to-load-folder-contents": "Échec du chargement du contenu du dossier.",
       "failed-to-load-permissions": "Échec du chargement des autorisations",
       "failed-to-load-selected-documents-for-deletion": "Échec du chargement des documents sélectionnés pour la suppression",
+      "failed-to-move": "The document could not be moved.",
       "failed-to-remove-tag": "Échec de la suppression de la balise",
       "failed-to-restore-document": "Échec de la restauration du document.",
       "failed-to-send-notification": "Échec de l'envoi de la notification",
@@ -850,6 +863,7 @@
       "file-upload-failed": "Échec de l'importation du fichier",
       "inheritance-blocked": "Héritage verrouillé",
       "inheritance-unblocked": "Héritage déverrouillé",
+      "moved-to": "Moved \"{{ name }}\" to {{ folder }}",
       "moved-to-trash": "Déplacé dans la corbeille",
       "notification-email-sent": "E-mail de notification envoyé",
       "open-a-folder-to-create-or-import": "Ouvrez un dossier pour créer ou importer du contenu.",
@@ -859,6 +873,7 @@
       "please-select-a-csv-file": "Veuillez sélectionner un fichier .csv.",
       "please-wait-for-the-file-upload-to": "Veuillez attendre la fin de l'importation du fichier.",
       "remove-all-collections-from-this-folder-before": "Supprimez toutes les collections de ce dossier avant de le supprimer.",
+      "renamed": "Renamed to \"{{ name }}\"",
       "restricted-import-location": "Sélectionnez un autre conteneur pour créer votre contenu.",
       "search-failed": "Échec de la recherche",
       "selected-path-is-not-a-folder-choose": "Le chemin sélectionné n'est pas un dossier. Choisissez un dossier ou remontez d'un niveau.",
@@ -867,8 +882,15 @@
       "subscribed-to-notifications": "Abonné aux notifications",
       "unsubscribed": "Désabonné",
       "upload-failed": "Échec de l'importation",
+      "upload-in-progress": "Wait for the files being uploaded to finish before dropping more.",
       "uploading": "Importation…",
       "uploading-file-of": "Importation du fichier {{ index }} sur {{ count }}…"
+    },
+    "row-actions": {
+      "copy-heading": "Copy \"{{ name }}\" to",
+      "copy-here": "Copy here",
+      "move-heading": "Move \"{{ name }}\" to",
+      "move-here": "Move here"
     },
     "scope": {
       "create-import": "Créer / Importer",
@@ -895,6 +917,7 @@
     "collection-detail": {
       "actions": "Actions",
       "back-to-collections": "Retour aux collections",
+      "breadcrumbs": "Breadcrumbs",
       "category": "Catégorie",
       "comment": "Commentaire",
       "date": "Date",
@@ -910,6 +933,7 @@
       "if-you-want-to-explicitly-control": "Si vous souhaitez contrôler explicitement l'accès à ce document, vous pouvez bloquer l'héritage des autorisations. Toute modification apportée au document parent n'affectera pas les conditions d'accès à ce document. Vous et les administrateurs serez ajoutés aux autorisations locales.",
       "last-contributor": "Dernier contributeur",
       "loading": "Chargement",
+      "members-of": "Members of {{ name }}",
       "modified": "Modifié",
       "more-actions": "Plus d'actions",
       "new": "Nouveau",
@@ -1025,15 +1049,15 @@
       "trashed-document-many": "{{ count }} documents dans la corbeille",
       "trashed-document-one": "{{ count }} document dans la corbeille"
     },
-    "date-mask": "jj/mm/aaaa",
+    "date-mask": "mm/dd/yyyy",
     "dismiss": "Abandonner",
     "email-example": "nom@entreprise.com",
     "lock": {
-      "already-locked": "Document déjà verrouillé par un autre utilisateur, veuillez rafraîchir votre page.",
-      "lock-no-permission": "Vous n'avez pas l'autorisation de verrouiller ce document.",
+      "already-locked": "Document déjà verrouillé par un autre utilisateur, veuillez actualiser votre page.",
+      "lock-no-permission": "Vous n'êtes pas autorisé(e) à verrouiller ce document.",
       "locked-by": "Verrouillé par {{ owner }} le {{ date }}",
-      "locked-by-another-user": "Vous ne pouvez pas déverrouiller ce document car il est verrouillé par un autre utilisateur.",
-      "unlock-no-permission": "Vous n'avez pas l'autorisation de déverrouiller ce document."
+      "locked-by-another-user": "Vous ne pouvez pas déverrouiller ce document, car il est verrouillé par un autre utilisateur.",
+      "unlock-no-permission": "Vous n’êtes pas autorisé(e) à déverrouiller ce document."
     },
     "ok": "OK",
     "page-number": "Page {{ page }}",
@@ -1080,7 +1104,7 @@
   "contracts": {
     "sample-document-title": "Contrat ABC-123.pdf",
     "saved-search-placeholder": "ex. : « Contrats T3 en attente de vérification »",
-    "showcase-dialog-message": "Cette boîte de dialogue est importée depuis @nuxeo/satori-platform/ui. Les clients peuvent l'utiliser pour les invites de confirmation, les avertissements et les actions destructrices.",
+    "showcase-dialog-message": "Cette boîte de dialogue est importée depuis @nuxeo-satori/platform/ui. Les clients peuvent l'utiliser pour les invites de confirmation, les avertissements et les actions destructrices.",
     "showcase-dialog-title": "Démonstration de la vitrine des composants"
   },
   "dashboard": {
@@ -1235,6 +1259,7 @@
       "reply": "Répondre",
       "reply-actions": "Actions sur la réponse",
       "republish": "Republier",
+      "republish-confirm": "Are you sure you want to erase this publication with the most recent version of the document?",
       "restore": "Restaurer",
       "right": "Droite",
       "running": "En cours",
@@ -1267,6 +1292,8 @@
       "unclassified": "Non classé",
       "unpublish": "Dépublier",
       "unpublish-all": "Tout dépublier",
+      "unpublish-all-confirm": "Are you sure you want to unpublish these documents?",
+      "unpublish-confirm": "Are you sure you want to unpublish this document?",
       "upload-attachment": "Importer la pièce jointe",
       "user": "Utilisateur",
       "user-group": "Utilisateur / Groupe",
@@ -1295,7 +1322,11 @@
       "enter-a-valid-date": "Saisissez une date valide",
       "expires": "Date d'expiration",
       "nature": "Nature",
+      "not-accepted": "Nuxeo did not accept this value.",
       "save": "Enregistrer",
+      "save-failed": "The changes could not be saved. Try again.",
+      "save-forbidden": "You do not have permission to change this document.",
+      "saving": "Saving",
       "search": "Rechercher…",
       "search-coverage": "Rechercher une couverture",
       "search-nature": "Rechercher une nature",
@@ -1389,7 +1420,7 @@
       "removed-from-favorites": "Supprimé des favoris",
       "reply-deleted": "Réponse supprimée",
       "restore-version-conflict": "Cette version ne peut pas être restaurée en raison d'un conflit avec l'état actuel du document. Rechargez la page et réessayez.",
-      "restore-version-forbidden": "Vous ne pouvez pas restaurer cette version : vous n'avez pas l'autorisation, ou un autre utilisateur a verrouillé le document.",
+      "restore-version-forbidden": "Vous ne pouvez pas restaurer cette version : vous n'avez pas l'autorisation nécessaire, ou quelqu'un d'autre a verrouillé le document.",
       "search-failed-try-again": "Échec de la recherche. Réessayez.",
       "section-not-found": "Section introuvable",
       "selected-documents-have-no-insertable-image-url": "Les documents sélectionnés n'ont pas d'URL d'image insérable",
@@ -1441,6 +1472,7 @@
       "clear": "Effacer",
       "close": "Fermer",
       "filters": "Filtres",
+      "loading": "Loading pictures",
       "no-pictures-found": "Aucune image trouvée.",
       "picture-documents": "Documents image",
       "quick-search": "Recherche rapide",
@@ -1483,20 +1515,22 @@
     "task-due-before": "avant le {{ due }}",
     "unblock": "Débloquer",
     "unknown": "Inconnu",
-    "version-go-to-latest": "Aller à la dernière version",
+    "version-go-to-latest": "Accéder à la dernière version",
     "version-latest": "{{ version }} récente",
     "version-latest-entry": "Dernière version",
     "version-modified-by": "Modifié {{ when }} par {{ who }}",
     "version-restore": "Restaurer {{ version }}",
-    "version-restore-confirm-title": "Êtes-vous sûr ?",
+    "version-restore-confirm-title": "Vous êtes sûr ?",
+    "version-restore-replaces-content": "La restauration de la version {{ version }} remplace le contenu actuel du document, y compris toutes les modifications effectuées après la version {{ version }}.",
     "version-viewing": "Vous consultez la version {{ version }}.",
     "visual-editor": "Editeur visuel",
     "workflow-started-on-document": "Vous avez démarré un flux de travail {{ workflow }} sur ce document."
   },
   "document-layouts": {
-    "no": "No",
-    "sections": "Property sections",
-    "yes": "Yes"
+    "loading-form": "Loading the form",
+    "no": "Non",
+    "sections": "Sections de propriétés",
+    "yes": "Oui"
   },
   "drawer": {
     "administration-analytics": "Analyse",
@@ -1640,8 +1674,8 @@
   },
   "nav": {
     "clipboard": {
-      "aria-label-one": "{{ name }}, {{ count }} élément",
       "aria-label-many": "{{ name }}, {{ count }} éléments",
+      "aria-label-one": "{{ name }}, {{ count }} élément",
       "copy": "Copier",
       "empty": "Le presse-papiers est vide",
       "hint": "Utilisez « Ajouter au presse-papiers » sur des documents ou des collections pour ajouter des éléments ici.",
@@ -1692,6 +1726,7 @@
       "retry": "Réessayer"
     },
     "tree": {
+      "label": "Folders",
       "retry": "Réessayer",
       "root": "Racine",
       "toggle": "Activer/désactiver {{ name }}"
@@ -1758,14 +1793,32 @@
     },
     "right": {
       "AddChildren": "Ajouter des enfants",
+      "CanAskForPublishing": "Can ask for publishing",
       "Everything": "Tout gérer",
       "ManageWorkflows": "Gérer les flux de travail",
       "Read": "Lire",
       "ReadCanCollect": "Peut collecter",
       "ReadRemove": "Lire et supprimer",
+      "ReadVersion": "Read versions",
       "ReadWrite": "Modifier",
       "Remove": "Supprimer",
-      "Write": "Écrire"
+      "RemoveChildren": "Remove children",
+      "SetRetention": "Set retention",
+      "Unlock": "Unlock",
+      "UnsetRetention": "Unset retention",
+      "Version": "Create versions",
+      "Write": "Écrire",
+      "WriteSecurity": "Manage permissions",
+      "WriteVersion": "Write versions",
+      "Browse": "Browse",
+      "ReadChildren": "Read children",
+      "ReadLifeCycle": "Read lifecycle",
+      "ReadProperties": "Read properties",
+      "ReadSecurity": "Read security",
+      "WriteLifeCycle": "Edit lifecycle",
+      "WriteProperties": "Edit properties",
+      "ManageLegalHold": "Manage legal hold",
+      "ManageRecord": "Manage record"
     },
     "share-external-dialog": {
       "cancel": "Annuler",
@@ -1820,6 +1873,549 @@
       "name-placeholder": "Saisissez un nom pour votre recherche enregistrée"
     }
   },
+  "satori-components": {
+    "action-menu": {
+      "more-actions": "More actions"
+    },
+    "breadcrumbs": {
+      "show-more": "Show more breadcrumbs"
+    },
+    "column-picker": {
+      "close": "Close column picker",
+      "done": "Done",
+      "reset": "Reset",
+      "title": "Column Settings"
+    },
+    "comments": {
+      "cancel": "Cancel",
+      "clear": "Clear",
+      "comment-actions": "Actions for the comment by {{author}}",
+      "comment-label": "Comment",
+      "delete": "Delete",
+      "delete-comment-message": "Are you sure you want to delete this comment?",
+      "delete-comment-title": "Delete comment",
+      "delete-comment-with-replies": "Are you sure you want to delete this comment? All replies to this comment will also be deleted.",
+      "delete-reply-message": "Are you sure you want to delete this reply?",
+      "delete-reply-title": "Delete reply",
+      "edit": "Edit",
+      "edit-comment": "Edit comment",
+      "edit-reply": "Edit reply",
+      "edited": "{{time}} (edited)",
+      "empty": "No comments yet",
+      "error": {
+        "add-comment": "The comment could not be added.",
+        "add-reply": "The reply could not be added.",
+        "delete-comment": "The comment could not be deleted.",
+        "delete-reply": "The reply could not be deleted.",
+        "edit-comment": "The comment could not be saved.",
+        "edit-reply": "The reply could not be saved.",
+        "forbidden-add": "You do not have permission to comment on this document.",
+        "forbidden-delete": "You do not have permission to delete this comment.",
+        "forbidden-edit": "You do not have permission to edit this comment.",
+        "not-found-comment": "This comment is no longer available. The comments have been reloaded.",
+        "not-found-reply": "This reply is no longer available. The comments have been reloaded."
+      },
+      "last-reply": "Last reply {{time}}",
+      "list": "Comments",
+      "load-failed": "The comments could not be loaded.",
+      "loading": "Loading comments",
+      "replies-one": "1 reply",
+      "replies-other": "{{count}} replies",
+      "reply": "Reply",
+      "reply-actions": "Actions for the reply by {{author}}",
+      "reply-label": "Reply",
+      "reply-to": "Reply to {{author}}",
+      "retry": "Retry",
+      "save": "Save",
+      "show-all": "Show all",
+      "submit-comment": "Add comment",
+      "submit-hint": "Ctrl + Enter to submit",
+      "submit-reply": "Add reply",
+      "view-all-comments": "View all {{count}} comments",
+      "view-all-replies": "View all {{count}} replies",
+      "write-comment": "Write a comment here",
+      "write-reply": "Write a reply here"
+    },
+    "create-version-dialog": {
+      "title": "Create Version for {{document}} - Version {{version}}",
+      "kind": "Version to create",
+      "minor": "Minor version",
+      "major": "Major version",
+      "cancel": "Cancel",
+      "create": "Create Version",
+      "creating": "Creating the version",
+      "created": "Version {{version}} created",
+      "forbidden": "You do not have permission to create a version of this document.",
+      "failed": "The version could not be created."
+    },
+    "details-panel": {
+      "close": "Close details"
+    },
+    "document-history": {
+      "filters": "Filter the history",
+      "user": "Username",
+      "user-hint": "The exact username",
+      "from": "From",
+      "to": "To",
+      "action": "Performed action",
+      "category": "Category",
+      "any": "Any",
+      "date": "Date",
+      "comment": "Comment",
+      "state": "State",
+      "caption": "Document history",
+      "loading": "Loading the history",
+      "failed": "The history could not be loaded.",
+      "empty": "No history entries yet",
+      "no-match": "No history entries match these filters"
+    },
+    "document-toolbar": {
+      "label": "Document actions",
+      "more-actions": "More actions"
+    },
+    "document-list": {
+      "actions": "Actions",
+      "drop": "Drop files to upload them here",
+      "empty": "Nothing here yet",
+      "keyboard-hint": "Arrow keys move between documents. Space selects, Shift extends the selection, Enter opens.",
+      "keyboard-hint-no-selection": "Arrow keys move between documents. Enter opens.",
+      "loading": "Loading documents",
+      "row-actions": "Actions for {{ name }}",
+      "row-name-repeated": "{{ name }} ({{ index }} of {{ count }})",
+      "select": "Select {{ name }}",
+      "select-page": "Select all on this page",
+      "selection": "Selection",
+      "sort-by": "Sort by {{ column }}",
+      "sort-cleared": "Sort cleared, showing the default order",
+      "sorted-ascending": "Sorted by {{ column }}, ascending",
+      "sorted-descending": "Sorted by {{ column }}, descending"
+    },
+    "document-tree": {
+      "children-failed": "The folders in {{ name }} could not be loaded",
+      "children-failed-row": "Could not load the folders. Retry",
+      "children-forbidden": "You do not have access to the folders in {{ name }}",
+      "children-forbidden-row": "You do not have access to these folders",
+      "empty": "No folders to show",
+      "load-failed": "The folders could not be loaded",
+      "loading": "Loading folders",
+      "root": "Root"
+    },
+    "date-input": {
+      "invalid": "Enter a date like {{ example }}",
+      "too-early": "Enter {{ date }} or later",
+      "too-late": "Enter {{ date }} or earlier"
+    },
+    "drive-dialog": {
+      "checking": "Checking Nuxeo Drive...",
+      "close": "Close",
+      "name": "Nuxeo Drive",
+      "package": "Package to Install",
+      "platform": "Platform",
+      "title": "Download Nuxeo Drive Client"
+    },
+    "dropzone": {
+      "choose-file": "Choose a file",
+      "choose-files": "Choose files"
+    },
+    "error-state": {
+      "forbidden": {
+        "heading": "You do not have access",
+        "message": "You do not have permission to see this. Ask its owner or an administrator for access."
+      },
+      "not-found": {
+        "heading": "Not found",
+        "message": "It may have been moved or deleted, or the link may be wrong."
+      },
+      "retry": "Retry",
+      "server": {
+        "heading": "Something went wrong",
+        "message": "The server could not complete the request. Try again in a moment."
+      },
+      "unauthorized": {
+        "heading": "Your session has ended",
+        "message": "Sign in again to continue."
+      }
+    },
+    "favorite-toggle": {
+      "add": "Add to favorites",
+      "label": "Favorite",
+      "remove": "Remove from favorites"
+    },
+    "manage-versions": {
+      "version": "Version",
+      "create": "Create Version",
+      "unversioned": "Unversioned",
+      "latest": "Latest version",
+      "modified": "Modified {{when}} by {{who}}",
+      "unknown-user": "Unknown",
+      "loading": "Loading versions",
+      "failed": "The versions could not be loaded.",
+      "retry": "Retry",
+      "none": "No previous versions"
+    },
+    "metadata-editor": {
+      "add-item": "Add to {{label}}",
+      "coverage": "Coverage",
+      "description": "Description",
+      "error": {
+        "date": "Enter a valid date for {{label}}.",
+        "integer": "{{label}} must be a whole number.",
+        "invalid": "{{label}} is not valid.",
+        "item": "One of the values of {{label}} is not valid.",
+        "max-length": "{{label}} must be at most {{count}} characters.",
+        "maximum": "{{label}} must be {{bound}} or less.",
+        "maximum-exclusive": "{{label}} must be less than {{bound}}.",
+        "min-length": "{{label}} must be at least {{count}} characters.",
+        "minimum": "{{label}} must be {{bound}} or more.",
+        "minimum-exclusive": "{{label}} must be more than {{bound}}.",
+        "number": "{{label}} must be a number.",
+        "pattern": "{{label}} is not in the expected format.",
+        "required": "{{label}} is required."
+      },
+      "expires": "Expires",
+      "item": "{{label}} {{index}}",
+      "nature": "Nature",
+      "no-value": "No value",
+      "remove": "Remove",
+      "remove-item": "Remove {{label}} {{index}}",
+      "remove-value": "Remove {{name}}",
+      "search": "Search",
+      "search-in": "Search {{label}}",
+      "sections": "Metadata sections",
+      "subjects": "Subjects",
+      "summary-one": "1 field needs a correction before you can save.",
+      "summary-other": "{{count}} fields need a correction before you can save.",
+      "title": "Title"
+    },
+    "permission-dialogs": {
+      "cancel": "Cancel",
+      "comment": "Notification email",
+      "comment-placeholder": "Hi! Could you comment on this document and...",
+      "date-based": "Date-based",
+      "delete": {
+        "delete": "Delete",
+        "deleting": "Deleting the permission",
+        "title": "The following permission will be deleted."
+      },
+      "end-before-begin": "The end date is before the start date.",
+      "error": {
+        "delete": "The permission could not be deleted.",
+        "forbidden": "You don't have permission to change permissions on this document.",
+        "share": "The document could not be shared.",
+        "update": "The permission could not be updated."
+      },
+      "from": "From",
+      "granted-by": "Granted by",
+      "permanent": "Permanent",
+      "right": "Right",
+      "share": {
+        "create": "Create",
+        "create-another": "Create and add another",
+        "email": "Email",
+        "email-invalid": "Enter a valid email address.",
+        "email-placeholder": "name@company.com",
+        "saving": "Sharing the document",
+        "shared": "Shared with {{email}}, who has been sent a link to the document.",
+        "title": "Share with external user"
+      },
+      "time-frame": "Time frame",
+      "to": "To",
+      "update": {
+        "for": "For {{principal}}",
+        "notify": "Send an email to notify user",
+        "saving": "Updating the permission",
+        "title": "Update permission",
+        "update": "Update",
+        "updated": "Permission updated",
+        "updated-notified": "Permission updated and notification sent"
+      },
+      "user-group": "User / Group"
+    },
+    "folder-picker": {
+      "already-here": "The document is already in this folder.",
+      "cancel": "Cancel",
+      "empty": "No folders here. You can choose this folder.",
+      "failed": "The folder could not be loaded.",
+      "folders": "Folders",
+      "forbidden": "You do not have access to this folder.",
+      "inside-itself": "A folder cannot be moved into itself or into a folder inside it.",
+      "loading": "Loading folders",
+      "location": "Location",
+      "not-a-folder": "This is not a folder. Go up and choose a folder.",
+      "not-found": "This folder no longer exists.",
+      "retry": "Retry",
+      "up": "Up one level"
+    },
+    "pager": {
+      "label": "Pages",
+      "next": "Next page",
+      "past-end": "No more items",
+      "previous": "Previous page",
+      "range": "{{ first }}–{{ last }}",
+      "range-of": "{{ first }}–{{ last }} of {{ total }}"
+    },
+    "permissions-panel": {
+      "add": "Add",
+      "column": {
+        "acl": "Access list",
+        "actions": "Actions",
+        "granted-by": "Granted by",
+        "permission": "Permission",
+        "principal": "User or group",
+        "time-frame": "Time frame"
+      },
+      "denied": "Denied",
+      "discard": "Discard",
+      "dismiss": "Dismiss",
+      "edit": "Edit",
+      "edit-entry": "Edit the permission for {{ principal }}",
+      "editor": {
+        "add": "Add",
+        "add-heading": "Add a permission",
+        "apply": "Apply",
+        "cancel": "Cancel",
+        "date-based": "Date-based",
+        "edit-heading": "Edit the permission for {{ principal }}",
+        "end-before-begin": "The end date is before the start date.",
+        "from": "From",
+        "no-principal": "Choose a user or group from the list.",
+        "permanent": "Permanent",
+        "permission": "Permission",
+        "principal": "User or group",
+        "to": "To"
+      },
+      "failed": {
+        "denied": "You don't have permission to change permissions on this document.",
+        "heading": "Saved {{ applied }} of {{ total }} changes. The server refused the next one:",
+        "unknown": "The server gave no reason."
+      },
+      "group": {
+        "other": "Other permissions on this server",
+        "standard": "Standard permissions",
+        "suggested": "Suggested for this document type"
+      },
+      "inherited": {
+        "block": "Block inheritance",
+        "blocked": "Inheritance is blocked, so only the permissions set on this document apply.",
+        "empty": "No permissions are inherited.",
+        "heading": "Inherited from parent folders",
+        "save-first": "Save or discard your changes first.",
+        "toggle-failed": "Inheritance could not be changed.",
+        "unblock": "Unblock inheritance"
+      },
+      "load-error": {
+        "denied": "You don't have access to this document's permissions.",
+        "failed": "The permissions could not be loaded.",
+        "not-found": "This document no longer exists."
+      },
+      "loading": "Loading permissions",
+      "local": {
+        "empty": "No permissions are set on this document itself.",
+        "heading": "Set on this document"
+      },
+      "locked": {
+        "deny": "A deny entry can be removed here, but not edited.",
+        "no-id": "Can't be changed here: the server sent no identifier for this entry."
+      },
+      "other": {
+        "heading": "Set by other access lists"
+      },
+      "pending": {
+        "many": "{{ count }} unsaved changes",
+        "one": "{{ count }} unsaved change"
+      },
+      "permission-for": "Permission for {{ principal }}",
+      "refusal": {
+        "changed-on-server": "it changed on the server after this page loaded. Reload, then make the change again.",
+        "deny-entry": "it denies access, and this panel can only grant: editing it would turn it into a grant.",
+        "invalid-time-frame": "its end date is before its start date.",
+        "no-id": "the server sent no identifier for it, so it can't be changed without risking another entry.",
+        "no-principal": "it names no user or group.",
+        "not-applied": "the server accepted the change, but its permissions don't show it.",
+        "undefined-permission": "this server doesn't define that permission."
+      },
+      "refused": {
+        "heading": "Nothing was saved. These entries can't be saved from this panel:"
+      },
+      "reload": "Reload",
+      "remove": "Remove",
+      "remove-entry": "Remove {{ permission }} for {{ principal }}",
+      "retry": "Retry",
+      "save": "Save",
+      "saved": {
+        "many": "Saved {{ count }} changes.",
+        "one": "Saved {{ count }} change."
+      },
+      "state": {
+        "added": "New",
+        "changed": "Changed",
+        "removed": "To remove"
+      },
+      "status": {
+        "archived": "Expired",
+        "pending": "Not yet active"
+      },
+      "title": "Permissions",
+      "unconfirmed": {
+        "heading": "The server did not apply every change. These entries are not as you set them:"
+      },
+      "undo": "Undo",
+      "unnamed-principal": "(no user or group)",
+      "unread": {
+        "heading": "Nothing was saved. The permissions could not be read before saving, so no change was sent:"
+      },
+      "unverified": {
+        "heading": "The changes were sent, but reading the permissions back failed, so the panel cannot confirm them. Reload to see what the server holds."
+      }
+    },
+    "properties-panel": {
+      "by": "By",
+      "collections": "Collections",
+      "contributors": "Contributors",
+      "coverage": "Coverage",
+      "created": "Created",
+      "description": "Description",
+      "expires": "Expires",
+      "file-name": "File name",
+      "format": "Format",
+      "indexing-properties": "Indexing properties",
+      "last-modified": "Last modified",
+      "nature": "Nature",
+      "process": "Process",
+      "publications": "Publications",
+      "running": "Running",
+      "state": "State",
+      "subjects": "Subjects",
+      "tags": "Tags",
+      "title": "Title",
+      "version": "Version"
+    },
+    "tag-editor": {
+      "add": "Add tags to this document",
+      "added": "The tag {{tag}} has been added to the document.",
+      "adding": "Adding tag {{tag}}",
+      "error": {
+        "add": "The tag {{tag}} could not be added.",
+        "forbidden": "You do not have permission to change this document's tags.",
+        "remove": "The tag {{tag}} could not be removed."
+      },
+      "new": "+ {{tag}}",
+      "new-label": "New tag {{tag}}",
+      "none": "No tags",
+      "remove": "Remove tag {{tag}}",
+      "removed": "The tag {{tag}} has been removed from the document.",
+      "tags": "Tags"
+    },
+    "rename-dialog": {
+      "cancel": "Cancel",
+      "failed": "The title could not be changed. Try again in a moment.",
+      "forbidden": "You do not have permission to rename this document.",
+      "label": "Title",
+      "locked": "This document is locked by someone else, so it cannot be renamed now.",
+      "not-found": "This document no longer exists.",
+      "required": "Enter a title",
+      "save": "Rename",
+      "title": "Rename"
+    },
+    "pickers": {
+      "choose-from-list": "Choose an entry from the list",
+      "clear": "Clear",
+      "failed": "Search failed. Try again.",
+      "loading": "Loading…",
+      "min-chars-many": "Type at least {{ count }} characters",
+      "min-chars-one": "Type at least {{ count }} character",
+      "no-results": "No results",
+      "remove": "Remove {{ name }}",
+      "required": "Required",
+      "results-many": "{{ count }} results",
+      "results-one": "{{ count }} result",
+      "searching": "Searching…"
+    },
+    "tag-input": {
+      "add": "Add “{{ tag }}”"
+    },
+    "toast": {
+      "dismiss": "Dismiss",
+      "retry": "Retry"
+    },
+    "search-filters": {
+      "fulltext": "Full Text",
+      "fulltext-placeholder": "Search for something...",
+      "clear-fulltext": "Clear full text",
+      "modified": {
+        "title": "Modification Date",
+        "last24h": "Last 24h",
+        "last-week": "Last week",
+        "last-month": "Last month",
+        "last-year": "Last year",
+        "prior-to-last-year": "More than a year ago"
+      },
+      "authors": "Authors",
+      "authors-placeholder": "Search for authors...",
+      "collections": "Collections",
+      "collections-placeholder": "Select a value.",
+      "loading-collections": "Loading collections...",
+      "collections-failed": "Could not load your collections.",
+      "tags": "Tags",
+      "tags-placeholder": "e.g. events, boston",
+      "tags-hint": "Please enter 1 or more characters",
+      "no-results": "No results found",
+      "no-results-for": "No results for {{ term }}",
+      "nature": "Nature",
+      "subjects": "Subjects",
+      "coverage": "Coverage",
+      "size": {
+        "title": "Size",
+        "tiny": "Less than 100 KB",
+        "small": "Between 100 KB and 1 MB",
+        "medium": "Between 1 MB and 10 MB",
+        "big": "Between 10 MB and 100 MB",
+        "huge": "More than 100 MB"
+      },
+      "no-available-results": "No available results",
+      "reset": "Reset",
+      "save-as": "Save As",
+      "remove": "Remove {{ value }}",
+      "chosen-authors": "Chosen authors",
+      "chosen-collections": "Chosen collections",
+      "chosen-tags": "Chosen tags"
+    },
+    "saved-search-select": {
+      "label": "Saved Searches",
+      "placeholder": "Search Filters",
+      "loading": "Loading saved searches...",
+      "none": "No saved searches",
+      "no-match": "No matching saved searches"
+    },
+    "saved-search-actions": {
+      "save-as": "Save As",
+      "save": "Save",
+      "more": "Saved search actions",
+      "rename": "Rename",
+      "share": "Share",
+      "delete": "Delete"
+    },
+    "upload-queue": {
+      "done": "Uploaded",
+      "failed": "Could not be uploaded",
+      "forbidden": "You do not have permission to add documents here",
+      "not-found": "The folder no longer exists",
+      "progress": "Uploading {{ name }}",
+      "remove": "Remove {{ name }}",
+      "retry": "Retry {{ name }}",
+      "summary": "{{ done }} of {{ total }} uploaded",
+      "summary-failed": "{{ count }} could not be uploaded",
+      "uploading": "Uploading, {{ percent }}%",
+      "waiting": "Waiting"
+    },
+    "user-group-picker": {
+      "group": "Group",
+      "user": "User"
+    },
+    "vocabulary-select": {
+      "failed": "Could not load the list. Open it again to try again."
+    }
+  },
   "search": {
     "ai-search": "Recherche IA",
     "ai-search-active": "Recherche IA active",
@@ -1861,7 +2457,9 @@
       "failed-to-download-document": "Échec du téléchargement du document.",
       "failed-to-load-search-results": "Échec du chargement des résultats de la recherche.",
       "failed-to-update-favorites": "Échec de la mise à jour des favoris.",
-      "nxql-query-execution-failed-the-generated-query": "Échec de l'exécution de la requête NXQL. La requête générée n'est peut-être pas valide."
+      "nxql-query-execution-failed-the-generated-query": "Échec de l'exécution de la requête NXQL. La requête générée n'est peut-être pas valide.",
+      "failed-to-open-saved-search": "Could not open the saved search.",
+      "failed-to-delete-saved-search": "Could not delete the saved search."
     },
     "no-results-for": "Aucun résultat pour {{ term }}",
     "quick-filter": {
@@ -2021,6 +2619,7 @@
     "document-viewer": {
       "additional-formats": "Formats supplémentaires",
       "annotations-are-not-available-for-this": "Les annotations ne sont pas disponibles pour ce document.",
+      "annotations-frame": "Annotations pour {{ name }}",
       "audio-codec": "Codec audio",
       "bit-depth-per-channel": "Profondeur de bits par canal",
       "color-profile": "Profil de couleur",
@@ -2043,9 +2642,12 @@
       "iptc-rights": "Droits",
       "iptc-source": "Source",
       "loading": "Chargement",
+      "note-frame": "Contenu de la note pour {{ name }}",
       "open-with-nuxeo-drive": "Ouvrir avec Nuxeo Drive",
+      "pdf-frame": "Aperçu PDF de {{ name }}",
       "picture-info": "Informations sur l'image",
       "preview": "Aperçu",
+      "preview-frame": "Aperçu de {{ name }}",
       "preview-not-available": "Aperçu non disponible",
       "remove": "Supprimer",
       "remove-main-file": "Supprimer le fichier principal",
@@ -2090,7 +2692,8 @@
     },
     "saved-search-dialog": {
       "cancel": "Annuler",
-      "save": "Enregistrer"
+      "save": "Enregistrer",
+      "no-slash": "You cannot use the character '/' in the name"
     },
     "selection-topbar": {
       "clear": "Effacer",
